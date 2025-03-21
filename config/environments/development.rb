@@ -40,8 +40,12 @@ Rails.application.configure do
   # Devise mailer configuration
   config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
 
-  # ActionMailer AWS SES configuration
-  config.action_mailer.delivery_method = :ses
+  # Mailgun configuration
+  config.action_mailer.delivery_method = :mailgun
+  config.action_mailer.mailgun_settings = {
+    api_key: ENV['MAILGUN_API_KEY'],
+    domain: ENV['MAILGUN_DOMAIN']
+  }
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
