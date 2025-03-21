@@ -30,8 +30,8 @@ gem "devise", "~> 4.9"
 # Environment variables management
 gem "dotenv-rails", "~> 3.0"
 
-# AWS SES for email delivery
-gem "aws-sdk-ses", "~> 1.55"
+# Mailgun for email delivery
+gem "mailgun-ruby", "~> 1.2"
 
 # AI Integration
 gem "ruby-openai", "~> 6.3"
