@@ -1,0 +1,67 @@
+<%= form_with(model: contact) do |form| %>
+  <% if contact.errors.any? %>
+    <div class="alert alert-danger">
+      <h4><%= pluralize(contact.errors.count, "error") %> prohibited this contact from being saved:</h4>
+      <ul>
+        <% contact.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <%= form.label :first_name, class: "form-label" %>
+      <%= form.text_field :first_name, class: "form-control" %>
+    </div>
+
+    <div class="col-md-6 mb-3">
+      <%= form.label :last_name, class: "form-label" %>
+      <%= form.text_field :last_name, class: "form-control" %>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :email, class: "form-label" %>
+    <%= form.email_field :email, class: "form-control" %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :status, class: "form-label" %>
+    <%= form.select :status, Contact::STATUSES, { include_blank: "Select status" }, class: "form-select" %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :tags, class: "form-label" %>
+    <%= form.text_field :tags, class: "form-control", placeholder: "e.g. customer, newsletter, prospect" %>
+    <div class="form-text">Separate tags with commas</div>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :contact_group_ids, "Contact Groups", class: "form-label" %>
+    <% if @contact_groups.any? %>
+      <div class="card">
+        <div class="card-body">
+          <% @contact_groups.each do |group| %>
+            <div class="form-check mb-2">
+              <%= check_box_tag "contact[contact_group_ids][]", group.id, contact.contact_groups.include?(group), id: "contact_group_#{group.id}", class: "form-check-input" %>
+              <label class="form-check-label" for="contact_group_<%= group.id %>">
+                <%= group.name %>
+              </label>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <div class="alert alert-info">
+        No contact groups available. <%= link_to "Create a group", new_contact_group_path %> first.
+      </div>
+    <% end %>
+  </div>
+
+  <div class="mt-4">
+    <%= form.submit class: "btn btn-primary" %>
+    <%= link_to "Cancel", contacts_path, class: "btn btn-outline-secondary ms-2" %>
+  </div>
+<% end %> 

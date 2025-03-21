@@ -1,0 +1,58 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h2>Contacts</h2>
+          <%= link_to "New Contact", new_contact_path, class: "btn btn-primary" %>
+        </div>
+        <div class="card-body">
+          <% if @contacts.any? %>
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Tags</th>
+                    <th>Added</th>
+                    <th width="200">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @contacts.each do |contact| %>
+                    <tr>
+                      <td><%= contact.full_name %></td>
+                      <td><%= contact.email %></td>
+                      <td>
+                        <% if contact.status.present? %>
+                          <span class="badge bg-<%= contact.status == 'active' ? 'success' : (contact.status == 'inactive' ? 'warning' : 'danger') %>">
+                            <%= contact.status.humanize %>
+                          </span>
+                        <% else %>
+                          <span class="badge bg-secondary">Unknown</span>
+                        <% end %>
+                      </td>
+                      <td><%= contact.tags %></td>
+                      <td><%= contact.created_at.strftime("%b %d, %Y") %></td>
+                      <td>
+                        <%= link_to "View", contact_path(contact), class: "btn btn-sm btn-outline-primary" %>
+                        <%= link_to "Edit", edit_contact_path(contact), class: "btn btn-sm btn-outline-secondary" %>
+                        <%= button_to "Delete", contact_path(contact), method: :delete, data: { turbo_confirm: "Are you sure?" }, class: "btn btn-sm btn-outline-danger", form_class: "d-inline" %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <div class="alert alert-info">
+              <p class="mb-0">You don't have any contacts yet. <%= link_to "Add your first contact", new_contact_path %>.</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

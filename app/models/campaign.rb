@@ -1,0 +1,116 @@
+class Campaign < ApplicationRecord
+  belongs_to :user
+  
+  # Associations
+  has_many :campaign_groups, dependent: :destroy
+  has_many :contact_groups, through: :campaign_groups
+  has_many :email_deliveries, dependent: :destroy
+  belongs_to :email_template, optional: true
+  
+  # Status options
+  STATUSES = %w[draft scheduled in_progress completed paused stopped].freeze
+  
+  # Validations
+  validates :name, presence: true
+  validates :status, inclusion: { in: STATUSES }
+  validates :scheduled_at, presence: true, if: -> { status == 'scheduled' }
+  
+  # Scopes
+  scope :active, -> { where(status: ['scheduled', 'in_progress']) }
+  scope :upcoming, -> { where(status: 'scheduled').where('scheduled_at > ?', Time.current) }
+  scope :completed, -> { where(status: 'completed') }
+  
+  # Methods
+  def contacts
+    Contact.joins(:contact_groups).where(contact_groups: { id: contact_group_ids }).distinct
+  end
+  
+  def contact_count
+    contacts.count
+  end
+  
+  def sent_count
+    email_deliveries.where.not(sent_at: nil).count
+  end
+  
+  def open_rate
+    return 0 if sent_count.zero?
+    (email_deliveries.where.not(opened_at: nil).count.to_f / sent_count * 100).round(2)
+  end
+  
+  def click_rate
+    return 0 if sent_count.zero?
+    (email_deliveries.where.not(clicked_at: nil).count.to_f / sent_count * 100).round(2)
+  end
+  
+  # Advanced analytics methods for AI-driven insights
+  
+  def bounce_rate
+    return 0 if sent_count.zero?
+    (email_deliveries.where(status: 'bounced').count.to_f / sent_count * 100).round(2)
+  end
+  
+  def engagement_score
+    # Calculate a weighted engagement score (0-100)
+    return 0 if sent_count.zero?
+    
+    # Weights for different engagement actions
+    open_weight = 0.3
+    click_weight = 0.7
+    
+    # Calculate scores
+    open_score = open_rate * open_weight
+    click_score = click_rate * click_weight
+    
+    # Sum up for final score (max 100)
+    (open_score + click_score).round(2)
+  end
+  
+  def time_to_open
+    # Average time between sending and opening in minutes
+    opened = email_deliveries.where.not(opened_at: nil, sent_at: nil)
+    return nil if opened.empty?
+    
+    total_minutes = opened.sum do |delivery|
+      ((delivery.opened_at - delivery.sent_at) / 60).round
+    end
+    
+    (total_minutes.to_f / opened.count).round(2)
+  end
+  
+  def most_active_hours
+    # Returns array of [hour, count] pairs showing when emails were opened most
+    opened = email_deliveries.where.not(opened_at: nil)
+    return [] if opened.empty?
+    
+    hours = opened.group_by { |delivery| delivery.opened_at.hour }
+                  .transform_values(&:count)
+                  .sort_by { |_hour, count| -count }
+                  .first(3)
+    
+    hours.map { |hour, count| [hour, count] }
+  end
+  
+  def performance_percentile
+    # Compare with other campaigns by the same user
+    return nil if user.campaigns.completed.count < 3
+    
+    better_campaigns = user.campaigns.completed.where('id != ?', id).where('(SELECT COUNT(*) FROM email_deliveries WHERE campaign_id = campaigns.id AND opened_at IS NOT NULL) / (SELECT COUNT(*) FROM email_deliveries WHERE campaign_id = campaigns.id AND sent_at IS NOT NULL) > ?', open_rate / 100.0).count
+    
+    total_other_campaigns = user.campaigns.completed.where('id != ?', id).count
+    
+    return nil if total_other_campaigns.zero?
+    
+    percentile = 100 - (better_campaigns.to_f / total_other_campaigns * 100).round
+    [0, [100, percentile].min].max  # Ensure between 0 and 100
+  end
+  
+  def device_breakdown
+    # Mock data for now, in a real implementation this would come from tracking data
+    {
+      desktop: 45,
+      mobile: 42,
+      tablet: 13
+    }
+  end
+end

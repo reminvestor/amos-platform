@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+    <style type="text/css">
+      body {
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #333;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        margin-bottom: 20px;
+      }
+      .footer {
+        margin-top: 30px;
+        font-size: 12px;
+        color: #999;
+        text-align: center;
+      }
+      .content {
+        margin-bottom: 30px;
+      }
+      .button {
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1><%= @campaign.name %></h1>
+      </div>
+      
+      <div class="content">
+        <p>Hello <%= @contact.first_name %>,</p>
+        
+        <%= raw @email_template.body %>
+        
+        <p>Best regards,<br><%= @campaign.user.full_name %></p>
+      </div>
+      
+      <div class="footer">
+        <p>
+          This email was sent to <%= @contact.email %>.<br>
+          If you no longer wish to receive these emails, you can 
+          <a href="<%= root_url %>unsubscribe?token=<%= @email_delivery&.id || 'test' %>">unsubscribe here</a>.
+        </p>
+        
+        <!-- Tracking pixel for open tracking -->
+        <img src="<%= @tracking_pixel_url %>" alt="" width="1" height="1" style="display:none">
+      </div>
+    </div>
+  </body>
+</html> 

@@ -1,0 +1,176 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3><i class="fas fa-chart-line me-2"></i> AI Campaign Analysis</h3>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i> Campaign "<strong><%= @campaign.name %></strong>" has been analyzed by AI
+          </div>
+          
+          <div class="row mt-4">
+            <div class="col-md-12">
+              <div class="card mb-4">
+                <div class="card-header bg-light">
+                  <h5>Performance Insights</h5>
+                </div>
+                <div class="card-body">
+                  <div class="insights-container">
+                    <%= @analysis.html_safe %>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card mb-4">
+                <div class="card-header bg-light">
+                  <h5>Campaign Summary</h5>
+                </div>
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-3 text-center mb-3">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <h6 class="text-muted">Sent to</h6>
+                          <h3><%= @campaign.contact_count || 0 %></h3>
+                          <div class="text-muted">recipients</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <h6 class="text-muted">Open Rate</h6>
+                          <h3><%= @campaign.open_rate || 0 %>%</h3>
+                          <div class="text-muted">
+                            <% 
+                              open_rate = @campaign.open_rate || 0
+                              if open_rate > 25
+                                status = "success"
+                                message = "Above industry average"
+                              elsif open_rate > 15
+                                status = "warning"
+                                message = "Average"
+                              else
+                                status = "danger"
+                                message = "Below average"
+                              end
+                            %>
+                            <span class="text-<%= status %>"><%= message %></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <h6 class="text-muted">Click Rate</h6>
+                          <h3><%= @campaign.click_rate || 0 %>%</h3>
+                          <div class="text-muted">
+                            <% 
+                              click_rate = @campaign.click_rate || 0
+                              if click_rate > 5
+                                status = "success"
+                                message = "Above industry average"
+                              elsif click_rate > 2
+                                status = "warning"
+                                message = "Average"
+                              else
+                                status = "danger"
+                                message = "Below average"
+                              end
+                            %>
+                            <span class="text-<%= status %>"><%= message %></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3 text-center mb-3">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <h6 class="text-muted">Sent on</h6>
+                          <h3><%= @campaign.sent_at&.strftime("%b %d") || "N/A" %></h3>
+                          <div class="text-muted"><%= @campaign.sent_at&.strftime("%Y at %I:%M %p") || "Not sent yet" %></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <div class="card h-100">
+                    <div class="card-header bg-light">
+                      <h5>Next Steps</h5>
+                    </div>
+                    <div class="card-body">
+                      <div class="list-group">
+                        <a href="<%= new_ai_content_path %>" class="list-group-item list-group-item-action">
+                          <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Create new AI-generated content</h6>
+                            <small><i class="fas fa-arrow-right"></i></small>
+                          </div>
+                          <p class="mb-1">Generate fresh email content based on your requirements</p>
+                        </a>
+                        <a href="<%= email_template_path(@campaign.email_template_id) %>" class="list-group-item list-group-item-action">
+                          <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">View the template used</h6>
+                            <small><i class="fas fa-arrow-right"></i></small>
+                          </div>
+                          <p class="mb-1">Check the email template that was used for this campaign</p>
+                        </a>
+                        <a href="<%= improve_ai_content_path(@campaign.email_template_id) %>" class="list-group-item list-group-item-action">
+                          <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Improve this email template</h6>
+                            <small><i class="fas fa-arrow-right"></i></small>
+                          </div>
+                          <p class="mb-1">Use AI to improve the content based on this campaign's performance</p>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="card h-100">
+                    <div class="card-header bg-light">
+                      <h5>AI Recommendations</h5>
+                    </div>
+                    <div class="card-body">
+                      <div class="recommendations-container">
+                        <!-- This would extract recommendations from the AI analysis -->
+                        <% 
+                          # Simple extraction of recommended points (this could be more sophisticated)
+                          recommendations = @analysis.scan(/<li>(.*?)<\/li>/m).flatten.first(3)
+                          if recommendations.any?
+                            recommendations.each do |recommendation|
+                        %>
+                          <div class="alert alert-success">
+                            <i class="fas fa-lightbulb me-2"></i> <%= recommendation.html_safe %>
+                          </div>
+                        <% 
+                            end
+                          else 
+                        %>
+                          <div class="alert alert-warning">
+                            <i class="fas fa-info-circle me-2"></i> No specific recommendations extracted. Please review the full analysis above.
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <%= link_to "Back to Campaign", campaign_path(@campaign), class: "btn btn-outline-secondary me-md-2" %>
+                <%= link_to "All Campaigns", campaigns_path, class: "btn btn-secondary" %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

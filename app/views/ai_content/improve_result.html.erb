@@ -1,0 +1,156 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3><i class="fas fa-robot me-2"></i> AI Improved Email Content</h3>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-success">
+            <i class="fas fa-check-circle me-2"></i> Your email content has been improved successfully!
+          </div>
+          
+          <div class="row mt-4">
+            <div class="col-md-12">
+              <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                  <h5 class="mb-0">Side-by-Side Comparison</h5>
+                  <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-secondary active" id="btn-side-by-side">Side by Side</button>
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-original">Original</button>
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-improved">Improved</button>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="row" id="comparison-view">
+                    <div class="col-md-6">
+                      <div class="border rounded p-3 mb-3 mb-md-0">
+                        <h6 class="text-center text-muted mb-3">Original Email</h6>
+                        <div class="original-email-preview">
+                          <%= @template.body.html_safe %>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="border rounded p-3 bg-light">
+                        <h6 class="text-center text-muted mb-3">Improved Email</h6>
+                        <div class="improved-email-preview">
+                          <%= @improved_content.html_safe %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="d-none" id="original-view">
+                    <div class="border rounded p-3">
+                      <h6 class="text-center text-muted mb-3">Original Email</h6>
+                      <div class="original-email-preview">
+                        <%= @template.body.html_safe %>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="d-none" id="improved-view">
+                    <div class="border rounded p-3">
+                      <h6 class="text-center text-muted mb-3">Improved Email</h6>
+                      <div class="improved-email-preview">
+                        <%= @improved_content.html_safe %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card mb-4">
+                <div class="card-header bg-light">
+                  <h5>HTML Source (Improved Email)</h5>
+                </div>
+                <div class="card-body">
+                  <div class="code-container position-relative">
+                    <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 mt-2 me-2" 
+                            onclick="copyToClipboard('email-source-code')">
+                      <i class="fas fa-copy"></i> Copy
+                    </button>
+                    <pre id="email-source-code" class="p-3 bg-light border rounded"><%= h @improved_content %></pre>
+                  </div>
+                </div>
+              </div>
+              
+              <%= form_with url: improve_ai_content_path(@template), method: :post, local: true, data: { turbo: false } do |form| %>
+                <%= form.hidden_field :audience, value: params[:audience] %>
+                <%= form.hidden_field :open_rate, value: params[:open_rate] %>
+                <%= form.hidden_field :click_rate, value: params[:click_rate] %>
+                <%= form.hidden_field :update_template, value: "1" %>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                  <%= link_to "Cancel", email_template_path(@template), class: "btn btn-outline-secondary me-md-2" %>
+                  <%= form.submit "Apply Improved Content to Template", class: "btn btn-success", data: { disable_with: "Applying..." } %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Button view switching
+    const btnSideBySide = document.getElementById('btn-side-by-side');
+    const btnOriginal = document.getElementById('btn-original');
+    const btnImproved = document.getElementById('btn-improved');
+    
+    const comparisonView = document.getElementById('comparison-view');
+    const originalView = document.getElementById('original-view');
+    const improvedView = document.getElementById('improved-view');
+    
+    btnSideBySide.addEventListener('click', function() {
+      comparisonView.classList.remove('d-none');
+      originalView.classList.add('d-none');
+      improvedView.classList.add('d-none');
+      
+      btnSideBySide.classList.add('active');
+      btnOriginal.classList.remove('active');
+      btnImproved.classList.remove('active');
+    });
+    
+    btnOriginal.addEventListener('click', function() {
+      comparisonView.classList.add('d-none');
+      originalView.classList.remove('d-none');
+      improvedView.classList.add('d-none');
+      
+      btnSideBySide.classList.remove('active');
+      btnOriginal.classList.add('active');
+      btnImproved.classList.remove('active');
+    });
+    
+    btnImproved.addEventListener('click', function() {
+      comparisonView.classList.add('d-none');
+      originalView.classList.add('d-none');
+      improvedView.classList.remove('d-none');
+      
+      btnSideBySide.classList.remove('active');
+      btnOriginal.classList.remove('active');
+      btnImproved.classList.add('active');
+    });
+  });
+  
+  function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    const textToCopy = element.textContent;
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      const button = element.parentElement.querySelector('button');
+      const originalText = button.innerHTML;
+      button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      
+      setTimeout(() => {
+        button.innerHTML = originalText;
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+    });
+  }
+</script> 

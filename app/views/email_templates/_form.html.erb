@@ -1,0 +1,64 @@
+<%= form_with(model: email_template) do |form| %>
+  <% if email_template.errors.any? %>
+    <div class="alert alert-danger">
+      <h4><%= pluralize(email_template.errors.count, "error") %> prohibited this template from being saved:</h4>
+      <ul>
+        <% email_template.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= form.label :name, class: "form-label" %>
+    <%= form.text_field :name, class: "form-control", placeholder: "e.g. Welcome Email" %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :subject, class: "form-label" %>
+    <%= form.text_field :subject, class: "form-control", placeholder: "e.g. Welcome to our service!" %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :body, class: "form-label" %>
+    <%= form.text_area :body, class: "form-control email-template-editor", rows: 15, placeholder: "Enter your email content here..." %>
+    <div class="form-text">
+      You can use HTML formatting. The following variables are available:
+      <ul class="mt-1">
+        <li><code>{{first_name}}</code> - Recipient's first name</li>
+        <li><code>{{last_name}}</code> - Recipient's last name</li>
+        <li><code>{{email}}</code> - Recipient's email address</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <%= form.submit class: "btn btn-primary" %>
+    <%= link_to "Cancel", email_templates_path, class: "btn btn-outline-secondary ms-2" %>
+  </div>
+<% end %>
+
+<% content_for :head do %>
+  <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
+  
+  <script>
+    document.addEventListener('turbo:load', function() {
+      $('.email-template-editor').summernote({
+        placeholder: 'Write your email content here...',
+        tabsize: 2,
+        height: 300,
+        toolbar: [
+          ['style', ['style']],
+          ['font', ['bold', 'underline', 'clear']],
+          ['color', ['color']],
+          ['para', ['ul', 'ol', 'paragraph']],
+          ['table', ['table']],
+          ['insert', ['link', 'picture']],
+          ['view', ['fullscreen', 'codeview', 'help']]
+        ]
+      });
+    });
+  </script>
+<% end %> 

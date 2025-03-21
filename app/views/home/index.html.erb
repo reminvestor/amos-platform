@@ -1,0 +1,66 @@
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-header">
+          <h5>Marketing Dashboard</h5>
+        </div>
+        <div class="card-body">
+          <div class="list-group">
+            <a href="<%= email_templates_path %>" class="list-group-item list-group-item-action">Email Templates</a>
+            <a href="<%= campaigns_path %>" class="list-group-item list-group-item-action">Email Campaigns</a>
+            <a href="<%= contacts_path %>" class="list-group-item list-group-item-action">Contacts</a>
+            <a href="<%= contact_groups_path %>" class="list-group-item list-group-item-action">Contact Groups</a>
+            <a href="#" class="list-group-item list-group-item-action">Social Media</a>
+            <a href="#" class="list-group-item list-group-item-action">Ad Campaigns</a>
+            <a href="#" class="list-group-item list-group-item-action">Analytics</a>
+            <% if current_user.admin? %>
+              <a href="#" class="list-group-item list-group-item-action">User Management</a>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-9">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h3>Welcome, <%= current_user.full_name %></h3>
+          <%= link_to "Sign out", destroy_user_session_path, data: { turbo_method: :delete }, class: "btn btn-outline-danger" %>
+        </div>
+        <div class="card-body">
+          <h4>AI-Powered Marketing Engine</h4>
+          <p class="lead">
+            This platform helps you automate marketing campaigns across multiple channels:
+          </p>
+          <div class="row mt-4">
+            <div class="col-md-4">
+              <div class="card bg-light mb-3">
+                <div class="card-body text-center">
+                  <h5 class="card-title"><i class="bi bi-envelope-fill"></i> Email Campaigns</h5>
+                  <p class="card-text">Create and manage email campaigns using AI-generated content.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-light mb-3">
+                <div class="card-body text-center">
+                  <h5 class="card-title"><i class="bi bi-graph-up"></i> Ad Management</h5>
+                  <p class="card-text">Run and optimize Facebook and Google ad campaigns.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card bg-light mb-3">
+                <div class="card-body text-center">
+                  <h5 class="card-title"><i class="bi bi-people-fill"></i> Social Media</h5>
+                  <p class="card-text">Schedule and analyze posts across social media platforms.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,131 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3><i class="fas fa-robot me-2"></i> AI Email Content Generator</h3>
+        </div>
+        <div class="card-body">
+          <%= form_with url: generate_ai_content_path, method: :post, local: true, data: { turbo: false } do |form| %>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <%= form.label :audience, "Target Audience", class: "form-label fw-bold" %>
+                  <%= form.text_field :audience, class: "form-control", placeholder: "e.g., small business owners, tech enthusiasts", required: true %>
+                  <div class="form-text">Describe who will receive this email</div>
+                </div>
+                
+                <div class="mb-3">
+                  <%= form.label :purpose, "Email Purpose", class: "form-label fw-bold" %>
+                  <%= form.select :purpose, 
+                    [
+                      ["Newsletter", "newsletter"],
+                      ["Product Announcement", "product announcement"],
+                      ["Welcome Email", "welcome email"],
+                      ["Promotional Offer", "promotional offer"],
+                      ["Follow-up", "follow-up"],
+                      ["Educational Content", "educational content"],
+                      ["Event Invitation", "event invitation"]
+                    ],
+                    {}, { class: "form-select", required: true } %>
+                  <div class="form-text">What is the primary goal of this email?</div>
+                </div>
+                
+                <div class="mb-3">
+                  <%= form.label :tone, "Tone", class: "form-label fw-bold" %>
+                  <%= form.select :tone, 
+                    [
+                      ["Professional", "professional"],
+                      ["Friendly", "friendly"],
+                      ["Casual", "casual"],
+                      ["Formal", "formal"],
+                      ["Enthusiastic", "enthusiastic"],
+                      ["Urgent", "urgent"],
+                      ["Authoritative", "authoritative"]
+                    ],
+                    {}, { class: "form-select", required: true } %>
+                </div>
+                
+                <div class="mb-3">
+                  <%= form.label :length, "Email Length", class: "form-label fw-bold" %>
+                  <%= form.select :length, 
+                    [
+                      ["Short (100-150 words)", "short"],
+                      ["Medium (200-250 words)", "medium"],
+                      ["Long (300-400 words)", "long"]
+                    ],
+                    {}, { class: "form-select", required: true } %>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <%= form.label :product, "Product/Service (optional)", class: "form-label fw-bold" %>
+                  <%= form.text_field :product, class: "form-control", placeholder: "e.g., Marketing Pro Subscription" %>
+                  <div class="form-text">Leave blank if not focusing on a specific product/service</div>
+                </div>
+                
+                <div class="mb-3">
+                  <%= form.label :specific_points, "Key Points to Include", class: "form-label fw-bold" %>
+                  <%= form.text_area :specific_points, class: "form-control", rows: 5, 
+                      placeholder: "Enter one point per line, e.g.:\nNew feature launch on May 15\n40% discount code: SUMMER40\nLimited time offer - expires in 7 days" %>
+                  <div class="form-text">Enter one specific point per line (optional)</div>
+                </div>
+
+                <div class="mb-3 border p-3 rounded bg-light">
+                  <div class="form-check mb-2">
+                    <%= form.check_box :create_template, class: "form-check-input", id: "create_template_checkbox" %>
+                    <%= form.label :create_template, "Save as new template", class: "form-check-label fw-bold" %>
+                  </div>
+                  
+                  <div id="template_name_container" style="display: none;">
+                    <%= form.label :template_name, "Template Name", class: "form-label" %>
+                    <%= form.text_field :template_name, class: "form-control", placeholder: "e.g., Summer Promotion Email" %>
+                  </div>
+                  
+                  <div class="form-text mt-2">- OR -</div>
+                  
+                  <div class="mt-2">
+                    <%= form.label :template_id, "Update Existing Template", class: "form-label" %>
+                    <%= form.collection_select :template_id, @email_templates, :id, :name, { include_blank: "-- Select a template to update --" }, { class: "form-select" } %>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+              <%= link_to "Cancel", email_templates_path, class: "btn btn-outline-secondary me-md-2" %>
+              <%= form.submit "Generate Email Content", class: "btn btn-primary", data: { disable_with: "Generating..." } %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const checkbox = document.getElementById('create_template_checkbox');
+    const container = document.getElementById('template_name_container');
+    const templateSelect = document.querySelector('select[name="template_id"]');
+    
+    checkbox.addEventListener('change', function() {
+      if (this.checked) {
+        container.style.display = 'block';
+        templateSelect.disabled = true;
+      } else {
+        container.style.display = 'none';
+        templateSelect.disabled = false;
+      }
+    });
+    
+    templateSelect.addEventListener('change', function() {
+      if (this.value) {
+        checkbox.disabled = true;
+      } else {
+        checkbox.disabled = false;
+      }
+    });
+  });
+</script> 
