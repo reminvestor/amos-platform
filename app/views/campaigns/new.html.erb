@@ -1,0 +1,167 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3><i class="fas fa-paper-plane me-2"></i> New Campaign</h3>
+        </div>
+        <div class="card-body">
+          <%= form_with(model: @campaign, local: true) do |form| %>
+            <% if @campaign.errors.any? %>
+              <div class="alert alert-danger">
+                <h4><%= pluralize(@campaign.errors.count, "error") %> prohibited this campaign from being saved:</h4>
+                <ul>
+                  <% @campaign.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+            
+            <div class="row">
+              <div class="col-md-7">
+                <div class="mb-3">
+                  <%= form.label :name, class: "form-label fw-bold" %>
+                  <%= form.text_field :name, class: "form-control", placeholder: "E.g., Summer Sale Newsletter", required: true %>
+                </div>
+                
+                <div class="mb-3">
+                  <%= form.label :description, class: "form-label fw-bold" %>
+                  <%= form.text_area :description, class: "form-control", rows: 3, placeholder: "Brief description of this campaign's purpose" %>
+                </div>
+                
+                <div class="mb-3">
+                  <%= form.label :email_template_id, "Email Template", class: "form-label fw-bold" %>
+                  
+                  <% if @email_templates.any? %>
+                    <div class="template-select-container">
+                      <%= form.collection_select :email_template_id, @email_templates, :id, :name, { include_blank: "-- Select an email template --" }, { class: "form-select mb-2", required: true } %>
+                    
+                      <div class="d-flex align-items-center my-2">
+                        <span class="text-muted">or</span>
+                        <div class="vr mx-3" style="height: 20px;"></div>
+                        <%= link_to new_ai_content_path, class: "btn btn-sm btn-info" do %>
+                          <i class="fas fa-robot me-1"></i> Generate new template with AI
+                        <% end %>
+                      </div>
+                    </div>
+                  <% else %>
+                    <div class="alert alert-warning">
+                      <i class="fas fa-exclamation-triangle me-2"></i> You don't have any email templates yet.
+                      <div class="mt-2">
+                        <%= link_to new_email_template_path, class: "btn btn-sm btn-outline-primary me-2" do %>
+                          <i class="fas fa-plus me-1"></i> Create template manually
+                        <% end %>
+                        <%= link_to new_ai_content_path, class: "btn btn-sm btn-info" do %>
+                          <i class="fas fa-robot me-1"></i> Generate with AI
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              
+              <div class="col-md-5">
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Contact Groups</label>
+                  
+                  <% if @contact_groups.any? %>
+                    <div class="card">
+                      <div class="card-body p-0">
+                        <div class="contact-groups-container" style="max-height: 240px; overflow-y: auto;">
+                          <%= form.collection_check_boxes :contact_group_ids, @contact_groups, :id, :name do |b| %>
+                            <div class="border-bottom p-2">
+                              <div class="form-check">
+                                <%= b.check_box class: "form-check-input" %>
+                                <div class="d-flex align-items-center justify-content-between">
+                                  <%= b.label class: "form-check-label" do %>
+                                    <div><%= b.text %></div>
+                                    <% group_count = b.object.contacts.count %>
+                                    <div class="small text-muted"><%= pluralize(group_count, 'contact') %></div>
+                                  <% end %>
+                                </div>
+                              </div>
+                            </div>
+                          <% end %>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="form-text text-muted mt-2">
+                      Select one or more contact groups to receive this campaign
+                    </div>
+                  <% else %>
+                    <div class="alert alert-warning">
+                      <i class="fas fa-exclamation-triangle me-2"></i> You don't have any contact groups yet.
+                      <div class="mt-2">
+                        <%= link_to new_contact_group_path, class: "btn btn-sm btn-outline-primary" do %>
+                          <i class="fas fa-plus me-1"></i> Create contact group
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+                
+                <div class="mb-3">
+                  <%= form.label :status, class: "form-label fw-bold" %>
+                  <%= form.select :status, [['Draft', 'draft'], ['Scheduled', 'scheduled']], {}, { class: "form-select", id: "campaign_status_select" } %>
+                </div>
+                
+                <div id="scheduled_at_container" class="mb-3" style="display: none;">
+                  <%= form.label :scheduled_at, "Schedule Date & Time", class: "form-label fw-bold" %>
+                  <%= form.datetime_field :scheduled_at, class: "form-control" %>
+                  <div class="form-text mt-1">
+                    When should this campaign be sent?
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="d-flex justify-content-between mt-4">
+              <div>
+                <%= link_to "Cancel", campaigns_path, class: "btn btn-outline-secondary" %>
+              </div>
+              <div>
+                <%= form.submit 'Create Campaign', class: "btn btn-primary" %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const statusSelect = document.getElementById('campaign_status_select');
+    const scheduledAtContainer = document.getElementById('scheduled_at_container');
+    
+    function toggleScheduledAt() {
+      if (statusSelect.value === 'scheduled') {
+        scheduledAtContainer.style.display = 'block';
+        
+        // Set default date time to tomorrow, same time
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        // Format for datetime-local
+        const year = tomorrow.getFullYear();
+        const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        const day = String(tomorrow.getDate()).padStart(2, '0');
+        const hours = String(tomorrow.getHours()).padStart(2, '0');
+        const minutes = String(tomorrow.getMinutes()).padStart(2, '0');
+        
+        document.getElementById('campaign_scheduled_at').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+      } else {
+        scheduledAtContainer.style.display = 'none';
+      }
+    }
+    
+    // Initial check
+    toggleScheduledAt();
+    
+    // Add event listener
+    statusSelect.addEventListener('change', toggleScheduledAt);
+  });
+</script>

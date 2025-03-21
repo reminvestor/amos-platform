@@ -1,0 +1,53 @@
+<%= form_with(model: contact_group) do |form| %>
+  <% if contact_group.errors.any? %>
+    <div class="alert alert-danger">
+      <h4><%= pluralize(contact_group.errors.count, "error") %> prohibited this group from being saved:</h4>
+      <ul>
+        <% contact_group.errors.each do |error| %>
+          <li><%= error.full_message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= form.label :name, class: "form-label" %>
+    <%= form.text_field :name, class: "form-control", placeholder: "e.g. Newsletter Subscribers" %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :description, class: "form-label" %>
+    <%= form.text_area :description, class: "form-control", rows: 3, placeholder: "Brief description of this group" %>
+  </div>
+
+  <div class="mb-3">
+    <%= form.label :contact_ids, "Contacts", class: "form-label" %>
+    <% if @available_contacts.any? %>
+      <div class="card">
+        <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+          <div class="row">
+            <% @available_contacts.each do |contact| %>
+              <div class="col-md-6 mb-2">
+                <div class="form-check">
+                  <%= check_box_tag "contact_group[contact_ids][]", contact.id, contact_group.contacts.include?(contact), id: "contact_#{contact.id}", class: "form-check-input" %>
+                  <label class="form-check-label" for="contact_<%= contact.id %>">
+                    <%= contact.full_name %> (<%= contact.email %>)
+                  </label>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="alert alert-info">
+        No contacts available. <%= link_to "Add contacts", new_contact_path %> first.
+      </div>
+    <% end %>
+  </div>
+
+  <div class="mt-4">
+    <%= form.submit class: "btn btn-primary" %>
+    <%= link_to "Cancel", contact_groups_path, class: "btn btn-outline-secondary ms-2" %>
+  </div>
+<% end %> 

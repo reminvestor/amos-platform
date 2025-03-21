@@ -1,0 +1,58 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3><i class="fas fa-robot me-2"></i> AI Email Content Improvement</h3>
+        </div>
+        <div class="card-body">
+          <p class="lead">Improve your template "<%= @template.name %>" with AI suggestions based on performance data.</p>
+          
+          <%= form_with url: improve_ai_content_path(@template), method: :post, local: true, data: { turbo: false } do |form| %>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <%= form.label :audience, "Target Audience", class: "form-label fw-bold" %>
+                  <%= form.text_field :audience, class: "form-control", placeholder: "e.g., small business owners, tech enthusiasts", required: true %>
+                  <div class="form-text">Be specific about who will receive this email</div>
+                </div>
+                
+                <div class="mb-3">
+                  <%= form.label :open_rate, "Current Open Rate (%)", class: "form-label fw-bold" %>
+                  <%= form.number_field :open_rate, class: "form-control", step: "0.1", min: "0", max: "100", value: "15.0" %>
+                  <div class="form-text">Enter the percentage of recipients who opened this email</div>
+                </div>
+                
+                <div class="mb-3">
+                  <%= form.label :click_rate, "Current Click Rate (%)", class: "form-label fw-bold" %>
+                  <%= form.number_field :click_rate, class: "form-control", step: "0.1", min: "0", max: "100", value: "2.5" %>
+                  <div class="form-text">Enter the percentage of recipients who clicked links in this email</div>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Current Email Content</label>
+                  <div class="border rounded p-3 bg-light" style="max-height: 300px; overflow-y: auto;">
+                    <%= @template.body.html_safe %>
+                  </div>
+                </div>
+                
+                <div class="form-check mb-3">
+                  <%= form.check_box :update_template, class: "form-check-input", id: "update_template_checkbox" %>
+                  <%= form.label :update_template, "Update existing template with improved content", class: "form-check-label fw-bold" %>
+                  <div class="form-text">If unchecked, you'll be able to review the improved content before saving</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+              <%= link_to "Cancel", email_template_path(@template), class: "btn btn-outline-secondary me-md-2" %>
+              <%= form.submit "Generate Improved Content", class: "btn btn-primary", data: { disable_with: "Generating improvements..." } %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

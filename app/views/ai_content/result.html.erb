@@ -1,0 +1,99 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3><i class="fas fa-robot me-2"></i> AI Generated Email Content</h3>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-success">
+            <i class="fas fa-check-circle me-2"></i> Your email content has been generated successfully!
+          </div>
+          
+          <div class="row mt-4">
+            <div class="col-md-12">
+              <div class="card mb-4">
+                <div class="card-header bg-light">
+                  <h5>Generated Email Preview</h5>
+                </div>
+                <div class="card-body">
+                  <div class="generated-email-preview">
+                    <%= @generated_content.html_safe %>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card mb-4">
+                <div class="card-header bg-light">
+                  <h5>HTML Source</h5>
+                </div>
+                <div class="card-body">
+                  <div class="code-container position-relative">
+                    <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 mt-2 me-2" 
+                            onclick="copyToClipboard('email-source-code')">
+                      <i class="fas fa-copy"></i> Copy
+                    </button>
+                    <pre id="email-source-code" class="p-3 bg-light border rounded"><%= h @generated_content %></pre>
+                  </div>
+                </div>
+              </div>
+              
+              <%= form_with url: generate_ai_content_path, method: :post, local: true, data: { turbo: false } do |form| %>
+                <%= form.hidden_field :audience, value: params[:audience] %>
+                <%= form.hidden_field :purpose, value: params[:purpose] %>
+                <%= form.hidden_field :tone, value: params[:tone] %>
+                <%= form.hidden_field :product, value: params[:product] %>
+                <%= form.hidden_field :length, value: params[:length] %>
+                <%= form.hidden_field :specific_points, value: params[:specific_points] %>
+                
+                <div class="card mb-4">
+                  <div class="card-header bg-light">
+                    <h5>Save as Template</h5>
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-8">
+                        <div class="mb-3">
+                          <%= form.label :template_name, "Template Name", class: "form-label fw-bold" %>
+                          <%= form.text_field :template_name, class: "form-control", placeholder: "e.g., Summer Promotion Email", required: true %>
+                        </div>
+                      </div>
+                      <div class="col-md-4 d-flex align-items-end">
+                        <%= form.hidden_field :create_template, value: "1" %>
+                        <%= form.submit "Save as New Template", class: "btn btn-success w-100", data: { disable_with: "Saving..." } %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+              
+              <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <%= link_to "Generate Another Email", new_ai_content_path, class: "btn btn-outline-primary me-md-2" %>
+                <%= link_to "Back to Templates", email_templates_path, class: "btn btn-secondary" %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    const textToCopy = element.textContent;
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      const button = element.parentElement.querySelector('button');
+      const originalText = button.innerHTML;
+      button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      
+      setTimeout(() => {
+        button.innerHTML = originalText;
+      }, 2000);
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+    });
+  }
+</script> 

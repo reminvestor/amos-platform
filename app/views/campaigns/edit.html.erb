@@ -1,0 +1,306 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h3><i class="fas fa-edit me-2"></i> Edit Campaign</h3>
+          <div>
+            <%= link_to campaign_path(@campaign), class: "btn btn-outline-light" do %>
+              <i class="fas fa-arrow-left me-1"></i> Back to Campaign
+            <% end %>
+          </div>
+        </div>
+        <div class="card-body">
+          <%= form_with(model: @campaign, local: true) do |form| %>
+            <% if @campaign.errors.any? %>
+              <div class="alert alert-danger">
+                <h4><%= pluralize(@campaign.errors.count, "error") %> prohibited this campaign from being saved:</h4>
+                <ul>
+                  <% @campaign.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+            
+            <% if @campaign.status != 'draft' %>
+              <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i> 
+                <strong>Note:</strong> This campaign is already <%= @campaign.status %>. 
+                Some changes may not take effect until you reschedule or restart the campaign.
+              </div>
+            <% end %>
+            
+            <div class="row">
+              <div class="col-md-7">
+                <div class="mb-3">
+                  <%= form.label :name, class: "form-label fw-bold" %>
+                  <%= form.text_field :name, class: "form-control", required: true %>
+                </div>
+                
+                <div class="mb-3">
+                  <%= form.label :description, class: "form-label fw-bold" %>
+                  <%= form.text_area :description, class: "form-control", rows: 3 %>
+                </div>
+                
+                <div class="mb-3">
+                  <%= form.label :email_template_id, "Email Template", class: "form-label fw-bold" %>
+                  <% if @email_templates.any? %>
+                    <div class="template-select-container">
+                      <%= form.collection_select :email_template_id, @email_templates, :id, :name, { include_blank: "-- Select an email template --" }, { class: "form-select mb-2", required: true } %>
+                      
+                      <% if @campaign.email_template.present? %>
+                        <div class="text-end mt-2">
+                          <%= link_to email_template_path(@campaign.email_template), class: "btn btn-sm btn-outline-primary me-2" do %>
+                            <i class="fas fa-eye me-1"></i> View Template
+                          <% end %>
+                          
+                          <%= link_to improve_ai_content_path(@campaign.email_template), class: "btn btn-sm btn-info" do %>
+                            <i class="fas fa-robot me-1"></i> Improve with AI
+                          <% end %>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <div class="alert alert-warning">
+                      <i class="fas fa-exclamation-triangle me-2"></i> You don't have any email templates yet.
+                      <div class="mt-2">
+                        <%= link_to new_email_template_path, class: "btn btn-sm btn-outline-primary me-2" do %>
+                          <i class="fas fa-plus me-1"></i> Create template manually
+                        <% end %>
+                        <%= link_to new_ai_content_path, class: "btn btn-sm btn-info" do %>
+                          <i class="fas fa-robot me-1"></i> Generate with AI
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+              
+              <div class="col-md-5">
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Contact Groups</label>
+                  
+                  <% if @contact_groups.any? %>
+                    <div class="card">
+                      <div class="card-body p-0">
+                        <div class="contact-groups-container" style="max-height: 240px; overflow-y: auto;">
+                          <%= form.collection_check_boxes :contact_group_ids, @contact_groups, :id, :name do |b| %>
+                            <div class="border-bottom p-2">
+                              <div class="form-check">
+                                <%= b.check_box class: "form-check-input" %>
+                                <div class="d-flex align-items-center justify-content-between">
+                                  <%= b.label class: "form-check-label" do %>
+                                    <div><%= b.text %></div>
+                                    <% group_count = b.object.contacts.count %>
+                                    <div class="small text-muted"><%= pluralize(group_count, 'contact') %></div>
+                                  <% end %>
+                                </div>
+                              </div>
+                            </div>
+                          <% end %>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="form-text text-muted mt-2">
+                      <% if @campaign.status == 'draft' %>
+                        Select one or more contact groups to receive this campaign
+                      <% else %>
+                        <i class="fas fa-info-circle me-1"></i> Changes to contact groups will affect all unsent emails
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <div class="alert alert-warning">
+                      <i class="fas fa-exclamation-triangle me-2"></i> You don't have any contact groups yet.
+                      <div class="mt-2">
+                        <%= link_to new_contact_group_path, class: "btn btn-sm btn-outline-primary" do %>
+                          <i class="fas fa-plus me-1"></i> Create contact group
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+                
+                <% if @campaign.status == 'draft' %>
+                  <div class="mb-3">
+                    <%= form.label :status, class: "form-label fw-bold" %>
+                    <%= form.select :status, [['Draft', 'draft'], ['Scheduled', 'scheduled']], {}, { class: "form-select", id: "campaign_status_select" } %>
+                  </div>
+                  
+                  <div id="scheduled_at_container" class="mb-3" style="display: none;">
+                    <%= form.label :scheduled_at, "Schedule Date & Time", class: "form-label fw-bold" %>
+                    <%= form.datetime_field :scheduled_at, class: "form-control" %>
+                    <div class="form-text mt-1">
+                      When should this campaign be sent?
+                    </div>
+                  </div>
+                <% else %>
+                  <div class="mb-3">
+                    <label class="form-label fw-bold">Status</label>
+                    <div class="badge bg-<%= campaign_status_color(@campaign.status) %> p-2 fs-6 d-block text-start">
+                      <%= @campaign.status.humanize %>
+                      
+                      <% if @campaign.scheduled_at.present? && @campaign.status == 'scheduled' %>
+                        <div class="small mt-1">
+                          Scheduled for <%= @campaign.scheduled_at.strftime('%b %d, %Y at %I:%M %p') %>
+                        </div>
+                      <% end %>
+                    </div>
+                    
+                    <div class="mt-2">
+                      <% if @campaign.status == 'scheduled' %>
+                        <a href="#" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#rescheduleModal">
+                          <i class="fas fa-calendar-alt me-1"></i> Reschedule
+                        </a>
+                      <% end %>
+                    </div>
+                    
+                    <%= form.hidden_field :status %>
+                    <%= form.hidden_field :scheduled_at %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+            
+            <% if @campaign.email_template.present? && @campaign.sent_count > 0 %>
+              <hr>
+              <div class="row">
+                <div class="col-md-12">
+                  <h5 class="mb-3">Campaign Performance</h5>
+                  <div class="row">
+                    <div class="col-md-3 mb-3">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <div class="text-muted mb-1">Total Recipients</div>
+                          <h3><%= @campaign.contact_count %></h3>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <div class="text-muted mb-1">Emails Sent</div>
+                          <h3><%= @campaign.sent_count %></h3>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <div class="text-muted mb-1">Open Rate</div>
+                          <h3><%= @campaign.open_rate %>%</h3>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                      <div class="card h-100">
+                        <div class="card-body">
+                          <div class="text-muted mb-1">Click Rate</div>
+                          <h3><%= @campaign.click_rate %>%</h3>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="mt-2 text-end">
+                    <%= link_to ai_analyze_campaign_path(@campaign), class: "btn btn-info" do %>
+                      <i class="fas fa-robot me-1"></i> AI Analysis & Insights
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+            
+            <div class="d-flex justify-content-between mt-4">
+              <div>
+                <%= link_to "Cancel", campaign_path(@campaign), class: "btn btn-outline-secondary" %>
+              </div>
+              <div>
+                <%= form.submit 'Update Campaign', class: "btn btn-primary" %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if @campaign.status == 'scheduled' %>
+  <!-- Reschedule Modal -->
+  <div class="modal fade" id="rescheduleModal" tabindex="-1" aria-labelledby="rescheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="rescheduleModalLabel">Reschedule Campaign</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <%= form_tag schedule_campaign_path(@campaign), method: :post do %>
+          <div class="modal-body">
+            <p>Current schedule: <strong><%= @campaign.scheduled_at.strftime('%b %d, %Y at %I:%M %p') %></strong></p>
+            
+            <div class="mb-3">
+              <label for="scheduled_at" class="form-label">New Schedule Date and Time</label>
+              <input type="datetime-local" class="form-control" id="scheduled_at" name="scheduled_at" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Reschedule</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    <% if @campaign.status == 'draft' %>
+      const statusSelect = document.getElementById('campaign_status_select');
+      const scheduledAtContainer = document.getElementById('scheduled_at_container');
+      
+      function toggleScheduledAt() {
+        if (statusSelect.value === 'scheduled') {
+          scheduledAtContainer.style.display = 'block';
+          
+          // Set default date time to tomorrow, same time
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          
+          // Format for datetime-local
+          const year = tomorrow.getFullYear();
+          const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+          const day = String(tomorrow.getDate()).padStart(2, '0');
+          const hours = String(tomorrow.getHours()).padStart(2, '0');
+          const minutes = String(tomorrow.getMinutes()).padStart(2, '0');
+          
+          document.getElementById('campaign_scheduled_at').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        } else {
+          scheduledAtContainer.style.display = 'none';
+        }
+      }
+      
+      // Initial check
+      toggleScheduledAt();
+      
+      // Add event listener
+      statusSelect.addEventListener('change', toggleScheduledAt);
+    <% end %>
+    
+    <% if @campaign.status == 'scheduled' %>
+      // Set default date time for reschedule modal
+      const scheduledDate = new Date('<%= @campaign.scheduled_at.iso8601 %>');
+      
+      // Format for datetime-local
+      const year = scheduledDate.getFullYear();
+      const month = String(scheduledDate.getMonth() + 1).padStart(2, '0');
+      const day = String(scheduledDate.getDate()).padStart(2, '0');
+      const hours = String(scheduledDate.getHours()).padStart(2, '0');
+      const minutes = String(scheduledDate.getMinutes()).padStart(2, '0');
+      
+      document.getElementById('scheduled_at').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    <% end %>
+  });
+</script>

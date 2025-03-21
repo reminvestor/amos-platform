@@ -1,0 +1,15 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  description: MyText
+  status: MyString
+  scheduled_at: 2025-03-10 15:30:53
+  user: one
+
+two:
+  name: MyString
+  description: MyText
+  status: MyString
+  scheduled_at: 2025-03-10 15:30:53
+  user: two
