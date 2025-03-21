@@ -19,6 +19,9 @@ default: &default
   # https://guides.rubyonrails.org/configuring.html#database-pooling
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
 
+  cable:
+    adapter: postgresql
+    url: <%= ENV['DATABASE_URL'] %>
 
 development:
   <<: *default
@@ -83,9 +86,5 @@ production:
   url: <%= ENV['DATABASE_URL'] %>
 
   queue:
-    adapter: postgresql
-    url: <%= ENV['DATABASE_URL'] %>
-
-  cable:
     adapter: postgresql
     url: <%= ENV['DATABASE_URL'] %>
