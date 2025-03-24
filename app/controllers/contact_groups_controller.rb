@@ -3,11 +3,11 @@ class ContactGroupsController < ApplicationController
   before_action :set_contact_group, only: [:show, :edit, :update, :destroy]
   
   def index
-    @contact_groups = current_user.contact_groups.order(name: :asc)
+    @contact_groups = current_user.contact_groups.order(name: :asc).page(params[:page])
   end
 
   def show
-    @contacts = @contact_group.contacts.order(last_name: :asc, first_name: :asc)
+    @contacts = @contact_group.contacts.order(last_name: :asc, first_name: :asc).page(params[:page])
   end
 
   def new

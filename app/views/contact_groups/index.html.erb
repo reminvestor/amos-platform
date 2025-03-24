@@ -36,6 +36,15 @@
                 </tbody>
               </table>
             </div>
+            
+            <div class="d-flex justify-content-between align-items-center mt-4">
+              <div class="pagination-info text-muted">
+                <%= page_entries_info @contact_groups %>
+              </div>
+              <div>
+                <%= paginate @contact_groups %>
+              </div>
+            </div>
           <% else %>
             <div class="alert alert-info">
               <p class="mb-0">You don't have any contact groups yet. <%= link_to "Create your first group", new_contact_group_path %>.</p>

@@ -3,7 +3,7 @@ class ContactsController < ApplicationController
   before_action :set_contact, only: [:show, :edit, :update, :destroy]
   
   def index
-    @contacts = current_user.contacts.order(created_at: :desc)
+    @contacts = current_user.contacts.order(created_at: :desc).page(params[:page])
   end
 
   def show
