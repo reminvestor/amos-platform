@@ -1,0 +1,29 @@
+<div class="container my-4">
+  <h1>Data Imports</h1>
+  
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5>eLearning Platform Import</h5>
+        </div>
+        <div class="card-body">
+          <p>
+            Import users from the main eLearning platform. This will:
+          </p>
+          <ul>
+            <li>Import all users as contacts</li>
+            <li>Create "Active Subscribers" and "Non-Subscribers" contact groups</li>
+            <li>Add each contact to the appropriate group based on their subscription status</li>
+          </ul>
+          
+          <p><strong>Note:</strong> This process may take some time for large datasets.</p>
+          
+          <%= button_to elearning_admin_imports_path, method: :post, class: "btn btn-primary" do %>
+            <i class="bi bi-cloud-download"></i> Start Import
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

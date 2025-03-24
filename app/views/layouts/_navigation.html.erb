@@ -58,6 +58,9 @@
             </a>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
               <li><a class="dropdown-item" href="<%= edit_user_registration_path %>">Account Settings</a></li>
+              <% if current_user.admin? %>
+                <li><a class="dropdown-item" href="<%= admin_imports_path %>">Data Imports</a></li>
+              <% end %>
               <li><hr class="dropdown-divider"></li>
               <li>
                 <%= button_to "Sign Out", destroy_user_session_path, method: :delete, class: "dropdown-item" %>
