@@ -8,6 +8,15 @@ Rails.application.routes.draw do
     registrations: 'users/registrations'
   }
   
+  # Admin namespace
+  namespace :admin do
+    resources :imports, only: [:index] do
+      collection do
+        post :elearning
+      end
+    end
+  end
+  
   # Application routes
   resources :contacts
   resources :contact_groups
