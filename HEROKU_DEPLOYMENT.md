@@ -55,7 +55,7 @@ heroku run rails db:migrate
 # Add your custom domain to your Heroku app
 heroku domains:add yourdomain.com
 heroku domains:add www.yourdomain.com
-heroku domains:add nuvola.yourdomain.com
+heroku domains:add app.yourdomain.com
 
 # Enable SSL
 heroku ssl:auto
@@ -67,13 +67,13 @@ Update your DNS records with the following:
 
 1. Add a CNAME record for `www` pointing to `your-app-name.herokuapp.com`
 2. Add a CNAME record for your apex domain (if supported by your DNS provider) or use ALIAS/ANAME record pointing to `your-app-name.herokuapp.com`
-3. Add a CNAME record for `nuvola` pointing to `your-app-name.herokuapp.com`
+3. Add a CNAME record for `app` pointing to `your-app-name.herokuapp.com`
 
 Example DNS configuration:
 ```
 www.yourdomain.com    CNAME    your-app-name.herokuapp.com
 yourdomain.com        ALIAS    your-app-name.herokuapp.com
-nuvola.yourdomain.com CNAME    your-app-name.herokuapp.com
+app.yourdomain.com    CNAME    your-app-name.herokuapp.com
 ```
 
 ## Testing Subdomain Setup
@@ -81,7 +81,31 @@ nuvola.yourdomain.com CNAME    your-app-name.herokuapp.com
 After deployment and DNS configuration:
 
 1. Marketing site should be accessible at: `https://yourdomain.com` or `https://www.yourdomain.com`
-2. Application with the Nuvola entity should be accessible at: `https://nuvola.yourdomain.com`
+2. Application should be accessible at: `https://app.yourdomain.com`
+
+## Additional Heroku Configuration
+
+### Session Sharing
+
+To ensure proper session handling between subdomains on Heroku, the application is configured to use a top-level domain for cookies. This is set in `config/application.rb`.
+
+### Database Pool Configuration
+
+For optimal performance on Heroku, ensure your database pool is properly configured in `config/database.yml` to match your dyno formation:
+
+```yml
+production:
+  url: <%= ENV['DATABASE_URL'] %>
+  pool: <%= ENV['DB_POOL'] || ENV['RAILS_MAX_THREADS'] || 5 %>
+```
+
+### Dyno Formation
+
+For a production application, consider using multiple dynos:
+
+```bash
+heroku ps:scale web=2:standard-1x
+```
 
 ## Troubleshooting
 

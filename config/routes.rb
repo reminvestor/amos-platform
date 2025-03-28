@@ -1,6 +1,6 @@
 Rails.application.routes.draw do
-  # Routes with constraints on subdomain
-  constraints(lambda { |req| req.subdomain.present? && req.subdomain != 'www' }) do
+  # Routes with constraints on subdomain - application routes for 'app' subdomain
+  constraints(lambda { |req| req.subdomain == 'app' }) do
     # Devise routes for authentication
     devise_for :users, controllers: {
       registrations: 'users/registrations'
