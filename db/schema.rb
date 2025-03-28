@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_03_28_164551) do
+ActiveRecord::Schema[8.0].define(version: 2025_03_28_175405) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -27,6 +27,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_164551) do
     t.jsonb "knowledge_base"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "entity_id"
+    t.index ["entity_id"], name: "index_business_profiles_on_entity_id"
     t.index ["user_id"], name: "index_business_profiles_on_user_id"
   end
 
@@ -48,7 +50,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_164551) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "email_template_id"
+    t.bigint "entity_id"
     t.index ["email_template_id"], name: "index_campaigns_on_email_template_id"
+    t.index ["entity_id"], name: "index_campaigns_on_entity_id"
     t.index ["user_id"], name: "index_campaigns_on_user_id"
   end
 
@@ -58,6 +62,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_164551) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "entity_id"
+    t.index ["entity_id"], name: "index_contact_groups_on_entity_id"
     t.index ["user_id"], name: "index_contact_groups_on_user_id"
   end
 
@@ -81,6 +87,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_164551) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.jsonb "metadata"
+    t.bigint "entity_id"
+    t.index ["entity_id"], name: "index_contacts_on_entity_id"
     t.index ["user_id"], name: "index_contacts_on_user_id"
   end
 
@@ -107,7 +115,32 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_164551) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "entity_id"
+    t.index ["entity_id"], name: "index_email_templates_on_entity_id"
     t.index ["user_id"], name: "index_email_templates_on_user_id"
+  end
+
+  create_table "entities", force: :cascade do |t|
+    t.string "name"
+    t.string "subdomain"
+    t.string "slug"
+    t.string "status", default: "active"
+    t.jsonb "settings", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_entities_on_slug", unique: true
+    t.index ["subdomain"], name: "index_entities_on_subdomain", unique: true
+  end
+
+  create_table "entity_users", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "role", default: "member"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "user_id"], name: "index_entity_users_on_entity_id_and_user_id", unique: true
+    t.index ["entity_id"], name: "index_entity_users_on_entity_id"
+    t.index ["user_id"], name: "index_entity_users_on_user_id"
   end
 
   create_table "social_media_accounts", force: :cascade do |t|
@@ -122,6 +155,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_164551) do
     t.jsonb "settings"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "entity_id"
+    t.index ["entity_id"], name: "index_social_media_accounts_on_entity_id"
     t.index ["user_id"], name: "index_social_media_accounts_on_user_id"
   end
 
@@ -152,6 +187,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_164551) do
     t.datetime "updated_at", null: false
     t.string "image_url"
     t.jsonb "settings"
+    t.bigint "entity_id"
+    t.index ["entity_id"], name: "index_social_posts_on_entity_id"
     t.index ["user_id"], name: "index_social_posts_on_user_id"
   end
 
@@ -296,21 +333,30 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_164551) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  add_foreign_key "business_profiles", "entities"
   add_foreign_key "business_profiles", "users"
   add_foreign_key "campaign_groups", "campaigns"
   add_foreign_key "campaign_groups", "contact_groups"
   add_foreign_key "campaigns", "email_templates"
+  add_foreign_key "campaigns", "entities"
   add_foreign_key "campaigns", "users"
+  add_foreign_key "contact_groups", "entities"
   add_foreign_key "contact_groups", "users"
   add_foreign_key "contact_groups_contacts", "contact_groups"
   add_foreign_key "contact_groups_contacts", "contacts"
+  add_foreign_key "contacts", "entities"
   add_foreign_key "contacts", "users"
   add_foreign_key "email_deliveries", "campaigns"
   add_foreign_key "email_deliveries", "contacts"
   add_foreign_key "email_deliveries", "email_templates"
+  add_foreign_key "email_templates", "entities"
   add_foreign_key "email_templates", "users"
+  add_foreign_key "entity_users", "entities"
+  add_foreign_key "entity_users", "users"
+  add_foreign_key "social_media_accounts", "entities"
   add_foreign_key "social_media_accounts", "users"
   add_foreign_key "social_post_analytics", "social_posts"
+  add_foreign_key "social_posts", "entities"
   add_foreign_key "social_posts", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

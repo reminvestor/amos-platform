@@ -132,12 +132,28 @@
             <div class="dropdown">
               <a class="nav-link dropdown-toggle text-white" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="fas fa-user-circle me-1"></i> <%= current_user.email %>
+                <% if current_entity %>
+                  <span class="badge bg-light text-primary ms-2"><i class="bi bi-building me-1"></i><%= current_entity.name %></span>
+                <% end %>
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                 <li><a class="dropdown-item" href="<%= edit_user_registration_path %>">Account Settings</a></li>
                 <% if current_user.admin? %>
                   <li><a class="dropdown-item" href="<%= admin_imports_path %>">Data Imports</a></li>
                 <% end %>
+                
+                <% if current_user.entities.any? %>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><h6 class="dropdown-header">Your Entities</h6></li>
+                  <% current_user.entities.order(:name).each do |entity| %>
+                    <li>
+                      <%= link_to entity.name, switch_entity_path(entity), class: "dropdown-item #{'active' if current_entity == entity}" %>
+                    </li>
+                  <% end %>
+                  <li><%= link_to "Manage Entities", entities_path, class: "dropdown-item" %></li>
+                  <li><%= link_to "Create New Entity", new_entity_path, class: "dropdown-item" %></li>
+                <% end %>
+                
                 <li><hr class="dropdown-divider"></li>
                 <li>
                   <%= button_to "Sign Out", destroy_user_session_path, method: :delete, class: "dropdown-item" %>

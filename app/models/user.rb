@@ -11,7 +11,11 @@ class User < ApplicationRecord
   validates :first_name, :last_name, presence: true
   validates :role, presence: true, inclusion: { in: ROLES }
   
-  # Associations
+  # Entity Associations
+  has_many :entity_users, dependent: :destroy
+  has_many :entities, through: :entity_users
+  
+  # Resource Associations
   has_many :contacts, dependent: :destroy
   has_many :contact_groups, dependent: :destroy
   has_many :email_templates, dependent: :destroy
@@ -35,6 +39,20 @@ class User < ApplicationRecord
   
   def viewer?
     role == 'viewer'
+  end
+  
+  # Entity role methods
+  def entity_role(entity)
+    entity_users.find_by(entity: entity)&.role
+  end
+  
+  def entity_owner?(entity)
+    entity_users.find_by(entity: entity, role: 'owner').present?
+  end
+  
+  def entity_admin?(entity)
+    eu = entity_users.find_by(entity: entity)
+    eu.present? && (eu.role == 'admin' || eu.role == 'owner')
   end
   
   # Ensure user has a business profile
@@ -61,5 +79,14 @@ class User < ApplicationRecord
   # Get account for a specific platform
   def account_for(platform)
     social_media_accounts.connected.by_platform(platform).first
+  end
+  
+  # Get entities where the user has specific roles
+  def owned_entities
+    entities.includes(:entity_users).where(entity_users: { role: 'owner' })
+  end
+  
+  def administered_entities
+    entities.includes(:entity_users).where(entity_users: { role: ['owner', 'admin'] })
   end
 end
