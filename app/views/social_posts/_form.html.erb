@@ -16,8 +16,28 @@
   </div>
 
   <div class="mb-3">
+    <%= f.label :platform, class: 'form-label' %>
+    <%= f.select :platform, 
+                options_for_select([
+                  ['Facebook', 'facebook'],
+                  ['Instagram', 'instagram'],
+                  ['LinkedIn', 'linkedin'],
+                  ['Twitter', 'twitter']
+                ], social_post.platform),
+                { include_blank: 'Select a platform' },
+                class: 'form-select',
+                id: 'platform-select',
+                data: { controller: 'social-post', action: 'change->social-post#toggleImageField' } %>
+  </div>
+
+  <div class="mb-3">
     <%= f.label :content, class: 'form-label' %>
-    <%= f.text_area :content, class: 'form-control', rows: 5 %>
+    <div class="input-group">
+      <%= f.text_area :content, class: 'form-control', rows: 5, id: 'content-textarea' %>
+      <button type="button" class="btn btn-outline-primary" id="generate-ai-content-btn" data-bs-toggle="modal" data-bs-target="#aiContentModal">
+        <i class="fas fa-robot me-1"></i> Generate with AI
+      </button>
+    </div>
   </div>
 
   <div class="mb-3">
@@ -27,36 +47,63 @@
   </div>
 
   <div class="mb-3">
-    <%= f.label :platform, class: 'form-label' %>
-    <%= f.select :platform, 
-                 options_for_select([
-                   ['Facebook', 'facebook'],
-                   ['Instagram', 'instagram'],
-                   ['LinkedIn', 'linkedin'],
-                   ['TikTok', 'tiktok'],
-                   ['Twitter', 'twitter']
-                 ], social_post.platform),
-                 { include_blank: 'Select a platform' },
-                 class: 'form-select',
-                 data: { controller: 'social-post', action: 'change->social-post#toggleImageField' } %>
-  </div>
-
-  <div class="mb-3">
     <%= f.label :status, class: 'form-label' %>
     <%= f.select :status,
-                 options_for_select([
-                   ['Draft', 'draft'],
-                   ['Scheduled', 'scheduled'],
-                   ['Published', 'published']
-                 ], social_post.status),
-                 {},
-                 class: 'form-select',
-                 data: { controller: 'social-post', action: 'change->social-post#toggleScheduledAtField' } %>
+                options_for_select([
+                  ['Draft', 'draft'],
+                  ['Scheduled', 'scheduled']
+                ], social_post.status),
+                {},
+                class: 'form-select',
+                id: 'status-select',
+                data: { controller: 'social-post', action: 'change->social-post#toggleScheduledAtField' } %>
   </div>
 
   <div class="mb-3 scheduled-at-field" style="display: <%= social_post.status == 'scheduled' ? 'block' : 'none' %>">
     <%= f.label :scheduled_at, class: 'form-label' %>
     <%= f.datetime_local_field :scheduled_at, class: 'form-control' %>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Posting Options</label>
+    <div class="card">
+      <div class="card-body">
+        <div class="form-check mb-2">
+          <%= check_box_tag :publish_now, true, false, class: 'form-check-input', id: 'publish-now-check' %>
+          <%= label_tag :publish_now, 'Publish immediately after saving', class: 'form-check-label' %>
+        </div>
+        
+        <hr>
+        
+        <div class="mt-2">
+          <label class="form-label fw-bold">Post directly to connected accounts:</label>
+          
+          <% if current_user.connected_social_accounts.any? %>
+            <div class="row">
+              <% current_user.connected_social_accounts.each do |account| %>
+                <div class="col-md-6 mb-2">
+                  <div class="form-check">
+                    <%= check_box_tag "post_to_accounts[]", account.id, false, class: 'form-check-input', id: "post-to-#{account.platform}-#{account.id}" %>
+                    <label class="form-check-label" for="post-to-<%= account.platform %>-<%= account.id %>">
+                      <i class="fab fa-<%= account.platform.downcase %> me-1"></i>
+                      <%= account.platform.titleize %> (<%= account.username %>)
+                    </label>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="alert alert-info mb-0">
+              <p class="mb-0">
+                <i class="fas fa-info-circle me-1"></i>
+                No connected social media accounts found. 
+                <%= link_to "Connect accounts", social_media_accounts_path, class: "alert-link" %> to post directly.
+              </p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="d-flex justify-content-between">
@@ -65,17 +112,80 @@
   </div>
 <% end %>
 
+<!-- AI Content Generation Modal -->
+<div class="modal fade" id="aiContentModal" tabindex="-1" aria-labelledby="aiContentModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="aiContentModalLabel">
+          <i class="fas fa-robot me-2"></i> Generate AI Content
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="content-purpose" class="form-label">What is the purpose of this post?</label>
+          <textarea class="form-control" id="content-purpose" rows="3" placeholder="E.g., Announce a new product, share a company milestone, promote an event..."></textarea>
+          <div class="form-text">Describe what you want to accomplish with this post to get better AI suggestions.</div>
+        </div>
+
+        <div class="mb-3">
+          <a href="<%= edit_business_profile_path %>" target="_blank" class="text-decoration-none">
+            <i class="fas fa-cog me-1"></i> Update your business profile to improve AI suggestions
+          </a>
+        </div>
+
+        <div id="ai-content-loading" class="text-center py-5 d-none">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-3">Generating the perfect content for your business...</p>
+        </div>
+
+        <div id="ai-content-result" class="d-none">
+          <div class="mb-3">
+            <label class="form-label">Generated Content</label>
+            <div class="border rounded p-3 mb-2" id="ai-content-preview"></div>
+          </div>
+
+          <div class="mb-3">
+            <a href="#" class="btn btn-link p-0" id="regenerate-content-btn">
+              <i class="fas fa-sync-alt me-1"></i> Generate Another Version
+            </a>
+          </div>
+        </div>
+
+        <div id="ai-content-error" class="alert alert-danger d-none">
+          <p class="mb-0">An error occurred while generating content. Please try again.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="use-ai-content-btn" disabled>Use This Content</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <% content_for :javascript do %>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      const statusSelect = document.querySelector('#social_post_status');
+      // Original form functionality
+      const statusSelect = document.querySelector('#status-select');
       const scheduledAtField = document.querySelector('.scheduled-at-field');
-      const platformSelect = document.querySelector('#social_post_platform');
+      const platformSelect = document.querySelector('#platform-select');
       const imageUrlField = document.querySelector('#social_post_image_url');
       const imageUrlContainer = imageUrlField.closest('.mb-3');
-
+      const publishCheck = document.querySelector('#publish-now-check');
+      
       function toggleScheduledAtField() {
         scheduledAtField.style.display = statusSelect.value === 'scheduled' ? 'block' : 'none';
+        if (statusSelect.value === 'scheduled') {
+          publishCheck.checked = false;
+          publishCheck.disabled = true;
+        } else {
+          publishCheck.disabled = false;
+        }
       }
 
       function toggleImageField() {
@@ -90,6 +200,89 @@
       
       toggleScheduledAtField();
       toggleImageField();
+      
+      // AI Content Generation
+      const generateBtn = document.querySelector('#generate-ai-content-btn');
+      const contentTextarea = document.querySelector('#content-textarea');
+      const purposeTextarea = document.querySelector('#content-purpose');
+      const loadingSection = document.querySelector('#ai-content-loading');
+      const resultSection = document.querySelector('#ai-content-result');
+      const errorSection = document.querySelector('#ai-content-error');
+      const previewDiv = document.querySelector('#ai-content-preview');
+      const useContentBtn = document.querySelector('#use-ai-content-btn');
+      const regenerateBtn = document.querySelector('#regenerate-content-btn');
+      
+      function generateContent() {
+        // Show loading, hide results/error
+        loadingSection.classList.remove('d-none');
+        resultSection.classList.add('d-none');
+        errorSection.classList.add('d-none');
+        useContentBtn.disabled = true;
+        
+        // Get platform and purpose values
+        const platform = platformSelect.value;
+        const purpose = purposeTextarea.value;
+        
+        if (!platform) {
+          errorSection.querySelector('p').textContent = "Please select a platform first.";
+          loadingSection.classList.add('d-none');
+          errorSection.classList.remove('d-none');
+          return;
+        }
+        
+        // Make API call to generate content
+        fetch('<%= generate_content_social_posts_path %>', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify({ platform, purpose })
+        })
+        .then(response => response.json())
+        .then(data => {
+          loadingSection.classList.add('d-none');
+          
+          if (data.error) {
+            errorSection.querySelector('p').textContent = data.error;
+            errorSection.classList.remove('d-none');
+          } else {
+            previewDiv.textContent = data.content;
+            resultSection.classList.remove('d-none');
+            useContentBtn.disabled = false;
+          }
+        })
+        .catch(error => {
+          loadingSection.classList.add('d-none');
+          errorSection.querySelector('p').textContent = "An error occurred while generating content. Please try again.";
+          errorSection.classList.remove('d-none');
+          console.error('Error:', error);
+        });
+      }
+      
+      // Event listeners for AI content generation
+      generateBtn.addEventListener('click', function() {
+        if (!platformSelect.value) {
+          alert('Please select a platform first.');
+          return;
+        }
+      });
+      
+      regenerateBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        generateContent();
+      });
+      
+      useContentBtn.addEventListener('click', function() {
+        contentTextarea.value = previewDiv.textContent;
+        const modal = bootstrap.Modal.getInstance(document.querySelector('#aiContentModal'));
+        modal.hide();
+      });
+      
+      // Initialize content generation when modal is shown
+      document.querySelector('#aiContentModal').addEventListener('shown.bs.modal', function() {
+        generateContent();
+      });
     });
   </script>
 <% end %> 

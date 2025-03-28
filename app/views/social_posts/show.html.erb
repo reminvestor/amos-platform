@@ -42,6 +42,59 @@
           </div>
         <% end %>
 
+        <% if @social_post.posts_data.any? %>
+          <div class="mb-4">
+            <h5>Posted to Connected Accounts</h5>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Platform</th>
+                    <th>Account</th>
+                    <th>Status</th>
+                    <th>Posted At</th>
+                    <th>Link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @social_post.posts_data.each do |platform_id, data| %>
+                    <% platform, account_id = platform_id.split('_') %>
+                    <tr>
+                      <td>
+                        <i class="fab fa-<%= platform.downcase %> me-1"></i>
+                        <%= platform.titleize %>
+                      </td>
+                      <td>
+                        <% account = current_user.social_media_accounts.find_by(id: account_id) %>
+                        <%= account&.username || "Unknown" %>
+                      </td>
+                      <td>
+                        <% if data['success'] %>
+                          <span class="badge bg-success">Posted</span>
+                        <% else %>
+                          <span class="badge bg-danger">Failed</span>
+                        <% end %>
+                      </td>
+                      <td><%= Time.parse(data['posted_at'].to_s).strftime("%B %d, %Y at %I:%M %p") rescue "N/A" %></td>
+                      <td>
+                        <% if data['success'] && data['external_post_url'].present? %>
+                          <%= link_to "View", data['external_post_url'], target: "_blank", class: "btn btn-sm btn-outline-primary" %>
+                        <% elsif !data['success'] && data['error'].present? %>
+                          <span class="text-danger" title="<%= data['error'] %>">
+                            <i class="fas fa-exclamation-circle"></i> Error
+                          </span>
+                        <% else %>
+                          <span class="text-muted">N/A</span>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% end %>
+
         <% if @social_post.latest_analytics %>
           <div class="mb-4">
             <h5>Latest Analytics</h5>

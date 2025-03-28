@@ -1,0 +1,99 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-sm-flex align-items-center justify-content-between">
+        <h1 class="h3 mb-0 text-gray-800">Connected Social Media Accounts</h1>
+        <div class="dropdown">
+          <button class="btn btn-primary dropdown-toggle" type="button" id="connectDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-plus me-1"></i> Connect Account
+          </button>
+          <ul class="dropdown-menu" aria-labelledby="connectDropdown">
+            <% SocialMediaAccount::PLATFORMS.each do |platform| %>
+              <% if current_user.connected_to?(platform) %>
+                <li><span class="dropdown-item text-muted"><i class="fas fa-check me-1"></i> <%= platform.titleize %> (Connected)</span></li>
+              <% else %>
+                <li><a class="dropdown-item" href="<%= auth_social_media_accounts_path(platform: platform) %>"><i class="fab fa-<%= platform.downcase %> me-1"></i> Connect <%= platform.titleize %></a></li>
+              <% end %>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <% if @accounts.any? %>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Platform</th>
+                    <th>Username</th>
+                    <th>Status</th>
+                    <th>Connected Since</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @accounts.each do |account| %>
+                    <tr>
+                      <td>
+                        <i class="fab fa-<%= account.platform.downcase %> me-2"></i>
+                        <%= account.platform.titleize %>
+                      </td>
+                      <td>
+                        <% if account.profile_url.present? %>
+                          <a href="<%= account.profile_url %>" target="_blank"><%= account.username %></a>
+                        <% else %>
+                          <%= account.username %>
+                        <% end %>
+                      </td>
+                      <td>
+                        <% if account.status == 'connected' %>
+                          <span class="badge bg-success">Connected</span>
+                        <% elsif account.status == 'expired' %>
+                          <span class="badge bg-warning">Expired</span>
+                        <% else %>
+                          <span class="badge bg-secondary">Disconnected</span>
+                        <% end %>
+                      </td>
+                      <td><%= account.created_at.strftime("%B %-d, %Y") %></td>
+                      <td>
+                        <div class="btn-group btn-group-sm">
+                          <% if account.status == 'expired' %>
+                            <a href="<%= auth_social_media_accounts_path(platform: account.platform) %>" class="btn btn-outline-warning">
+                              <i class="fas fa-sync-alt"></i> Reconnect
+                            </a>
+                          <% end %>
+                          <%= button_to disconnect_social_media_accounts_path(id: account.id), method: :delete, class: "btn btn-outline-danger", data: { confirm: "Are you sure you want to disconnect #{account.platform.titleize}?" } do %>
+                            <i class="fas fa-unlink"></i> Disconnect
+                          <% end %>
+                        </div>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <div class="text-center py-5">
+              <i class="fas fa-share-alt fa-4x text-muted mb-3"></i>
+              <h4>No Connected Accounts</h4>
+              <p class="mb-4">Connect your social media accounts to post content directly from this platform.</p>
+              <div class="d-flex justify-content-center">
+                <% SocialMediaAccount::PLATFORMS.each do |platform| %>
+                  <a href="<%= auth_social_media_accounts_path(platform: platform) %>" class="btn btn-outline-primary mx-2">
+                    <i class="fab fa-<%= platform.downcase %> me-1"></i> Connect <%= platform.titleize %>
+                  </a>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

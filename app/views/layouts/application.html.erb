@@ -194,9 +194,21 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="nav-link <%= current_page?(social_media_accounts_path) ? 'active' : '' %>" href="<%= social_media_accounts_path %>">
+            <i class="fas fa-plug fa-fw me-2"></i>
+            <span class="nav-link-text">Connected Accounts</span>
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link <%= current_page?(new_ai_content_path) || request.path.include?('ai_content') ? 'active' : '' %>" href="<%= new_ai_content_path %>">
             <i class="fas fa-robot fa-fw me-2"></i>
             <span class="nav-link-text">AI Tools</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= current_page?(edit_business_profile_path) ? 'active' : '' %>" href="<%= edit_business_profile_path %>">
+            <i class="fas fa-building fa-fw me-2"></i>
+            <span class="nav-link-text">Business Profile</span>
           </a>
         </li>
       </ul>

@@ -1,0 +1,23 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  user: one
+  platform: MyString
+  status: MyString
+  username: MyString
+  profile_url: MyString
+  access_token: MyString
+  refresh_token: MyString
+  token_expires_at: 2025-03-28 11:35:17
+  settings: 
+
+two:
+  user: two
+  platform: MyString
+  status: MyString
+  username: MyString
+  profile_url: MyString
+  access_token: MyString
+  refresh_token: MyString
+  token_expires_at: 2025-03-28 11:35:17
+  settings: 
