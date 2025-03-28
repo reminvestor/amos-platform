@@ -1,0 +1,51 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1>Your Entities</h1>
+      <p class="text-muted">Select an entity to manage or create a new one</p>
+    </div>
+    <div class="col-auto">
+      <%= link_to 'Create New Entity', new_entity_path, class: 'btn btn-primary' %>
+    </div>
+  </div>
+
+  <div class="row">
+    <% @entities.each do |entity| %>
+      <div class="col-md-4 mb-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title"><%= entity.name %></h5>
+            <p class="card-text text-muted">
+              <%= "#{pluralize(entity.users.count, 'user')}" %> •
+              <%= "Role: #{current_user.entity_role(entity)}" %>
+            </p>
+            <p class="card-text">
+              <span class="badge bg-<%= entity.status == 'active' ? 'success' : 'secondary' %>">
+                <%= entity.status.capitalize %>
+              </span>
+            </p>
+          </div>
+          <div class="card-footer bg-transparent d-flex justify-content-between">
+            <%= link_to 'Select', switch_entity_path(entity), class: 'btn btn-sm btn-outline-primary' %>
+            <%= link_to 'View', entity_path(entity), class: 'btn btn-sm btn-outline-secondary' %>
+            <% if current_user.entity_admin?(entity) %>
+              <%= link_to 'Edit', edit_entity_path(entity), class: 'btn btn-sm btn-outline-secondary' %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    
+    <% if @entities.empty? %>
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body text-center p-5">
+            <h3>You don't have any entities yet</h3>
+            <p class="text-muted">Create your first entity to get started</p>
+            <%= link_to 'Create New Entity', new_entity_path, class: 'btn btn-primary' %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
