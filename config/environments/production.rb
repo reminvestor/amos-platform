@@ -104,4 +104,15 @@ Rails.application.configure do
   config.hosts << ENV['APPLICATION_HOST']
   config.hosts << "www.#{ENV['APPLICATION_HOST']}"
   config.hosts << "app.#{ENV['APPLICATION_HOST']}"
+  
+  # Allow Heroku app domain
+  config.hosts << "nuvola-marketing-agent-86aa0618d72d.herokuapp.com"
+  
+  # Allow everloom.ai domains
+  config.hosts << "everloom.ai"
+  config.hosts << "www.everloom.ai"
+  config.hosts << "app.everloom.ai"
+  
+  # Skip host authorization for health checks
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 end
