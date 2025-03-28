@@ -19,9 +19,11 @@ class SocialPostsController < ApplicationController
     if @social_post.save
       if @social_post.scheduled?
         SocialMedia::PublishPostJob.set(wait_until: @social_post.scheduled_at).perform_later(@social_post.id)
-      else
+      elsif params[:publish_now] == "true"
         SocialMedia::PublishPostJob.perform_later(@social_post.id)
       end
+      
+      post_to_connected_accounts(@social_post) if params[:post_to_accounts].present?
       
       redirect_to @social_post, notice: 'Post was successfully created.'
     else
@@ -36,9 +38,11 @@ class SocialPostsController < ApplicationController
     if @social_post.update(social_post_params)
       if @social_post.scheduled?
         SocialMedia::PublishPostJob.set(wait_until: @social_post.scheduled_at).perform_later(@social_post.id)
-      else
+      elsif params[:publish_now] == "true"
         SocialMedia::PublishPostJob.perform_later(@social_post.id)
       end
+      
+      post_to_connected_accounts(@social_post) if params[:post_to_accounts].present?
       
       redirect_to @social_post, notice: 'Post was successfully updated.'
     else
@@ -60,6 +64,30 @@ class SocialPostsController < ApplicationController
       redirect_to @social_post, alert: 'Only draft posts can be published.'
     end
   end
+  
+  def generate_content
+    platform = params[:platform]
+    purpose = params[:purpose]
+    
+    if platform.blank?
+      render json: { error: "Platform is required" }, status: :unprocessable_entity
+      return
+    end
+    
+    business_profile = current_user.ensure_business_profile
+    openai_service = OpenaiService.new
+    
+    generated_content = openai_service.generate_social_post(
+      business_profile, 
+      platform, 
+      purpose
+    )
+    
+    render json: { content: generated_content }
+  rescue => e
+    Rails.logger.error("Error generating content: #{e.message}")
+    render json: { error: "Error generating content. Please try again." }, status: :unprocessable_entity
+  end
 
   private
 
@@ -69,5 +97,13 @@ class SocialPostsController < ApplicationController
 
   def social_post_params
     params.require(:social_post).permit(:title, :content, :platform, :status, :scheduled_at, :image_url)
+  end
+
+  def post_to_connected_accounts(post)
+    account_ids = params[:post_to_accounts].map(&:to_i)
+    
+    current_user.social_media_accounts.where(id: account_ids).each do |account|
+      SocialMedia::PostToAccountJob.perform_later(post.id, account.id)
+    end
   end
 end 

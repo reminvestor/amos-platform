@@ -1,4 +1,11 @@
 Rails.application.routes.draw do
+  get "social_media_accounts/index"
+  get "social_media_accounts/new"
+  get "social_media_accounts/create"
+  get "social_media_accounts/callback"
+  get "social_media_accounts/disconnect"
+  get "business_profiles/edit"
+  get "business_profiles/update"
   get "campaign_tracking/open"
   get "campaign_tracking/click"
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
@@ -63,6 +70,25 @@ Rails.application.routes.draw do
   resources :social_posts do
     member do
       post :publish
+    end
+    collection do
+      post :generate_content
+    end
+  end
+
+  # Business profile settings
+  resource :business_profile, only: [:edit, :update] do
+    member do
+      post :add_knowledge
+    end
+  end
+
+  # Social media account management
+  resources :social_media_accounts, only: [:index, :new, :create] do
+    collection do
+      get 'auth/:platform', to: 'social_media_accounts#new', as: :auth
+      get 'callback/:platform', to: 'social_media_accounts#callback', as: :callback
+      delete 'disconnect/:id', to: 'social_media_accounts#disconnect', as: :disconnect
     end
   end
 end

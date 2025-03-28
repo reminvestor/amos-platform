@@ -10,9 +10,25 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_03_28_153030) do
+ActiveRecord::Schema[8.0].define(version: 2025_03_28_164551) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "business_profiles", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "name"
+    t.string "industry"
+    t.text "description"
+    t.integer "founded_year"
+    t.string "website"
+    t.text "values"
+    t.text "target_audience"
+    t.text "tone_of_voice"
+    t.jsonb "knowledge_base"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_business_profiles_on_user_id"
+  end
 
   create_table "campaign_groups", force: :cascade do |t|
     t.bigint "campaign_id", null: false
@@ -94,6 +110,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_153030) do
     t.index ["user_id"], name: "index_email_templates_on_user_id"
   end
 
+  create_table "social_media_accounts", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "platform"
+    t.string "status"
+    t.string "username"
+    t.string "profile_url"
+    t.string "access_token"
+    t.string "refresh_token"
+    t.datetime "token_expires_at"
+    t.jsonb "settings"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_social_media_accounts_on_user_id"
+  end
+
   create_table "social_post_analytics", force: :cascade do |t|
     t.bigint "social_post_id", null: false
     t.integer "likes"
@@ -120,6 +151,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_153030) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "image_url"
+    t.jsonb "settings"
     t.index ["user_id"], name: "index_social_posts_on_user_id"
   end
 
@@ -264,6 +296,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_153030) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  add_foreign_key "business_profiles", "users"
   add_foreign_key "campaign_groups", "campaigns"
   add_foreign_key "campaign_groups", "contact_groups"
   add_foreign_key "campaigns", "email_templates"
@@ -276,6 +309,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_153030) do
   add_foreign_key "email_deliveries", "contacts"
   add_foreign_key "email_deliveries", "email_templates"
   add_foreign_key "email_templates", "users"
+  add_foreign_key "social_media_accounts", "users"
   add_foreign_key "social_post_analytics", "social_posts"
   add_foreign_key "social_posts", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
