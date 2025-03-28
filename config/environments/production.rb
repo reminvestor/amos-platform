@@ -62,7 +62,7 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = true
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: ENV['APPLICATION_HOST'] || 'yourapp.com' }
+  config.action_mailer.default_url_options = { host: ENV['APPLICATION_HOST'] }
 
   # Specify outgoing SMTP server. Remember to add smtp/* credentials via rails credentials:edit.
   # config.action_mailer.smtp_settings = {
@@ -99,4 +99,8 @@ Rails.application.configure do
     domain: ENV['MAILGUN_DOMAIN']
   }
   config.action_mailer.perform_deliveries = true
+
+  # Add your actual domain to allowed hosts
+  config.hosts << ENV['APPLICATION_HOST']
+  config.hosts << ".#{ENV['APPLICATION_HOST']}"
 end

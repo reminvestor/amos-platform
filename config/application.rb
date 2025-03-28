@@ -23,5 +23,15 @@ module AgentMarketing
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
+    # Don't generate system test files.
+    config.generators.system_tests = nil
+    
+    # Configure session store
+    config.session_store :cookie_store, key: '_agent_marketing_session', domain: {
+      production: ->(request) { request.domain },
+      development: ->(request) { request.domain },
+      test: ->(request) { request.domain }
+    }.fetch(Rails.env.to_sym)
   end
 end
