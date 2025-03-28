@@ -1,0 +1,95 @@
+<%= form_with(model: social_post, local: true) do |f| %>
+  <% if social_post.errors.any? %>
+    <div class="alert alert-danger">
+      <h4><%= pluralize(social_post.errors.count, "error") %> prohibited this post from being saved:</h4>
+      <ul>
+        <% social_post.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= f.label :title, class: 'form-label' %>
+    <%= f.text_field :title, class: 'form-control' %>
+  </div>
+
+  <div class="mb-3">
+    <%= f.label :content, class: 'form-label' %>
+    <%= f.text_area :content, class: 'form-control', rows: 5 %>
+  </div>
+
+  <div class="mb-3">
+    <%= f.label :image_url, 'Image URL', class: 'form-label' %>
+    <%= f.text_field :image_url, class: 'form-control', placeholder: 'Enter a URL to an image' %>
+    <div class="form-text">Required for Instagram posts. Optional for other platforms.</div>
+  </div>
+
+  <div class="mb-3">
+    <%= f.label :platform, class: 'form-label' %>
+    <%= f.select :platform, 
+                 options_for_select([
+                   ['Facebook', 'facebook'],
+                   ['Instagram', 'instagram'],
+                   ['LinkedIn', 'linkedin'],
+                   ['TikTok', 'tiktok'],
+                   ['Twitter', 'twitter']
+                 ], social_post.platform),
+                 { include_blank: 'Select a platform' },
+                 class: 'form-select',
+                 data: { controller: 'social-post', action: 'change->social-post#toggleImageField' } %>
+  </div>
+
+  <div class="mb-3">
+    <%= f.label :status, class: 'form-label' %>
+    <%= f.select :status,
+                 options_for_select([
+                   ['Draft', 'draft'],
+                   ['Scheduled', 'scheduled'],
+                   ['Published', 'published']
+                 ], social_post.status),
+                 {},
+                 class: 'form-select',
+                 data: { controller: 'social-post', action: 'change->social-post#toggleScheduledAtField' } %>
+  </div>
+
+  <div class="mb-3 scheduled-at-field" style="display: <%= social_post.status == 'scheduled' ? 'block' : 'none' %>">
+    <%= f.label :scheduled_at, class: 'form-label' %>
+    <%= f.datetime_local_field :scheduled_at, class: 'form-control' %>
+  </div>
+
+  <div class="d-flex justify-content-between">
+    <%= link_to 'Back', social_posts_path, class: 'btn btn-secondary' %>
+    <%= f.submit class: 'btn btn-primary' %>
+  </div>
+<% end %>
+
+<% content_for :javascript do %>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const statusSelect = document.querySelector('#social_post_status');
+      const scheduledAtField = document.querySelector('.scheduled-at-field');
+      const platformSelect = document.querySelector('#social_post_platform');
+      const imageUrlField = document.querySelector('#social_post_image_url');
+      const imageUrlContainer = imageUrlField.closest('.mb-3');
+
+      function toggleScheduledAtField() {
+        scheduledAtField.style.display = statusSelect.value === 'scheduled' ? 'block' : 'none';
+      }
+
+      function toggleImageField() {
+        const isInstagram = platformSelect.value === 'instagram';
+        imageUrlContainer.querySelector('.form-text').textContent = 
+          isInstagram ? 'Required for Instagram posts.' : 'Optional for this platform.';
+        imageUrlField.required = isInstagram;
+      }
+
+      statusSelect.addEventListener('change', toggleScheduledAtField);
+      platformSelect.addEventListener('change', toggleImageField);
+      
+      toggleScheduledAtField();
+      toggleImageField();
+    });
+  </script>
+<% end %> 

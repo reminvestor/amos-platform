@@ -1,0 +1,21 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  social_post: one
+  likes: 1
+  comments: 1
+  shares: 1
+  views: 1
+  reach: 1
+  engagement_rate: 9.99
+  collected_at: 2025-03-28 10:20:22
+
+two:
+  social_post: two
+  likes: 1
+  comments: 1
+  shares: 1
+  views: 1
+  reach: 1
+  engagement_rate: 9.99
+  collected_at: 2025-03-28 10:20:22

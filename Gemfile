@@ -60,6 +60,13 @@ gem "thruster", require: false
 # Pagination
 gem "kaminari", "~> 1.2"
 
+# Social Media APIs
+gem 'koala', '~> 3.4.0' # Facebook API
+gem 'instagram_basic_display', '~> 0.2.3' # Instagram Basic Display API
+gem 'oauth2', '~> 2.0' # OAuth2 for LinkedIn and Twitter APIs
+gem 'faraday', '~> 2.9' # HTTP client
+gem 'faraday-multipart', '~> 1.0' # Multipart support for Faraday
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"

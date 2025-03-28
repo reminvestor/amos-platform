@@ -1,0 +1,69 @@
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Social Media Posts</h1>
+    <%= link_to 'New Post', new_social_post_path, class: 'btn btn-primary' %>
+  </div>
+
+  <div class="row">
+    <% @social_posts.each do |post| %>
+      <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+          <% if post.image? %>
+            <div class="card-img-top" style="height: 200px; overflow: hidden;">
+              <%= image_tag post.image_url, class: 'img-fluid w-100 h-100', style: 'object-fit: cover;' %>
+            </div>
+          <% end %>
+          <div class="card-body">
+            <h5 class="card-title"><%= post.title %></h5>
+            <p class="card-text"><%= truncate(post.content, length: 150) %></p>
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="badge bg-<%= status_color(post.status) %>"><%= post.status.titleize %></span>
+              <small class="text-muted"><%= post.platform.titleize %></small>
+            </div>
+            <% if post.scheduled? %>
+              <div class="mt-2">
+                <small class="text-muted">Scheduled for: <%= post.scheduled_at.strftime("%B %d, %Y at %I:%M %p") %></small>
+              </div>
+            <% end %>
+            <% if post.published? && post.latest_analytics %>
+              <div class="mt-2">
+                <small class="text-muted">
+                  <%= pluralize(post.latest_analytics.likes, 'like') %> •
+                  <%= pluralize(post.latest_analytics.comments, 'comment') %> •
+                  <%= number_to_percentage(post.calculate_engagement_rate, precision: 2) %> engagement
+                </small>
+              </div>
+            <% end %>
+          </div>
+          <div class="card-footer">
+            <div class="btn-group w-100">
+              <%= link_to 'View', post, class: 'btn btn-outline-primary' %>
+              <%= link_to 'Edit', edit_social_post_path(post), class: 'btn btn-outline-secondary' %>
+              <%= button_to 'Delete', post, method: :delete, class: 'btn btn-outline-danger', data: { confirm: 'Are you sure?' } %>
+            </div>
+            <% if post.draft? %>
+              <%= button_to 'Publish', publish_social_post_path(post), method: :post, class: 'btn btn-success mt-2 w-100' %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% content_for :helper_methods do %>
+  def status_color(status)
+    case status
+    when 'draft'
+      'secondary'
+    when 'scheduled'
+      'info'
+    when 'published'
+      'success'
+    when 'failed'
+      'danger'
+    else
+      'secondary'
+    end
+  end
+<% end %> 

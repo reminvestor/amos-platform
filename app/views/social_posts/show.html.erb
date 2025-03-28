@@ -1,0 +1,125 @@
+<div class="container mt-4">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h2 class="mb-0"><%= @social_post.title %></h2>
+      <div>
+        <span class="badge bg-<%= status_color(@social_post.status) %> me-2"><%= @social_post.status.titleize %></span>
+        <span class="badge bg-info"><%= @social_post.platform.titleize %></span>
+      </div>
+    </div>
+    <div class="card-body">
+      <% if @social_post.image? %>
+        <div class="mb-4">
+          <h5>Image</h5>
+          <div class="text-center">
+            <%= image_tag @social_post.image_url, class: 'img-fluid rounded', style: 'max-height: 400px;' %>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="mb-4">
+        <h5>Content</h5>
+        <p class="card-text"><%= @social_post.content %></p>
+      </div>
+
+      <% if @social_post.scheduled? %>
+        <div class="mb-4">
+          <h5>Scheduled For</h5>
+          <p><%= @social_post.scheduled_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+        </div>
+      <% end %>
+
+      <% if @social_post.published? %>
+        <div class="mb-4">
+          <h5>Published At</h5>
+          <p><%= @social_post.published_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+        </div>
+
+        <% if @social_post.post_url.present? %>
+          <div class="mb-4">
+            <h5>Post URL</h5>
+            <p><%= link_to @social_post.post_url, @social_post.post_url, target: '_blank' %></p>
+          </div>
+        <% end %>
+
+        <% if @social_post.latest_analytics %>
+          <div class="mb-4">
+            <h5>Latest Analytics</h5>
+            <div class="row">
+              <div class="col-md-3">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <h6>Likes</h6>
+                    <h3><%= @social_post.latest_analytics.likes %></h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <h6>Comments</h6>
+                    <h3><%= @social_post.latest_analytics.comments %></h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <h6>Shares</h6>
+                    <h3><%= @social_post.latest_analytics.shares %></h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card">
+                  <div class="card-body text-center">
+                    <h6>Reach</h6>
+                    <h3><%= @social_post.latest_analytics.reach %></h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <h6>Engagement Rate</h6>
+              <div class="progress">
+                <div class="progress-bar" role="progressbar" 
+                     style="width: <%= @social_post.calculate_engagement_rate %>%"
+                     aria-valuenow="<%= @social_post.calculate_engagement_rate %>" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                  <%= number_to_percentage(@social_post.calculate_engagement_rate, precision: 2) %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+    <div class="card-footer">
+      <div class="btn-group">
+        <%= link_to 'Edit', edit_social_post_path(@social_post), class: 'btn btn-outline-primary' %>
+        <%= link_to 'Back', social_posts_path, class: 'btn btn-outline-secondary' %>
+        <% if @social_post.draft? %>
+          <%= button_to 'Publish', publish_social_post_path(@social_post), method: :post, class: 'btn btn-success' %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% content_for :helper_methods do %>
+  def status_color(status)
+    case status
+    when 'draft'
+      'secondary'
+    when 'scheduled'
+      'info'
+    when 'published'
+      'success'
+    when 'failed'
+      'danger'
+    else
+      'secondary'
+    end
+  end
+<% end %> 

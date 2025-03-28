@@ -17,27 +17,202 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/icon.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <!-- Font Awesome for AI integration icons -->
+    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+    
+    <style>
+      body {
+        padding-top: 56px;
+        display: flex;
+        min-height: 100vh;
+      }
+      
+      .sidebar {
+        width: 280px;
+        position: fixed;
+        top: 56px;
+        bottom: 0;
+        left: 0;
+        z-index: 100;
+        padding: 0;
+        box-shadow: 0 2px 5px 0 rgba(0,0,0,.05);
+        transition: all 0.2s;
+      }
+      
+      .sidebar-collapsed {
+        width: 60px;
+      }
+      
+      .sidebar-header {
+        padding: 1rem;
+        background-color: rgba(0,0,0,.05);
+      }
+      
+      .sidebar .nav-link {
+        padding: 0.75rem 1rem;
+        color: #6c757d;
+        font-weight: 500;
+        border-left: 3px solid transparent;
+      }
+      
+      .sidebar .nav-link.active {
+        color: #0d6efd;
+        border-left: 3px solid #0d6efd;
+        background-color: rgba(13, 110, 253, 0.05);
+      }
+      
+      .sidebar .nav-link:hover {
+        color: #0d6efd;
+        background-color: rgba(13, 110, 253, 0.05);
+      }
+      
+      .sidebar-collapsed .nav-link-text,
+      .sidebar-collapsed .sidebar-heading {
+        display: none;
+      }
+      
+      .main-content {
+        margin-left: 280px;
+        width: calc(100% - 280px);
+        padding: 1.5rem;
+        transition: all 0.2s;
+      }
+      
+      .main-content-expanded {
+        margin-left: 60px;
+        width: calc(100% - 60px);
+      }
+      
+      @media (max-width: 768px) {
+        .sidebar {
+          margin-left: -280px;
+        }
+        
+        .sidebar-collapsed {
+          margin-left: 0;
+          width: 280px;
+        }
+        
+        .sidebar-collapsed .nav-link-text,
+        .sidebar-collapsed .sidebar-heading {
+          display: block;
+        }
+        
+        .main-content {
+          margin-left: 0;
+          width: 100%;
+        }
+        
+        .main-content-expanded {
+          margin-left: 0;
+          width: 100%;
+        }
+      }
+    </style>
   </head>
 
   <body>
-    <%= render 'layouts/navigation' %>
-    
-    <div class="container">
+    <!-- Top navigation -->
+    <nav class="navbar navbar-expand navbar-dark bg-primary fixed-top">
+      <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="<%= root_path %>">
+          <i class="fas fa-envelope-open-text me-2"></i>
+          Agent Marketing
+        </a>
+        <button class="btn btn-link text-light" id="sidebarToggle">
+          <i class="fas fa-bars"></i>
+        </button>
+        
+        <div class="ms-auto d-flex align-items-center">
+          <% if user_signed_in? %>
+            <div class="dropdown">
+              <a class="nav-link dropdown-toggle text-white" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-user-circle me-1"></i> <%= current_user.email %>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                <li><a class="dropdown-item" href="<%= edit_user_registration_path %>">Account Settings</a></li>
+                <% if current_user.admin? %>
+                  <li><a class="dropdown-item" href="<%= admin_imports_path %>">Data Imports</a></li>
+                <% end %>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <%= button_to "Sign Out", destroy_user_session_path, method: :delete, class: "dropdown-item" %>
+                </li>
+              </ul>
+            </div>
+          <% else %>
+            <div class="d-flex">
+              <%= link_to "Sign In", new_user_session_path, class: "btn btn-outline-light me-2" %>
+              <%= link_to "Sign Up", new_user_registration_path, class: "btn btn-light" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Sidebar navigation -->
+    <div class="sidebar" id="sidebar">
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link <%= current_page?(root_path) ? 'active' : '' %>" href="<%= root_path %>">
+            <i class="fas fa-tachometer-alt fa-fw me-2"></i>
+            <span class="nav-link-text">Dashboard</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= current_page?(campaigns_path) ? 'active' : '' %>" href="<%= campaigns_path %>">
+            <i class="fas fa-bullhorn fa-fw me-2"></i>
+            <span class="nav-link-text">Campaigns</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= current_page?(contacts_path) ? 'active' : '' %>" href="<%= contacts_path %>">
+            <i class="fas fa-address-book fa-fw me-2"></i>
+            <span class="nav-link-text">Contacts</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= current_page?(contact_groups_path) ? 'active' : '' %>" href="<%= contact_groups_path %>">
+            <i class="fas fa-users fa-fw me-2"></i>
+            <span class="nav-link-text">Groups</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= current_page?(email_templates_path) ? 'active' : '' %>" href="<%= email_templates_path %>">
+            <i class="fas fa-envelope-open-text fa-fw me-2"></i>
+            <span class="nav-link-text">Templates</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= current_page?(social_posts_path) ? 'active' : '' %>" href="<%= social_posts_path %>">
+            <i class="fas fa-share-alt fa-fw me-2"></i>
+            <span class="nav-link-text">Social Media</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= current_page?(new_ai_content_path) || request.path.include?('ai_content') ? 'active' : '' %>" href="<%= new_ai_content_path %>">
+            <i class="fas fa-robot fa-fw me-2"></i>
+            <span class="nav-link-text">AI Tools</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Main content area -->
+    <div class="main-content" id="mainContent">
       <% if notice %>
-        <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
           <%= notice %>
           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
       <% end %>
       
       <% if alert %>
-        <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
           <%= alert %>
           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -45,5 +220,31 @@
       
       <%= yield %>
     </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        
+        // Check if sidebar state is saved in localStorage
+        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+        
+        // Initialize sidebar state
+        if (sidebarCollapsed) {
+          sidebar.classList.add('sidebar-collapsed');
+          mainContent.classList.add('main-content-expanded');
+        }
+        
+        // Toggle sidebar on button click
+        sidebarToggle.addEventListener('click', function() {
+          sidebar.classList.toggle('sidebar-collapsed');
+          mainContent.classList.toggle('main-content-expanded');
+          
+          // Save sidebar state to localStorage
+          localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('sidebar-collapsed'));
+        });
+      });
+    </script>
   </body>
 </html>
