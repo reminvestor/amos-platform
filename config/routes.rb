@@ -59,4 +59,10 @@ Rails.application.routes.draw do
 
   # Defines the root path route ("/")
   # root "posts#index"
+
+  resources :social_posts do
+    member do
+      post :publish
+    end
+  end
 end

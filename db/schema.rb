@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_03_24_163158) do
+ActiveRecord::Schema[8.0].define(version: 2025_03_28_153030) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -92,6 +92,35 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_24_163158) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_email_templates_on_user_id"
+  end
+
+  create_table "social_post_analytics", force: :cascade do |t|
+    t.bigint "social_post_id", null: false
+    t.integer "likes"
+    t.integer "comments"
+    t.integer "shares"
+    t.integer "views"
+    t.integer "reach"
+    t.decimal "engagement_rate"
+    t.datetime "collected_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["social_post_id"], name: "index_social_post_analytics_on_social_post_id"
+  end
+
+  create_table "social_posts", force: :cascade do |t|
+    t.string "title"
+    t.text "content"
+    t.string "status"
+    t.datetime "scheduled_at"
+    t.datetime "published_at"
+    t.string "platform"
+    t.string "post_url"
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "image_url"
+    t.index ["user_id"], name: "index_social_posts_on_user_id"
   end
 
   create_table "solid_queue_blocked_executions", force: :cascade do |t|
@@ -247,6 +276,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_24_163158) do
   add_foreign_key "email_deliveries", "contacts"
   add_foreign_key "email_deliveries", "email_templates"
   add_foreign_key "email_templates", "users"
+  add_foreign_key "social_post_analytics", "social_posts"
+  add_foreign_key "social_posts", "users"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
