@@ -80,18 +80,20 @@ Rails.application.configure do
   # Allow accessing the application via custom domains/subdomains in development
   config.hosts << ".localhost"
   config.hosts << "localhost"
-  config.hosts << ".nuvola.localhost"
-  config.hosts << "nuvola.localhost"
+  config.hosts << "app.localhost"
+  config.hosts << "app.app.localhost"
   config.hosts << ".lvh.me"
   config.hosts << "lvh.me"
+  config.hosts << "app.lvh.me"
   
   # Allow some additional localhost variations that might be used during development
   config.hosts << "127.0.0.1"
-  config.hosts << "nuvola.127.0.0.1"
-  config.hosts << ".127.0.0.1"
+  config.hosts << "app.127.0.0.1"
+  config.hosts << "app.app.127.0.0.1"
   
   # Allow testing with a fake domain
   config.hosts << ".yourdomain.test"
   config.hosts << "yourdomain.test"
-  config.hosts << "nuvola.yourdomain.test"
+  config.hosts << "app.yourdomain.test"
+  config.hosts << "app.app.yourdomain.test"
 end

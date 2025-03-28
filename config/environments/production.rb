@@ -102,5 +102,6 @@ Rails.application.configure do
 
   # Add your actual domain to allowed hosts
   config.hosts << ENV['APPLICATION_HOST']
-  config.hosts << ".#{ENV['APPLICATION_HOST']}"
+  config.hosts << "www.#{ENV['APPLICATION_HOST']}"
+  config.hosts << "app.#{ENV['APPLICATION_HOST']}"
 end

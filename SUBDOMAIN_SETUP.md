@@ -1,6 +1,6 @@
 # Subdomain Setup for Development
 
-This application uses subdomains to separate the marketing site from the actual application interface. Below are instructions on how to access these correctly during development.
+This application uses a single subdomain approach to separate the marketing site from the actual application interface. Below are instructions on how to access these correctly during development.
 
 ## Accessing the Application in Development
 
@@ -9,7 +9,7 @@ This application uses subdomains to separate the marketing site from the actual 
 To access the application with subdomains on localhost, you can use:
 
 - Marketing site: http://localhost:3000
-- Application (Nuvola Networks entity): http://nuvola.localhost:3000
+- Application: http://app.localhost:3000
 
 Note: Some browsers may have issues with `.localhost` subdomains. If you experience problems, try Option 2 below.
 
@@ -18,7 +18,7 @@ Note: Some browsers may have issues with `.localhost` subdomains. If you experie
 `lvh.me` is a domain that resolves to `127.0.0.1` (your local machine) and allows for subdomains, making it perfect for testing:
 
 - Marketing site: http://lvh.me:3000
-- Application (Nuvola Networks entity): http://nuvola.lvh.me:3000
+- Application: http://app.lvh.me:3000
 
 ### Option 3: Updating your hosts file
 
@@ -31,18 +31,18 @@ If neither of the above options works, you can modify your hosts file:
 2. Add these lines:
    ```
    127.0.0.1 yourdomain.test
-   127.0.0.1 nuvola.yourdomain.test
+   127.0.0.1 app.yourdomain.test
    ```
 
 3. Access the application at:
    - Marketing site: http://yourdomain.test:3000
-   - Application: http://nuvola.yourdomain.test:3000
+   - Application: http://app.yourdomain.test:3000
 
 ## Notes on Subdomain Handling
 
 - The application is configured to show the marketing site when no subdomain is present
-- When using a subdomain (e.g., `nuvola.lvh.me`), the application interface is shown
-- Entity-specific data is only accessible when using the appropriate subdomain
+- When using the 'app' subdomain, the application interface is shown
+- Entity selection is handled via the user interface after login
 
 ## Troubleshooting
 

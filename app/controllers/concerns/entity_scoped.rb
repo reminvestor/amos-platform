@@ -8,60 +8,41 @@ module EntityScoped
   
   protected
   
-  # Get clean subdomain without any possible parent domains
-  def extract_subdomain
-    return nil unless request.subdomain.present?
-    
-    # Handle possible nested subdomains
-    subdomain = request.subdomain.split('.')
-    subdomain.first # Return just the first part
-  end
-  
-  # Check if the request is using a valid subdomain
-  def using_subdomain?
-    subdomain = extract_subdomain
-    subdomain.present? && subdomain != 'www'
-  end
-  
-  # Ensure the subdomain is valid for authenticated users
+  # Ensure we have a current entity selected
   def check_subdomain
-    return if controller_path.start_with?('marketing') || !using_subdomain?
+    return if controller_path.start_with?('marketing')
     
-    # Redirect to marketing site if accessing authenticated routes without subdomain
+    # Redirect to entity selection if no entity is selected and we're on the dashboard
     if controller_path == 'home' && action_name == 'index' && !current_entity
-      # If user has no entities, create one
+      # If user has no entities, redirect to entity creation
       if user_signed_in? && current_user.entities.none?
-        # Redirect to entity creation
         redirect_to new_entity_path
+      elsif user_signed_in? && current_user.entities.count > 1
+        # If user has multiple entities but none selected, redirect to entity selection
+        redirect_to entities_path, notice: "Please select an entity to work with."
       end
     end
   end
   
-  # Determine the current entity from the session or subdomain
+  # Determine the current entity from the session
   def current_entity
     @current_entity ||= begin
       if session[:entity_id].present? && current_user
-        current_user.entities.find_by(id: session[:entity_id])
-      elsif using_subdomain? && current_user
-        # Try to find entity by subdomain
-        subdomain = extract_subdomain
-        entity = Entity.find_by(subdomain: subdomain)
-        if entity && current_user.entities.include?(entity)
-          session[:entity_id] = entity.id
-          entity
-        elsif current_user.entities.count == 1
-          # Default to the user's only entity
-          entity = current_user.entities.first
-          session[:entity_id] = entity.id
-          entity
-        end
+        # Try to find entity by session
+        entity = current_user.entities.find_by(id: session[:entity_id])
+        entity
+      elsif current_user && current_user.entities.count == 1
+        # Default to the user's only entity
+        entity = current_user.entities.first
+        session[:entity_id] = entity.id
+        entity
       end
     end
   end
   
   def set_current_entity
-    # Make sure we have a current entity, or redirect to entity selection
-    unless current_entity.present? || controller_path == 'entities'
+    # Make sure we have a current entity
+    unless current_entity.present? || controller_path == 'entities' || controller_path.start_with?('devise')
       redirect_to entities_path, notice: "Please select an entity to work with."
     end
   end
