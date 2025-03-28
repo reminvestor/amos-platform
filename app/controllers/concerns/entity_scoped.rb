@@ -41,8 +41,14 @@ module EntityScoped
   end
   
   def set_current_entity
-    # Make sure we have a current entity
-    unless current_entity.present? || controller_path == 'entities' || controller_path.start_with?('devise')
+    # Skip entity check for public routes, marketing, devise, and entities controller
+    return if !user_signed_in? || 
+              controller_path.start_with?('marketing') || 
+              controller_path.start_with?('devise') || 
+              controller_path == 'entities'
+              
+    # Make sure we have a current entity for authenticated app routes
+    unless current_entity.present?
       redirect_to entities_path, notice: "Please select an entity to work with."
     end
   end
