@@ -1,5 +1,6 @@
 class ContactGroup < ApplicationRecord
   belongs_to :user
+  belongs_to :entity, optional: true
   
   # Many-to-many association with contacts
   has_and_belongs_to_many :contacts
