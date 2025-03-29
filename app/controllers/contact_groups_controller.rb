@@ -3,7 +3,7 @@ class ContactGroupsController < ApplicationController
   before_action :set_contact_group, only: [:show, :edit, :update, :destroy]
   
   def index
-    @contact_groups = current_user.contact_groups.order(name: :asc).page(params[:page])
+    @contact_groups = entity_scope(ContactGroup).order(name: :asc).page(params[:page])
   end
 
   def show
@@ -12,29 +12,35 @@ class ContactGroupsController < ApplicationController
 
   def new
     @contact_group = current_user.contact_groups.new
-    @available_contacts = current_user.contacts
+    # Initialize with empty contact selection
+    @selected_contact_ids = []
+    load_filtered_contacts
   end
 
   def create
     @contact_group = current_user.contact_groups.new(contact_group_params)
+    @contact_group.entity = current_entity if current_entity
     
     if @contact_group.save
       redirect_to contact_groups_path, notice: 'Contact group was successfully created.'
     else
-      @available_contacts = current_user.contacts
+      @selected_contact_ids = params[:contact_group][:contact_ids] || []
+      load_filtered_contacts
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit
-    @available_contacts = current_user.contacts
+    @selected_contact_ids = @contact_group.contact_ids
+    load_filtered_contacts
   end
 
   def update
     if @contact_group.update(contact_group_params)
       redirect_to contact_groups_path, notice: 'Contact group was successfully updated.'
     else
-      @available_contacts = current_user.contacts
+      @selected_contact_ids = params[:contact_group][:contact_ids] || @contact_group.contact_ids
+      load_filtered_contacts
       render :edit, status: :unprocessable_entity
     end
   end
@@ -47,13 +53,51 @@ class ContactGroupsController < ApplicationController
     end
   end
   
+  # AJAX endpoint for contacts search
+  def search_contacts
+    load_filtered_contacts
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "contacts_selection",
+          partial: "contacts_selection",
+          locals: { contacts: @contacts, selected_contact_ids: params[:selected_ids] || [] }
+        )
+      end
+    end
+  end
+  
   private
   
   def set_contact_group
-    @contact_group = current_user.contact_groups.find(params[:id])
+    @contact_group = entity_scope(ContactGroup).find(params[:id])
   end
   
   def contact_group_params
     params.require(:contact_group).permit(:name, :description, contact_ids: [])
+  end
+  
+  def load_filtered_contacts
+    # Start with basic scope
+    contacts_scope = entity_scope(Contact)
+    
+    # Apply search if present
+    if params[:search].present?
+      search_term = "%#{params[:search]}%"
+      contacts_scope = contacts_scope.where(
+        "first_name ILIKE ? OR last_name ILIKE ? OR email ILIKE ?",
+        search_term, search_term, search_term
+      )
+    end
+    
+    # Apply any other filters
+    if params[:status].present?
+      contacts_scope = contacts_scope.where(status: params[:status])
+    end
+    
+    # Order and paginate
+    @contacts = contacts_scope.order(last_name: :asc, first_name: :asc)
+                             .page(params[:page])
+                             .per(100)
   end
 end
