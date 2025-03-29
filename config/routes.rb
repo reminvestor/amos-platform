@@ -24,7 +24,11 @@ Rails.application.routes.draw do
     
     # Application routes
     resources :contacts
-    resources :contact_groups
+    resources :contact_groups do
+      collection do
+        get :search_contacts
+      end
+    end
     resources :email_templates do
       member do
         post :test_email

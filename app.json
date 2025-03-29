@@ -1,0 +1,48 @@
+{
+  "name": "Agent Marketing",
+  "description": "AI-powered marketing automation platform with multi-entity support",
+  "repository": "https://github.com/yourusername/agent_marketing",
+  "keywords": ["rails", "marketing", "automation", "ai"],
+  "success_url": "/",
+  "scripts": {
+    "postdeploy": "bundle exec rails db:migrate"
+  },
+  "env": {
+    "RAILS_ENV": {
+      "value": "production"
+    },
+    "RAILS_SERVE_STATIC_FILES": {
+      "value": "true"
+    },
+    "APPLICATION_HOST": {
+      "description": "The domain name where your app will be hosted, without protocol (e.g. yourdomain.com)",
+      "required": true
+    },
+    "RAILS_MASTER_KEY": {
+      "description": "Rails master key for decrypting credentials",
+      "required": true
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "standard-1x"
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/ruby"
+    },
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "addons": [
+    {
+      "plan": "heroku-postgresql:mini"
+    },
+    {
+      "plan": "scheduler:standard"
+    }
+  ]
+} 

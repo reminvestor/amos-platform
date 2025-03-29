@@ -1,0 +1,76 @@
+<div id="contacts_selection">
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">Filter Contacts</h5>
+      <%= form_with(url: search_contacts_contact_groups_path, method: :get, data: { controller: "turbo-form", turbo_form_target: "form" }) do |f| %>
+        <div class="row g-3 align-items-end">
+          <div class="col-md-6">
+            <label class="form-label">Search</label>
+            <%= f.text_field :search, class: "form-control", placeholder: "Name or Email", value: params[:search],
+                data: { action: "input->turbo-form#submit" } %>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Status</label>
+            <%= f.select :status, 
+                options_for_select([["All", ""], ["Active", "active"], ["Inactive", "inactive"]], params[:status]), 
+                {}, 
+                { class: "form-select", data: { action: "change->turbo-form#submit" } } %>
+          </div>
+          <div class="col-md-2">
+            <%= f.hidden_field :page, value: params[:page] || 1 %>
+            <% selected_contact_ids.each do |id| %>
+              <%= f.hidden_field "selected_ids[]", value: id %>
+            <% end %>
+            <%= f.submit "Filter", class: "btn btn-outline-primary w-100" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Select Contacts (<%= contacts.total_count %> total)</span>
+      <div>
+        <%= paginate contacts %>
+      </div>
+    </div>
+    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+      <% if contacts.any? %>
+        <div class="mb-3">
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="checkbox" id="select-all-contacts" data-action="change->contact-selection#toggleAll">
+            <label class="form-check-label" for="select-all-contacts">Select All on This Page</label>
+          </div>
+        </div>
+        
+        <div class="row" data-controller="contact-selection">
+          <% contacts.each do |contact| %>
+            <div class="col-md-6 mb-2">
+              <div class="form-check">
+                <%= check_box_tag "contact_group[contact_ids][]", contact.id, 
+                    selected_contact_ids.include?(contact.id.to_s) || selected_contact_ids.include?(contact.id), 
+                    id: "contact_#{contact.id}", 
+                    class: "form-check-input contact-checkbox", 
+                    data: { contact_selection_target: "checkbox" } %>
+                <label class="form-check-label" for="contact_<%= contact.id %>">
+                  <strong><%= contact.full_name %></strong> <span class="text-muted"><%= contact.email %></span>
+                </label>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="alert alert-info">
+          No contacts found matching your criteria.
+        </div>
+      <% end %>
+    </div>
+    <div class="card-footer">
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="text-muted">Showing <%= contacts.count %> of <%= contacts.total_count %> contacts</span>
+        <%= paginate contacts %>
+      </div>
+    </div>
+  </div>
+</div> 
