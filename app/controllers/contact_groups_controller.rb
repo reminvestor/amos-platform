@@ -55,13 +55,24 @@ class ContactGroupsController < ApplicationController
   
   # AJAX endpoint for contacts search
   def search_contacts
+    @selected_contact_ids = params[:selected_ids] || []
     load_filtered_contacts
+    
     respond_to do |format|
+      format.html do
+        render partial: "contacts_selection", locals: { 
+          contacts: @contacts, 
+          selected_contact_ids: @selected_contact_ids 
+        }
+      end
       format.turbo_stream do
         render turbo_stream: turbo_stream.replace(
           "contacts_selection",
           partial: "contacts_selection",
-          locals: { contacts: @contacts, selected_contact_ids: params[:selected_ids] || [] }
+          locals: { 
+            contacts: @contacts, 
+            selected_contact_ids: @selected_contact_ids 
+          }
         )
       end
     end

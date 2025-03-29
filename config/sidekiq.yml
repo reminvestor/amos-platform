@@ -1,0 +1,16 @@
+:concurrency: <%= ENV.fetch("SIDEKIQ_CONCURRENCY", 5) %>
+:timeout: 30
+
+:queues:
+  - default
+  - mailers
+  - active_storage
+
+development:
+  :concurrency: 3
+
+test:
+  :concurrency: 1
+
+production:
+  :concurrency: <%= ENV.fetch("SIDEKIQ_CONCURRENCY", 10) %> 
