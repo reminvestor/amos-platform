@@ -27,6 +27,9 @@ gem "jbuilder"
 # Authentication
 gem "devise", "~> 4.9"
 
+# Background processing
+gem "sidekiq", "~> 7.2"
+
 # Environment variables management
 gem "dotenv-rails", "~> 3.0"
 

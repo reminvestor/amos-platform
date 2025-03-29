@@ -1,2 +1,3 @@
-web: bin/rails server -p ${PORT:-5000} -e ${RAILS_ENV:-production}
-worker: bundle exec sidekiq -e ${RAILS_ENV:-production} -C config/sidekiq.yml 
+web: bundle exec puma -C config/puma.rb
+worker: bundle exec sidekiq -e ${RAILS_ENV:-production} -C config/sidekiq.yml || echo "Sidekiq not available, skipping worker process"
+release: bundle exec rails db:migrate 
