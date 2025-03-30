@@ -274,5 +274,47 @@
         });
       });
     </script>
+
+    <% if Rails.env.development? %>
+      <script>
+        // Debug mode toggle for development
+        document.addEventListener('DOMContentLoaded', () => {
+          const debugButton = document.createElement('button');
+          debugButton.textContent = "Debug";
+          debugButton.classList.add('btn', 'btn-sm', 'btn-info', 'position-fixed');
+          debugButton.style.bottom = '10px';
+          debugButton.style.right = '10px';
+          debugButton.style.zIndex = '9999';
+          
+          debugButton.addEventListener('click', () => {
+            const debugInfos = document.querySelectorAll('#debug-info');
+            debugInfos.forEach(info => {
+              info.parentElement.classList.toggle('d-none');
+            });
+            
+            // Log active controllers info
+            console.log("Debug button clicked");
+            
+            // Display all controllers and their elements
+            console.log("🔍 Looking for Stimulus controller data");
+            document.querySelectorAll('[data-controller]').forEach(el => {
+              console.log(`Found element with controller: ${el.dataset.controller}`, el);
+            });
+            
+            // Test form event listeners
+            const searchInput = document.getElementById('contact-search-input');
+            if (searchInput) {
+              console.log("📝 Testing search input:", searchInput);
+              searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            
+            // Log all event listeners (requires opening devtools)
+            console.log("👉 Open Chrome DevTools Elements panel and select an element to see its event listeners");
+          });
+          
+          document.body.appendChild(debugButton);
+        });
+      </script>
+    <% end %>
   </body>
 </html>
