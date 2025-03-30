@@ -6,3 +6,9 @@ import { application } from "./application"
 
 import HelloController from "./hello_controller"
 application.register("hello", HelloController)
+
+import TurboFormController from "./turbo_form_controller"
+application.register("turbo-form", TurboFormController)
+
+import ContactSelectionController from "./contact_selection_controller"
+application.register("contact-selection", ContactSelectionController)

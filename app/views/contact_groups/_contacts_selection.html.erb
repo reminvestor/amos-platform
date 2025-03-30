@@ -2,86 +2,193 @@
   <div class="card mb-3">
     <div class="card-body">
       <h5 class="card-title">Filter Contacts</h5>
-      <%= form_with(url: search_contacts_contact_groups_path, method: :get, 
-                   data: { controller: "turbo-form" }, 
-                   html: { onsubmit: "return false;" }) do |f| %>
+      
+      <div id="contact-search-container">
         <div class="row g-3 align-items-end">
-          <div class="col-md-7">
+          <div class="col-md-6">
             <label class="form-label">Search by name or email</label>
-            <%= f.text_field :search, class: "form-control", placeholder: "Type to search...", value: params[:search],
-                data: { action: "input->turbo-form#submit" } %>
+            <input type="text" 
+                  id="contact-search-input" 
+                  name="search" 
+                  class="form-control" 
+                  placeholder="Type to search..." 
+                  value="<%= params[:search] || "" %>">
           </div>
-          <div class="col-md-5">
+          <div class="col-md-6">
             <label class="form-label">Status</label>
-            <%= f.select :status, 
-                options_for_select([["All", ""], ["Active", "active"], ["Inactive", "inactive"]], params[:status]), 
-                {}, 
-                { class: "form-select", data: { action: "change->turbo-form#submit" } } %>
-          </div>
-        </div>
-        <%= f.hidden_field :page, value: params[:page] || 1 %>
-        <% selected_contact_ids.each do |id| %>
-          <%= f.hidden_field "selected_ids[]", value: id %>
-        <% end %>
-      <% end %>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span>Select Contacts (<%= contacts.total_count %> total)</span>
-      <div>
-        <%= paginate contacts, remote: true, params: { 
-          controller: "contact_groups", 
-          action: "search_contacts",
-          search: params[:search],
-          status: params[:status],
-          selected_ids: selected_contact_ids
-        } %>
-      </div>
-    </div>
-    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
-      <% if contacts.any? %>
-        <div class="mb-3">
-          <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" id="select-all-contacts" data-action="change->contact-selection#toggleAll">
-            <label class="form-check-label" for="select-all-contacts">Select All on This Page</label>
+            <select id="contact-status-select" name="status" class="form-select">
+              <option value="" <%= params[:status].blank? ? 'selected' : '' %>>All</option>
+              <option value="active" <%= params[:status] == 'active' ? 'selected' : '' %>>Active</option>
+              <option value="inactive" <%= params[:status] == 'inactive' ? 'selected' : '' %>>Inactive</option>
+            </select>
           </div>
         </div>
         
-        <div class="row" data-controller="contact-selection">
-          <% contacts.each do |contact| %>
-            <div class="col-md-6 mb-2">
-              <div class="form-check">
-                <%= check_box_tag "contact_group[contact_ids][]", contact.id, 
-                    selected_contact_ids.include?(contact.id.to_s) || selected_contact_ids.include?(contact.id), 
-                    id: "contact_#{contact.id}", 
-                    class: "form-check-input contact-checkbox", 
-                    data: { contact_selection_target: "checkbox" } %>
-                <label class="form-check-label" for="contact_<%= contact.id %>">
-                  <strong><%= contact.full_name %></strong> <span class="text-muted"><%= contact.email %></span>
-                </label>
-              </div>
-            </div>
-          <% end %>
-        </div>
-      <% else %>
-        <div class="alert alert-info">
-          No contacts found matching your criteria.
-        </div>
-      <% end %>
-    </div>
-    <div class="card-footer">
-      <div class="d-flex justify-content-between align-items-center">
-        <span class="text-muted">Showing <%= contacts.count %> of <%= contacts.total_count %> contacts</span>
-        <%= paginate contacts, remote: true, params: { 
-          controller: "contact_groups", 
-          action: "search_contacts",
-          search: params[:search],
-          status: params[:status],
-          selected_ids: selected_contact_ids
-        } %>
+        <input type="hidden" id="contact-page-input" value="<%= params[:page] || 1 %>">
+        <% selected_contact_ids.each do |id| %>
+          <input type="hidden" class="selected-contact-id" value="<%= id %>">
+        <% end %>
+      </div>
+      
+      <div class="d-none">
+        <pre id="debug-info">
+Search: <%= (params[:search] || "").inspect %>
+Status: <%= (params[:status] || "").inspect %>
+Page: <%= (params[:page] || 1).inspect %>
+Selected IDs: <%= selected_contact_ids.inspect %>
+        </pre>
       </div>
     </div>
   </div>
-</div> 
+
+  <turbo-frame id="contacts_results">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Select Contacts (<%= contacts.total_count %> total)</span>
+        <div>
+          <%= paginate contacts, remote: true, params: { 
+            controller: "contact_groups", 
+            action: "search_contacts",
+            search: params[:search],
+            status: params[:status],
+            selected_ids: selected_contact_ids
+          } %>
+        </div>
+      </div>
+      <div data-controller="contact-selection" class="card-body" style="max-height: 400px; overflow-y: auto;">
+        <% if contacts.any? %>
+          <div class="mb-3">
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="checkbox" id="select-all-contacts" data-action="change->contact-selection#toggleAll">
+              <label class="form-check-label" for="select-all-contacts">Select All on This Page</label>
+            </div>
+          </div>
+          
+          <div class="row">
+            <% contacts.each do |contact| %>
+              <div class="col-md-6 mb-2">
+                <div class="form-check">
+                  <%= check_box_tag "contact_group[contact_ids][]", contact.id, 
+                      selected_contact_ids.include?(contact.id.to_s) || selected_contact_ids.include?(contact.id), 
+                      id: "contact_#{contact.id}", 
+                      class: "form-check-input contact-checkbox", 
+                      data: { contact_selection_target: "checkbox" } %>
+                  <label class="form-check-label" for="contact_<%= contact.id %>">
+                    <strong><%= contact.full_name %></strong> <span class="text-muted"><%= contact.email %></span>
+                  </label>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="alert alert-info">
+            No contacts found matching your criteria.
+          </div>
+        <% end %>
+      </div>
+      <div class="card-footer">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted">Showing <%= contacts.count %> of <%= contacts.total_count %> contacts</span>
+          <%= paginate contacts, remote: true, params: { 
+            controller: "contact_groups", 
+            action: "search_contacts",
+            search: params[:search],
+            status: params[:status],
+            selected_ids: selected_contact_ids
+          } %>
+        </div>
+      </div>
+    </div>
+  </turbo-frame>
+</div>
+
+<!-- Simple direct navigation script -->
+<script type="text/javascript">
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Direct navigation script loaded');
+    
+    // Function to perform search by direct navigation
+    function performSearch() {
+      var searchInput = document.getElementById('contact-search-input');
+      var statusSelect = document.getElementById('contact-status-select');
+      var pageInput = document.getElementById('contact-page-input');
+      
+      // Get the values
+      var searchValue = searchInput ? encodeURIComponent(searchInput.value) : '';
+      var statusValue = statusSelect ? encodeURIComponent(statusSelect.value) : '';
+      var pageValue = pageInput ? encodeURIComponent(pageInput.value) : '1';
+      
+      // Get selected contact IDs
+      var selectedIds = [];
+      document.querySelectorAll('.selected-contact-id').forEach(function(input) {
+        selectedIds.push(input.value);
+      });
+      
+      // Build selected IDs param
+      var selectedIdsParam = '';
+      if (selectedIds.length > 0) {
+        selectedIdsParam = selectedIds.map(function(id) {
+          return '&selected_ids[]=' + encodeURIComponent(id);
+        }).join('');
+      }
+      
+      console.log('🚀 Performing search with: search=' + searchValue + ', status=' + statusValue);
+      
+      // Build the URL
+      var url = '<%= search_contacts_contact_groups_path %>' + 
+                '?search=' + searchValue + 
+                '&status=' + statusValue + 
+                '&page=' + pageValue + 
+                selectedIdsParam;
+                
+      // Navigate to URL in turbo frame
+      var frame = document.getElementById('contacts_results');
+      if (frame) {
+        console.log('🚀 Navigating in Turbo Frame to:', url);
+        frame.setAttribute('src', url);
+      } else {
+        console.log('🚀 Direct navigation to:', url);
+        window.location.href = url;
+      }
+    }
+    
+    // Attach event to search button
+    var searchBtn = document.getElementById('direct-search-btn');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', function() {
+        console.log('🚀 Search button clicked');
+        performSearch();
+      });
+    }
+    
+    // Debounce function for search input
+    function debounce(func, wait) {
+      var timeout;
+      return function() {
+        var context = this, args = arguments;
+        clearTimeout(timeout);
+        timeout = setTimeout(function() {
+          func.apply(context, args);
+        }, wait);
+      };
+    }
+    
+    // Attach debounced event to search input
+    var searchInput = document.getElementById('contact-search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', debounce(function(e) {
+        console.log('🚀 Search input changed:', e.target.value);
+        performSearch();
+      }, 500));
+    }
+    
+    // Attach event to status select
+    var statusSelect = document.getElementById('contact-status-select');
+    if (statusSelect) {
+      statusSelect.addEventListener('change', function(e) {
+        console.log('🚀 Status changed:', e.target.value);
+        performSearch();
+      });
+    }
+  });
+</script> 

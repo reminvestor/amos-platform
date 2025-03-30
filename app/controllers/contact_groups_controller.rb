@@ -55,20 +55,38 @@ class ContactGroupsController < ApplicationController
   
   # AJAX endpoint for contacts search
   def search_contacts
+    Rails.logger.debug "Search params: #{params.inspect}"
     @selected_contact_ids = params[:selected_ids] || []
     load_filtered_contacts
     
     respond_to do |format|
       format.html do
+        if turbo_frame_request?
+          Rails.logger.debug "Rendering Turbo Frame response"
+          render partial: "contacts_results", locals: { 
+            contacts: @contacts, 
+            selected_contact_ids: @selected_contact_ids 
+          }, layout: false
+        else
+          Rails.logger.debug "Rendering HTML partial"
+          render partial: "contacts_selection", locals: { 
+            contacts: @contacts, 
+            selected_contact_ids: @selected_contact_ids 
+          }
+        end
+      end
+      format.js do
+        Rails.logger.debug "Rendering JS response"
         render partial: "contacts_selection", locals: { 
           contacts: @contacts, 
           selected_contact_ids: @selected_contact_ids 
         }
       end
       format.turbo_stream do
+        Rails.logger.debug "Rendering Turbo Stream"
         render turbo_stream: turbo_stream.replace(
-          "contacts_selection",
-          partial: "contacts_selection",
+          "contacts_results",
+          partial: "contacts_results",
           locals: { 
             contacts: @contacts, 
             selected_contact_ids: @selected_contact_ids 
