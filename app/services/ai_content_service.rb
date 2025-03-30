@@ -53,16 +53,44 @@ class AiContentService
     stats = {
       open_rate: campaign.open_rate,
       click_rate: campaign.click_rate,
+      unsubscribe_rate: campaign.unsubscribe_rate,
+      bounce_rate: campaign.bounce_rate,
       sent_count: campaign.sent_count,
-      total_contacts: campaign.contact_count
+      total_contacts: campaign.contact_count,
+      engagement_score: campaign.engagement_score,
+      time_to_open: campaign.time_to_open
     }
+    
+    template_info = ""
+    if campaign.email_template.present?
+      template_info = "Email subject: \"#{campaign.email_template.subject}\"\n"
+      template_info += "Email length: #{campaign.email_template.body.to_s.length} characters\n"
+    end
+    
+    status_message = "Campaign status: #{campaign.status.humanize}\n"
+    if campaign.sent_at.present?
+      status_message += "Sent on: #{campaign.sent_at.strftime('%B %d, %Y at %I:%M %p')}\n"
+    end
     
     prompt = "Analyze these email campaign results and provide actionable insights:\n\n" +
              "Campaign: #{campaign.name}\n" +
+             status_message +
+             "Description: #{campaign.description}\n" +
+             template_info +
              "Sent to: #{stats[:total_contacts]} recipients\n" +
              "Open rate: #{stats[:open_rate]}%\n" +
-             "Click rate: #{stats[:click_rate]}%\n\n" +
-             "Provide 3-5 specific recommendations for improving this campaign."
+             "Click rate: #{stats[:click_rate]}%\n" +
+             "Unsubscribe rate: #{stats[:unsubscribe_rate]}%\n" +
+             "Bounce rate: #{stats[:bounce_rate]}%\n" 
+             
+    if stats[:time_to_open].present?
+      prompt += "Average time to open: #{stats[:time_to_open]} minutes\n"
+    end
+    
+    prompt += "Engagement score: #{stats[:engagement_score]}/100\n\n" +
+              "Provide 3-5 specific recommendations for improving this campaign. " +
+              "Focus on actionable suggestions based on these metrics, especially addressing " +
+              "any concerning metrics like high unsubscribe rates or low open/click rates."
     
     response = client.chat(
       parameters: {

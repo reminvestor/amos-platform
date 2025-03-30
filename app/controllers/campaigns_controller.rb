@@ -1,6 +1,6 @@
 class CampaignsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_campaign, only: [:show, :edit, :update, :destroy, :send_test, :schedule, :pause, :resume, :stop, :analyze]
+  before_action :set_campaign, only: [:show, :edit, :update, :destroy, :send_test, :schedule, :send_now, :pause, :resume, :stop, :reactivate, :analyze]
   
   def index
     @campaigns = current_user.campaigns.order(created_at: :desc)
@@ -59,12 +59,49 @@ class CampaignsController < ApplicationController
   end
   
   def schedule
-    scheduled_at = params[:scheduled_at].present? ? DateTime.parse(params[:scheduled_at]) : DateTime.now
-    
-    service = CampaignService.new(@campaign)
-    service.schedule_campaign(scheduled_at)
-    
-    redirect_to @campaign, notice: "Campaign scheduled for #{scheduled_at.strftime('%b %d, %Y at %I:%M %p')}"
+    begin
+      scheduled_time = if params[:scheduled_at].present?
+        DateTime.parse(params[:scheduled_at])
+      else
+        DateTime.now
+      end
+      
+      # Log the received parameters for debugging
+      Rails.logger.info("Campaign scheduling: ID=#{@campaign.id}, scheduled_at=#{scheduled_time}, raw_param=#{params[:scheduled_at]}")
+      
+      service = CampaignService.new(@campaign)
+      service.schedule_campaign(scheduled_time)
+      
+      redirect_to @campaign, notice: "Campaign scheduled for #{scheduled_time.strftime('%b %d, %Y at %I:%M %p')}"
+    rescue => e
+      Rails.logger.error("Campaign scheduling error: #{e.message}")
+      redirect_to @campaign, alert: "Error scheduling campaign: #{e.message}"
+    end
+  end
+  
+  def send_now
+    begin
+      if @campaign.email_template.blank?
+        redirect_to @campaign, alert: "Cannot send campaign: No email template selected."
+        return
+      end
+      
+      if @campaign.contact_groups.empty?
+        redirect_to @campaign, alert: "Cannot send campaign: No contact groups selected."
+        return
+      end
+      
+      # Log the action
+      Rails.logger.info("Campaign sending immediately: ID=#{@campaign.id}")
+      
+      service = CampaignService.new(@campaign)
+      service.start_campaign
+      
+      redirect_to @campaign, notice: "Campaign started successfully and is now sending!"
+    rescue => e
+      Rails.logger.error("Campaign immediate send error: #{e.message}")
+      redirect_to @campaign, alert: "Error sending campaign: #{e.message}"
+    end
   end
   
   def pause
@@ -86,6 +123,18 @@ class CampaignsController < ApplicationController
       redirect_to @campaign, notice: 'Campaign stopped successfully.'
     else
       redirect_to @campaign, alert: 'Failed to stop campaign.'
+    end
+  end
+  
+  def reactivate
+    if @campaign.status == 'stopped' || @campaign.status == 'completed'
+      if @campaign.update(status: 'draft')
+        redirect_to @campaign, notice: 'Campaign reactivated and set to draft status.'
+      else
+        redirect_to @campaign, alert: 'Failed to reactivate campaign.'
+      end
+    else
+      redirect_to @campaign, alert: 'Only stopped or completed campaigns can be reactivated.'
     end
   end
   

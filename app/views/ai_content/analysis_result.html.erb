@@ -8,6 +8,14 @@
         <div class="card-body">
           <div class="alert alert-info">
             <i class="fas fa-info-circle me-2"></i> Campaign "<strong><%= @campaign.name %></strong>" has been analyzed by AI
+            <% if @campaign.last_analyzed_at.present? %>
+              <div class="mt-2 small">
+                <strong>Last analyzed:</strong> <%= @campaign.last_analyzed_at.strftime("%b %d, %Y at %I:%M %p") %>
+                <%= button_to reanalyze_campaign_path(@campaign), method: :post, class: "btn btn-sm btn-outline-primary mt-1" do %>
+                  <i class="fas fa-sync-alt me-1"></i> Generate Fresh Analysis
+                <% end %>
+              </div>
+            <% end %>
           </div>
           
           <div class="row mt-4">
@@ -17,8 +25,8 @@
                   <h5>Performance Insights</h5>
                 </div>
                 <div class="card-body">
-                  <div class="insights-container">
-                    <%= @analysis.html_safe %>
+                  <div class="insights-container markdown-content">
+                    <%= markdown(@analysis).html_safe %>
                   </div>
                 </div>
               </div>
@@ -27,22 +35,22 @@
                 <div class="card-header bg-light">
                   <h5>Campaign Summary</h5>
                 </div>
-                <div class="card-body">
-                  <div class="row">
-                    <div class="col-md-3 text-center mb-3">
-                      <div class="card h-100">
-                        <div class="card-body">
-                          <h6 class="text-muted">Sent to</h6>
-                          <h3><%= @campaign.contact_count || 0 %></h3>
+                <div class="card-body py-4">
+                  <div class="row justify-content-center">
+                    <div class="col-lg-2 col-md-4 text-center mb-4 px-3">
+                      <div class="card h-100 shadow-sm">
+                        <div class="card-body py-4">
+                          <h6 class="text-muted mb-3">Sent to</h6>
+                          <h3 class="mb-3"><%= @campaign.contact_count || 0 %></h3>
                           <div class="text-muted">recipients</div>
                         </div>
                       </div>
                     </div>
-                    <div class="col-md-3 text-center mb-3">
-                      <div class="card h-100">
-                        <div class="card-body">
-                          <h6 class="text-muted">Open Rate</h6>
-                          <h3><%= @campaign.open_rate || 0 %>%</h3>
+                    <div class="col-lg-2 col-md-4 text-center mb-4 px-3">
+                      <div class="card h-100 shadow-sm">
+                        <div class="card-body py-4">
+                          <h6 class="text-muted mb-3">Open Rate</h6>
+                          <h3 class="mb-3"><%= @campaign.open_rate || 0 %>%</h3>
                           <div class="text-muted">
                             <% 
                               open_rate = @campaign.open_rate || 0
@@ -62,11 +70,11 @@
                         </div>
                       </div>
                     </div>
-                    <div class="col-md-3 text-center mb-3">
-                      <div class="card h-100">
-                        <div class="card-body">
-                          <h6 class="text-muted">Click Rate</h6>
-                          <h3><%= @campaign.click_rate || 0 %>%</h3>
+                    <div class="col-lg-2 col-md-4 text-center mb-4 px-3">
+                      <div class="card h-100 shadow-sm">
+                        <div class="card-body py-4">
+                          <h6 class="text-muted mb-3">Click Rate</h6>
+                          <h3 class="mb-3"><%= @campaign.click_rate || 0 %>%</h3>
                           <div class="text-muted">
                             <% 
                               click_rate = @campaign.click_rate || 0
@@ -86,11 +94,35 @@
                         </div>
                       </div>
                     </div>
-                    <div class="col-md-3 text-center mb-3">
-                      <div class="card h-100">
-                        <div class="card-body">
-                          <h6 class="text-muted">Sent on</h6>
-                          <h3><%= @campaign.sent_at&.strftime("%b %d") || "N/A" %></h3>
+                    <div class="col-lg-2 col-md-4 text-center mb-4 px-3">
+                      <div class="card h-100 shadow-sm">
+                        <div class="card-body py-4">
+                          <h6 class="text-muted mb-3">Unsubscribed</h6>
+                          <h3 class="mb-3"><%= @campaign.unsubscribe_rate || 0 %>%</h3>
+                          <div class="text-muted">
+                            <% 
+                              unsub_rate = @campaign.unsubscribe_rate || 0
+                              if unsub_rate < 0.5
+                                status = "success"
+                                message = "Excellent"
+                              elsif unsub_rate < 1
+                                status = "warning"
+                                message = "Average"
+                              else
+                                status = "danger"
+                                message = "Above average"
+                              end
+                            %>
+                            <span class="text-<%= status %>"><%= message %></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-lg-2 col-md-4 text-center mb-4 px-3">
+                      <div class="card h-100 shadow-sm">
+                        <div class="card-body py-4">
+                          <h6 class="text-muted mb-3">Sent on</h6>
+                          <h3 class="mb-3"><%= @campaign.sent_at&.strftime("%b %d") || "N/A" %></h3>
                           <div class="text-muted"><%= @campaign.sent_at&.strftime("%Y at %I:%M %p") || "Not sent yet" %></div>
                         </div>
                       </div>
@@ -141,13 +173,13 @@
                       <div class="recommendations-container">
                         <!-- This would extract recommendations from the AI analysis -->
                         <% 
-                          # Simple extraction of recommended points (this could be more sophisticated)
-                          recommendations = @analysis.scan(/<li>(.*?)<\/li>/m).flatten.first(3)
+                          # Extract numbered recommendations from the markdown (looking for patterns like "1. **Title:**")
+                          recommendations = @analysis.scan(/\d+\.\s+\*\*([^\*]+)\*\*/).flatten.first(3)
                           if recommendations.any?
                             recommendations.each do |recommendation|
                         %>
                           <div class="alert alert-success">
-                            <i class="fas fa-lightbulb me-2"></i> <%= recommendation.html_safe %>
+                            <i class="fas fa-lightbulb me-2"></i> <%= recommendation.strip %>
                           </div>
                         <% 
                             end

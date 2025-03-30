@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_03_28_175405) do
+ActiveRecord::Schema[8.0].define(version: 2025_03_30_025107) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -51,6 +51,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_175405) do
     t.datetime "updated_at", null: false
     t.bigint "email_template_id"
     t.bigint "entity_id"
+    t.text "ai_analysis"
+    t.datetime "last_analyzed_at"
     t.index ["email_template_id"], name: "index_campaigns_on_email_template_id"
     t.index ["entity_id"], name: "index_campaigns_on_entity_id"
     t.index ["user_id"], name: "index_campaigns_on_user_id"
@@ -88,7 +90,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_28_175405) do
     t.datetime "updated_at", null: false
     t.jsonb "metadata"
     t.bigint "entity_id"
+    t.boolean "opted_out", default: false
+    t.datetime "opted_out_at"
     t.index ["entity_id"], name: "index_contacts_on_entity_id"
+    t.index ["opted_out"], name: "index_contacts_on_opted_out"
     t.index ["user_id"], name: "index_contacts_on_user_id"
   end
 

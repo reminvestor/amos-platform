@@ -1,0 +1,37 @@
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3>Email Subscription</h3>
+        </div>
+        <div class="card-body text-center p-5">
+          <% if @contact && @contact.opted_out? %>
+            <div class="mb-4">
+              <i class="fas fa-check-circle text-success fa-5x"></i>
+            </div>
+            <h2 class="mb-4">Successfully Unsubscribed</h2>
+            <p class="mb-4">
+              <%= @message %>
+            </p>
+            <p class="text-muted">
+              Email address: <strong><%= @contact.email %></strong>
+            </p>
+          <% else %>
+            <div class="mb-4">
+              <i class="fas fa-exclamation-circle text-warning fa-5x"></i>
+            </div>
+            <h2 class="mb-4">Unsubscribe Status</h2>
+            <p class="mb-4">
+              <%= @message %>
+            </p>
+          <% end %>
+          
+          <div class="mt-5">
+            <a href="<%= root_url %>" class="btn btn-outline-primary">Return to Homepage</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

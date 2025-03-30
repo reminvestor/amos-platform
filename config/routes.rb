@@ -38,9 +38,11 @@ Rails.application.routes.draw do
       member do
         post :send_test
         post :schedule
+        post :send_now
         post :pause
         post :resume
         post :stop
+        post :reactivate
         get :analyze
       end
     end
@@ -51,10 +53,14 @@ Rails.application.routes.draw do
     get 'ai_content/improve/:template_id', to: 'ai_content#improve', as: :improve_ai_content
     post 'ai_content/improve/:template_id', to: 'ai_content#improve'
     get 'ai_content/analyze_campaign/:campaign_id', to: 'ai_content#analyze_campaign', as: :ai_analyze_campaign
+    post 'ai_content/reanalyze_campaign/:campaign_id', to: 'ai_content#reanalyze_campaign', as: :reanalyze_campaign
     
     # Email tracking routes
     get 'campaign_tracking/open/:id', to: 'campaign_tracking#open', as: :email_open
     get 'campaign_tracking/click/:id', to: 'campaign_tracking#click', as: :email_click
+    
+    # Subscription management
+    get 'unsubscribe', to: 'subscription#unsubscribe', as: :unsubscribe
     
     # Social media routes
     resources :social_posts do

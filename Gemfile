@@ -72,6 +72,12 @@ gem 'faraday-multipart', '~> 1.0' # Multipart support for Faraday
 gem 'httparty', '~> 0.21.0' # Simple HTTP client
 gem 'csv' # Support for CSV, needed by HTTParty
 
+# Markdown rendering
+gem 'redcarpet'
+
+# HTML parsing for email tracking
+gem 'nokogiri'
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
