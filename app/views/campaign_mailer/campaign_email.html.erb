@@ -54,7 +54,7 @@
         <p>
           This email was sent to <%= @contact.email %>.<br>
           If you no longer wish to receive these emails, you can 
-          <a href="<%= root_url %>unsubscribe?token=<%= @email_delivery&.id || 'test' %>">unsubscribe here</a>.
+          <a href="<%= unsubscribe_url(token: @email_delivery&.id || 'test', host: "app.#{ENV['APPLICATION_HOST'] || 'everloom.ai'}", protocol: 'https') %>">unsubscribe here</a>.
         </p>
         
         <!-- Tracking pixel for open tracking -->

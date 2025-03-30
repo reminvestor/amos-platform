@@ -6,8 +6,13 @@ class CampaignMailer < ApplicationMailer
     @contact = email_delivery.contact
     @email_template = email_delivery.email_template || @campaign.email_template
     
-    # For tracking opens
-    @tracking_pixel_url = email_open_url(email_delivery.id, host: default_url_options[:host])
+    # For tracking opens - ensure full URL with app subdomain
+    host_with_subdomain = "app.#{ENV['APPLICATION_HOST'] || 'everloom.ai'}"
+    @tracking_pixel_url = email_open_url(
+      email_delivery.id, 
+      host: host_with_subdomain,
+      protocol: 'https'
+    )
     
     # Process the template body to add click tracking to links
     if @email_template.body.present? && @email_delivery.id.present?
@@ -57,6 +62,9 @@ class CampaignMailer < ApplicationMailer
     
     doc = Nokogiri::HTML(html_content)
     
+    # Host for tracking URLs
+    host_with_subdomain = "app.#{ENV['APPLICATION_HOST'] || 'everloom.ai'}"
+    
     # Find all links
     doc.css('a').each do |link|
       href = link['href']
@@ -65,7 +73,8 @@ class CampaignMailer < ApplicationMailer
       # Wrap the link with our tracking URL
       tracked_url = email_click_url(
         delivery_id, 
-        host: default_url_options[:host],
+        host: host_with_subdomain,
+        protocol: 'https',
         url: href
       )
       

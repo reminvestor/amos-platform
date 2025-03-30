@@ -62,7 +62,13 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = true
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: ENV['APPLICATION_HOST'] }
+  config.action_mailer.default_url_options = { 
+    host: ENV['APPLICATION_HOST'] || 'everloom.ai',
+    protocol: 'https'
+  }
+
+  # Set up asset host for emails (used for images)
+  config.action_mailer.asset_host = "https://#{ENV['APPLICATION_HOST'] || 'everloom.ai'}"
 
   # Specify outgoing SMTP server. Remember to add smtp/* credentials via rails credentials:edit.
   # config.action_mailer.smtp_settings = {
