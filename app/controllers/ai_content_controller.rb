@@ -74,10 +74,29 @@ class AiContentController < ApplicationController
   
   def analyze_campaign
     @campaign = current_user.campaigns.find(params[:campaign_id])
-    service = AiContentService.new
-    @analysis = service.analyze_campaign_results(@campaign)
+    
+    # Check if we should reanalyze
+    if params[:force_reanalyze] || @campaign.ai_analysis.blank? || @campaign.last_analyzed_at.blank?
+      # Generate new analysis
+      service = AiContentService.new
+      @analysis = service.analyze_campaign_results(@campaign)
+      
+      # Store the analysis in the campaign
+      @campaign.update(
+        ai_analysis: @analysis,
+        last_analyzed_at: Time.current
+      )
+    else
+      # Use existing analysis
+      @analysis = @campaign.ai_analysis
+    end
     
     render :analysis_result
+  end
+  
+  def reanalyze_campaign
+    # Simply redirect to analyze_campaign with force_reanalyze parameter
+    redirect_to ai_analyze_campaign_path(params[:campaign_id], force_reanalyze: true)
   end
   
   private

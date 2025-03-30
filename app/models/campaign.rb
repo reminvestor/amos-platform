@@ -33,6 +33,11 @@ class Campaign < ApplicationRecord
     email_deliveries.where.not(sent_at: nil).count
   end
   
+  def sent_at
+    # Return the first sent date of any delivery in this campaign
+    email_deliveries.where.not(sent_at: nil).order(sent_at: :asc).first&.sent_at
+  end
+  
   def open_rate
     return 0 if sent_count.zero?
     (email_deliveries.where.not(opened_at: nil).count.to_f / sent_count * 100).round(2)
@@ -41,6 +46,24 @@ class Campaign < ApplicationRecord
   def click_rate
     return 0 if sent_count.zero?
     (email_deliveries.where.not(clicked_at: nil).count.to_f / sent_count * 100).round(2)
+  end
+  
+  def unsubscribe_rate
+    return 0 if sent_count.zero?
+    
+    # Get the contacts who received this campaign
+    campaign_contacts = email_deliveries.where.not(sent_at: nil).joins(:contact).pluck('contacts.id')
+    return 0 if campaign_contacts.empty?
+    
+    # Count how many of them have opted out after the campaign started
+    # (only count those who unsubscribed after receiving this campaign)
+    first_send_time = sent_at
+    unsubscribed_count = Contact.where(id: campaign_contacts)
+                                .where(opted_out: true)
+                                .where('opted_out_at >= ?', first_send_time)
+                                .count
+    
+    (unsubscribed_count.to_f / campaign_contacts.count * 100).round(2)
   end
   
   # Advanced analytics methods for AI-driven insights

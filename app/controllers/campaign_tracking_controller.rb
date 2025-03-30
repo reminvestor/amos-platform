@@ -17,11 +17,42 @@ class CampaignTrackingController < ApplicationController
   def click
     process_tracking_event('click')
     
+    # Get target URL from params - fallback to a default if not present
+    target_url = params[:url].presence || root_url
+    
+    # Validate the URL to prevent open redirect vulnerabilities
+    target_url = ensure_safe_redirect_url(target_url)
+    
     # Redirect to the target URL
-    redirect_to params[:url] || root_url
+    redirect_to target_url
   end
   
   private
+  
+  # Validate URL for safety (prevent open redirect vulnerability)
+  def ensure_safe_redirect_url(url)
+    begin
+      uri = URI.parse(url)
+      
+      # Check if it's a relative URL (starts with / or doesn't have a host)
+      return url if url.start_with?('/') || uri.host.nil?
+      
+      # If absolute URL, check against allowlist of domains
+      allowlisted_domains = [
+        URI.parse(root_url).host,
+        # Add other trusted domains here
+      ]
+      
+      # Allow the URL if its domain is in our allowlist
+      return url if allowlisted_domains.include?(uri.host)
+      
+      # Otherwise, fall back to the root URL
+      root_url
+    rescue URI::InvalidURIError
+      # If URL is invalid, fall back to the root URL
+      root_url
+    end
+  end
   
   def process_tracking_event(event_type)
     delivery_id = params[:id]

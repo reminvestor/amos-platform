@@ -311,6 +311,7 @@ GEM
     rake (13.2.1)
     rdoc (6.12.0)
       psych (>= 4.0.0)
+    redcarpet (3.6.1)
     redis-client (0.24.0)
       connection_pool
     regexp_parser (2.10.0)
@@ -459,11 +460,13 @@ DEPENDENCIES
   kaminari (~> 1.2)
   koala (~> 3.4.0)
   mailgun-ruby (~> 1.2)
+  nokogiri
   oauth2 (~> 2.0)
   pg (~> 1.1)
   propshaft
   puma (>= 5.0)
   rails (~> 8.0.1)
+  redcarpet
   rubocop-rails-omakase
   ruby-openai (~> 6.3)
   selenium-webdriver

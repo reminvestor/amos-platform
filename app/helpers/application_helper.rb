@@ -40,4 +40,31 @@ module ApplicationHelper
       'secondary'
     end
   end
+
+  def markdown(text)
+    return '' if text.blank?
+    
+    # Initialize Redcarpet Markdown renderer
+    renderer = Redcarpet::Render::HTML.new(
+      hard_wrap: true,
+      filter_html: false,
+      link_attributes: { target: '_blank', rel: 'noopener noreferrer' }
+    )
+    
+    markdown = Redcarpet::Markdown.new(
+      renderer,
+      autolink: true,
+      tables: true,
+      fenced_code_blocks: true,
+      lax_spacing: true,
+      no_intra_emphasis: true,
+      strikethrough: true,
+      superscript: true,
+      highlight: true,
+      quote: true
+    )
+    
+    # Process the markdown
+    markdown.render(text)
+  end
 end
