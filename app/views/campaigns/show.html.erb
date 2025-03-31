@@ -62,6 +62,14 @@
           <div class="row mb-4">
             <div class="col-md-8">
               <h4>Campaign Details</h4>
+              
+              <% if @campaign.opted_out_contacts_count.to_i > 0 %>
+                <div class="alert alert-warning">
+                  <i class="fas fa-exclamation-triangle me-2"></i>
+                  <strong>Warning:</strong> <%= @campaign.opted_out_contacts_count %> contact(s) in your selected groups have unsubscribed and will not receive emails.
+                </div>
+              <% end %>
+              
               <p><strong>Description:</strong> <%= @campaign.description %></p>
               <p><strong>Status:</strong> <span class="badge bg-<%= campaign_status_color(@campaign.status) %>"><%= @campaign.status.humanize %></span></p>
               <% if @campaign.scheduled_at.present? %>
