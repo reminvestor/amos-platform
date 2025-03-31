@@ -1,4 +1,7 @@
 Rails.application.routes.draw do
+  # Heroku health check
+  get 'health_check' => proc { [200, {}, ['OK']] }
+  
   # API routes
   namespace :api do
     namespace :v1 do
