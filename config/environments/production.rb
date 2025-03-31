@@ -32,7 +32,8 @@ Rails.application.configure do
   config.assume_ssl = true
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  config.force_ssl = false  # Turning this off since Heroku handles SSL termination
+  # Disable when running on Heroku which handles SSL termination
+  config.force_ssl = ENV['DYNO'].nil? # Only true if NOT on Heroku
 
   # Configure proxy settings for Heroku
   config.action_dispatch.trusted_proxies = ActionDispatch::RemoteIp::TRUSTED_PROXIES +
