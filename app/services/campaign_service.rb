@@ -8,8 +8,15 @@ class CampaignService
     # First, get all contacts from the campaign's contact groups
     contacts = @campaign.contacts
     
-    # Create an email delivery for each contact
-    contacts.each do |contact|
+    # Filter out opted-out contacts
+    active_contacts = contacts.where(opted_out: false)
+    
+    # Store count of opted-out contacts for the warning
+    opted_out_count = contacts.count - active_contacts.count
+    @campaign.update(opted_out_contacts_count: opted_out_count) if @campaign.respond_to?(:opted_out_contacts_count)
+    
+    # Create an email delivery for each active contact
+    active_contacts.each do |contact|
       # Skip if already exists
       next if EmailDelivery.exists?(campaign: @campaign, contact: contact)
       
@@ -27,8 +34,19 @@ class CampaignService
   
   # Process pending email deliveries
   def process_pending_deliveries(batch_size = 50)
-    # Get all pending email deliveries for this campaign
-    pending_deliveries = @campaign.email_deliveries.where(status: 'pending').limit(batch_size)
+    # Get all pending email deliveries for this campaign that aren't for opted-out contacts
+    pending_deliveries = @campaign.email_deliveries
+                                 .joins(:contact)
+                                 .where(status: 'pending')
+                                 .where(contacts: { opted_out: false })
+                                 .limit(batch_size)
+    
+    # Update any deliveries for opted-out contacts to 'cancelled'
+    @campaign.email_deliveries
+             .joins(:contact)
+             .where(status: 'pending')
+             .where(contacts: { opted_out: true })
+             .update_all(status: 'cancelled', notes: 'Contact has unsubscribed')
     
     sent_count = 0
     

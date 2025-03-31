@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_03_31_023331) do
+ActiveRecord::Schema[8.0].define(version: 2025_03_31_040246) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -55,6 +55,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_31_023331) do
     t.datetime "last_analyzed_at"
     t.string "mailgun_tag"
     t.jsonb "mailgun_stats"
+    t.integer "opted_out_contacts_count", default: 0, null: false
     t.index ["email_template_id"], name: "index_campaigns_on_email_template_id"
     t.index ["entity_id"], name: "index_campaigns_on_entity_id"
     t.index ["user_id"], name: "index_campaigns_on_user_id"

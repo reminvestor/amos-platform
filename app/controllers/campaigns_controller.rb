@@ -10,6 +10,12 @@ class CampaignsController < ApplicationController
     # Try to sync with Mailgun if this is a production environment
     @campaign.sync_mailgun_stats if Rails.env.production?
     
+    # Update opted out contacts count
+    if @campaign.contact_groups.any?
+      contacts = @campaign.contacts
+      @campaign.update(opted_out_contacts_count: contacts.where(opted_out: true).count)
+    end
+    
     @email_deliveries = @campaign.email_deliveries.includes(:contact).order(sent_at: :desc)
   end
 
