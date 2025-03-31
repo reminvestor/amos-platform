@@ -26,4 +26,11 @@ plugin :tmp_restart
 lowlevel_error_handler do |e|
   # Log the error with as much detail as possible
   [500, {'Content-Type' => 'text/plain'}, ["Puma Error: #{e.message}\n#{e.backtrace.join("\n")}"]]
+end
+
+# Correctly handle SSL for Heroku
+if ENV['RACK_ENV'] == 'production'
+  # Set this to inform the application that we're already behind an SSL terminating proxy
+  ENV['HTTPS'] = 'on'
+  ENV['HTTP_X_FORWARDED_PROTO'] = 'https'
 end 
