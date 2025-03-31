@@ -30,11 +30,21 @@ class Campaign < ApplicationRecord
   end
   
   def sent_count
-    if mailgun_stats.present? && mailgun_stats["delivered"].present?
-      mailgun_stats["delivered"]
-    else
-      email_deliveries.where.not(sent_at: nil).count
+    # Get actual count from our database first
+    db_count = email_deliveries.where.not(sent_at: nil).count
+    
+    # If we have database records, use that count
+    if db_count > 0
+      return db_count
     end
+    
+    # Only fall back to Mailgun if we don't have db records
+    if mailgun_stats.present? && mailgun_stats["delivered"].present?
+      return mailgun_stats["delivered"]
+    end
+    
+    # Default to 0 if nothing else works
+    return 0
   end
   
   def sent_at
@@ -95,27 +105,27 @@ class Campaign < ApplicationRecord
   end
   
   def unsubscribe_rate
-    # Use Mailgun stats if available
-    if mailgun_stats.present? && mailgun_stats["delivered"].present? && mailgun_stats["delivered"] > 0 && mailgun_stats["complained"].present?
-      (mailgun_stats["complained"].to_f / mailgun_stats["delivered"] * 100).round(2)
-    else
-      # Fall back to our internal tracking
-      return 0 if sent_count.zero?
-      
-      # Get the contacts who received this campaign
-      campaign_contacts = email_deliveries.where.not(sent_at: nil).joins(:contact).pluck('contacts.id')
-      return 0 if campaign_contacts.empty?
-      
-      # Count how many of them have opted out after the campaign started
-      # (only count those who unsubscribed after receiving this campaign)
-      first_send_time = sent_at
+    # Get the contacts who received this campaign
+    campaign_contacts = email_deliveries.where.not(sent_at: nil).joins(:contact).pluck('contacts.id')
+    
+    # If we have contacts who received this campaign, check their unsubscribe status
+    if campaign_contacts.present?
+      # Count how many of those contacts have opted out
       unsubscribed_count = Contact.where(id: campaign_contacts)
                                  .where(opted_out: true)
-                                 .where('opted_out_at >= ?', first_send_time)
                                  .count
       
-      (unsubscribed_count.to_f / campaign_contacts.count * 100).round(2)
+      return (unsubscribed_count.to_f / campaign_contacts.count * 100).round(2)
     end
+    
+    # Fall back to Mailgun stats if we don't have database records
+    if mailgun_stats.present? && mailgun_stats["delivered"].present? && 
+       mailgun_stats["delivered"] > 0 && mailgun_stats["complained"].present?
+      return (mailgun_stats["complained"].to_f / mailgun_stats["delivered"] * 100).round(2)
+    end
+    
+    # Default to 0 if nothing else works
+    return 0
   end
   
   # Advanced analytics methods for AI-driven insights
