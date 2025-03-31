@@ -33,8 +33,14 @@ module Api
                 # Update contact attributes
                 contact.first_name = contact_params[:first_name]
                 contact.last_name = contact_params[:last_name]
-                contact.corporation_id = contact_params[:corporation_id]
-                contact.corporation_name = contact_params[:corporation_name]
+                
+                # Store corporation info in metadata
+                contact.metadata ||= {}
+                contact.metadata = contact.metadata.merge({
+                  corporation_id: contact_params[:corporation_id],
+                  corporation_name: contact_params[:corporation_name]
+                })
+                
                 contact.status = contact_params[:status] || 'active'
                 
                 if contact.save
@@ -138,8 +144,8 @@ module Api
           email: contact.email,
           first_name: contact.first_name,
           last_name: contact.last_name,
-          corporation_id: contact.corporation_id,
-          corporation_name: contact.corporation_name,
+          corporation_id: contact.metadata&.dig('corporation_id'),
+          corporation_name: contact.metadata&.dig('corporation_name'),
           status: contact.status,
           contact_groups: contact.contact_groups.map { |g| { id: g.id, name: g.name } }
         }
