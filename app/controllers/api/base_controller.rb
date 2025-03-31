@@ -5,6 +5,7 @@ module Api
     
     # Always respond with JSON
     before_action :set_json_format
+    before_action :handle_options_request
     
     rescue_from StandardError, with: :handle_standard_error
     rescue_from ActiveRecord::RecordNotFound, with: :handle_not_found
@@ -15,6 +16,16 @@ module Api
     
     def set_json_format
       request.format = :json
+      response.headers['Content-Type'] = 'application/json'
+    end
+    
+    def handle_options_request
+      if request.method == "OPTIONS"
+        headers['Access-Control-Allow-Origin'] = '*'
+        headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS'
+        headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        render json: {}, status: :ok
+      end
     end
     
     def handle_standard_error(exception)

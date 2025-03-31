@@ -5,17 +5,19 @@ threads threads_count, threads_count
 
 preload_app!
 
-rackup DefaultRackup
+# Remove the DefaultRackup constant reference
+# rackup DefaultRackup
 port ENV['PORT'] || 3000
 environment ENV['RACK_ENV'] || 'development'
 
 # Heroku requires SSL termination at the load balancer level
 # Tell Puma to expect this by enabling HTTP explicitly
-ssl_bind '0.0.0.0', ENV['PORT'] || 3000, {
-  key: '/dev/null', # Placeholder since Heroku handles SSL
-  cert: '/dev/null', # Placeholder since Heroku handles SSL
-  verify_mode: 'none'
-}
+# Remove the ssl_bind section causing issues
+# ssl_bind '0.0.0.0', ENV['PORT'] || 3000, {
+#   key: '/dev/null', # Placeholder since Heroku handles SSL
+#   cert: '/dev/null', # Placeholder since Heroku handles SSL
+#   verify_mode: 'none'
+# }
 
 on_worker_boot do
   # Worker specific setup for Rails 4.1+
