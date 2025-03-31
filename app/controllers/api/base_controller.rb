@@ -3,6 +3,9 @@ module Api
     protect_from_forgery with: :null_session
     skip_before_action :verify_authenticity_token
     
+    # Skip any Devise authentication
+    skip_before_action :authenticate_user!, raise: false
+    
     # Always respond with JSON
     before_action :set_json_format
     
