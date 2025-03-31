@@ -6,7 +6,7 @@ class Contact < ApplicationRecord
   has_and_belongs_to_many :contact_groups
   
   # Validations
-  validates :email, presence: true, uniqueness: { scope: [:user_id, :entity_id] }, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :email, presence: true, email: true, uniqueness: { scope: :user_id }
   validates :first_name, :last_name, presence: true
   
   # Status options
@@ -20,5 +20,16 @@ class Contact < ApplicationRecord
   # Methods
   def full_name
     "#{first_name} #{last_name}"
+  end
+  
+  # Ensure contact belongs to only one group
+  validate :single_group_membership
+  
+  private
+  
+  def single_group_membership
+    if contact_groups.count > 1
+      errors.add(:base, "Contact can only belong to one group at a time")
+    end
   end
 end

@@ -33,54 +33,96 @@ class CampaignService
   end
   
   # Process pending email deliveries
-  def process_pending_deliveries(batch_size = 50)
-    # Get all pending email deliveries for this campaign that aren't for opted-out contacts
-    pending_deliveries = @campaign.email_deliveries
-                                 .joins(:contact)
-                                 .where(status: 'pending')
-                                 .where(contacts: { opted_out: false })
-                                 .limit(batch_size)
+  def process_pending_deliveries(batch_size = 200)
+    return 0 unless @campaign.status == 'in_progress'
     
-    # Update any deliveries for opted-out contacts to 'cancelled'
-    @campaign.email_deliveries
-             .joins(:contact)
-             .where(status: 'pending')
-             .where(contacts: { opted_out: true })
-             .update_all(status: 'cancelled', notes: 'Contact has unsubscribed')
+    Rails.logger.info("Processing pending deliveries for campaign #{@campaign.id}: #{@campaign.name}")
+    
+    # Get pending deliveries with rate limiting
+    pending_deliveries = @campaign.email_deliveries
+      .where(status: 'pending')
+      .includes(:contact)
+      .limit(batch_size)
     
     sent_count = 0
+    error_count = 0
     
     pending_deliveries.each do |delivery|
       begin
-        # Send the email
-        mail = CampaignMailer.campaign_email(delivery)
-        result = mail.deliver_now
-        
-        # Check if we got a Mailgun-specific response with message ID
-        if result.respond_to?(:message_id) && result.message_id.present?
-          delivery.update(mailgun_message_id: result.message_id.to_s) 
+        # Check if campaign was stopped
+        @campaign.reload
+        if @campaign.status != 'in_progress'
+          Rails.logger.info("Campaign #{@campaign.id} was stopped. Stopping processing.")
+          break
         end
         
-        # Update delivery status
-        delivery.mark_as_sent
-        
+        # Process and send the email
+        process_and_send_email(delivery)
         sent_count += 1
-      rescue => e
-        # Handle errors
-        delivery.mark_as_failed(e.message)
-        Rails.logger.error("Failed to send email to #{delivery.contact.email}: #{e.message}")
+        
+        # Log progress every 50 emails
+        if sent_count % 50 == 0
+          Rails.logger.info("Campaign #{@campaign.id} progress: #{sent_count} sent, #{error_count} errors")
+        end
+        
+        # Add a small delay between sends to avoid rate limiting
+        sleep(0.1)
+      rescue StandardError => e
+        error_count += 1
+        Rails.logger.error("Error processing delivery #{delivery.id} for campaign #{@campaign.id}: #{e.message}")
+        delivery.update(status: 'failed', error_message: e.message)
       end
     end
     
-    # If all deliveries are processed, mark campaign as completed
-    if sent_count > 0 && @campaign.email_deliveries.where(status: 'pending').count == 0
-      @campaign.update(status: 'completed')
-      
-      # Sync with Mailgun after completion
-      @campaign.sync_mailgun_stats if Rails.env.production?
-    end
+    # Log final batch results
+    Rails.logger.info("Campaign #{@campaign.id} batch complete: #{sent_count} sent, #{error_count} errors")
     
     sent_count
+  end
+  
+  def stop_campaign
+    Rails.logger.info("Stopping campaign #{@campaign.id}: #{@campaign.name}")
+    
+    # Update campaign status
+    @campaign.update(status: 'stopped')
+    
+    # Cancel any pending jobs
+    Sidekiq::ScheduledSet.new.each do |job|
+      if job.args.first == @campaign.id && job.queue == 'default'
+        job.delete
+        Rails.logger.info("Cancelled scheduled job for campaign #{@campaign.id}")
+      end
+    end
+    
+    Rails.logger.info("Campaign #{@campaign.id} stopped successfully")
+  end
+  
+  def pause_campaign
+    Rails.logger.info("Pausing campaign #{@campaign.id}: #{@campaign.name}")
+    
+    # Update campaign status
+    @campaign.update(status: 'paused')
+    
+    # Cancel any pending jobs
+    Sidekiq::ScheduledSet.new.each do |job|
+      if job.args.first == @campaign.id && job.queue == 'default'
+        job.delete
+        Rails.logger.info("Cancelled scheduled job for campaign #{@campaign.id}")
+      end
+    end
+    
+    Rails.logger.info("Campaign #{@campaign.id} paused successfully")
+  end
+  
+  def resume_campaign
+    Rails.logger.info("Resuming campaign #{@campaign.id}: #{@campaign.name}")
+    
+    # Update campaign status
+    @campaign.update(status: 'in_progress')
+    
+    # Schedule a new job to process pending deliveries
+    ProcessCampaignJob.perform_later(@campaign.id)
+    Rails.logger.info("Scheduled new job for campaign #{@campaign.id}")
   end
   
   # Start a campaign
@@ -106,4 +148,5 @@ class CampaignService
     # Schedule the job to process emails at the scheduled time
     ProcessCampaignJob.set(wait_until: scheduled_at).perform_later(@campaign.id)
   end
+end 
 end 

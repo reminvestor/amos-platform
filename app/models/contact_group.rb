@@ -11,12 +11,22 @@ class ContactGroup < ApplicationRecord
   # Callback to prevent deletion if contacts are associated
   before_destroy :check_for_contacts
   
+  # When adding a contact, remove it from other groups first
+  before_add :remove_from_other_groups
+  
   private
   
   def check_for_contacts
     if contacts.any?
       errors.add(:base, "Cannot delete group because it contains contacts")
       throw :abort
+    end
+  end
+  
+  def remove_from_other_groups
+    contact = contacts.last
+    ContactGroup.where(user: user).where.not(id: id).each do |group|
+      group.contacts.delete(contact)
     end
   end
 end

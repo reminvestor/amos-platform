@@ -16,7 +16,7 @@ class CampaignsController < ApplicationController
       @campaign.update(opted_out_contacts_count: contacts.where(opted_out: true).count)
     end
     
-    @email_deliveries = @campaign.email_deliveries.includes(:contact).order(sent_at: :desc)
+    @email_deliveries = @campaign.email_deliveries.includes(:contact).order(sent_at: :desc).page(params[:page]).per(50)
   end
 
   def new
@@ -114,24 +114,32 @@ class CampaignsController < ApplicationController
   end
   
   def pause
-    if @campaign.update(status: 'paused')
-      redirect_to @campaign, notice: 'Campaign paused successfully.'
-    else
-      redirect_to @campaign, alert: 'Failed to pause campaign.'
+    @campaign = Campaign.find(params[:id])
+    service = CampaignService.new(@campaign)
+    service.pause_campaign
+    
+    respond_to do |format|
+      format.html { redirect_to campaigns_path, notice: 'Campaign was successfully paused.' }
     end
   end
   
   def resume
+    @campaign = Campaign.find(params[:id])
     service = CampaignService.new(@campaign)
-    service.start_campaign
-    redirect_to @campaign, notice: 'Campaign resumed successfully.'
+    service.resume_campaign
+    
+    respond_to do |format|
+      format.html { redirect_to campaigns_path, notice: 'Campaign was successfully resumed.' }
+    end
   end
   
   def stop
-    if @campaign.update(status: 'stopped')
-      redirect_to @campaign, notice: 'Campaign stopped successfully.'
-    else
-      redirect_to @campaign, alert: 'Failed to stop campaign.'
+    @campaign = Campaign.find(params[:id])
+    service = CampaignService.new(@campaign)
+    service.stop_campaign
+    
+    respond_to do |format|
+      format.html { redirect_to campaigns_path, notice: 'Campaign was successfully stopped.' }
     end
   end
   
