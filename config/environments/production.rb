@@ -32,18 +32,18 @@ Rails.application.configure do
   config.assume_ssl = true
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  # Disable when running on Heroku which handles SSL termination
-  config.force_ssl = ENV['DYNO'].nil? # Only true if NOT on Heroku
+  # IMPORTANT: On Heroku, this MUST be false as Heroku handles SSL termination
+  config.force_ssl = false
 
   # Configure proxy settings for Heroku
   config.action_dispatch.trusted_proxies = ActionDispatch::RemoteIp::TRUSTED_PROXIES +
     [IPAddr.new('10.0.0.0/8'), IPAddr.new('172.16.0.0/12'), IPAddr.new('192.168.0.0/16')]
 
-  # Skip http-to-https redirect for the default health check endpoint.
-  config.ssl_options = { 
-    redirect: { exclude: ->(request) { request.path == "/up" || request.path.start_with?("/api/") } },
-    hsts: { expires: 1.year }
-  }
+  # SSL options - comment out to let Heroku handle it
+  # config.ssl_options = { 
+  #   redirect: { exclude: ->(request) { request.path == "/up" || request.path.start_with?("/api/") } },
+  #   hsts: { expires: 1.year }
+  # }
   
   # Disable forgery protection for API routes
   config.action_controller.allow_forgery_protection = false
