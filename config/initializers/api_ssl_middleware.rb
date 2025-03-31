@@ -26,5 +26,5 @@ class ApiSslMiddleware
   end
 end
 
-# Add our API SSL middleware
-Rails.application.config.middleware.use ApiSslMiddleware 
+# DISABLED: This middleware may be interfering with Heroku's SSL termination
+# Rails.application.config.middleware.use ApiSslMiddleware 
