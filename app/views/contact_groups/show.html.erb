@@ -25,36 +25,42 @@
     <% end %>
   </div>
 
-  <div class="bg-white rounded-lg shadow">
-    <div class="p-6">
-      <h2 class="text-xl font-semibold mb-4">Contacts</h2>
-      
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corporation ID</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corporation Name</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <% @contacts.each do |contact| %>
+  <% if !@contact_group || !@contacts %>
+    <div class="alert alert-danger">
+      Error loading contact group data. Please try again or contact support.
+    </div>
+  <% else %>
+    <div class="bg-white rounded-lg shadow">
+      <div class="p-6">
+        <h2 class="text-xl font-semibold mb-4">Contacts</h2>
+        
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
               <tr>
-                <td class="px-6 py-4 whitespace-nowrap"><%= contact.name %></td>
-                <td class="px-6 py-4 whitespace-nowrap"><%= contact.email %></td>
-                <td class="px-6 py-4 whitespace-nowrap"><%= contact.corporation_id %></td>
-                <td class="px-6 py-4 whitespace-nowrap"><%= contact.corporation_name %></td>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corporation ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corporation Name</th>
               </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <% @contacts.each do |contact| %>
+                <tr>
+                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.name %></td>
+                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.email %></td>
+                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.corporation_id %></td>
+                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.corporation_name %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
 
-      <div class="mt-4">
-        <%= paginate @contacts %>
+        <div class="mt-4">
+          <%= paginate @contacts %>
+        </div>
       </div>
     </div>
-  </div>
+  <% end %>
 </div>
