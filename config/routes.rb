@@ -1,4 +1,11 @@
 Rails.application.routes.draw do
+  # API routes
+  namespace :api do
+    namespace :v1 do
+      resources :contacts, only: [:create]
+    end
+  end
+  
   # Routes with constraints on subdomain - application routes for 'app' subdomain
   constraints(lambda { |req| req.subdomain == 'app' }) do
     # Devise routes for authentication

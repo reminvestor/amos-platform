@@ -1,0 +1,116 @@
+module Api
+  module V1
+    class ContactsController < ApplicationController
+      skip_before_action :authenticate_user!
+      before_action :authenticate_api_request
+      
+      def create
+        begin
+          ActiveRecord::Base.transaction do
+            contacts = []
+            errors = []
+            
+            # Process each contact in the request
+            params[:contacts].each do |contact_params|
+              begin
+                # Find or create contact
+                contact = Contact.find_or_initialize_by(
+                  email: contact_params[:email],
+                  user: current_user
+                )
+                
+                # Update contact attributes
+                contact.first_name = contact_params[:first_name]
+                contact.last_name = contact_params[:last_name]
+                contact.corporation_id = contact_params[:corporation_id]
+                contact.corporation_name = contact_params[:corporation_name]
+                contact.status = contact_params[:status] || 'active'
+                
+                if contact.save
+                  contacts << contact
+                  
+                  # Handle group assignment
+                  if params[:contact_group_id].present?
+                    # Add to specified group
+                    target_group = current_user.contact_groups.find(params[:contact_group_id])
+                    target_group.contacts << contact
+                  else
+                    # Create new group if none specified
+                    group = current_user.contact_groups.create!(
+                      name: "API Import #{Time.current.strftime('%Y-%m-%d %H:%M')}",
+                      description: "Automatically created group for API import"
+                    )
+                    group.contacts << contact
+                  end
+                else
+                  errors << {
+                    email: contact_params[:email],
+                    errors: contact.errors.full_messages
+                  }
+                end
+              rescue => e
+                errors << {
+                  email: contact_params[:email],
+                  errors: [e.message]
+                }
+              end
+            end
+            
+            if errors.any?
+              render json: {
+                success: false,
+                message: "Some contacts failed to process",
+                contacts_created: contacts.length,
+                errors: errors
+              }, status: :unprocessable_entity
+            else
+              render json: {
+                success: true,
+                message: "Successfully processed #{contacts.length} contacts",
+                contacts: contacts.map { |c| contact_response(c) }
+              }, status: :created
+            end
+          end
+        rescue => e
+          render json: {
+            success: false,
+            message: "Error processing contacts",
+            error: e.message
+          }, status: :internal_server_error
+        end
+      end
+      
+      private
+      
+      def authenticate_api_request
+        # Get the API key from the Authorization header
+        api_key = request.headers['Authorization']&.split(' ')&.last
+        
+        if api_key.blank?
+          render json: { error: 'Missing API key' }, status: :unauthorized
+          return
+        end
+        
+        # Find user by API key
+        @current_user = User.find_by(api_key: api_key)
+        
+        unless @current_user
+          render json: { error: 'Invalid API key' }, status: :unauthorized
+        end
+      end
+      
+      def contact_response(contact)
+        {
+          id: contact.id,
+          email: contact.email,
+          first_name: contact.first_name,
+          last_name: contact.last_name,
+          corporation_id: contact.corporation_id,
+          corporation_name: contact.corporation_name,
+          status: contact.status,
+          contact_groups: contact.contact_groups.map { |g| { id: g.id, name: g.name } }
+        }
+      end
+    end
+  end
+end 

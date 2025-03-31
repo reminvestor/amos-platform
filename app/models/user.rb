@@ -89,4 +89,12 @@ class User < ApplicationRecord
   def administered_entities
     entities.includes(:entity_users).where(entity_users: { role: ['owner', 'admin'] })
   end
+  
+  before_create :generate_api_key
+  
+  private
+  
+  def generate_api_key
+    self.api_key = SecureRandom.hex(32)
+  end
 end
