@@ -33,5 +33,34 @@ module AgentMarketing
       development: ->(request) { request.domain },
       test: ->(request) { request.domain }
     }.fetch(Rails.env.to_sym)
+
+    # Add a special middleware to detect and log SSL issues
+    config.middleware.insert_before 0, ->(app) {
+      ->(*args) {
+        env = args.first
+        path = env["PATH_INFO"]
+        
+        # For API requests, add special SSL/https headers
+        if path.start_with?('/api/')
+          env["HTTPS"] = "on"
+          env["HTTP_X_FORWARDED_PROTO"] = "https"
+          env["rack.url_scheme"] = "https"
+          
+          begin
+            return app.call(env)
+          rescue Puma::HttpParserError => e
+            # If we catch an SSL error on API, return a JSON response
+            puts "API SSL Error: #{e.message}"
+            [500, {"Content-Type" => "application/json"}, [{error: "API SSL Error: #{e.message}"}.to_json]]
+          rescue => e
+            # For any other error
+            puts "API Error: #{e.message}"
+            [500, {"Content-Type" => "application/json"}, [{error: "API Error: #{e.message}"}.to_json]]
+          end
+        else
+          app.call(env)
+        end
+      }
+    }
   end
 end
