@@ -24,6 +24,9 @@ module Api
             # Process each contact in the request
             params[:contacts].each do |contact_params|
               begin
+                # Get the user's active entity or default entity
+                user_entity_id = determine_entity_id
+                
                 # Find or create contact
                 contact = Contact.find_or_initialize_by(
                   email: contact_params[:email],
@@ -33,6 +36,9 @@ module Api
                 # Update contact attributes
                 contact.first_name = contact_params[:first_name]
                 contact.last_name = contact_params[:last_name]
+                
+                # Set entity_id from user's active entity
+                contact.entity_id = user_entity_id
                 
                 # Store corporation info in metadata
                 contact.metadata ||= {}
@@ -60,7 +66,8 @@ module Api
                     # Create new group if none specified
                     group = current_user.contact_groups.create!(
                       name: "API Import #{Time.current.strftime('%Y-%m-%d %H:%M')}",
-                      description: "Automatically created group for API import"
+                      description: "Automatically created group for API import",
+                      entity_id: user_entity_id # Set entity_id on new group
                     )
                     
                     # Remove from any existing groups first
@@ -109,6 +116,22 @@ module Api
       end
       
       private
+      
+      # Determine which entity_id to use based on user's associations
+      def determine_entity_id
+        # Try to get user's primary entity
+        if current_user.respond_to?(:primary_entity) && current_user.primary_entity.present?
+          return current_user.primary_entity.id
+        end
+        
+        # Or use the first entity if one exists
+        if current_user.entities.any?
+          return current_user.entities.first.id
+        end
+        
+        # Return nil if no entity is available (global contact)
+        nil
+      end
       
       def authenticate_api_request
         # Get the API key from the Authorization header
