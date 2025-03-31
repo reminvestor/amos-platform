@@ -7,7 +7,25 @@ class ContactGroupsController < ApplicationController
   end
 
   def show
-    @contacts = @contact_group.contacts.order(last_name: :asc, first_name: :asc).page(params[:page])
+    begin
+      # Ensure the contact group is loaded correctly
+      unless @contact_group
+        redirect_to contact_groups_path, alert: "Contact group not found"
+        return
+      end
+      
+      # Get contacts with error handling
+      @contacts = @contact_group.contacts
+                  .includes(:contact_groups) # Eager load to reduce N+1 queries
+                  .order(last_name: :asc, first_name: :asc)
+                  .page(params[:page])
+    rescue => e
+      # Log the error for debugging
+      Rails.logger.error("Error in contact_groups#show: #{e.message}\n#{e.backtrace.join("\n")}")
+      
+      # Redirect with error message
+      redirect_to contact_groups_path, alert: "Error loading contact group: #{e.message}"
+    end
   end
 
   def new
@@ -80,10 +98,30 @@ class ContactGroupsController < ApplicationController
           contact.corporation_name = row['corporation_name']
 
           if contact.save
-            # Remove from other groups and add to current group
-            ContactGroup.where(user: current_user).where.not(id: @contact_group.id).each do |group|
-              group.contacts.delete(contact)
+            # Remove from other groups in the same entity
+            if @contact_group.entity_id.present?
+              # Only remove from groups in the same entity
+              same_entity_groups = ContactGroup.where(
+                user: current_user, 
+                entity_id: @contact_group.entity_id
+              ).where.not(id: @contact_group.id)
+              
+              same_entity_groups.each do |group|
+                group.contacts.delete(contact) if group.contacts.include?(contact)
+              end
+            else
+              # For global groups (no entity), only remove from other global groups
+              global_groups = ContactGroup.where(
+                user: current_user,
+                entity_id: nil
+              ).where.not(id: @contact_group.id)
+              
+              global_groups.each do |group|
+                group.contacts.delete(contact) if group.contacts.include?(contact)
+              end
             end
+            
+            # Add to current group
             @contact_group.contacts << contact unless @contact_group.contacts.include?(contact)
             success_count += 1
           else

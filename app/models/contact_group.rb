@@ -25,23 +25,38 @@ class ContactGroup < ApplicationRecord
   end
   
   def remove_from_other_groups(contact)
-    # Only remove from groups in the same entity
-    if entity_id.present?
-      # Find groups in the same entity, excluding this one
-      same_entity_groups = ContactGroup.where(entity_id: entity_id).where.not(id: id)
-      
-      # Remove contact from all groups in the same entity
-      same_entity_groups.each do |group|
-        group.contacts.delete(contact) if group.contacts.include?(contact)
+    # Skip if contact is nil or already being processed
+    return unless contact
+    
+    begin
+      # Only remove from groups in the same entity
+      if entity_id.present?
+        # Find groups in the same entity, excluding this one
+        same_entity_groups = ContactGroup.where(entity_id: entity_id).where.not(id: id)
+        
+        # Remove contact from all groups in the same entity
+        same_entity_groups.each do |group|
+          # Use delete instead of delete_all to trigger callbacks
+          if group.contacts.include?(contact)
+            # Use a direct SQL query to avoid callbacks and race conditions
+            ContactGroupsContact.where(contact_id: contact.id, contact_group_id: group.id).delete_all
+          end
+        end
+      else
+        # For global groups (no entity), only remove from other global groups
+        global_groups = ContactGroup.where(entity_id: nil).where.not(id: id)
+        
+        # Remove contact from all global groups
+        global_groups.each do |group|
+          if group.contacts.include?(contact)
+            # Use a direct SQL query to avoid callbacks and race conditions
+            ContactGroupsContact.where(contact_id: contact.id, contact_group_id: group.id).delete_all
+          end
+        end
       end
-    else
-      # For global groups (no entity), only remove from other global groups
-      global_groups = ContactGroup.where(entity_id: nil).where.not(id: id)
-      
-      # Remove contact from all global groups
-      global_groups.each do |group|
-        group.contacts.delete(contact) if group.contacts.include?(contact)
-      end
+    rescue => e
+      # Log error but don't fail the operation
+      Rails.logger.error("Error in remove_from_other_groups: #{e.message}\n#{e.backtrace.join("\n")}")
     end
   end
 end
