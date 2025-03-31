@@ -14,10 +14,10 @@ class CampaignMailer < ApplicationMailer
       protocol: 'https'
     )
     
-    # Process the template content to replace variables and add tracking links
-    if @email_template.body.present? && @email_delivery.id.present?
-      processed_content = process_template_variables(@email_template.body, @contact)
-      @email_body = add_tracking_to_links(processed_content, email_delivery.id)
+    # Just process template variables without adding our own tracking links
+    # Let Mailgun handle the link tracking for us
+    if @email_template.body.present?
+      @email_body = process_template_variables(@email_template.body, @contact)
     else
       @email_body = @email_template.body
     end
