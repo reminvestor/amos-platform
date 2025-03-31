@@ -1,4 +1,4 @@
 web: bundle exec puma -C config/puma_heroku.rb
-worker: bundle exec sidekiq -e ${RAILS_ENV:-production} -C config/sidekiq.yml || echo "Sidekiq not available, skipping worker process"
+worker: bundle exec sidekiq -e ${RAILS_ENV:-production} -C config/sidekiq.yml -r ./config/environment.rb || echo "Sidekiq not available, skipping worker process"
 clock: bundle exec clockwork clock.rb
 release: bundle exec rails db:migrate 
