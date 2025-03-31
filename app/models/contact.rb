@@ -5,12 +5,22 @@ class Contact < ApplicationRecord
   # Many-to-many association with contact groups
   has_and_belongs_to_many :contact_groups, -> { distinct }, class_name: 'ContactGroup'
   
+  # JSONB metadata handling
+  serialize :metadata, JSON
+
+  # Helper methods for corporation data
+  def corporation_id
+    metadata&.dig('corporation_id')
+  end
+
+  def corporation_name
+    metadata&.dig('corporation_name')
+  end
+  
   # Validations
-  validates :email, presence: true, email: true, uniqueness: true
+  validates :email, presence: true, email: true
   validates :first_name, presence: true
   validates :last_name, presence: true
-  validates :corporation_id, presence: true
-  validates :corporation_name, presence: true
   
   # Status options
   STATUSES = %w[active inactive unsubscribed].freeze
