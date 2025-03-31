@@ -35,7 +35,13 @@ class CampaignService
     pending_deliveries.each do |delivery|
       begin
         # Send the email
-        CampaignMailer.campaign_email(delivery).deliver_now
+        mail = CampaignMailer.campaign_email(delivery)
+        result = mail.deliver_now
+        
+        # Check if we got a Mailgun-specific response with message ID
+        if result.respond_to?(:message_id) && result.message_id.present?
+          delivery.update(mailgun_message_id: result.message_id.to_s) 
+        end
         
         # Update delivery status
         delivery.mark_as_sent
@@ -46,6 +52,14 @@ class CampaignService
         delivery.mark_as_failed(e.message)
         Rails.logger.error("Failed to send email to #{delivery.contact.email}: #{e.message}")
       end
+    end
+    
+    # If all deliveries are processed, mark campaign as completed
+    if sent_count > 0 && @campaign.email_deliveries.where(status: 'pending').count == 0
+      @campaign.update(status: 'completed')
+      
+      # Sync with Mailgun after completion
+      @campaign.sync_mailgun_stats if Rails.env.production?
     end
     
     sent_count

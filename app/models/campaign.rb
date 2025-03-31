@@ -30,7 +30,11 @@ class Campaign < ApplicationRecord
   end
   
   def sent_count
-    email_deliveries.where.not(sent_at: nil).count
+    if mailgun_stats.present? && mailgun_stats["delivered"].present?
+      mailgun_stats["delivered"]
+    else
+      email_deliveries.where.not(sent_at: nil).count
+    end
   end
   
   def sent_at
@@ -39,38 +43,65 @@ class Campaign < ApplicationRecord
   end
   
   def open_rate
-    return 0 if sent_count.zero?
-    (email_deliveries.where.not(opened_at: nil).count.to_f / sent_count * 100).round(2)
+    # Use Mailgun stats if available
+    if mailgun_stats.present? && mailgun_stats["delivered"].present? && mailgun_stats["delivered"] > 0
+      (mailgun_stats["opened"].to_f / mailgun_stats["delivered"] * 100).round(2)
+    else
+      # Fall back to our internal tracking
+      return 0 if sent_count.zero?
+      (email_deliveries.where.not(opened_at: nil).count.to_f / sent_count * 100).round(2)
+    end
   end
   
   def click_rate
-    return 0 if sent_count.zero?
-    (email_deliveries.where.not(clicked_at: nil).count.to_f / sent_count * 100).round(2)
+    # Use Mailgun stats if available
+    if mailgun_stats.present? && mailgun_stats["delivered"].present? && mailgun_stats["delivered"] > 0
+      (mailgun_stats["clicked"].to_f / mailgun_stats["delivered"] * 100).round(2)
+    else
+      # Fall back to our internal tracking
+      return 0 if sent_count.zero?
+      (email_deliveries.where.not(clicked_at: nil).count.to_f / sent_count * 100).round(2)
+    end
   end
   
   def unsubscribe_rate
-    return 0 if sent_count.zero?
-    
-    # Get the contacts who received this campaign
-    campaign_contacts = email_deliveries.where.not(sent_at: nil).joins(:contact).pluck('contacts.id')
-    return 0 if campaign_contacts.empty?
-    
-    # Count how many of them have opted out after the campaign started
-    # (only count those who unsubscribed after receiving this campaign)
-    first_send_time = sent_at
-    unsubscribed_count = Contact.where(id: campaign_contacts)
-                                .where(opted_out: true)
-                                .where('opted_out_at >= ?', first_send_time)
-                                .count
-    
-    (unsubscribed_count.to_f / campaign_contacts.count * 100).round(2)
+    # Use Mailgun stats if available
+    if mailgun_stats.present? && mailgun_stats["delivered"].present? && mailgun_stats["delivered"] > 0 && mailgun_stats["complained"].present?
+      (mailgun_stats["complained"].to_f / mailgun_stats["delivered"] * 100).round(2)
+    else
+      # Fall back to our internal tracking
+      return 0 if sent_count.zero?
+      
+      # Get the contacts who received this campaign
+      campaign_contacts = email_deliveries.where.not(sent_at: nil).joins(:contact).pluck('contacts.id')
+      return 0 if campaign_contacts.empty?
+      
+      # Count how many of them have opted out after the campaign started
+      # (only count those who unsubscribed after receiving this campaign)
+      first_send_time = sent_at
+      unsubscribed_count = Contact.where(id: campaign_contacts)
+                                 .where(opted_out: true)
+                                 .where('opted_out_at >= ?', first_send_time)
+                                 .count
+      
+      (unsubscribed_count.to_f / campaign_contacts.count * 100).round(2)
+    end
   end
   
   # Advanced analytics methods for AI-driven insights
   
   def bounce_rate
-    return 0 if sent_count.zero?
-    (email_deliveries.where(status: 'bounced').count.to_f / sent_count * 100).round(2)
+    # Use Mailgun stats if available
+    if mailgun_stats.present? && mailgun_stats["delivered"].present? && mailgun_stats["failed"].present?
+      total_sent = mailgun_stats["delivered"] + mailgun_stats["failed"]
+      return 0 if total_sent.zero?
+      
+      (mailgun_stats["failed"].to_f / total_sent * 100).round(2)
+    else
+      # Fall back to internal tracking
+      return 0 if sent_count.zero?
+      (email_deliveries.where(status: 'bounced').count.to_f / sent_count * 100).round(2)
+    end
   end
   
   def engagement_score
@@ -135,5 +166,18 @@ class Campaign < ApplicationRecord
       mobile: 42,
       tablet: 13
     }
+  end
+  
+  def sync_mailgun_stats
+    # Don't try to sync if we don't have a tag
+    return false unless mailgun_tag.present?
+    
+    # Queue the sync job
+    SyncMailgunStatsJob.perform_later(id)
+    true
+  end
+  
+  def last_synced_at
+    mailgun_stats.present? ? mailgun_stats["last_synced_at"] : nil
   end
 end

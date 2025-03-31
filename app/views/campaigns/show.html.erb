@@ -75,6 +75,26 @@
                   None
                 <% end %>
               </p>
+              
+              <% if @campaign.mailgun_tag.present? && Rails.env.production? %>
+                <div class="card bg-light mt-3 mb-2">
+                  <div class="card-body">
+                    <h6><i class="fas fa-sync me-2"></i> Mailgun Integration</h6>
+                    <p class="mb-0">
+                      <small>
+                        <% if @campaign.last_synced_at.present? %>
+                          <span class="text-muted">Last synced: <%= @campaign.last_synced_at.strftime('%b %d, %Y at %I:%M %p') %></span>
+                        <% else %>
+                          <span class="text-warning">Not synced yet</span>
+                        <% end %>
+                        <%= button_to sync_mailgun_campaign_path(@campaign), method: :post, class: "btn btn-sm btn-outline-primary mt-2" do %>
+                          <i class="fas fa-sync-alt me-1"></i> Sync with Mailgun
+                        <% end %>
+                      </small>
+                    </p>
+                  </div>
+                </div>
+              <% end %>
             </div>
             <div class="col-md-4">
               <h4>Campaign Statistics</h4>

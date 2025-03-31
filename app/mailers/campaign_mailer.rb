@@ -25,6 +25,20 @@ class CampaignMailer < ApplicationMailer
     headers['X-Campaign-ID'] = @campaign.id.to_s
     headers['X-Contact-ID'] = @contact.id.to_s
     
+    # Set Mailgun tags for tracking in Mailgun
+    campaign_tag = "campaign_#{@campaign.id}"
+    headers['X-Mailgun-Tag'] = campaign_tag
+    
+    # Ensure campaign has a tag for Mailgun tracking
+    @campaign.update(mailgun_tag: campaign_tag) if @campaign.mailgun_tag.blank?
+    
+    # Set this delivery event as the message-id for tracking
+    message_id = "<campaign-#{@campaign.id}-delivery-#{email_delivery.id}@#{ENV['MAILGUN_DOMAIN']}>"
+    headers['Message-ID'] = message_id
+    
+    # Store the message-id for later reference
+    email_delivery.update(mailgun_message_id: message_id)
+    
     mail(
       to: @contact.email,
       subject: @email_template.subject,
@@ -45,6 +59,12 @@ class CampaignMailer < ApplicationMailer
     # Set test headers
     headers['X-Test-Email'] = 'true'
     headers['X-Campaign-ID'] = @campaign.id.to_s
+    
+    # Set Mailgun tags for tracking test emails
+    headers['X-Mailgun-Tag'] = "test_campaign_#{@campaign.id}"
+    
+    # Ensure campaign has a tag for Mailgun tracking
+    @campaign.update(mailgun_tag: "campaign_#{@campaign.id}") if @campaign.mailgun_tag.blank?
     
     mail(
       to: email,
