@@ -178,6 +178,12 @@ class Campaign < ApplicationRecord
   end
   
   def last_synced_at
-    mailgun_stats.present? ? mailgun_stats["last_synced_at"] : nil
+    if mailgun_stats.present? && mailgun_stats["last_synced_at"].present?
+      # Convert string to DateTime if it's not already a DateTime object
+      last_synced = mailgun_stats["last_synced_at"]
+      last_synced.is_a?(String) ? DateTime.parse(last_synced) : last_synced
+    else
+      nil
+    end
   end
 end

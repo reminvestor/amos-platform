@@ -176,7 +176,7 @@ class MailgunService
         clicked: clicked["total"],
         complained: complained["total"],
         failed: failed["total"],
-        last_synced_at: Time.current
+        last_synced_at: Time.current.iso8601
       }
     )
   end
