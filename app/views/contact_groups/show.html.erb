@@ -47,10 +47,18 @@
             <tbody class="bg-white divide-y divide-gray-200">
               <% @contacts.each do |contact| %>
                 <tr>
-                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.name %></td>
-                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.email %></td>
-                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.corporation_id %></td>
-                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.corporation_name %></td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <% if contact.respond_to?(:name) && contact.name.present? %>
+                      <%= contact.name %>
+                    <% elsif contact.respond_to?(:full_name) %>
+                      <%= contact.full_name %>
+                    <% else %>
+                      <%= "#{contact.first_name} #{contact.last_name}" rescue "Name not available" %>
+                    <% end %>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.email rescue "Email not available" %></td>
+                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.respond_to?(:corporation_id) ? contact.corporation_id : contact.metadata&.dig('corporation_id') rescue "Corp ID not available" %></td>
+                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.respond_to?(:corporation_name) ? contact.corporation_name : contact.metadata&.dig('corporation_name') rescue "Corp name not available" %></td>
                 </tr>
               <% end %>
             </tbody>
