@@ -27,11 +27,16 @@ module Api
                 # Get the user's active entity or default entity
                 user_entity_id = determine_entity_id
                 
-                # Find or create contact
-                contact = Contact.find_or_initialize_by(
-                  email: contact_params[:email],
-                  user: current_user
-                )
+                # Find or create contact, scoped by entity and email
+                find_params = { email: contact_params[:email] }
+                
+                # Only add entity scope if an entity was found
+                find_params[:entity_id] = user_entity_id if user_entity_id.present?
+                
+                # Always include user association
+                find_params[:user_id] = current_user.id
+                
+                contact = Contact.find_or_initialize_by(find_params)
                 
                 # Update contact attributes
                 contact.first_name = contact_params[:first_name]
