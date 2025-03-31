@@ -5,7 +5,6 @@ module Api
     
     # Always respond with JSON
     before_action :set_json_format
-    before_action :handle_options_request
     
     rescue_from StandardError, with: :handle_standard_error
     rescue_from ActiveRecord::RecordNotFound, with: :handle_not_found
@@ -16,16 +15,6 @@ module Api
     
     def set_json_format
       request.format = :json
-      response.headers['Content-Type'] = 'application/json'
-    end
-    
-    def handle_options_request
-      if request.method == "OPTIONS"
-        headers['Access-Control-Allow-Origin'] = '*'
-        headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS'
-        headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-        render json: {}, status: :ok
-      end
     end
     
     def handle_standard_error(exception)
@@ -34,7 +23,7 @@ module Api
         success: false,
         error: "Internal server error",
         message: exception.message
-      }, status: :internal_server_error, content_type: 'application/json'
+      }, status: :internal_server_error
     end
     
     def handle_not_found(exception)
@@ -42,7 +31,7 @@ module Api
         success: false,
         error: "Not found",
         message: exception.message
-      }, status: :not_found, content_type: 'application/json'
+      }, status: :not_found
     end
     
     def handle_parameter_missing(exception)
@@ -50,7 +39,7 @@ module Api
         success: false,
         error: "Missing parameter",
         message: exception.message
-      }, status: :bad_request, content_type: 'application/json'
+      }, status: :bad_request
     end
     
     def handle_invalid_token(exception)
@@ -58,7 +47,7 @@ module Api
         success: false,
         error: "Invalid CSRF token",
         message: exception.message
-      }, status: :unprocessable_entity, content_type: 'application/json'
+      }, status: :unprocessable_entity
     end
     
     def current_user
