@@ -48,7 +48,10 @@ class Contact < ApplicationRecord
   
   def ensure_single_group
     return unless contact_groups.size > 1
+    
     # Keep only the most recently added group
-    self.contact_groups = [contact_groups.last]
+    latest_group = contact_groups.last
+    self.contact_groups.clear
+    self.contact_groups << latest_group
   end
 end

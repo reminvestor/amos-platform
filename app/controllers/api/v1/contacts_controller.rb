@@ -50,6 +50,11 @@ module Api
                   if params[:contact_group_id].present?
                     # Add to specified group
                     target_group = current_user.contact_groups.find(params[:contact_group_id])
+                    
+                    # Remove from any existing groups first
+                    contact.contact_groups.clear if contact.contact_groups.any?
+                    
+                    # Add to target group
                     target_group.contacts << contact
                   else
                     # Create new group if none specified
@@ -57,6 +62,11 @@ module Api
                       name: "API Import #{Time.current.strftime('%Y-%m-%d %H:%M')}",
                       description: "Automatically created group for API import"
                     )
+                    
+                    # Remove from any existing groups first
+                    contact.contact_groups.clear if contact.contact_groups.any?
+                    
+                    # Add to new group
                     group.contacts << contact
                   end
                 else
