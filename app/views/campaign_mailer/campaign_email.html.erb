@@ -38,16 +38,14 @@
   </head>
   <body>
     <div class="container">
-      <div class="header">
-        <h1><%= @campaign.name %></h1>
-      </div>
+
       
       <div class="content">
-        <p>Hello <%= @contact.first_name %>,</p>
+
         
         <%= raw @email_body %>
         
-        <p>Best regards,<br><%= @campaign.user.full_name %></p>
+  
       </div>
       
       <div class="footer">
