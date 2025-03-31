@@ -3,7 +3,6 @@ module Api
     class ContactsController < Api::BaseController
       protect_from_forgery with: :null_session
       skip_before_action :verify_authenticity_token
-      skip_before_action :authenticate_user!
       before_action :authenticate_api_request
       
       def create
