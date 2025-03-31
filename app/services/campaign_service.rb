@@ -149,4 +149,3 @@ class CampaignService
     ProcessCampaignJob.set(wait_until: scheduled_at).perform_later(@campaign.id)
   end
 end 
-end 
