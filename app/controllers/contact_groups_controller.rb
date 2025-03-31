@@ -1,4 +1,6 @@
 class ContactGroupsController < ApplicationController
+  require 'csv'
+  
   before_action :authenticate_user!
   before_action :set_contact_group, only: [:show, :edit, :update, :destroy, :upload_csv]
   
@@ -49,11 +51,51 @@ class ContactGroupsController < ApplicationController
       begin
         @contacts = @contact_group.contacts
                     .includes(:contact_groups) # Eager load to reduce N+1 queries
-                    .order(last_name: :asc, first_name: :asc)
+                    .order("COALESCE(last_name, name, email) ASC, COALESCE(first_name, '') ASC")
                     .page(params[:page])
         
         # Log successful retrieval
         Rails.logger.info("SHOW: Successfully loaded #{@contacts.size} contacts for page #{params[:page] || 1}")
+        
+        # Support CSV format for export
+        respond_to do |format|
+          format.html
+          format.csv do
+            csv_data = CSV.generate(headers: true) do |csv|
+              # Add headers
+              csv << ["Name", "Email", "Corporation ID", "Corporation Name", "Status", "Created At"]
+              
+              # Add all contacts without pagination
+              all_contacts = @contact_group.contacts
+              all_contacts.each do |contact|
+                name = if contact.respond_to?(:name) && contact.name.present?
+                  contact.name
+                elsif contact.respond_to?(:full_name) && contact.full_name.present?
+                  contact.full_name
+                else
+                  "#{contact.first_name} #{contact.last_name}".strip rescue "Unknown"
+                end
+                
+                corporation_id = contact.respond_to?(:corporation_id) ? contact.corporation_id : contact.metadata&.dig('corporation_id')
+                corporation_name = contact.respond_to?(:corporation_name) ? contact.corporation_name : contact.metadata&.dig('corporation_name')
+                
+                csv << [
+                  name,
+                  contact.email,
+                  corporation_id,
+                  corporation_name,
+                  contact.status,
+                  contact.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                ]
+              end
+            end
+            
+            send_data csv_data, 
+              filename: "contacts_#{@contact_group.name.parameterize}_#{Date.today}.csv",
+              type: "text/csv",
+              disposition: "attachment"
+          end
+        end
       rescue => query_error
         Rails.logger.error("SHOW ERROR: Error querying contacts: #{query_error.class.name}: #{query_error.message}")
         Rails.logger.error(query_error.backtrace.join("\n"))
@@ -135,64 +177,90 @@ class ContactGroupsController < ApplicationController
       error_count = 0
       errors = []
 
+      # Clear existing contacts if requested
+      if params[:clear_existing].present? && params[:clear_existing] == "1"
+        Rails.logger.info("UPLOAD_CSV: Clearing existing contacts from group #{@contact_group.id}")
+        contact_count = @contact_group.contacts.count
+        @contact_group.contacts.clear
+        Rails.logger.info("UPLOAD_CSV: Cleared #{contact_count} contacts from group #{@contact_group.id}")
+      end
+
       CSV.foreach(csv_file.path, headers: true) do |row|
         begin
+          Rails.logger.info("UPLOAD_CSV: Processing row with email #{row['email']}")
+          
+          # Skip rows with missing email
+          if row['email'].blank?
+            error_count += 1
+            errors << "Row #{$.}: Missing email address"
+            next
+          end
+          
           # Find or create contact
           contact = Contact.find_or_initialize_by(
-            email: row['email'],
+            email: row['email'].strip,
             user: current_user
           )
 
+          # Set entity_id if we're in an entity context
+          contact.entity_id = current_entity.id if current_entity
+
           # Update contact attributes
-          contact.name = row['name']
-          contact.corporation_id = row['corporation_id']
-          contact.corporation_name = row['corporation_name']
+          if row['name'].present?
+            if row['name'].include?(' ')
+              # Split name into first and last name
+              name_parts = row['name'].strip.split(' ', 2)
+              contact.first_name = name_parts[0]
+              contact.last_name = name_parts[1]
+            else
+              contact.first_name = row['name'].strip
+            end
+          end
+          
+          # Store corporation data in metadata
+          contact.metadata ||= {}
+          if row['corporation_id'].present? || row['corporation_name'].present?
+            contact.metadata = contact.metadata.merge({
+              'corporation_id' => row['corporation_id'].to_s.strip,
+              'corporation_name' => row['corporation_name'].to_s.strip
+            })
+          end
+          
+          # Set default status if not present
+          contact.status ||= 'active'
 
           if contact.save
-            # Remove from other groups in the same entity
-            if @contact_group.entity_id.present?
-              # Only remove from groups in the same entity
-              same_entity_groups = ContactGroup.where(
-                user: current_user, 
-                entity_id: @contact_group.entity_id
-              ).where.not(id: @contact_group.id)
-              
-              same_entity_groups.each do |group|
-                group.contacts.delete(contact) if group.contacts.include?(contact)
-              end
-            else
-              # For global groups (no entity), only remove from other global groups
-              global_groups = ContactGroup.where(
-                user: current_user,
-                entity_id: nil
-              ).where.not(id: @contact_group.id)
-              
-              global_groups.each do |group|
-                group.contacts.delete(contact) if group.contacts.include?(contact)
-              end
+            Rails.logger.info("UPLOAD_CSV: Saved contact #{contact.id} (#{contact.email})")
+            
+            # Add to current group if not already in it
+            unless @contact_group.contacts.include?(contact)
+              @contact_group.contacts << contact
+              Rails.logger.info("UPLOAD_CSV: Added contact #{contact.id} to group #{@contact_group.id}")
             end
             
-            # Add to current group
-            @contact_group.contacts << contact unless @contact_group.contacts.include?(contact)
             success_count += 1
           else
             error_count += 1
-            errors << "Row #{row.to_h}: #{contact.errors.full_messages.join(', ')}"
+            errors << "Row #{$.}: #{contact.errors.full_messages.join(', ')}"
+            Rails.logger.error("UPLOAD_CSV: Error saving contact: #{contact.errors.full_messages.join(', ')}")
           end
         rescue => e
           error_count += 1
-          errors << "Row #{row.to_h}: #{e.message}"
+          errors << "Row #{$.}: #{e.message}"
+          Rails.logger.error("UPLOAD_CSV: Exception processing row: #{e.message}")
         end
       end
 
       if error_count > 0
-        flash[:alert] = "Upload completed with #{success_count} successful and #{error_count} failed records. #{errors.join('; ')}"
+        flash[:alert] = "Upload completed with #{success_count} successful and #{error_count} failed records."
+        Rails.logger.error("UPLOAD_CSV: Errors: #{errors.join('; ')}")
       else
         flash[:notice] = "Successfully uploaded #{success_count} contacts."
       end
 
       redirect_to @contact_group
     rescue => e
+      Rails.logger.error("UPLOAD_CSV ERROR: #{e.message}\n#{e.backtrace.join("\n")}")
       redirect_to @contact_group, alert: "Error processing CSV: #{e.message}"
     end
   end

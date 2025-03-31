@@ -1,74 +1,480 @@
-<div class="container mx-auto px-4 py-8">
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold"><%= @contact_group.name %></h1>
-    <div class="space-x-4">
-      <%= link_to 'Edit', edit_contact_group_path(@contact_group), class: 'btn btn-primary' %>
-      <%= link_to 'Back', contact_groups_path, class: 'btn btn-secondary' %>
+<div class="container mt-4">
+  <% if flash[:notice] %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <%= flash[:notice] %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
-  </div>
-
-  <% if @contact_group.description.present? %>
-    <div class="bg-gray-50 p-4 rounded-lg mb-6">
-      <p class="text-gray-700"><%= @contact_group.description %></p>
+  <% end %>
+  
+  <% if flash[:alert] %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <%= flash[:alert] %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
   <% end %>
 
-  <div class="bg-white rounded-lg shadow p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4">Upload Contacts</h2>
-    <p class="text-gray-600 mb-4">Upload a CSV file with the following columns: name, email, corporation_id, corporation_name</p>
-    
-    <%= form_tag upload_csv_contact_group_path(@contact_group), multipart: true, class: 'space-y-4' do %>
-      <div class="flex items-center space-x-4">
-        <%= file_field_tag :file, accept: '.csv', class: 'form-input' %>
-        <%= submit_tag 'Upload CSV', class: 'btn btn-primary' %>
-      </div>
-    <% end %>
-  </div>
-
   <% if !@contact_group || !@contacts %>
     <div class="alert alert-danger">
-      Error loading contact group data. Please try again or contact support.
+      <h4 class="alert-heading">Error loading contact group</h4>
+      <p>We encountered a problem loading this contact group. Please try again or contact support if the issue persists.</p>
+      <hr>
+      <div class="d-flex justify-content-between">
+        <p class="mb-0">You can return to the contact groups list.</p>
+        <%= link_to 'Back to Contact Groups', contact_groups_path, class: 'btn btn-outline-primary' %>
+      </div>
     </div>
   <% else %>
-    <div class="bg-white rounded-lg shadow">
-      <div class="p-6">
-        <h2 class="text-xl font-semibold mb-4">Contacts</h2>
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center bg-light">
+        <div>
+          <h1 class="h3 mb-0"><%= @contact_group.name %></h1>
+          <% if @contact_group.entity_id.present? %>
+            <span class="badge bg-info text-white">
+              <i class="fas fa-building me-1"></i><%= Entity.find_by(id: @contact_group.entity_id)&.name || "Entity ID: #{@contact_group.entity_id}" %>
+            </span>
+          <% else %>
+            <span class="badge bg-secondary">Global Group</span>
+          <% end %>
+        </div>
+        <div class="btn-group">
+          <%= link_to edit_contact_group_path(@contact_group), class: 'btn btn-outline-primary' do %>
+            <i class="fas fa-edit me-1"></i> Edit Group
+          <% end %>
+          <%= link_to contact_groups_path, class: 'btn btn-outline-secondary' do %>
+            <i class="fas fa-arrow-left me-1"></i> Back
+          <% end %>
+        </div>
+      </div>
+      
+      <div class="card-body">
+        <% if @contact_group.description.present? %>
+          <div class="mb-4">
+            <h5>Description</h5>
+            <p class="card-text text-muted"><%= @contact_group.description %></p>
+          </div>
+        <% end %>
         
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corporation ID</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corporation Name</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <% @contacts.each do |contact| %>
-                <tr>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <% if contact.respond_to?(:name) && contact.name.present? %>
-                      <%= contact.name %>
-                    <% elsif contact.respond_to?(:full_name) %>
-                      <%= contact.full_name %>
-                    <% else %>
-                      <%= "#{contact.first_name} #{contact.last_name}" rescue "Name not available" %>
-                    <% end %>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.email rescue "Email not available" %></td>
-                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.respond_to?(:corporation_id) ? contact.corporation_id : contact.metadata&.dig('corporation_id') rescue "Corp ID not available" %></td>
-                  <td class="px-6 py-4 whitespace-nowrap"><%= contact.respond_to?(:corporation_name) ? contact.corporation_name : contact.metadata&.dig('corporation_name') rescue "Corp name not available" %></td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+        <div class="row mb-4">
+          <div class="col-md-3 col-6 mb-3">
+            <div class="card h-100 text-center">
+              <div class="card-body">
+                <h1 class="display-4 text-primary mb-0"><%= @contacts.total_count rescue @contacts.size %></h1>
+                <p class="card-text text-muted">Total Contacts</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 col-6 mb-3">
+            <div class="card h-100 text-center">
+              <div class="card-body">
+                <h1 class="display-4 text-success mb-0"><%= @contact_group.created_at.strftime("%b %d") %></h1>
+                <p class="card-text text-muted">Created</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 mb-3">
+            <div class="card h-100">
+              <div class="card-body">
+                <h5 class="card-title">Quick Actions</h5>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                  <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="fas fa-upload me-1"></i> Upload CSV
+                  </button>
+                  <%= link_to new_contact_path(contact_group_id: @contact_group.id), class: 'btn btn-sm btn-outline-success' do %>
+                    <i class="fas fa-user-plus me-1"></i> Add Contact
+                  <% end %>
+                  <%= link_to '#', class: 'btn btn-sm btn-outline-info' do %>
+                    <i class="fas fa-file-export me-1"></i> Export
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+    </div>
+    
+    <!-- Upload Modal -->
+    <div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="uploadModalLabel">Upload Contacts CSV</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info">
+              <h6><i class="fas fa-info-circle me-1"></i> CSV Format</h6>
+              <p class="mb-2">Your CSV file should include these columns:</p>
+              <ul class="mb-2">
+                <li><strong>name</strong> - Contact's full name</li>
+                <li><strong>email</strong> - Contact's email address (required)</li>
+                <li><strong>corporation_id</strong> - Organization ID (optional)</li>
+                <li><strong>corporation_name</strong> - Organization name (optional)</li>
+              </ul>
+              <div class="d-grid">
+                <a href="#" class="btn btn-sm btn-outline-info" id="downloadTemplateBtn">
+                  <i class="fas fa-download me-1"></i> Download Template
+                </a>
+              </div>
+            </div>
+            
+            <%= form_tag upload_csv_contact_group_path(@contact_group), multipart: true do %>
+              <div class="mb-3">
+                <label for="file" class="form-label">Select CSV File</label>
+                <%= file_field_tag :file, accept: '.csv', class: 'form-control' %>
+              </div>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" value="1" id="clearExistingContacts" name="clear_existing">
+                <label class="form-check-label" for="clearExistingContacts">
+                  Replace all existing contacts in this group
+                </label>
+              </div>
+              <div class="text-end">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <%= submit_tag 'Upload', class: 'btn btn-primary' %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
 
-        <div class="mt-4">
-          <%= paginate @contacts %>
+    <!-- Contacts List -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Contacts (<%= @contacts.total_count rescue @contacts.size %>)</h2>
+        <div class="d-flex gap-2 flex-wrap">
+          <div class="dropdown d-none d-md-block">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-filter me-1"></i> Filter
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filterDropdown">
+              <li><a class="dropdown-item filter-status" href="#" data-status="all">All Statuses</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item filter-status" href="#" data-status="active">Active</a></li>
+              <li><a class="dropdown-item filter-status" href="#" data-status="inactive">Inactive</a></li>
+              <li><a class="dropdown-item filter-status" href="#" data-status="pending">Pending</a></li>
+            </ul>
+          </div>
+          <div class="dropdown d-none d-md-block">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="fas fa-download me-1"></i> Export
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
+              <li><a class="dropdown-item" href="#" onclick="window.print(); return false;"><i class="fas fa-print me-2"></i>Print View</a></li>
+              <li><a class="dropdown-item" href="<%= contact_group_path(@contact_group, format: :csv) %>"><i class="fas fa-file-csv me-2"></i>Export to CSV</a></li>
+            </ul>
+          </div>
+          <div class="input-group" style="max-width: 300px;">
+            <input type="text" id="contactSearch" class="form-control form-control-sm" placeholder="Search contacts...">
+            <button class="btn btn-sm btn-outline-secondary" type="button">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
         </div>
+      </div>
+      
+      <div class="card-body p-0">
+        <% if @contacts.any? %>
+          <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Corporation</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @contacts.each do |contact| %>
+                  <tr>
+                    <td data-label="Name">
+                      <div class="d-flex align-items-center">
+                        <div class="avatar-circle me-2 <%= generate_avatar_color(contact.email) %>">
+                          <%= contact.first_name.first.upcase rescue "?" %><%= contact.last_name.first.upcase rescue "" %>
+                        </div>
+                        <div>
+                          <% if contact.respond_to?(:name) && contact.name.present? %>
+                            <%= contact.name %>
+                          <% elsif contact.respond_to?(:full_name) && contact.full_name.present? %>
+                            <%= contact.full_name %>
+                          <% else %>
+                            <%= "#{contact.first_name} #{contact.last_name}".strip rescue "Name not available" %>
+                          <% end %>
+                        </div>
+                      </div>
+                    </td>
+                    <td data-label="Email">
+                      <a href="mailto:<%= contact.email %>"><%= contact.email rescue "Email not available" %></a>
+                    </td>
+                    <td data-label="Corporation">
+                      <% if contact.respond_to?(:corporation_name) && contact.corporation_name.present? %>
+                        <%= contact.corporation_name %>
+                      <% elsif contact.metadata&.dig('corporation_name').present? %>
+                        <%= contact.metadata['corporation_name'] %>
+                        <small class="text-muted">#<%= contact.metadata['corporation_id'] %></small>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+                    <td data-label="Status">
+                      <% status = contact.status.present? ? contact.status.downcase : 'unknown' %>
+                      <% status_class = { 'active' => 'success', 'inactive' => 'warning', 'pending' => 'info', 'archived' => 'secondary' }[status] || 'secondary' %>
+                      <span class="badge bg-<%= status_class %>">
+                        <%= status.humanize %>
+                      </span>
+                    </td>
+                    <td data-label="Actions" class="text-end">
+                      <div class="btn-group btn-group-sm">
+                        <%= link_to contact_path(contact), class: 'btn btn-outline-primary' do %>
+                          <i class="fas fa-eye"></i>
+                        <% end %>
+                        <%= link_to edit_contact_path(contact), class: 'btn btn-outline-secondary' do %>
+                          <i class="fas fa-edit"></i>
+                        <% end %>
+                        <%= button_to contact_path(contact), method: :delete, class: 'btn btn-outline-danger', form: { class: 'd-inline', data: { turbo_confirm: "Are you sure you want to delete this contact?" } } do %>
+                          <i class="fas fa-trash"></i>
+                        <% end %>
+                      </div>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="card-footer d-flex justify-content-between align-items-center">
+            <div class="pagination-info text-muted">
+              <%= page_entries_info @contacts rescue "Showing all contacts" %>
+            </div>
+            <div>
+              <%= paginate @contacts %>
+            </div>
+          </div>
+        <% else %>
+          <div class="text-center p-5">
+            <div class="mb-3">
+              <i class="fas fa-users-slash fa-4x text-muted"></i>
+            </div>
+            <h3>No Contacts</h3>
+            <p class="text-muted mb-4">This group doesn't have any contacts yet.</p>
+            <div class="d-flex justify-content-center gap-2">
+              <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                <i class="fas fa-upload me-1"></i> Upload CSV
+              </button>
+              <%= link_to new_contact_path(contact_group_id: @contact_group.id), class: 'btn btn-outline-primary' do %>
+                <i class="fas fa-user-plus me-1"></i> Add Contact
+              <% end %>
+            </div>
+          </div>
+        <% end %>
       </div>
     </div>
   <% end %>
 </div>
+
+<style>
+  .avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.8rem;
+  }
+  
+  /* Avatar background colors */
+  .bg-avatar-1 { background-color: #3498db; }
+  .bg-avatar-2 { background-color: #2ecc71; }
+  .bg-avatar-3 { background-color: #e74c3c; }
+  .bg-avatar-4 { background-color: #f39c12; }
+  .bg-avatar-5 { background-color: #9b59b6; }
+  .bg-avatar-6 { background-color: #1abc9c; }
+  .bg-avatar-7 { background-color: #d35400; }
+  .bg-avatar-8 { background-color: #34495e; }
+  
+  /* Responsive improvements */
+  @media (max-width: 767.98px) {
+    .table-responsive {
+      border: 0;
+    }
+    
+    .table-responsive table thead {
+      display: none;
+    }
+    
+    .table-responsive table tr {
+      margin-bottom: 10px;
+      display: block;
+      border-bottom: 2px solid #ddd;
+    }
+    
+    .table-responsive table td {
+      display: block;
+      text-align: right;
+      border-bottom: 1px dotted #ccc;
+      position: relative;
+    }
+    
+    .table-responsive table td:before {
+      content: attr(data-label);
+      position: absolute;
+      left: 10px;
+      font-weight: bold;
+      text-align: left;
+    }
+    
+    .table-responsive table td:last-child {
+      border-bottom: 0;
+    }
+  }
+  
+  /* Print styling */
+  @media print {
+    .btn, .card-header, .card-footer, button, .no-print {
+      display: none !important;
+    }
+    
+    body {
+      font-size: 12pt;
+    }
+    
+    .card {
+      border: none !important;
+      box-shadow: none !important;
+    }
+    
+    .card-body {
+      padding: 0 !important;
+    }
+    
+    .container {
+      width: 100% !important;
+      max-width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    
+    h1 {
+      font-size: 18pt !important;
+      margin-bottom: 10px !important;
+      text-align: center;
+    }
+    
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+    }
+    
+    table th, table td {
+      padding: 8px !important;
+      border: 1px solid #ddd !important;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('turbo:load', function() {
+    // Contact search functionality
+    const searchInput = document.getElementById('contactSearch');
+    if (searchInput) {
+      searchInput.addEventListener('keyup', function() {
+        const value = this.value.toLowerCase();
+        const rows = document.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+          const text = row.textContent.toLowerCase();
+          row.style.display = text.includes(value) ? '' : 'none';
+        });
+        
+        updateEmptyStateVisibility();
+      });
+    }
+    
+    // Status filter functionality
+    const statusFilters = document.querySelectorAll('.filter-status');
+    statusFilters.forEach(filter => {
+      filter.addEventListener('click', function(e) {
+        e.preventDefault();
+        const status = this.dataset.status;
+        const rows = document.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+          if (status === 'all') {
+            row.style.display = '';
+          } else {
+            const statusBadge = row.querySelector('.badge');
+            if (statusBadge && statusBadge.textContent.trim().toLowerCase() === status) {
+              row.style.display = '';
+            } else {
+              row.style.display = 'none';
+            }
+          }
+        });
+        
+        // Update filter button text
+        document.getElementById('filterDropdown').innerHTML = 
+          `<i class="fas fa-filter me-1"></i> ${status === 'all' ? 'Filter' : this.textContent}`;
+          
+        updateEmptyStateVisibility();
+      });
+    });
+    
+    function updateEmptyStateVisibility() {
+      // Check if any rows are visible
+      const table = document.querySelector('table');
+      const emptyState = document.querySelector('.text-center.p-5');
+      const visibleRows = document.querySelectorAll('tbody tr[style=""]').length;
+      
+      if (table && emptyState) {
+        if (visibleRows === 0) {
+          table.classList.add('d-none');
+          emptyState.classList.remove('d-none');
+          emptyState.querySelector('p').textContent = 'No contacts match your current filters.';
+        } else {
+          table.classList.remove('d-none');
+          emptyState.classList.add('d-none');
+        }
+      }
+    }
+
+    // CSV Template download functionality
+    const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+    if (downloadTemplateBtn) {
+      downloadTemplateBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Create CSV content
+        const csvContent = 'name,email,corporation_id,corporation_name\n' +
+                          'John Doe,john@example.com,12345,Acme Inc.\n' +
+                          'Jane Smith,jane@example.com,67890,XYZ Corp.';
+        
+        // Create a blob and download link
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'contacts_template.csv';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+      });
+    }
+  });
+</script>
+
+<% 
+  def generate_avatar_color(seed)
+    # Generate a consistent color based on the seed (email)
+    hash = 0
+    seed.to_s.each_byte do |b|
+      hash = hash * 31 + b
+    end
+    "bg-avatar-#{(hash % 8) + 1} text-white"
+  end
+%>
