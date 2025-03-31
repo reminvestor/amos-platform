@@ -9,8 +9,13 @@ environment ENV['RACK_ENV'] || 'development'
 # Set debug log level
 log_requests true
 
-# Just bind to the port Heroku gives us - nothing else
-port ENV['PORT'] || 3000
+# Force HTTP protocol mode - critical for Heroku SSL termination
+if Puma.respond_to?(:ssl_default_bind_mode=)
+  Puma.ssl_default_bind_mode = false
+end
+
+# Just bind to the port Heroku gives us using standard HTTP
+bind "tcp://0.0.0.0:#{ENV.fetch('PORT', 3000)}"
 
 # Preload the app
 preload_app!
@@ -22,15 +27,11 @@ end
 # Allow puma to be restarted by `rails restart` command
 plugin :tmp_restart
 
-# Add an error handler that logs details about SSL issues
+# Add an improved error handler that provides more context about SSL issues
 lowlevel_error_handler do |e|
   # Log the error with as much detail as possible
-  [500, {'Content-Type' => 'text/plain'}, ["Puma Error: #{e.message}\n#{e.backtrace.join("\n")}"]]
-end
-
-# Correctly handle SSL for Heroku
-if ENV['RACK_ENV'] == 'production'
-  # Set this to inform the application that we're already behind an SSL terminating proxy
-  ENV['HTTPS'] = 'on'
-  ENV['HTTP_X_FORWARDED_PROTO'] = 'https'
+  error_message = "Puma Error: #{e.message}\n#{e.backtrace.join("\n")}"
+  env_info = "\nEnvironment: #{ENV['RACK_ENV']}\n"
+  
+  [500, {'Content-Type' => 'text/plain'}, [error_message + env_info]]
 end 
