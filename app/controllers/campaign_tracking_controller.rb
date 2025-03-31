@@ -34,19 +34,14 @@ class CampaignTrackingController < ApplicationController
     begin
       uri = URI.parse(url)
       
-      # Check if it's a relative URL (starts with / or doesn't have a host)
+      # Always allow absolute URLs now - this is what we want for email links
+      # We're intentionally allowing all domains since these are user-created email content links
+      return url if uri.scheme && uri.host
+      
+      # If it's a relative URL (starts with / or doesn't have a host), keep it
       return url if url.start_with?('/') || uri.host.nil?
       
-      # If absolute URL, check against allowlist of domains
-      allowlisted_domains = [
-        URI.parse(root_url).host,
-        # Add other trusted domains here
-      ]
-      
-      # Allow the URL if its domain is in our allowlist
-      return url if allowlisted_domains.include?(uri.host)
-      
-      # Otherwise, fall back to the root URL
+      # For any other case, default to root_url
       root_url
     rescue URI::InvalidURIError
       # If URL is invalid, fall back to the root URL

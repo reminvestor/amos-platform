@@ -2,6 +2,9 @@ class SubscriptionController < ApplicationController
   # Skip authentication for subscription management
   skip_before_action :authenticate_user!
   
+  # Skip using the application layout
+  layout false
+  
   def unsubscribe
     # Get the token from params
     token = params[:token]
