@@ -3,7 +3,10 @@ class ContactGroup < ApplicationRecord
   belongs_to :entity, optional: true
   
   # Many-to-many association with contacts
-  has_and_belongs_to_many :contacts, -> { distinct }, class_name: 'Contact'
+  has_and_belongs_to_many :contacts, 
+                          -> { distinct }, 
+                          class_name: 'Contact',
+                          after_add: :remove_from_other_groups
   
   # Validations
   validates :name, presence: true, uniqueness: { scope: :user_id }
@@ -11,9 +14,6 @@ class ContactGroup < ApplicationRecord
   
   # Callback to prevent deletion if contacts are associated
   before_destroy :check_for_contacts
-  
-  # Callbacks
-  after_add_for_contacts :remove_from_other_groups
   
   private
   
