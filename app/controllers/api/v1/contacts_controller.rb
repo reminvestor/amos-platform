@@ -1,6 +1,8 @@
 module Api
   module V1
-    class ContactsController < ApplicationController
+    class ContactsController < Api::BaseController
+      protect_from_forgery with: :null_session
+      skip_before_action :verify_authenticity_token
       skip_before_action :authenticate_user!
       before_action :authenticate_api_request
       
@@ -9,6 +11,15 @@ module Api
           ActiveRecord::Base.transaction do
             contacts = []
             errors = []
+            
+            # Check if contacts parameter is present
+            unless params[:contacts].present? && params[:contacts].is_a?(Array)
+              render json: {
+                success: false,
+                message: "Missing or invalid contacts parameter"
+              }, status: :bad_request
+              return
+            end
             
             # Process each contact in the request
             params[:contacts].each do |contact_params|
@@ -72,6 +83,7 @@ module Api
             end
           end
         rescue => e
+          Rails.logger.error("API Error: #{e.message}\n#{e.backtrace.join("\n")}")
           render json: {
             success: false,
             message: "Error processing contacts",
@@ -84,10 +96,23 @@ module Api
       
       def authenticate_api_request
         # Get the API key from the Authorization header
-        api_key = request.headers['Authorization']&.split(' ')&.last
+        auth_header = request.headers['Authorization']
+        
+        # Better header parsing
+        if auth_header.blank?
+          render json: { error: 'Missing Authorization header' }, status: :unauthorized
+          return
+        end
+        
+        # Support both "Bearer <key>" and just "<key>" formats
+        api_key = if auth_header.start_with?('Bearer ')
+          auth_header.gsub('Bearer ', '')
+        else
+          auth_header
+        end
         
         if api_key.blank?
-          render json: { error: 'Missing API key' }, status: :unauthorized
+          render json: { error: 'Invalid Authorization header format' }, status: :unauthorized
           return
         end
         
@@ -96,7 +121,15 @@ module Api
         
         unless @current_user
           render json: { error: 'Invalid API key' }, status: :unauthorized
+          return
         end
+        
+        # Set current_user for the application controller
+        Thread.current[:current_user] = @current_user
+      end
+      
+      def current_user
+        @current_user
       end
       
       def contact_response(contact)
