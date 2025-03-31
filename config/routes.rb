@@ -11,6 +11,8 @@ Rails.application.routes.draw do
   # API routes
   namespace :api do
     namespace :v1 do
+      # Health check endpoint
+      get 'health', to: 'health#index'
       resources :contacts, only: [:create]
     end
   end
