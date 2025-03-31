@@ -5,8 +5,9 @@ class Contact < ApplicationRecord
   # Many-to-many association with contact groups
   has_and_belongs_to_many :contact_groups, -> { distinct }, class_name: 'ContactGroup'
   
-  # JSONB metadata handling
-  serialize :metadata, JSON
+  # JSONB metadata handling - Rails 8.0 compatible
+  # Note: serialize in Rails 8 now uses different configuration style
+  attribute :metadata, :json
 
   # Helper methods for corporation data
   def corporation_id
