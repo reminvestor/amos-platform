@@ -28,6 +28,9 @@ Rails.application.routes.draw do
       collection do
         get :search_contacts
       end
+      member do
+        post :upload_csv
+      end
     end
     resources :email_templates do
       member do

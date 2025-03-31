@@ -129,35 +129,48 @@
           </div>
           
           <h4>Email Deliveries</h4>
-          <table class="table table-striped">
-            <thead>
-              <tr>
-                <th>Contact</th>
-                <th>Email</th>
-                <th>Status</th>
-                <th>Sent At</th>
-                <th>Opened At</th>
-                <th>Clicked At</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @email_deliveries.each do |delivery| %>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
                 <tr>
-                  <td><%= delivery.contact.full_name %></td>
-                  <td><%= delivery.contact.email %></td>
-                  <td><span class="badge bg-<%= delivery_status_color(delivery.status) %>"><%= delivery.status.humanize %></span></td>
-                  <td><%= delivery.sent_at&.strftime('%b %d, %Y %I:%M %p') %></td>
-                  <td><%= delivery.opened_at&.strftime('%b %d, %Y %I:%M %p') %></td>
-                  <td><%= delivery.clicked_at&.strftime('%b %d, %Y %I:%M %p') %></td>
+                  <th>Contact</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th>Sent At</th>
+                  <th>Opened At</th>
+                  <th>Clicked At</th>
                 </tr>
-              <% end %>
-              <% if @email_deliveries.empty? %>
-                <tr>
-                  <td colspan="6" class="text-center">No email deliveries yet.</td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                <% @email_deliveries.each do |delivery| %>
+                  <tr>
+                    <td><%= delivery.contact.full_name %></td>
+                    <td><%= delivery.contact.email %></td>
+                    <td><span class="badge bg-<%= delivery_status_color(delivery.status) %>"><%= delivery.status.humanize %></span></td>
+                    <td><%= delivery.sent_at&.strftime('%b %d, %Y %I:%M %p') %></td>
+                    <td><%= delivery.opened_at&.strftime('%b %d, %Y %I:%M %p') %></td>
+                    <td><%= delivery.clicked_at&.strftime('%b %d, %Y %I:%M %p') %></td>
+                  </tr>
+                <% end %>
+                <% if @email_deliveries.empty? %>
+                  <tr>
+                    <td colspan="6" class="text-center">No email deliveries yet.</td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <% if @email_deliveries.any? %>
+            <div class="d-flex justify-content-between align-items-center mt-4">
+              <div class="pagination-info text-muted">
+                <%= page_entries_info @email_deliveries %>
+              </div>
+              <div>
+                <%= paginate @email_deliveries %>
+              </div>
+            </div>
+          <% end %>
         </div>
       </div>
     </div>

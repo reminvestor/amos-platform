@@ -1,6 +1,6 @@
 class ContactGroupsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_contact_group, only: [:show, :edit, :update, :destroy]
+  before_action :set_contact_group, only: [:show, :edit, :update, :destroy, :upload_csv]
   
   def index
     @contact_groups = entity_scope(ContactGroup).order(name: :asc).page(params[:page])
@@ -50,6 +50,61 @@ class ContactGroupsController < ApplicationController
       redirect_to contact_groups_path, notice: 'Contact group was successfully deleted.'
     else
       redirect_to contact_groups_path, alert: @contact_group.errors.full_messages.to_sentence
+    end
+  end
+  
+  def upload_csv
+    if params[:file].blank?
+      redirect_to @contact_group, alert: 'Please select a CSV file to upload.'
+      return
+    end
+
+    begin
+      require 'csv'
+      csv_file = params[:file]
+      success_count = 0
+      error_count = 0
+      errors = []
+
+      CSV.foreach(csv_file.path, headers: true) do |row|
+        begin
+          # Find or create contact
+          contact = Contact.find_or_initialize_by(
+            email: row['email'],
+            user: current_user
+          )
+
+          # Update contact attributes
+          contact.name = row['name']
+          contact.corporation_id = row['corporation_id']
+          contact.corporation_name = row['corporation_name']
+
+          if contact.save
+            # Remove from other groups and add to current group
+            ContactGroup.where(user: current_user).where.not(id: @contact_group.id).each do |group|
+              group.contacts.delete(contact)
+            end
+            @contact_group.contacts << contact unless @contact_group.contacts.include?(contact)
+            success_count += 1
+          else
+            error_count += 1
+            errors << "Row #{row.to_h}: #{contact.errors.full_messages.join(', ')}"
+          end
+        rescue => e
+          error_count += 1
+          errors << "Row #{row.to_h}: #{e.message}"
+        end
+      end
+
+      if error_count > 0
+        flash[:alert] = "Upload completed with #{success_count} successful and #{error_count} failed records. #{errors.join('; ')}"
+      else
+        flash[:notice] = "Successfully uploaded #{success_count} contacts."
+      end
+
+      redirect_to @contact_group
+    rescue => e
+      redirect_to @contact_group, alert: "Error processing CSV: #{e.message}"
     end
   end
   
