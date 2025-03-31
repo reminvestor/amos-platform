@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_03_31_040246) do
+ActiveRecord::Schema[8.0].define(version: 2025_03_31_043746) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -113,6 +113,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_03_31_040246) do
     t.text "error_message"
     t.string "mailgun_message_id"
     t.string "mailgun_status"
+    t.text "notes"
     t.index ["campaign_id"], name: "index_email_deliveries_on_campaign_id"
     t.index ["contact_id"], name: "index_email_deliveries_on_contact_id"
     t.index ["email_template_id"], name: "index_email_deliveries_on_email_template_id"

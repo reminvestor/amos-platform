@@ -84,7 +84,7 @@
                 <% end %>
               </p>
               
-              <% if @campaign.mailgun_tag.present? && Rails.env.production? %>
+              <% if @campaign.mailgun_tag.present? %>
                 <div class="card bg-light mt-3 mb-2">
                   <div class="card-body">
                     <h6><i class="fas fa-sync me-2"></i> Mailgun Integration</h6>

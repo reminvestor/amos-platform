@@ -14,9 +14,10 @@ class CampaignMailer < ApplicationMailer
       protocol: 'https'
     )
     
-    # Process the template body to add click tracking to links
+    # Process the template content to replace variables and add tracking links
     if @email_template.body.present? && @email_delivery.id.present?
-      @email_body = add_tracking_to_links(@email_template.body, email_delivery.id)
+      processed_content = process_template_variables(@email_template.body, @contact)
+      @email_body = add_tracking_to_links(processed_content, email_delivery.id)
     else
       @email_body = @email_template.body
     end
@@ -54,7 +55,13 @@ class CampaignMailer < ApplicationMailer
     
     # Set a dummy tracking URL for test emails
     @tracking_pixel_url = "#"
-    @email_body = @email_template.body
+    
+    # Process the template content to replace variables
+    if @email_template.body.present?
+      @email_body = process_template_variables(@email_template.body, @contact)
+    else
+      @email_body = @email_template.body
+    end
     
     # Set test headers
     headers['X-Test-Email'] = 'true'
@@ -74,6 +81,21 @@ class CampaignMailer < ApplicationMailer
   end
   
   private
+  
+  # Process template variables like {{first_name}}
+  def process_template_variables(content, contact)
+    return content unless content.present? && contact.present?
+    
+    # Replace common contact variables
+    content = content.gsub(/\{\{\s*first_name\s*\}\}/, contact.first_name.to_s)
+    content = content.gsub(/\{\{\s*last_name\s*\}\}/, contact.last_name.to_s)
+    content = content.gsub(/\{\{\s*email\s*\}\}/, contact.email.to_s)
+    content = content.gsub(/\{\{\s*full_name\s*\}\}/, "#{contact.first_name} #{contact.last_name}".strip)
+    
+    # Add more variables as needed
+    
+    content
+  end
   
   # Add tracking to links in the email content
   def add_tracking_to_links(html_content, delivery_id)
