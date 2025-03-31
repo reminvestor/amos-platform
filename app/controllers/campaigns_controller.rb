@@ -7,6 +7,9 @@ class CampaignsController < ApplicationController
   end
 
   def show
+    # Try to sync with Mailgun if this is a production environment
+    @campaign.sync_mailgun_stats if Rails.env.production?
+    
     @email_deliveries = @campaign.email_deliveries.includes(:contact).order(sent_at: :desc)
   end
 
@@ -139,8 +142,19 @@ class CampaignsController < ApplicationController
   end
   
   def analyze
+    # Sync with Mailgun before analyzing
+    @campaign.sync_mailgun_stats if Rails.env.production?
+    
     # Forward to the AI content controller's analyze_campaign method
     redirect_to ai_analyze_campaign_path(@campaign)
+  end
+  
+  def sync_mailgun
+    if @campaign.sync_mailgun_stats
+      redirect_to @campaign, notice: "Campaign stats sync with Mailgun has been queued."
+    else
+      redirect_to @campaign, alert: "Unable to sync campaign with Mailgun."
+    end
   end
   
   private
