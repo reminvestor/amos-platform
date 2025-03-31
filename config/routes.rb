@@ -13,6 +13,9 @@ Rails.application.routes.draw do
       registrations: 'users/registrations'
     }
     
+    # User management
+    resources :users, only: [:show, :edit, :update]
+    
     # Admin namespace
     namespace :admin do
       resources :imports, only: [:index] do
