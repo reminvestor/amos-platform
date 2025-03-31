@@ -20,6 +20,14 @@ class ContactGroupsController < ApplicationController
   def show
     Rails.logger.info("SHOW: Starting show action for contact group #{params[:id]}")
     
+    # Debug Contact schema
+    begin
+      Contact.debug_schema
+      ContactGroupsContact.debug_schema
+    rescue => schema_error
+      Rails.logger.error("SHOW ERROR: Failed to debug schemas: #{schema_error.message}")
+    end
+    
     begin
       # Ensure the contact group is loaded correctly
       unless @contact_group
