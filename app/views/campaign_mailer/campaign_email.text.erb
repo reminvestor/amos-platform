@@ -1,11 +1,10 @@
-<%= @campaign.name %>
+
 
 Hello <%= @contact.first_name %>,
 
 <%= strip_tags(@email_template.body) %>
 
-Best regards,
-<%= @campaign.user.full_name %>
+
 
 ------------------
 This email was sent to <%= @contact.email %>.
