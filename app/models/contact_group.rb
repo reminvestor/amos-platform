@@ -25,9 +25,23 @@ class ContactGroup < ApplicationRecord
   end
   
   def remove_from_other_groups(contact)
-    # Remove contact from other groups
-    ContactGroup.where.not(id: id).each do |group|
-      group.contacts.delete(contact)
+    # Only remove from groups in the same entity
+    if entity_id.present?
+      # Find groups in the same entity, excluding this one
+      same_entity_groups = ContactGroup.where(entity_id: entity_id).where.not(id: id)
+      
+      # Remove contact from all groups in the same entity
+      same_entity_groups.each do |group|
+        group.contacts.delete(contact) if group.contacts.include?(contact)
+      end
+    else
+      # For global groups (no entity), only remove from other global groups
+      global_groups = ContactGroup.where(entity_id: nil).where.not(id: id)
+      
+      # Remove contact from all global groups
+      global_groups.each do |group|
+        group.contacts.delete(contact) if group.contacts.include?(contact)
+      end
     end
   end
 end
