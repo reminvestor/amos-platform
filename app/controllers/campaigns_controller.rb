@@ -7,8 +7,8 @@ class CampaignsController < ApplicationController
   end
 
   def show
-    # Try to sync with Mailgun if this is a production environment
-    @campaign.sync_mailgun_stats if Rails.env.production?
+    # Try to sync with Mailgun
+    @campaign.sync_mailgun_stats
     
     # Update opted out contacts count
     if @campaign.contact_groups.any?
@@ -149,7 +149,7 @@ class CampaignsController < ApplicationController
   
   def analyze
     # Sync with Mailgun before analyzing
-    @campaign.sync_mailgun_stats if Rails.env.production?
+    @campaign.sync_mailgun_stats
     
     # Forward to the AI content controller's analyze_campaign method
     redirect_to ai_analyze_campaign_path(@campaign)
