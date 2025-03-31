@@ -1,4 +1,2 @@
-Rails.application.config.after_initialize do
-  # Add our API SSL middleware at the beginning of the stack
-  Rails.application.config.middleware.insert_before 0, ApiSslMiddleware
-end 
+# Add our API SSL middleware directly to avoid frozen array errors
+Rails.application.config.middleware.use ApiSslMiddleware 

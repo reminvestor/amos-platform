@@ -36,6 +36,7 @@ module AgentMarketing
 
     # Load custom middleware path
     config.autoload_paths << Rails.root.join('lib')
+    config.eager_load_paths << Rails.root.join('lib')
     
     # We'll add the middleware in an initializer instead
     # to ensure all classes are loaded first
