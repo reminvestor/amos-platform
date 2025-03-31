@@ -83,7 +83,11 @@
                     <p class="mb-0">
                       <small>
                         <% if @campaign.last_synced_at.present? %>
-                          <span class="text-muted">Last synced: <%= @campaign.last_synced_at.strftime('%b %d, %Y at %I:%M %p') %></span>
+                          <span class="text-muted">Last synced: <%= begin
+                                                                      @campaign.last_synced_at.strftime('%b %d, %Y at %I:%M %p')
+                                                                    rescue
+                                                                      @campaign.last_synced_at.to_s
+                                                                    end %></span>
                         <% else %>
                           <span class="text-warning">Not synced yet</span>
                         <% end %>
