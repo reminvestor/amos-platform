@@ -1,6 +1,7 @@
 module Api
   module V1
     class ContactsController < Api::BaseController
+      respond_to :json
       protect_from_forgery with: :null_session
       skip_before_action :verify_authenticity_token
       before_action :authenticate_api_request
@@ -16,7 +17,7 @@ module Api
               render json: {
                 success: false,
                 message: "Missing or invalid contacts parameter"
-              }, status: :bad_request
+              }, status: :bad_request, content_type: 'application/json'
               return
             end
             
@@ -72,13 +73,13 @@ module Api
                 message: "Some contacts failed to process",
                 contacts_created: contacts.length,
                 errors: errors
-              }, status: :unprocessable_entity
+              }, status: :unprocessable_entity, content_type: 'application/json'
             else
               render json: {
                 success: true,
                 message: "Successfully processed #{contacts.length} contacts",
                 contacts: contacts.map { |c| contact_response(c) }
-              }, status: :created
+              }, status: :created, content_type: 'application/json'
             end
           end
         rescue => e
@@ -87,7 +88,7 @@ module Api
             success: false,
             message: "Error processing contacts",
             error: e.message
-          }, status: :internal_server_error
+          }, status: :internal_server_error, content_type: 'application/json'
         end
       end
       
@@ -99,7 +100,7 @@ module Api
         
         # Better header parsing
         if auth_header.blank?
-          render json: { error: 'Missing Authorization header' }, status: :unauthorized
+          render json: { error: 'Missing Authorization header' }, status: :unauthorized, content_type: 'application/json'
           return
         end
         
@@ -111,7 +112,7 @@ module Api
         end
         
         if api_key.blank?
-          render json: { error: 'Invalid Authorization header format' }, status: :unauthorized
+          render json: { error: 'Invalid Authorization header format' }, status: :unauthorized, content_type: 'application/json'
           return
         end
         
@@ -119,7 +120,7 @@ module Api
         @current_user = User.find_by(api_key: api_key)
         
         unless @current_user
-          render json: { error: 'Invalid API key' }, status: :unauthorized
+          render json: { error: 'Invalid API key' }, status: :unauthorized, content_type: 'application/json'
           return
         end
         

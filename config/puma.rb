@@ -30,6 +30,22 @@ threads threads_count, threads_count
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 port ENV.fetch("PORT", 3000)
 
+# Set up workers - use WEB_CONCURRENCY env var to control
+workers ENV.fetch("WEB_CONCURRENCY", 2)
+
+# Preload the application for better performance with multiple workers
+preload_app!
+
+# Redirect HTTP requests to HTTPS in production
+if ENV["RACK_ENV"] == "production"
+  lowlevel_error_handler do |e|
+    # Log the error
+    Rails.logger.error "Puma caught error: #{e.message}\n#{e.backtrace.join("\n")}"
+    # Return a minimal response
+    [500, {}, ["An error has occurred, and engineers have been informed. Please try again later."]]
+  end
+end
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 
