@@ -57,8 +57,14 @@ module Api
                     # Add to specified group
                     target_group = current_user.contact_groups.find(params[:contact_group_id])
                     
-                    # Remove from any existing groups first
-                    contact.contact_groups.clear if contact.contact_groups.any?
+                    # Only remove from groups in the same entity
+                    if user_entity_id
+                      entity_groups = contact.contact_groups.where(entity_id: user_entity_id)
+                      contact.contact_groups.delete(entity_groups) if entity_groups.any?
+                    else
+                      # For global contacts (no entity), clear all groups
+                      contact.contact_groups.clear if contact.contact_groups.any?
+                    end
                     
                     # Add to target group
                     target_group.contacts << contact
@@ -70,8 +76,14 @@ module Api
                       entity_id: user_entity_id # Set entity_id on new group
                     )
                     
-                    # Remove from any existing groups first
-                    contact.contact_groups.clear if contact.contact_groups.any?
+                    # Only remove from groups in the same entity
+                    if user_entity_id
+                      entity_groups = contact.contact_groups.where(entity_id: user_entity_id)
+                      contact.contact_groups.delete(entity_groups) if entity_groups.any?
+                    else
+                      # For global contacts (no entity), clear all groups
+                      contact.contact_groups.clear if contact.contact_groups.any?
+                    end
                     
                     # Add to new group
                     group.contacts << contact

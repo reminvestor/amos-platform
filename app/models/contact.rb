@@ -47,11 +47,19 @@ class Contact < ApplicationRecord
   end
   
   def ensure_single_group
-    return unless contact_groups.size > 1
+    # Group by entity_id
+    entity_groups = contact_groups.group_by(&:entity_id)
     
-    # Keep only the most recently added group
-    latest_group = contact_groups.last
-    self.contact_groups.clear
-    self.contact_groups << latest_group
+    # For each entity, ensure there's only one group
+    entity_groups.each do |entity_id, groups|
+      next unless groups.size > 1
+      
+      # Keep only the most recent group for this entity
+      latest_group = groups.sort_by(&:updated_at).last
+      groups_to_remove = groups - [latest_group]
+      
+      # Remove all but the latest group
+      self.contact_groups.delete(groups_to_remove)
+    end
   end
 end
