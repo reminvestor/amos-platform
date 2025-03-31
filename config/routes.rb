@@ -2,6 +2,12 @@ Rails.application.routes.draw do
   # Heroku health check
   get 'health_check' => proc { [200, {}, ['OK']] }
   
+  # Diagnostic route for SSL/headers issues
+  get 'debug_headers' => proc { |env| 
+    headers = env.select { |k, v| k.start_with?('HTTP_') || ['HTTPS', 'REQUEST_METHOD', 'REQUEST_URI', 'rack.url_scheme'].include?(k) }
+    [200, {'Content-Type' => 'application/json'}, [headers.to_json]] 
+  }
+  
   # API routes
   namespace :api do
     namespace :v1 do
