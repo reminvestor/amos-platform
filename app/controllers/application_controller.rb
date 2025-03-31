@@ -5,11 +5,17 @@ class ApplicationController < ActionController::Base
   # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
   allow_browser versions: :modern
   
-  # Require authentication for all controllers
-  before_action :authenticate_user!
+  # Require authentication for all controllers except API ones
+  # Note: API controllers will override this with skip_before_action
+  before_action :authenticate_user!, unless: :api_request?
   before_action :configure_permitted_parameters, if: :devise_controller?
   
   protected
+  
+  # Check if this is an API request based on the path
+  def api_request?
+    request.path.start_with?('/api/')
+  end
   
   # Override the default devise redirect to avoid /entities being appended
   def after_sign_in_path_for(resource)
