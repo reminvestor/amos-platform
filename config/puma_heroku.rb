@@ -1,43 +1,31 @@
-# Minimal Puma configuration for Heroku
-workers Integer(ENV['WEB_CONCURRENCY'] || 2)
-threads_count = Integer(ENV['RAILS_MAX_THREADS'] || 5)
-threads threads_count, threads_count
+# Minimal Puma configuration for Heroku - strictly following Heroku recommendations
 
-# Add environment info
-environment ENV['RACK_ENV'] || 'development'
+# Set the environment
+environment ENV.fetch("RAILS_ENV") { "production" }
 
-# Set debug log level
-log_requests true
+# Set threads per worker
+max_threads_count = ENV.fetch("RAILS_MAX_THREADS") { 5 }
+min_threads_count = ENV.fetch("RAILS_MIN_THREADS") { max_threads_count }
+threads min_threads_count, max_threads_count
 
-# Force HTTP protocol mode - critical for Heroku SSL termination
-if Puma.respond_to?(:ssl_default_bind_mode=)
-  Puma.ssl_default_bind_mode = false
+# Only use workers in production (> 1 process)
+if ENV.fetch("RAILS_ENV") { "development" } == "production"
+  workers ENV.fetch("WEB_CONCURRENCY") { 2 }
+  preload_app!
 end
 
-# Explicitly disable SSL for Heroku
-if ENV['RACK_ENV'] == 'production'
-  ENV['DISABLE_SSL'] = 'true'
-end
+# Use the port provided by Heroku (no special binding needed)
+port ENV.fetch("PORT") { 3000 }
 
-# Port should be specified with a tcp:// scheme to ensure HTTP protocol is used
-bind "tcp://0.0.0.0:#{ENV.fetch('PORT', 3000)}"
-
-# Preload the app
-preload_app!
-
+# On worker boot, reconnect to the database
 on_worker_boot do
-  ActiveRecord::Base.establish_connection
+  ActiveRecord::Base.establish_connection if defined?(ActiveRecord)
 end
 
-# Allow puma to be restarted by `rails restart` command
+# Allow puma to be restarted by `bin/rails restart` command
 plugin :tmp_restart
 
-# Add an improved error handler that provides more context about SSL issues
-lowlevel_error_handler do |e|
-  # Log the error with as much detail as possible
-  error_message = "Puma Error: #{e.message}\n#{e.backtrace.join("\n")}"
-  env_info = "\nEnvironment: #{ENV['RACK_ENV']}\n"
-  env_info += "SSL Disabled: #{ENV['DISABLE_SSL']}, Force SSL: #{ENV['FORCE_SSL']}"
-  
-  [500, {'Content-Type' => 'text/plain'}, [error_message + env_info]]
+# Redirect stderr/stdout to files in production
+if ENV.fetch("RAILS_ENV") { "development" } == "production"
+  stdout_redirect "log/puma.stdout.log", "log/puma.stderr.log", true
 end 
