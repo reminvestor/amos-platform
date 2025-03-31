@@ -17,8 +17,14 @@ class CampaignTrackingController < ApplicationController
   def click
     process_tracking_event('click')
     
-    # Get target URL from params - fallback to a default if not present
+    # Get target URL from params and make sure it's properly decoded
     target_url = params[:url].presence || root_url
+    
+    # Decode URL if it's encoded
+    target_url = URI.decode_www_form_component(target_url) if target_url.include?('%')
+    
+    # Log the target URL to help with debugging
+    Rails.logger.info("Email click redirecting to: #{target_url}")
     
     # Validate the URL to prevent open redirect vulnerabilities
     target_url = ensure_safe_redirect_url(target_url)

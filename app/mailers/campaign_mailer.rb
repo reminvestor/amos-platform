@@ -90,15 +90,21 @@ class CampaignMailer < ApplicationMailer
       href = link['href']
       next if href.blank? || href.start_with?('#')
       
-      # Wrap the link with our tracking URL
+      # Make sure we're not double-encoding if already encoded
+      original_url = href.include?('%') ? URI.decode_www_form_component(href) : href
+      
+      # Wrap the link with our tracking URL - use original_url as a parameter
       tracked_url = email_click_url(
         delivery_id, 
         host: host_with_subdomain,
         protocol: 'https',
-        url: href
+        url: original_url
       )
       
       link['href'] = tracked_url
+      
+      # Add original URL as data attribute for debugging
+      link['data-original-url'] = original_url
     end
     
     doc.to_html
