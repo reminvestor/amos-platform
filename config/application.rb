@@ -33,8 +33,5 @@ module AgentMarketing
       development: ->(request) { request.domain },
       test: ->(request) { request.domain }
     }.fetch(Rails.env.to_sym)
-
-    # Add our custom middleware for API SSL handling - load at the beginning of the stack
-    config.middleware.insert_before 0, ApiSslFix
   end
 end
