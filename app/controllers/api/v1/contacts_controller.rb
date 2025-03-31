@@ -60,7 +60,23 @@ module Api
                   # Handle group assignment
                   if params[:contact_group_id].present?
                     # Add to specified group
-                    target_group = current_user.contact_groups.find(params[:contact_group_id])
+                    target_group = if user_entity_id.present?
+                      # Find group scoped to entity
+                      current_user.contact_groups.find_by(id: params[:contact_group_id], entity_id: user_entity_id)
+                    else
+                      # Find group without entity scope
+                      current_user.contact_groups.find_by(id: params[:contact_group_id])
+                    end
+                    
+                    # If group not found or belongs to wrong entity, create a new one
+                    unless target_group
+                      render json: {
+                        success: false,
+                        message: "Contact group not found or belongs to a different entity",
+                        error: "Invalid contact_group_id: #{params[:contact_group_id]}"
+                      }, status: :not_found
+                      return
+                    end
                     
                     # Only remove from groups in the same entity
                     if user_entity_id

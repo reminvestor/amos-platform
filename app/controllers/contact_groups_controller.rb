@@ -154,7 +154,19 @@ class ContactGroupsController < ApplicationController
   private
   
   def set_contact_group
-    @contact_group = entity_scope(ContactGroup).find(params[:id])
+    begin
+      @contact_group = entity_scope(ContactGroup).find(params[:id])
+    rescue ActiveRecord::RecordNotFound
+      # If not found with entity scope, try to find by user scope as fallback
+      # This can happen if a contact group exists but is not associated with the current entity
+      @contact_group = current_user.contact_groups.find(params[:id])
+      
+      # If the group belongs to another entity, redirect with notice
+      if @contact_group.entity_id.present? && current_entity && @contact_group.entity_id != current_entity.id
+        redirect_to contact_groups_path, alert: "That contact group belongs to a different entity."
+        return
+      end
+    end
   end
   
   def contact_group_params
