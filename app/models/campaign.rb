@@ -125,11 +125,18 @@ class Campaign < ApplicationRecord
     opened = email_deliveries.where.not(opened_at: nil, sent_at: nil)
     return nil if opened.empty?
     
-    total_minutes = opened.sum do |delivery|
-      ((delivery.opened_at - delivery.sent_at) / 60).round
+    total_minutes = 0
+    valid_count = 0
+    
+    opened.each do |delivery|
+      if delivery.opened_at.present? && delivery.sent_at.present?
+        total_minutes += ((delivery.opened_at - delivery.sent_at) / 60).round
+        valid_count += 1
+      end
     end
     
-    (total_minutes.to_f / opened.count).round(2)
+    return nil if valid_count.zero?
+    (total_minutes.to_f / valid_count).round(2)
   end
   
   def most_active_hours
