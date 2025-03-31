@@ -34,9 +34,19 @@ Rails.application.configure do
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
   config.force_ssl = true
 
-  # Skip http-to-https redirect for the default health check endpoint.
-  # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
+  # Configure proxy settings for Heroku
+  config.action_dispatch.trusted_proxies = ActionDispatch::RemoteIp::TRUSTED_PROXIES +
+    [IPAddr.new('10.0.0.0/8'), IPAddr.new('172.16.0.0/12'), IPAddr.new('192.168.0.0/16')]
 
+  # Skip http-to-https redirect for the default health check endpoint.
+  config.ssl_options = { 
+    redirect: { exclude: ->(request) { request.path == "/up" || request.path.start_with?("/api/") } },
+    hsts: { expires: 1.year }
+  }
+  
+  # Disable forgery protection for API routes
+  config.action_controller.allow_forgery_protection = false
+  
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]
   config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
