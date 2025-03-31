@@ -43,25 +43,55 @@ class Campaign < ApplicationRecord
   end
   
   def open_rate
-    # Use Mailgun stats if available
-    if mailgun_stats.present? && mailgun_stats["delivered"].present? && mailgun_stats["delivered"] > 0
-      (mailgun_stats["opened"].to_f / mailgun_stats["delivered"] * 100).round(2)
-    else
-      # Fall back to our internal tracking
-      return 0 if sent_count.zero?
-      (email_deliveries.where.not(opened_at: nil).count.to_f / sent_count * 100).round(2)
+    # Count emails that were opened from our database
+    db_opened_count = email_deliveries.where.not(opened_at: nil).count
+    db_clicked_count = email_deliveries.where.not(clicked_at: nil).count
+    db_sent_count = email_deliveries.where.not(sent_at: nil).count
+    
+    # If we have actual opens in the database, prioritize that data
+    if db_opened_count > 0 && db_sent_count > 0
+      return (db_opened_count.to_f / db_sent_count * 100).round(2)
     end
+    
+    # If we have clicks but no opens in the database, use clicks as minimum opens
+    if db_opened_count == 0 && db_clicked_count > 0 && db_sent_count > 0
+      return (db_clicked_count.to_f / db_sent_count * 100).round(2)
+    end
+    
+    # Only use Mailgun stats if we don't have good database data
+    if mailgun_stats.present? && mailgun_stats["delivered"].present? && mailgun_stats["delivered"] > 0
+      # If we have "opened" stats, use them
+      if mailgun_stats["opened"].present? && mailgun_stats["opened"] > 0
+        return (mailgun_stats["opened"].to_f / mailgun_stats["delivered"] * 100).round(2)
+      # If no opens but we have clicks, clicks imply opens
+      elsif mailgun_stats["clicked"].present? && mailgun_stats["clicked"] > 0
+        # Use at least the click count for opens (logical minimum)
+        return (mailgun_stats["clicked"].to_f / mailgun_stats["delivered"] * 100).round(2)
+      end
+    end
+    
+    # If nothing else worked, return 0
+    return 0
   end
   
   def click_rate
-    # Use Mailgun stats if available
-    if mailgun_stats.present? && mailgun_stats["delivered"].present? && mailgun_stats["delivered"] > 0
-      (mailgun_stats["clicked"].to_f / mailgun_stats["delivered"] * 100).round(2)
-    else
-      # Fall back to our internal tracking
-      return 0 if sent_count.zero?
-      (email_deliveries.where.not(clicked_at: nil).count.to_f / sent_count * 100).round(2)
+    # Count emails that were clicked from our database
+    db_clicked_count = email_deliveries.where.not(clicked_at: nil).count
+    db_sent_count = email_deliveries.where.not(sent_at: nil).count
+    
+    # If we have actual clicks in the database, prioritize that data
+    if db_clicked_count > 0 && db_sent_count > 0
+      return (db_clicked_count.to_f / db_sent_count * 100).round(2)
     end
+    
+    # Only use Mailgun stats if we don't have good database data
+    if mailgun_stats.present? && mailgun_stats["delivered"].present? && mailgun_stats["delivered"] > 0 && 
+       mailgun_stats["clicked"].present?
+      return (mailgun_stats["clicked"].to_f / mailgun_stats["delivered"] * 100).round(2)
+    end
+    
+    # If nothing else worked, return 0
+    return 0
   end
   
   def unsubscribe_rate
