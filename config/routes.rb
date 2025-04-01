@@ -1,3 +1,5 @@
+require 'solid_queue'
+
 Rails.application.routes.draw do
   # Heroku health check
   get 'health_check' => proc { [200, {}, ['OK']] }
@@ -135,9 +137,6 @@ Rails.application.routes.draw do
     # Set the root path for marketing site
     root 'marketing#index'
   end
-  
-  # Mount Solid::Queue web interface
-  mount Solid::Queue::Engine => "/solid_queue"
   
   # Common routes (regardless of subdomain)
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
