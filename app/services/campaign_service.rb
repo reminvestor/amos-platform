@@ -181,6 +181,18 @@ class CampaignService
   
   private
   
+  def process_and_send_email(delivery)
+    Rails.logger.info("Processing email delivery #{delivery.id} for contact #{delivery.contact.email}")
+    
+    # Send the email using the mailer
+    CampaignMailer.campaign_email(delivery).deliver_now
+    
+    # Mark as sent
+    delivery.mark_as_sent
+    
+    Rails.logger.info("Successfully sent email delivery #{delivery.id}")
+  end
+  
   def cancel_scheduled_jobs
     # Look for campaign jobs in Solid::Queue
     begin
