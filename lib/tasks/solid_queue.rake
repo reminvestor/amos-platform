@@ -12,19 +12,12 @@ namespace :solid_queue do
       hostname = ENV['DYNO'] || Socket.gethostname
       puts "Hostname detected: #{hostname}"
       
-      # Set a proper name for the process - this is critical for the not-null constraint
-      process_name = ENV['PROCESS_NAME']
-      if process_name.nil? || process_name.empty?
-        process_name = "ContactProcessor-#{hostname}"
-        puts "WARNING: No PROCESS_NAME env var set, using default: #{process_name}"
-      else
-        puts "Using PROCESS_NAME from env: #{process_name}"
-      end
+      # ALWAYS set a process name - no nil checking needed
+      process_name = ENV.fetch('PROCESS_NAME', "ContactProcessor-#{hostname}")
+      puts "Using process name: #{process_name}"
       
       # Set concurrency from environment or use default
       concurrency = (ENV['CONCURRENCY'] || 5).to_i
-      
-      # Set dispatcher count from environment or use default
       dispatcher_count = (ENV['DISPATCHER_COUNT'] || 2).to_i
       
       puts "Configuration: process_name=#{process_name}, hostname=#{hostname}, dispatcher_count=#{dispatcher_count}, concurrency=#{concurrency}"
@@ -47,19 +40,28 @@ namespace :solid_queue do
         raise schema_error
       end
       
-      puts "Creating supervisor with name: #{process_name}"
-      
-      # Create the supervisor with explicit name setting
-      supervisor = Solid::Queue::Supervisor.new(
-        hostname: hostname,
-        name: process_name  # Set name during initialization
+      # Create the supervisor differently to ensure name is set
+      supervisor = Class.new(Solid::Queue::Supervisor) do
+        def initialize(name:, hostname:, **options)
+          # Force set the name before any database operations
+          @name = name
+          super(hostname: hostname, **options)
+        end
+
+        # Override name getter to ensure it's never nil
+        def name
+          @name ||= "ContactProcessor-#{hostname}"
+        end
+      end.new(
+        name: process_name,
+        hostname: hostname
       )
+
+      puts "Created supervisor instance with name: #{supervisor.name}"
       
-      # Double-check name is set
-      unless supervisor.name == process_name
-        puts "WARNING: Supervisor name mismatch, explicitly setting name"
-        supervisor.name = process_name
-      end
+      # Verify the name is set
+      raise "Supervisor name is nil!" if supervisor.name.nil?
+      puts "Verified supervisor name is set to: #{supervisor.name}"
       
       puts "Saving supervisor to database..."
       # Save to database to get an ID
