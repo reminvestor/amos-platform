@@ -8,30 +8,65 @@ module Api
       
       def create
         begin
-          # Log all incoming parameters
-          Rails.logger.info("API CONTACT CREATE: Received parameters: #{params.to_json}")
+          start_time = Time.current
+          Rails.logger.info("API CONTACT CREATE [#{start_time.iso8601(3)}]: Starting request processing")
           
+          # Log all incoming parameters
+          contacts_count = params[:contacts].is_a?(Array) ? params[:contacts].length : 0
+          Rails.logger.info("API CONTACT CREATE [#{Time.current.iso8601(3)}]: Received #{contacts_count} contacts")
+          
+          # Check if contacts parameter is present
+          unless params[:contacts].present? && params[:contacts].is_a?(Array)
+            Rails.logger.info("API CONTACT CREATE [#{Time.current.iso8601(3)}]: Missing contacts parameter")
+            render json: {
+              success: false,
+              message: "Missing or invalid contacts parameter"
+            }, status: :bad_request
+            return
+          end
+          
+          # Handle large batches by implementing batch processing
+          if params[:contacts].size > 100
+            Rails.logger.info("API CONTACT CREATE [#{Time.current.iso8601(3)}]: Large batch detected (#{params[:contacts].size} contacts), using background job")
+            
+            # Create a job to process this in the background
+            job = ContactImportJob.perform_later(
+              user_id: current_user.id,
+              entity_id: determine_entity_id,
+              contact_group_id: params[:contact_group_id],
+              contacts: params[:contacts]
+            )
+            
+            # Return early with job info
+            render json: {
+              success: true,
+              message: "Processing #{params[:contacts].size} contacts in the background",
+              job_id: job.job_id,
+              status_url: "/api/v1/jobs/#{job.job_id}"
+            }, status: :accepted
+            return
+          end
+          
+          # For smaller batches, process immediately
           ActiveRecord::Base.transaction do
             contacts = []
             errors = []
-            
-            # Check if contacts parameter is present
-            unless params[:contacts].present? && params[:contacts].is_a?(Array)
-              render json: {
-                success: false,
-                message: "Missing or invalid contacts parameter"
-              }, status: :bad_request
-              return
-            end
+            transaction_start = Time.current
+            Rails.logger.info("API CONTACT CREATE [#{transaction_start.iso8601(3)}]: Starting transaction")
             
             # Get the user's active entity or default entity
             user_entity_id = determine_entity_id
+            Rails.logger.info("API CONTACT CREATE [#{Time.current.iso8601(3)}]: Using entity_id: #{user_entity_id}")
             
             # Step 1: Create or find the target group
+            group_start = Time.current
+            Rails.logger.info("API CONTACT CREATE [#{group_start.iso8601(3)}]: Finding/creating group")
+            
             target_group = if params[:contact_group_id].present?
               # Find existing group
               group = current_user.contact_groups.find_by(id: params[:contact_group_id])
               unless group
+                Rails.logger.info("API CONTACT CREATE [#{Time.current.iso8601(3)}]: Group not found: #{params[:contact_group_id]}")
                 render json: {
                   success: false,
                   message: "Contact group not found",
@@ -50,93 +85,221 @@ module Api
               )
             end
             
-            Rails.logger.info("API CONTACT CREATE: Using group ID: #{target_group.id}")
+            group_end = Time.current
+            Rails.logger.info("API CONTACT CREATE [#{group_end.iso8601(3)}]: Group operation took #{(group_end - group_start).round(2)}s, using group ID: #{target_group.id}")
             
-            # Step 2: Process each contact
+            # Step 2: Process each contact - now with batch processing
+            Rails.logger.info("API CONTACT CREATE [#{Time.current.iso8601(3)}]: Starting to process #{params[:contacts].size} contacts")
+            
+            # First, create all contacts in a batch if possible
+            contacts_to_create = []
+            contacts_to_update = []
+            
+            # Separate existing contacts from new ones
+            batch_prep_start = Time.current
             params[:contacts].each do |contact_params|
+              # Find if contact exists
+              existing = Contact.find_by(
+                email: contact_params[:email].strip,
+                user_id: current_user.id,
+                entity_id: user_entity_id
+              )
+              
+              if existing
+                contacts_to_update << {contact: existing, params: contact_params}
+              else
+                contacts_to_create << contact_params
+              end
+            end
+            batch_prep_end = Time.current
+            Rails.logger.info("API CONTACT CREATE [#{batch_prep_end.iso8601(3)}]: Batch preparation took #{(batch_prep_end - batch_prep_start).round(2)}s, creating: #{contacts_to_create.size}, updating: #{contacts_to_update.size}")
+            
+            # Process updates first
+            update_start = Time.current
+            updated_contacts = []
+            update_errors = []
+            
+            contacts_to_update.each do |item|
               begin
-                # Find or create the contact
-                contact = Contact.find_or_initialize_by(
-                  email: contact_params[:email].strip,
-                  user_id: current_user.id,
-                  entity_id: user_entity_id
-                )
+                contact = item[:contact]
+                params = item[:params]
                 
-                # Update contact attributes
-                contact.first_name = contact_params[:first_name] if contact_params[:first_name].present?
-                contact.last_name = contact_params[:last_name] if contact_params[:last_name].present?
-                contact.status = contact_params[:status] || 'active'
+                # Update attributes
+                contact.first_name = params[:first_name] if params[:first_name].present?
+                contact.last_name = params[:last_name] if params[:last_name].present?
+                contact.status = params[:status] || 'active'
                 
-                # Set metadata for corporation info
+                # Update metadata
                 contact.metadata ||= {}
                 contact.metadata = contact.metadata.merge({
-                  corporation_id: contact_params[:corporation_id],
-                  corporation_name: contact_params[:corporation_name]
+                  corporation_id: params[:corporation_id],
+                  corporation_name: params[:corporation_name]
                 }.compact)
                 
                 if contact.save
-                  # Step 3: Handle group membership - simple approach
-                  if user_entity_id.present?
-                    # If we have an entity, remove from all groups in that entity
-                    group_scope = ContactGroup.where(entity_id: user_entity_id)
-                  else
-                    # If no entity, only remove from global groups
-                    group_scope = ContactGroup.where(entity_id: nil)
-                  end
-                  
-                  # Get all relevant group IDs the contact belongs to except the target group
-                  current_group_ids = contact.contact_groups.where(id: group_scope.pluck(:id)).pluck(:id)
-                  current_group_ids -= [target_group.id]
-                  
-                  # Remove from other groups in one operation if needed
-                  if current_group_ids.any?
-                    contact.contact_groups.delete(ContactGroup.where(id: current_group_ids))
-                    Rails.logger.info("API CONTACT CREATE: Removed contact #{contact.id} from groups: #{current_group_ids.join(',')}")
-                  end
-                  
-                  # Add to target group if not already in it
-                  unless contact.contact_groups.include?(target_group)
-                    target_group.contacts << contact
-                    Rails.logger.info("API CONTACT CREATE: Added contact #{contact.id} to group #{target_group.id}")
-                  end
-                  
-                  contacts << contact
+                  updated_contacts << contact
                 else
-                  errors << {
-                    email: contact_params[:email],
+                  update_errors << {
+                    email: params[:email],
                     errors: contact.errors.full_messages
                   }
-                  Rails.logger.error("API CONTACT CREATE: Failed to save contact: #{contact.errors.full_messages}")
                 end
               rescue => e
-                errors << {
-                  email: contact_params[:email],
+                update_errors << {
+                  email: item[:params][:email],
                   errors: [e.message]
                 }
-                Rails.logger.error("API CONTACT CREATE: Exception processing contact: #{e.message}")
               end
             end
+            update_end = Time.current
+            Rails.logger.info("API CONTACT CREATE [#{update_end.iso8601(3)}]: Updates took #{(update_end - update_start).round(2)}s, succeeded: #{updated_contacts.size}, failed: #{update_errors.size}")
             
-            if errors.any?
+            # Process new contacts
+            create_start = Time.current
+            new_contacts = []
+            create_errors = []
+            
+            if contacts_to_create.any?
+              contacts_to_create.each do |params|
+                begin
+                  # Create new contact
+                  contact = Contact.new(
+                    email: params[:email].strip,
+                    first_name: params[:first_name],
+                    last_name: params[:last_name],
+                    status: params[:status] || 'active',
+                    user_id: current_user.id,
+                    entity_id: user_entity_id,
+                    metadata: {
+                      corporation_id: params[:corporation_id],
+                      corporation_name: params[:corporation_name]
+                    }.compact
+                  )
+                  
+                  if contact.save
+                    new_contacts << contact
+                  else
+                    create_errors << {
+                      email: params[:email],
+                      errors: contact.errors.full_messages
+                    }
+                  end
+                rescue => e
+                  create_errors << {
+                    email: params[:email],
+                    errors: [e.message]
+                  }
+                end
+              end
+            end
+            create_end = Time.current
+            Rails.logger.info("API CONTACT CREATE [#{create_end.iso8601(3)}]: Creates took #{(create_end - create_start).round(2)}s, succeeded: #{new_contacts.size}, failed: #{create_errors.size}")
+            
+            # Combine all contacts and errors
+            all_contacts = updated_contacts + new_contacts
+            all_errors = update_errors + create_errors
+            
+            # Step 3: Handle group membership - in batch if possible
+            if all_contacts.any?
+              group_assign_start = Time.current
+              Rails.logger.info("API CONTACT CREATE [#{group_assign_start.iso8601(3)}]: Starting group assignment for #{all_contacts.size} contacts")
+              
+              # Get all contact IDs
+              contact_ids = all_contacts.map(&:id)
+              
+              # Efficiently find existing group memberships
+              if user_entity_id.present?
+                # Find all groups in this entity
+                other_groups = ContactGroup.where(entity_id: user_entity_id).where.not(id: target_group.id)
+              else
+                # Find all global groups
+                other_groups = ContactGroup.where(entity_id: nil).where.not(id: target_group.id)
+              end
+              
+              if other_groups.any?
+                # Get all existing memberships
+                existing_memberships = ContactGroupsContact.where(
+                  contact_id: contact_ids,
+                  contact_group_id: other_groups.map(&:id)
+                )
+                
+                # Delete them in one operation
+                if existing_memberships.any?
+                  delete_start = Time.current
+                  membership_count = existing_memberships.count
+                  existing_memberships.delete_all
+                  delete_end = Time.current
+                  Rails.logger.info("API CONTACT CREATE [#{delete_end.iso8601(3)}]: Deleted #{membership_count} group memberships in #{(delete_end - delete_start).round(2)}s")
+                end
+              end
+              
+              # Add all contacts to the target group
+              add_start = Time.current
+              
+              # First, find which contacts are already in the group
+              existing_in_group = ContactGroupsContact.where(
+                contact_id: contact_ids,
+                contact_group_id: target_group.id
+              ).pluck(:contact_id)
+              
+              # Determine which need to be added
+              contacts_to_add = all_contacts.reject { |c| existing_in_group.include?(c.id) }
+              
+              # Add them all at once if needed
+              if contacts_to_add.any?
+                values = contacts_to_add.map do |contact| 
+                  {
+                    contact_id: contact.id,
+                    contact_group_id: target_group.id,
+                    created_at: Time.current,
+                    updated_at: Time.current
+                  }
+                end
+                
+                # Use bulk insert
+                ContactGroupsContact.insert_all(values)
+              end
+              
+              add_end = Time.current
+              Rails.logger.info("API CONTACT CREATE [#{add_end.iso8601(3)}]: Added #{contacts_to_add.size} contacts to group in #{(add_end - add_start).round(2)}s")
+              
+              group_assign_end = Time.current
+              Rails.logger.info("API CONTACT CREATE [#{group_assign_end.iso8601(3)}]: Group assignment completed in #{(group_assign_end - group_assign_start).round(2)}s")
+            end
+            
+            # Log transaction completion time
+            transaction_end = Time.current
+            Rails.logger.info("API CONTACT CREATE [#{transaction_end.iso8601(3)}]: Transaction completed in #{(transaction_end - transaction_start).round(2)}s")
+            
+            if all_errors.any?
               render json: {
                 success: false,
                 message: "Some contacts failed to process",
-                contacts_created: contacts.length,
+                contacts_created: new_contacts.length,
+                contacts_updated: updated_contacts.length,
+                total_processed: all_contacts.length,
                 group_id: target_group.id,
-                errors: errors
+                errors: all_errors
               }, status: :unprocessable_entity
             else
               render json: {
                 success: true,
-                message: "Successfully processed #{contacts.length} contacts",
+                message: "Successfully processed all contacts",
+                contacts_created: new_contacts.length,
+                contacts_updated: updated_contacts.length,
+                total_processed: all_contacts.length,
                 group_id: target_group.id,
                 group_name: target_group.name,
-                contacts: contacts.map { |c| contact_response(c) }
+                contacts: all_contacts.map { |c| contact_response(c) }
               }, status: :created
             end
           end
+          
+          # Log total request time
+          end_time = Time.current
+          Rails.logger.info("API CONTACT CREATE [#{end_time.iso8601(3)}]: Request completed in #{(end_time - start_time).round(2)}s")
         rescue => e
-          Rails.logger.error("API Error: #{e.message}\n#{e.backtrace.join("\n")}")
+          Rails.logger.error("API ERROR [#{Time.current.iso8601(3)}]: #{e.message}\n#{e.backtrace.join("\n")}")
           render json: {
             success: false,
             message: "Error processing contacts",

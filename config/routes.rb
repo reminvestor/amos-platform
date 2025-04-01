@@ -14,6 +14,7 @@ Rails.application.routes.draw do
       # Health check endpoint
       get 'health', to: 'health#index'
       resources :contacts, only: [:create]
+      resources :jobs, only: [:show]
     end
   end
   
