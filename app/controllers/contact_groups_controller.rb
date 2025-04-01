@@ -49,10 +49,11 @@ class ContactGroupsController < ApplicationController
       
       # Get contacts with error handling
       begin
-        @contacts = @contact_group.contacts
-                    .includes(:contact_groups) # Eager load to reduce N+1 queries
-                    .order("COALESCE(last_name, name, email) ASC, COALESCE(first_name, '') ASC")
-                    .page(params[:page])
+        # Use simple query with basic ordering that won't conflict with DISTINCT
+        contact_ids = @contact_group.contact_ids
+        @contacts = Contact.where(id: contact_ids)
+                          .order(last_name: :asc, first_name: :asc)
+                          .page(params[:page])
         
         # Log successful retrieval
         Rails.logger.info("SHOW: Successfully loaded #{@contacts.size} contacts for page #{params[:page] || 1}")
@@ -65,8 +66,9 @@ class ContactGroupsController < ApplicationController
               # Add headers
               csv << ["Name", "Email", "Corporation ID", "Corporation Name", "Status", "Created At"]
               
-              # Add all contacts without pagination
-              all_contacts = @contact_group.contacts
+              # Get all contacts without pagination
+              all_contacts = Contact.where(id: contact_ids)
+                                  .order(last_name: :asc, first_name: :asc)
               all_contacts.each do |contact|
                 name = if contact.respond_to?(:name) && contact.name.present?
                   contact.name
