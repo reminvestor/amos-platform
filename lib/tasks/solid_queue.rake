@@ -33,13 +33,29 @@ namespace :solid_queue do
         puts "Error checking schema: #{schema_error.message}"
       end
       
-      # Start the process with the specified settings using parameter format from solid_queue 0.3.x
-      Solid::Queue::Process.supervise(
-        name: process_name, 
-        hostname: hostname,
-        dispatcher_count: dispatcher_count,
-        dispatcher_opts: { concurrency: concurrency }
-      )
+      # Patch for Solid::Queue 0.3.4 - manually create the supervisor process
+      supervisor = Solid::Queue::Supervisor.new(hostname: hostname)
+      
+      # Set the name explicitly before registration
+      supervisor.name = process_name
+      
+      # Save to database to get an ID
+      supervisor.save!
+      
+      # Start supervisors and workers
+      supervisor.start_dispatchers(dispatcher_count, **{ concurrency: concurrency })
+      supervisor.start_workers(**{ concurrency: concurrency })
+      
+      # Keep the process alive until interrupted
+      begin
+        loop do
+          sleep 1
+          supervisor.refresh
+        end
+      rescue Interrupt
+        puts "Shutting down supervisor..."
+        supervisor.stop
+      end
     rescue => e
       puts "ERROR starting Solid::Queue worker: #{e.class.name} - #{e.message}"
       puts e.backtrace.join("\n")
