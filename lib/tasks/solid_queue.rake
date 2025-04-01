@@ -22,69 +22,59 @@ namespace :solid_queue do
       
       puts "Configuration: process_name=#{process_name}, hostname=#{hostname}, dispatcher_count=#{dispatcher_count}, concurrency=#{concurrency}"
       
-      # Verify the schema has necessary columns
-      begin 
-        if ActiveRecord::Base.connection.table_exists?(:solid_queue_processes)
-          columns = ActiveRecord::Base.connection.columns(:solid_queue_processes)
-          column_names = columns.map(&:name)
-          puts "Available columns in solid_queue_processes: #{column_names.join(', ')}"
-          
-          unless column_names.include?('name')
-            raise "Missing 'name' column in solid_queue_processes table!"
+      # Use a transaction to ensure atomicity
+      ActiveRecord::Base.transaction do
+        # First, create the process record directly in the database
+        process_record = Solid::Queue::Process.new(
+          name: process_name,
+          hostname: hostname,
+          type: 'Supervisor',
+          pid: Process.pid
+        )
+        
+        # Force set the name attribute
+        process_record.attributes = {
+          'name' => process_name,
+          'hostname' => hostname,
+          'type' => 'Supervisor',
+          'pid' => Process.pid
+        }
+        
+        # Save with validation
+        process_record.save!(validate: true)
+        puts "Created process record with ID: #{process_record.id}"
+        
+        # Verify the name was set
+        if process_record.name.nil?
+          raise "Process name is still nil after save!"
+        end
+        
+        # Now create the supervisor with the existing process record
+        supervisor = Solid::Queue::Supervisor.new(
+          hostname: hostname,
+          process: process_record
+        )
+        
+        puts "Created supervisor instance with process record"
+        
+        # Start supervisors and workers
+        puts "Starting dispatchers..."
+        supervisor.start_dispatchers(dispatcher_count, **{ concurrency: concurrency })
+        puts "Starting workers..."
+        supervisor.start_workers(**{ concurrency: concurrency })
+        
+        puts "Supervisor startup complete. Entering main loop..."
+        
+        # Keep the process alive until interrupted
+        begin
+          loop do
+            sleep 1
+            supervisor.refresh
           end
-        else
-          raise "solid_queue_processes table does not exist! Did you run migrations?"
+        rescue Interrupt
+          puts "Shutting down supervisor..."
+          supervisor.stop
         end
-      rescue => schema_error
-        puts "FATAL: Schema verification failed: #{schema_error.message}"
-        raise schema_error
-      end
-      
-      # Create the supervisor differently to ensure name is set
-      supervisor = Class.new(Solid::Queue::Supervisor) do
-        def initialize(name:, hostname:, **options)
-          # Force set the name before any database operations
-          @name = name
-          super(hostname: hostname, **options)
-        end
-
-        # Override name getter to ensure it's never nil
-        def name
-          @name ||= "ContactProcessor-#{hostname}"
-        end
-      end.new(
-        name: process_name,
-        hostname: hostname
-      )
-
-      puts "Created supervisor instance with name: #{supervisor.name}"
-      
-      # Verify the name is set
-      raise "Supervisor name is nil!" if supervisor.name.nil?
-      puts "Verified supervisor name is set to: #{supervisor.name}"
-      
-      puts "Saving supervisor to database..."
-      # Save to database to get an ID
-      supervisor.save!
-      puts "Supervisor saved successfully with ID: #{supervisor.id}"
-      
-      # Start supervisors and workers
-      puts "Starting dispatchers..."
-      supervisor.start_dispatchers(dispatcher_count, **{ concurrency: concurrency })
-      puts "Starting workers..."
-      supervisor.start_workers(**{ concurrency: concurrency })
-      
-      puts "Supervisor startup complete. Entering main loop..."
-      
-      # Keep the process alive until interrupted
-      begin
-        loop do
-          sleep 1
-          supervisor.refresh
-        end
-      rescue Interrupt
-        puts "Shutting down supervisor..."
-        supervisor.stop
       end
     rescue => e
       puts "FATAL ERROR starting Solid::Queue worker: #{e.class.name} - #{e.message}"
