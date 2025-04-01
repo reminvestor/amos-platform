@@ -117,14 +117,54 @@ class CampaignService
   
   # Start a campaign
   def start_campaign
+    Rails.logger.info("Starting campaign #{@campaign.id}: #{@campaign.name}")
+    
     # Prepare deliveries if needed
-    prepare_email_deliveries if @campaign.email_deliveries.empty?
+    if @campaign.email_deliveries.empty?
+      Rails.logger.info("Preparing email deliveries for campaign #{@campaign.id}")
+      prepare_email_deliveries
+    end
     
     # Update campaign status
+    Rails.logger.info("Updating campaign #{@campaign.id} status to in_progress")
     @campaign.update(status: 'in_progress')
     
     # Schedule the job to process emails
-    ProcessCampaignJob.perform_later(@campaign.id)
+    Rails.logger.info("Queuing ProcessCampaignJob for campaign #{@campaign.id}")
+    job = ProcessCampaignJob.perform_later(@campaign.id)
+    Rails.logger.info("ProcessCampaignJob queued with ID: #{job.provider_job_id}")
+    
+    # Log the current queue status
+    begin
+      # Check jobs table
+      job_count = Solid::Queue::Job.count
+      Rails.logger.info("Current Solid::Queue job count: #{job_count}")
+      
+      # Check if our specific job exists
+      if job.provider_job_id
+        job_record = Solid::Queue::Job.find_by(id: job.provider_job_id)
+        if job_record
+          Rails.logger.info("Found job in database with status: #{job_record.status}")
+        else
+          Rails.logger.error("Job not found in database despite being queued!")
+        end
+      end
+      
+      # Check processes
+      process_count = Solid::Queue::Process.count
+      Rails.logger.info("Current Solid::Queue process count: #{process_count}")
+      
+      # Check dispatchers
+      dispatcher_count = Solid::Queue::Process.where(type: 'Dispatcher').count
+      Rails.logger.info("Current dispatcher count: #{dispatcher_count}")
+      
+      # Check workers
+      worker_count = Solid::Queue::Process.where(type: 'Worker').count
+      Rails.logger.info("Current worker count: #{worker_count}")
+    rescue => e
+      Rails.logger.error("Error checking queue status: #{e.message}")
+      Rails.logger.error(e.backtrace.join("\n"))
+    end
   end
   
   # Schedule a campaign
