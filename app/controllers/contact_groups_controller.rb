@@ -173,89 +173,100 @@ class ContactGroupsController < ApplicationController
     end
 
     begin
-      require 'csv'
-      csv_file = params[:file]
       success_count = 0
       error_count = 0
       errors = []
 
       # Clear existing contacts if requested
       if params[:clear_existing].present? && params[:clear_existing] == "1"
-        Rails.logger.info("UPLOAD_CSV: Clearing existing contacts from group #{@contact_group.id}")
-        contact_count = @contact_group.contacts.count
         @contact_group.contacts.clear
-        Rails.logger.info("UPLOAD_CSV: Cleared #{contact_count} contacts from group #{@contact_group.id}")
+        flash[:notice] = "Cleared all existing contacts from the group."
       end
 
-      CSV.foreach(csv_file.path, headers: true) do |row|
-        begin
-          Rails.logger.info("UPLOAD_CSV: Processing row with email #{row['email']}")
-          
-          # Skip rows with missing email
+      # Use a transaction to ensure data consistency
+      Contact.transaction do
+        # Entity for scoping
+        entity_id = current_entity&.id
+
+        # Process CSV file
+        CSV.foreach(params[:file].path, headers: true) do |row|
+          # Skip rows without email
           if row['email'].blank?
-            error_count += 1
-            errors << "Row #{$.}: Missing email address"
+            error_count += 1 
             next
           end
           
-          # Find or create contact
+          # Step 1: Find or create contact
           contact = Contact.find_or_initialize_by(
             email: row['email'].strip,
-            user: current_user
+            user_id: current_user.id,
+            entity_id: entity_id
           )
-
-          # Set entity_id if we're in an entity context
-          contact.entity_id = current_entity.id if current_entity
-
-          # Update contact attributes
+          
+          # Step 2: Update contact attributes
           if row['name'].present?
+            # Handle name splitting
             if row['name'].include?(' ')
-              # Split name into first and last name
-              name_parts = row['name'].strip.split(' ', 2)
-              contact.first_name = name_parts[0]
-              contact.last_name = name_parts[1]
+              parts = row['name'].rpartition(' ')
+              contact.first_name = parts.first.strip
+              contact.last_name = parts.last.strip
             else
               contact.first_name = row['name'].strip
             end
           end
           
-          # Store corporation data in metadata
+          # Set metadata for corporation info
           contact.metadata ||= {}
           if row['corporation_id'].present? || row['corporation_name'].present?
             contact.metadata = contact.metadata.merge({
               'corporation_id' => row['corporation_id'].to_s.strip,
               'corporation_name' => row['corporation_name'].to_s.strip
-            })
+            }.compact)
           end
           
-          # Set default status if not present
+          # Set default status
           contact.status ||= 'active'
-
+          
+          # Save the contact
           if contact.save
-            Rails.logger.info("UPLOAD_CSV: Saved contact #{contact.id} (#{contact.email})")
+            # Step 3: Handle group assignment - simple approach
             
-            # Add to current group if not already in it
-            unless @contact_group.contacts.include?(contact)
+            # First determine which groups to check for removal
+            if entity_id.present?
+              # If we have an entity, remove from all groups in that entity
+              group_scope = ContactGroup.where(entity_id: entity_id)
+            else
+              # If no entity, only remove from global groups
+              group_scope = ContactGroup.where(entity_id: nil)
+            end
+            
+            # Get all group IDs the contact belongs to except current group
+            current_group_ids = contact.contact_groups
+                                      .where(id: group_scope.pluck(:id))
+                                      .where.not(id: @contact_group.id)
+                                      .pluck(:id)
+            
+            # Remove from other groups in one operation
+            if current_group_ids.any?
+              contact.contact_groups.delete(ContactGroup.where(id: current_group_ids))
+            end
+            
+            # Add to current group
+            unless contact.contact_groups.include?(@contact_group)
               @contact_group.contacts << contact
-              Rails.logger.info("UPLOAD_CSV: Added contact #{contact.id} to group #{@contact_group.id}")
             end
             
             success_count += 1
           else
             error_count += 1
             errors << "Row #{$.}: #{contact.errors.full_messages.join(', ')}"
-            Rails.logger.error("UPLOAD_CSV: Error saving contact: #{contact.errors.full_messages.join(', ')}")
           end
-        rescue => e
-          error_count += 1
-          errors << "Row #{$.}: #{e.message}"
-          Rails.logger.error("UPLOAD_CSV: Exception processing row: #{e.message}")
         end
       end
 
+      # Show the results
       if error_count > 0
         flash[:alert] = "Upload completed with #{success_count} successful and #{error_count} failed records."
-        Rails.logger.error("UPLOAD_CSV: Errors: #{errors.join('; ')}")
       else
         flash[:notice] = "Successfully uploaded #{success_count} contacts."
       end

@@ -8,6 +8,9 @@ module Api
       
       def create
         begin
+          # Log all incoming parameters
+          Rails.logger.info("API CONTACT CREATE: Received parameters: #{params.to_json}")
+          
           ActiveRecord::Base.transaction do
             contacts = []
             errors = []
@@ -21,105 +24,96 @@ module Api
               return
             end
             
-            # Process each contact in the request
+            # Get the user's active entity or default entity
+            user_entity_id = determine_entity_id
+            
+            # Step 1: Create or find the target group
+            target_group = if params[:contact_group_id].present?
+              # Find existing group
+              group = current_user.contact_groups.find_by(id: params[:contact_group_id])
+              unless group
+                render json: {
+                  success: false,
+                  message: "Contact group not found",
+                  error: "Invalid contact_group_id: #{params[:contact_group_id]}"
+                }, status: :not_found
+                return
+              end
+              group
+            else
+              # Create a new group
+              group_name = "API Import #{Time.current.strftime('%Y-%m-%d %H:%M')}"
+              current_user.contact_groups.create!(
+                name: group_name,
+                description: "API Import on #{Time.current.strftime('%Y-%m-%d')}",
+                entity_id: user_entity_id
+              )
+            end
+            
+            Rails.logger.info("API CONTACT CREATE: Using group ID: #{target_group.id}")
+            
+            # Step 2: Process each contact
             params[:contacts].each do |contact_params|
               begin
-                # Get the user's active entity or default entity
-                user_entity_id = determine_entity_id
-                
-                # Find or create contact, scoped by entity and email
-                find_params = { email: contact_params[:email] }
-                
-                # Only add entity scope if an entity was found
-                find_params[:entity_id] = user_entity_id if user_entity_id.present?
-                
-                # Always include user association
-                find_params[:user_id] = current_user.id
-                
-                contact = Contact.find_or_initialize_by(find_params)
+                # Find or create the contact
+                contact = Contact.find_or_initialize_by(
+                  email: contact_params[:email].strip,
+                  user_id: current_user.id,
+                  entity_id: user_entity_id
+                )
                 
                 # Update contact attributes
-                contact.first_name = contact_params[:first_name]
-                contact.last_name = contact_params[:last_name]
+                contact.first_name = contact_params[:first_name] if contact_params[:first_name].present?
+                contact.last_name = contact_params[:last_name] if contact_params[:last_name].present?
+                contact.status = contact_params[:status] || 'active'
                 
-                # Set entity_id from user's active entity
-                contact.entity_id = user_entity_id
-                
-                # Store corporation info in metadata
+                # Set metadata for corporation info
                 contact.metadata ||= {}
                 contact.metadata = contact.metadata.merge({
                   corporation_id: contact_params[:corporation_id],
                   corporation_name: contact_params[:corporation_name]
-                })
-                
-                contact.status = contact_params[:status] || 'active'
+                }.compact)
                 
                 if contact.save
-                  contacts << contact
-                  
-                  # Handle group assignment
-                  if params[:contact_group_id].present?
-                    # Add to specified group
-                    target_group = if user_entity_id.present?
-                      # Find group scoped to entity
-                      current_user.contact_groups.find_by(id: params[:contact_group_id], entity_id: user_entity_id)
-                    else
-                      # Find group without entity scope
-                      current_user.contact_groups.find_by(id: params[:contact_group_id])
-                    end
-                    
-                    # If group not found or belongs to wrong entity, create a new one
-                    unless target_group
-                      render json: {
-                        success: false,
-                        message: "Contact group not found or belongs to a different entity",
-                        error: "Invalid contact_group_id: #{params[:contact_group_id]}"
-                      }, status: :not_found
-                      return
-                    end
-                    
-                    # Only remove from groups in the same entity
-                    if user_entity_id
-                      entity_groups = contact.contact_groups.where(entity_id: user_entity_id)
-                      contact.contact_groups.delete(entity_groups) if entity_groups.any?
-                    else
-                      # For global contacts (no entity), clear all groups
-                      contact.contact_groups.clear if contact.contact_groups.any?
-                    end
-                    
-                    # Add to target group
-                    target_group.contacts << contact
+                  # Step 3: Handle group membership - simple approach
+                  if user_entity_id.present?
+                    # If we have an entity, remove from all groups in that entity
+                    group_scope = ContactGroup.where(entity_id: user_entity_id)
                   else
-                    # Create new group if none specified
-                    group = current_user.contact_groups.create!(
-                      name: "API Import #{Time.current.strftime('%Y-%m-%d %H:%M')}",
-                      description: "Automatically created group for API import",
-                      entity_id: user_entity_id # Set entity_id on new group
-                    )
-                    
-                    # Only remove from groups in the same entity
-                    if user_entity_id
-                      entity_groups = contact.contact_groups.where(entity_id: user_entity_id)
-                      contact.contact_groups.delete(entity_groups) if entity_groups.any?
-                    else
-                      # For global contacts (no entity), clear all groups
-                      contact.contact_groups.clear if contact.contact_groups.any?
-                    end
-                    
-                    # Add to new group
-                    group.contacts << contact
+                    # If no entity, only remove from global groups
+                    group_scope = ContactGroup.where(entity_id: nil)
                   end
+                  
+                  # Get all relevant group IDs the contact belongs to except the target group
+                  current_group_ids = contact.contact_groups.where(id: group_scope.pluck(:id)).pluck(:id)
+                  current_group_ids -= [target_group.id]
+                  
+                  # Remove from other groups in one operation if needed
+                  if current_group_ids.any?
+                    contact.contact_groups.delete(ContactGroup.where(id: current_group_ids))
+                    Rails.logger.info("API CONTACT CREATE: Removed contact #{contact.id} from groups: #{current_group_ids.join(',')}")
+                  end
+                  
+                  # Add to target group if not already in it
+                  unless contact.contact_groups.include?(target_group)
+                    target_group.contacts << contact
+                    Rails.logger.info("API CONTACT CREATE: Added contact #{contact.id} to group #{target_group.id}")
+                  end
+                  
+                  contacts << contact
                 else
                   errors << {
                     email: contact_params[:email],
                     errors: contact.errors.full_messages
                   }
+                  Rails.logger.error("API CONTACT CREATE: Failed to save contact: #{contact.errors.full_messages}")
                 end
               rescue => e
                 errors << {
                   email: contact_params[:email],
                   errors: [e.message]
                 }
+                Rails.logger.error("API CONTACT CREATE: Exception processing contact: #{e.message}")
               end
             end
             
@@ -128,12 +122,15 @@ module Api
                 success: false,
                 message: "Some contacts failed to process",
                 contacts_created: contacts.length,
+                group_id: target_group.id,
                 errors: errors
               }, status: :unprocessable_entity
             else
               render json: {
                 success: true,
                 message: "Successfully processed #{contacts.length} contacts",
+                group_id: target_group.id,
+                group_name: target_group.name,
                 contacts: contacts.map { |c| contact_response(c) }
               }, status: :created
             end
@@ -215,6 +212,21 @@ module Api
           status: contact.status,
           contact_groups: contact.contact_groups.map { |g| { id: g.id, name: g.name } }
         }
+      end
+      
+      # Help convert string boolean values to actual booleans
+      def parse_boolean(value)
+        return nil if value.nil?
+        return value if value.is_a?(TrueClass) || value.is_a?(FalseClass)
+        
+        case value.to_s.downcase.strip
+        when 'true', 'yes', '1', 'on'
+          true
+        when 'false', 'no', '0', 'off'
+          false
+        else
+          value # Return original value if not a boolean string
+        end
       end
     end
   end
