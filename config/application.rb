@@ -29,14 +29,17 @@ module AgentMarketing
     
     # Configure session store
     config.session_store :cookie_store, key: '_agent_marketing_session', domain: {
-      production: ->(request) { request.domain },
-      development: ->(request) { request.domain },
-      test: ->(request) { request.domain }
-    }.fetch(Rails.env.to_sym)
+      production: :all, 
+      development: :all,
+      test: :all
+    }[Rails.env.to_sym]
 
     # Load custom middleware path
     config.autoload_paths << Rails.root.join('lib')
     config.eager_load_paths << Rails.root.join('lib')
+    
+    # Set Solid::Queue as the queue adapter
+    config.active_job.queue_adapter = :solid_queue
     
     # We'll add the middleware in an initializer instead
     # to ensure all classes are loaded first

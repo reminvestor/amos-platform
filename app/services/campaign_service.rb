@@ -87,12 +87,7 @@ class CampaignService
     @campaign.update(status: 'stopped')
     
     # Cancel any pending jobs
-    Sidekiq::ScheduledSet.new.each do |job|
-      if job.args.first == @campaign.id && job.queue == 'default'
-        job.delete
-        Rails.logger.info("Cancelled scheduled job for campaign #{@campaign.id}")
-      end
-    end
+    cancel_scheduled_jobs
     
     Rails.logger.info("Campaign #{@campaign.id} stopped successfully")
   end
@@ -104,12 +99,7 @@ class CampaignService
     @campaign.update(status: 'paused')
     
     # Cancel any pending jobs
-    Sidekiq::ScheduledSet.new.each do |job|
-      if job.args.first == @campaign.id && job.queue == 'default'
-        job.delete
-        Rails.logger.info("Cancelled scheduled job for campaign #{@campaign.id}")
-      end
-    end
+    cancel_scheduled_jobs
     
     Rails.logger.info("Campaign #{@campaign.id} paused successfully")
   end
@@ -147,5 +137,28 @@ class CampaignService
     
     # Schedule the job to process emails at the scheduled time
     ProcessCampaignJob.set(wait_until: scheduled_at).perform_later(@campaign.id)
+  end
+  
+  private
+  
+  def cancel_scheduled_jobs
+    # Look for campaign jobs in Solid::Queue
+    begin
+      # Find jobs by campaign ID in the serialized parameters
+      campaign_jobs = Solid::Queue::Job.where("serialized_params LIKE ?", "%#{@campaign.id}%")
+      
+      # Find scheduled executions for these jobs
+      scheduled_executions = Solid::Queue::ScheduledExecution.where(job_id: campaign_jobs.select(:id))
+      
+      if scheduled_executions.any?
+        count = scheduled_executions.count
+        scheduled_executions.destroy_all
+        Rails.logger.info("Cancelled #{count} scheduled jobs for campaign #{@campaign.id}")
+      else
+        Rails.logger.info("No scheduled jobs found for campaign #{@campaign.id}")
+      end
+    rescue => e
+      Rails.logger.error("Error cancelling jobs for campaign #{@campaign.id}: #{e.message}")
+    end
   end
 end 

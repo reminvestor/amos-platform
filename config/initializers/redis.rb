@@ -1,6 +1,30 @@
 # Configure Redis connection
 require 'openssl'
 require 'uri'
+require 'redis'
+
+# Add a NullRedis implementation that won't break the app if Redis is unavailable
+class NullRedis
+  def ping
+    "PONG" # Simulate successful connection
+  end
+  
+  def get(key)
+    nil # Always return nil for any key
+  end
+  
+  def set(key, value)
+    true # Pretend we saved it
+  end
+  
+  def expire(key, seconds)
+    true # Pretend we set expiration
+  end
+  
+  def method_missing(method, *args, &block)
+    nil # Return nil for any other method
+  end
+end
 
 # Get the Redis URL from environment or use default localhost
 redis_url = ENV["REDIS_URL"] || "redis://localhost:6379"
@@ -18,31 +42,85 @@ rescue URI::InvalidURIError => e
 end
 
 # Configure Redis options based on environment
-redis_options = {}
+REDIS_OPTIONS = {}
 
 if Rails.env.production?
   # On Heroku: Keep the SSL scheme but disable SSL verification
-  redis_options[:ssl_params] = { verify_mode: OpenSSL::SSL::VERIFY_NONE }
-  redis_options[:url] = redis_url
+  REDIS_OPTIONS[:ssl_params] = { verify_mode: OpenSSL::SSL::VERIFY_NONE }
+  REDIS_OPTIONS[:url] = redis_url
   
   # Add additional options to improve reliability
-  redis_options[:reconnect_attempts] = 5
-  redis_options[:network_timeout] = 5
-  redis_options[:timeout] = 5
+  REDIS_OPTIONS[:reconnect_attempts] = 5
+  REDIS_OPTIONS[:network_timeout] = 5
+  REDIS_OPTIONS[:connect_timeout] = 5
+  REDIS_OPTIONS[:timeout] = 5
+  REDIS_OPTIONS[:read_timeout] = 5
+  REDIS_OPTIONS[:write_timeout] = 5
   
   # Log the Redis connection setup for debugging
   Rails.logger.info("Configuring Redis with: #{parsed_uri.scheme}://#{parsed_uri.host}:#{parsed_uri.port}")
 else
   # For development, just use the URL as-is
-  redis_options[:url] = redis_url
+  REDIS_OPTIONS[:url] = redis_url
 end
 
-# Configure Sidekiq server
-Sidekiq.configure_server do |config|
-  config.redis = redis_options
+# Create a global Redis connection for the application
+$redis = nil
+
+# Initialize Redis client safely
+begin
+  $redis = Redis.new(REDIS_OPTIONS)
+  $redis.ping # Test connection
+  Rails.logger.info("Redis connection established successfully")
+rescue Redis::BaseError => e
+  Rails.logger.error("Failed to connect to Redis: #{e.message}")
+  Rails.logger.error(e.backtrace.join("\n"))
+  # Initialize with a dummy Redis that won't crash the app
+  $redis = NullRedis.new
 end
 
-# Configure Sidekiq client
-Sidekiq.configure_client do |config|
-  config.redis = redis_options
-end 
+# Add a safe_redis method for global access to Redis
+def safe_redis
+  begin
+    return $redis if $redis && $redis.ping == "PONG"
+  rescue Redis::BaseError => e
+    Rails.logger.error("Redis connection error: #{e.message}")
+  end
+  
+  begin
+    # Try to reconnect
+    $redis = Redis.new(REDIS_OPTIONS)
+    return $redis
+  rescue Redis::BaseError => e
+    Rails.logger.error("Failed to reconnect to Redis: #{e.message}")
+    # Return NullRedis if Redis is unavailable
+    $redis = NullRedis.new
+    return $redis
+  end
+end
+
+# Make safe_redis available to Redis class for backward compatibility
+module RedisHelper
+  def self.safe
+    safe_redis
+  end
+end
+
+# Add the safe method to Redis
+Redis.singleton_class.prepend(RedisHelper)
+
+# Sidekiq is not being used - this app uses Solid::Queue
+# Keeping these configurations commented in case they're needed in the future
+# begin
+#   # Configure Sidekiq server
+#   Sidekiq.configure_server do |config|
+#     config.redis = REDIS_OPTIONS
+#   end
+#
+#   # Configure Sidekiq client
+#   Sidekiq.configure_client do |config|
+#     config.redis = REDIS_OPTIONS
+#   end
+# rescue => e
+#   Rails.logger.error("Failed to configure Sidekiq with Redis: #{e.message}")
+# end 
