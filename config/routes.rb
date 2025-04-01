@@ -136,6 +136,9 @@ Rails.application.routes.draw do
     root 'marketing#index'
   end
   
+  # Mount Solid::Queue web interface
+  mount Solid::Queue::Engine => "/solid_queue"
+  
   # Common routes (regardless of subdomain)
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   get "up" => "rails/health#show", as: :rails_health_check
