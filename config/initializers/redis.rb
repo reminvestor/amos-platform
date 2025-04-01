@@ -49,10 +49,8 @@ if Rails.env.production?
   REDIS_OPTIONS[:ssl_params] = { verify_mode: OpenSSL::SSL::VERIFY_NONE }
   REDIS_OPTIONS[:url] = redis_url
   
-  # Add additional options to improve reliability
+  # Add additional options to improve reliability - use options compatible with Redis 5.x
   REDIS_OPTIONS[:reconnect_attempts] = 5
-  REDIS_OPTIONS[:network_timeout] = 5
-  REDIS_OPTIONS[:connect_timeout] = 5
   REDIS_OPTIONS[:timeout] = 5
   REDIS_OPTIONS[:read_timeout] = 5
   REDIS_OPTIONS[:write_timeout] = 5
