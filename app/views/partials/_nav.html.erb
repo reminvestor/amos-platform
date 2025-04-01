@@ -1,0 +1,4 @@
+<!-- User avatar placeholder with initials -->
+<span class="avatar-placeholder bg-primary text-white">
+  <%= current_user&.first_name&.first || current_user&.email&.first&.upcase || 'U' %>
+</span> 

@@ -67,4 +67,14 @@ module ApplicationHelper
     # Process the markdown
     markdown.render(text)
   end
+
+  # Generate a consistent color for an avatar based on a seed string (like email)
+  def generate_avatar_color(seed)
+    # Generate a consistent color based on the seed (email)
+    hash = 0
+    seed.to_s.each_byte do |b|
+      hash = hash * 31 + b
+    end
+    "bg-avatar-#{(hash % 8) + 1} text-white"
+  end
 end
