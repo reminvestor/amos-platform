@@ -1,3 +1,5 @@
+require 'solid_queue'
+
 # Configure Solid::Queue
 Solid::Queue.configure do |config|
   # Set the default queue name
