@@ -7,41 +7,113 @@ module Api
       before_action :authenticate_api_request
       
       def show
-        job_id = params[:id]
-        
-        # Check ActiveJob status
-        job = ActiveJob::Base.deserialize(Solid::Queue::Job.find_by(active_job_id: job_id)&.serialized_params)
-        
-        if job.nil?
-          # Check if completed in Redis
-          if defined?(Redis) && Redis.current.present?
-            key = "contact_import:#{job_id}"
-            result = Redis.current.get(key)
-            
-            if result
-              # Job completed, return the stored results
-              render json: JSON.parse(result)
-              return
+        begin
+          job_id = params[:id]
+          Rails.logger.info("API JOB STATUS [#{Time.current.iso8601(3)}]: Looking up job #{job_id}")
+          
+          # First, check Redis for completed job results
+          begin
+            redis = safe_redis
+            if redis
+              key = "contact_import:#{job_id}"
+              result = redis.get(key)
+              
+              if result
+                Rails.logger.info("API JOB STATUS [#{Time.current.iso8601(3)}]: Found completed job in Redis: #{job_id}")
+                # Job completed, return the stored results
+                render json: JSON.parse(result)
+                return
+              end
             end
+          rescue => e
+            Rails.logger.error("API JOB STATUS [#{Time.current.iso8601(3)}]: Redis error: #{e.message}")
+            # Continue to check Solid Queue if Redis failed
           end
           
-          # Not found in either place
+          # Check if the job exists in Solid Queue
+          begin
+            job_record = Solid::Queue::Job.find_by(active_job_id: job_id)
+            
+            if job_record.nil?
+              Rails.logger.warn("API JOB STATUS [#{Time.current.iso8601(3)}]: Job not found in queue: #{job_id}")
+              render json: {
+                success: false,
+                error: "Job not found or expired",
+                job_id: job_id
+              }, status: :not_found
+              return
+            end
+            
+            # Try to deserialize the job
+            begin
+              job = ActiveJob::Base.deserialize(job_record.serialized_params)
+              
+              if job.nil?
+                Rails.logger.error("API JOB STATUS [#{Time.current.iso8601(3)}]: Failed to deserialize job: #{job_id}")
+                render json: {
+                  success: false,
+                  error: "Job found but could not be deserialized",
+                  job_id: job_id
+                }, status: :internal_server_error
+                return
+              end
+              
+              # Check job status
+              status = if job_record.finished_at.present?
+                "completed"
+              elsif Solid::Queue::ClaimedExecution.exists?(job_id: job_record.id)
+                "running"
+              elsif Solid::Queue::FailedExecution.exists?(job_id: job_record.id)
+                "failed"
+              elsif Solid::Queue::ReadyExecution.exists?(job_id: job_record.id)
+                "ready"
+              elsif Solid::Queue::ScheduledExecution.exists?(job_id: job_record.id)
+                "scheduled"
+              else
+                "unknown"
+              end
+              
+              Rails.logger.info("API JOB STATUS [#{Time.current.iso8601(3)}]: Job #{job_id} status: #{status}")
+              
+              # Job found in queue, return status
+              render json: {
+                success: true,
+                status: status,
+                job_id: job_id,
+                job_type: job.class.name,
+                enqueued_at: job.enqueued_at&.iso8601,
+                scheduled_at: job_record.scheduled_at&.iso8601,
+                started_at: job_record.started_at&.iso8601,
+                finished_at: job_record.finished_at&.iso8601
+              }
+            rescue => e
+              Rails.logger.error("API JOB STATUS [#{Time.current.iso8601(3)}]: Error deserializing job: #{e.message}")
+              render json: {
+                success: false,
+                error: "Error processing job data",
+                message: e.message,
+                job_id: job_id
+              }, status: :internal_server_error
+            end
+          rescue => e
+            Rails.logger.error("API JOB STATUS [#{Time.current.iso8601(3)}]: Error querying Solid Queue: #{e.message}")
+            render json: {
+              success: false,
+              error: "Error looking up job",
+              message: e.message,
+              job_id: job_id
+            }, status: :internal_server_error
+          end
+        rescue => e
+          Rails.logger.error("API JOB STATUS ERROR: #{e.class.name}: #{e.message}")
+          Rails.logger.error(e.backtrace.join("\n"))
+          
           render json: {
             success: false,
-            error: "Job not found or expired",
-            job_id: job_id
-          }, status: :not_found
-          return
+            error: "Error processing job status request",
+            message: e.message
+          }, status: :internal_server_error
         end
-        
-        # Job found in queue, return status
-        render json: {
-          success: true,
-          status: "queued",
-          job_id: job_id,
-          job_type: job.class.name,
-          enqueued_at: job.enqueued_at&.iso8601
-        }
       end
       
       private
