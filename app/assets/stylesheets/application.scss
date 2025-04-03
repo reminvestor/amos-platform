@@ -68,4 +68,107 @@
       background-color: transparent;
     }
   }
+}
+
+// Chat interface styles
+.chat-message {
+  max-width: 85%;
+  margin-bottom: 15px;
+}
+
+.chat-message-user {
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+.chat-message-assistant {
+  align-self: flex-start;
+}
+
+.chat-message-bubble {
+  background-color: #f0f2f5;
+  border-radius: 18px;
+  padding: 10px 15px;
+}
+
+.chat-message-user .chat-message-bubble {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.chat-message p:last-child {
+  margin-bottom: 0;
+}
+
+// Typing indicator animation
+.typing-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 24px;
+}
+
+.typing-dots span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin: 0 2px;
+  background-color: #acacac;
+  border-radius: 50%;
+  opacity: 0.6;
+  animation: typingDot 1.4s infinite both;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingDot {
+  0% { opacity: 0.6; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.6; transform: scale(0.8); }
+}
+
+// Pipeline process visualization
+#crawler-pipeline .list-group-item.active {
+  background-color: #f8f9fa;
+  border-left: 4px solid #0d6efd;
+}
+
+// Log styling
+.log-entry {
+  font-family: monospace;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log-timestamp {
+  color: #6c757d;
+  margin-right: 8px;
+}
+
+.log-level {
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.log-info .log-level {
+  color: #0dcaf0;
+}
+
+.log-error .log-level {
+  color: #dc3545;
+}
+
+.log-warning .log-level {
+  color: #ffc107;
+}
+
+.log-debug .log-level {
+  color: #6c757d;
 } 

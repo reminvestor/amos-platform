@@ -86,6 +86,10 @@ gem 'clockwork'
 # Email validation
 gem "email_validator"
 
+# API clients
+gem 'openai', '~> 0.3.0'
+gem 'anthropic', '~> 0.1.0'  # Add Anthropic gem for Claude
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"

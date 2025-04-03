@@ -77,4 +77,26 @@ module ApplicationHelper
     end
     "bg-avatar-#{(hash % 8) + 1} text-white"
   end
+
+  # Helper method for styling CrawlerJob status badges
+  def status_badge_class(status)
+    case status
+    when 'pending', 'queued_for_run'
+      'bg-secondary'
+    when 'generating', 'running'
+      'bg-info text-dark' # Using text-dark for better contrast on info
+    when 'improving'
+      'bg-warning text-dark'
+    when 'fixing'
+      'bg-danger text-white'
+    when 'ready'
+      'bg-primary'
+    when 'completed' # Assuming we add this status later
+      'bg-success'
+    when 'failed'
+      'bg-danger'
+    else
+      'bg-light text-dark' # Default/unknown status
+    end
+  end
 end

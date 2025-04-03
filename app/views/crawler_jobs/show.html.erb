@@ -1,0 +1,719 @@
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-lg-5">
+      <!-- Chat Interface -->
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            <i class="fas fa-comment-alt me-2"></i>
+            Crawler Assistant
+          </h5>
+          <% if @crawler_job.status == 'ready' || @crawler_job.status == 'failed' %>
+            <button id="reset-conversation" class="btn btn-sm btn-outline-secondary">
+              <i class="fas fa-redo me-1"></i> Reset Conversation
+            </button>
+          <% end %>
+        </div>
+        <div class="card-body d-flex flex-column">
+          <div id="chat-messages" class="flex-grow-1 mb-3" style="overflow-y: auto; height: 400px;">
+            <% if @crawler_job.crawler_conversations.any? %>
+              <% JSON.parse(@crawler_job.conversation_history_json).each do |message| %>
+                <div class="chat-message <%= message['role'] == 'user' ? 'chat-message-user' : 'chat-message-assistant' %> mb-3">
+                  <div class="chat-message-bubble p-3 rounded">
+                    <%= simple_format(message['content']) %>
+                  </div>
+                  <div class="chat-message-time small text-muted mt-1">
+                    <%= Time.parse(message['timestamp']).strftime("%I:%M %p") %>
+                  </div>
+                </div>
+              <% end %>
+            <% else %>
+              <!-- Initial message when no conversations exist -->
+              <div class="chat-message chat-message-assistant mb-3">
+                <div class="chat-message-bubble p-3 rounded">
+                  <p>Hello! I'm your crawler assistant. Please describe what kind of contact information you want to collect and from which websites.</p>
+                  <p>I'll guide you through creating a custom web crawler that can extract first names, last names, and email addresses.</p>
+                </div>
+                <div class="chat-message-time small text-muted mt-1">
+                  <%= Time.now.strftime("%I:%M %p") %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+          
+          <!-- Input area -->
+          <div class="chat-input mt-auto">
+            <% if @crawler_job.conversation_stage == 'url_finding' %>
+              <div class="d-flex justify-content-center mb-3">
+                <button id="skip-url-button" class="btn btn-outline-secondary">
+                  <i class="fas fa-forward me-1"></i> Skip URL Discovery
+                </button>
+              </div>
+            <% end %>
+            <form id="chat-form" action="<%= chat_crawler_job_path(@crawler_job) %>" method="post" data-remote="true">
+              <div class="input-group">
+                <textarea id="chat-message-input" name="message" class="form-control" rows="3" 
+                          placeholder="Type your message..." 
+                          <%= @crawler_job.status == 'generating' || @crawler_job.status == 'testing' || @crawler_job.status == 'improving' || @crawler_job.status == 'fixing' ? 'disabled' : '' %>></textarea>
+                <button type="submit" class="btn btn-primary" 
+                        <%= @crawler_job.status == 'generating' || @crawler_job.status == 'testing' || @crawler_job.status == 'improving' || @crawler_job.status == 'fixing' ? 'disabled' : '' %>>
+                  <i class="fas fa-paper-plane"></i>
+                </button>
+              </div>
+              <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+            </form>
+            <div class="form-text">
+              <% if @crawler_job.status == 'generating' || @crawler_job.status == 'testing' || @crawler_job.status == 'improving' || @crawler_job.status == 'fixing' %>
+                <span class="text-warning">Please wait while I'm working...</span>
+              <% elsif @crawler_job.conversation_stage == 'url_finding' %>
+                <small class="text-muted">
+                  <i class="fas fa-lightbulb me-1"></i> Having trouble finding URLs? Type <strong>skip</strong> to continue without web search.
+                </small>
+              <% else %>
+                Ask questions, provide details about the websites, or give feedback on the crawler.
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-lg-7">
+      <!-- Right side with logs and status -->
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            <i class="fas fa-spider me-2"></i>
+            Crawler Status
+          </h5>
+          <span class="badge <%= status_badge_class(@crawler_job.status) %>" id="job-status-badge">
+            <%= @crawler_job.status&.humanize %>
+          </span>
+        </div>
+        <div class="card-body">
+          <% if @crawler_job.status == 'ready' %>
+            <div class="alert alert-info mb-3">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>Tip:</strong> If your crawler has errors, follow these steps:
+              <ol class="mb-0 mt-2">
+                <li>Click <strong>Debug</strong> to run the crawler in debug mode (collects error details)</li>
+                <li>Then click <strong>Fix Bugs</strong> to let AI fix any problems it finds</li>
+              </ol>
+            </div>
+          <% end %>
+          <ul class="list-group list-group-flush" id="crawler-pipeline">
+            <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'analyzing' || @crawler_job.conversation_stage == 'analyzing' ? 'active' : '' %>" id="pipeline-analyze">
+              <span>
+                <i class="fas fa-search me-2"></i> 
+                Analyzing Request
+              </span>
+              <% if @crawler_job.conversation_stage == 'analyzing' %>
+                <span class="badge bg-info">In Progress</span>
+              <% elsif @crawler_job.conversation_stage.present? && @crawler_job.conversation_stage != 'analyzing' %>
+                <span class="badge bg-success">Completed</span>
+              <% end %>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.conversation_stage == 'url_finding' ? 'active' : '' %>" id="pipeline-discover">
+              <span>
+                <i class="fas fa-globe me-2"></i> 
+                Discovering URLs
+              </span>
+              <% if @crawler_job.conversation_stage == 'url_finding' %>
+                <div>
+                  <span class="badge bg-info">In Progress</span>
+                  <button type="button" class="btn btn-sm btn-outline-secondary ms-2" 
+                         onclick="document.getElementById('chat-message-input').value='skip'; document.getElementById('chat-form').dispatchEvent(new Event('submit'))">
+                    Skip
+                  </button>
+                </div>
+              <% elsif @crawler_job.target_urls.present? %>
+                <span class="badge bg-success">Found <%= @crawler_job.target_urls.split(',').count %> URLs</span>
+              <% end %>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'generating' ? 'active' : '' %>" id="pipeline-generate">
+              <span>
+                <i class="fas fa-code me-2"></i> 
+                Generating Crawler Code
+              </span>
+              <% if @crawler_job.status == 'generating' %>
+                <span class="badge bg-info">In Progress</span>
+              <% elsif @crawler_job.generated_code.present? %>
+                <span class="badge bg-success">Completed</span>
+              <% end %>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'testing' ? 'active' : '' %>" id="pipeline-test">
+              <span>
+                <i class="fas fa-vial me-2"></i> 
+                Testing Crawler
+              </span>
+              <% if @crawler_job.status == 'testing' %>
+                <span class="badge bg-info">In Progress</span>
+                <div class="progress mt-2 w-100">
+                  <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                </div>
+              <% elsif @crawler_job.test_results.present? %>
+                <span class="badge bg-success">Completed</span>
+              <% end %>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'improving' || @crawler_job.status == 'fixing' ? 'active' : '' %>" id="pipeline-improve">
+              <span>
+                <i class="fas fa-wrench me-2"></i> 
+                Refining Code
+              </span>
+              <% if @crawler_job.status == 'improving' || @crawler_job.status == 'fixing' %>
+                <span class="badge bg-info">In Progress</span>
+                <span class="small text-muted ms-2">Attempt <%= @crawler_job.improvement_attempts || 1 %>/3</span>
+              <% elsif @crawler_job.fix_explanation.present? %>
+                <span class="badge bg-success">Completed</span>
+              <% end %>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'ready' ? 'active' : '' %>" id="pipeline-ready">
+              <span>
+                <i class="fas fa-check-circle me-2"></i> 
+                Ready to Use
+              </span>
+              <% if @crawler_job.status == 'ready' %>
+                <div class="d-flex">
+                  <span class="badge bg-success me-2">Crawler Ready</span>
+                  <%= form_tag debug_crawler_job_path(@crawler_job), method: :post, class: "me-2" do %>
+                    <button type="submit" class="btn btn-sm btn-warning">
+                      <i class="fas fa-bug me-1"></i> Debug
+                    </button>
+                  <% end %>
+                  <%= form_tag debug_crawler_job_path(@crawler_job, auto_fix: true), method: :post, class: "me-2" do %>
+                    <button type="submit" class="btn btn-sm btn-warning">
+                      <i class="fas fa-wrench me-1"></i> Debug & Fix
+                    </button>
+                  <% end %>
+                  <%= form_tag fix_bugs_crawler_job_path(@crawler_job), method: :post, class: "me-2" do %>
+                    <button type="submit" class="btn btn-sm btn-info">
+                      <i class="fas fa-wrench me-1"></i> Fix Bugs
+                    </button>
+                  <% end %>
+                  <%= button_to 'Run Crawler', execute_crawler_job_path(@crawler_job), method: :post, class: "btn btn-sm btn-primary" %>
+                </div>
+              <% end %>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Logs Section -->
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            <i class="fas fa-terminal me-2"></i>
+            Activity Logs
+          </h5>
+          <div>
+            <button id="auto-scroll-toggle" class="btn btn-sm btn-outline-secondary active">Auto-scroll</button>
+            <button id="refresh-logs" class="btn btn-sm btn-outline-primary">Refresh</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="log-container" class="bg-dark text-light p-3 rounded" style="height: 300px; overflow-y: auto; font-family: monospace;">
+            <div id="logs-content">
+              <% if @crawler_job.crawler_job_logs.any? %>
+                <% @crawler_job.crawler_job_logs.each do |log| %>
+                  <div class="log-entry log-<%= log.log_level %>">
+                    <span class="log-timestamp"><%= log.timestamp.strftime('%H:%M:%S') %></span>
+                    <span class="log-level">[<%= log.log_level.upcase %>]</span>
+                    <span class="log-message"><%= log.message %></span>
+                  </div>
+                <% end %>
+              <% else %>
+                <div class="text-muted">No logs available. They will appear here as the crawler processes.</div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <% if @crawler_job.generated_code.present? %>
+        <!-- Code Display Section -->
+        <div class="card mt-4">
+          <div class="card-header">
+            <h5 class="mb-0">
+              <i class="fas fa-code me-2"></i>
+              Generated Python Code
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            <pre class="bg-dark text-light p-3 rounded-0 mb-0" style="max-height: 400px; overflow-y: auto;"><code><%= @crawler_job.generated_code %></code></pre>
+          </div>
+        </div>
+
+        <% if @crawler_job.fix_explanation.present? %>
+          <!-- Changes Section -->
+          <div class="card mt-4 border-success">
+            <div class="card-header bg-success bg-opacity-25">
+              <h5 class="mb-0">
+                <i class="fas fa-wrench me-2"></i>
+                Changes Made
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="change-details">
+                <p class="mb-1"><strong>The following improvements were made:</strong></p>
+                <% @crawler_job.fix_explanation.split('. ').each do |fix| %>
+                  <div class="d-flex align-items-start mb-2">
+                    <i class="fas fa-check-circle text-success me-2 mt-1"></i>
+                    <span><%= fix.gsub(/\.$/, '') %></span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .chat-message {
+    max-width: 85%;
+    margin-bottom: 15px;
+  }
+  
+  .chat-message-user {
+    align-self: flex-end;
+    margin-left: auto;
+  }
+  
+  .chat-message-assistant {
+    align-self: flex-start;
+  }
+  
+  .chat-message-bubble {
+    background-color: #f0f2f5;
+    border-radius: 18px;
+  }
+  
+  .chat-message-user .chat-message-bubble {
+    background-color: #0d6efd;
+    color: white;
+  }
+  
+  .chat-message p:last-child {
+    margin-bottom: 0;
+  }
+  
+  .log-entry {
+    font-family: monospace;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  
+  .log-timestamp {
+    color: #6c757d;
+    margin-right: 8px;
+  }
+  
+  .log-level {
+    font-weight: bold;
+    margin-right: 8px;
+  }
+  
+  .log-info .log-level {
+    color: #0dcaf0;
+  }
+  
+  .log-error .log-level {
+    color: #dc3545;
+  }
+  
+  .log-warning .log-level {
+    color: #ffc107;
+  }
+  
+  .log-debug .log-level {
+    color: #6c757d;
+  }
+  
+  #crawler-pipeline .list-group-item.active {
+    background-color: #f8f9fa;
+    border-left: 4px solid #0d6efd;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const logContainer = document.getElementById('log-container');
+    const logsContent = document.getElementById('logs-content');
+    const refreshButton = document.getElementById('refresh-logs');
+    const autoScrollToggle = document.getElementById('auto-scroll-toggle');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    
+    let autoScroll = true;
+    let lastLogId = <%= @crawler_job.crawler_job_logs.last&.id || 0 %>;
+    
+    // Auto-scroll toggle
+    autoScrollToggle.addEventListener('click', function() {
+      autoScroll = !autoScroll;
+      this.classList.toggle('active');
+    });
+    
+    // Scroll log container to bottom
+    function scrollToBottom(element) {
+      if (autoScroll) {
+        element.scrollTop = element.scrollHeight;
+      }
+    }
+    
+    // Initial scroll
+    scrollToBottom(logContainer);
+    scrollToBottom(chatMessages);
+    
+    // Format a log entry
+    function formatLogEntry(log) {
+      const time = new Date(log.timestamp).toTimeString().split(' ')[0];
+      return `<div class="log-entry log-${log.log_level}">
+        <span class="log-timestamp">${time}</span>
+        <span class="log-level">[${log.log_level.toUpperCase()}]</span>
+        <span class="log-message">${log.message}</span>
+      </div>`;
+    }
+    
+    // Fetch new logs
+    function fetchLogs() {
+      fetch(`<%= logs_crawler_job_path(@crawler_job) %>?since=${lastLogId}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.logs && data.logs.length > 0) {
+            const logHtml = data.logs.map(formatLogEntry).join('');
+            logsContent.innerHTML += logHtml;
+            lastLogId = data.logs[data.logs.length - 1].id;
+            scrollToBottom(logContainer);
+            
+            // Update status badge if changed
+            const statusBadge = document.getElementById('job-status-badge');
+            if (statusBadge && data.job_status) {
+              statusBadge.textContent = data.job_status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              statusBadge.className = 'badge ' + data.job_status_class;
+              
+              // Refresh the page if status changed to ready
+              if (data.job_status === 'ready' && 
+                 (document.querySelector('textarea').disabled || 
+                  document.querySelector('button[type="submit"]').disabled)) {
+                location.reload();
+              }
+            }
+          }
+        })
+        .catch(error => console.error('Error fetching logs:', error));
+    }
+    
+    // Poll for new logs
+    setInterval(fetchLogs, 3000);
+    
+    // Manual refresh
+    refreshButton.addEventListener('click', fetchLogs);
+    
+    // Skip URL button
+    const skipUrlButton = document.getElementById('skip-url-button');
+    if (skipUrlButton) {
+      skipUrlButton.addEventListener('click', function() {
+        // Disable the button to prevent multiple clicks
+        skipUrlButton.disabled = true;
+        skipUrlButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Skipping...';
+        
+        // Add skip message to chat
+        const skipMessageHtml = `
+          <div class="chat-message chat-message-user mb-3">
+            <div class="chat-message-bubble p-3 rounded">
+              skip
+            </div>
+            <div class="chat-message-time small text-muted mt-1">
+              ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            </div>
+          </div>
+        `;
+        chatMessages.innerHTML += skipMessageHtml;
+        scrollToBottom(chatMessages);
+        
+        // Show typing indicator
+        const typingIndicator = `
+          <div id="typing-indicator" class="chat-message chat-message-assistant mb-3">
+            <div class="chat-message-bubble p-3 rounded">
+              <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        `;
+        chatMessages.innerHTML += typingIndicator;
+        scrollToBottom(chatMessages);
+        
+        // Submit a skip message via AJAX
+        const formData = new FormData();
+        formData.append('message', 'skip');
+        
+        fetch('<%= chat_crawler_job_path(@crawler_job) %>', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+          }
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+          return response.json().catch(e => {
+            console.error('JSON parse error:', e);
+            throw new Error('Failed to parse JSON response');
+          });
+        })
+        .then(data => {
+          // Remove typing indicator
+          const indicator = document.getElementById('typing-indicator');
+          if (indicator) {
+            indicator.remove();
+          }
+          
+          if (data.response) {
+            // Add assistant response
+            const assistantMessageHtml = `
+              <div class="chat-message chat-message-assistant mb-3">
+                <div class="chat-message-bubble p-3 rounded">
+                  ${data.response.replace(/\n/g, '<br>')}
+                </div>
+                <div class="chat-message-time small text-muted mt-1">
+                  ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </div>
+              </div>
+            `;
+            chatMessages.innerHTML += assistantMessageHtml;
+            scrollToBottom(chatMessages);
+          }
+          
+          // Reload after a short delay to refresh the UI
+          setTimeout(() => location.reload(), 2000);
+        })
+        .catch(error => {
+          console.error('Error sending skip message:', error);
+          
+          // Remove typing indicator
+          const indicator = document.getElementById('typing-indicator');
+          if (indicator) {
+            indicator.remove();
+          }
+          
+          // Add error message
+          const errorMessageHtml = `
+            <div class="chat-message chat-message-assistant mb-3">
+              <div class="chat-message-bubble p-3 rounded bg-light-danger">
+                <strong>Error:</strong> There was a problem skipping. Please try again or refresh the page.
+              </div>
+              <div class="chat-message-time small text-muted mt-1">
+                ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              </div>
+            </div>
+          `;
+          chatMessages.innerHTML += errorMessageHtml;
+          scrollToBottom(chatMessages);
+          
+          // Reset button
+          skipUrlButton.disabled = false;
+          skipUrlButton.innerHTML = '<i class="fas fa-forward me-1"></i> Skip URL Discovery';
+        });
+      });
+    }
+    
+    // Chat form submission
+    if (chatForm) {
+      chatForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const messageInput = document.getElementById('chat-message-input');
+        const message = messageInput.value.trim();
+        
+        if (message) {
+          // Add user message to chat immediately
+          const userMessageHtml = `
+            <div class="chat-message chat-message-user mb-3">
+              <div class="chat-message-bubble p-3 rounded">
+                ${message.replace(/\n/g, '<br>')}
+              </div>
+              <div class="chat-message-time small text-muted mt-1">
+                ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              </div>
+            </div>
+          `;
+          chatMessages.innerHTML += userMessageHtml;
+          scrollToBottom(chatMessages);
+          
+          // Create FormData BEFORE clearing the input
+          const formData = new FormData();
+          formData.append('message', message);
+          
+          // Clear input after getting the value for FormData
+          messageInput.value = '';
+          
+          // Disable input while processing
+          messageInput.disabled = true;
+          document.querySelector('button[type="submit"]').disabled = true;
+          
+          // Show typing indicator
+          const typingIndicator = `
+            <div id="typing-indicator" class="chat-message chat-message-assistant mb-3">
+              <div class="chat-message-bubble p-3 rounded">
+                <div class="typing-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          `;
+          chatMessages.innerHTML += typingIndicator;
+          scrollToBottom(chatMessages);
+          
+          // Submit via AJAX with the explicitly created FormData
+          fetch(chatForm.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+            }
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json().catch(e => {
+              console.error('JSON parse error:', e);
+              throw new Error('Failed to parse JSON response. The server may be experiencing issues.');
+            });
+          })
+          .then(data => {
+            // Remove typing indicator
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) {
+              indicator.remove();
+            }
+            
+            if (data.response) {
+              // Add assistant response
+              const assistantMessageHtml = `
+                <div class="chat-message chat-message-assistant mb-3">
+                  <div class="chat-message-bubble p-3 rounded">
+                    ${data.response.replace(/\n/g, '<br>')}
+                  </div>
+                  <div class="chat-message-time small text-muted mt-1">
+                    ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  </div>
+                </div>
+              `;
+              chatMessages.innerHTML += assistantMessageHtml;
+              scrollToBottom(chatMessages);
+            }
+            
+            // If this was a skip command, check for target_urls and potentially reload
+            if (message.toLowerCase().includes('skip')) {
+              fetchLogs(); // Get latest logs immediately
+              setTimeout(() => {
+                // Check if we've moved to the next stage
+                fetch('<%= logs_crawler_job_path(@crawler_job) %>')
+                  .then(response => response.json())
+                  .then(logData => {
+                    if (logData.job_status === 'ready_for_generation') {
+                      location.reload();
+                    }
+                  })
+                  .catch(err => console.error('Error checking status:', err));
+              }, 1000);
+            }
+            
+            // Enable input if we're not generating code
+            if (!data.generating) {
+              messageInput.disabled = false;
+              document.querySelector('button[type="submit"]').disabled = false;
+            } else {
+              // Refresh page after a delay to see the new status
+              setTimeout(() => location.reload(), 3000);
+            }
+          })
+          .catch(error => {
+            console.error('Error sending message:', error);
+            // Remove typing indicator
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) {
+              indicator.remove();
+            }
+            
+            // Add error message to chat
+            const errorMessageHtml = `
+              <div class="chat-message chat-message-assistant mb-3">
+                <div class="chat-message-bubble p-3 rounded bg-light-danger">
+                  <strong>Error:</strong> There was a problem processing your message. 
+                  ${message.toLowerCase().includes('skip') ? 
+                    "If you're trying to skip, please try again or refresh the page." : 
+                    "Please try again or refresh the page if the issue persists."}
+                </div>
+                <div class="chat-message-time small text-muted mt-1">
+                  ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </div>
+              </div>
+            `;
+            chatMessages.innerHTML += errorMessageHtml;
+            scrollToBottom(chatMessages);
+            
+            // Re-enable input
+            messageInput.disabled = false;
+            document.querySelector('button[type="submit"]').disabled = false;
+          });
+        }
+      });
+    }
+    
+    // Reset conversation button
+    const resetButton = document.getElementById('reset-conversation');
+    if (resetButton) {
+      resetButton.addEventListener('click', function() {
+        if (confirm('Are you sure you want to reset the conversation? This will clear the chat history.')) {
+          fetch(`<%= reset_conversation_crawler_job_path(@crawler_job) %>`, {
+            method: 'POST',
+            headers: {
+              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+          .then(response => {
+            if (response.ok) {
+              location.reload();
+            }
+          })
+          .catch(error => console.error('Error resetting conversation:', error));
+        }
+      });
+    }
+  });
+</script>
+
+<%# Helper method for badge styling (add to app/helpers/application_helper.rb) %>
+<%# 
+def status_badge_class(status)
+  case status
+  when 'pending', 'queued_for_run'
+    'bg-secondary'
+  when 'generating', 'running'
+    'bg-info text-dark'
+  when 'ready'
+    'bg-primary'
+  when 'completed' # Assuming we add this status later
+    'bg-success'
+  when 'failed'
+    'bg-danger'
+  else
+    'bg-light text-dark'
+  end
+end
+%> 

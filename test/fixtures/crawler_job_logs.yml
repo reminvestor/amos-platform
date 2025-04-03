@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  crawler_job: one
+  message: MyText
+  log_level: MyString
+  timestamp: 2025-04-02 11:19:17
+
+two:
+  crawler_job: two
+  message: MyText
+  log_level: MyString
+  timestamp: 2025-04-02 11:19:17

@@ -17,6 +17,7 @@ class Entity < ApplicationRecord
   has_many :social_posts, dependent: :destroy
   has_many :social_media_accounts, dependent: :destroy
   has_many :business_profiles, dependent: :destroy
+  has_many :crawler_jobs, dependent: :destroy
   
   # JSONB settings accessor
   store_accessor :settings, :timezone, :currency, :date_format, :logo_url, :primary_color
