@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_01_163727) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_03_005010) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -98,6 +98,44 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_01_163727) do
     t.index ["entity_id"], name: "index_contacts_on_entity_id"
     t.index ["opted_out"], name: "index_contacts_on_opted_out"
     t.index ["user_id"], name: "index_contacts_on_user_id"
+  end
+
+  create_table "crawler_conversations", force: :cascade do |t|
+    t.bigint "crawler_job_id", null: false
+    t.string "role"
+    t.text "content"
+    t.datetime "timestamp"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["crawler_job_id"], name: "index_crawler_conversations_on_crawler_job_id"
+  end
+
+  create_table "crawler_job_logs", force: :cascade do |t|
+    t.bigint "crawler_job_id", null: false
+    t.text "message"
+    t.string "log_level"
+    t.datetime "timestamp"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["crawler_job_id"], name: "index_crawler_job_logs_on_crawler_job_id"
+  end
+
+  create_table "crawler_jobs", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.text "description"
+    t.text "generated_code"
+    t.string "status"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "error_message"
+    t.text "fix_explanation"
+    t.string "conversation_stage"
+    t.text "target_urls"
+    t.text "test_results"
+    t.integer "improvement_attempts"
+    t.index ["entity_id"], name: "index_crawler_jobs_on_entity_id"
+    t.index ["user_id"], name: "index_crawler_jobs_on_user_id"
   end
 
   create_table "email_deliveries", force: :cascade do |t|
@@ -359,6 +397,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_01_163727) do
   add_foreign_key "contact_groups_contacts", "contacts"
   add_foreign_key "contacts", "entities"
   add_foreign_key "contacts", "users"
+  add_foreign_key "crawler_conversations", "crawler_jobs"
+  add_foreign_key "crawler_job_logs", "crawler_jobs"
+  add_foreign_key "crawler_jobs", "entities"
+  add_foreign_key "crawler_jobs", "users"
   add_foreign_key "email_deliveries", "campaigns"
   add_foreign_key "email_deliveries", "contacts"
   add_foreign_key "email_deliveries", "email_templates"

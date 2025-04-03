@@ -54,14 +54,20 @@ Rails.application.configure do
   config.active_record.migration_error = :page_load
 
   # Highlight code that triggered database queries in logs.
-  config.active_record.verbose_query_logs = true
+  config.active_record.verbose_query_logs = false
 
   # Append comments with runtime information tags to SQL queries in logs.
-  config.active_record.query_log_tags_enabled = true
+  config.active_record.query_log_tags_enabled = false
 
   # Highlight code that enqueued background job in logs.
-  config.active_job.verbose_enqueue_logs = true
+  config.active_job.verbose_enqueue_logs = false
 
+  # Set log level to reduce debug information
+  config.log_level = :info
+
+  # Disable debug request logging
+  config.middleware.delete ActionDispatch::DebugExceptions
+  
   # Raises error for missing translations.
   # config.i18n.raise_on_missing_translations = true
 

@@ -1,6 +1,9 @@
 require 'solid_queue'
 
 Rails.application.routes.draw do
+  get "crawler_jobs/index"
+  get "crawler_jobs/new"
+  get "crawler_jobs/create"
   # Heroku health check
   get 'health_check' => proc { [200, {}, ['OK']] }
   
@@ -17,6 +20,10 @@ Rails.application.routes.draw do
       get 'health', to: 'health#index'
       resources :contacts, only: [:create]
       resources :jobs, only: [:show]
+      post 'crawler_contacts', to: 'crawler_contacts#create'
+      
+      # Crawler Job Logging
+      post 'crawler_jobs/:id/logs', to: 'crawler_job_logs#create'
     end
   end
   
@@ -118,6 +125,20 @@ Rails.application.routes.draw do
         get 'auth/:platform', to: 'social_media_accounts#new', as: :auth
         get 'callback/:platform', to: 'social_media_accounts#callback', as: :callback
         delete 'disconnect/:id', to: 'social_media_accounts#disconnect', as: :disconnect
+      end
+    end
+    
+    # Crawler Jobs Management
+    resources :crawler_jobs, only: [:index, :new, :create, :show] do
+      member do
+        post :execute
+        post :test
+        get :logs
+        post :debug
+        post :improve
+        post :fix_bugs
+        post :chat
+        post :reset_conversation
       end
     end
     

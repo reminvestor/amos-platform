@@ -74,6 +74,9 @@ GEM
       uri (>= 0.13.1)
     addressable (2.8.7)
       public_suffix (>= 2.0.2, < 7.0)
+    anthropic (0.1.0)
+      faraday (>= 1)
+      faraday-multipart (>= 1)
     ast (2.4.2)
     base64 (0.2.0)
     bcrypt (3.1.20)
@@ -252,6 +255,7 @@ GEM
       rack (>= 1.2, < 4)
       snaky_hash (~> 2.0)
       version_gem (~> 1.1)
+    openai (0.3.0)
     orm_adapter (0.5.0)
     ostruct (0.6.1)
     pagy (8.6.3)
@@ -452,6 +456,7 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
+  anthropic (~> 0.1.0)
   bootsnap
   brakeman
   capybara
@@ -475,6 +480,7 @@ DEPENDENCIES
   mailgun-ruby (~> 1.2)
   nokogiri
   oauth2 (~> 2.0)
+  openai (~> 0.3.0)
   pg (~> 1.1)
   propshaft
   puma (>= 5.0)

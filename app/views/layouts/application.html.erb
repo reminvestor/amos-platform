@@ -230,6 +230,12 @@
             <span class="nav-link-text">Business Profile</span>
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link <%= current_page?(crawler_jobs_path) || request.path.include?('/crawler_jobs/') ? 'active' : '' %>" href="<%= crawler_jobs_path %>">
+            <i class="fas fa-spider fa-fw me-2"></i>
+            <span class="nav-link-text">Web Crawlers</span>
+          </a>
+        </li>
       </ul>
     </div>
 
