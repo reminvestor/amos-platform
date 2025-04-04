@@ -1,6 +1,6 @@
 module Api
   module V1
-    class CrawlerJobLogsController < Api::V1::BaseController
+    class CrawlerJobLogsController < Api::BaseController
       # Skip CSRF for API endpoints
       skip_before_action :verify_authenticity_token
       

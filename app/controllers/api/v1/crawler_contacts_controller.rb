@@ -1,6 +1,6 @@
 module Api
   module V1
-    class CrawlerContactsController < Api::V1::BaseController
+    class CrawlerContactsController < Api::BaseController
       # Skip CSRF protection for API endpoints
       skip_before_action :verify_authenticity_token
       
