@@ -21,9 +21,9 @@ namespace :campaign do
     failed_deliveries.update_all(status: 'pending', error_message: nil)
     
     # Queue a new job to process the pending deliveries
-    ProcessCampaignJob.perform_later(campaign.id)
+    job = ProcessCampaignJob.perform_later(campaign.id)
     
     puts "Reset #{failed_deliveries.count} deliveries to pending and queued new job"
-    puts "Job ID: #{ProcessCampaignJob.last&.provider_job_id}"
+    puts "Job ID: #{job.job_id}"
   end
 end 
