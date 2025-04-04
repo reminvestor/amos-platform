@@ -1,9 +1,6 @@
 module Api
   module V1
     class CrawlerJobLogsController < Api::BaseController
-      # Skip CSRF for API endpoints
-      skip_before_action :verify_authenticity_token
-      
       # POST /api/v1/crawler_jobs/:id/logs
       def create
         # Find the crawler job

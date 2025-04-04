@@ -1,7 +1,7 @@
 module Api
   module V1
-    class HealthController < ApplicationController
-      skip_before_action :verify_authenticity_token
+    class HealthController < Api::BaseController
+      # No need for skip_before_action as it's defined in the parent controller
       
       def index
         # Return debugging info to help diagnose SSL issues
