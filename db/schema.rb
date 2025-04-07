@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_03_005010) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_07_203620) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -136,6 +136,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_03_005010) do
     t.integer "improvement_attempts"
     t.index ["entity_id"], name: "index_crawler_jobs_on_entity_id"
     t.index ["user_id"], name: "index_crawler_jobs_on_user_id"
+  end
+
+  create_table "dripped_campaigns", force: :cascade do |t|
+    t.bigint "original_campaign_id", null: false
+    t.bigint "follow_up_campaign_id", null: false
+    t.integer "delay_days", default: 3, null: false
+    t.string "condition"
+    t.string "condition_value"
+    t.boolean "active", default: true, null: false
+    t.datetime "scheduled_at"
+    t.integer "sequence_position", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["follow_up_campaign_id"], name: "index_dripped_campaigns_on_follow_up_campaign_id"
+    t.index ["original_campaign_id", "sequence_position"], name: "idx_dripped_campaigns_on_original_campaign_and_position", unique: true
+    t.index ["original_campaign_id"], name: "index_dripped_campaigns_on_original_campaign_id"
   end
 
   create_table "email_deliveries", force: :cascade do |t|
@@ -401,6 +417,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_03_005010) do
   add_foreign_key "crawler_job_logs", "crawler_jobs"
   add_foreign_key "crawler_jobs", "entities"
   add_foreign_key "crawler_jobs", "users"
+  add_foreign_key "dripped_campaigns", "campaigns", column: "follow_up_campaign_id"
+  add_foreign_key "dripped_campaigns", "campaigns", column: "original_campaign_id"
   add_foreign_key "email_deliveries", "campaigns"
   add_foreign_key "email_deliveries", "contacts"
   add_foreign_key "email_deliveries", "email_templates"
