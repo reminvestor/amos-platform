@@ -128,6 +128,88 @@
             </div>
           </div>
           
+          <!-- Drip Campaigns Section -->
+          <% if @campaign.status == 'in_progress' || @campaign.status == 'completed' %>
+            <div class="row mb-4">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-water me-2"></i> Drip Campaigns</h4>
+                    <% if !@campaign.has_follow_ups? && ['in_progress', 'completed'].include?(@campaign.status) %>
+                      <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#setupDripModal">
+                        <i class="fas fa-plus me-2"></i> Setup Drip Sequence
+                      </button>
+                    <% end %>
+                  </div>
+                  <div class="card-body">
+                    <% if @campaign.parent_drip_sequences.any? %>
+                      <h5>Follow-up Sequences</h5>
+                      <div class="table-responsive">
+                        <table class="table table-striped">
+                          <thead>
+                            <tr>
+                              <th>Sequence #</th>
+                              <th>Template Campaign</th>
+                              <th>Delay (Days)</th>
+                              <th>Condition</th>
+                              <th>Scheduled For</th>
+                              <th>Status</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <% @campaign.parent_drip_sequences.order(sequence_position: :asc).each do |drip| %>
+                              <tr>
+                                <td><%= drip.sequence_position %></td>
+                                <td><%= link_to drip.follow_up_campaign.name, campaign_path(drip.follow_up_campaign) %></td>
+                                <td><%= drip.delay_days %></td>
+                                <td><span class="badge bg-info"><%= drip.condition.humanize %></span></td>
+                                <td><%= drip.scheduled_at&.strftime('%b %d, %Y at %I:%M %p') %></td>
+                                <td>
+                                  <% if drip.active? %>
+                                    <span class="badge bg-success">Active</span>
+                                  <% else %>
+                                    <span class="badge bg-secondary">Processed</span>
+                                  <% end %>
+                                </td>
+                                <td>
+                                  <% if drip.active? %>
+                                    <%= button_to trigger_drip_campaign_path(@campaign, drip_id: drip.id), method: :post, class: "btn btn-sm btn-primary" do %>
+                                      <i class="fas fa-play"></i> Run Now
+                                    <% end %>
+                                  <% end %>
+                                </td>
+                              </tr>
+                            <% end %>
+                          </tbody>
+                        </table>
+                      </div>
+                    <% elsif @campaign.is_follow_up? %>
+                      <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        This is a follow-up campaign created from a drip sequence.
+                        <% if @campaign.parent_campaigns.first %>
+                          Original campaign: <%= link_to @campaign.parent_campaigns.first.name, campaign_path(@campaign.parent_campaigns.first) %>
+                        <% end %>
+                      </div>
+                    <% else %>
+                      <p class="text-muted">No drip sequences have been set up for this campaign yet. Drip campaigns allow you to automatically send follow-up emails to recipients based on their interaction with the original email.</p>
+                      
+                      <div class="alert alert-light border">
+                        <h6><i class="fas fa-lightbulb me-2 text-warning"></i> How Drip Campaigns Work</h6>
+                        <ol class="mb-0">
+                          <li>Set up a follow-up email that will be sent after a specific delay</li>
+                          <li>Choose a condition for who receives the follow-up (e.g., only those who didn't open)</li>
+                          <li>The system will automatically create and send the follow-up campaign when the time comes</li>
+                        </ol>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+          
           <h4>Email Deliveries</h4>
           <div class="table-responsive">
             <table class="table table-striped">
@@ -244,3 +326,63 @@
     }
   });
 </script>
+
+<!-- Setup Drip Campaign Modal -->
+<div class="modal fade" id="setupDripModal" tabindex="-1" aria-labelledby="setupDripModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="setupDripModalLabel">Setup Drip Campaign Sequence</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <%= form_with url: setup_drip_campaign_path(@campaign), method: :post, local: true do |f| %>
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>How it works:</strong> A drip campaign will automatically send follow-up emails to contacts based on their interaction with this campaign.
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Follow-up Subject Line Prefix</label>
+            <%= f.text_field :subject_prefix, class: "form-control", value: "[Reminder] ", required: true %>
+            <div class="form-text">This will be added before the original subject line.</div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Delay (Days)</label>
+                <%= f.number_field :delay_days, class: "form-control", value: 3, min: 1, max: 30, required: true %>
+                <div class="form-text">Number of days to wait before sending the follow-up.</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Condition</label>
+                <%= f.select :condition, 
+                    options_for_select([
+                      ['Contacts who haven\'t opened', 'not_opened'],
+                      ['Contacts who haven\'t clicked', 'not_clicked'],
+                      ['Contacts who opened (but didn\'t click)', 'opened'],
+                      ['Contacts who clicked', 'clicked'],
+                      ['All contacts from original campaign', 'always']
+                    ], 'not_opened'),
+                    {}, { class: "form-select", required: true } %>
+                <div class="form-text">Who should receive the follow-up email.</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Note:</strong> The follow-up will be created as a template initially and scheduled to run automatically. When the time comes, the system will create a new campaign targeting only the contacts matching your selected condition.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <%= f.submit "Create Drip Sequence", class: "btn btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

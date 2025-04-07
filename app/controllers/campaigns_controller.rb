@@ -1,6 +1,6 @@
 class CampaignsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_campaign, only: [:show, :edit, :update, :destroy, :send_test, :schedule, :send_now, :pause, :resume, :stop, :reactivate, :analyze, :sync_mailgun]
+  before_action :set_campaign, only: [:show, :edit, :update, :destroy, :send_test, :schedule, :send_now, :pause, :resume, :stop, :reactivate, :analyze, :sync_mailgun, :setup_drip, :trigger_drip]
   
   def index
     @campaigns = current_user.campaigns.order(created_at: :desc)
@@ -168,6 +168,60 @@ class CampaignsController < ApplicationController
       redirect_to @campaign, notice: "Campaign stats sync with Mailgun has been queued."
     else
       redirect_to @campaign, alert: "Unable to sync campaign with Mailgun."
+    end
+  end
+  
+  # Drip campaign methods
+  def setup_drip
+    # Verify campaign is eligible for drip campaigns
+    unless ['in_progress', 'completed'].include?(@campaign.status)
+      redirect_to @campaign, alert: "Only in-progress or completed campaigns can have drip sequences."
+      return
+    end
+    
+    # Get parameters
+    delay_days = params[:delay_days].to_i
+    condition = params[:condition] || 'not_opened'
+    subject_prefix = params[:subject_prefix] || '[Reminder] '
+    
+    # Validate parameters
+    if delay_days < 1 
+      delay_days = 3 # Default to 3 days if invalid
+    end
+    
+    # Create the drip follow-up
+    drip_campaign = @campaign.create_drip_follow_up(
+      delay_days: delay_days,
+      condition: condition,
+      subject_prefix: subject_prefix
+    )
+    
+    if drip_campaign
+      redirect_to @campaign, notice: "Drip campaign sequence created! The follow-up will be sent #{delay_days} days after the campaign completes."
+    else
+      redirect_to @campaign, alert: "Failed to create drip campaign sequence: #{@campaign.errors.full_messages.join(', ')}"
+    end
+  end
+  
+  def trigger_drip
+    # Find the specified drip campaign
+    drip = DrippedCampaign.find_by(id: params[:drip_id], original_campaign_id: @campaign.id)
+    
+    unless drip
+      redirect_to @campaign, alert: "Drip campaign not found."
+      return
+    end
+    
+    # Create the follow-up campaign immediately
+    new_campaign = drip.create_next_follow_up!
+    
+    if new_campaign
+      # Mark the drip as processed
+      drip.update(active: false)
+      
+      redirect_to new_campaign, notice: "Follow-up campaign created successfully! You can now review and send it."
+    else
+      redirect_to @campaign, alert: "Unable to create follow-up campaign. There may be no contacts matching the condition."
     end
   end
   

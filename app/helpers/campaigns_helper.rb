@@ -34,4 +34,38 @@ module CampaignsHelper
       'secondary'
     end
   end
+  
+  def drip_condition_color(condition)
+    case condition
+    when 'not_opened'
+      'warning'
+    when 'not_clicked'
+      'info'
+    when 'opened'
+      'primary'
+    when 'clicked'
+      'success'
+    when 'always'
+      'secondary'
+    else
+      'secondary'
+    end
+  end
+  
+  def drip_condition_description(condition)
+    case condition
+    when 'not_opened'
+      'Contacts who did not open the original email'
+    when 'not_clicked'
+      'Contacts who did not click any links in the original email'
+    when 'opened'
+      'Contacts who opened but did not click in the original email'
+    when 'clicked'
+      'Contacts who clicked links in the original email'
+    when 'always'
+      'All contacts from the original campaign'
+    else
+      'Unknown condition'
+    end
+  end
 end
