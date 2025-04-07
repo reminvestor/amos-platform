@@ -158,4 +158,90 @@ namespace :campaign do
       puts "Error: Could not create follow-up campaign - #{new_campaign.errors.full_messages.join(', ')}"
     end
   end
+  
+  desc "Setup a drip campaign sequence"
+  task :setup_drip, [:campaign_id, :delay_days, :condition] => :environment do |t, args|
+    if args[:campaign_id].blank?
+      puts "Please provide a campaign ID"
+      puts "Usage: rake campaign:setup_drip[campaign_id,delay_days,condition]"
+      puts "Example: rake campaign:setup_drip[42,3,not_opened]"
+      puts "Valid conditions: not_opened, not_clicked, opened, clicked, always"
+      exit 1
+    end
+    
+    # Default values
+    delay_days = (args[:delay_days] || 3).to_i
+    condition = args[:condition] || 'not_opened'
+    
+    # Find the original campaign
+    campaign = Campaign.find(args[:campaign_id])
+    puts "Setting up drip sequence for campaign: #{campaign.name} (ID: #{campaign.id})"
+    
+    # Create the drip follow-up
+    drip_campaign = campaign.create_drip_follow_up(
+      delay_days: delay_days,
+      condition: condition,
+      subject_prefix: "[Reminder] "
+    )
+    
+    if drip_campaign
+      puts "Successfully created drip campaign sequence!"
+      puts "Original campaign: #{campaign.id}"
+      puts "Follow-up template: #{drip_campaign.follow_up_campaign_id}"
+      puts "Delay days: #{drip_campaign.delay_days}"
+      puts "Condition: #{drip_campaign.condition}"
+      puts "Scheduled for: #{drip_campaign.scheduled_at}"
+      puts "\nThe follow-up will be automatically sent #{delay_days} days after the original campaign completes."
+    else
+      puts "Error: Could not create drip campaign. #{campaign.errors.full_messages.join(', ')}"
+    end
+  end
+  
+  desc "Process scheduled drip campaigns"
+  task process_drips: :environment do
+    puts "Looking for drip campaigns to process..."
+    
+    # Find all active drip campaigns that are due to be processed
+    due_drips = DrippedCampaign.where(active: true)
+                                .where("scheduled_at <= ?", Time.current)
+    
+    if due_drips.empty?
+      puts "No drip campaigns are due for processing."
+      exit 0
+    end
+    
+    processed_count = 0
+    error_count = 0
+    
+    due_drips.each do |drip|
+      begin
+        # Check if original campaign is completed (a requirement for processing)
+        if ['completed', 'in_progress'].include?(drip.original_campaign.status)
+          puts "Processing drip campaign: #{drip.id} (#{drip.original_campaign.name} → follow-up #{drip.sequence_position})"
+          
+          # Create the next follow-up
+          new_campaign = drip.create_next_follow_up!
+          
+          if new_campaign
+            puts "Created follow-up campaign: #{new_campaign.id}"
+            processed_count += 1
+            
+            # Mark this drip as processed (deactivate it)
+            drip.update(active: false)
+          else
+            puts "No follow-up needed for drip #{drip.id} (no matching contacts)"
+            # Mark as processed even though no campaign was created
+            drip.update(active: false)
+          end
+        else
+          puts "Skipping drip #{drip.id} - original campaign is not completed/in progress (status: #{drip.original_campaign.status})"
+        end
+      rescue => e
+        puts "Error processing drip #{drip.id}: #{e.message}"
+        error_count += 1
+      end
+    end
+    
+    puts "Drip processing complete. Processed: #{processed_count}, Errors: #{error_count}"
+  end
 end 
