@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  original_campaign: one
+  follow_up_campaign: one
+  delay_days: 1
+  condition: MyString
+  condition_value: MyString
+  active: false
+  scheduled_at: 2025-04-07 15:36:20
+
+two:
+  original_campaign: two
+  follow_up_campaign: two
+  delay_days: 1
+  condition: MyString
+  condition_value: MyString
+  active: false
+  scheduled_at: 2025-04-07 15:36:20

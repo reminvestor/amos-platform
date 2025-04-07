@@ -84,6 +84,8 @@ Rails.application.routes.draw do
         post :reactivate
         post :sync_mailgun
         get :analyze
+        post :setup_drip
+        post :trigger_drip
       end
     end
     
