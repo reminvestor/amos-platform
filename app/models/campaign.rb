@@ -6,6 +6,14 @@ class Campaign < ApplicationRecord
   has_many :contact_groups, through: :campaign_groups
   has_many :email_deliveries, dependent: :destroy
   belongs_to :email_template, optional: true
+  belongs_to :contact_group, optional: true
+  
+  # Drip campaign associations
+  has_many :parent_drip_sequences, class_name: 'DrippedCampaign', foreign_key: 'original_campaign_id', dependent: :destroy
+  has_many :follow_up_campaigns, through: :parent_drip_sequences
+  
+  has_many :child_drip_sequences, class_name: 'DrippedCampaign', foreign_key: 'follow_up_campaign_id', dependent: :destroy
+  has_many :parent_campaigns, through: :child_drip_sequences, source: :original_campaign
   
   # Status options
   STATUSES = %w[draft scheduled in_progress completed paused stopped].freeze
@@ -232,5 +240,89 @@ class Campaign < ApplicationRecord
     else
       nil
     end
+  end
+  
+  # Methods for drip campaigns
+  def create_drip_follow_up(delay_days: 3, condition: 'not_opened', subject_prefix: "[Reminder] ")
+    # Make sure this campaign is valid for creating a follow-up
+    unless ['in_progress', 'completed'].include?(status)
+      errors.add(:base, "Campaign must be in progress or completed to create a follow-up")
+      return nil
+    end
+    
+    # Create a duplicate of this campaign as a template for follow-ups
+    follow_up_template = self.dup
+    follow_up_template.name = "Template: Follow-up for #{name}"
+    follow_up_template.subject = "#{subject_prefix}#{subject}"
+    
+    # Insert a follow-up note in the email body
+    if follow_up_template.body.present?
+      followup_note = "<p><em>This is a follow-up to our previous email that you may have missed.</em></p>"
+      
+      # Insert after the first paragraph or at beginning
+      if follow_up_template.body.include?("</p>")
+        # Insert after the first paragraph
+        follow_up_template.body = follow_up_template.body.sub("</p>", "</p>\n#{followup_note}")
+      else
+        # Insert at the beginning
+        follow_up_template.body = "#{followup_note}\n#{follow_up_template.body}"
+      end
+    end
+    
+    # Set to draft status
+    follow_up_template.status = 'draft'
+    
+    # Reset tracking fields
+    follow_up_template.sent_count = 0
+    follow_up_template.open_count = 0
+    follow_up_template.click_count = 0
+    follow_up_template.bounce_count = 0
+    follow_up_template.started_at = nil
+    follow_up_template.completed_at = nil
+    follow_up_template.contact_group_id = nil
+    
+    # Save the template
+    if follow_up_template.save
+      # Determine the next position in the sequence
+      next_position = parent_drip_sequences.maximum(:sequence_position).to_i + 1
+      
+      # Create the drip campaign relationship
+      drip_campaign = DrippedCampaign.create!(
+        original_campaign_id: self.id,
+        follow_up_campaign_id: follow_up_template.id,
+        delay_days: delay_days,
+        condition: condition,
+        sequence_position: next_position,
+        scheduled_at: Time.current + delay_days.days
+      )
+      
+      return drip_campaign
+    else
+      return nil
+    end
+  end
+  
+  def create_follow_up_now!
+    # Find the next drip campaign in the sequence
+    next_drip = parent_drip_sequences.order(sequence_position: :asc).first
+    
+    # Execute it if found
+    if next_drip.present?
+      return next_drip.create_next_follow_up!
+    else
+      return nil
+    end
+  end
+  
+  def has_follow_ups?
+    parent_drip_sequences.exists?
+  end
+  
+  def is_follow_up?
+    child_drip_sequences.exists?
+  end
+  
+  def next_scheduled_follow_up
+    parent_drip_sequences.where("scheduled_at > ?", Time.current).order(scheduled_at: :asc).first
   end
 end
