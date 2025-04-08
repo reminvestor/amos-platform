@@ -51,36 +51,54 @@ class MailgunService
     params[:event] = event_types if event_types
     
     response = mailgun_request("#{domain}/events", params)
+    
+    # Safely handle nil responses
+    return [] if response.nil?
+    
+    # Now safely access the items key
     response["items"] || []
   end
   
   # Sync delivery data for a campaign
   def sync_campaign_stats(campaign)
     # Skip if campaign doesn't have a tag
-    return unless campaign.mailgun_tag.present?
+    return false unless campaign.mailgun_tag.present?
     
-    # Get stats from Mailgun
-    stats = get_campaign_stats(campaign.mailgun_tag)
-    return if stats.empty?
-    
-    # Get all message events
-    events = get_campaign_events(campaign.mailgun_tag)
-    
-    # Process each delivery and update stats
-    campaign.email_deliveries.each do |delivery|
-      next unless delivery.mailgun_message_id.present?
+    begin
+      # Get stats from Mailgun
+      stats = get_campaign_stats(campaign.mailgun_tag)
       
-      # Find events for this specific message
-      message_events = events.select { |e| e["message"]["headers"]["message-id"] == delivery.mailgun_message_id }
+      # Return early if we can't get stats
+      return false if stats.nil? || stats.empty?
       
-      # Update delivery status based on events
-      update_delivery_status(delivery, message_events)
+      # Get all message events
+      events = get_campaign_events(campaign.mailgun_tag)
+      
+      # Process each delivery and update stats
+      campaign.email_deliveries.each do |delivery|
+        next unless delivery.mailgun_message_id.present?
+        
+        # Find events for this specific message - safely handle nested hash access
+        message_events = []
+        events.each do |e|
+          if e["message"] && e["message"]["headers"] && e["message"]["headers"]["message-id"] == delivery.mailgun_message_id
+            message_events << e
+          end
+        end
+        
+        # Update delivery status based on events
+        update_delivery_status(delivery, message_events) unless message_events.empty?
+      end
+      
+      # Update campaign aggregated stats
+      update_campaign_stats(campaign, stats.first)
+      
+      true
+    rescue => e
+      Rails.logger.error("Error syncing campaign stats: #{e.message}")
+      Rails.logger.error(e.backtrace.join("\n"))
+      false
     end
-    
-    # Update campaign aggregated stats
-    update_campaign_stats(campaign, stats.first)
-    
-    true
   end
   
   private
@@ -88,6 +106,20 @@ class MailgunService
   def mailgun_request(endpoint, params = {})
     begin
       url = "https://api.mailgun.net/v3/#{endpoint}"
+      
+      # Log the API request (without credentials)
+      Rails.logger.info("Mailgun API request to: #{url} with params: #{params.to_json}")
+      
+      # Validate credentials before making the request
+      if api_key.blank?
+        Rails.logger.error("Mailgun API key is missing or blank")
+        return nil
+      end
+      
+      if domain.blank?
+        Rails.logger.error("Mailgun domain is missing or blank")
+        return nil
+      end
       
       response = HTTParty.get(
         url,
@@ -100,10 +132,12 @@ class MailgunService
         JSON.parse(response.body)
       else
         Rails.logger.error("Mailgun API error: #{response.code} #{response.message} - #{response.body}")
+        Rails.logger.error("Mailgun request details - Domain: #{domain}, Endpoint: #{endpoint}")
         nil
       end
     rescue => e
       Rails.logger.error("Mailgun API request failed: #{e.message}")
+      Rails.logger.error(e.backtrace.join("\n"))
       nil
     end
   end
