@@ -17,9 +17,6 @@ class DrippedCampaign < ApplicationRecord
   def create_next_follow_up!
     return nil unless active?
     
-    # Find the original campaign's contact group
-    contact_group_id = original_campaign.contact_group_id
-    
     # Apply the condition to filter contacts
     filtered_contacts = case condition
     when 'not_opened'
@@ -71,16 +68,18 @@ class DrippedCampaign < ApplicationRecord
     
     # Create a new campaign based on the follow-up campaign template
     new_campaign = follow_up_campaign.dup
-    new_campaign.contact_group_id = new_group.id
     new_campaign.status = 'draft'  # Set as draft initially
-    new_campaign.sent_count = 0
-    new_campaign.open_count = 0
-    new_campaign.click_count = 0
-    new_campaign.bounce_count = 0
-    new_campaign.started_at = nil
-    new_campaign.completed_at = nil
+    
+    # Save the campaign first so we can establish associations
     new_campaign.save!
     
+    # Create association with the new contact group
+    CampaignGroup.create!(
+      campaign_id: new_campaign.id,
+      contact_group_id: new_group.id
+    )
+    
+    # Return the new campaign
     new_campaign
   end
   
