@@ -250,36 +250,47 @@ class Campaign < ApplicationRecord
       return nil
     end
     
+    # Make sure there's an email template
+    unless email_template.present?
+      errors.add(:base, "Campaign must have an email template to create a follow-up")
+      return nil
+    end
+    
     # Create a duplicate of this campaign as a template for follow-ups
     follow_up_template = self.dup
     follow_up_template.name = "Template: Follow-up for #{name}"
-    follow_up_template.subject = "#{subject_prefix}#{subject}"
     
-    # Insert a follow-up note in the email body
-    if follow_up_template.body.present?
-      followup_note = "<p><em>This is a follow-up to our previous email that you may have missed.</em></p>"
+    # Clone and modify the email template
+    original_template = email_template
+    new_template = original_template.dup
+    new_template.name = "Follow-up for #{original_template.name}"
+    new_template.subject = "#{subject_prefix}#{original_template.subject}"
+    
+    # Save the new template
+    if new_template.save
+      # Associate with the new campaign
+      follow_up_template.email_template_id = new_template.id
       
-      # Insert after the first paragraph or at beginning
-      if follow_up_template.body.include?("</p>")
-        # Insert after the first paragraph
-        follow_up_template.body = follow_up_template.body.sub("</p>", "</p>\n#{followup_note}")
-      else
-        # Insert at the beginning
-        follow_up_template.body = "#{followup_note}\n#{follow_up_template.body}"
+      # Insert a follow-up note in the email body
+      if new_template.body.present?
+        followup_note = "<p><em>This is a follow-up to our previous email that you may have missed.</em></p>"
+        
+        # Insert after the first paragraph or at beginning
+        if new_template.body.include?("</p>")
+          # Insert after the first paragraph
+          new_template.body = new_template.body.sub("</p>", "</p>\n#{followup_note}")
+        else
+          # Insert at the beginning
+          new_template.body = "#{followup_note}\n#{new_template.body}"
+        end
+        
+        # Save the modified body
+        new_template.save
       end
     end
     
     # Set to draft status
     follow_up_template.status = 'draft'
-    
-    # Reset tracking fields
-    follow_up_template.sent_count = 0
-    follow_up_template.open_count = 0
-    follow_up_template.click_count = 0
-    follow_up_template.bounce_count = 0
-    follow_up_template.started_at = nil
-    follow_up_template.completed_at = nil
-    follow_up_template.contact_group_id = nil
     
     # Save the template
     if follow_up_template.save

@@ -3,7 +3,22 @@ class CampaignsController < ApplicationController
   before_action :set_campaign, only: [:show, :edit, :update, :destroy, :send_test, :schedule, :send_now, :pause, :resume, :stop, :reactivate, :analyze, :sync_mailgun, :setup_drip, :trigger_drip]
   
   def index
-    @campaigns = current_user.campaigns.order(created_at: :desc)
+    # Get all campaigns for this user
+    all_campaigns = current_user.campaigns.order(created_at: :desc)
+    
+    # Separate into parent campaigns and follow-up campaigns
+    @parent_campaigns = all_campaigns.select { |c| !c.is_follow_up? }
+    @child_campaigns = all_campaigns.select { |c| c.is_follow_up? }
+    
+    # Group child campaigns by their parent
+    @child_campaigns_by_parent = {}
+    @child_campaigns.each do |child|
+      parent_id = child.parent_campaigns.first&.id
+      if parent_id
+        @child_campaigns_by_parent[parent_id] ||= []
+        @child_campaigns_by_parent[parent_id] << child
+      end
+    end
   end
 
   def show
