@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Preview: <%= @landing_page.title %></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Roboto:wght@400;500;700&family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+      :root {
+        --primary-color: <%= @landing_page.primary_color || '#0d6efd' %>;
+        --secondary-color: <%= @landing_page.secondary_color || '#6c757d' %>;
+        --font-family: <%= @landing_page.font_family || 'Arial, sans-serif' %>;
+      }
+      
+      body {
+        font-family: var(--font-family);
+        line-height: 1.6;
+        color: #333;
+        overflow-x: hidden;
+        padding-top: 56px; /* For the preview toolbar */
+      }
+      
+      .btn-primary {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+      
+      .btn-primary:hover {
+        background-color: var(--primary-color);
+        filter: brightness(90%);
+        border-color: var(--primary-color);
+      }
+      
+      .text-primary {
+        color: var(--primary-color) !important;
+      }
+      
+      .bg-primary {
+        background-color: var(--primary-color) !important;
+      }
+      
+      .border-primary {
+        border-color: var(--primary-color) !important;
+      }
+      
+      .text-secondary {
+        color: var(--secondary-color) !important;
+      }
+      
+      .hero-section {
+        background-size: cover;
+        background-position: center;
+        min-height: 500px;
+        display: flex;
+        align-items: center;
+      }
+      
+      .feature-card {
+        height: 100%;
+        transition: transform 0.3s;
+        border: 1px solid #eee;
+      }
+      
+      .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      }
+      
+      .testimonial {
+        border-left: 4px solid var(--primary-color);
+      }
+      
+      .cta-section {
+        background-color: var(--primary-color);
+        color: white;
+      }
+      
+      .cta-btn {
+        background-color: white;
+        color: var(--primary-color);
+        font-weight: bold;
+        padding: 12px 30px;
+        border-radius: 30px;
+        font-size: 1.1rem;
+        transition: all 0.3s;
+      }
+      
+      .cta-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      }
+      
+      /* Preview toolbar */
+      .preview-toolbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        background-color: #212529;
+        color: white;
+        padding: 10px 20px;
+      }
+      
+      .device-selector {
+        background-color: rgba(255,255,255,0.1);
+        border-radius: 5px;
+        padding: 5px;
+        display: inline-flex;
+      }
+      
+      .device-btn {
+        color: white;
+        background: none;
+        border: none;
+        border-radius: 3px;
+        padding: 5px 10px;
+        margin: 0 2px;
+        cursor: pointer;
+      }
+      
+      .device-btn.active {
+        background-color: rgba(255,255,255,0.2);
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Preview Toolbar -->
+    <div class="preview-toolbar d-flex justify-content-between align-items-center">
+      <div>
+        <span class="badge bg-warning me-2">PREVIEW</span>
+        <span><%= @landing_page.title %></span>
+      </div>
+      <div class="device-selector d-none d-md-inline-flex">
+        <button type="button" class="device-btn active" data-device="desktop">
+          <i class="fas fa-desktop me-1"></i> Desktop
+        </button>
+        <button type="button" class="device-btn" data-device="tablet">
+          <i class="fas fa-tablet-alt me-1"></i> Tablet
+        </button>
+        <button type="button" class="device-btn" data-device="mobile">
+          <i class="fas fa-mobile-alt me-1"></i> Mobile
+        </button>
+      </div>
+      <div>
+        <%= link_to "Back to Editor", edit_landing_page_path(@landing_page), class: "btn btn-sm btn-outline-light me-2" %>
+        <% if @landing_page.published? %>
+          <%= link_to "View Live", landing_page_public_path(@landing_page.slug), class: "btn btn-sm btn-success", target: "_blank" %>
+        <% else %>
+          <%= button_to "Publish", publish_landing_page_path(@landing_page), method: :post, class: "btn btn-sm btn-success" %>
+        <% end %>
+      </div>
+    </div>
+    
+    <div id="preview-container" class="w-100 mx-auto">
+      <!-- Hero Section -->
+      <section class="hero-section" style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('<%= @landing_page.image_url %>');">
+        <div class="container">
+          <div class="row">
+            <div class="col-md-8">
+              <div class="bg-white p-4 p-md-5 rounded shadow-lg">
+                <h1 class="fw-bold mb-3"><%= @landing_page.headline %></h1>
+                <p class="lead mb-4"><%= @landing_page.subheadline %></p>
+                <a href="#" class="btn btn-primary btn-lg px-4 py-2 fw-bold">
+                  <%= @landing_page.cta_text %>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Content Sections -->
+      <% if @landing_page.content.present? %>
+        <% @landing_page.content.each_with_index do |section, index| %>
+          <section class="py-5 <%= index.odd? ? 'bg-light' : '' %>">
+            <div class="container">
+              <% if section['title'].present? %>
+                <h2 class="text-center mb-4"><%= section['title'] %></h2>
+              <% end %>
+              
+              <% case section['type'] %>
+              <% when 'feature' %>
+                <div class="row row-cols-1 row-cols-md-3 g-4">
+                  <div class="col">
+                    <div class="card h-100 feature-card">
+                      <div class="card-body text-center">
+                        <i class="fas fa-check-circle fa-3x text-primary mb-3"></i>
+                        <div><%=
+                          if section['content'].is_a?(String)
+                            section['content'].html_safe
+                          else
+                            section['content'].to_s
+                          end
+                        %></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% when 'testimonial' %>
+                <div class="row justify-content-center">
+                  <div class="col-md-8">
+                    <div class="p-4 bg-white shadow rounded testimonial">
+                      <%= 
+                        if section['content'].is_a?(String)
+                          section['content'].html_safe
+                        else
+                          section['content'].to_s
+                        end
+                      %>
+                    </div>
+                  </div>
+                </div>
+              <% when 'pricing' %>
+                <div class="row row-cols-1 row-cols-md-3 g-4">
+                  <div class="col">
+                    <div class="card h-100 shadow">
+                      <div class="card-body">
+                        <%= 
+                          if section['content'].is_a?(String)
+                            section['content'].html_safe
+                          else
+                            section['content'].to_s
+                          end
+                        %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% when 'faq' %>
+                <div class="row justify-content-center">
+                  <div class="col-md-8">
+                    <div class="accordion" id="faqAccordion">
+                      <%= 
+                        if section['content'].is_a?(String)
+                          section['content'].html_safe
+                        else
+                          section['content'].to_s
+                        end
+                      %>
+                    </div>
+                  </div>
+                </div>
+              <% else %>
+                <div class="row justify-content-center">
+                  <div class="col-md-8">
+                    <%= 
+                      if section['content'].is_a?(String)
+                        section['content'].html_safe
+                      else
+                        section['content'].to_s
+                      end
+                    %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </section>
+        <% end %>
+      <% end %>
+      
+      <!-- CTA Section -->
+      <section class="cta-section py-5">
+        <div class="container text-center py-4">
+          <h2 class="fw-bold mb-3"><%= @landing_page.headline %></h2>
+          <p class="lead mb-4"><%= @landing_page.subheadline %></p>
+          <a href="#" class="btn cta-btn">
+            <%= @landing_page.cta_text %>
+          </a>
+        </div>
+      </section>
+      
+      <!-- Footer -->
+      <footer class="bg-dark text-white py-4">
+        <div class="container">
+          <div class="row">
+            <div class="col-md-6">
+              <p>&copy; <%= Date.current.year %> <%= @landing_page.entity.name %> | All Rights Reserved</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+              <p>
+                <small>Created with Agent Marketing</small>
+              </p>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+    
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const previewContainer = document.getElementById('preview-container');
+        const deviceButtons = document.querySelectorAll('.device-btn');
+        
+        // Device preview functionality
+        deviceButtons.forEach(button => {
+          button.addEventListener('click', function() {
+            const device = this.getAttribute('data-device');
+            
+            // Remove active class from all buttons
+            deviceButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // Update preview container width
+            switch(device) {
+              case 'mobile':
+                previewContainer.style.maxWidth = '375px';
+                break;
+              case 'tablet':
+                previewContainer.style.maxWidth = '768px';
+                break;
+              case 'desktop':
+              default:
+                previewContainer.style.maxWidth = '100%';
+                break;
+            }
+          });
+        });
+      });
+    </script>
+  </body>
+</html> 

@@ -14,6 +14,7 @@ class Entity < ApplicationRecord
   has_many :contact_groups, dependent: :destroy
   has_many :email_templates, dependent: :destroy
   has_many :campaigns, dependent: :destroy
+  has_many :landing_pages, dependent: :destroy
   has_many :social_posts, dependent: :destroy
   has_many :social_media_accounts, dependent: :destroy
   has_many :business_profiles, dependent: :destroy

@@ -10,9 +10,47 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_07_203620) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_14_174438) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "action_text_rich_texts", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "body"
+    t.string "record_type", null: false
+    t.bigint "record_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["record_type", "record_id", "name"], name: "index_action_text_rich_texts_uniqueness", unique: true
+  end
+
+  create_table "active_storage_attachments", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "record_type", null: false
+    t.bigint "record_id", null: false
+    t.bigint "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+  end
+
+  create_table "active_storage_blobs", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "filename", null: false
+    t.string "content_type"
+    t.text "metadata"
+    t.string "service_name", null: false
+    t.bigint "byte_size", null: false
+    t.string "checksum"
+    t.datetime "created_at", null: false
+    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "active_storage_variant_records", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
 
   create_table "business_profiles", force: :cascade do |t|
     t.bigint "user_id", null: false
@@ -208,6 +246,51 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_07_203620) do
     t.index ["user_id"], name: "index_entity_users_on_user_id"
   end
 
+  create_table "landing_pages", force: :cascade do |t|
+    t.string "title", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.jsonb "content", default: {}
+    t.string "status", default: "draft"
+    t.string "page_type"
+    t.text "meta_description"
+    t.string "meta_keywords"
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "campaign_id"
+    t.string "custom_domain"
+    t.boolean "published", default: false
+    t.datetime "published_at"
+    t.string "headline"
+    t.text "subheadline"
+    t.string "cta_text"
+    t.string "cta_url"
+    t.string "primary_color"
+    t.string "secondary_color"
+    t.string "font_family"
+    t.string "image_url"
+    t.jsonb "image_prompts"
+    t.jsonb "ai_settings"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["campaign_id"], name: "index_landing_pages_on_campaign_id"
+    t.index ["entity_id"], name: "index_landing_pages_on_entity_id"
+    t.index ["published"], name: "index_landing_pages_on_published"
+    t.index ["slug"], name: "index_landing_pages_on_slug", unique: true
+    t.index ["user_id"], name: "index_landing_pages_on_user_id"
+  end
+
+  create_table "rich_text_sections", force: :cascade do |t|
+    t.string "title"
+    t.string "section_type"
+    t.integer "section_index"
+    t.string "image_url"
+    t.bigint "landing_page_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["landing_page_id"], name: "index_rich_text_sections_on_landing_page_id"
+  end
+
   create_table "social_media_accounts", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "platform"
@@ -400,6 +483,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_07_203620) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "business_profiles", "entities"
   add_foreign_key "business_profiles", "users"
   add_foreign_key "campaign_groups", "campaigns"
@@ -426,6 +511,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_07_203620) do
   add_foreign_key "email_templates", "users"
   add_foreign_key "entity_users", "entities"
   add_foreign_key "entity_users", "users"
+  add_foreign_key "landing_pages", "campaigns"
+  add_foreign_key "landing_pages", "entities"
+  add_foreign_key "landing_pages", "users"
+  add_foreign_key "rich_text_sections", "landing_pages"
   add_foreign_key "social_media_accounts", "entities"
   add_foreign_key "social_media_accounts", "users"
   add_foreign_key "social_post_analytics", "social_posts"

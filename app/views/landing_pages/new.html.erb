@@ -1,0 +1,70 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-8 offset-md-2">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3><i class="fas fa-globe me-2"></i> New Landing Page</h3>
+        </div>
+        <div class="card-body">
+          <%= form_with(model: @landing_page, local: true) do |form| %>
+            <% if @landing_page.errors.any? %>
+              <div class="alert alert-danger">
+                <h4><%= pluralize(@landing_page.errors.count, "error") %> prohibited this landing page from being saved:</h4>
+                <ul>
+                  <% @landing_page.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+            
+            <div class="mb-3">
+              <%= form.label :title, class: "form-label" %>
+              <%= form.text_field :title, class: "form-control", placeholder: "Enter landing page title" %>
+            </div>
+            
+            <div class="mb-3">
+              <%= form.label :slug, "URL Slug", class: "form-label" %>
+              <div class="input-group">
+                <span class="input-group-text">/landing/</span>
+                <%= form.text_field :slug, class: "form-control", placeholder: "my-landing-page" %>
+              </div>
+              <small class="form-text text-muted">The URL slug can only contain lowercase letters, numbers, and hyphens. Leave blank to generate automatically from title.</small>
+            </div>
+            
+            <div class="mb-3">
+              <%= form.label :description, "Brief description for your landing page", class: "form-label" %>
+              <%= form.text_area :description, class: "form-control", rows: 3, placeholder: "Enter a brief description of what this landing page will be about" %>
+              <small class="form-text text-muted">This helps with AI content generation but won't be visible on the page.</small>
+            </div>
+            
+            <div class="mb-3">
+              <%= form.label :page_type, "Page Type", class: "form-label" %>
+              <%= form.select :page_type, [
+                ["Lead Generation", "lead_generation"],
+                ["Product Promotion", "product_promotion"],
+                ["Event Registration", "event_registration"]
+              ], { include_blank: "Select page type" }, { class: "form-select" } %>
+              <small class="form-text text-muted">The type of landing page will determine its layout and content structure.</small>
+            </div>
+            
+            <div class="mb-3">
+              <%= form.label :campaign_id, "Associated Campaign (Optional)", class: "form-label" %>
+              <%= form.collection_select :campaign_id, 
+                  current_user.campaigns.where(entity_id: current_entity.id).order(created_at: :desc), 
+                  :id, :name, 
+                  { include_blank: "Select a campaign" }, 
+                  { class: "form-select" } %>
+              <small class="form-text text-muted">Link this landing page to an existing email campaign.</small>
+            </div>
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+              <%= link_to "Cancel", landing_pages_path, class: "btn btn-light me-md-2" %>
+              <%= form.submit "Create Landing Page", class: "btn btn-primary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

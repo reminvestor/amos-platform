@@ -49,6 +49,14 @@ Rails.application.routes.draw do
           post :elearning
         end
       end
+      
+      resources :maintenance, only: [:index] do
+        collection do
+          post :add_missing_email_deliveries
+          post :fix_campaign_entity_ids
+          post :reprocess_drip_campaigns
+        end
+      end
     end
     
     # Entity management
@@ -88,6 +96,20 @@ Rails.application.routes.draw do
         post :trigger_drip
       end
     end
+    
+    # Landing pages
+    resources :landing_pages do
+      member do
+        post :publish
+        post :unpublish
+        get :preview
+        post :generate_content
+        post :generate_image
+      end
+    end
+    
+    # Public landing page view (no auth required)
+    get 'landing/:slug', to: 'landing_pages#public_view', as: :landing_page_public
     
     # AI content generation routes
     get 'ai_content/new', to: 'ai_content#new', as: :new_ai_content

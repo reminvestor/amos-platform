@@ -69,6 +69,7 @@ class DrippedCampaign < ApplicationRecord
     # Create a new campaign based on the follow-up campaign template
     new_campaign = follow_up_campaign.dup
     new_campaign.status = 'draft'  # Set as draft initially
+    new_campaign.entity_id = original_campaign.entity_id
     
     # Save the campaign first so we can establish associations
     new_campaign.save!

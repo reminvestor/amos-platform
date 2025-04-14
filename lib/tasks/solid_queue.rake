@@ -97,4 +97,134 @@ namespace :solid_queue do
       puts "Error configuring recurring task: #{e.message}"
     end
   end
+  
+  desc "Start Solid Queue worker using Rails runner"
+  task start_via_runner: :environment do
+    # This task executes SolidQueue worker in the current process
+    
+    # Configure Rails logger to include both console AND file output
+    log_level = ENV.fetch("SOLID_QUEUE_LOG_LEVEL", "info").upcase
+    
+    # Create a console logger
+    console_logger = ActiveSupport::Logger.new(STDOUT)
+    console_logger.level = ActiveSupport::Logger.const_get(log_level)
+    console_logger.formatter = proc do |severity, datetime, progname, msg|
+      time = datetime.strftime('%Y-%m-%d %H:%M:%S')
+      "[#{time}] [#{severity}] #{msg}\n"
+    end
+    
+    # Create a file logger for jobs
+    log_dir = Rails.root.join("log")
+    FileUtils.mkdir_p(log_dir) unless File.directory?(log_dir)
+    
+    # Rotate logs if they get too big
+    file_logger = ActiveSupport::Logger.new(
+      Rails.root.join("log", "solid_queue_jobs.log"),
+      10,  # Keep 10 files
+      10.megabytes  # Each file up to 10 MB
+    )
+    file_logger.level = ActiveSupport::Logger.const_get(log_level)
+    file_logger.formatter = proc do |severity, datetime, progname, msg|
+      time = datetime.strftime('%Y-%m-%d %H:%M:%S')
+      "[#{time}] [#{severity}] #{msg}\n"
+    end
+    
+    # Create a multi-logger that logs to both console and file
+    Rails.logger = ActiveSupport::BroadcastLogger.new(console_logger, file_logger)
+    
+    # Make sure rails jobs log to our logger too
+    ActiveJob::Base.logger = Rails.logger
+    
+    # Define JobAttributes module if needed
+    if defined?(SolidQueue) && !defined?(SolidQueue::JobAttributes)
+      Rails.logger.info "Creating JobAttributes module for SolidQueue"
+      module SolidQueue
+        module JobAttributes
+          extend ActiveSupport::Concern
+          included do
+            belongs_to :job, class_name: "SolidQueue::Job", optional: false
+            delegate :class_name, :arguments, to: :job
+          end
+        end
+      end
+    end
+    
+    # Set SolidQueue logger
+    SolidQueue.logger = Rails.logger if defined?(SolidQueue)
+    
+    # Get thread and polling interval settings
+    threads = ENV.fetch("SOLID_QUEUE_THREADS", "5").to_i
+    polling = ENV.fetch("SOLID_QUEUE_POLLING_INTERVAL", "1").to_i
+    
+    Rails.logger.info "="*80
+    Rails.logger.info "STARTING SOLID QUEUE WORKER"
+    Rails.logger.info "  Threads: #{threads}"
+    Rails.logger.info "  Polling interval: #{polling}s"
+    Rails.logger.info "  Log level: #{log_level}"
+    Rails.logger.info "  Log file: #{Rails.root.join("log", "solid_queue_jobs.log")}"
+    Rails.logger.info "="*80
+    
+    # Apply patch if needed
+    if defined?(SolidQueue::Execution) && !SolidQueue::Execution.included_modules.include?(SolidQueue::JobAttributes)
+      Rails.logger.info "Applying JobAttributes to SolidQueue::Execution"
+      SolidQueue::Execution.include(SolidQueue::JobAttributes)
+    end
+    
+    # Start worker and dispatcher
+    begin
+      require "solid_queue/dispatcher"
+      require "solid_queue/worker"
+      
+      # Create worker and dispatcher
+      Rails.logger.info "Creating SolidQueue dispatcher (polling: #{polling}s)"
+      dispatcher = SolidQueue::Dispatcher.new(polling_interval: polling)
+      
+      Rails.logger.info "Creating SolidQueue worker (threads: #{threads})"
+      worker = SolidQueue::Worker.new(queues: ["*"], threads: threads)
+      
+      # Start dispatcher in separate thread
+      dispatcher_thread = Thread.new do
+        Rails.logger.info "Starting dispatcher..."
+        begin
+          dispatcher.start
+        rescue => e
+          Rails.logger.error "Dispatcher error: #{e.message}"
+          Rails.logger.error e.backtrace.join("\n")
+        end
+      end
+      
+      # Set up signal handlers
+      %w(INT TERM).each do |signal|
+        trap(signal) do
+          Rails.logger.info "Received #{signal} signal, shutting down..."
+          exit
+        end
+      end
+      
+      # Start the worker in the main thread
+      Rails.logger.info "Starting worker..."
+      Rails.logger.info "SolidQueue is ready to process jobs. Press Ctrl-C to stop."
+      Rails.logger.info "="*80
+      
+      # Start worker (non-blocking)
+      worker.start
+      
+      # Keep the process alive until interrupted
+      # This is critical because SolidQueue worker.start doesn't block!
+      Rails.logger.info "Worker started, keeping process alive..."
+      loop do
+        sleep 10
+        Rails.logger.debug "SolidQueue worker heartbeat... (#{Time.current})"
+      end
+      
+    rescue => e
+      Rails.logger.error "Error starting SolidQueue: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      raise
+    end
+  end
+  
+  # Use the runner approach as the default
+  desc "Start Solid Queue worker (via rails runner)"
+  task start: :start_via_runner
 end 
