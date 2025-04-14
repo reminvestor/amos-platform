@@ -22,6 +22,8 @@
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "trix", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "actiontext", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
     
     <style>
@@ -142,7 +144,8 @@
                 <li><a class="dropdown-item" href="<%= user_path(current_user) %>"><i class="fas fa-id-card me-2"></i>My Profile</a></li>
                 <li><a class="dropdown-item" href="<%= edit_user_registration_path %>"><i class="fas fa-cog me-2"></i>Account Settings</a></li>
                 <% if current_user.admin? %>
-                  <li><a class="dropdown-item" href="<%= admin_imports_path %>">Data Imports</a></li>
+                  <li><a class="dropdown-item" href="<%= admin_imports_path %>"><i class="fas fa-file-import me-2"></i>Data Imports</a></li>
+                  <li><a class="dropdown-item" href="<%= admin_maintenance_index_path %>"><i class="fas fa-tools me-2"></i>Maintenance Tasks</a></li>
                 <% end %>
                 
                 <% if current_user.entities.any? %>
@@ -186,6 +189,12 @@
           <a class="nav-link <%= current_page?(campaigns_path) ? 'active' : '' %>" href="<%= campaigns_path %>">
             <i class="fas fa-bullhorn fa-fw me-2"></i>
             <span class="nav-link-text">Campaigns</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= current_page?(landing_pages_path) ? 'active' : '' %>" href="<%= landing_pages_path %>">
+            <i class="fas fa-globe fa-fw me-2"></i>
+            <span class="nav-link-text">Landing Pages</span>
           </a>
         </li>
         <li class="nav-item">

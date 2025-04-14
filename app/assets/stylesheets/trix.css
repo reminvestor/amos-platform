@@ -1,0 +1,89 @@
+/* Trix WYSIWYG editor styling */
+
+/* Container styling */
+.trix-editor-wrapper {
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+/* Editor height and scrolling */
+trix-editor {
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Toolbar styling */
+trix-toolbar {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  padding: 0.25rem;
+}
+
+trix-toolbar .trix-button-group {
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  margin: 0 0.25rem;
+}
+
+trix-toolbar .trix-button {
+  border-bottom: none;
+}
+
+trix-toolbar .trix-button.trix-active {
+  background-color: #e9ecef;
+}
+
+/* Content styling */
+.trix-content {
+  padding: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.trix-content h1 {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.trix-content ul, .trix-content ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.trix-content blockquote {
+  border-left: 3px solid #ced4da;
+  padding-left: 0.75rem;
+  color: #6c757d;
+  margin: 0.75rem 0;
+}
+
+.trix-content pre {
+  background-color: #f8f9fa;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  margin: 0.75rem 0;
+  font-family: monospace;
+  white-space: pre-wrap;
+}
+
+/* Image and attachment styling */
+.trix-content .attachment-gallery > action-text-attachment,
+.trix-content .attachment-gallery > .attachment {
+  flex: 1 0 33%;
+  padding: 0 0.5em;
+  max-width: 33%;
+}
+
+.trix-content .attachment-gallery.attachment-gallery--2 > action-text-attachment,
+.trix-content .attachment-gallery.attachment-gallery--2 > .attachment, 
+.trix-content .attachment-gallery.attachment-gallery--4 > action-text-attachment,
+.trix-content .attachment-gallery.attachment-gallery--4 > .attachment {
+  flex-basis: 50%;
+  max-width: 50%;
+}
+
+.trix-content action-text-attachment .attachment {
+  padding: 0 !important;
+  max-width: 100% !important;
+} 

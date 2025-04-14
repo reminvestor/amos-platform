@@ -4,7 +4,7 @@ class CampaignsController < ApplicationController
   
   def index
     # Get all campaigns for this user
-    all_campaigns = current_user.campaigns.order(created_at: :desc)
+    all_campaigns = current_user.campaigns.where(entity_id: current_entity.id).order(created_at: :desc)
     
     # Separate into parent campaigns and follow-up campaigns
     @parent_campaigns = all_campaigns.select { |c| !c.is_follow_up? }
@@ -35,34 +35,35 @@ class CampaignsController < ApplicationController
   end
 
   def new
-    @campaign = current_user.campaigns.new(status: 'draft')
-    @contact_groups = current_user.contact_groups
-    @email_templates = current_user.email_templates
+    @campaign = current_user.campaigns.new(status: 'draft', entity_id: current_entity.id)
+    @contact_groups = current_user.contact_groups.where(entity_id: current_entity.id)
+    @email_templates = current_user.email_templates.where(entity_id: current_entity.id)
   end
 
   def create
     @campaign = current_user.campaigns.new(campaign_params)
+    @campaign.entity_id = current_entity.id
     
     if @campaign.save
       redirect_to campaigns_path, notice: 'Campaign was successfully created.'
     else
-      @contact_groups = current_user.contact_groups
-      @email_templates = current_user.email_templates
+      @contact_groups = current_user.contact_groups.where(entity_id: current_entity.id)
+      @email_templates = current_user.email_templates.where(entity_id: current_entity.id)
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit
-    @contact_groups = current_user.contact_groups
-    @email_templates = current_user.email_templates
+    @contact_groups = current_user.contact_groups.where(entity_id: current_entity.id)
+    @email_templates = current_user.email_templates.where(entity_id: current_entity.id)
   end
 
   def update
     if @campaign.update(campaign_params)
       redirect_to campaigns_path, notice: 'Campaign was successfully updated.'
     else
-      @contact_groups = current_user.contact_groups
-      @email_templates = current_user.email_templates
+      @contact_groups = current_user.contact_groups.where(entity_id: current_entity.id)
+      @email_templates = current_user.email_templates.where(entity_id: current_entity.id)
       render :edit, status: :unprocessable_entity
     end
   end
@@ -243,7 +244,7 @@ class CampaignsController < ApplicationController
   private
   
   def set_campaign
-    @campaign = current_user.campaigns.find(params[:id])
+    @campaign = current_user.campaigns.where(entity_id: current_entity.id).find(params[:id])
   end
   
   def campaign_params

@@ -1,0 +1,81 @@
+<div class="container my-4">
+  <h1>Maintenance Tasks</h1>
+  <p class="text-muted">Run maintenance scripts directly from the UI instead of using the Rails console.</p>
+  
+  <div class="row mt-4">
+    <div class="col-md-4 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <h5>Add Missing Email Deliveries</h5>
+        </div>
+        <div class="card-body">
+          <p>
+            This script will identify and add missing email deliveries for drip campaigns.
+            It addresses the issue where only a subset of contacts are included in drip campaigns.
+          </p>
+          <ul>
+            <li>Identifies contacts missing from drip campaigns</li>
+            <li>Creates missing email delivery records</li>
+            <li>Ensures all contacts (~100K) are included</li>
+          </ul>
+          <p><strong>Note:</strong> This process may take some time for large datasets.</p>
+        </div>
+        <div class="card-footer">
+          <%= button_to add_missing_email_deliveries_admin_maintenance_index_path, method: :post, class: "btn btn-primary w-100", data: { confirm: "Are you sure you want to run this maintenance task?" } do %>
+            <i class="bi bi-tools me-2"></i> Run Task
+          <% end %>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <h5>Fix Campaign Entity IDs</h5>
+        </div>
+        <div class="card-body">
+          <p>
+            This script will check all campaigns and ensure they have the correct entity ID set.
+            It addresses the issue where campaigns may not be properly scoped to entities.
+          </p>
+          <ul>
+            <li>Identifies campaigns with missing entity IDs</li>
+            <li>Determines the correct entity based on the creator</li>
+            <li>Updates campaigns with the proper entity scope</li>
+          </ul>
+          <p><strong>Note:</strong> Campaigns will be updated with entity IDs from their creator's primary entity.</p>
+        </div>
+        <div class="card-footer">
+          <%= button_to fix_campaign_entity_ids_admin_maintenance_index_path, method: :post, class: "btn btn-primary w-100", data: { confirm: "Are you sure you want to fix campaign entity IDs?" } do %>
+            <i class="bi bi-shield-lock me-2"></i> Run Task
+          <% end %>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <h5>Reprocess Drip Campaigns</h5>
+        </div>
+        <div class="card-body">
+          <p>
+            This script will trigger the reprocessing of all pending drip campaigns.
+            It helps fix any drip campaigns that may have stalled or failed to process.
+          </p>
+          <ul>
+            <li>Identifies active drip campaign sequences</li>
+            <li>Checks if they need to be processed based on delay settings</li>
+            <li>Creates follow-up campaigns for eligible drip sequences</li>
+          </ul>
+          <p><strong>Note:</strong> Only campaigns meeting time delay criteria will be processed.</p>
+        </div>
+        <div class="card-footer">
+          <%= button_to reprocess_drip_campaigns_admin_maintenance_index_path, method: :post, class: "btn btn-primary w-100", data: { confirm: "Are you sure you want to reprocess drip campaigns?" } do %>
+            <i class="bi bi-arrow-repeat me-2"></i> Run Task
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

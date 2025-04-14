@@ -2,6 +2,15 @@
 # This initializer is for Solid Queue configuration.
 # Note: For scheduling, we use the rake task approach instead of RecurringTask.
 
+# Configure logging for Solid Queue workers
+if defined?(SolidQueue)
+  # Set the logger for Solid Queue to use Rails logger
+  SolidQueue.logger = Rails.logger
+  
+  # Log when SolidQueue is loaded
+  Rails.logger.info "SolidQueue: Initialized with Rails logger"
+end
+
 # Add any additional Solid Queue configuration here if needed.
 
 # Configure recurring drip campaign processing job

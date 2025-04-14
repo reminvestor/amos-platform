@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Simplified SolidQueue wrapper script that calls rake directly
+
+# Set log level if not specified
+export SOLID_QUEUE_LOG_LEVEL=${SOLID_QUEUE_LOG_LEVEL:-info}
+
+# Print banner
+echo "================================================================================"
+echo "Starting Solid Queue worker with log level: $SOLID_QUEUE_LOG_LEVEL"
+echo "================================================================================"
+
+# Export stdout and stderr to the terminal
+exec bundle exec rake solid_queue:start_via_runner
+
+# This script will never return unless the rake task exits 

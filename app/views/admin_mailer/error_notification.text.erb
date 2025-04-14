@@ -1,0 +1,13 @@
+Background Job Error
+=================
+
+Error Message: <%= @error_message %>
+Job Class: <%= @job_class %>
+Job ID: <%= @job_id %>
+
+<% if @arguments.present? %>
+Arguments:
+<%= @arguments.inspect %>
+<% end %>
+
+Error occurred at: <%= @timestamp %> 

@@ -1,4 +1,4 @@
 web: bundle exec puma -C config/puma_heroku.rb
-worker: bundle exec rake solid_queue:start
+worker: bin/solid_queue
 clock: bundle exec clockwork clock.rb
 release: bundle exec rails db:migrate 

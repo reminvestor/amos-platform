@@ -21,3 +21,6 @@ document.addEventListener('turbo:submit-end', (event) => {
 document.addEventListener('turbo:frame-load', (event) => {
   console.log("🌐 Turbo frame loaded:", event.target);
 });
+
+import "trix"
+import "@rails/actiontext"

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+    h1 { color: #D32F2F; }
+    pre { background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    .details { margin-top: 20px; }
+    .timestamp { color: #666; margin-top: 20px; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Background Job Error</h1>
+    
+    <div class="details">
+      <p><strong>Error Message:</strong> <%= @error_message %></p>
+      <p><strong>Job Class:</strong> <%= @job_class %></p>
+      <p><strong>Job ID:</strong> <%= @job_id %></p>
+      
+      <% if @arguments.present? %>
+        <p><strong>Arguments:</strong></p>
+        <pre><%= JSON.pretty_generate(@arguments.as_json) rescue @arguments.inspect %></pre>
+      <% end %>
+    </div>
+    
+    <p class="timestamp">Error occurred at: <%= @timestamp %></p>
+  </div>
+</body>
+</html> 
