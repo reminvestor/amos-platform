@@ -31,11 +31,22 @@ class GenerateLandingPageImageJob < ApplicationJob
     # Update landing page with the generated image URL
     log_with_context("Updating landing page with generated image")
     
+    # Download and attach the image
+    attached_image = download_and_attach_image(landing_page, image_url, section)
+    
+    if attached_image
+      log_with_context("Successfully attached image to landing page")
+    else
+      log_with_context("Failed to attach image to landing page", :error)
+      raise StandardError, "Failed to attach image to landing page"
+    end
+    
     # Store the image in the appropriate field
     case section
     when 'hero'
+      # Keep the URL as a fallback
       landing_page.update(image_url: image_url)
-      log_with_context("Updated hero image URL")
+      log_with_context("Updated hero image URL as fallback")
     else
       # Store in content JSON for other sections
       content = landing_page.content || []
@@ -194,5 +205,43 @@ class GenerateLandingPageImageJob < ApplicationJob
   rescue => e
     log_with_context("Error calling OpenAI API: #{e.message}", :error)
     nil
+  end
+  
+  def download_and_attach_image(landing_page, image_url, section)
+    require 'open-uri'
+    require 'securerandom'
+    
+    begin
+      # Download the image
+      log_with_context("Downloading image from URL: #{image_url.truncate(50)}")
+      
+      downloaded_image = URI.open(image_url)
+      
+      # Generate a filename with random UUID to avoid collisions
+      filename = "#{SecureRandom.uuid}-#{section.parameterize}.png"
+      
+      log_with_context("Downloaded image, attaching to landing page")
+      
+      # Attach the image based on the section
+      case section
+      when 'hero'
+        landing_page.hero_image.attach(
+          io: downloaded_image,
+          filename: filename,
+          content_type: 'image/png'
+        )
+      else
+        # For future use with other section types
+        # We could create a has_many_attached for section images
+        # This would need a model change
+        # For now we'll continue storing URLs for non-hero images
+      end
+      
+      return true
+    rescue StandardError => e
+      log_with_context("Error downloading/attaching image: #{e.message}", :error)
+      log_with_context(e.backtrace.join("\n"), :error)
+      return false
+    end
   end
 end 

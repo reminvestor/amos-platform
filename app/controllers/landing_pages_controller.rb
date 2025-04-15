@@ -1,6 +1,6 @@
 class LandingPagesController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_landing_page, only: [:show, :edit, :update, :destroy, :publish, :unpublish, :preview, :generate_image, :generate_content]
+  before_action :set_landing_page, only: [:show, :edit, :update, :destroy, :publish, :unpublish, :preview, :generate_image, :generate_content, :chat_preview, :apply_change, :no_header_preview, :get_chat_messages]
   
   def index
     @landing_pages = current_user.landing_pages.where(entity_id: current_entity.id).order(created_at: :desc)
@@ -74,6 +74,12 @@ class LandingPagesController < ApplicationController
     end
   end
   
+  def no_header_preview
+    respond_to do |format|
+      format.html { render layout: 'landing_page_content_only', inline: "" }
+    end
+  end
+  
   def generate_content
     # Prepare context for AI generation
     business_profile = current_entity.business_profiles.first || current_user.business_profile
@@ -107,6 +113,81 @@ class LandingPagesController < ApplicationController
     redirect_to edit_landing_page_path(@landing_page), notice: 'Image generation has been started. This may take a few moments.'
   end
   
+  def chat_preview
+    # Get business profile for context in AI generation
+    @business_profile = current_entity.business_profiles.first || current_user.business_profile
+    
+    respond_to do |format|
+      format.html { render layout: 'landing_page_chat' }
+    end
+  end
+  
+  def apply_change
+    # Handle AI-requested changes via chat interface
+    instruction = params[:instruction]
+    section_index = params[:section_index]
+    
+    # Attempt to automatically detect which section to edit if not specified
+    if section_index.nil? && instruction.present?
+      # Look for numeric patterns like "section 2" or "section #3"
+      section_match = instruction.match(/section\s+[#]?(\d+)/i)
+      if section_match
+        # Convert to 0-indexed
+        section_index = section_match[1].to_i - 1
+        section_index = nil if section_index < 0
+      end
+    end
+    
+    # Store user's message
+    user_message = @landing_page.landing_page_chat_messages.create!(
+      content: instruction,
+      role: 'user',
+      user: current_user
+    )
+    
+    # Get conversation history
+    conversation_history = @landing_page.landing_page_chat_messages.conversation_history(@landing_page.id)
+    
+    # Log the request
+    Rails.logger.info("Chat request from user #{current_user.id} for landing page #{@landing_page.id}: #{instruction}")
+    Rails.logger.info("Targeting section index: #{section_index || 'general edit'}")
+    Rails.logger.info("Conversation history: #{conversation_history.to_json}")
+    
+    # Create a job to apply the change
+    ApplyLandingPageChangeJob.perform_later(
+      @landing_page.id,
+      instruction,
+      current_entity.id,
+      current_user.id,
+      conversation_history: conversation_history,
+      message_id: user_message.id,
+      section_index: section_index,
+      correlation_id: SecureRandom.uuid
+    )
+    
+    render json: { 
+      status: 'processing',
+      message: 'Your request is being processed. The page will update shortly.',
+      message_id: user_message.id
+    }
+  end
+  
+  def get_chat_messages
+    @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find(params[:id])
+    messages = @landing_page.landing_page_chat_messages.order(created_at: :asc)
+    
+    render json: { 
+      messages: messages.map do |msg|
+        {
+          id: msg.id,
+          content: msg.content,
+          role: msg.role,
+          timestamp: msg.created_at.iso8601
+        }
+      end
+    }
+  end
+  
   # Public-facing landing page view (no auth required)
   def public_view
     @landing_page = LandingPage.published.find_by!(slug: params[:slug])
@@ -117,6 +198,33 @@ class LandingPagesController < ApplicationController
     render layout: 'landing_page', inline: ""
   rescue ActiveRecord::RecordNotFound
     render file: "#{Rails.root}/public/404.html", layout: false, status: :not_found
+  end
+  
+  # Show version history
+  def versions
+    @versions = @landing_page.landing_page_versions.order(created_at: :desc)
+    
+    respond_to do |format|
+      format.html
+      format.json { render json: @versions }
+    end
+  end
+  
+  # Rollback to a specific version
+  def rollback
+    @version = @landing_page.landing_page_versions.find(params[:version_id])
+    
+    if @version.restore
+      respond_to do |format|
+        format.html { redirect_to edit_landing_page_path(@landing_page), notice: "Successfully rolled back to previous version." }
+        format.json { render json: { status: "success", message: "Successfully rolled back to previous version." } }
+      end
+    else
+      respond_to do |format|
+        format.html { redirect_to edit_landing_page_path(@landing_page), alert: "Failed to rollback to previous version." }
+        format.json { render json: { status: "error", message: "Failed to rollback to previous version." }, status: :unprocessable_entity }
+      end
+    end
   end
   
   private
