@@ -1,0 +1,27 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  landing_page: one
+  content: 
+  headline: MyString
+  subheadline: MyText
+  cta_text: MyString
+  cta_url: MyString
+  primary_color: MyString
+  secondary_color: MyString
+  font_family: MyString
+  ai_applied: false
+  description: MyText
+
+two:
+  landing_page: two
+  content: 
+  headline: MyString
+  subheadline: MyText
+  cta_text: MyString
+  cta_url: MyString
+  primary_color: MyString
+  secondary_color: MyString
+  font_family: MyString
+  ai_applied: false
+  description: MyText

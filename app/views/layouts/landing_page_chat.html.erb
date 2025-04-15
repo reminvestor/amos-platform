@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Chat & Preview: <%= @landing_page.title %></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&family=Roboto:wght@400;500;700&family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+    
+    <style>
+      body, html {
+        height: 100%;
+        overflow: hidden;
+      }
+      
+      .split-container {
+        display: flex;
+        height: calc(100vh - 56px);
+      }
+      
+      .chat-container {
+        flex: 0 0 20%;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+        height: 100%;
+      }
+      
+      .preview-container {
+        flex: 0 0 80%;
+        height: 100%;
+        overflow-y: auto;
+      }
+      
+      .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+      }
+      
+      .chat-input {
+        padding: 1rem;
+        border-top: 1px solid #dee2e6;
+        background-color: white;
+      }
+      
+      .message {
+        margin-bottom: 1rem;
+        max-width: 80%;
+      }
+      
+      .message-user {
+        margin-left: auto;
+        background-color: #0d6efd;
+        color: white;
+        border-radius: 18px 18px 0 18px;
+        padding: 0.75rem 1rem;
+      }
+      
+      .message-assistant {
+        background-color: #e9ecef;
+        color: #212529;
+        border-radius: 18px 18px 18px 0;
+        padding: 0.75rem 1rem;
+      }
+      
+      .message-system {
+        width: 100%;
+        max-width: 100%;
+        text-align: center;
+        color: #6c757d;
+        font-size: 0.875rem;
+        margin: 1rem 0;
+      }
+      
+      .chat-header {
+        padding: 1rem;
+        background-color: #e9ecef;
+        border-bottom: 1px solid #dee2e6;
+      }
+      
+      .section-selector {
+        background-color: #f8f9fa;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #dee2e6;
+      }
+      
+      .toolbar {
+        background-color: #212529;
+        color: white;
+        padding: 0.5rem 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .typing-indicator {
+        display: none;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+      
+      .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        margin: 0 1px;
+        background-color: #6c757d;
+        border-radius: 50%;
+        display: inline-block;
+        animation: typing 1.4s infinite both;
+      }
+      
+      .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      
+      .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      
+      @keyframes typing {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.5); }
+        100% { transform: scale(1); }
+      }
+      
+      /* Preview styles for landing page */
+      :root {
+        --primary-color: <%= @landing_page.primary_color || '#0d6efd' %>;
+        --secondary-color: <%= @landing_page.secondary_color || '#6c757d' %>;
+        --font-family: <%= @landing_page.font_family || 'Arial, sans-serif' %>;
+      }
+      
+      .landing-preview {
+        font-family: var(--font-family);
+        line-height: 1.6;
+        color: #333;
+      }
+      
+      .landing-preview .btn-primary {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+      
+      .landing-preview .btn-primary:hover {
+        background-color: var(--primary-color);
+        filter: brightness(90%);
+        border-color: var(--primary-color);
+      }
+      
+      .landing-preview .text-primary {
+        color: var(--primary-color) !important;
+      }
+      
+      .landing-preview .bg-primary {
+        background-color: var(--primary-color) !important;
+      }
+      
+      .landing-preview .border-primary {
+        border-color: var(--primary-color) !important;
+      }
+      
+      .landing-preview .text-secondary {
+        color: var(--secondary-color) !important;
+      }
+      
+      .landing-preview .hero-section {
+        background-size: cover;
+        background-position: center;
+        min-height: 500px;
+        display: flex;
+        align-items: center;
+      }
+      
+      .landing-preview .feature-card {
+        height: 100%;
+        transition: transform 0.3s;
+        border: 1px solid #eee;
+      }
+      
+      .landing-preview .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      }
+      
+      .landing-preview .testimonial {
+        border-left: 4px solid var(--primary-color);
+      }
+      
+      .landing-preview .cta-section {
+        background-color: var(--primary-color);
+        color: white;
+      }
+      
+      .landing-preview .cta-btn {
+        background-color: white;
+        color: var(--primary-color);
+        font-weight: bold;
+        padding: 12px 30px;
+        border-radius: 30px;
+        font-size: 1.1rem;
+        transition: all 0.3s;
+      }
+      
+      .landing-preview .cta-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Top toolbar -->
+    <div class="toolbar">
+      <div>
+        <span class="badge bg-warning me-2">INTERACTIVE PREVIEW</span>
+        <span><%= @landing_page.title %></span>
+      </div>
+      <div>
+        <%= link_to "Back to Editor", edit_landing_page_path(@landing_page), class: "btn btn-sm btn-outline-light me-2" %>
+        <%= link_to "Standard Preview", preview_landing_page_path(@landing_page), class: "btn btn-sm btn-outline-light me-2", target: "_blank" %>
+        <% if @landing_page.published? %>
+          <%= link_to "View Live", landing_page_public_path(@landing_page.slug), class: "btn btn-sm btn-success", target: "_blank" %>
+        <% else %>
+          <%= button_to "Publish", publish_landing_page_path(@landing_page), method: :post, class: "btn btn-sm btn-success" %>
+        <% end %>
+      </div>
+    </div>
+    
+    <div class="split-container">
+      <!-- Chat interface -->
+      <div class="chat-container" 
+           data-controller="landing-page-chat" 
+           data-landing-page-chat-landing-page-id-value="<%= @landing_page.id %>">
+        <div class="chat-header">
+          <h5 class="mb-0"><i class="fas fa-comments me-2"></i> AI Assistant</h5>
+          <p class="text-muted mb-0 small">Chat with AI to make changes to your landing page</p>
+        </div>
+        
+        <div class="section-selector p-2 border-bottom">
+          <div class="d-flex align-items-center mb-1">
+            <small class="text-muted flex-grow-1">Editing:</small>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshSections">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+          <select class="form-select form-select-sm" id="sectionSelector" data-landing-page-chat-target="sectionSelector">
+            <option value="">General (headline, CTA, etc.)</option>
+            <!-- Sections will be added dynamically -->
+          </select>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages" data-landing-page-chat-target="messages">
+          <div class="typing-indicator d-none" id="typingIndicator" data-landing-page-chat-target="loading">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+        
+        <div id="rollback-option" class="alert alert-warning mx-2 mt-2 mb-0 d-none" data-landing-page-chat-target="rollbackOption">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <i class="fas fa-exclamation-triangle me-2"></i> 
+              <span>Not happy with the AI changes?</span>
+            </div>
+            <a href="<%= versions_landing_page_path(@landing_page) %>" class="btn btn-sm btn-outline-dark">
+              <i class="fas fa-history me-1"></i> View Versions
+            </a>
+          </div>
+        </div>
+        
+        <div class="chat-input">
+          <form id="chatForm" data-action="submit->landing-page-chat#submit">
+            <div class="input-group">
+              <input type="text" id="messageInput" class="form-control" 
+                     placeholder="Type your instructions here..." 
+                     aria-label="Message"
+                     data-landing-page-chat-target="input">
+              <button class="btn btn-primary" type="submit">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      <!-- Landing page preview -->
+      <div class="preview-container" id="previewContainer">
+        <iframe id="previewFrame" src="<%= no_header_preview_landing_page_path(@landing_page) %>" width="100%" height="100%" frameborder="0"></iframe>
+      </div>
+    </div>
+    
+    <%# The JavaScript is now handled by the Stimulus controller %>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Any other initialization that's not handled by Stimulus can go here
+      });
+    </script>
+  </body>
+</html> 

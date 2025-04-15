@@ -1,0 +1,67 @@
+<div class="container mt-4">
+  <div class="row mb-3">
+    <div class="col">
+      <div class="d-flex justify-content-between align-items-center">
+        <h1>Version History for "<%= @landing_page.title %>"</h1>
+        <div>
+          <%= link_to 'Back to Landing Page', edit_landing_page_path(@landing_page), class: 'btn btn-outline-secondary' %>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="row mb-4">
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-header bg-white">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Version History</h5>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <% if @versions.any? %>
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Created At</th>
+                    <th>Description</th>
+                    <th>Type</th>
+                    <th class="text-center">Sections</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @versions.each do |version| %>
+                    <tr>
+                      <td><%= version.created_at.strftime("%Y-%m-%d %H:%M:%S") %></td>
+                      <td><%= version.description %></td>
+                      <td>
+                        <% if version.ai_applied %>
+                          <span class="badge bg-info">AI Applied</span>
+                        <% else %>
+                          <span class="badge bg-secondary">Manual Update</span>
+                        <% end %>
+                      </td>
+                      <td class="text-center"><%= version.content&.size || 0 %></td>
+                      <td class="text-end">
+                        <%= button_to "Roll Back", landing_page_rollback_path(@landing_page, version_id: version.id), 
+                                      method: :post, 
+                                      class: "btn btn-sm btn-outline-primary",
+                                      data: { confirm: "Are you sure you want to roll back to this version? This cannot be undone." } %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <div class="p-4 text-center">
+              <p class="mb-0">No version history available for this landing page.</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 
