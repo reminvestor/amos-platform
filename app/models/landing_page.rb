@@ -6,6 +6,11 @@ class LandingPage < ApplicationRecord
   
   # ActionText Rich Content
   has_many :rich_text_sections, dependent: :destroy
+  has_many :landing_page_chat_messages, dependent: :destroy
+  has_many :landing_page_versions, dependent: :destroy
+  
+  # Active Storage
+  has_one_attached :hero_image
   
   # Validations
   validates :title, presence: true
@@ -47,13 +52,14 @@ class LandingPage < ApplicationRecord
       headline: headline,
       subheadline: subheadline,
       cta_text: cta_text,
-      image_url: image_url,
+      image_url: hero_image_url,
       content: content,
       colors: {
         primary: primary_color || '#0d6efd',
         secondary: secondary_color || '#6c757d'
       },
-      font: font_family || 'Arial, sans-serif'
+      font: font_family || 'Arial, sans-serif',
+      updated_at: updated_at
     }
   end
   
@@ -81,6 +87,15 @@ class LandingPage < ApplicationRecord
         section_index: section.section_index,
         image_url: section.image_url
       }
+    end
+  end
+  
+  # Get hero image URL (either from attachment or stored URL)
+  def hero_image_url
+    if hero_image.attached?
+      Rails.application.routes.url_helpers.rails_blob_url(hero_image, only_path: true)
+    else
+      image_url
     end
   end
   

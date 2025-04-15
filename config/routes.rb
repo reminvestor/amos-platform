@@ -103,8 +103,14 @@ Rails.application.routes.draw do
         post :publish
         post :unpublish
         get :preview
+        get :chat_preview
+        get :no_header_preview
         post :generate_content
         post :generate_image
+        post :apply_change
+        get :get_chat_messages
+        get :versions
+        post 'rollback/:version_id', to: 'landing_pages#rollback', as: :rollback
       end
     end
     

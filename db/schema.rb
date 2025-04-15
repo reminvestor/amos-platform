@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_14_174438) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_15_163427) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -246,6 +246,34 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_14_174438) do
     t.index ["user_id"], name: "index_entity_users_on_user_id"
   end
 
+  create_table "landing_page_chat_messages", force: :cascade do |t|
+    t.bigint "landing_page_id", null: false
+    t.text "content"
+    t.string "role"
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["landing_page_id"], name: "index_landing_page_chat_messages_on_landing_page_id"
+    t.index ["user_id"], name: "index_landing_page_chat_messages_on_user_id"
+  end
+
+  create_table "landing_page_versions", force: :cascade do |t|
+    t.bigint "landing_page_id", null: false
+    t.jsonb "content"
+    t.string "headline"
+    t.text "subheadline"
+    t.string "cta_text"
+    t.string "cta_url"
+    t.string "primary_color"
+    t.string "secondary_color"
+    t.string "font_family"
+    t.boolean "ai_applied"
+    t.text "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["landing_page_id"], name: "index_landing_page_versions_on_landing_page_id"
+  end
+
   create_table "landing_pages", force: :cascade do |t|
     t.string "title", null: false
     t.string "slug", null: false
@@ -273,6 +301,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_14_174438) do
     t.jsonb "ai_settings"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "migration_status", default: "pending"
     t.index ["campaign_id"], name: "index_landing_pages_on_campaign_id"
     t.index ["entity_id"], name: "index_landing_pages_on_entity_id"
     t.index ["published"], name: "index_landing_pages_on_published"
@@ -511,6 +540,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_14_174438) do
   add_foreign_key "email_templates", "users"
   add_foreign_key "entity_users", "entities"
   add_foreign_key "entity_users", "users"
+  add_foreign_key "landing_page_chat_messages", "landing_pages"
+  add_foreign_key "landing_page_chat_messages", "users"
+  add_foreign_key "landing_page_versions", "landing_pages"
   add_foreign_key "landing_pages", "campaigns"
   add_foreign_key "landing_pages", "entities"
   add_foreign_key "landing_pages", "users"

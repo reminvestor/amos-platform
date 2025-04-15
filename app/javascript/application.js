@@ -24,3 +24,6 @@ document.addEventListener('turbo:frame-load', (event) => {
 
 import "trix"
 import "@rails/actiontext"
+
+// Import landing page module (using the index.js)
+

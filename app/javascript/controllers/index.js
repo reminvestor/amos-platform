@@ -12,3 +12,6 @@ application.register("turbo-form", TurboFormController)
 
 import ContactSelectionController from "./contact_selection_controller"
 application.register("contact-selection", ContactSelectionController)
+
+import LandingPageChatController from "./landing_page/chat"
+application.register("landing-page-chat", LandingPageChatController)
