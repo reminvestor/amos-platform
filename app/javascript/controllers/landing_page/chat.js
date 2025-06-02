@@ -15,6 +15,31 @@ export default class extends Controller {
     this.pollInterval = null
     this.fetchMessages()
     
+    // Create a fallback loading element if not found
+    if (!this.hasLoadingTarget) {
+      console.log("Creating fallback loading element")
+      const loadingElement = document.createElement('div')
+      loadingElement.className = "typing-indicator d-none"
+      loadingElement.id = "typingIndicator"
+      loadingElement.dataset.landingPageChatTarget = "loading"
+      
+      // Add animation spans
+      for (let i = 0; i < 3; i++) {
+        const span = document.createElement('span')
+        loadingElement.appendChild(span)
+      }
+      
+      // Add to messages container
+      if (this.hasMessagesTarget) {
+        this.messagesTarget.appendChild(loadingElement)
+      } else {
+        const messagesContainer = document.getElementById('chatMessages')
+        if (messagesContainer) {
+          messagesContainer.appendChild(loadingElement)
+        }
+      }
+    }
+    
     // Load sections when preview frame loads
     const previewFrame = document.getElementById('previewFrame')
     if (previewFrame) {
@@ -52,10 +77,8 @@ export default class extends Controller {
       timestamp: new Date().toISOString()
     })
 
-    // Show loading indicator
-    if (this.hasLoadingTarget) {
-      this.loadingTarget.classList.remove('d-none')
-    }
+    // Show loading indicator - handle case when target might not be found
+    this.toggleLoading(false)
     
     // Get selected section index if available
     const requestData = { instruction: message }
@@ -96,21 +119,41 @@ export default class extends Controller {
         this.pollForNewMessages(data.message_id)
       } else {
         // Error or other status
-        if (this.hasLoadingTarget) {
-          this.loadingTarget.classList.add('d-none')
-        }
+        this.toggleLoading(true)
         this.addSystemMessage("Error processing your request. Please try again.")
         console.error('Error:', data)
       }
     })
     .catch(error => {
       this.inputTarget.disabled = false
-      if (this.hasLoadingTarget) {
-        this.loadingTarget.classList.add('d-none')
-      }
+      this.toggleLoading(true)
       this.addSystemMessage("An error occurred. Please try again.")
       console.error('Error:', error)
     })
+  }
+
+  // Helper method to safely show/hide loading indicator
+  toggleLoading(hide = false) {
+    try {
+      if (this.hasLoadingTarget) {
+        if (hide) {
+          this.loadingTarget.classList.add('d-none')
+        } else {
+          this.loadingTarget.classList.remove('d-none')
+        }
+      } else {
+        const loadingElement = document.getElementById('typingIndicator')
+        if (loadingElement) {
+          if (hide) {
+            loadingElement.classList.add('d-none')
+          } else {
+            loadingElement.classList.remove('d-none')
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling loading indicator:', error)
+    }
   }
 
   // Add a system message to the chat
@@ -201,9 +244,7 @@ export default class extends Controller {
           if (newMessages.length > 0) {
             // We have new response(s)
             this.stopPolling()
-            if (this.hasLoadingTarget) {
-              this.loadingTarget.classList.add('d-none')
-            }
+            this.toggleLoading(true)
 
             // Add new messages to UI
             newMessages.forEach(message => {
@@ -231,18 +272,14 @@ export default class extends Controller {
         .catch(error => {
           console.error('Error polling for messages:', error)
           this.stopPolling()
-          if (this.hasLoadingTarget) {
-            this.loadingTarget.classList.add('d-none')
-          }
+          this.toggleLoading(true)
         })
     }, this.refreshIntervalValue)
 
     // Stop polling after timeout
     setTimeout(() => {
       this.stopPolling()
-      if (this.hasLoadingTarget) {
-        this.loadingTarget.classList.add('d-none')
-      }
+      this.toggleLoading(true)
     }, this.pollTimeoutValue)
   }
 

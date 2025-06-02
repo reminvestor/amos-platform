@@ -106,4 +106,10 @@ Rails.application.configure do
   config.hosts << "yourdomain.test"
   config.hosts << "app.yourdomain.test"
   config.hosts << "app.app.yourdomain.test"
+  
+  # Allow nuvola development environment
+  config.hosts << "nuvola.default.localhost"
+  config.hosts << ".nuvola.default.localhost"
+  config.hosts << "default.localhost"
+  config.hosts << ".default.localhost"
 end

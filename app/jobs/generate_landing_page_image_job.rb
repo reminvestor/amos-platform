@@ -1,247 +1,326 @@
+require 'down'
+require 'open-uri'
+
 class GenerateLandingPageImageJob < ApplicationJob
   include JobErrorHandling
   
-  queue_as :ai_generation
+  queue_as :default
   
-  def perform(landing_page_id, image_description, section = 'hero', correlation_id = nil)
-    log_with_context("Starting image generation job for landing page #{landing_page_id}, section: #{section}")
-    log_with_context("Image description: #{image_description.truncate(100)}")
-    
-    landing_page = LandingPage.find_by(id: landing_page_id)
-    
-    if landing_page.nil?
-      raise ArgumentError, "Landing page with ID #{landing_page_id} not found"
-    end
-    
-    # Optimize the prompt for DALL-E
-    log_with_context("Optimizing prompt for DALL-E")
-    optimized_prompt = optimize_prompt_for_dalle(image_description)
-    log_with_context("Optimized prompt generated (#{optimized_prompt.size} chars)")
-    
-    # Call DALL-E API to generate image
-    log_with_context("Calling DALL-E API to generate image")
-    image_url = generate_dalle_image(optimized_prompt)
-    
-    if image_url.blank?
-      raise StandardError, "Failed to generate image from DALL-E API"
-    end
-    
-    log_with_context("Successfully generated image URL: #{image_url.truncate(50)}")
-    
-    # Update landing page with the generated image URL
-    log_with_context("Updating landing page with generated image")
-    
-    # Download and attach the image
-    attached_image = download_and_attach_image(landing_page, image_url, section)
-    
-    if attached_image
-      log_with_context("Successfully attached image to landing page")
-    else
-      log_with_context("Failed to attach image to landing page", :error)
-      raise StandardError, "Failed to attach image to landing page"
-    end
-    
-    # Store the image in the appropriate field
-    case section
-    when 'hero'
-      # Keep the URL as a fallback
-      landing_page.update(image_url: image_url)
-      log_with_context("Updated hero image URL as fallback")
-    else
-      # Store in content JSON for other sections
-      content = landing_page.content || []
-      content_section = content.find { |s| s['type'] == section }
+  def perform(landing_page_id, description, section_key, correlation_id = nil)
+    @correlation_id = correlation_id || SecureRandom.uuid
+    log_with_context("Starting image generation job for landing page #{landing_page_id}, section: #{section_key}")
+
+    begin
+      # Find the landing page
+      landing_page = LandingPage.find_by(id: landing_page_id)
       
-      if content_section
-        content_section['image_url'] = image_url
-      else
-        content << { 'type' => section, 'image_url' => image_url }
+      if landing_page.nil?
+        raise ArgumentError, "Landing page with ID #{landing_page_id} not found"
       end
       
-      landing_page.update(content: content)
-      log_with_context("Updated image URL in content section: #{section}")
+      log_with_context("Found landing page: #{landing_page.id} (#{landing_page.title})")
+      
+      # Optimize the prompt for DALL-E
+      log_with_context("Optimizing prompt for DALL-E")
+      optimized_prompt = optimize_prompt_for_dalle(description)
+      
+      # Generate the image using DALL-E
+      log_with_context("Generating image with DALL-E: '#{optimized_prompt.truncate(100)}'")
+      
+      begin
+        dalle_response = call_dalle_api(optimized_prompt)
+        
+        if dalle_response.nil? || !dalle_response['data'] || dalle_response['data'].empty?
+          raise StandardError, "DALL-E API returned invalid response"
+        end
+        
+        # Get the image URL from the response
+        image_url = dalle_response['data'][0]['url']
+        log_with_context("Image generated successfully at URL: #{image_url}")
+        
+        # Download the image and upload to S3 or ActiveStorage
+        permanent_url = download_and_store_image(image_url, section_key, landing_page.id)
+        log_with_context("Image stored permanently at: #{permanent_url}")
+        
+        # Update the landing page content to include the new image
+        update_landing_page_with_image(landing_page, section_key, permanent_url)
+        
+        log_with_context("Landing page updated successfully with new image for #{section_key}")
+      rescue OpenAI::Error => e
+        log_with_context("OpenAI API error: #{e.message}", :error)
+        
+        # Handle rate limiting specifically
+        if e.message.include?("rate_limit_exceeded")
+          log_with_context("Rate limit exceeded - retrying in 60 seconds", :warn)
+          retry_job(wait: 60.seconds)
+          return
+        end
+        
+        # For other OpenAI errors, set a fallback image and continue
+        fallback_image_url = "https://placehold.co/600x400/EAEAEA/999999?text=Image+Generation+Failed"
+        log_with_context("Using fallback image: #{fallback_image_url}", :warn)
+        update_landing_page_with_image(landing_page, section_key, fallback_image_url)
+        raise
+      end
+    rescue ArgumentError => e
+      log_with_context("Invalid argument error: #{e.message}", :error)
+      raise
+    rescue StandardError => e
+      log_with_context("Error generating image: #{e.message}", :error)
+      log_with_context(e.backtrace.join("\n"), :error)
+      raise
     end
-    
-    # Store prompt in image_prompts JSON
-    image_prompts = landing_page.image_prompts || {}
-    image_prompts[section] = {
-      original: image_description,
-      optimized: optimized_prompt,
-      generated_at: Time.current.to_s
-    }
-    
-    if landing_page.update(image_prompts: image_prompts)
-      log_with_context("Successfully updated landing page with image prompts")
-    else
-      error_message = landing_page.errors.full_messages.join(', ')
-      log_with_context("Failed to update landing page image prompts: #{error_message}", :error)
-      raise ActiveRecord::RecordInvalid, "Failed to update landing page image prompts: #{error_message}"
-    end
-    
-    log_with_context("Image generation job completed successfully")
   end
   
   private
   
-  # Helper method to handle logging with or without tagging
   def log_with_context(message, level = :info)
-    job_context = "ImageGenJob LP##{arguments.first} #{arguments[2]}"
-    formatted_message = "[#{job_context}] #{message}"
+    prefix = "[ImageGenJob LP##{instance_variable_defined?('@landing_page_id') ? @landing_page_id : '?'} #{instance_variable_defined?('@section_key') ? @section_key : '?'}]"
     
     case level
     when :error
-      Rails.logger.error(formatted_message)
+      Rails.logger.error "#{prefix} #{message}"
     when :warn
-      Rails.logger.warn(formatted_message)
+      Rails.logger.warn "#{prefix} #{message}"
     else
-      Rails.logger.info(formatted_message)
+      Rails.logger.info "#{prefix} #{message}"
     end
   end
   
-  def optimize_prompt_for_dalle(original_prompt)
-    # First use GPT-4o to optimize the prompt for DALL-E
-    prompt = <<~PROMPT
-      I need to generate an image using DALL-E 3 for a marketing landing page.
-      
-      Original description: #{original_prompt}
-      
-      Please rewrite this description to create an optimal prompt for DALL-E 3 that will generate a high-quality, 
-      professional marketing image. Follow these guidelines:
-      
-      1. Be specific about style (e.g., photorealistic, 3D render, flat illustration)
-      2. Include details about lighting, composition, and perspective
-      3. Specify the mood and atmosphere
-      4. Keep it under 150 words
-      5. Make it suitable for a professional marketing context
-      6. Avoid mentioning text/words in the image as DALL-E struggles with text
-      7. Focus on creating a visually compelling image that would work well as a hero banner
-      
-      Return only the optimized prompt, without any explanations or quotes.
-    PROMPT
+  def optimize_prompt_for_dalle(description)
+    # Make sure the description is not too long for DALL-E
+    max_length = 1000
+    description = description.truncate(max_length) if description.length > max_length
     
-    response = call_openai_api(prompt)
+    # Add qualifiers to improve image quality
+    qualifiers = [
+      "Professional high-quality",
+      "High resolution",
+      "Marketing image",
+      "Clean background",
+      "Modern style"
+    ]
     
-    if response && response["choices"] && response["choices"].first
-      optimized = response["choices"].first["message"]["content"].strip
-      return optimized
+    # Add style hints based on the content
+    style_hints = []
+    
+    if description.downcase.include?("logo")
+      style_hints << "minimalist design"
+      style_hints << "scalable vector style"
+    elsif description.downcase.include?("product")
+      style_hints << "product photography style"
+      style_hints << "white background"
+    elsif description.downcase.include?("team") || description.downcase.include?("people")
+      style_hints << "professional business setting"
+      style_hints << "diverse team members"
+    else
+      style_hints << "suitable for website header"
+      style_hints << "appropriate for marketing materials"
     end
     
-    # If optimization fails, use original prompt with some enhancements
-    "Professional marketing landing page image: #{original_prompt}. High quality, modern design, well-lit, suitable for website hero section."
+    # Combine everything into a well-formatted prompt
+    optimized_prompt = "#{qualifiers.sample(2).join(', ')} image: #{description}. #{style_hints.sample(2).join(', ')}."
+    
+    log_with_context("Original prompt: '#{description}'")
+    log_with_context("Optimized prompt: '#{optimized_prompt}'")
+    
+    optimized_prompt
   end
   
-  def generate_dalle_image(prompt)
-    require 'net/http'
-    require 'uri'
-    require 'json'
+  def call_dalle_api(prompt)
+    log_with_context("Calling DALL-E API")
     
-    uri = URI.parse("https://api.openai.com/v1/images/generations")
-    request = Net::HTTP::Post.new(uri)
-    request.content_type = "application/json"
-    request["Authorization"] = "Bearer #{ENV['OPENAI_API_KEY']}"
+    client = OpenAI::Client.new(
+      access_token: ENV['OPENAI_API_KEY'],
+      organization_id: ENV['OPENAI_ORG_ID']
+    )
     
-    request.body = JSON.dump({
-      "model" => "dall-e-3",
-      "prompt" => prompt,
-      "n" => 1,
-      "size" => "1024x1024",
-      "quality" => "standard",
-      "style" => "natural"
-    })
+    response = client.images.generate(
+      parameters: {
+        model: "dall-e-3",
+        prompt: prompt,
+        size: "1024x1024",
+        quality: "standard",
+        n: 1
+      }
+    )
     
-    req_options = {
-      use_ssl: uri.scheme == "https"
-    }
-    
-    response = Net::HTTP.start(uri.hostname, uri.port, req_options) do |http|
-      http.request(request)
-    end
-    
-    if response.code == "200"
-      result = JSON.parse(response.body)
-      if result["data"] && result["data"].first && result["data"].first["url"]
-        return result["data"].first["url"]
-      end
-    end
-    
-    log_with_context("Error generating DALL-E image: #{response.body}", :error)
-    nil
+    log_with_context("DALL-E API call completed")
+    response
   end
   
-  def call_openai_api(prompt)
-    require 'net/http'
-    require 'uri'
-    require 'json'
-    
-    uri = URI.parse("https://api.openai.com/v1/chat/completions")
-    request = Net::HTTP::Post.new(uri)
-    request.content_type = "application/json"
-    request["Authorization"] = "Bearer #{ENV['OPENAI_API_KEY']}"
-    
-    request.body = JSON.dump({
-      "model" => "gpt-4o",
-      "messages" => [
-        {
-          "role" => "system", 
-          "content" => "You are an expert at creating optimal prompts for DALL-E image generation. Your responses should only contain the optimized prompt, with no additional explanation."
-        },
-        {
-          "role" => "user",
-          "content" => prompt
-        }
-      ]
-    })
-    
-    req_options = {
-      use_ssl: uri.scheme == "https"
-    }
-    
-    response = Net::HTTP.start(uri.hostname, uri.port, req_options) do |http|
-      http.request(request)
-    end
-    
-    return nil unless response.code == "200"
-    JSON.parse(response.body)
-  rescue => e
-    log_with_context("Error calling OpenAI API: #{e.message}", :error)
-    nil
-  end
-  
-  def download_and_attach_image(landing_page, image_url, section)
-    require 'open-uri'
-    require 'securerandom'
+  def download_and_store_image(image_url, section_key, landing_page_id)
+    log_with_context("Downloading image from #{image_url}")
     
     begin
-      # Download the image
-      log_with_context("Downloading image from URL: #{image_url.truncate(50)}")
+      # Try to use Down gem first, fall back to open-uri if Down is not available
+      temp_file = nil
+      begin
+        temp_file = Down.download(image_url)
+        log_with_context("Image downloaded to temp file using Down gem: #{temp_file.path}")
+      rescue NameError => e
+        log_with_context("Down gem not available, falling back to open-uri", :warn)
+        
+        uri = URI.parse(image_url)
+        temp_file = Tempfile.new(['image_download', '.png'])
+        temp_file.binmode
+        temp_file.write(URI.open(uri).read)
+        temp_file.rewind
+        log_with_context("Image downloaded to temp file using open-uri: #{temp_file.path}")
+      end
       
-      downloaded_image = URI.open(image_url)
+      # Generate a filename for the image
+      filename = "landing_page_#{landing_page_id}_#{section_key}_#{Time.now.to_i}.png"
       
-      # Generate a filename with random UUID to avoid collisions
-      filename = "#{SecureRandom.uuid}-#{section.parameterize}.png"
-      
-      log_with_context("Downloaded image, attaching to landing page")
-      
-      # Attach the image based on the section
-      case section
-      when 'hero'
-        landing_page.hero_image.attach(
-          io: downloaded_image,
+      # Upload to ActiveStorage or S3
+      if defined?(ActiveStorage)
+        log_with_context("Uploading image to ActiveStorage")
+        blob = ActiveStorage::Blob.create_and_upload!(
+          io: File.open(temp_file),
           filename: filename,
           content_type: 'image/png'
         )
+        url = Rails.application.routes.url_helpers.url_for(blob)
+        log_with_context("Image uploaded to ActiveStorage with URL: #{url}")
       else
-        # For future use with other section types
-        # We could create a has_many_attached for section images
-        # This would need a model change
-        # For now we'll continue storing URLs for non-hero images
+        # Fall back to S3 direct upload if ActiveStorage is not available
+        log_with_context("Uploading image to S3")
+        s3_client = Aws::S3::Client.new(
+          region: ENV['AWS_REGION'],
+          access_key_id: ENV['AWS_ACCESS_KEY_ID'],
+          secret_access_key: ENV['AWS_SECRET_ACCESS_KEY']
+        )
+        
+        bucket_name = ENV['AWS_S3_BUCKET']
+        key = "landing_page_images/#{filename}"
+        
+        s3_client.put_object(
+          bucket: bucket_name,
+          key: key,
+          body: File.open(temp_file)
+        )
+        
+        url = "https://#{bucket_name}.s3.amazonaws.com/#{key}"
+        log_with_context("Image uploaded to S3 with URL: #{url}")
       end
       
-      return true
-    rescue StandardError => e
-      log_with_context("Error downloading/attaching image: #{e.message}", :error)
+      # Clean up temp file
+      temp_file.close
+      temp_file.unlink
+      
+      return url
+    rescue => e
+      log_with_context("Error downloading or storing image: #{e.message}", :error)
       log_with_context(e.backtrace.join("\n"), :error)
-      return false
+      
+      # Return the original URL as fallback
+      return image_url
+    end
+  end
+  
+  def update_landing_page_with_image(landing_page, section_key, image_url)
+    log_with_context("Updating landing page with image URL: #{image_url}")
+    
+    begin
+      # Parse the current content
+      content_json = 
+        if landing_page.content.is_a?(Hash) || landing_page.content.is_a?(Array)
+          # Content is already a parsed object
+          log_with_context("Content is already a parsed object, no JSON parsing needed")
+          landing_page.content
+        else
+          # Parse it as a JSON string
+          JSON.parse(landing_page.content)
+        end
+      
+      # Handle hero section differently
+      if section_key == 'hero'
+        if content_json['hero'].present?
+          content_json['hero']['image_url'] = image_url
+          log_with_context("Updated hero section image_url")
+        else
+          content_json['hero'] = { 'image_url' => image_url, 'type' => 'hero' }
+          log_with_context("Created hero section with image_url")
+        end
+      else
+        # Parse section key safely
+        parts = section_key.to_s.split('_')
+        log_with_context("Parsing section key: #{section_key} into parts: #{parts.inspect}")
+        
+        # Handle different formats of section keys
+        if parts.length >= 3 && parts[0] == 'section'
+          section_index = parts[1].to_i rescue 0
+          img_index = parts.last.to_i rescue 1
+          
+          log_with_context("Extracted section_index: #{section_index}, img_index: #{img_index}")
+          
+          # Get the correct section - handle both hash and array content formats
+          section = nil
+          section_key_in_content = "section_#{section_index}"
+          
+          if content_json.is_a?(Array)
+            # Array-based content
+            section = content_json[section_index] if section_index < content_json.length
+            log_with_context("Using array-based content access for section #{section_index}")
+          else
+            # Hash-based content (traditional)
+            section = content_json[section_key_in_content]
+            log_with_context("Using hash-based content access for section key #{section_key_in_content}")
+          end
+          
+          if section.present? && section['content'].present?
+            # Update image in HTML content
+            content = section['content']
+            
+            # Find the nth image tag and replace its src
+            img_count = 0
+            updated_content = content.gsub(/<img[^>]*>/) do |img|
+              img_count += 1
+              if img_count == img_index
+                # Replace or add src attribute
+                if img =~ /src=["'][^"']*["']/
+                  img.gsub(/src=["'][^"']*["']/, "src=\"#{image_url}\"")
+                else
+                  img.gsub(/<img/, "<img src=\"#{image_url}\"")
+                end
+              else
+                img
+              end
+            end
+            
+            # Update the section content
+            section['content'] = updated_content
+            log_with_context("Updated image #{img_index} in section #{section_index}")
+          else
+            log_with_context("Section not found or no content present", :warn)
+          end
+        else
+          # Handle non-standard section key format
+          log_with_context("Non-standard section key format: #{section_key}, treating as direct key", :warn)
+          
+          if content_json[section_key].present?
+            content_json[section_key]['image_url'] = image_url
+            log_with_context("Updated image_url for custom section key: #{section_key}")
+          else
+            log_with_context("Section not found for key: #{section_key}", :warn)
+          end
+        end
+      end
+      
+      # Save the updated content
+      if landing_page.update(content: content_json.to_json)
+        log_with_context("Landing page content updated successfully")
+      else
+        log_with_context("Failed to update landing page: #{landing_page.errors.full_messages.join(', ')}", :error)
+        raise StandardError, "Failed to update landing page content"
+      end
+    rescue JSON::ParserError => e
+      log_with_context("Failed to parse landing page content as JSON: #{e.message}", :error)
+      raise
+    rescue StandardError => e
+      log_with_context("Error updating landing page with image: #{e.message}", :error)
+      log_with_context(e.backtrace.join("\n"), :error)
+      raise
     end
   end
 end 
