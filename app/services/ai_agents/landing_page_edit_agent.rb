@@ -105,6 +105,13 @@ module AiAgents
         3. Maintain the original style and tone where not explicitly changed
         4. Only return fields that need to be updated (headline, subheadline, cta_text, etc.)
         
+        IMPORTANT IMAGE HANDLING:
+        - Use descriptive placeholder images with clear alt text: <img src="https://placehold.co/600x400?text=Business+Meeting" alt="Professional business meeting with team members collaborating">
+        - Alt text is very important as it will be used to generate the actual image
+        - Make alt text descriptive and detailed (style, colors, mood, subjects)
+        - For icons, you can use Font Awesome classes (e.g., <i class="fas fa-check"></i>)
+        - Our system will automatically generate real images from your placeholders
+        
         If you need to update a specific section on the page, use the section_update format:
         
         ```json
@@ -184,6 +191,13 @@ module AiAgents
           3. Maintain the original style and tone where not explicitly changed
           4. Return the complete updated section
           
+          IMPORTANT IMAGE HANDLING:
+          - Use descriptive placeholder images with clear alt text: <img src="https://placehold.co/600x400?text=Business+Meeting" alt="Professional business meeting with team members collaborating">
+          - Alt text is very important as it will be used to generate the actual image
+          - Make alt text descriptive and detailed (style, colors, mood, subjects)
+          - For icons, you can use Font Awesome classes (e.g., <i class="fas fa-check"></i>)
+          - Our system will automatically generate real images from your placeholders
+          
           Your response should include two parts:
           1. A JSON object with the updated section
           2. A user-friendly message explaining what changes you made
@@ -212,6 +226,13 @@ module AiAgents
           3. Match the style and tone of the existing page
           4. Include all required fields: title, content, and type
           
+          IMPORTANT IMAGE HANDLING:
+          - Use descriptive placeholder images with clear alt text: <img src="https://placehold.co/600x400?text=Business+Meeting" alt="Professional business meeting with team members collaborating">
+          - Alt text is very important as it will be used to generate the actual image
+          - Make alt text descriptive and detailed (style, colors, mood, subjects)
+          - For icons, you can use Font Awesome classes (e.g., <i class="fas fa-check"></i>)
+          - Our system will automatically generate real images from your placeholders
+          
           Common section types include:
           - "text_block" - Standard text content with optional headline
           - "features" - Feature list, typically with icons
@@ -228,7 +249,7 @@ module AiAgents
           ```json
           {
             "title": "New Section Title",
-            "content": "New section content with HTML formatting if needed",
+            "content": "Updated section content with HTML formatting if needed",
             "type": "text_block"
           }
           ```
@@ -348,6 +369,83 @@ module AiAgents
       context
     end
 
+    def sanitize_content(content, section_index = nil)
+      return content unless content.is_a?(String)
+      
+      # Debug log
+      Rails.logger.info("AGENT: Sanitizing content for section #{section_index || 'general'}")
+      Rails.logger.info("AGENT: Content contains #{content.scan(/<img/).size} image tags")
+      
+      sanitized_content = content.dup
+      image_prompts = landing_page.image_prompts || {}
+      correlation_id = SecureRandom.uuid
+      
+      # Extract image descriptions from img tags and convert to DALL-E prompts
+      img_count = 0
+      sanitized_content.gsub!(/<img\s+[^>]*src=["']([^"']+)["'][^>]*>/) do |img_tag|
+        img_url = $1
+        img_count += 1
+        
+        # Extract alt text or try to parse description from URL
+        if img_tag =~ /alt=["']([^"']+)["']/
+          description = $1
+          Rails.logger.info("AGENT: Found image #{img_count} with alt text: #{description}")
+        else
+          # Try to extract description from URL
+          description = img_url.split('/').last
+                              .split('.').first
+                              .gsub(/[-_+]/, ' ')
+                              .gsub(/([a-z])([A-Z])/, '\1 \2') # Convert camelCase to spaces
+          Rails.logger.info("AGENT: Found image #{img_count} without alt text, extracted description: #{description}")
+        end
+        
+        # Generate a unique key for this image
+        img_key = "section_#{section_index || 'general'}_img_#{SecureRandom.hex(4)}"
+        
+        # Store the image prompt for later generation
+        image_prompts[img_key] = "Professional marketing image: #{description}. High quality, modern design, well-lit."
+        
+        # Create placeholder URL
+        placeholder_url = "https://placehold.co/600x400?text=#{description.gsub(' ', '+')}"
+        
+        # Log the image processing
+        Rails.logger.info("AGENT: Processing image #{img_count}: Key=#{img_key}, Description='#{description}'")
+        
+        # Schedule image generation job with high priority
+        begin
+          Rails.logger.info("AGENT: Scheduling high-priority GenerateLandingPageImageJob for image #{img_count}")
+          Rails.logger.info("AGENT: Image key: #{img_key}, Landing page: #{landing_page.id}")
+          
+          job = GenerateLandingPageImageJob.set(priority: 10).perform_later(
+            landing_page.id, 
+            "Professional marketing image: #{description}. High quality, modern design.",
+            img_key,
+            correlation_id
+          )
+          
+          Rails.logger.info("AGENT: Job scheduled successfully with ID: #{job.job_id}")
+        rescue => e
+          Rails.logger.error("AGENT: Failed to schedule image generation job: #{e.message}")
+          Rails.logger.error(e.backtrace.join("\n"))
+        end
+        
+        # Replace with placeholder image tag
+        %(<img src="#{placeholder_url}" alt="#{description}" class="img-fluid rounded">)
+      end
+      
+      # Update image_prompts in landing page if any were found
+      if img_count > 0
+        Rails.logger.info("AGENT: Updating landing page with #{img_count} image prompts")
+        if landing_page.update(image_prompts: image_prompts)
+          Rails.logger.info("AGENT: Successfully saved image prompts to landing page")
+        else
+          Rails.logger.error("AGENT: Failed to save image prompts: #{landing_page.errors.full_messages.join(', ')}")
+        end
+      end
+      
+      sanitized_content
+    end
+
     def parse_general_updates(response)
       # Extract JSON from the response
       json_pattern = /```json\n(.*?)```|{.*?}/m
@@ -372,25 +470,56 @@ module AiAgents
           features_index = content.find_index { |section| section['type'] == 'features' }
           
           if features_index.present?
-            # Build the new feature items HTML
-            features_html = "<ul style='list-style: none; padding: 0; max-width: 800px; margin: 20px auto;'>"
+            # Get the existing section
+            features_section = content[features_index]
             
-            parsed_attrs[:features_section][:features].each do |feature|
-              features_html += "\n    <li style='font-size: 1.2em; color: #555; margin-bottom: 15px;'>\n"
-              features_html += "      <strong>#{feature}</strong>: Description for #{feature}.\n"
-              features_html += "    </li>"
+            # Build the new feature items HTML with descriptive images
+            features_html = "<div class='features-section' style='padding: 50px; background-color: #fff;'>\n"
+            features_html += "  <h2 style='text-align: center; font-size: 2.5em; color: #333;'>#{features_section['title'] || 'Our Key Features'}</h2>\n"
+            
+            # Add feature cards with images
+            features_html += "  <div class='row row-cols-1 row-cols-md-#{parsed_attrs[:features_section][:features].size > 3 ? "4" : "3"}' style='margin-top: 30px;'>\n"
+            
+            # Create image prompts storage
+            image_prompts = landing_page.image_prompts || {}
+            
+            parsed_attrs[:features_section][:features].each_with_index do |feature, index|
+              # Create a descriptive image prompt for each feature
+              image_description = "Icon or illustration representing #{feature} for a marketing website, professional style"
+              image_key = "feature_#{features_index}_#{index}"
+              
+              # Store the image prompt
+              image_prompts[image_key] = image_description
+              
+              # Schedule image generation
+              GenerateLandingPageImageJob.perform_later(
+                landing_page.id,
+                image_description,
+                image_key
+              )
+              
+              # Create placeholder URL
+              placeholder_url = "https://placehold.co/300x200?text=#{feature.gsub(' ', '+')}"
+              
+              # Add feature card with placeholder image
+              features_html += "    <div class='col mb-4'>\n"
+              features_html += "      <div class='card h-100 text-center border-0 shadow-sm'>\n"
+              features_html += "        <div class='card-body'>\n"
+              features_html += "          <img src='#{placeholder_url}' alt='#{image_description}' class='img-fluid mb-3' style='max-height: 120px;'>\n"
+              features_html += "          <h5 class='card-title'>#{feature}</h5>\n"
+              features_html += "          <p class='card-text'>Description for #{feature}.</p>\n"
+              features_html += "        </div>\n"
+              features_html += "      </div>\n"
+              features_html += "    </div>\n"
             end
             
-            features_html += "\n  </ul>"
-            
-            # Get the existing section HTML
-            existing_html = content[features_index]['content']
-            
-            # Replace the entire <ul>...</ul> section
-            updated_html = existing_html.gsub(/<ul.*?<\/ul>/m, features_html)
+            features_html += "  </div>\n</div>"
             
             # Update the section
-            content[features_index]['content'] = updated_html
+            content[features_index]['content'] = features_html
+            
+            # Update image prompts
+            landing_page.update(image_prompts: image_prompts)
             
             return { content: content }
           end
@@ -403,6 +532,10 @@ module AiAgents
           section_content = parsed_attrs[:section_update][:content]
           
           if section_type.present? && section_content.present?
+            # Sanitize content to replace image references with Font Awesome icons
+            section_content = sanitize_content(section_content, section_index)
+            parsed_attrs[:section_update][:content] = section_content
+            
             # Find the section by type and index if provided
             target_index = if section_index.present?
               # Find by index
@@ -415,8 +548,44 @@ module AiAgents
             if target_index.present? && target_index < content.size
               # Update the section content
               content[target_index]['content'] = section_content
+              
+              # Look for image_prompt in the section_update
+              if parsed_attrs[:section_update][:image_prompt].present?
+                # Store the image prompt for later generation
+                image_prompts = landing_page.image_prompts || {}
+                prompt_key = "section_#{target_index}"
+                image_prompts[prompt_key] = parsed_attrs[:section_update][:image_prompt]
+                
+                # Update image_prompts in landing page
+                landing_page.update(image_prompts: image_prompts)
+                
+                # Set placeholder image URL until real one is generated
+                content[target_index]['image_url'] = "https://placehold.co/600x400?text=Section+#{target_index}+Image"
+                
+                # Schedule image generation job
+                GenerateLandingPageImageJob.perform_later(
+                  landing_page.id, 
+                  parsed_attrs[:section_update][:image_prompt],
+                  "section_#{target_index}"
+                )
+              end
+              
+              # Handle image_url if provided
+              if parsed_attrs[:section_update][:image_url].present?
+                content[target_index]['image_url'] = parsed_attrs[:section_update][:image_url]
+              end
+              
               return { content: content }
             end
+          end
+        end
+      end
+      
+      # Handle content if it exists directly in the update
+      if parsed_attrs[:content].present? && parsed_attrs[:content].is_a?(Array)
+        parsed_attrs[:content].each do |section|
+          if section['content'].is_a?(String)
+            section['content'] = sanitize_content(section['content'], section['index'])
           end
         end
       end
@@ -448,6 +617,35 @@ module AiAgents
       # Convert keys to symbols
       section_update = symbolize_keys(parsed)
       
+      # Check for image_prompt and handle it specially
+      if section_update[:image_prompt].present?
+        # Store the image prompt for later generation
+        image_prompts = landing_page.image_prompts || {}
+        prompt_key = "section_#{section_index}"
+        image_prompts[prompt_key] = section_update[:image_prompt]
+        
+        # Update image_prompts in landing page
+        landing_page.update(image_prompts: image_prompts)
+        
+        # Set placeholder image URL until real one is generated
+        section_update[:image_url] = "https://placehold.co/600x400?text=Section+#{section_index}+Image"
+        
+        # Schedule image generation job
+        GenerateLandingPageImageJob.perform_later(
+          landing_page.id, 
+          section_update[:image_prompt],
+          "section_#{section_index}"
+        )
+        
+        # Remove image_prompt as it's not a field in the model
+        section_update.delete(:image_prompt)
+      end
+      
+      # Sanitize content to replace image references with Font Awesome icons
+      if section_update[:content].is_a?(String)
+        section_update[:content] = sanitize_content(section_update[:content], section_index)
+      end
+      
       # Handle special case where the update includes HTML content that contains features
       if section_update[:content].is_a?(String) && 
          section_update[:content].include?('<ul') && 
@@ -464,7 +662,7 @@ module AiAgents
         end
       end
       
-      # Only allow valid section attributes (explicitly exclude new_section)
+      # Only allow valid section attributes
       allowed_keys = [:title, :content, :type, :image_url]
       section_update = section_update.select { |key, _| allowed_keys.include?(key) }
       

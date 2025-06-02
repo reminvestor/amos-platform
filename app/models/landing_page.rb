@@ -26,6 +26,28 @@ class LandingPage < ApplicationRecord
   scope :drafts, -> { where(published: false, status: 'draft') }
   scope :by_entity, ->(entity_id) { where(entity_id: entity_id) }
   
+  # Ensure content is always returned as a parsed object (array or hash)
+  def content
+    parsed_content = read_attribute(:content)
+    
+    # Return empty array if nil
+    return [] if parsed_content.nil?
+    
+    # If already a hash or array, return as is
+    return parsed_content if parsed_content.is_a?(Hash) || parsed_content.is_a?(Array)
+    
+    # Parse JSON string into object
+    begin
+      parsed = JSON.parse(parsed_content)
+      # Convert to array if it's not already
+      parsed.is_a?(Array) ? parsed : [parsed]
+    rescue JSON::ParserError => e
+      Rails.logger.error("Error parsing landing page content: #{e.message}")
+      # Return empty array as fallback
+      []
+    end
+  end
+  
   # Get full URL for the landing page
   def full_url(base_url = nil)
     if custom_domain.present?

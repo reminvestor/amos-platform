@@ -111,3 +111,7 @@ group :test do
   gem "capybara"
   gem "selenium-webdriver"
 end
+
+gem "down", "~> 5.4"
+
+gem "matrix", "~> 0.4.2"
