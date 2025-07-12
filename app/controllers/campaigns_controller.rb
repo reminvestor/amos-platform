@@ -1,6 +1,6 @@
 class CampaignsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_campaign, only: [:show, :edit, :update, :destroy, :send_test, :schedule, :send_now, :pause, :resume, :stop, :reactivate, :analyze, :sync_mailgun, :setup_drip, :trigger_drip]
+  before_action :set_campaign, only: [:show, :edit, :update, :destroy, :send_test, :schedule, :send_now, :pause, :resume, :stop, :reactivate, :analyze, :sync_mailgun, :setup_drip, :trigger_drip, :force_resume]
   
   def index
     # Get all campaigns for this user
@@ -146,6 +146,35 @@ class CampaignsController < ApplicationController
     
     respond_to do |format|
       format.html { redirect_to campaigns_path, notice: 'Campaign was successfully resumed.' }
+    end
+  end
+  
+  def force_resume
+    # First sync with Mailgun to get latest stats
+    @campaign.sync_mailgun_stats
+    
+    # Check if there are pending deliveries
+    pending_count = @campaign.pending_deliveries_count
+    
+    if pending_count == 0
+      # No pending deliveries, mark as completed
+      @campaign.update(status: 'completed')
+      redirect_to @campaign, notice: 'Campaign has been marked as completed - no pending emails found.'
+    else
+      # Force resume the campaign
+      service = CampaignService.new(@campaign)
+      
+      # Reset any failed deliveries to pending for retry
+      failed_deliveries = @campaign.email_deliveries.where(status: 'failed')
+      if failed_deliveries.any?
+        failed_deliveries.update_all(status: 'pending', error_message: nil)
+        Rails.logger.info("Reset #{failed_deliveries.count} failed deliveries to pending for campaign #{@campaign.id}")
+      end
+      
+      # Resume the campaign
+      service.resume_campaign
+      
+      redirect_to @campaign, notice: "Campaign resumed! #{pending_count} emails remaining to send. #{failed_deliveries.count} failed deliveries were reset and will be retried."
     end
   end
   

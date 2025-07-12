@@ -112,4 +112,8 @@ Rails.application.configure do
   config.hosts << ".nuvola.default.localhost"
   config.hosts << "default.localhost"
   config.hosts << ".default.localhost"
+  
+  # Disable CSRF protection in development to match production behavior
+  # This prevents CSRF token authenticity errors with complex subdomain setups
+  config.action_controller.allow_forgery_protection = false
 end

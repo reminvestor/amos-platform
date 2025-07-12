@@ -90,6 +90,7 @@ Rails.application.routes.draw do
         post :resume
         post :stop
         post :reactivate
+        post :force_resume
         post :sync_mailgun
         get :analyze
         post :setup_drip

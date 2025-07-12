@@ -30,6 +30,13 @@
           </td>
           <td>
             <span class="badge bg-<%= campaign_status_color(campaign.status) %>"><%= campaign.status.humanize %></span>
+            <% if campaign.stalled? %>
+              <div class="mt-1">
+                <span class="badge bg-danger" title="Campaign appears to be stalled">
+                  <i class="fas fa-exclamation-triangle me-1"></i> Stalled
+                </span>
+              </div>
+            <% end %>
           </td>
           <td><%= campaign.email_template&.name || "—" %></td>
           <td><%= campaign.contact_count %></td>
@@ -94,6 +101,17 @@
                       <i class="fas fa-pause me-2"></i> Pause
                     <% end %>
                   </li>
+                  <% if campaign.stalled? %>
+                    <li>
+                      <%= button_to force_resume_campaign_path(campaign), method: :post, 
+                          class: "dropdown-item text-danger",
+                          data: { 
+                            turbo_confirm: "This will sync with Mailgun, retry failed emails, and resume sending. Continue?" 
+                          } do %>
+                        <i class="fas fa-exclamation-triangle me-2"></i> Force Resume (Stalled)
+                      <% end %>
+                    </li>
+                  <% end %>
                 <% elsif campaign.status == 'paused' %>
                   <li>
                     <%= button_to resume_campaign_path(campaign), method: :post, class: "dropdown-item" do %>

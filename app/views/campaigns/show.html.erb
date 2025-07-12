@@ -30,6 +30,18 @@
                   <li>
                     <%= button_to "Pause Campaign", pause_campaign_path(@campaign), method: :post, class: "dropdown-item" %>
                   </li>
+                  <% if @campaign.stalled? %>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                      <%= button_to force_resume_campaign_path(@campaign), method: :post, 
+                          class: "dropdown-item text-danger",
+                          data: { 
+                            confirm: "This will sync with Mailgun, retry failed emails, and resume sending. Continue?" 
+                          } do %>
+                        <i class="fas fa-exclamation-triangle me-2"></i> Force Resume (Stalled)
+                      <% end %>
+                    </li>
+                  <% end %>
                 <% elsif @campaign.status == 'paused' %>
                   <li>
                     <%= button_to "Resume Campaign", resume_campaign_path(@campaign), method: :post, class: "dropdown-item" %>
@@ -67,6 +79,37 @@
                 <div class="alert alert-warning">
                   <i class="fas fa-exclamation-triangle me-2"></i>
                   <strong>Warning:</strong> <%= @campaign.opted_out_contacts_count %> contact(s) in your selected groups have unsubscribed and will not receive emails.
+                </div>
+              <% end %>
+              
+              <% if @campaign.stalled? %>
+                <% stall_info = @campaign.stall_info %>
+                <div class="alert alert-danger">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <i class="fas fa-exclamation-circle me-2"></i>
+                      <strong>Campaign Appears Stalled!</strong>
+                      <p class="mb-2">
+                        This campaign has been inactive for <%= time_ago_in_words(stall_info[:last_activity]) %> 
+                        with <%= stall_info[:pending_count] %> emails still pending.
+                      </p>
+                      <small class="text-muted">
+                        Last activity: <%= stall_info[:last_activity]&.strftime('%b %d, %Y at %I:%M %p') %>
+                        <% if stall_info[:last_sent] %>
+                          | Last email sent: <%= stall_info[:last_sent]&.strftime('%b %d, %Y at %I:%M %p') %>
+                        <% end %>
+                      </small>
+                    </div>
+                    <div>
+                      <%= button_to force_resume_campaign_path(@campaign), method: :post, 
+                          class: "btn btn-danger btn-sm",
+                          data: { 
+                            confirm: "This will sync with Mailgun, retry failed emails, and resume sending. Continue?" 
+                          } do %>
+                        <i class="fas fa-play me-1"></i> Force Resume
+                      <% end %>
+                    </div>
+                  </div>
                 </div>
               <% end %>
               

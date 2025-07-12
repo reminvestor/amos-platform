@@ -27,6 +27,13 @@ class Campaign < ApplicationRecord
   scope :active, -> { where(status: ['scheduled', 'in_progress']) }
   scope :upcoming, -> { where(status: 'scheduled').where('scheduled_at > ?', Time.current) }
   scope :completed, -> { where(status: 'completed') }
+  scope :potentially_stalled, -> { 
+    where(status: 'in_progress')
+    .where('updated_at < ?', 15.minutes.ago)
+    .joins(:email_deliveries)
+    .where(email_deliveries: { status: 'pending' })
+    .distinct
+  }
   
   # Methods
   def contacts
@@ -35,6 +42,42 @@ class Campaign < ApplicationRecord
   
   def contact_count
     contacts.count
+  end
+  
+  # Check if campaign appears to be stalled
+  def stalled?
+    return false unless status == 'in_progress'
+    
+    # Get the last activity time (last email sent or campaign updated)
+    last_sent = email_deliveries.where.not(sent_at: nil).maximum(:sent_at)
+    last_activity = [last_sent, updated_at].compact.max
+    
+    # Consider stalled if no activity for more than 15 minutes and there are pending deliveries
+    return false unless last_activity
+    return false if pending_deliveries_count == 0
+    
+    # Stalled if no activity for 15+ minutes
+    Time.current - last_activity > 15.minutes
+  end
+  
+  # Get count of pending deliveries
+  def pending_deliveries_count
+    email_deliveries.where(status: 'pending').count
+  end
+  
+  # Get stall information for UI display
+  def stall_info
+    return nil unless stalled?
+    
+    last_sent = email_deliveries.where.not(sent_at: nil).maximum(:sent_at)
+    last_activity = [last_sent, updated_at].compact.max
+    
+    {
+      stalled_for: Time.current - last_activity,
+      pending_count: pending_deliveries_count,
+      last_activity: last_activity,
+      last_sent: last_sent
+    }
   end
   
   def sent_count

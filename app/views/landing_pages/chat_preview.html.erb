@@ -1,14 +1,4 @@
 <%# This is an empty template file that renders inside landing_page_chat layout %>
 <%# The layout already contains all necessary content %>
 
-<div id="rollback-option" class="alert alert-warning mt-3 d-none">
-  <div class="d-flex justify-content-between align-items-center">
-    <div>
-      <i class="fas fa-exclamation-triangle me-2"></i> 
-      <span>Not happy with the AI changes?</span>
-    </div>
-    <a href="<%= versions_landing_page_path(@landing_page) %>" class="btn btn-sm btn-outline-dark">
-      <i class="fas fa-history me-1"></i> View & Restore Previous Versions
-    </a>
-  </div>
-</div> 
+<%# The rollback option is already included in the layout, so we don't need to add it here %> 

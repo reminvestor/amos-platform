@@ -12,6 +12,9 @@ class LandingPagesController < ApplicationController
   def new
     @landing_page = current_user.landing_pages.new(entity_id: current_entity.id)
     
+    # Get business profile for context in the wizard
+    @business_profile = current_entity.business_profiles.first || current_user.business_profile
+    
     # Pre-populate campaign info if provided
     if params[:campaign_id].present?
       @campaign = current_user.campaigns.where(entity_id: current_entity.id).find_by(id: params[:campaign_id])
@@ -26,8 +29,22 @@ class LandingPagesController < ApplicationController
     @landing_page = current_user.landing_pages.new(landing_page_params)
     @landing_page.entity_id = current_entity.id
     
+    # Get business profile for context
+    @business_profile = current_entity.business_profiles.first || current_user.business_profile
+    
     if @landing_page.save
-      redirect_to edit_landing_page_path(@landing_page), notice: 'Landing page was successfully created.'
+      case params[:action]
+      when 'save_draft'
+        # Just save as draft and redirect to edit
+        redirect_to edit_landing_page_path(@landing_page), notice: 'Landing page draft was successfully created.'
+      when 'generate_and_preview'
+        # Generate content with AI and redirect to chat preview
+        generate_initial_content
+        redirect_to chat_preview_landing_page_path(@landing_page), notice: 'Landing page is being generated with AI. You can make further adjustments using the chat interface.'
+      else
+        # Default behavior
+        redirect_to edit_landing_page_path(@landing_page), notice: 'Landing page was successfully created.'
+      end
     else
       render :new, status: :unprocessable_entity
     end
@@ -253,6 +270,14 @@ class LandingPagesController < ApplicationController
       :image_url,
       :meta_description,
       :meta_keywords,
+      :tone_preference,
+      :content_length,
+      :include_testimonials,
+      :include_features,
+      :include_faq,
+      :include_pricing,
+      :include_about,
+      :include_contact,
       content: [
         :title,
         :content,
@@ -266,5 +291,38 @@ class LandingPagesController < ApplicationController
   def track_landing_page_view
     # Implement view tracking logic here
     # Could record visitor info, referrer, etc.
+  end
+  
+  def generate_initial_content
+    # Build comprehensive context for AI generation
+    context = {
+      business_profile: @business_profile,
+      design_preferences: {
+        page_type: @landing_page.page_type,
+        tone_preference: @landing_page.tone_preference,
+        content_length: @landing_page.content_length,
+        primary_color: @landing_page.primary_color,
+        secondary_color: @landing_page.secondary_color,
+        font_family: @landing_page.font_family
+      },
+      features: {
+        include_testimonials: @landing_page.include_testimonials,
+        include_features: @landing_page.include_features,
+        include_faq: @landing_page.include_faq,
+        include_pricing: @landing_page.include_pricing,
+        include_about: @landing_page.include_about,
+        include_contact: @landing_page.include_contact
+      }
+    }
+    
+    # Use the enhanced AI generation job with all context
+    AgentGenerateLandingPageJob.perform_later(
+      @landing_page.id,
+      @landing_page.description,
+      current_entity.id,
+      @business_profile&.id,
+      @landing_page.page_type,
+      context
+    )
   end
 end 

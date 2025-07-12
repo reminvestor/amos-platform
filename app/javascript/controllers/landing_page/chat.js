@@ -296,11 +296,10 @@ export default class extends Controller {
     if (message.role === 'system') {
       messageElement.innerHTML = content
     } else {
+      // Apply styling directly to the message element to match the CSS
       messageElement.innerHTML = `
-        <div class="chat-bubble">
-          <div class="chat-content">${content}</div>
-          <div class="chat-timestamp">${timestamp}</div>
-        </div>
+        <div>${content}</div>
+        <div class="small text-muted mt-1">${timestamp}</div>
       `
     }
 
