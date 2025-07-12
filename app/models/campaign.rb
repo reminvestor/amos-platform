@@ -47,17 +47,19 @@ class Campaign < ApplicationRecord
   # Check if campaign appears to be stalled
   def stalled?
     return false unless status == 'in_progress'
-    
-    # Get the last activity time (last email sent or campaign updated)
-    last_sent = email_deliveries.where.not(sent_at: nil).maximum(:sent_at)
-    last_activity = [last_sent, updated_at].compact.max
-    
-    # Consider stalled if no activity for more than 15 minutes and there are pending deliveries
-    return false unless last_activity
     return false if pending_deliveries_count == 0
     
-    # Stalled if no activity for 15+ minutes
-    Time.current - last_activity > 15.minutes
+    # Get the last time emails were actually sent
+    last_sent = email_deliveries.where.not(sent_at: nil).maximum(:sent_at)
+    
+    # If no emails have been sent yet, check how long since campaign started
+    if last_sent.nil?
+      # Campaign just started - not stalled yet if it's been less than 30 minutes
+      return Time.current - updated_at > 30.minutes
+    end
+    
+    # Stalled if no emails sent for more than 15 minutes
+    Time.current - last_sent > 15.minutes
   end
   
   # Get count of pending deliveries
@@ -70,7 +72,7 @@ class Campaign < ApplicationRecord
     return nil unless stalled?
     
     last_sent = email_deliveries.where.not(sent_at: nil).maximum(:sent_at)
-    last_activity = [last_sent, updated_at].compact.max
+    last_activity = last_sent || updated_at
     
     {
       stalled_for: Time.current - last_activity,
