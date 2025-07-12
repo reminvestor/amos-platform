@@ -56,6 +56,9 @@
       .message {
         margin-bottom: 1rem;
         max-width: 80%;
+        clear: both;
+        display: flex;
+        flex-direction: column;
       }
       
       .message-user {
@@ -64,6 +67,7 @@
         color: white;
         border-radius: 18px 18px 0 18px;
         padding: 0.75rem 1rem;
+        float: right;
       }
       
       .message-assistant {
@@ -71,6 +75,7 @@
         color: #212529;
         border-radius: 18px 18px 18px 0;
         padding: 0.75rem 1rem;
+        float: left;
       }
       
       .message-system {
@@ -80,6 +85,10 @@
         color: #6c757d;
         font-size: 0.875rem;
         margin: 1rem 0;
+        background-color: transparent;
+        padding: 0.5rem;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
       }
       
       .chat-header {

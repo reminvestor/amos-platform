@@ -244,4 +244,112 @@ namespace :campaign do
     
     puts "Drip processing complete. Processed: #{processed_count}, Errors: #{error_count}"
   end
+  
+  desc "Check for and optionally resume stalled campaigns"
+  task :check_stalled, [:auto_resume] => :environment do |t, args|
+    auto_resume = args[:auto_resume] == 'true'
+    
+    puts "Checking for stalled campaigns..."
+    puts "Auto-resume: #{auto_resume ? 'ENABLED' : 'DISABLED'}"
+    puts "=" * 60
+    
+    # Find campaigns that appear to be stalled
+    stalled_campaigns = Campaign.potentially_stalled.includes(:email_deliveries, :user)
+    
+    if stalled_campaigns.empty?
+      puts "✅ No stalled campaigns found!"
+      exit 0
+    end
+    
+    puts "Found #{stalled_campaigns.count} potentially stalled campaigns:"
+    puts
+    
+    resumed_count = 0
+    completed_count = 0
+    
+    stalled_campaigns.each do |campaign|
+      # Double-check with the instance method
+      next unless campaign.stalled?
+      
+      stall_info = campaign.stall_info
+      pending_count = stall_info[:pending_count]
+      stalled_for = stall_info[:stalled_for]
+      
+      puts "🚨 Campaign: #{campaign.name} (ID: #{campaign.id})"
+      puts "   User: #{campaign.user.email}"
+      puts "   Status: #{campaign.status}"
+      puts "   Pending emails: #{pending_count}"
+      puts "   Stalled for: #{time_duration_in_words(stalled_for)}"
+      puts "   Last activity: #{stall_info[:last_activity]&.strftime('%b %d, %Y at %I:%M %p')}"
+      
+      if auto_resume
+        print "   🔄 Attempting to resume... "
+        
+        begin
+          # Sync with Mailgun first
+          campaign.sync_mailgun_stats
+          
+          # Re-check pending count after sync
+          current_pending = campaign.pending_deliveries_count
+          
+          if current_pending > 0
+            # Reset failed deliveries to pending for retry
+            failed_deliveries = campaign.email_deliveries.where(status: 'failed')
+            failed_count = failed_deliveries.count
+            
+            if failed_count > 0
+              failed_deliveries.update_all(status: 'pending', error_message: nil)
+              puts "Reset #{failed_count} failed deliveries to pending"
+            end
+            
+            # Resume the campaign
+            service = CampaignService.new(campaign)
+            service.resume_campaign
+            
+            resumed_count += 1
+            puts "✅ RESUMED! (#{current_pending} emails will be sent)"
+          else
+            # No pending deliveries, mark as completed
+            campaign.update(status: 'completed')
+            completed_count += 1
+            puts "✅ COMPLETED! (No pending emails found)"
+          end
+        rescue => e
+          puts "❌ FAILED: #{e.message}"
+        end
+      else
+        puts "   💡 Run with auto_resume=true to fix: rake campaign:check_stalled[true]"
+      end
+      
+      puts
+    end
+    
+    puts "=" * 60
+    puts "Summary:"
+    puts "  Stalled campaigns found: #{stalled_campaigns.count}"
+    
+    if auto_resume
+      puts "  Campaigns resumed: #{resumed_count}"
+      puts "  Campaigns completed: #{completed_count}"
+      
+      if resumed_count > 0 || completed_count > 0
+        puts "✅ Action taken on #{resumed_count + completed_count} campaigns!"
+      end
+    else
+      puts "  💡 To automatically fix these, run: rake campaign:check_stalled[true]"
+    end
+  end
+  
+  private
+  
+  def time_duration_in_words(duration_in_seconds)
+    hours = (duration_in_seconds / 1.hour).to_i
+    minutes = ((duration_in_seconds % 1.hour) / 1.minute).to_i
+    
+    if hours > 0
+      "#{hours} hour#{'s' if hours != 1}#{minutes > 0 ? " and #{minutes} minute#{'s' if minutes != 1}" : ''}"
+    else
+      "#{minutes} minute#{'s' if minutes != 1}"
+    end
+  end
 end 
