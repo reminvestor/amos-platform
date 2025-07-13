@@ -38,10 +38,6 @@ module AgentMarketing
     config.autoload_paths << Rails.root.join('lib')
     config.eager_load_paths << Rails.root.join('lib')
     
-    # Add Scout AI services to autoload paths
-    config.autoload_paths << Rails.root.join('app', 'services', 'scout_ai')
-    config.eager_load_paths << Rails.root.join('app', 'services', 'scout_ai')
-    
     # Set Solid::Queue as the queue adapter
     config.active_job.queue_adapter = :solid_queue
     
