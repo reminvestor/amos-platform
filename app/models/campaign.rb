@@ -27,6 +27,7 @@ class Campaign < ApplicationRecord
   scope :active, -> { where(status: ['scheduled', 'in_progress']) }
   scope :upcoming, -> { where(status: 'scheduled').where('scheduled_at > ?', Time.current) }
   scope :completed, -> { where(status: 'completed') }
+  scope :recent, -> { order(updated_at: :desc) }
   scope :potentially_stalled, -> { 
     where(status: 'in_progress')
     .where('updated_at < ?', 15.minutes.ago)

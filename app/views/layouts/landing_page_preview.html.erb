@@ -152,7 +152,7 @@
         </button>
       </div>
       <div>
-        <%= link_to "Back to Editor", edit_landing_page_path(@landing_page), class: "btn btn-sm btn-outline-light me-2" %>
+        <%= link_to "Back to Chat", chat_landing_page_path(@landing_page), class: "btn btn-sm btn-outline-light me-2" %>
         <% if @landing_page.published? %>
           <%= link_to "View Live", landing_page_public_path(@landing_page.slug), class: "btn btn-sm btn-success", target: "_blank" %>
         <% else %>

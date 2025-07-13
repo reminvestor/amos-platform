@@ -1,0 +1,276 @@
+<div class="chat-layout">
+  <!-- Minimal Header -->
+  <div class="chat-header">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-12 d-flex justify-content-between align-items-center py-2">
+          <div class="d-flex align-items-center">
+            <%= link_to landing_pages_path, class: "btn btn-light btn-sm me-3" do %>
+              <i class="fas fa-arrow-left"></i>
+            <% end %>
+            <h5 class="mb-0 text-muted">
+              <%= @landing_page.title.present? ? @landing_page.title : "New Landing Page" %>
+            </h5>
+          </div>
+          <div>
+            <% if @landing_page.published? %>
+              <%= button_to unpublish_landing_page_path(@landing_page), method: :post, class: "btn btn-outline-warning btn-sm" do %>
+                Unpublish
+              <% end %>
+            <% else %>
+              <%= button_to publish_landing_page_path(@landing_page), method: :post, class: "btn btn-success btn-sm" do %>
+                Publish
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="chat-content">
+    <!-- Preview Panel -->
+    <div class="preview-panel">
+      <iframe 
+        id="preview-frame" 
+        src="<%= preview_landing_page_path(@landing_page) %>" 
+        class="w-100 h-100 border-0">
+      </iframe>
+    </div>
+    
+    <!-- Chat Panel -->
+    <div class="chat-panel">
+      <!-- Chat Header -->
+      <div class="chat-panel-header">
+        <h6 class="mb-1 fw-bold">AI Assistant</h6>
+        <small class="text-muted">Tell me what you'd like to change</small>
+      </div>
+      
+      <!-- Chat Messages -->
+      <div id="chat-messages" class="chat-messages">
+        <div class="mb-3">
+          <div class="d-flex align-items-start">
+            <div class="bg-primary text-white rounded-circle p-2 me-2" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+              <i class="fas fa-robot" style="font-size: 12px;"></i>
+            </div>
+            <div class="bg-white p-3 rounded shadow-sm">
+              <p class="mb-1 small">
+                Hi! I've created your landing page. What would you like to change?
+              </p>
+              <div class="small text-muted">
+                Try: "Make the headline blue" or "Add a testimonial section"
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Chat Input -->
+      <div class="chat-input">
+        <div class="input-group">
+          <input 
+            type="text" 
+            id="chat-input" 
+            class="form-control" 
+            placeholder="Describe your changes..."
+            onkeypress="handleEnterKey(event)"
+          >
+          <button class="btn btn-primary" onclick="sendMessage()">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Processing Modal -->
+<div class="modal fade" id="processingModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-body text-center p-4">
+        <div class="spinner-border text-primary mb-3" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mb-0">Updating your page...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let processingModal;
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    processingModal = new bootstrap.Modal(document.getElementById('processingModal'), {
+      backdrop: 'static',
+      keyboard: false
+    });
+    
+    document.getElementById('chat-input').focus();
+  });
+  
+  function handleEnterKey(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage();
+    }
+  }
+  
+  function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    addMessageToChat(message, 'user');
+    input.value = '';
+    
+    processingModal.show();
+    
+    fetch('<%= apply_change_landing_page_path(@landing_page) %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({ instruction: message })
+    })
+    .then(response => response.json())
+    .then(data => {
+      addMessageToChat('Working on that change now...', 'ai');
+      
+      setTimeout(() => {
+        processingModal.hide();
+        refreshPreview();
+        addMessageToChat('Done! What else would you like to change?', 'ai');
+        document.getElementById('chat-input').focus();
+      }, 3000);
+    })
+    .catch(error => {
+      processingModal.hide();
+      addMessageToChat('Sorry, something went wrong. Please try again.', 'ai');
+    });
+  }
+  
+  function addMessageToChat(message, sender) {
+    const chatMessages = document.getElementById('chat-messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'mb-3';
+    
+    if (sender === 'user') {
+      messageDiv.innerHTML = `
+        <div class="d-flex align-items-start justify-content-end">
+          <div class="bg-primary text-white p-2 rounded me-2">
+            <small>${message}</small>
+          </div>
+          <div class="bg-secondary text-white rounded-circle p-2" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-user" style="font-size: 12px;"></i>
+          </div>
+        </div>
+      `;
+    } else {
+      messageDiv.innerHTML = `
+        <div class="d-flex align-items-start">
+          <div class="bg-primary text-white rounded-circle p-2 me-2" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-robot" style="font-size: 12px;"></i>
+          </div>
+          <div class="bg-white p-2 rounded shadow-sm">
+            <small>${message}</small>
+          </div>
+        </div>
+      `;
+    }
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+  
+  function refreshPreview() {
+    const iframe = document.getElementById('preview-frame');
+    iframe.src = iframe.src;
+  }
+</script>
+
+<style>
+  body {
+    background: #f8f9fa;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  
+  .chat-layout {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .chat-header {
+    flex-shrink: 0;
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+    z-index: 10;
+  }
+  
+  .chat-content {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+  
+  .preview-panel {
+    flex: 1;
+    background: white;
+  }
+  
+  .chat-panel {
+    width: 33.33%;
+    background: #f8f9fa;
+    border-left: 1px solid #dee2e6;
+    display: flex;
+    flex-direction: column;
+    min-width: 300px;
+  }
+  
+  .chat-panel-header {
+    flex-shrink: 0;
+    padding: 1rem;
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  .chat-messages {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  
+  .chat-input {
+    flex-shrink: 0;
+    padding: 1rem;
+    background: white;
+    border-top: 1px solid #dee2e6;
+  }
+  
+  #chat-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  }
+  
+  /* Mobile adjustments */
+  @media (max-width: 768px) {
+    .chat-content {
+      flex-direction: column;
+    }
+    
+    .preview-panel {
+      height: 50vh;
+    }
+    
+    .chat-panel {
+      width: 100%;
+      height: 50vh;
+    }
+  }
+</style> 

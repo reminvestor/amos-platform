@@ -1,0 +1,305 @@
+<div class="template-workspace analytics-workspace">
+  <div class="workspace-header">
+    <h4>Analytics Dashboard</h4>
+    <div class="header-actions">
+      <select class="form-select form-select-sm" onchange="changeDateRange(this.value)">
+        <option value="7d">Last 7 days</option>
+        <option value="30d" selected>Last 30 days</option>
+        <option value="90d">Last 90 days</option>
+      </select>
+    </div>
+  </div>
+  
+  <div class="workspace-content">
+    <div class="analytics-grid">
+      <!-- Key Metrics -->
+      <div class="metric-card">
+        <div class="metric-header">
+          <h5>Total Campaigns</h5>
+          <i class="fas fa-envelope"></i>
+        </div>
+        <div class="metric-value">
+          <%= entity&.campaigns&.count || 0 %>
+        </div>
+        <div class="metric-change positive">
+          <i class="fas fa-arrow-up"></i> +12% from last month
+        </div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-header">
+          <h5>Emails Sent</h5>
+          <i class="fas fa-paper-plane"></i>
+        </div>
+        <div class="metric-value">
+          <%= entity&.campaigns&.sum(:sent_count) || 0 %>
+        </div>
+        <div class="metric-change positive">
+          <i class="fas fa-arrow-up"></i> +8% from last month
+        </div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-header">
+          <h5>Open Rate</h5>
+          <i class="fas fa-envelope-open"></i>
+        </div>
+        <div class="metric-value">
+          <%= calculate_open_rate(entity) %>%
+        </div>
+        <div class="metric-change negative">
+          <i class="fas fa-arrow-down"></i> -2% from last month
+        </div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-header">
+          <h5>Click Rate</h5>
+          <i class="fas fa-mouse-pointer"></i>
+        </div>
+        <div class="metric-value">
+          <%= calculate_click_rate(entity) %>%
+        </div>
+        <div class="metric-change positive">
+          <i class="fas fa-arrow-up"></i> +5% from last month
+        </div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-header">
+          <h5>Landing Pages</h5>
+          <i class="fas fa-globe"></i>
+        </div>
+        <div class="metric-value">
+          <%= entity&.landing_pages&.count || 0 %>
+        </div>
+        <div class="metric-change neutral">
+          <i class="fas fa-minus"></i> No change
+        </div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-header">
+          <h5>Total Contacts</h5>
+          <i class="fas fa-users"></i>
+        </div>
+        <div class="metric-value">
+          <%= entity&.contacts&.count || 0 %>
+        </div>
+        <div class="metric-change positive">
+          <i class="fas fa-arrow-up"></i> +15% from last month
+        </div>
+      </div>
+    </div>
+    
+    <!-- Charts Section -->
+    <div class="charts-section">
+      <div class="chart-card">
+        <h5>Campaign Performance</h5>
+        <div class="chart-placeholder">
+          <i class="fas fa-chart-line"></i>
+          <p>Chart visualization coming soon</p>
+        </div>
+      </div>
+      
+      <div class="chart-card">
+        <h5>Email Engagement</h5>
+        <div class="chart-placeholder">
+          <i class="fas fa-chart-bar"></i>
+          <p>Chart visualization coming soon</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="activity-section">
+      <h5>Recent Activity</h5>
+      <div class="activity-list">
+        <% if entity&.campaigns.present? %>
+          <% entity.campaigns.recent.limit(5).each do |campaign| %>
+            <div class="activity-item">
+              <div class="activity-icon">
+                <i class="fas fa-envelope"></i>
+              </div>
+              <div class="activity-content">
+                <strong><%= campaign.name %></strong>
+                <p>Campaign <%= campaign.status %> <%= time_ago_in_words(campaign.updated_at) %> ago</p>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+        
+        <% if entity&.landing_pages.present? %>
+          <% entity.landing_pages.recent.limit(3).each do |page| %>
+            <div class="activity-item">
+              <div class="activity-icon">
+                <i class="fas fa-globe"></i>
+              </div>
+              <div class="activity-content">
+                <strong><%= page.title %></strong>
+                <p>Landing page updated <%= time_ago_in_words(page.updated_at) %> ago</p>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function changeDateRange(range) {
+    // Update analytics data based on date range
+    console.log('Changing date range to:', range);
+    // This would trigger an AJAX request to update the data
+  }
+</script>
+
+<style>
+  .analytics-workspace .workspace-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--workspace-border);
+  }
+  
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .metric-card {
+    background: var(--workspace-secondary);
+    border: 1px solid var(--workspace-border);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  
+  .metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  
+  .metric-header h5 {
+    margin: 0;
+    color: var(--workspace-text-muted);
+    font-size: 0.9rem;
+  }
+  
+  .metric-header i {
+    color: var(--workspace-primary);
+  }
+  
+  .metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--workspace-text);
+    margin-bottom: 0.5rem;
+  }
+  
+  .metric-change {
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  .metric-change.positive {
+    color: #10b981;
+  }
+  
+  .metric-change.negative {
+    color: #ef4444;
+  }
+  
+  .metric-change.neutral {
+    color: var(--workspace-text-muted);
+  }
+  
+  .charts-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .chart-card {
+    background: var(--workspace-secondary);
+    border: 1px solid var(--workspace-border);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  
+  .chart-card h5 {
+    margin: 0 0 1rem 0;
+    color: var(--workspace-text);
+  }
+  
+  .chart-placeholder {
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--workspace-text-muted);
+  }
+  
+  .chart-placeholder i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .activity-section {
+    background: var(--workspace-secondary);
+    border: 1px solid var(--workspace-border);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  
+  .activity-section h5 {
+    margin: 0 0 1rem 0;
+    color: var(--workspace-text);
+  }
+  
+  .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .activity-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--workspace-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.875rem;
+  }
+  
+  .activity-content strong {
+    color: var(--workspace-text);
+    display: block;
+  }
+  
+  .activity-content p {
+    color: var(--workspace-text-muted);
+    margin: 0;
+    font-size: 0.875rem;
+  }
+</style>
+
+ 

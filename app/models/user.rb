@@ -25,6 +25,9 @@ class User < ApplicationRecord
   has_many :social_media_accounts, dependent: :destroy
   has_one :business_profile, dependent: :destroy
   
+  # Scout AI Associations
+  has_many :scout_conversations, dependent: :destroy
+  
   # Methods
   def full_name
     "#{first_name} #{last_name}"

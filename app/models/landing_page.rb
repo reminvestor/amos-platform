@@ -13,9 +13,11 @@ class LandingPage < ApplicationRecord
   has_one_attached :hero_image
   
   # Validations
-  validates :title, presence: true
-  validates :slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9\-_]+\z/, message: "can only contain lowercase letters, numbers, hyphens, and underscores" }
+  validates :title, presence: true, unless: :skip_title_validation
+  validates :slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9\-_]+\z/, message: "can only contain lowercase letters, numbers, hyphens, and underscores" }, unless: :skip_slug_validation
   validates :status, inclusion: { in: %w[draft published archived] }
+  
+  attr_accessor :skip_title_validation, :skip_slug_validation
   
   # Callbacks
   before_validation :generate_slug, if: -> { slug.blank? && title.present? }
@@ -25,6 +27,7 @@ class LandingPage < ApplicationRecord
   scope :published, -> { where(published: true) }
   scope :drafts, -> { where(published: false, status: 'draft') }
   scope :by_entity, ->(entity_id) { where(entity_id: entity_id) }
+  scope :recent, -> { order(updated_at: :desc) }
   
   # Ensure content is always returned as a parsed object (array or hash)
   def content
@@ -46,6 +49,38 @@ class LandingPage < ApplicationRecord
       # Return empty array as fallback
       []
     end
+  end
+  
+  # Handle clarification questions as JSON
+  def clarification_questions
+    return [] if read_attribute(:clarification_questions).blank?
+    
+    begin
+      JSON.parse(read_attribute(:clarification_questions))
+    rescue JSON::ParserError => e
+      Rails.logger.error("Error parsing clarification questions: #{e.message}")
+      []
+    end
+  end
+  
+  def clarification_questions=(questions)
+    write_attribute(:clarification_questions, questions.to_json)
+  end
+  
+  # Handle clarification answers as JSON
+  def clarification_answers
+    return {} if read_attribute(:clarification_answers).blank?
+    
+    begin
+      JSON.parse(read_attribute(:clarification_answers))
+    rescue JSON::ParserError => e
+      Rails.logger.error("Error parsing clarification answers: #{e.message}")
+      {}
+    end
+  end
+  
+  def clarification_answers=(answers)
+    write_attribute(:clarification_answers, answers.to_json)
   end
   
   # Get full URL for the landing page
