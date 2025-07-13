@@ -1,4 +1,5 @@
-class ScoutAI::IntentAnalyzer
+module ScoutAI
+  class IntentAnalyzer
     attr_reader :user, :entity
     
     def initialize(user:, entity:)
@@ -113,4 +114,5 @@ class ScoutAI::IntentAnalyzer
         raw_response: 'Error in analysis'
       }
     end
-  end 
+  end
+end 
