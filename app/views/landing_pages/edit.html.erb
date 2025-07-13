@@ -9,14 +9,6 @@
               <i class="fas fa-eye me-1"></i> Preview
             <% end %>
             
-            <%= link_to chat_preview_landing_page_path(@landing_page), class: "btn btn-outline-light me-2" do %>
-              <i class="fas fa-comments me-1"></i> Chat & Preview
-            <% end %>
-            
-            <%= link_to versions_landing_page_path(@landing_page), class: "btn btn-outline-light me-2" do %>
-              <i class="fas fa-history me-1"></i> Version History
-            <% end %>
-            
             <% if @landing_page.published? %>
               <%= button_to unpublish_landing_page_path(@landing_page), method: :post, class: "btn btn-warning" do %>
                 <i class="fas fa-ban me-1"></i> Unpublish
@@ -37,28 +29,10 @@
     <div class="col-md-8">
       <div class="card shadow mb-4">
         <div class="card-header">
-          <ul class="nav nav-tabs card-header-tabs" id="landingPageTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="content-tab" data-bs-toggle="tab" data-bs-target="#content" type="button" role="tab" aria-controls="content" aria-selected="true">
-                <i class="fas fa-paragraph me-1"></i> Content
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false">
-                <i class="fas fa-cog me-1"></i> Settings
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="design-tab" data-bs-toggle="tab" data-bs-target="#design" type="button" role="tab" aria-controls="design" aria-selected="false">
-                <i class="fas fa-palette me-1"></i> Design
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="seo-tab" data-bs-toggle="tab" data-bs-target="#seo" type="button" role="tab" aria-controls="seo" aria-selected="false">
-                <i class="fas fa-search me-1"></i> SEO
-              </button>
-            </li>
-          </ul>
+          <h5 class="mb-0">
+            <i class="fas fa-code me-2"></i>
+            Landing Page Content
+          </h5>
         </div>
         
         <%= form_with(model: @landing_page, local: true) do |form| %>
@@ -74,194 +48,69 @@
               </div>
             <% end %>
             
-            <div class="tab-content" id="landingPageTabsContent">
-              <!-- Content Tab -->
-              <div class="tab-pane fade show active" id="content" role="tabpanel" aria-labelledby="content-tab">
-                <div class="mb-3">
-                  <%= form.label :headline, "Main Headline", class: "form-label" %>
-                  <%= form.text_field :headline, class: "form-control", placeholder: "Enter your main headline" %>
+            <!-- Basic Settings -->
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <%= form.label :title, "Page Title", class: "form-label fw-bold" %>
+                <%= form.text_field :title, class: "form-control", placeholder: "Enter page title" %>
+              </div>
+              <div class="col-md-6">
+                <%= form.label :slug, "URL Slug", class: "form-label fw-bold" %>
+                <div class="input-group">
+                  <span class="input-group-text">/landing/</span>
+                  <%= form.text_field :slug, class: "form-control", placeholder: "my-landing-page" %>
                 </div>
-                
-                <div class="mb-3">
-                  <%= form.label :subheadline, "Subheadline", class: "form-label" %>
-                  <%= form.text_area :subheadline, class: "form-control", rows: 2, placeholder: "Enter supporting text that appears below headline" %>
-                </div>
-                
-                <div class="mb-3">
-                  <label class="form-label">Hero Image</label>
-                  <div class="input-group mb-2">
-                    <%= form.text_field :image_url, class: "form-control", placeholder: "https://example.com/image.jpg" %>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#generateImageModal">
-                      <i class="fas fa-wand-magic-sparkles me-1"></i> Generate
-                    </button>
-                  </div>
-                  <% if @landing_page.image_url.present? %>
-                    <div class="border p-2 rounded">
-                      <img src="<%= @landing_page.image_url %>" class="img-fluid rounded" style="max-height: 200px;">
-                    </div>
-                  <% end %>
-                </div>
-                
-                <div class="mb-3">
-                  <%= form.label :cta_text, "Call to Action Button Text", class: "form-label" %>
-                  <%= form.text_field :cta_text, class: "form-control", placeholder: "e.g., Sign Up Now" %>
-                </div>
-                
-                <div class="mb-3">
-                  <%= form.label :cta_url, "Call to Action URL or Anchor", class: "form-label" %>
-                  <%= form.text_field :cta_url, class: "form-control", placeholder: "e.g., #contact-form or https://example.com" %>
-                </div>
-                
-                <!-- Section Content Editor -->
-                <h5 class="mt-4 mb-3">Page Sections</h5>
-                <div id="sectionsContainer" class="border rounded p-3">
-                  <% if @landing_page.content.present? %>
-                    <% @landing_page.content.each_with_index do |section, index| %>
-                      <div class="card mb-3 section-card">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                          <h6 class="mb-0"><%= section['title'] || "Section #{index + 1}" %></h6>
-                          <div>
-                            <button type="button" class="btn btn-sm btn-outline-danger remove-section" data-index="<%= index %>">
-                              <i class="fas fa-times"></i>
-                            </button>
-                          </div>
-                        </div>
-                        <div class="card-body">
-                          <div class="mb-3">
-                            <label class="form-label">Section Title</label>
-                            <input type="text" name="landing_page[content][][title]" value="<%= section['title'] %>" class="form-control">
-                          </div>
-                          <div class="mb-3">
-                            <label class="form-label">Section Content</label>
-                            <div class="trix-editor-wrapper">
-                              <input type="hidden" name="landing_page[content][][content]" id="section-content-<%= index %>" value="<%= section['content'] %>">
-                              <trix-editor input="section-content-<%= index %>" class="trix-content"></trix-editor>
-                            </div>
-                          </div>
-                          <div class="mb-3">
-                            <label class="form-label">Section Type</label>
-                            <select name="landing_page[content][][type]" class="form-select">
-                              <option value="text_block" <%= section['type'] == 'text_block' ? 'selected' : '' %>>Text Block</option>
-                              <option value="feature" <%= section['type'] == 'feature' ? 'selected' : '' %>>Feature</option>
-                              <option value="testimonial" <%= section['type'] == 'testimonial' ? 'selected' : '' %>>Testimonial</option>
-                              <option value="pricing" <%= section['type'] == 'pricing' ? 'selected' : '' %>>Pricing</option>
-                              <option value="faq" <%= section['type'] == 'faq' ? 'selected' : '' %>>FAQ</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    <% end %>
-                  <% else %>
-                    <div class="text-center p-4 text-muted">
-                      <i class="fas fa-paragraph fa-2x mb-3"></i>
-                      <p>No content sections added yet.</p>
-                    </div>
-                  <% end %>
-                </div>
-                
-                <div class="d-flex justify-content-center mt-3">
-                  <button type="button" id="addSection" class="btn btn-outline-primary">
-                    <i class="fas fa-plus me-1"></i> Add Section
+              </div>
+            </div>
+            
+            <!-- HTML Content Editor -->
+            <div class="mb-4">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-bold mb-0">HTML Content</label>
+                <div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="requestAIEdit()">
+                    <i class="fas fa-wand-magic-sparkles me-1"></i>
+                    Request AI Edit
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-info" onclick="formatHTML()">
+                    <i class="fas fa-indent me-1"></i>
+                    Format HTML
                   </button>
                 </div>
               </div>
               
-              <!-- Settings Tab -->
-              <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
-                <div class="mb-3">
-                  <%= form.label :title, "Page Title", class: "form-label" %>
-                  <%= form.text_field :title, class: "form-control", placeholder: "Enter page title" %>
+              <% if @landing_page.html_content.present? %>
+                <%= form.text_area :html_content, 
+                    class: "form-control", 
+                    rows: 30, 
+                    style: "font-family: 'Courier New', monospace; font-size: 12px;",
+                    placeholder: "Your landing page HTML will appear here after AI generation..." %>
+              <% else %>
+                <div class="text-center p-5 bg-light rounded">
+                  <i class="fas fa-magic fa-3x text-muted mb-3"></i>
+                  <h5 class="text-muted">No HTML content generated yet</h5>
+                  <p class="text-muted">
+                    This landing page doesn't have HTML content yet. 
+                    You can regenerate it or add your own HTML content.
+                  </p>
+                  <button type="button" class="btn btn-primary" onclick="regenerateContent()">
+                    <i class="fas fa-magic me-1"></i>
+                    Generate HTML Content
+                  </button>
                 </div>
-                
-                <div class="mb-3">
-                  <%= form.label :slug, "URL Slug", class: "form-label" %>
-                  <div class="input-group">
-                    <span class="input-group-text">/landing/</span>
-                    <%= form.text_field :slug, class: "form-control", placeholder: "my-landing-page" %>
-                  </div>
-                  <small class="text-muted">The URL slug can only contain lowercase letters, numbers, and hyphens.</small>
-                </div>
-                
-                <div class="mb-3">
-                  <%= form.label :page_type, "Page Type", class: "form-label" %>
-                  <%= form.select :page_type, [
-                    ["Lead Generation", "lead_generation"],
-                    ["Product Promotion", "product_promotion"],
-                    ["Event Registration", "event_registration"]
-                  ], { include_blank: "Select page type" }, { class: "form-select" } %>
-                </div>
-                
-                <div class="mb-3">
-                  <%= form.label :campaign_id, "Associated Campaign", class: "form-label" %>
-                  <%= form.collection_select :campaign_id, 
-                      current_user.campaigns.where(entity_id: current_entity.id).order(created_at: :desc), 
-                      :id, :name, 
-                      { include_blank: "None (Standalone Landing Page)" }, 
-                      { class: "form-select" } %>
-                </div>
-                
-                <div class="mb-3">
-                  <%= form.label :custom_domain, "Custom Domain (Optional)", class: "form-label" %>
-                  <div class="input-group">
-                    <span class="input-group-text">https://</span>
-                    <%= form.text_field :custom_domain, class: "form-control", placeholder: "landing.yourdomain.com" %>
-                  </div>
-                  <small class="text-muted">DNS setup required. Contact support for assistance.</small>
-                </div>
+                <%= form.hidden_field :html_content %>
+              <% end %>
+            </div>
+            
+            <!-- SEO Settings -->
+            <div class="row">
+              <div class="col-md-6">
+                <%= form.label :meta_description, "Meta Description", class: "form-label fw-bold" %>
+                <%= form.text_area :meta_description, class: "form-control", rows: 3, placeholder: "Enter a description for search engines" %>
               </div>
-              
-              <!-- Design Tab -->
-              <div class="tab-pane fade" id="design" role="tabpanel" aria-labelledby="design-tab">
-                <div class="mb-3">
-                  <%= form.label :primary_color, "Primary Color", class: "form-label" %>
-                  <div class="input-group">
-                    <span class="input-group-text">#</span>
-                    <%= form.text_field :primary_color, value: @landing_page.primary_color&.gsub('#', ''), class: "form-control", placeholder: "0d6efd" %>
-                    <span class="input-group-text">
-                      <input type="color" id="primaryColorPicker" value="<%= @landing_page.primary_color || '#0d6efd' %>" class="form-control form-control-color">
-                    </span>
-                  </div>
-                </div>
-                
-                <div class="mb-3">
-                  <%= form.label :secondary_color, "Secondary Color", class: "form-label" %>
-                  <div class="input-group">
-                    <span class="input-group-text">#</span>
-                    <%= form.text_field :secondary_color, value: @landing_page.secondary_color&.gsub('#', ''), class: "form-control", placeholder: "6c757d" %>
-                    <span class="input-group-text">
-                      <input type="color" id="secondaryColorPicker" value="<%= @landing_page.secondary_color || '#6c757d' %>" class="form-control form-control-color">
-                    </span>
-                  </div>
-                </div>
-                
-                <div class="mb-3">
-                  <%= form.label :font_family, "Font Family", class: "form-label" %>
-                  <%= form.select :font_family, [
-                    ["Arial, sans-serif", "Arial, sans-serif"],
-                    ["Helvetica, sans-serif", "Helvetica, sans-serif"],
-                    ["Georgia, serif", "Georgia, serif"],
-                    ["'Times New Roman', serif", "'Times New Roman', serif"],
-                    ["'Courier New', monospace", "'Courier New', monospace"],
-                    ["'Open Sans', sans-serif", "'Open Sans', sans-serif"],
-                    ["'Roboto', sans-serif", "'Roboto', sans-serif"],
-                    ["'Montserrat', sans-serif", "'Montserrat', sans-serif"]
-                  ], { selected: @landing_page.font_family || "Arial, sans-serif" }, { class: "form-select" } %>
-                </div>
-              </div>
-              
-              <!-- SEO Tab -->
-              <div class="tab-pane fade" id="seo" role="tabpanel" aria-labelledby="seo-tab">
-                <div class="mb-3">
-                  <%= form.label :meta_description, "Meta Description", class: "form-label" %>
-                  <%= form.text_area :meta_description, class: "form-control", rows: 3, placeholder: "Enter a description for search engines (150-160 characters recommended)" %>
-                  <small class="text-muted" id="metaDescCounter">0 characters (recommended 150-160)</small>
-                </div>
-                
-                <div class="mb-3">
-                  <%= form.label :meta_keywords, "Meta Keywords", class: "form-label" %>
-                  <%= form.text_field :meta_keywords, class: "form-control", placeholder: "keyword1, keyword2, keyword3" %>
-                  <small class="text-muted">Separate keywords with commas</small>
-                </div>
+              <div class="col-md-6">
+                <%= form.label :meta_keywords, "Meta Keywords", class: "form-label fw-bold" %>
+                <%= form.text_field :meta_keywords, class: "form-control", placeholder: "keyword1, keyword2, keyword3" %>
               </div>
             </div>
           </div>
@@ -276,61 +125,61 @@
       </div>
     </div>
     
-    <!-- Sidebar with AI generation tools -->
+    <!-- Sidebar with AI tools -->
     <div class="col-md-4">
       <div class="card shadow mb-4">
         <div class="card-header bg-secondary text-white">
-          <h5 class="mb-0"><i class="fas fa-wand-magic-sparkles me-2"></i> AI Content Generator</h5>
+          <h5 class="mb-0"><i class="fas fa-robot me-2"></i> AI Assistant</h5>
         </div>
         <div class="card-body">
-          <p class="text-muted">Let AI generate content for your landing page based on your description and business info.</p>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Ask AI to modify your landing page:</label>
+            <textarea id="ai-instruction" class="form-control" rows="4" placeholder="E.g., Make the headline more compelling, add a testimonial section, change the color scheme to blue and white, etc."></textarea>
+          </div>
           
-          <%= form_with(url: generate_content_landing_page_path(@landing_page), method: :post, local: true) do |form| %>
-            <div class="mb-3">
-              <%= form.label :description, "Describe your landing page", class: "form-label" %>
-              <%= form.text_area :description, 
-                  class: "form-control", 
-                  rows: 4, 
-                  placeholder: "E.g., Create a landing page for our new e-book about digital marketing strategies for small businesses. The e-book is free in exchange for email signup." %>
-            </div>
-            
-            <div class="mb-3">
-              <%= form.label :page_type, "Page Type", class: "form-label" %>
-              <%= form.select :page_type, [
-                ["Lead Generation", "lead_generation"],
-                ["Product Promotion", "product_promotion"],
-                ["Event Registration", "event_registration"]
-              ], { selected: @landing_page.page_type }, { class: "form-select" } %>
-            </div>
-            
-            <div class="d-grid">
-              <%= form.submit "Generate Content", class: "btn btn-primary", data: { confirm: "This will replace your current content. Are you sure?" } %>
-            </div>
-          <% end %>
+          <div class="d-grid mb-3">
+            <button type="button" class="btn btn-primary" onclick="sendAIInstruction()">
+              <i class="fas fa-magic me-1"></i>
+              Apply AI Changes
+            </button>
+          </div>
+          
+          <div class="alert alert-info">
+            <small>
+              <i class="fas fa-info-circle me-1"></i>
+              Describe what you want to change and AI will modify the entire HTML for you.
+            </small>
+          </div>
         </div>
       </div>
       
       <div class="card shadow mb-4">
-        <div class="card-header bg-secondary text-white">
-          <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i> Business Context</h5>
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i> Page Info</h5>
         </div>
         <div class="card-body">
-          <% if @business_profile %>
-            <p><strong>Business:</strong> <%= @business_profile.name %></p>
-            <p><strong>Industry:</strong> <%= @business_profile.industry %></p>
-            <p><strong>Description:</strong> <%= @business_profile.description %></p>
-          <% else %>
-            <p class="text-muted">No business profile found. Create one to improve AI generation.</p>
-            <%= link_to "Create Business Profile", edit_business_profile_path, class: "btn btn-outline-primary btn-sm" %>
+          <p><strong>Status:</strong> 
+            <span class="badge <%= @landing_page.published? ? 'bg-success' : 'bg-secondary' %>">
+              <%= @landing_page.published? ? 'Published' : 'Draft' %>
+            </span>
+          </p>
+          
+          <% if @landing_page.published? %>
+            <p><strong>Public URL:</strong><br>
+              <a href="<%= @landing_page.full_url %>" target="_blank" class="text-break">
+                <%= @landing_page.full_url %>
+              </a>
+            </p>
           <% end %>
           
-          <hr>
+          <p><strong>Last Updated:</strong><br>
+            <%= @landing_page.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
+          </p>
           
           <% if @landing_page.campaign %>
-            <p><strong>Campaign:</strong> <%= @landing_page.campaign.name %></p>
-            <p><strong>Campaign Description:</strong> <%= @landing_page.campaign.description %></p>
-          <% else %>
-            <p class="text-muted">No campaign associated with this landing page.</p>
+            <p><strong>Campaign:</strong><br>
+              <%= @landing_page.campaign.name %>
+            </p>
           <% end %>
         </div>
       </div>
@@ -338,171 +187,98 @@
   </div>
 </div>
 
-<!-- Generate Image Modal -->
-<div class="modal fade" id="generateImageModal" tabindex="-1" aria-labelledby="generateImageModalLabel" aria-hidden="true">
+<!-- AI Processing Modal -->
+<div class="modal fade" id="aiProcessingModal" tabindex="-1" aria-labelledby="aiProcessingModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <%= form_with(url: generate_image_landing_page_path(@landing_page), method: :post, local: true) do |form| %>
-        <div class="modal-header">
-          <h5 class="modal-title" id="generateImageModalLabel">Generate AI Image</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header">
+        <h5 class="modal-title" id="aiProcessingModalLabel">AI is Processing Your Request</h5>
+      </div>
+      <div class="modal-body text-center">
+        <div class="spinner-border text-primary mb-3" role="status">
+          <span class="visually-hidden">Loading...</span>
         </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <%= form.label :image_description, "Describe the image you want", class: "form-label" %>
-            <%= form.text_area :image_description, 
-                class: "form-control", 
-                rows: 4, 
-                placeholder: "E.g., A professional image of a business person looking at digital marketing analytics on a computer screen, with graphs showing positive results. Include soft blue lighting." %>
-          </div>
-          
-          <div class="mb-3">
-            <%= form.label :section, "Image Placement", class: "form-label" %>
-            <%= form.select :section, [["Hero (main image)", "hero"]], { selected: "hero" }, { class: "form-select" } %>
-          </div>
-          
-          <div class="form-text mb-3">
-            <i class="fas fa-info-circle me-1"></i> Image generation may take up to 30 seconds. The page will refresh when complete.
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <%= form.submit "Generate Image", class: "btn btn-primary" %>
-        </div>
-      <% end %>
+        <p>AI is modifying your landing page. This may take a moment...</p>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Section Template (hidden) -->
-<template id="sectionTemplate">
-  <div class="card mb-3 section-card">
-    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-      <h6 class="mb-0">New Section</h6>
-      <div>
-        <button type="button" class="btn btn-sm btn-outline-danger remove-section">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="mb-3">
-        <label class="form-label">Section Title</label>
-        <input type="text" name="landing_page[content][][title]" class="form-control" placeholder="Section Title">
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Section Content</label>
-        <div class="trix-editor-wrapper">
-          <input type="hidden" name="landing_page[content][][content]" id="new-section-content" value="">
-          <trix-editor input="new-section-content" class="trix-content"></trix-editor>
-        </div>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Section Type</label>
-        <select name="landing_page[content][][type]" class="form-select">
-          <option value="text_block">Text Block</option>
-          <option value="feature">Feature</option>
-          <option value="testimonial">Testimonial</option>
-          <option value="pricing">Pricing</option>
-          <option value="faq">FAQ</option>
-        </select>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script>
+  let aiProcessingModal;
+  
   document.addEventListener('DOMContentLoaded', function() {
-    // Meta description character counter
-    const metaDescription = document.getElementById('landing_page_meta_description');
-    const metaDescCounter = document.getElementById('metaDescCounter');
-    
-    if (metaDescription && metaDescCounter) {
-      metaDescription.addEventListener('input', function() {
-        const charCount = this.value.length;
-        metaDescCounter.textContent = `${charCount} characters (recommended 150-160)`;
-        
-        if (charCount > 160 || charCount < 150) {
-          metaDescCounter.classList.add('text-danger');
-          metaDescCounter.classList.remove('text-success');
-        } else {
-          metaDescCounter.classList.add('text-success');
-          metaDescCounter.classList.remove('text-danger');
-        }
-      });
-      
-      // Trigger event on page load
-      metaDescription.dispatchEvent(new Event('input'));
-    }
-    
-    // Color pickers
-    const primaryColorPicker = document.getElementById('primaryColorPicker');
-    const primaryColorField = document.getElementById('landing_page_primary_color');
-    
-    if (primaryColorPicker && primaryColorField) {
-      primaryColorPicker.addEventListener('input', function() {
-        primaryColorField.value = this.value.substring(1); // Remove # prefix
-      });
-      
-      primaryColorField.addEventListener('input', function() {
-        primaryColorPicker.value = `#${this.value}`;
-      });
-    }
-    
-    const secondaryColorPicker = document.getElementById('secondaryColorPicker');
-    const secondaryColorField = document.getElementById('landing_page_secondary_color');
-    
-    if (secondaryColorPicker && secondaryColorField) {
-      secondaryColorPicker.addEventListener('input', function() {
-        secondaryColorField.value = this.value.substring(1); // Remove # prefix
-      });
-      
-      secondaryColorField.addEventListener('input', function() {
-        secondaryColorPicker.value = `#${this.value}`;
-      });
-    }
-    
-    // Section Management
-    const sectionsContainer = document.getElementById('sectionsContainer');
-    const addSectionButton = document.getElementById('addSection');
-    const sectionTemplate = document.getElementById('sectionTemplate');
-    let sectionCounter = <%= @landing_page.content&.size || 0 %>;
-    
-    // Add new section
-    addSectionButton.addEventListener('click', function() {
-      const newSection = sectionTemplate.content.cloneNode(true);
-      sectionsContainer.appendChild(newSection);
-      
-      // Update the ID of the new input and trix-editor
-      const newInputId = `new-section-content-${sectionCounter}`;
-      const newInput = sectionsContainer.querySelector('input[id="new-section-content"]');
-      const newTrixEditor = sectionsContainer.querySelector('trix-editor[input="new-section-content"]');
-      
-      if (newInput && newTrixEditor) {
-        newInput.id = newInputId;
-        newTrixEditor.setAttribute('input', newInputId);
-      }
-      
-      // Initialize event listeners for new section
-      initSectionListeners();
-      sectionCounter++;
-    });
-    
-    // Initialize event listeners for existing sections
-    function initSectionListeners() {
-      document.querySelectorAll('.remove-section').forEach(button => {
-        if (!button.hasListener) {
-          button.addEventListener('click', function() {
-            if (confirm('Are you sure you want to remove this section?')) {
-              this.closest('.section-card').remove();
-            }
-          });
-          button.hasListener = true;
-        }
-      });
-    }
-    
-    // Initialize listeners for existing sections
-    initSectionListeners();
+    aiProcessingModal = new bootstrap.Modal(document.getElementById('aiProcessingModal'));
   });
+  
+  function sendAIInstruction() {
+    const instruction = document.getElementById('ai-instruction').value.trim();
+    
+    if (!instruction) {
+      alert('Please enter an instruction for the AI.');
+      return;
+    }
+    
+    // Show processing modal
+    aiProcessingModal.show();
+    
+    // Send the instruction to the AI
+    fetch('<%= apply_change_landing_page_path(@landing_page) %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({
+        instruction: instruction
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'processing') {
+        // Poll for updates
+        checkForUpdates();
+      } else {
+        aiProcessingModal.hide();
+        alert('Error: ' + (data.message || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      aiProcessingModal.hide();
+      alert('Error sending request: ' + error.message);
+    });
+  }
+  
+  function checkForUpdates() {
+    setTimeout(() => {
+      // Reload the page to get the updated HTML
+      window.location.reload();
+    }, 5000);
+  }
+  
+  function formatHTML() {
+    const htmlContent = document.getElementById('landing_page_html_content');
+    if (htmlContent && htmlContent.value) {
+      // Simple HTML formatting (basic indentation)
+      let formatted = htmlContent.value;
+      formatted = formatted.replace(/></g, '>\n<');
+      formatted = formatted.replace(/\n\s*\n/g, '\n');
+      htmlContent.value = formatted;
+    }
+  }
+  
+  function regenerateContent() {
+    if (confirm('This will regenerate the entire HTML content. Are you sure?')) {
+      // Redirect to the clarification flow
+      window.location.href = '<%= clarify_landing_page_path(@landing_page) %>';
+    }
+  }
+  
+  function requestAIEdit() {
+    const instruction = prompt('What would you like to change about your landing page?');
+    if (instruction) {
+      document.getElementById('ai-instruction').value = instruction;
+      sendAIInstruction();
+    }
+  }
 </script> 

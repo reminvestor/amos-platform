@@ -2,8 +2,8 @@ require 'faraday'
 require 'json'
 
 class ClaudeService
-  # Claude 3.7 Sonnet is the model we'll use
-  MODEL = "claude-3-7-sonnet-20250219"
+  # Claude 4 Sonnet - upgraded for better performance and intelligence
+  MODEL = "claude-sonnet-4-20250514"
   API_URL = "https://api.anthropic.com/v1/messages"
   
   attr_reader :api_key
@@ -18,7 +18,7 @@ class ClaudeService
   end
   
   # Send a message to Claude 3.7 using the Messages API
-  def send_message(system_prompt, user_message, opts = {})
+  def send_message(system_prompt, user_message_or_conversation, opts = {})
     # Set default options
     options = {
       max_tokens: 4000,
@@ -26,15 +26,20 @@ class ClaudeService
       model: MODEL
     }.merge(opts)
     
+    # Handle both single messages and conversation arrays
+    messages = if user_message_or_conversation.is_a?(Array)
+      user_message_or_conversation
+    else
+      [{ role: "user", content: user_message_or_conversation }]
+    end
+    
     # Build the request body
     body = {
       model: options[:model],
       max_tokens: options[:max_tokens],
       temperature: options[:temperature],
       system: system_prompt,
-      messages: [
-        { role: "user", content: user_message }
-      ]
+      messages: messages
     }
     
     # Make the API request
@@ -43,7 +48,7 @@ class ClaudeService
         req.url API_URL
         req.headers['Content-Type'] = 'application/json'
         req.headers['x-api-key'] = api_key
-        req.headers['anthropic-version'] = '2023-06-01'
+        req.headers['anthropic-version'] = '2023-06-01' # Compatible with Claude 4
         req.body = body.to_json
       end
       
@@ -54,6 +59,12 @@ class ClaudeService
       if response.status != 200
         error_message = json_response['error'] ? json_response['error']['message'] : "Unknown error"
         raise "Claude API Error: #{error_message}"
+      end
+      
+      # Check for Claude 4 refusal stop reason
+      if json_response['stop_reason'] == 'refusal'
+        log_error("Claude 4 refused to generate content for safety reasons")
+        return "I apologize, but I'm not able to help with that particular request. Is there something else I can assist you with?"
       end
       
       # Return the response content
@@ -74,7 +85,7 @@ class ClaudeService
   
   def connection
     @connection ||= Faraday.new do |conn|
-      conn.options.timeout = 120 # 2 minute timeout
+      conn.options.timeout = 120 # 2 minute timeout (suitable for Claude 4)
     end
   end
   

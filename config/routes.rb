@@ -104,7 +104,7 @@ Rails.application.routes.draw do
         post :publish
         post :unpublish
         get :preview
-        get :chat_preview
+        get :chat
         get :no_header_preview
         post :generate_content
         post :generate_image
@@ -112,6 +112,8 @@ Rails.application.routes.draw do
         get :get_chat_messages
         get :versions
         post 'rollback/:version_id', to: 'landing_pages#rollback', as: :rollback
+        get :clarify
+        post :answer_clarification
       end
     end
     
@@ -173,8 +175,17 @@ Rails.application.routes.draw do
       end
     end
     
+    # Workspace routes (AI Chat Interface)
+    resources :workspace, only: [:index] do
+      collection do
+        post :chat
+        post :load_template
+        get :templates
+      end
+    end
+    
     # Application root for authenticated subdomain
-    root "home#index", as: :application_root
+    root "workspace#index", as: :application_root
   end
   
   # Routes for marketing site (no subdomain or www subdomain)

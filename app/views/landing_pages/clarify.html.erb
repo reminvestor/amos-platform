@@ -1,0 +1,92 @@
+<div class="container-fluid mt-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+      <div class="card shadow-lg">
+        <div class="card-header bg-info text-white">
+          <h3 class="mb-0">
+            <i class="fas fa-question-circle me-2"></i>
+            Just a Few Quick Questions
+          </h3>
+          <p class="mb-0 mt-2 opacity-75">
+            Help us create the perfect landing page for you
+          </p>
+        </div>
+        <div class="card-body p-4">
+          <div class="alert alert-info mb-4">
+            <h6 class="alert-heading">Your Landing Page: <%= @landing_page.title %></h6>
+            <p class="mb-0">We just need a few more details to create something amazing for you.</p>
+          </div>
+          
+          <%= form_with url: answer_clarification_landing_page_path(@landing_page), method: :post, local: true do |form| %>
+            <% @landing_page.clarification_questions.each_with_index do |question, index| %>
+              <div class="mb-4">
+                <label class="form-label fw-bold">
+                  <%= question['question'] %>
+                  <% if question['required'] %>
+                    <span class="text-danger">*</span>
+                  <% end %>
+                </label>
+                
+                <% case question['type'] %>
+                <% when 'text' %>
+                  <input 
+                    type="text" 
+                    name="clarification_answers[<%= question['id'] %>]" 
+                    class="form-control" 
+                    <%= 'required' if question['required'] %>
+                  >
+                <% when 'choice' %>
+                  <select 
+                    name="clarification_answers[<%= question['id'] %>]" 
+                    class="form-select"
+                    <%= 'required' if question['required'] %>
+                  >
+                    <option value="">Select an option</option>
+                    <% question['options'].each do |option| %>
+                      <option value="<%= option %>"><%= option %></option>
+                    <% end %>
+                  </select>
+                <% when 'boolean' %>
+                  <div class="form-check">
+                    <input 
+                      class="form-check-input" 
+                      type="radio" 
+                      name="clarification_answers[<%= question['id'] %>]" 
+                      value="true" 
+                      id="<%= question['id'] %>_yes"
+                      <%= 'required' if question['required'] %>
+                    >
+                    <label class="form-check-label" for="<%= question['id'] %>_yes">
+                      Yes
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input 
+                      class="form-check-input" 
+                      type="radio" 
+                      name="clarification_answers[<%= question['id'] %>]" 
+                      value="false" 
+                      id="<%= question['id'] %>_no"
+                      <%= 'required' if question['required'] %>
+                    >
+                    <label class="form-check-label" for="<%= question['id'] %>_no">
+                      No
+                    </label>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+            
+            <div class="d-flex justify-content-between align-items-center mt-4">
+              <%= link_to "Back", new_landing_page_path, class: "btn btn-outline-secondary" %>
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-magic me-1"></i>
+                Generate My Landing Page
+              </button>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div> 

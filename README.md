@@ -1,151 +1,143 @@
-# AI-Powered Email Marketing Platform
+# Crux Marketing: AI-Powered Marketing Platform
 
-A modern, AI-enhanced email marketing platform built with Ruby on Rails. This application helps businesses create, manage, and optimize their email marketing campaigns with the power of artificial intelligence.
+## Project Overview & Vision
 
-## Features
+Crux Marketing is a revolutionary marketing platform where AI is the primary "worker." The entire user experience is chat-based, with traditional navigation minimized. Users converse with an AI assistant to perform tasks like creating landing pages, managing campaigns, generating content, and more. In the background, the AI dynamically loads and modifies "templates" (reusable UI blueprints) into a view area.
 
-### Core Email Marketing
-- Create and manage email campaigns
-- Design and store email templates
-- Manage contact groups and subscribers
-- Schedule and automate email campaigns
-- Track email performance metrics
+### Key Goals
+- **Chat-First Interface**: All actions start with natural language conversation.
+- **Adaptive Layout**: Starts in "Conversation Mode" (full-screen chat) for open-ended interaction; shifts to "Work Mode" (template-dominant view with chat sidebar) when a template is loaded.
+- **Simplicity & Efficiency**: No overwhelming forms or menus—AI handles complexity, with background processes for seamless updates.
+- **Template-Centric**: Pre-loaded and user-created templates (e.g., landing page HTML, campaign dashboards) are loaded dynamically based on chat or side nav selection.
+- **Future-Proof**: Designed for an AI-dominated world, where the interface feels like collaborating with a smart colleague.
 
-### AI Integration
-- Generate email content with AI
-- Improve existing templates based on performance
-- Get AI-powered campaign analysis and insights
-- Smart recommendations for campaign optimization
+### Target Users
+Marketers seeking intuitive, AI-assisted tools without technical hurdles.
 
-### Analytics & Tracking
-- Real-time campaign performance tracking
-- Open and click rate monitoring
-- Detailed campaign analytics
-- AI-driven performance insights
+### Website
+For more information, visit [cruxmarketing.ai](https://cruxmarketing.ai).
 
-## Tech Stack
+## User Experience Design
 
-- **Backend**: Ruby on Rails 7
-- **Frontend**: Bootstrap 5, JavaScript
-- **Database**: PostgreSQL
-- **Email Service**: AWS SES
-- **AI Integration**: OpenAI GPT-4
-- **Authentication**: Devise
-- **Background Jobs**: Sidekiq
+The app is a single workspace page (e.g., `/workspace`) with two states:
 
-## Prerequisites
+### State 1: Conversation Mode (Initial/Default View)
+- Full-screen chat dominance (like ChatGPT).
+- Layout:
+  - Left: Collapsed side nav (thin bar with icons; expands on hover/click to show templates).
+  - Center/Right: Large chat window (95% width) with history, input bar, and welcome message.
+- No dynamic view—focus on conversation.
+- Example: User opens app, sees "What do you want to do? I can help with campaigns, landing pages, etc."
 
-- Ruby 3.2.0 or higher
-- PostgreSQL 14 or higher
-- Redis (for Sidekiq)
-- AWS Account (for SES)
-- OpenAI API Key
+### State 2: Work Mode (Template Loaded)
+- Template expands to dominate; chat shrinks to a right sidebar.
+- Layout:
+  - Left: Collapsed side nav (same as above).
+  - Center: Template view (70% width; interactive preview, e.g., iframe for HTML).
+  - Right: Chat sidebar (25% width; compact messages, fixed input at bottom).
+- Transition: Smooth animation (chat slides right, template fades in); triggered by AI command or side nav click.
 
-## Environment Variables
+### Responsive Design
+- Desktop: Horizontal layout.
+- Mobile: Vertical stack (chat on top in Conversation Mode; template on top in Work Mode).
+- Theme: Dark mode (e.g., #1e1e2f background, purple accents); toggleable to light.
 
-Create a `.env` file in the root directory with the following variables:
+### Key Flows
+1. **Creating a Landing Page**:
+   - Conversation Mode: User types "Create a landing page for my free trial."
+   - AI: "Got it—loading template..." → Shifts to Work Mode.
+   - AI (in sidebar): "Here's a basic landing page. What changes?"
 
-```bash
-# Database
-DATABASE_URL=postgresql://localhost/your_database_name
+2. **Managing Campaigns**:
+   - Conversation Mode: "Show my campaigns."
+   - AI loads dashboard template → Work Mode.
+   - User: "Add a new drip sequence" → AI updates view.
 
-# AWS SES
-AWS_ACCESS_KEY_ID=your_aws_access_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-AWS_REGION=your_aws_region
+3. **Custom Template Creation**:
+   - Conversation Mode: "Build a social planner."
+   - AI generates → Loads in Work Mode → User saves to side nav.
 
-# OpenAI
-OPENAI_API_KEY=your_openai_api_key
+### UX Principles
+- Minimalism: Clean, spacious design with subtle animations.
+- Feedback: AI typing indicators, progress spinners.
+- Accessibility: Keyboard navigation, ARIA labels.
+- Error Handling: AI clarifies ambiguities gracefully.
 
-# Redis
-REDIS_URL=redis://localhost:6379/1
+## Technical Architecture
 
-# Application
-RAILS_ENV=development
-SECRET_KEY_BASE=your_secret_key_base
+### Stack
+- **Backend**: Ruby on Rails (7.x) for core logic, API endpoints, and jobs.
+- **Frontend**: ERB views with Turbo (for dynamic updates without reloads) and Stimulus JS (for interactivity).
+- **AI Integration**: Claude API (via `ClaudeService`) for natural language processing; potential for LangChain for advanced intent detection.
+- **Database**: PostgreSQL (models: User, Template, ChatMessage, etc.).
+- **Real-Time**: ActionCable for chat updates and view syncing.
+- **Background Jobs**: ActiveJob with Sidekiq for template generation/loading.
+- **Styling**: Bootstrap 5 + custom CSS for adaptive layouts; dark/light mode via CSS variables.
+
+### Key Models
+- **User**: Authentication (Devise); has_many :templates, :chat_messages.
+- **Template**: name, type (e.g., "landing_page"), content (HTML/JSON string), user_id. Methods for rendering/previewing.
+- **ChatMessage**: user_id, role ("user"/"ai"), content, template_id (for context).
+- **SessionState**: Tracks current mode (conversation/work) and active template_id (stored in session or DB).
+
+### Architecture Diagram (Text-Based)
+```
+User Input → Chat Controller → AI Service (Claude)
+                          ↓
+                    Process Intent
+                          ↓
+            Update View (Turbo Stream) ← Background Job (Generate/Load Template)
+                          ↓
+               Database (Save State/Template)
+                          ↓
+         Real-Time Update (ActionCable) → Frontend (Dynamic Layout Shift)
 ```
 
-## Installation
+## Implementation Guide
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/ai-email-marketing.git
-   cd ai-email-marketing
-   ```
+This guide is designed for an AI coding assistant to build the system step-by-step. Prioritize MVP: Focus on core chat, two states, and one template type (landing page). Use tools like `edit_file`, `run_terminal_cmd`, etc., to implement. Test incrementally.
 
-2. Install dependencies:
-   ```bash
-   bundle install
-   ```
+### Step 1: Setup Core Structure (1-2 hours)
+- Create a new controller: `rails generate controller Workspace index`
+- Set root route: `root 'workspace#index'`
+- Build basic view: `app/views/workspace/index.html.erb` with side nav, chat area, and dynamic view placeholder.
+- Add JS for layout states: Toggle classes like `.conversation-mode` vs `.work-mode`.
 
-3. Setup the database:
-   ```bash
-   bin/rails db:create db:migrate
-   ```
+### Step 2: Implement Side Nav (1 hour)
+- Model: `rails generate model Template name:string type:string content:text user:references`
+- Controller actions: CRUD for templates (but chat-driven).
+- View: Collapsible nav with list of templates (use partials).
+- JS: Hover/click to expand; clicking loads template (AJAX call to update view).
 
-4. Start Redis server (required for Sidekiq):
-   ```bash
-   redis-server
-   ```
+### Step 3: Build Chat System (2-3 hours)
+- Model: `rails generate model ChatMessage user:references role:string content:text template:references`
+- Controller: Add `chat` action to WorkspaceController for handling messages.
+- Integrate AI: Update `ClaudeService` to handle intents (e.g., regex or simple parsing for "load template").
+- View: Chat bubbles, input bar; use ActionCable for real-time.
+- Background: Job to process messages and update view.
 
-5. Start the application:
-   ```bash
-   bin/rails server
-   ```
+### Step 4: Template Loading & Dynamic View (2 hours)
+- Add rendering logic: In view area, use iframe or div to display template.content.
+- Job: `GenerateTemplateJob` – AI generates content based on chat.
+- State Transition: JS to animate shift (e.g., `document.body.classList.add('work-mode')`).
 
-## Development
+### Step 5: AI Logic & Flows (3-4 hours)
+- Enhance AI prompts: Include context (e.g., current template, history).
+- Implement example flows: Parse chat for actions like "create landing page" → Generate → Load.
+- Error Handling: Fallback responses.
 
-- Run tests: `bin/rails test`
-- Start Sidekiq: `bundle exec sidekiq`
-- Run linter: `bundle exec rubocop`
+### Step 6: Polish & Test (1-2 hours)
+- Responsive CSS: Media queries for mobile.
+- Theme: Dark mode CSS variables.
+- Testing: Create flows, ensure transitions work, AI responds accurately.
 
-## Deployment
+### Potential Challenges & Solutions
+- **State Persistence**: Use session storage for mode/active template.
+- **AI Accuracy**: Fine-tune prompts; add fallback to manual modes.
+- **Performance**: Optimize jobs; use caching for templates.
+- **Security**: Sanitize AI-generated HTML (e.g., with Loofah).
 
-### Heroku Deployment
+Follow these steps sequentially—start with Step 1 and confirm before moving on. If issues arise, use tools to debug (e.g., `read_file` for inspection).
 
-1. Create a new Heroku app:
-   ```bash
-   heroku create your-app-name
-   ```
-
-2. Add required buildpacks:
-   ```bash
-   heroku buildpacks:add heroku/ruby
-   heroku buildpacks:add https://github.com/heroku/heroku-buildpack-redis
-   ```
-
-3. Configure environment variables:
-   ```bash
-   heroku config:set RAILS_ENV=production
-   heroku config:set SECRET_KEY_BASE=$(bin/rails secret)
-   # Add other environment variables as needed
-   ```
-
-4. Deploy the application:
-   ```bash
-   git push heroku main
-   ```
-
-5. Run database migrations:
-   ```bash
-   heroku run bin/rails db:migrate
-   ```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- OpenAI for providing the GPT-4 API
-- AWS for SES email service
-- The Ruby on Rails community
-- Bootstrap team for the UI framework
+## Current Status
+This project is in development following the implementation guide above. Start with Step 1 to begin building the core workspace structure.

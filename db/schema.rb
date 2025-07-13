@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_15_163427) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_13_210520) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -50,6 +50,30 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_15_163427) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "agent_activities", force: :cascade do |t|
+    t.bigint "conversation_id", null: false
+    t.string "agent_name"
+    t.string "activity_type"
+    t.jsonb "input_data"
+    t.jsonb "output_data"
+    t.integer "processing_time_ms"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["conversation_id"], name: "index_agent_activities_on_conversation_id"
+  end
+
+  create_table "business_insights", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "insight_type"
+    t.jsonb "content"
+    t.float "confidence_score"
+    t.bigint "source_conversation_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_business_insights_on_entity_id"
+    t.index ["source_conversation_id"], name: "index_business_insights_on_source_conversation_id"
   end
 
   create_table "business_profiles", force: :cascade do |t|
@@ -302,6 +326,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_15_163427) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "migration_status", default: "pending"
+    t.text "html_content"
+    t.text "clarification_questions"
+    t.text "clarification_answers"
     t.index ["campaign_id"], name: "index_landing_pages_on_campaign_id"
     t.index ["entity_id"], name: "index_landing_pages_on_entity_id"
     t.index ["published"], name: "index_landing_pages_on_published"
@@ -318,6 +345,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_15_163427) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["landing_page_id"], name: "index_rich_text_sections_on_landing_page_id"
+  end
+
+  create_table "scout_conversations", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "session_id"
+    t.string "message_type"
+    t.text "content"
+    t.jsonb "metadata"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_scout_conversations_on_entity_id"
+    t.index ["user_id"], name: "index_scout_conversations_on_user_id"
   end
 
   create_table "social_media_accounts", force: :cascade do |t|
@@ -514,6 +554,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_15_163427) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
+  add_foreign_key "business_insights", "entities"
+  add_foreign_key "business_insights", "scout_conversations", column: "source_conversation_id"
   add_foreign_key "business_profiles", "entities"
   add_foreign_key "business_profiles", "users"
   add_foreign_key "campaign_groups", "campaigns"
@@ -547,6 +590,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_15_163427) do
   add_foreign_key "landing_pages", "entities"
   add_foreign_key "landing_pages", "users"
   add_foreign_key "rich_text_sections", "landing_pages"
+  add_foreign_key "scout_conversations", "entities"
+  add_foreign_key "scout_conversations", "users"
   add_foreign_key "social_media_accounts", "entities"
   add_foreign_key "social_media_accounts", "users"
   add_foreign_key "social_post_analytics", "social_posts"

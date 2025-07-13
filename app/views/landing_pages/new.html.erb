@@ -1,301 +1,99 @@
-<div class="container-fluid mt-4">
-  <div class="row justify-content-center">
-    <div class="col-12 col-xl-10">
-      <div class="card shadow-lg">
-        <div class="card-header bg-primary text-white">
-          <h3 class="mb-0">
-            <i class="fas fa-magic me-2"></i>
-            Create Landing Page with AI Design Assistant
-          </h3>
-          <p class="mb-0 mt-2 opacity-75">
-            Tell us about your landing page goals and we'll create a professional design for you
-          </p>
+<div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 85vh;">
+  <div class="row justify-content-center w-100">
+    <div class="col-12 col-lg-6 col-xl-5">
+      
+      <%= form_with(model: @landing_page, local: true, class: "text-center") do |form| %>
+        <% if @landing_page.errors.any? %>
+          <div class="alert alert-danger mb-4">
+            <h6><%= pluralize(@landing_page.errors.count, "error") %> prohibited this landing page from being saved:</h6>
+            <ul class="mb-0 text-start">
+              <% @landing_page.errors.full_messages.each do |message| %>
+                <li><%= message %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+        
+        <!-- Main Description Box -->
+        <div class="mb-4">
+          <%= form.text_area :description, 
+              class: "form-control form-control-lg", 
+              rows: 4, 
+              style: "font-size: 1.2rem; border-radius: 25px; padding: 20px 25px; border: 2px solid #e9ecef; box-shadow: 0 4px 6px rgba(0,0,0,0.1);",
+              placeholder: "Describe your landing page...",
+              autofocus: true %>
         </div>
-        <div class="card-body p-4">
-          <%= form_with(model: @landing_page, local: true, data: { controller: "landing-page-wizard" }) do |form| %>
-            <% if @landing_page.errors.any? %>
-              <div class="alert alert-danger">
-                <h4><%= pluralize(@landing_page.errors.count, "error") %> prohibited this landing page from being saved:</h4>
-                <ul class="mb-0">
-                  <% @landing_page.errors.full_messages.each do |message| %>
-                    <li><%= message %></li>
-                  <% end %>
-                </ul>
-              </div>
-            <% end %>
-            
-            <div class="row">
-              <!-- Left Column: Business Context -->
-              <div class="col-md-4">
-                <div class="card bg-light h-100">
-                  <div class="card-header">
-                    <h5 class="mb-0">
-                      <i class="fas fa-building me-2"></i>
-                      Your Business Context
-                    </h5>
-                  </div>
-                  <div class="card-body">
-                    <% if @business_profile %>
-                      <div class="mb-3">
-                        <strong>Business:</strong> <%= @business_profile.name %>
-                      </div>
-                      <div class="mb-3">
-                        <strong>Industry:</strong> <%= @business_profile.industry %>
-                      </div>
-                      <div class="mb-3">
-                        <strong>Description:</strong>
-                        <p class="text-muted small"><%= truncate(@business_profile.description, length: 120) %></p>
-                      </div>
-                      <% if @business_profile.target_audience.present? %>
-                        <div class="mb-3">
-                          <strong>Target Audience:</strong>
-                          <p class="text-muted small"><%= truncate(@business_profile.target_audience, length: 120) %></p>
-                        </div>
-                      <% end %>
-                      <% if @business_profile.tone_of_voice.present? %>
-                        <div class="mb-3">
-                          <strong>Brand Voice:</strong>
-                          <p class="text-muted small"><%= truncate(@business_profile.tone_of_voice, length: 120) %></p>
-                        </div>
-                      <% end %>
-                    <% else %>
-                      <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        No business profile found. 
-                        <%= link_to "Create one", edit_business_profile_path, class: "alert-link" %>
-                        for better AI generation.
-                      </div>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Right Column: Landing Page Design -->
-              <div class="col-md-8">
-                <div class="row">
-                  <!-- Basic Information -->
-                  <div class="col-12 mb-4">
-                    <h5 class="border-bottom pb-2">
-                      <i class="fas fa-info-circle me-2"></i>
-                      Basic Information
-                    </h5>
-                    
-                    <div class="row">
-                      <div class="col-md-6 mb-3">
-                        <%= form.label :title, class: "form-label fw-bold" %>
-                        <%= form.text_field :title, class: "form-control", placeholder: "e.g., Download Our Free Guide" %>
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <%= form.label :slug, "URL Slug", class: "form-label fw-bold" %>
-                        <div class="input-group">
-                          <span class="input-group-text">/landing/</span>
-                          <%= form.text_field :slug, class: "form-control", placeholder: "free-guide" %>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <%= form.label :campaign_id, "Link to Campaign (Optional)", class: "form-label fw-bold" %>
-                      <%= form.collection_select :campaign_id, 
-                          current_user.campaigns.where(entity_id: current_entity.id).order(created_at: :desc), 
-                          :id, :name, 
-                          { include_blank: "Select a campaign" }, 
-                          { class: "form-select" } %>
-                    </div>
-                  </div>
-                  
-                  <!-- Landing Page Goals -->
-                  <div class="col-12 mb-4">
-                    <h5 class="border-bottom pb-2">
-                      <i class="fas fa-bullseye me-2"></i>
-                      Landing Page Goals
-                    </h5>
-                    
-                    <div class="row">
-                      <div class="col-md-6 mb-3">
-                        <%= form.label :page_type, "Primary Goal", class: "form-label fw-bold" %>
-                        <%= form.select :page_type, [
-                          ["Generate Leads", "lead_generation"],
-                          ["Sell a Product", "product_promotion"],
-                          ["Event Registration", "event_registration"],
-                          ["Newsletter Signup", "newsletter_signup"],
-                          ["Free Resource Download", "resource_download"],
-                          ["Webinar Registration", "webinar_registration"],
-                          ["App Download", "app_download"],
-                          ["Course Enrollment", "course_enrollment"]
-                        ], { include_blank: "Select your primary goal" }, { class: "form-select" } %>
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <%= form.label :cta_text, "Call-to-Action Button Text", class: "form-label fw-bold" %>
-                        <%= form.text_field :cta_text, class: "form-control", placeholder: "e.g., Download Now, Sign Up Free, Get Started" %>
-                      </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <%= form.label :description, "Detailed Description", class: "form-label fw-bold" %>
-                      <%= form.text_area :description, class: "form-control", rows: 4, placeholder: "Describe what you're offering, who it's for, and why they should care. Be specific about the value proposition and benefits." %>
-                      <small class="form-text text-muted">
-                        The more detail you provide, the better the AI can create targeted content.
-                      </small>
-                    </div>
-                  </div>
-                  
-                  <!-- Design Preferences -->
-                  <div class="col-12 mb-4">
-                    <h5 class="border-bottom pb-2">
-                      <i class="fas fa-palette me-2"></i>
-                      Design Preferences
-                    </h5>
-                    
-                    <div class="row">
-                      <div class="col-md-6 mb-3">
-                        <%= form.label :primary_color, "Primary Color", class: "form-label fw-bold" %>
-                        <%= form.color_field :primary_color, class: "form-control form-control-color", value: "#0d6efd" %>
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <%= form.label :secondary_color, "Secondary Color", class: "form-label fw-bold" %>
-                        <%= form.color_field :secondary_color, class: "form-control form-control-color", value: "#6c757d" %>
-                      </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                      <%= form.label :font_family, "Font Style", class: "form-label fw-bold" %>
-                      <%= form.select :font_family, [
-                        ["Modern & Clean (Open Sans)", "Open Sans, sans-serif"],
-                        ["Professional (Roboto)", "Roboto, sans-serif"],
-                        ["Bold & Stylish (Montserrat)", "Montserrat, sans-serif"],
-                        ["Classic (Georgia)", "Georgia, serif"],
-                        ["Elegant (Playfair Display)", "Playfair Display, serif"]
-                      ], { include_blank: "Choose a font style" }, { class: "form-select" } %>
-                    </div>
-                  </div>
-                  
-                  <!-- Content Preferences -->
-                  <div class="col-12 mb-4">
-                    <h5 class="border-bottom pb-2">
-                      <i class="fas fa-file-alt me-2"></i>
-                      Content Preferences
-                    </h5>
-                    
-                    <div class="row">
-                      <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Content Tone</label>
-                        <div class="form-check">
-                          <%= form.radio_button :tone_preference, "professional", class: "form-check-input" %>
-                          <%= form.label :tone_preference_professional, "Professional & Formal", class: "form-check-label" %>
-                        </div>
-                        <div class="form-check">
-                          <%= form.radio_button :tone_preference, "friendly", class: "form-check-input" %>
-                          <%= form.label :tone_preference_friendly, "Friendly & Conversational", class: "form-check-label" %>
-                        </div>
-                        <div class="form-check">
-                          <%= form.radio_button :tone_preference, "exciting", class: "form-check-input" %>
-                          <%= form.label :tone_preference_exciting, "Exciting & Dynamic", class: "form-check-label" %>
-                        </div>
-                      </div>
-                      <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Content Length</label>
-                        <div class="form-check">
-                          <%= form.radio_button :content_length, "concise", class: "form-check-input" %>
-                          <%= form.label :content_length_concise, "Concise & To-the-Point", class: "form-check-label" %>
-                        </div>
-                        <div class="form-check">
-                          <%= form.radio_button :content_length, "detailed", class: "form-check-input" %>
-                          <%= form.label :content_length_detailed, "Detailed & Comprehensive", class: "form-check-label" %>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- Special Features -->
-                  <div class="col-12 mb-4">
-                    <h5 class="border-bottom pb-2">
-                      <i class="fas fa-star me-2"></i>
-                      Special Features (Optional)
-                    </h5>
-                    
-                    <div class="row">
-                      <div class="col-md-6">
-                        <div class="form-check">
-                          <%= form.check_box :include_testimonials, class: "form-check-input" %>
-                          <%= form.label :include_testimonials, "Include Customer Testimonials", class: "form-check-label" %>
-                        </div>
-                        <div class="form-check">
-                          <%= form.check_box :include_features, class: "form-check-input" %>
-                          <%= form.label :include_features, "Include Feature/Benefit Section", class: "form-check-label" %>
-                        </div>
-                        <div class="form-check">
-                          <%= form.check_box :include_faq, class: "form-check-input" %>
-                          <%= form.label :include_faq, "Include FAQ Section", class: "form-check-label" %>
-                        </div>
-                      </div>
-                      <div class="col-md-6">
-                        <div class="form-check">
-                          <%= form.check_box :include_pricing, class: "form-check-input" %>
-                          <%= form.label :include_pricing, "Include Pricing Information", class: "form-check-label" %>
-                        </div>
-                        <div class="form-check">
-                          <%= form.check_box :include_about, class: "form-check-input" %>
-                          <%= form.label :include_about, "Include About/Company Section", class: "form-check-label" %>
-                        </div>
-                        <div class="form-check">
-                          <%= form.check_box :include_contact, class: "form-check-input" %>
-                          <%= form.label :include_contact, "Include Contact Form", class: "form-check-label" %>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Action Buttons -->
-            <div class="row mt-4">
-              <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
-                  <%= link_to "Cancel", landing_pages_path, class: "btn btn-outline-secondary" %>
-                  <div>
-                    <button type="submit" name="action" value="save_draft" class="btn btn-outline-primary me-2">
-                      <i class="fas fa-save me-1"></i>
-                      Save as Draft
-                    </button>
-                    <button type="submit" name="action" value="generate_and_preview" class="btn btn-primary btn-lg">
-                      <i class="fas fa-magic me-1"></i>
-                      Generate Landing Page with AI
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          <% end %>
+        
+        <!-- Action Button -->
+        <div class="mb-4">
+          <button type="submit" name="action" value="generate_with_ai" class="btn btn-primary btn-lg px-5 py-3" style="border-radius: 25px; font-size: 1.1rem; font-weight: 600;">
+            Create Landing Page
+          </button>
         </div>
-      </div>
+        
+        <!-- Campaign Selection (Optional) -->
+        <% if current_user.campaigns.where(entity_id: current_entity.id).any? %>
+          <div class="mb-3">
+            <details class="text-start">
+              <summary class="btn btn-link btn-sm text-muted p-0">
+                <i class="fas fa-link me-1"></i>
+                Link to campaign
+              </summary>
+              <div class="mt-2">
+                <%= form.collection_select :campaign_id, 
+                    current_user.campaigns.where(entity_id: current_entity.id).order(created_at: :desc), 
+                    :id, :name, 
+                    { include_blank: "Select a campaign" }, 
+                    { class: "form-select form-select-sm" } %>
+              </div>
+            </details>
+          </div>
+        <% end %>
+        
+        <!-- Cancel Link -->
+        <div>
+          <%= link_to "Cancel", landing_pages_path, class: "text-muted small" %>
+        </div>
+        
+        <!-- Hidden fields for AI generation -->
+        <%= form.hidden_field :title, value: "" %>
+        <%= form.hidden_field :slug, value: "" %>
+      <% end %>
+      
     </div>
   </div>
 </div>
 
-<script>
-// Auto-generate slug from title
-document.addEventListener('DOMContentLoaded', function() {
-  const titleInput = document.getElementById('landing_page_title');
-  const slugInput = document.getElementById('landing_page_slug');
-  
-  if (titleInput && slugInput) {
-    titleInput.addEventListener('input', function() {
-      if (slugInput.value === '' || slugInput.dataset.autoGenerated === 'true') {
-        const slug = this.value.toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '');
-        slugInput.value = slug;
-        slugInput.dataset.autoGenerated = 'true';
-      }
-    });
-    
-    slugInput.addEventListener('input', function() {
-      this.dataset.autoGenerated = 'false';
-    });
+<style>
+  /* Ultra-minimal Google-style */
+  body {
+    background: #fff;
   }
-});
-</script> 
+  
+  .form-control-lg:focus {
+    border-color: #4285f4 !important;
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.2) !important;
+    outline: none;
+  }
+  
+  .btn-primary {
+    background: #4285f4;
+    border: none;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-primary:hover {
+    background: #3367d6;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+  }
+  
+  details summary {
+    cursor: pointer;
+    list-style: none;
+  }
+  
+  details summary::-webkit-details-marker {
+    display: none;
+  }
+</style> 

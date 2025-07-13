@@ -15,3 +15,6 @@ application.register("contact-selection", ContactSelectionController)
 
 import LandingPageChatController from "./landing_page/chat"
 application.register("landing-page-chat", LandingPageChatController)
+
+import WorkspaceController from "./workspace_controller"
+application.register("workspace", WorkspaceController)

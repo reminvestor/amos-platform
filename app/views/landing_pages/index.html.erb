@@ -26,7 +26,7 @@
                   <% @landing_pages.each do |landing_page| %>
                     <tr>
                       <td>
-                        <%= link_to landing_page.title, edit_landing_page_path(landing_page) %>
+                        <%= link_to landing_page.title, chat_landing_page_path(landing_page) %>
                       </td>
                       <td>
                         <% if landing_page.published? %>
@@ -56,7 +56,7 @@
                             <i class="fas fa-eye"></i>
                           <% end %>
                           
-                          <%= link_to chat_preview_landing_page_path(landing_page), class: "btn btn-sm btn-outline-info", title: "Chat & Preview" do %>
+                          <%= link_to chat_landing_page_path(landing_page), class: "btn btn-sm btn-outline-info", title: "Edit with AI Chat" do %>
                             <i class="fas fa-comments"></i>
                           <% end %>
                           
@@ -68,10 +68,6 @@
                             <%= button_to publish_landing_page_path(landing_page), method: :post, class: "btn btn-sm btn-outline-success" do %>
                               <i class="fas fa-check"></i>
                             <% end %>
-                          <% end %>
-                          
-                          <%= link_to edit_landing_page_path(landing_page), class: "btn btn-sm btn-outline-secondary" do %>
-                            <i class="fas fa-edit"></i>
                           <% end %>
                           
                           <%= button_to landing_page_path(landing_page), method: :delete, class: "btn btn-sm btn-outline-danger", data: { confirm: "Are you sure? This cannot be undone." } do %>
