@@ -4,12 +4,12 @@ class WorkspaceController < ApplicationController
   
   require 'securerandom'
   
-  # Load Scout AI services
+  # Ensure ScoutAI module and services are loaded
+  require_relative '../services/scout_ai'
   require_relative '../services/scout_ai/conversation_service'
   require_relative '../services/scout_ai/conversation_engine'
   require_relative '../services/scout_ai/intent_analyzer'
   require_relative '../services/scout_ai/business_extractor'
-  require_relative '../jobs/process_background_intelligence_job'
 
   def index
     # Main workspace view
