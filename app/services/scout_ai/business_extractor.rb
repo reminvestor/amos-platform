@@ -1,5 +1,4 @@
-module ScoutAI
-  class BusinessExtractor
+class ScoutAI::BusinessExtractor
     attr_reader :user, :entity
     
     def initialize(user:, entity:)
@@ -154,5 +153,4 @@ module ScoutAI
         raw_response: 'Error in extraction'
       }
     end
-  end
-end 
+  end 

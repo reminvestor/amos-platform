@@ -1,5 +1,4 @@
-module ScoutAI
-  class ConversationService
+class ScoutAI::ConversationService
     attr_reader :user, :entity, :session_id
     
     def initialize(user:, entity:, session_id:)
@@ -156,5 +155,4 @@ module ScoutAI
     rescue => e
       Rails.logger.error "Failed to log agent activity: #{e.message}"
     end
-  end
-end 
+  end 

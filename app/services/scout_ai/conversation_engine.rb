@@ -1,5 +1,4 @@
-module ScoutAI
-  class ConversationEngine
+class ScoutAI::ConversationEngine
     attr_reader :user, :entity
     
     def initialize(user:, entity:)
@@ -163,5 +162,4 @@ module ScoutAI
       # Rough estimation: ~4 characters per token
       (text.length / 4.0).round
     end
-  end
-end 
+  end 
