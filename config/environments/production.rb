@@ -140,6 +140,11 @@ Rails.application.configure do
   config.hosts << "www.everloom.ai"
   config.hosts << "app.everloom.ai"
   
+  # Allow cruxmarketing.ai domains
+  config.hosts << "cruxmarketing.ai"
+  config.hosts << "www.cruxmarketing.ai"
+  config.hosts << "app.cruxmarketing.ai"
+  
   # Skip host authorization for health checks
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 end
