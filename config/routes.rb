@@ -201,6 +201,11 @@ Rails.application.routes.draw do
     root 'marketing#index'
   end
   
+  # Onboarding routes
+  get 'onboarding', to: 'onboarding#index'
+  post 'onboarding/chat', to: 'onboarding#chat'
+  patch 'onboarding/complete', to: 'onboarding#complete'
+
   # Common routes (regardless of subdomain)
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   get "up" => "rails/health#show", as: :rails_health_check

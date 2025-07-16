@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "Agent Marketing - AI-Powered Marketing Automation" %></title>
+    <title><%= content_for(:title) || "Crux Marketing - AI Marketing Agent That Actually Grows Your Business" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="description" content="<%= content_for(:description) || "AI-powered marketing automation platform for small businesses and agencies" %>">
+    <meta name="description" content="<%= content_for(:description) || "Scout, your AI marketing agent, learns your business and creates campaigns that convert. Skip the $1000 tools - get results in minutes, not months." %>">
     
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
@@ -22,33 +22,75 @@
     
     <style>
       :root {
-        --primary-color: #4a90e2;
-        --secondary-color: #6c757d;
-        --accent-color: #ff9800;
-        --light-bg: #f9f9f9;
+        --primary-purple: #6366f1;
+        --secondary-purple: #8b5cf6;
+        --accent-coral: #ff6b6b;
+        --dark-bg: #1e1b4b;
+        --darker-bg: #0f0e27;
+        --light-text: rgba(255, 255, 255, 0.9);
+        --muted-text: rgba(255, 255, 255, 0.7);
       }
       
       body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         color: #333;
+        margin: 0;
+        padding: 0;
+      }
+      
+      .gradient-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);
+      }
+      
+      .dark-gradient-bg {
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
       }
       
       .hero-section {
-        background: linear-gradient(135deg, #4a90e2 0%, #8e44ad 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);
         color: white;
-        padding: 5rem 0;
+        padding: 6rem 0;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .hero-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.05) 100%);
+        pointer-events: none;
+      }
+      
+      .feature-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 1rem;
+        padding: 2rem;
+        height: 100%;
+        transition: all 0.3s ease;
+      }
+      
+      .feature-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.15);
       }
       
       .feature-icon {
         width: 4rem;
         height: 4rem;
-        border-radius: 0.5rem;
-        background-color: var(--primary-color);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.2);
         color: white;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        backdrop-filter: blur(10px);
       }
       
       .feature-icon i {
@@ -56,37 +98,129 @@
       }
       
       .btn-primary {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
+        background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
       }
       
-      .btn-outline-primary {
-        color: var(--primary-color);
-        border-color: var(--primary-color);
+      .btn-primary:hover {
+        background: linear-gradient(45deg, #ff5252, #ff7979);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(255, 107, 107, 0.3);
       }
       
-      .pricing-card {
-        transition: transform 0.3s ease;
+      .btn-outline-light {
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 0.75rem 2rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        text-decoration: none;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
       }
       
-      .pricing-card:hover {
-        transform: translateY(-5px);
+      .btn-outline-light:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+        color: white;
+        transform: translateY(-2px);
+      }
+      
+      .comparison-table {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      }
+      
+      .table-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        font-weight: 700;
+        font-size: 1.1rem;
+      }
+      
+      .check-icon {
+        color: #10b981;
+        font-size: 1.2rem;
+      }
+      
+      .x-icon {
+        color: #ef4444;
+        font-size: 1.2rem;
+      }
+      
+      .navbar-brand {
+        font-weight: 700;
+        font-size: 1.5rem;
+      }
+      
+      .navbar-dark {
+        background: rgba(30, 27, 75, 0.95) !important;
+        backdrop-filter: blur(10px);
       }
       
       .footer {
-        background-color: #343a40;
-        color: rgba(255, 255, 255, 0.7);
+        background: var(--darker-bg);
+        color: var(--muted-text);
+      }
+      
+      .section-dark {
+        background: var(--dark-bg);
+        color: var(--light-text);
+      }
+      
+      .section-darker {
+        background: var(--darker-bg);
+        color: var(--light-text);
+      }
+      
+      .benefit-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        padding: 2rem;
+        height: 100%;
+        transition: all 0.3s ease;
+      }
+      
+      .benefit-card:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-5px);
+      }
+      
+      .display-1 {
+        font-weight: 800;
+        line-height: 1.1;
+      }
+      
+      .display-4 {
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      
+      .lead {
+        font-size: 1.25rem;
+        font-weight: 400;
+        opacity: 0.9;
       }
     </style>
   </head>
 
   <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
       <div class="container">
-        <a class="navbar-brand" href="<%= marketing_root_path %>">
-          <i class="fas fa-envelope-open-text me-2"></i>
-          Marketing Automation
+        <a class="navbar-brand d-flex align-items-center" href="<%= marketing_root_path %>">
+          <i class="fas fa-mountain me-2"></i>
+          Crux Marketing
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
@@ -102,31 +236,30 @@
             <li class="nav-item">
               <a class="nav-link <%= current_page?(marketing_pricing_path) ? 'active' : '' %>" href="<%= marketing_pricing_path %>">Pricing</a>
             </li>
-            <li class="nav-item">
-              <a class="nav-link <%= current_page?(marketing_about_path) ? 'active' : '' %>" href="<%= marketing_about_path %>">About</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link <%= current_page?(marketing_contact_path) ? 'active' : '' %>" href="<%= marketing_contact_path %>">Contact</a>
-            </li>
           </ul>
           <div class="d-flex">
-            <a href="<%= "https://app.#{ENV['APPLICATION_HOST'] || 'everloom.ai'}" %>" class="btn btn-outline-light me-2">Log In</a>
-            <a href="<%= "https://app.#{ENV['APPLICATION_HOST'] || 'everloom.ai'}/users/sign_up" %>" class="btn btn-primary">Sign Up Free</a>
+            <a href="<%= "https://app.#{ENV['APPLICATION_HOST'] || 'cruxmarketing.ai'}" %>" class="btn btn-outline-light me-2">Log In</a>
+            <a href="<%= "https://app.#{ENV['APPLICATION_HOST'] || 'cruxmarketing.ai'}/users/sign_up" %>" class="btn btn-primary">Sign Up!</a>
           </div>
         </div>
       </div>
     </nav>
 
     <!-- Main content -->
-    <%= yield %>
+    <main style="padding-top: 80px;">
+      <%= yield %>
+    </main>
 
     <!-- Footer -->
     <footer class="footer pt-5 pb-3">
       <div class="container">
         <div class="row">
           <div class="col-md-4 mb-4">
-            <h5 class="text-white">Marketing Automation</h5>
-            <p class="mb-3">AI-powered marketing automation platform for small businesses and agencies.</p>
+            <h5 class="text-white d-flex align-items-center">
+              <i class="fas fa-mountain me-2"></i>
+              Crux Marketing
+            </h5>
+            <p class="mb-3">AI-powered marketing that actually grows your business. Scout learns, adapts, and delivers results while you focus on what matters.</p>
             <div class="d-flex gap-3">
               <a href="#" class="text-white"><i class="fab fa-twitter"></i></a>
               <a href="#" class="text-white"><i class="fab fa-facebook"></i></a>
@@ -139,30 +272,27 @@
             <ul class="nav flex-column">
               <li class="nav-item"><a href="<%= marketing_features_path %>" class="nav-link p-0 text-white-50">Features</a></li>
               <li class="nav-item"><a href="<%= marketing_pricing_path %>" class="nav-link p-0 text-white-50">Pricing</a></li>
-              <li class="nav-item"><a href="#" class="nav-link p-0 text-white-50">API</a></li>
+              <li class="nav-item"><a href="#" class="nav-link p-0 text-white-50">Scout AI</a></li>
               <li class="nav-item"><a href="#" class="nav-link p-0 text-white-50">Integrations</a></li>
             </ul>
           </div>
           <div class="col-md-2 mb-4">
-            <h5 class="text-white">Company</h5>
+            <h5 class="text-white">Resources</h5>
             <ul class="nav flex-column">
-              <li class="nav-item"><a href="<%= marketing_about_path %>" class="nav-link p-0 text-white-50">About</a></li>
+              <li class="nav-item"><a href="#" class="nav-link p-0 text-white-50">Help Center</a></li>
               <li class="nav-item"><a href="#" class="nav-link p-0 text-white-50">Blog</a></li>
-              <li class="nav-item"><a href="#" class="nav-link p-0 text-white-50">Careers</a></li>
-              <li class="nav-item"><a href="<%= marketing_contact_path %>" class="nav-link p-0 text-white-50">Contact</a></li>
+              <li class="nav-item"><a href="#" class="nav-link p-0 text-white-50">Case Studies</a></li>
+              <li class="nav-item"><a href="#" class="nav-link p-0 text-white-50">Contact</a></li>
             </ul>
           </div>
           <div class="col-md-4 mb-4">
-            <h5 class="text-white">Stay in touch</h5>
-            <p>Get updates on new features and announcements.</p>
-            <form class="d-flex">
-              <input type="email" class="form-control me-2" placeholder="Email address">
-              <button class="btn btn-primary" type="submit">Subscribe</button>
-            </form>
+            <h5 class="text-white">Ready to Grow?</h5>
+            <p>Get started with Scout in minutes. No complex setup, no learning curve.</p>
+            <a href="<%= "https://app.#{ENV['APPLICATION_HOST'] || 'cruxmarketing.ai'}/users/sign_up" %>" class="btn btn-primary">Launch a Campaign</a>
           </div>
         </div>
         <div class="border-top pt-3 mt-3">
-          <p class="text-center text-white-50 mb-0">&copy; <%= Date.today.year %> Agent Marketing. All rights reserved.</p>
+          <p class="text-center text-white-50 mb-0">&copy; <%= Date.today.year %> Crux Marketing. All rights reserved.</p>
         </div>
       </div>
     </footer>
