@@ -12,6 +12,7 @@ class ApplicationController < ActionController::Base
   
   # Require authentication for all controllers except API ones
   before_action :authenticate_user!, unless: :api_request?
+  before_action :check_onboarding_status
   before_action :configure_permitted_parameters, if: :devise_controller?
   
   protected
@@ -49,6 +50,20 @@ class ApplicationController < ActionController::Base
     request.subdomain == 'app'
   end
   
+  private
+  
+  def check_onboarding_status
+    return unless user_signed_in?
+    return if devise_controller? && (action_name == 'destroy' || controller_name == 'sessions') # Allow logout
+    return if controller_name == 'onboarding' # Don't redirect from onboarding pages
+    return if controller_name == 'campaign_tracking' # Allow campaign tracking
+    return if request.path.start_with?('/api/') # Skip API requests
+    return if current_user.onboarded? # User has completed onboarding
+    
+    # Redirect to onboarding if user hasn't completed it
+    redirect_to onboarding_path
+  end
+
   def configure_permitted_parameters
     devise_parameter_sanitizer.permit(:sign_up, keys: [:first_name, :last_name, :role])
     devise_parameter_sanitizer.permit(:account_update, keys: [:first_name, :last_name, :role])

@@ -4,44 +4,36 @@
   <div class="container">
     <div class="row align-items-center">
       <div class="col-lg-6">
-        <h1 class="display-4 fw-bold mb-3">AI-Powered Marketing Automation for Modern Businesses</h1>
-        <p class="lead mb-4">Streamline your marketing efforts with our all-in-one platform. Email campaigns, social media management, and AI content generation in one seamless experience.</p>
-        <div class="d-grid gap-2 d-md-flex justify-content-md-start">
-          <a href="<%= "https://app.#{ENV['APPLICATION_HOST'] || 'yourdomain.com'}/users/sign_up" %>" class="btn btn-light btn-lg px-4 me-md-2">Get Started Free</a>
-          <a href="<%= marketing_features_path %>" class="btn btn-outline-light btn-lg px-4">See Features</a>
+        <h1 class="display-1 fw-bold mb-4">You Don't Need a $1000 Tool to Grow.<br/>You Need Crux.</h1>
+        <p class="lead mb-5">Scout does everything you need — simplified, automated, and for a fraction of the cost.</p>
+        <div class="d-grid gap-3 d-md-flex justify-content-md-start">
+          <a href="<%= "https://app.#{ENV['APPLICATION_HOST'] || 'cruxmarketing.ai'}/users/sign_up" %>" class="btn btn-primary btn-lg px-5">Get Started in Minutes</a>
         </div>
       </div>
       <div class="col-lg-6 d-none d-lg-block">
-        <img src="https://via.placeholder.com/600x400" alt="Marketing Automation Dashboard" class="img-fluid rounded shadow-lg">
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Social Proof -->
-<section class="py-5 bg-light">
-  <div class="container">
-    <div class="text-center mb-5">
-      <h2 class="fw-bold">Trusted by Marketers Worldwide</h2>
-      <p class="text-muted">Join thousands of satisfied customers who have transformed their marketing</p>
-    </div>
-    <div class="row justify-content-center">
-      <div class="col-md-10">
-        <div class="row align-items-center justify-content-between">
-          <div class="col-6 col-md-2 mb-4 mb-md-0">
-            <img src="https://via.placeholder.com/150x50?text=LOGO" alt="Company Logo" class="img-fluid">
+        <div class="position-relative">
+          <div class="feature-card mb-4">
+            <h6 class="text-white mb-2"><i class="fas fa-chart-line me-2"></i>Screenshot of campaign analytics</h6>
+            <div class="bg-dark bg-opacity-25 rounded p-3">
+              <div class="d-flex justify-content-between mb-2">
+                <span class="small">Campaign Performance</span>
+                <span class="small text-success">+127% ROI</span>
+              </div>
+              <div class="progress mb-2" style="height: 8px;">
+                <div class="progress-bar bg-info" style="width: 85%"></div>
+              </div>
+              <div class="small opacity-75">Email open rate: 45.2% | Click rate: 12.8%</div>
+            </div>
           </div>
-          <div class="col-6 col-md-2 mb-4 mb-md-0">
-            <img src="https://via.placeholder.com/150x50?text=LOGO" alt="Company Logo" class="img-fluid">
-          </div>
-          <div class="col-6 col-md-2 mb-4 mb-md-0">
-            <img src="https://via.placeholder.com/150x50?text=LOGO" alt="Company Logo" class="img-fluid">
-          </div>
-          <div class="col-6 col-md-2 mb-4 mb-md-0">
-            <img src="https://via.placeholder.com/150x50?text=LOGO" alt="Company Logo" class="img-fluid">
-          </div>
-          <div class="col-6 col-md-2 mb-4 mb-md-0">
-            <img src="https://via.placeholder.com/150x50?text=LOGO" alt="Company Logo" class="img-fluid">
+          <div class="feature-card">
+            <h6 class="text-white mb-2"><i class="fas fa-magic me-2"></i>Screenshot of landing page creator</h6>
+            <div class="bg-dark bg-opacity-25 rounded p-3">
+              <div class="d-flex align-items-center mb-2">
+                <div class="bg-primary rounded-circle me-2" style="width: 12px; height: 12px;"></div>
+                <span class="small">Landing page generated in 30 seconds</span>
+              </div>
+              <div class="small opacity-75">AI-optimized headlines, copy, and CTA placement</div>
+            </div>
           </div>
         </div>
       </div>
@@ -49,161 +41,203 @@
   </div>
 </section>
 
-<!-- Key Features -->
-<section class="py-5">
+<!-- Core Features -->
+<section class="section-dark py-5">
   <div class="container">
     <div class="text-center mb-5">
-      <h2 class="fw-bold">Powerful Features for Modern Marketers</h2>
-      <p class="text-muted">Everything you need to create, manage, and optimize your marketing campaigns</p>
+      <h2 class="display-4 fw-bold text-white mb-3">Core Features</h2>
     </div>
     
     <div class="row g-4">
-      <div class="col-md-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body text-center p-4">
-            <div class="feature-icon mx-auto">
-              <i class="fas fa-envelope"></i>
-            </div>
-            <h4 class="mb-3">Email Campaigns</h4>
-            <p class="text-muted">Create beautiful email campaigns with our drag-and-drop editor. Track opens, clicks, and conversions in real-time.</p>
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card text-center">
+          <div class="feature-icon mx-auto">
+            <i class="fas fa-envelope-open-text"></i>
           </div>
+          <h4 class="text-white mb-3">AI Campaign Builder</h4>
+          <p class="text-white opacity-75">Launch email and social campaigns instantly—just by typing what you want.</p>
         </div>
       </div>
       
-      <div class="col-md-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body text-center p-4">
-            <div class="feature-icon mx-auto">
-              <i class="fas fa-share-alt"></i>
-            </div>
-            <h4 class="mb-3">Social Media Management</h4>
-            <p class="text-muted">Schedule and publish content across multiple platforms. Analyze performance and engage with your audience.</p>
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card text-center">
+          <div class="feature-icon mx-auto">
+            <i class="fas fa-bolt"></i>
           </div>
+          <h4 class="text-white mb-3">Instant Landing Pages</h4>
+          <p class="text-white opacity-75">Create branded, high-converting landing pages in minutes, no design team needed.</p>
         </div>
       </div>
       
-      <div class="col-md-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body text-center p-4">
-            <div class="feature-icon mx-auto">
-              <i class="fas fa-robot"></i>
-            </div>
-            <h4 class="mb-3">AI Content Generation</h4>
-            <p class="text-muted">Generate high-quality marketing content with our AI tools. Save time and boost creativity.</p>
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card text-center">
+          <div class="feature-icon mx-auto">
+            <i class="fas fa-brain"></i>
           </div>
+          <h4 class="text-white mb-3">Smart Lead Insights</h4>
+          <p class="text-white opacity-75">Track engagement and performance with clear, actionable data.</p>
         </div>
       </div>
       
-      <div class="col-md-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body text-center p-4">
-            <div class="feature-icon mx-auto">
-              <i class="fas fa-users"></i>
-            </div>
-            <h4 class="mb-3">Contact Management</h4>
-            <p class="text-muted">Organize your contacts into groups, add custom fields, and track engagement throughout the customer journey.</p>
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card text-center">
+          <div class="feature-icon mx-auto">
+            <i class="fas fa-comments"></i>
           </div>
+          <h4 class="text-white mb-3">Conversational Interface</h4>
+          <p class="text-white opacity-75">Skip the menus. Run marketing like a conversation—with zero learning curve.</p>
         </div>
       </div>
       
-      <div class="col-md-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body text-center p-4">
-            <div class="feature-icon mx-auto">
-              <i class="fas fa-chart-line"></i>
-            </div>
-            <h4 class="mb-3">Analytics & Reports</h4>
-            <p class="text-muted">Gain valuable insights into your marketing performance with detailed analytics and customizable reports.</p>
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card text-center">
+          <div class="feature-icon mx-auto">
+            <i class="fas fa-robot"></i>
           </div>
+          <h4 class="text-white mb-3">Scout AI Agent</h4>
+          <p class="text-white opacity-75">Your personal marketing assistant that learns your business and optimizes campaigns automatically.</p>
         </div>
       </div>
       
-      <div class="col-md-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body text-center p-4">
-            <div class="feature-icon mx-auto">
-              <i class="fas fa-building"></i>
-            </div>
-            <h4 class="mb-3">Multi-Entity Support</h4>
-            <p class="text-muted">Manage multiple businesses or clients from a single dashboard with our entity management system.</p>
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card text-center">
+          <div class="feature-icon mx-auto">
+            <i class="fas fa-thumbtack"></i>
           </div>
+          <h4 class="text-white mb-3">Pin Custom Pages</h4>
+          <p class="text-white opacity-75">Create pages on chat and pin them for instant access in your custom nav.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Testimonials -->
-<section class="py-5 bg-light">
+<!-- Why Use Crux -->
+<section class="section-darker py-5">
   <div class="container">
     <div class="text-center mb-5">
-      <h2 class="fw-bold">What Our Customers Say</h2>
-      <p class="text-muted">Real stories from real customers</p>
+      <h2 class="display-4 fw-bold text-white mb-3">Why Use Crux?</h2>
     </div>
     
-    <div class="row">
-      <div class="col-lg-4 mb-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body p-4">
-            <div class="d-flex mb-3">
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-            </div>
-            <p class="mb-4">"Agent Marketing has transformed how we handle our email campaigns. The AI content generator saves us hours every week, and the analytics help us refine our approach."</p>
-            <div class="d-flex align-items-center">
-              <img src="https://via.placeholder.com/50" alt="Customer" class="rounded-circle me-3">
-              <div>
-                <h6 class="mb-0">Sarah Johnson</h6>
-                <small class="text-muted">Marketing Director, TechCorp</small>
+    <div class="row g-4">
+      <div class="col-lg-4 col-md-6">
+        <div class="benefit-card">
+          <h4 class="text-white mb-3">Save Hours Every Week</h4>
+          <p class="text-white opacity-75">Say goodbye to tool overload, scattered workflows, and time-consuming setup. With Crux, you can launch full campaigns and analyze performance—all from one place, in a fraction of the time. It's marketing without the busywork.</p>
+        </div>
+      </div>
+      
+      <div class="col-lg-4 col-md-6">
+        <div class="benefit-card">
+          <h4 class="text-white mb-3">Cut Marketing Costs</h4>
+          <p class="text-white opacity-75">Crux replaces multiple tools, agencies, and extra overhead with one streamlined AI platform. You get high-quality, on-brand content and campaigns without the bloated software fees or agency retainers.</p>
+        </div>
+      </div>
+      
+      <div class="col-lg-4 col-md-6">
+        <div class="benefit-card">
+          <h4 class="text-white mb-3">Market with Confidence</h4>
+          <p class="text-white opacity-75">Crux learns your brand, audience, and goals over time—so your messaging stays consistent and improves with every campaign you run.</p>
+        </div>
+      </div>
+      
+      <div class="col-lg-8 col-md-12">
+        <div class="benefit-card">
+          <h4 class="text-white mb-3">Some relevant graphic/ screen shot... possible of chat window...gif of generating a landing page</h4>
+          <div class="bg-dark bg-opacity-25 rounded p-4">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-primary rounded-circle me-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-user text-white"></i>
               </div>
+              <div>
+                <strong class="text-white">You:</strong>
+                <span class="text-white opacity-75"> "Create a landing page for my new product launch"</span>
+              </div>
+            </div>
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-success rounded-circle me-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-robot text-white"></i>
+              </div>
+              <div>
+                <strong class="text-white">Scout:</strong>
+                <span class="text-white opacity-75"> "I'll create a high-converting landing page for your product. What's the product name and key benefit?"</span>
+              </div>
+            </div>
+            <div class="text-center">
+              <div class="spinner-border text-primary me-2" style="width: 1rem; height: 1rem;"></div>
+              <span class="text-white opacity-75 small">Generating landing page...</span>
             </div>
           </div>
         </div>
       </div>
       
-      <div class="col-lg-4 mb-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body p-4">
-            <div class="d-flex mb-3">
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-            </div>
-            <p class="mb-4">"The multi-entity feature is a game-changer for our agency. We can manage all our clients in one place while keeping their data separate. The social media scheduling tools are excellent too."</p>
-            <div class="d-flex align-items-center">
-              <img src="https://via.placeholder.com/50" alt="Customer" class="rounded-circle me-3">
-              <div>
-                <h6 class="mb-0">Michael Chen</h6>
-                <small class="text-muted">Founder, DigitalBoost Agency</small>
-              </div>
-            </div>
-          </div>
+      <div class="col-lg-4 col-md-6">
+        <div class="benefit-card">
+          <h4 class="text-white mb-3">Zero Learning Curve</h4>
+          <p class="text-white opacity-75">You don't need training, tutorials, or technical skills to hit your goals—like "create an email campaign for new leads"—and Crux handles the rest. It's marketing that works like a conversation, not a class.</p>
         </div>
       </div>
-      
-      <div class="col-lg-4 mb-4">
-        <div class="card h-100 border-0 shadow-sm">
-          <div class="card-body p-4">
-            <div class="d-flex mb-3">
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-              <i class="fas fa-star text-warning"></i>
-            </div>
-            <p class="mb-4">"As a small business owner, I needed an affordable solution that could handle all my marketing needs. Agent Marketing delivers exceptional value with its all-in-one approach."</p>
-            <div class="d-flex align-items-center">
-              <img src="https://via.placeholder.com/50" alt="Customer" class="rounded-circle me-3">
-              <div>
-                <h6 class="mb-0">Amanda Torres</h6>
-                <small class="text-muted">Owner, Coastal Boutique</small>
-              </div>
-            </div>
+    </div>
+  </div>
+</section>
+
+<!-- Comparison Table -->
+<section class="gradient-bg py-5">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="display-4 fw-bold text-white mb-3">Why Teams Are Choosing Crux Over HubSpot</h2>
+    </div>
+    
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="comparison-table">
+          <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+              <thead>
+                <tr class="table-header">
+                  <th scope="col" class="text-center" style="width: 40%;">Feature</th>
+                  <th scope="col" class="text-center" style="width: 30%;">HubSpot</th>
+                  <th scope="col" class="text-center" style="width: 30%;">Crux</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white">
+                <tr>
+                  <td class="fw-semibold">Email & Landing Pages</td>
+                  <td class="text-center"><i class="fas fa-check check-icon"></i></td>
+                  <td class="text-center"><i class="fas fa-check check-icon"></i></td>
+                </tr>
+                <tr class="bg-light">
+                  <td class="fw-semibold">Built-in AI Assistant</td>
+                  <td class="text-center"><i class="fas fa-times x-icon"></i></td>
+                  <td class="text-center"><i class="fas fa-check check-icon"></i></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Learns Your Business</td>
+                  <td class="text-center"><i class="fas fa-times x-icon"></i></td>
+                  <td class="text-center"><i class="fas fa-check check-icon"></i></td>
+                </tr>
+                <tr class="bg-light">
+                  <td class="fw-semibold">Time to First Campaign</td>
+                  <td class="text-center fw-bold">Days</td>
+                  <td class="text-center fw-bold text-success">Minutes</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Monthly Cost</td>
+                  <td class="text-center fw-bold">$$$</td>
+                  <td class="text-center fw-bold text-success">$</td>
+                </tr>
+                <tr class="bg-light">
+                  <td class="fw-semibold">Learning Curve</td>
+                  <td class="text-center fw-bold text-warning">Steep</td>
+                  <td class="text-center fw-bold text-success">None</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Works via Chat</td>
+                  <td class="text-center"><i class="fas fa-times x-icon"></i></td>
+                  <td class="text-center"><i class="fas fa-check check-icon"></i></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -211,12 +245,11 @@
   </div>
 </section>
 
-<!-- CTA Section -->
-<section class="py-5 hero-section">
+<!-- Final CTA -->
+<section class="dark-gradient-bg py-5">
   <div class="container text-center">
-    <h2 class="display-5 fw-bold mb-3">Ready to Transform Your Marketing?</h2>
-    <p class="lead mb-4">Join thousands of businesses already using Agent Marketing to grow their audience and increase conversions.</p>
-    <a href="<%= "https://app.#{ENV['APPLICATION_HOST'] || 'yourdomain.com'}/users/sign_up" %>" class="btn btn-light btn-lg px-5">Start Your Free Trial</a>
-    <p class="mt-3 text-white-50">No credit card required. 14-day free trial.</p>
+    <h2 class="display-4 fw-bold text-white mb-4">Ready to simplify your marketing and save thousands?</h2>
+    <p class="lead text-white mb-5 opacity-90">Try Crux free—get your first campaign live in minutes.</p>
+    <a href="<%= "https://app.#{ENV['APPLICATION_HOST'] || 'cruxmarketing.ai'}/users/sign_up" %>" class="btn btn-primary btn-lg px-5 py-3">Launch a Campaign</a>
   </div>
 </section>

@@ -1,62 +1,120 @@
-<div class="container">
-  <div class="row justify-content-center mt-5">
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header">
-          <h2>Sign up</h2>
-        </div>
-        <div class="card-body">
-          <%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
-            <%= render "devise/shared/error_messages", resource: resource %>
+<!-- Sign Up Page with Crux Marketing Theme -->
+<div class="min-vh-100 d-flex align-items-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-6 col-md-8">
+        <div class="card shadow-lg border-0" style="backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.95); border-radius: 1rem;">
+          <div class="card-body p-5">
+            <!-- Logo/Brand -->
+            <div class="text-center mb-4">
+              <h3 class="fw-bold mb-2 d-flex align-items-center justify-content-center">
+                <i class="fas fa-mountain me-2 text-primary"></i>
+                Crux Marketing
+              </h3>
+              <p class="text-muted">Get started with Scout, your AI marketing agent</p>
+            </div>
 
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <%= f.label :first_name, class: "form-label" %><br />
-                  <%= f.text_field :first_name, autofocus: true, class: "form-control" %>
+            <%= form_for(resource, as: resource_name, url: registration_path(resource_name), local: true, html: { class: "needs-validation", novalidate: true }) do |f| %>
+              <%= render "devise/shared/error_messages", resource: resource %>
+
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <%= f.label :first_name, "First Name", class: "form-label fw-semibold" %>
+                  <%= f.text_field :first_name, 
+                      autofocus: true, 
+                      class: "form-control form-control-lg", 
+                      style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
+                      placeholder: "John" %>
+                </div>
+                <div class="col-md-6">
+                  <%= f.label :last_name, "Last Name", class: "form-label fw-semibold" %>
+                  <%= f.text_field :last_name, 
+                      class: "form-control form-control-lg",
+                      style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
+                      placeholder: "Smith" %>
                 </div>
               </div>
-              <div class="col-md-6">
-                <div class="form-group">
-                  <%= f.label :last_name, class: "form-label" %><br />
-                  <%= f.text_field :last_name, class: "form-control" %>
-                </div>
+
+              <div class="mb-4">
+                <%= f.label :email, "Email Address", class: "form-label fw-semibold" %>
+                <%= f.email_field :email, 
+                    autocomplete: "email", 
+                    class: "form-control form-control-lg",
+                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
+                    placeholder: "john@company.com" %>
               </div>
-            </div>
 
-            <div class="mb-3">
-              <%= f.label :email, class: "form-label" %><br />
-              <%= f.email_field :email, autocomplete: "email", class: "form-control" %>
-            </div>
+              <!-- Hidden role field - default to marketer -->
+              <%= f.hidden_field :role, value: "marketer" %>
 
-            <div class="mb-3">
-              <%= f.label :role, class: "form-label" %><br />
-              <%= f.select :role, User::ROLES, {}, class: "form-select" %>
-            </div>
+              <div class="mb-4">
+                <%= f.label :password, class: "form-label fw-semibold" %>
+                <% if @minimum_password_length %>
+                  <small class="text-muted">(<%= @minimum_password_length %> characters minimum)</small>
+                <% end %>
+                <%= f.password_field :password, 
+                    autocomplete: "new-password", 
+                    class: "form-control form-control-lg",
+                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
+                    placeholder: "Create a secure password" %>
+              </div>
 
-            <div class="mb-3">
-              <%= f.label :password, class: "form-label" %>
-              <% if @minimum_password_length %>
-              <em>(<%= @minimum_password_length %> characters minimum)</em>
-              <% end %><br />
-              <%= f.password_field :password, autocomplete: "new-password", class: "form-control" %>
-            </div>
+              <div class="mb-4">
+                <%= f.label :password_confirmation, "Confirm Password", class: "form-label fw-semibold" %>
+                <%= f.password_field :password_confirmation, 
+                    autocomplete: "new-password", 
+                    class: "form-control form-control-lg",
+                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
+                    placeholder: "Confirm your password" %>
+              </div>
 
-            <div class="mb-3">
-              <%= f.label :password_confirmation, class: "form-label" %><br />
-              <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "form-control" %>
-            </div>
+              <div class="d-grid mb-4">
+                <%= f.submit "Create Account & Meet Scout", 
+                    class: "btn btn-lg fw-semibold", 
+                    style: "background: linear-gradient(45deg, #ff6b6b, #ff8e8e); border: none; border-radius: 0.75rem; color: white; padding: 0.75rem 2rem;" %>
+              </div>
+            <% end %>
 
-            <div class="d-grid gap-2">
-              <%= f.submit "Sign up", class: "btn btn-primary" %>
+            <!-- Links -->
+            <hr class="my-4">
+            
+            <div class="text-center">
+              <span class="text-muted">Already have an account?</span>
+              <%= link_to "Log in here", new_session_path(resource_name), class: "text-decoration-none fw-semibold ms-1", style: "color: #8b5cf6;" %>
             </div>
-          <% end %>
-
-          <div class="mt-3">
-            <%= render "devise/shared/links" %>
           </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center mt-4">
+          <p class="text-white opacity-75 small">
+            By signing up, you agree to our 
+            <a href="#" class="text-white text-decoration-none">Terms of Service</a> and 
+            <a href="#" class="text-white text-decoration-none">Privacy Policy</a>
+          </p>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<style>
+  .form-control:focus {
+    border-color: #8b5cf6 !important;
+    box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25) !important;
+  }
+  
+  .btn:hover {
+    background: linear-gradient(45deg, #ff5252, #ff7979) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255, 107, 107, 0.3) !important;
+  }
+  
+  .form-control.is-invalid {
+    border-color: #dc3545 !important;
+  }
+  
+  .form-control.is-valid {
+    border-color: #28a745 !important;
+  }
+</style>
