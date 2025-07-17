@@ -17,22 +17,21 @@
             <%= form_for(resource, as: resource_name, url: registration_path(resource_name), local: true, html: { class: "needs-validation", novalidate: true }) do |f| %>
               <%= render "devise/shared/error_messages", resource: resource %>
 
-              <div class="row mb-4">
-                <div class="col-md-6">
-                  <%= f.label :first_name, "First Name", class: "form-label fw-semibold" %>
-                  <%= f.text_field :first_name, 
-                      autofocus: true, 
-                      class: "form-control form-control-lg", 
-                      style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
-                      placeholder: "John" %>
-                </div>
-                <div class="col-md-6">
-                  <%= f.label :last_name, "Last Name", class: "form-label fw-semibold" %>
-                  <%= f.text_field :last_name, 
-                      class: "form-control form-control-lg",
-                      style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
-                      placeholder: "Smith" %>
-                </div>
+              <div class="mb-4">
+                <%= f.label :full_name, "Full Name", class: "form-label fw-semibold" %>
+                <%= f.text_field :full_name, 
+                    autofocus: true, 
+                    class: "form-control form-control-lg", 
+                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
+                    placeholder: "John Smith" %>
+              </div>
+
+              <div class="mb-4">
+                <%= f.label :business_name, "Business Name", class: "form-label fw-semibold" %>
+                <%= f.text_field :business_name, 
+                    class: "form-control form-control-lg", 
+                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
+                    placeholder: "Acme Corporation" %>
               </div>
 
               <div class="mb-4">

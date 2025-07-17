@@ -1,128 +1,91 @@
 class OnboardingScoutService
-  def initialize(user, session_id)
+  def initialize(user, session_id, conversation_history = [])
     @user = user
     @session_id = session_id
+    @conversation_history = conversation_history
     @claude_service = ClaudeService.new
+    @data_extraction_service = OnboardingDataExtractionService.new(user)
   end
   
   def process_message(user_message)
-    # Get conversation history
-    conversation_history = get_conversation_history
+    # First, extract and save any business data from the user's message
+    extraction_result = @data_extraction_service.extract_and_save_business_data(
+      user_message, 
+      @conversation_history
+    )
     
-    # Get current business profile progress
-    profile_data = get_current_profile_data
+    # Build the conversation prompt with current profile context
+    system_prompt = build_conversation_prompt(extraction_result)
+    conversation_messages = build_conversation_messages(@conversation_history, user_message)
     
-    # Build the prompt for Scout
-    messages = build_onboarding_messages(conversation_history, profile_data, user_message)
-    
-    # Get response from Claude
-    claude_response = @claude_service.chat(messages)
-    assistant_message = claude_response.dig('content', 0, 'text') || 
-                       "I'm having trouble processing that. Could you tell me more about your business?"
-    
-    # Extract and store business data from the conversation
-    extracted_data = extract_business_data(conversation_history + [
-      { role: 'user', content: user_message },
-      { role: 'assistant', content: assistant_message }
-    ])
-    
-    if extracted_data.any?
-      update_business_profile(extracted_data)
+    # Get Scout's conversational response
+    begin
+      assistant_message = @claude_service.send_message(system_prompt, conversation_messages)
+    rescue => e
+      Rails.logger.error "Claude API error: #{e.message}"
+      assistant_message = "I'm having trouble processing that right now. Could you tell me more about your business?"
     end
     
-    # Check if onboarding is complete
-    profile = @user.business_profile || @user.build_business_profile
-    completed = onboarding_complete?(profile)
+    # Check if onboarding is complete based on extracted data
+    completed = extraction_result[:missing_fields].empty?
+    
+    # Log extraction results for debugging
+    Rails.logger.info "Extraction result: #{extraction_result[:extracted_data]}" if extraction_result[:extracted_data].any?
+    Rails.logger.info "Onboarding completeness: #{extraction_result[:completeness_percentage]}%"
+    Rails.logger.info "Full profile completeness: #{@data_extraction_service.calculate_full_profile_completeness_percentage}%"
+    Rails.logger.info "Missing required fields: #{extraction_result[:missing_fields].join(', ')}" if extraction_result[:missing_fields].any?
     
     {
       message: assistant_message,
       completed: completed,
-      business_profile_completed: completed
+      business_profile_completed: completed,
+      extracted_data: extraction_result[:extracted_data],
+      completeness_percentage: extraction_result[:completeness_percentage]
     }
   end
   
   private
   
-  def get_conversation_history
-    # Get from session (stored in controller)
-    Rails.application.routes.default_url_options = { host: 'localhost', port: 3000 } if Rails.env.development?
-    session_data = Rails.cache.read("onboarding_#{@session_id}") || []
+  def build_conversation_prompt(extraction_result)
+    current_profile = extraction_result[:current_profile]
+    missing_fields = extraction_result[:missing_fields]
+    completeness = extraction_result[:completeness_percentage]
+    business_name = current_profile[:name] || @user.entities.first&.name || "your business"
     
-    # For now, we'll rely on the controller's session storage
-    # This is a simplification - in production you might want to store in database
-    []
-  end
-  
-  def get_current_profile_data
-    profile = @user.business_profile
-    return {} unless profile
-    
-    {
-      name: profile.name,
-      industry: profile.industry,
-      description: profile.description,
-      founded_year: profile.founded_year,
-      website: profile.website,
-      values: profile.values,
-      target_audience: profile.target_audience,
-      tone_of_voice: profile.tone_of_voice
-    }.compact
-  end
-  
-  def build_onboarding_messages(conversation_history, profile_data, user_message)
-    system_prompt = build_system_prompt(profile_data)
-    
-    messages = [{ role: 'system', content: system_prompt }]
-    
-    # Add conversation history
-    conversation_history.each do |msg|
-      messages << { role: msg[:role], content: msg[:content] }
+    completion_status = if missing_fields.empty?
+      "COMPLETE - All required information collected!"
+    else
+      "#{completeness}% complete - Still need: #{missing_fields.join(', ')}"
     end
-    
-    # Add current user message
-    messages << { role: 'user', content: user_message }
-    
-    messages
-  end
-  
-  def build_system_prompt(profile_data)
-    completed_fields = profile_data.keys.map(&:to_s)
     
     prompt = <<~PROMPT
       You are Scout, the AI marketing agent for Crux Marketing. You're conducting a friendly, conversational onboarding interview with #{@user.first_name} to learn about their business.
 
-      Your goal is to collect the following information naturally through conversation:
-      - Business name
-      - Industry/sector
-      - Business description (what they do, their mission)
-      - Target audience (who are their customers)
-      - Founded year (optional)
-      - Website URL (optional)  
-      - Company values (optional)
-      - Tone of voice preference (professional, casual, friendly, etc.)
+      BUSINESS PROFILE STATUS: #{completion_status}
+      Business Name: #{business_name}
+
+      CURRENT PROFILE DATA:
+      #{format_profile_data(current_profile)}
+
+      YOUR CONVERSATION GOALS:
+      #{build_conversation_goals(missing_fields, current_profile)}
 
       CONVERSATION STYLE:
       - Be warm, friendly, and encouraging
-      - Ask ONE question at a time 
+      - Ask ONE question at a time to avoid overwhelming them
       - Keep responses short and conversational (2-3 sentences max)
       - Use emojis sparingly but appropriately
       - Acknowledge their answers before moving to the next question
-      - If they give incomplete answers, gently probe for more details
-      - Make it feel like a conversation with a knowledgeable friend, not an interrogation
-
-      CURRENT PROGRESS:
-      Already collected: #{completed_fields.any? ? completed_fields.join(', ') : 'none yet'}
-      Still needed: #{missing_fields(completed_fields).join(', ')}
+      - Show genuine interest in their business
+      - Make it feel like a conversation with a knowledgeable friend
+      - Build excitement about using Crux Marketing
 
       IMPORTANT RULES:
-      1. Only ask about information you haven't collected yet
-      2. If you have all required info (name, industry, description, target_audience), end with congratulations and mention they're ready to start creating campaigns
-      3. Don't ask for the same information twice
-      4. If they ask about features or capabilities, briefly explain but guide back to completing their profile
-      5. Stay focused on the onboarding process
-
-      Current profile data collected:
-      #{profile_data.map { |k, v| "#{k}: #{v}" }.join("\n")}
+      1. If all required info is collected, congratulate them and let them know they're ready to start creating campaigns
+      2. If they provide new information, acknowledge it specifically before asking the next question
+      3. If they ask about Crux Marketing features, briefly explain but guide back to completing their profile
+      4. Stay focused on the onboarding process
+      5. Don't repeat questions about information already collected
 
       Remember: You're building trust and getting them excited about using Crux Marketing to grow their business!
     PROMPT
@@ -130,96 +93,41 @@ class OnboardingScoutService
     prompt
   end
   
-  def missing_fields(completed_fields)
-    required_fields = %w[name industry description target_audience]
-    required_fields - completed_fields
-  end
-  
-  def extract_business_data(conversation)
-    # Use Claude to extract structured business data from the conversation
-    extraction_prompt = build_extraction_prompt(conversation)
-    
-    begin
-      claude_response = @claude_service.chat([
-        { role: 'system', content: extraction_prompt }
-      ])
-      
-      response_text = claude_response.dig('content', 0, 'text') || '{}'
-      
-      # Parse JSON response
-      JSON.parse(response_text)
-    rescue JSON::ParserError => e
-      Rails.logger.error "Failed to parse business data extraction: #{e.message}"
-      {}
-    rescue => e
-      Rails.logger.error "Business data extraction error: #{e.message}"
-      {}
+  def format_profile_data(profile_data)
+    if profile_data.empty?
+      "No profile data collected yet (just business name)"
+    else
+      profile_data.map { |k, v| "- #{k.to_s.humanize}: #{v}" }.join("\n")
     end
   end
   
-  def build_extraction_prompt(conversation)
-    conversation_text = conversation.map { |msg| "#{msg[:role]}: #{msg[:content]}" }.join("\n\n")
-    
-    <<~PROMPT
-      Extract business profile information from this onboarding conversation. Return ONLY a JSON object with any information you can confidently extract. Use null for missing information.
-
-      Required fields to look for:
-      - name: Business name
-      - industry: Industry or sector  
-      - description: What the business does, their mission
-      - target_audience: Who their customers are
-      - founded_year: Year business was founded (number)
-      - website: Website URL
-      - values: Company values or principles
-      - tone_of_voice: Preferred communication style
-
-      IMPORTANT: 
-      - Only include information explicitly mentioned by the user
-      - Don't make assumptions or fill in details not provided
-      - Return valid JSON only, no additional text
-      - Use exact phrases when possible
-
-      CONVERSATION:
-      #{conversation_text}
-
-      JSON OUTPUT:
-    PROMPT
+  def build_conversation_goals(missing_fields, current_profile)
+    if missing_fields.empty?
+      "🎉 ONBOARDING COMPLETE! Thank them and let them know they're ready to start creating campaigns."
+    elsif missing_fields.include?('industry') 
+      "Focus on understanding what industry they're in and what their business does."
+    elsif missing_fields.include?('description')
+      "Learn more about what their business does, their mission, and what makes them unique."
+    elsif missing_fields.include?('target_audience')
+      "Understand who their ideal customers are and who they're trying to reach."
+    else
+      "Ask about any missing information to complete their profile."
+    end
   end
   
-  def update_business_profile(extracted_data)
-    profile = @user.business_profile || @user.build_business_profile
+  def build_conversation_messages(conversation_history, user_message)
+    # Format messages for Claude API - use only the last few to avoid token limits
+    messages = []
     
-    extracted_data.each do |key, value|
-      next if value.nil? || value.to_s.strip.empty?
-      
-      case key.to_s
-      when 'name'
-        profile.name = value
-      when 'industry'
-        profile.industry = value
-      when 'description'
-        profile.description = value
-      when 'target_audience'
-        profile.target_audience = value
-      when 'founded_year'
-        profile.founded_year = value.to_i if value.to_s.match?(/\A\d{4}\z/)
-      when 'website'
-        profile.website = value
-      when 'values'
-        profile.values = value
-      when 'tone_of_voice'
-        profile.tone_of_voice = value
-      end
+    # Add recent conversation history
+    recent_history = conversation_history.last(6) # Keep conversation focused
+    recent_history.each do |msg|
+      messages << { role: msg[:role], content: msg[:content] }
     end
     
-    profile.save!
-  end
-  
-  def onboarding_complete?(profile)
-    return false unless profile.persisted?
+    # Add current user message
+    messages << { role: 'user', content: user_message }
     
-    # Check if we have the minimum required information
-    required_fields = %w[name industry description target_audience]
-    required_fields.all? { |field| profile.send(field).present? }
+    messages
   end
 end 
