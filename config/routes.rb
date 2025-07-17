@@ -211,6 +211,7 @@ Rails.application.routes.draw do
   # Scout AI Assistant routes
   get 'scout', to: 'scout#index'
   post 'scout/chat', to: 'scout#chat'
+  post 'scout/chat_stream', to: 'scout#chat_stream'
   delete 'scout/conversation', to: 'scout#clear_conversation'
   get 'scout/export', to: 'scout#conversation_export'
 

@@ -155,8 +155,8 @@ class ScoutDataRegistry
   }.freeze
   
   class << self
-    # Get all available object types
-    def available_objects
+    # Get list of available object types
+    def available_object_types
       AVAILABLE_OBJECTS.keys
     end
     
@@ -243,6 +243,97 @@ class ScoutDataRegistry
     def scope_field(object_type)
       config = object_config(object_type)
       config ? config[:scoped_by] : nil
+    end
+
+    # Dynamic schema discovery methods
+    def get_actual_schema(object_type)
+      return nil unless queryable?(object_type)
+      
+      config = AVAILABLE_OBJECTS[object_type]
+      model_class = config[:model].constantize
+      
+      {
+        object_type: object_type,
+        model: config[:model],
+        description: config[:description],
+        actual_columns: model_class.column_names,
+        available_fields: get_available_fields(model_class),
+        relationships: get_actual_relationships(model_class),
+        sample_data_exists: model_class.exists?,
+        record_count: model_class.count,
+        scoped_by: config[:scoped_by],
+        creatable: config[:creatable]
+      }
+    end
+    
+    def get_available_fields(model_class)
+      # Get actual columns that exist in the database
+      columns = model_class.column_names
+      
+      # Filter out system columns that aren't useful for queries
+      excluded_columns = %w[id created_at updated_at encrypted_password reset_password_token 
+                           reset_password_sent_at remember_created_at confirmation_token 
+                           confirmed_at confirmation_sent_at unconfirmed_email]
+      
+      useful_columns = columns - excluded_columns
+      
+      # Add created_at and updated_at back if they exist (these are useful for filtering)
+      useful_columns += (columns & %w[created_at updated_at])
+      
+      useful_columns.sort
+    end
+    
+    def get_actual_relationships(model_class)
+      # Get actual ActiveRecord associations
+      associations = model_class.reflections.keys
+      
+      # Filter to common relationship types
+      associations.select do |assoc|
+        reflection = model_class.reflections[assoc]
+        %w[belongs_to has_many has_one].include?(reflection.macro.to_s)
+      end.sort
+    end
+    
+    def validate_field_exists(object_type, field)
+      return false unless queryable?(object_type)
+      
+      config = AVAILABLE_OBJECTS[object_type]
+      model_class = config[:model].constantize
+      
+      model_class.column_names.include?(field.to_s)
+    end
+    
+    def get_safe_order_field(object_type)
+      return 'id' unless queryable?(object_type)
+      
+      config = AVAILABLE_OBJECTS[object_type]
+      model_class = config[:model].constantize
+      columns = model_class.column_names
+      
+      # Preferred order: created_at, updated_at, id
+      preferred_fields = %w[created_at updated_at id]
+      
+      preferred_fields.each do |field|
+        return field if columns.include?(field)
+      end
+      
+      # Fallback to first column if none of the preferred exist
+      columns.first || 'id'
+    end
+    
+    def discover_all_schemas
+      schemas = {}
+      
+      AVAILABLE_OBJECTS.each do |object_type, config|
+        begin
+          schemas[object_type] = get_actual_schema(object_type)
+        rescue => e
+          Rails.logger.error "Failed to discover schema for #{object_type}: #{e.message}"
+          schemas[object_type] = { error: e.message }
+        end
+      end
+      
+      schemas
     end
   end
 end 

@@ -26,12 +26,26 @@ class UniversalQueryEngine
         metadata: generate_metadata(results, params)
       }
     rescue => e
-      Rails.logger.error "UniversalQueryEngine error: #{e.message}"
+      Rails.logger.error "UniversalQueryEngine error: #{e.class}: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
+      
+      # Provide specific guidance for column errors
+      error_message = if e.message.include?('column') && e.message.include?('does not exist')
+        # Extract the problematic column name if possible
+        column_match = e.message.match(/column [\"']?([^\"'\s]+)[\"']? does not exist/)
+        problematic_column = column_match ? column_match[1] : 'unknown column'
+        
+        "Database column '#{problematic_column}' does not exist. Use get_schema('#{params[:objects]&.first}') to discover available fields."
+      elsif e.message.include?('PG::UndefinedColumn')
+        "Database schema error: #{e.message}. Use get_schema() to discover the correct field names for this object type."
+      else
+        "Query failed: #{e.message}"
+      end
       
       {
         success: false,
-        error: "Query failed: #{e.message}",
+        error: error_message,
+        suggestion: "Try using get_schema('#{params[:objects]&.first}') to see available fields",
         data: results  # Return partial results if any
       }
     end
@@ -143,25 +157,26 @@ class UniversalQueryEngine
   end
   
   def apply_ordering(query, order_by, object_config)
+    model_class = object_config[:model].constantize
+    available_columns = model_class.column_names
+    
     if order_by.present?
       # Parse order_by (e.g., "created_at desc" or "name asc")
       field, direction = order_by.to_s.split(' ')
       direction = direction&.downcase == 'asc' ? :asc : :desc
       
-      if object_config[:queryable_fields].include?(field)
+      # Check if the requested field actually exists
+      if available_columns.include?(field)
         query.order(field => direction)
       else
-        query.order(created_at: :desc)  # Default fallback
+        Rails.logger.warn "Requested order field '#{field}' does not exist for #{object_config[:model]}, using safe fallback"
+        safe_field = ScoutDataRegistry.get_safe_order_field(object_config[:model].underscore.pluralize)
+        query.order(safe_field => direction)
       end
     else
-      # Default ordering
-      if object_config[:queryable_fields].include?('created_at')
-        query.order(created_at: :desc)
-      elsif object_config[:queryable_fields].include?('sent_at')
-        query.order(sent_at: :desc)
-      else
-        query.order(:id)
-      end
+      # Use safe default ordering
+      safe_field = ScoutDataRegistry.get_safe_order_field(object_config[:model].underscore.pluralize)
+      query.order(safe_field => :desc)
     end
   end
   
@@ -262,8 +277,12 @@ class UniversalQueryEngine
     total_sent = record.email_deliveries.count
     return 0 if total_sent == 0
     
-    total_opened = record.email_deliveries.where.not(opened_at: nil).count
-    ((total_opened.to_f / total_sent) * 100).round(2)
+    if EmailDelivery.column_names.include?('opened_at')
+      total_opened = record.email_deliveries.where.not(opened_at: nil).count
+      ((total_opened.to_f / total_sent) * 100).round(2)
+    else
+      0
+    end
   end
   
   def calculate_click_rate(record)
@@ -272,8 +291,12 @@ class UniversalQueryEngine
     total_sent = record.email_deliveries.count
     return 0 if total_sent == 0
     
-    total_clicked = record.email_deliveries.where.not(clicked_at: nil).count
-    ((total_clicked.to_f / total_sent) * 100).round(2)
+    if EmailDelivery.column_names.include?('clicked_at')
+      total_clicked = record.email_deliveries.where.not(clicked_at: nil).count
+      ((total_clicked.to_f / total_sent) * 100).round(2)
+    else
+      0
+    end
   end
   
   def calculate_unsubscribe_rate(record)
@@ -282,8 +305,12 @@ class UniversalQueryEngine
     total_sent = record.email_deliveries.count
     return 0 if total_sent == 0
     
-    total_unsubscribed = record.email_deliveries.where.not(unsubscribed_at: nil).count
-    ((total_unsubscribed.to_f / total_sent) * 100).round(2)
+    if EmailDelivery.column_names.include?('unsubscribed_at')
+      total_unsubscribed = record.email_deliveries.where.not(unsubscribed_at: nil).count
+      ((total_unsubscribed.to_f / total_sent) * 100).round(2)
+    else
+      0
+    end
   end
   
   def calculate_email_totals(record, metric)
@@ -293,13 +320,31 @@ class UniversalQueryEngine
     when 'total_sent'
       record.email_deliveries.count
     when 'total_delivered'
-      record.email_deliveries.where(bounced_at: nil).count
+      # Check if bounced_at column exists before using it
+      if EmailDelivery.column_names.include?('bounced_at')
+        record.email_deliveries.where(bounced_at: nil).count
+      else
+        # Fallback: use sent deliveries as delivered count
+        record.email_deliveries.where.not(sent_at: nil).count
+      end
     when 'total_opened'
-      record.email_deliveries.where.not(opened_at: nil).count
+      if EmailDelivery.column_names.include?('opened_at')
+        record.email_deliveries.where.not(opened_at: nil).count
+      else
+        0
+      end
     when 'total_clicked'
-      record.email_deliveries.where.not(clicked_at: nil).count
+      if EmailDelivery.column_names.include?('clicked_at')
+        record.email_deliveries.where.not(clicked_at: nil).count
+      else
+        0
+      end
     when 'total_unsubscribed'
-      record.email_deliveries.where.not(unsubscribed_at: nil).count
+      if EmailDelivery.column_names.include?('unsubscribed_at')
+        record.email_deliveries.where.not(unsubscribed_at: nil).count
+      else
+        0
+      end
     else
       0
     end

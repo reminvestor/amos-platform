@@ -36,13 +36,9 @@ class ScoutController < ApplicationController
       save_scout_message('user', user_message)
       Rails.logger.info "Scout: Saved user message"
       
-      # Get conversation history
-      conversation_history = scout_conversation_history
-      Rails.logger.info "Scout: Retrieved conversation history (#{conversation_history.length} messages)"
-      
-      # Use tool-enabled Scout service
-      tool_service = ScoutConversationWithToolsService.new(current_user, current_entity, conversation_history)
-      response = tool_service.process_message_with_tools(user_message)
+      # Use the new generic tools service
+      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity)
+      response = generic_tools_service.process_message_with_tools(user_message)
       
       Rails.logger.info "Scout: Got response - tools_used: #{response[:tool_calls_made]}, success_count: #{response[:success_count]}"
       
@@ -74,6 +70,66 @@ class ScoutController < ApplicationController
       }, status: 500
     end
   end
+
+  def chat_stream
+    @session_id = session[:scout_session_id] ||= SecureRandom.uuid
+    user_message = params[:message]&.strip
+    
+    Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
+    
+    if user_message.blank?
+      render json: { error: 'Message cannot be empty' }, status: 400
+      return
+    end
+
+    response.headers['Content-Type'] = 'text/plain'
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Connection'] = 'keep-alive'
+    
+    begin
+      # Save user message
+      save_scout_message('user', user_message)
+      stream_update("💬 Message received")
+      
+      # Get conversation history
+      conversation_history = scout_conversation_history
+      stream_update("📚 Loading conversation history (#{conversation_history.length} messages)")
+      
+      # Use generic tools service with streaming updates
+      stream_update("🧠 Analyzing your request...")
+      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity)
+      
+      # Process message with streaming progress updates
+      final_response = generic_tools_service.process_message_with_tools_streaming(
+        user_message, 
+        ->(message) { stream_update(message) }  # Pass streaming callback
+      )
+      
+      # Save Scout's response
+      save_scout_message('assistant', final_response[:message])
+      
+      # Send final response
+      stream_update("✅ Complete")
+      stream_final_response(final_response)
+      
+    rescue StandardError => e
+      Rails.logger.error "Scout streaming chat error: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      
+      # Fallback response
+      fallback_message = "I apologize, but I'm experiencing some technical difficulties. Please try again, or contact support if the issue persists."
+      save_scout_message('assistant', fallback_message)
+      
+      stream_update("❌ Error occurred")
+      stream_final_response({
+        message: fallback_message,
+        error: true,
+        tools_used: false
+      })
+    ensure
+      response.stream.close
+    end
+  end
   
   def clear_conversation
     session_id = session[:scout_session_id]
@@ -96,6 +152,14 @@ class ScoutController < ApplicationController
   end
   
   private
+
+  def stream_update(message)
+    response.stream.write("data: #{JSON.generate({ type: 'update', message: message })}\n\n")
+  end
+
+  def stream_final_response(response_data)
+    response.stream.write("data: #{JSON.generate({ type: 'response', data: response_data })}\n\n")
+  end
   
   def current_entity
     @current_entity ||= current_user.entity_users.first&.entity
