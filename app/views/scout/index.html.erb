@@ -1,0 +1,529 @@
+<div id="workspace" class="workspace conversation-mode" data-controller="workspace">
+  <!-- Collapsed Side Navigation -->
+  <nav class="side-nav collapsed" data-workspace-target="sideNav">
+    <div class="side-nav-header">
+      <div class="brand">
+        <i class="fas fa-cube text-primary"></i>
+        <span class="brand-text">Crux</span>
+      </div>
+      <button class="nav-toggle" data-action="click->workspace#toggleSideNav" data-workspace-target="navToggle">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+    
+    <div class="nav-items">
+      <div class="nav-section">
+        <div class="nav-item active" data-action="click->workspace#goToConversation">
+          <i class="fas fa-robot"></i>
+          <span class="nav-text">Scout AI</span>
+        </div>
+        <div class="nav-item" data-template-type="campaign">
+          <i class="fas fa-envelope"></i>
+          <span class="nav-text">Campaigns</span>
+        </div>
+        <div class="nav-item" data-template-type="landing_page">
+          <i class="fas fa-globe"></i>
+          <span class="nav-text">Landing Pages</span>
+        </div>
+        <div class="nav-item" data-template-type="analytics">
+          <i class="fas fa-chart-bar"></i>
+          <span class="nav-text">Analytics</span>
+        </div>
+        <div class="nav-item">
+          <i class="fas fa-users"></i>
+          <span class="nav-text">Contacts</span>
+        </div>
+        <div class="nav-item">
+          <i class="fas fa-layer-group"></i>
+          <span class="nav-text">Groups</span>
+        </div>
+        <div class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span class="nav-text">Templates</span>
+        </div>
+        <div class="nav-item">
+          <i class="fas fa-share-alt"></i>
+          <span class="nav-text">Social Media</span>
+        </div>
+        <div class="nav-item">
+          <i class="fas fa-link"></i>
+          <span class="nav-text">Connected Accounts</span>
+        </div>
+        <div class="nav-item">
+          <i class="fas fa-tools"></i>
+          <span class="nav-text">AI Tools</span>
+        </div>
+        <div class="nav-item">
+          <i class="fas fa-building"></i>
+          <span class="nav-text">Business Profile</span>
+        </div>
+        <div class="nav-item">
+          <i class="fas fa-spider"></i>
+          <span class="nav-text">Web Crawlers</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Area - Full Width Chat -->
+  <main class="main-content" data-workspace-target="mainContent">
+    <div class="conversation-container h-100" data-workspace-target="conversationContainer">
+      
+      <!-- Scout Chat Interface - Full Width -->
+      <div class="scout-chat-area">
+        
+        <!-- Welcome Header -->
+        <div class="scout-welcome">
+          <h1 class="welcome-title">What can I help you with today?</h1>
+          <p class="welcome-subtitle">I'm Scout, your AI marketing assistant. I can help with campaigns, landing pages, analytics, and more.</p>
+        </div>
+        
+        <!-- Chat Messages Container -->
+        <div class="scout-messages" id="chat-messages">
+          <% @conversation_history.each do |message| %>
+            <div class="message-wrapper <%= message[:role] == 'user' ? 'user-message' : 'assistant-message' %>">
+              <div class="message-bubble">
+                <div class="message-content">
+                  <%= simple_format(message[:content]) %>
+                </div>
+                <small class="message-time">
+                  <%= Time.parse(message[:timestamp]).strftime("%H:%M") rescue message[:timestamp] %>
+                </small>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Message Input -->
+        <div class="scout-input">
+          <form id="message-form" class="input-form">
+            <input type="text" id="message-input" class="message-input" placeholder="Type your message..." autocomplete="off">
+            <button type="submit" class="send-button" id="send-button">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </form>
+          
+          <!-- Tool Activity Indicator -->
+          <div id="tool-activity" class="tool-activity" style="display: none;">
+            <div class="activity-content">
+              <div class="spinner"></div>
+              <small id="tool-status">Scout is analyzing your data...</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- CSS for Clean Scout Interface -->
+<style>
+/* Force override workspace.css with higher specificity */
+#workspace .scout-chat-area {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  width: 100% !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+#workspace .scout-welcome {
+  text-align: center !important;
+  padding: 3rem 2rem 2rem !important;
+  color: white !important;
+}
+
+#workspace .welcome-title {
+  font-size: 2.5rem !important;
+  font-weight: 300 !important;
+  margin-bottom: 1rem !important;
+  color: white !important;
+}
+
+#workspace .welcome-subtitle {
+  font-size: 1.1rem !important;
+  opacity: 0.9 !important;
+  margin-bottom: 0 !important;
+  color: white !important;
+}
+
+#workspace .scout-messages {
+  flex: 1 !important;
+  padding: 1rem 2rem !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1rem !important;
+  background: none !important;
+  background-color: transparent !important;
+}
+
+#workspace .message-wrapper {
+  display: flex !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: none !important;
+  background-color: transparent !important;
+}
+
+#workspace .message-wrapper.user-message {
+  justify-content: flex-end !important;
+}
+
+#workspace .message-wrapper.assistant-message {
+  justify-content: flex-start !important;
+}
+
+#workspace .message-bubble {
+  max-width: 70% !important;
+  padding: 1rem 1.25rem !important;
+  border-radius: 1.5rem !important;
+  position: relative !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+#workspace .user-message .message-bubble {
+  background: rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+#workspace .assistant-message .message-bubble {
+  background: white !important;
+  background-color: white !important;
+  color: #333 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+#workspace .message-content {
+  margin-bottom: 0.5rem !important;
+  line-height: 1.5 !important;
+  background: none !important;
+  background-color: transparent !important;
+}
+
+#workspace .message-content p {
+  margin: 0 !important;
+  background: none !important;
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+#workspace .message-time {
+  opacity: 0.7 !important;
+  font-size: 0.75rem !important;
+  display: block !important;
+  background: none !important;
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+#workspace .scout-input {
+  padding: 1.5rem 2rem 2rem !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+#workspace .input-form {
+  display: flex !important;
+  gap: 0.75rem !important;
+  align-items: center !important;
+}
+
+#workspace .message-input {
+  flex: 1 !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: none !important;
+  border-radius: 25px !important;
+  padding: 12px 20px !important;
+  font-size: 1rem !important;
+  outline: none !important;
+  transition: all 0.3s ease !important;
+}
+
+#workspace .message-input:focus {
+  background: white !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+#workspace .send-button {
+  background: #4f46e5 !important;
+  border: none !important;
+  border-radius: 50% !important;
+  width: 45px !important;
+  height: 45px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: white !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+}
+
+#workspace .send-button:hover {
+  background: #4338ca !important;
+  transform: translateY(-1px) !important;
+}
+
+#workspace .tool-activity {
+  margin-top: 1rem !important;
+  text-align: center !important;
+}
+
+#workspace .activity-content {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+#workspace .spinner {
+  width: 16px !important;
+  height: 16px !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  border-top: 2px solid white !important;
+  border-radius: 50% !important;
+  animation: spin 1s linear infinite !important;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+#workspace .typing-dots {
+  display: inline-block !important;
+}
+
+#workspace .typing-dots span {
+  display: inline-block !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background-color: #6c757d !important;
+  margin: 0 2px !important;
+  animation: typing 1.4s infinite ease-in-out !important;
+}
+
+#workspace .typing-dots span:nth-child(1) { animation-delay: -0.32s !important; }
+#workspace .typing-dots span:nth-child(2) { animation-delay: -0.16s !important; }
+
+@keyframes typing {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Scrollbar styling with higher specificity */
+#workspace .scout-messages::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+#workspace .scout-messages::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 3px !important;
+}
+
+#workspace .scout-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-radius: 3px !important;
+}
+
+#workspace .scout-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Additional overrides for any potential interference */
+#workspace .conversation-container * {
+  box-sizing: border-box !important;
+}
+
+#workspace .message-wrapper * {
+  background-attachment: initial !important;
+  background-clip: initial !important;
+  background-origin: initial !important;
+  background-repeat: initial !important;
+  background-size: initial !important;
+}
+
+/* Ensure no Bootstrap or other framework interference */
+#workspace .message-bubble,
+#workspace .message-content,
+#workspace .message-content p,
+#workspace .message-time {
+  all: unset !important;
+  display: block !important;
+  font-family: inherit !important;
+}
+
+#workspace .user-message .message-bubble {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  padding: 1rem 1.25rem !important;
+  border-radius: 1.5rem !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+#workspace .assistant-message .message-bubble {
+  background: white !important;
+  color: #333 !important;
+  padding: 1rem 1.25rem !important;
+  border-radius: 1.5rem !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+#workspace .message-content {
+  margin-bottom: 0.5rem !important;
+  line-height: 1.5 !important;
+}
+
+#workspace .message-time {
+  opacity: 0.7 !important;
+  font-size: 0.75rem !important;
+}
+</style>
+
+<!-- JavaScript for Scout Chat -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const messageForm = document.getElementById('message-form');
+  const messageInput = document.getElementById('message-input');
+  const chatMessages = document.getElementById('chat-messages');
+  const sendButton = document.getElementById('send-button');
+  const toolActivity = document.getElementById('tool-activity');
+  const toolStatus = document.getElementById('tool-status');
+
+  // Auto-focus on input
+  messageInput.focus();
+
+  // Scroll to bottom
+  function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // Initial scroll
+  scrollToBottom();
+
+  // Add message to chat
+  function addMessage(content, role, timestamp = null) {
+    const messageWrapper = document.createElement('div');
+    messageWrapper.className = `message-wrapper ${role === 'user' ? 'user-message' : 'assistant-message'}`;
+    
+    const time = timestamp || new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    
+    messageWrapper.innerHTML = `
+      <div class="message-bubble">
+        <div class="message-content">${content.replace(/\n/g, '<br>')}</div>
+        <small class="message-time">${time}</small>
+      </div>
+    `;
+    
+    chatMessages.appendChild(messageWrapper);
+    scrollToBottom();
+  }
+
+  // Show typing indicator
+  function showTypingIndicator() {
+    const typingWrapper = document.createElement('div');
+    typingWrapper.className = 'message-wrapper assistant-message';
+    typingWrapper.id = 'typing-indicator';
+    typingWrapper.innerHTML = `
+      <div class="message-bubble">
+        <div class="typing-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    `;
+    chatMessages.appendChild(typingWrapper);
+    scrollToBottom();
+  }
+
+  function hideTypingIndicator() {
+    const typingDiv = document.getElementById('typing-indicator');
+    if (typingDiv) {
+      typingDiv.remove();
+    }
+  }
+
+  // Handle form submission
+  messageForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const message = messageInput.value.trim();
+    if (!message) return;
+
+    // Add user message immediately
+    addMessage(message, 'user');
+    messageInput.value = '';
+    
+    // Disable input and show activity
+    messageInput.disabled = true;
+    sendButton.disabled = true;
+    showTypingIndicator();
+    
+    // Check if this looks like a data query
+    const dataKeywords = ['campaign', 'performance', 'analytics', 'contact', 'landing', 'conversion', 'metrics', 'analyze'];
+    const isDataQuery = dataKeywords.some(keyword => message.toLowerCase().includes(keyword));
+    
+    if (isDataQuery) {
+      toolActivity.style.display = 'block';
+      toolStatus.textContent = 'Scout is analyzing your data...';
+    }
+
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      
+      const response = await fetch('/scout/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || ''
+        },
+        body: JSON.stringify({ message: message })
+      });
+
+      const data = await response.json();
+
+      hideTypingIndicator();
+
+      if (data.error) {
+        addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+      } else {
+        addMessage(data.message, 'assistant');
+        
+        // Show tool usage info in development
+        if (data.tools_used && data.tools_list?.length > 0) {
+          console.log('Tools used:', data.tools_list);
+          console.log('Success count:', data.success_count);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error:', error);
+      hideTypingIndicator();
+      addMessage('Sorry, I\'m having trouble connecting. Please try again.', 'assistant');
+    } finally {
+      // Re-enable input
+      messageInput.disabled = false;
+      sendButton.disabled = false;
+      messageInput.focus();
+      
+      // Hide tool activity
+      toolActivity.style.display = 'none';
+    }
+  });
+
+  // Handle enter key
+  messageInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      messageForm.dispatchEvent(new Event('submit'));
+    }
+  });
+});
+</script> 

@@ -36,8 +36,30 @@ class OnboardingController < ApplicationController
       conversation_history = onboarding_conversation_history
       Rails.logger.info "Onboarding: Retrieved conversation history (#{conversation_history.length} messages)"
       
-      response = OnboardingScoutService.new(current_user, @session_id, conversation_history).process_message(user_message)
-      Rails.logger.info "Onboarding: Got Scout response - completed: #{response[:completed]}"
+      # Check if user is asking data-related questions that need tools
+      if needs_tool_enabled_response?(user_message)
+        # Use tool-enabled Scout for data queries during onboarding
+        entity = current_user.entity_users.first&.entity
+        if entity
+          tool_service = ScoutConversationWithToolsService.new(current_user, entity, conversation_history)
+          tool_response = tool_service.process_message_with_tools(user_message)
+          
+          response = {
+            message: tool_response[:message],
+            completed: false,
+            business_profile_completed: false,
+            tools_used: tool_response[:tool_calls_made]
+          }
+        else
+          # Fallback to regular onboarding if no entity found
+          response = OnboardingScoutService.new(current_user, @session_id, conversation_history).process_message(user_message)
+        end
+      else
+        # Regular onboarding conversation
+        response = OnboardingScoutService.new(current_user, @session_id, conversation_history).process_message(user_message)
+      end
+      
+      Rails.logger.info "Onboarding: Got Scout response - completed: #{response[:completed]}, tools_used: #{response[:tools_used]}"
       
       # Save Scout's response
       save_onboarding_message('assistant', response[:message])
@@ -85,6 +107,18 @@ class OnboardingController < ApplicationController
   end
   
   private
+  
+  def needs_tool_enabled_response?(message)
+    # Detect if user is asking questions that would benefit from real data access
+    data_keywords = [
+      /campaign/i, /email.*performance/i, /marketing.*data/i, /analytics/i,
+      /open.*rate/i, /click.*rate/i, /subscriber/i, /contact/i,
+      /landing.*page/i, /conversion/i, /engagement/i, /metrics/i,
+      /how.*\w+.*performing/i, /show.*\w+.*stats/i, /analyze/i
+    ]
+    
+    data_keywords.any? { |pattern| message.match?(pattern) }
+  end
   
   def check_if_already_onboarded
     if current_user.onboarded?
