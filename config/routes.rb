@@ -185,8 +185,8 @@ Rails.application.routes.draw do
       end
     end
     
-    # Application root for authenticated subdomain
-    root "workspace#index", as: :application_root
+    # Application root for authenticated subdomain - now using Scout with tools!
+    root "scout#index", as: :application_root
   end
   
   # Routes for marketing site (no subdomain or www subdomain)
@@ -207,6 +207,12 @@ Rails.application.routes.draw do
   post 'onboarding/chat', to: 'onboarding#chat'
   patch 'onboarding/complete', to: 'onboarding#complete'
   get 'onboarding/reset', to: 'onboarding#reset'
+  
+  # Scout AI Assistant routes
+  get 'scout', to: 'scout#index'
+  post 'scout/chat', to: 'scout#chat'
+  delete 'scout/conversation', to: 'scout#clear_conversation'
+  get 'scout/export', to: 'scout#conversation_export'
 
   # Common routes (regardless of subdomain)
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
