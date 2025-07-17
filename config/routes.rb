@@ -36,7 +36,8 @@ Rails.application.routes.draw do
     
     # Devise routes for authentication
     devise_for :users, controllers: {
-      registrations: 'users/registrations'
+      registrations: 'users/registrations',
+      sessions: 'users/sessions'
     }
     
     # User management
@@ -205,6 +206,7 @@ Rails.application.routes.draw do
   get 'onboarding', to: 'onboarding#index'
   post 'onboarding/chat', to: 'onboarding#chat'
   patch 'onboarding/complete', to: 'onboarding#complete'
+  get 'onboarding/reset', to: 'onboarding#reset'
 
   # Common routes (regardless of subdomain)
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
