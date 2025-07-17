@@ -364,14 +364,22 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Create a form and submit it to allow the server to handle the redirect properly
     const form = document.createElement('form');
-    form.method = 'PATCH';
+    form.method = 'POST';  // HTML forms only support GET/POST
     form.action = '/onboarding/complete';
     
+    // Add CSRF token
     const csrfInput = document.createElement('input');
     csrfInput.type = 'hidden';
     csrfInput.name = 'authenticity_token';
     csrfInput.value = csrfToken ? csrfToken.content : '';
     form.appendChild(csrfInput);
+    
+    // Add _method input for PATCH (Rails convention)
+    const methodInput = document.createElement('input');
+    methodInput.type = 'hidden';
+    methodInput.name = '_method';
+    methodInput.value = 'PATCH';
+    form.appendChild(methodInput);
     
     document.body.appendChild(form);
     form.submit();
