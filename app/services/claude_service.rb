@@ -8,49 +8,55 @@ class ClaudeService
   
   attr_reader :api_key
   
-  def initialize(api_key = nil)
-    @api_key = api_key || ENV['ANTHROPIC_API_KEY']
+  def initialize
+    @api_key = Rails.application.credentials.anthropic&.api_key || ENV['ANTHROPIC_API_KEY']
     
-    # Check if API key exists and is not empty (works in both Rails and non-Rails environments)
-    if @api_key.nil? || @api_key.empty?
-      raise ArgumentError, "Anthropic API key is required"
+    if @api_key.blank?
+      raise "Anthropic API key not found. Please set ANTHROPIC_API_KEY environment variable or add to credentials."
     end
   end
   
   # Send a message to Claude 3.7 using the Messages API
-  def send_message(system_prompt, user_message_or_conversation, opts = {})
-    # Set default options
-    options = {
-      max_tokens: 4000,
-      temperature: 0.5,
-      model: MODEL
-    }.merge(opts)
-    
-    # Handle both single messages and conversation arrays
-    messages = if user_message_or_conversation.is_a?(Array)
-      user_message_or_conversation
+  def send_message(system_prompt, messages, model: 'claude-3-5-sonnet-20241022', max_tokens: 4000, temperature: 0.7)
+    # Ensure messages is an array
+    messages_array = case messages
+    when Array
+      messages
+    when String
+      [{ role: 'user', content: messages }]
     else
-      [{ role: "user", content: user_message_or_conversation }]
+      [{ role: 'user', content: messages.to_s }]
     end
     
-    # Build the request body
+    # Validate that all messages have content
+    messages_array.each do |msg|
+      if msg[:content].blank?
+        raise ArgumentError, "All messages must have non-empty content"
+      end
+    end
+    
     body = {
-      model: options[:model],
-      max_tokens: options[:max_tokens],
-      temperature: options[:temperature],
+      model: model,
+      max_tokens: max_tokens,
+      temperature: temperature,
       system: system_prompt,
-      messages: messages
+      messages: messages_array
     }
     
-    # Make the API request
+    Rails.logger.info "Sending request to Claude API with #{messages_array.length} messages"
+    start_time = Time.current
+    
     begin
       response = connection.post do |req|
         req.url API_URL
         req.headers['Content-Type'] = 'application/json'
-        req.headers['x-api-key'] = api_key
-        req.headers['anthropic-version'] = '2023-06-01' # Compatible with Claude 4
+        req.headers['x-api-key'] = @api_key
+        req.headers['anthropic-version'] = '2023-06-01'
         req.body = body.to_json
       end
+      
+      elapsed_time = Time.current - start_time
+      Rails.logger.info "Claude API response received in #{elapsed_time.round(2)}s"
       
       # Parse and return the response
       json_response = JSON.parse(response.body)
@@ -58,17 +64,24 @@ class ClaudeService
       # Check for errors
       if response.status != 200
         error_message = json_response['error'] ? json_response['error']['message'] : "Unknown error"
+        Rails.logger.error "Claude API Error: #{error_message}"
         raise "Claude API Error: #{error_message}"
       end
       
-      # Check for Claude 4 refusal stop reason
+      # Check for Claude refusal stop reason
       if json_response['stop_reason'] == 'refusal'
-        log_error("Claude 4 refused to generate content for safety reasons")
+        log_error("Claude refused to generate content for safety reasons")
         return "I apologize, but I'm not able to help with that particular request. Is there something else I can assist you with?"
       end
       
       # Return the response content
-      json_response['content'].first['text']
+      content = json_response['content'].first['text']
+      Rails.logger.info "Claude response: #{content.length} characters"
+      content
+      
+    rescue Faraday::TimeoutError => e
+      log_error("Claude API timeout after #{elapsed_time.round(2)}s: #{e.message}")
+      raise "Claude API timeout - the request is taking longer than expected. Please try again."
     rescue Faraday::Error => e
       log_error("Network error when calling Claude API: #{e.message}")
       raise "Claude API connection error: #{e.message}"
@@ -85,7 +98,8 @@ class ClaudeService
   
   def connection
     @connection ||= Faraday.new do |conn|
-      conn.options.timeout = 120 # 2 minute timeout (suitable for Claude 4)
+      conn.options.timeout = 180      # 3 minute timeout for read
+      conn.options.open_timeout = 30  # 30 seconds for connection
     end
   end
   
