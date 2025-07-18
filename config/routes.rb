@@ -194,6 +194,9 @@ Rails.application.routes.draw do
     root 'marketing#index'
   end
   
+  # Debug route for troubleshooting redirect loops
+  get 'debug/status', to: 'debug#status'
+  
   # Onboarding routes
   get 'onboarding', to: 'onboarding#index'
   post 'onboarding/chat', to: 'onboarding#chat'
