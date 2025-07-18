@@ -38,21 +38,21 @@ class ScoutController < ApplicationController
       
       # Use the new generic tools service
       generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity)
-      response = generic_tools_service.process_message_with_tools(user_message)
+      conversation_history = scout_conversation_history
+      response = generic_tools_service.process_message_with_tools(user_message, conversation_history)
       
-      Rails.logger.info "Scout: Got response - tools_used: #{response[:tool_calls_made]}, success_count: #{response[:success_count]}"
+      Rails.logger.info "Scout: Got response - tools_used: #{response[:tools_used]}, success_count: #{response[:success_count]}"
       
       # Save Scout's response
       save_scout_message('assistant', response[:message])
-      Rails.logger.info "Scout: Saved Scout response"
       
+      # Return structured response
       render json: {
         message: response[:message],
-        tools_used: response[:tool_calls_made],
-        tools_list: response[:tools_used] || [],
-        success_count: response[:success_count] || 0,
-        error_count: response[:error_count] || 0,
-        raw_response: Rails.env.development? ? response : nil
+        tools_used: response[:tools_used],
+        tools_list: response[:tools_list],
+        success_count: response[:success_count],
+        error_count: response[:error_count]
       }
       
     rescue StandardError => e
@@ -102,7 +102,8 @@ class ScoutController < ApplicationController
       # Process message with streaming progress updates
       final_response = generic_tools_service.process_message_with_tools_streaming(
         user_message, 
-        ->(message) { stream_update(message) }  # Pass streaming callback
+        ->(message) { stream_update(message) },  # Pass streaming callback
+        conversation_history  # Pass conversation history
       )
       
       # Save Scout's response

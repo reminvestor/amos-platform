@@ -63,15 +63,15 @@ class ScoutGenericToolsService
     }
   ]
 
-  def process_message_with_tools(user_message)
+  def process_message_with_tools(user_message, conversation_history = [])
     begin
       # Build system prompt with dynamic schema information
       system_prompt = build_system_prompt_with_dynamic_schema
       
-      # Prepare conversation messages
-      conversation_messages = [
-        { role: 'user', content: user_message }
-      ]
+      # Prepare conversation messages with history
+      conversation_messages = format_conversation_for_claude(conversation_history, user_message)
+      
+      Rails.logger.info "Sending #{conversation_messages.length} messages to Claude (including history)"
       
       # Send to Claude with function calling
       response = @claude_service.send_message(
@@ -94,45 +94,52 @@ class ScoutGenericToolsService
         
         return {
           message: final_message,
-          tool_calls_made: true,
-          tools_used: tool_calls.map { |t| t[:name] },
+          tools_used: true,
+          tools_list: tool_calls.map { |t| t[:name] }.uniq,
           success_count: tool_results.count { |r| r[:success] },
-          error_count: tool_results.count { |r| !r[:success] },
-          tool_results: tool_results
+          error_count: tool_results.count { |r| !r[:success] }
         }
       else
-        # Regular response without tools (use parsed message if available)
+        # No tools needed, return original response
         return {
           message: @parsed_user_message || response,
-          tool_calls_made: false
+          tools_used: false
         }
       end
       
+    rescue JSON::ParserError => e
+      Rails.logger.error "Scout JSON parsing error: #{e.message}"
+      Rails.logger.error "Response that failed to parse: #{response}"
+      
+      return {
+        message: "I understand your request, but I'm having trouble processing it right now. Could you try rephrasing your question?",
+        tools_used: false,
+        error: 'JSON parsing failed'
+      }
     rescue => e
       Rails.logger.error "Scout generic tools error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
       
-      {
-        message: "I apologize, but I'm experiencing some technical difficulties. Please try again.",
-        tool_calls_made: false,
+      return {
+        message: "I'm experiencing some technical difficulties. Please try again or let me know if you need help with something else.",
+        tools_used: false,
         error: e.message
       }
     end
   end
 
-  def process_message_with_tools_streaming(user_message, progress_callback = nil)
+  def process_message_with_tools_streaming(user_message, progress_callback = nil, conversation_history = [])
     begin
       progress_callback&.call("🧠 Building context with available data models...")
       
       # Build system prompt with dynamic schema information
       system_prompt = build_system_prompt_with_dynamic_schema
       
-      # Prepare conversation messages
-      conversation_messages = [
-        { role: 'user', content: user_message }
-      ]
+      # Prepare conversation messages with history
+      conversation_messages = format_conversation_for_claude(conversation_history, user_message)
       
-      progress_callback&.call("🤖 Sending request to Claude...")
+      Rails.logger.info "Sending #{conversation_messages.length} messages to Claude (including history)"
+      progress_callback&.call("🤖 Sending request to Claude with conversation context...")
       
       # Send to Claude with function calling
       response = @claude_service.send_message(
@@ -964,5 +971,29 @@ class ScoutGenericToolsService
       # If already singular or unknown, return as-is
       object_type
     end
+  end
+
+  def format_conversation_for_claude(conversation_history, current_message)
+    messages = []
+    
+    # Add conversation history (limit to recent messages to avoid token limits)
+    recent_history = conversation_history.last(10) # Last 10 messages for context
+    
+    recent_history.each do |msg|
+      role = msg[:role] == 'user' ? 'user' : 'assistant'
+      content = msg[:content]
+      
+      if content.present?
+        messages << { role: role, content: content }
+      end
+    end
+    
+    # Add current message
+    messages << { role: 'user', content: current_message }
+    
+    Rails.logger.info "Formatted conversation: #{messages.length} messages total"
+    Rails.logger.info "Messages: #{messages.map { |m| "#{m[:role]}: #{m[:content][0..50]}..." }.join(' | ')}"
+    
+    messages
   end
 end 
