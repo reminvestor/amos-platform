@@ -1,0 +1,252 @@
+<div class="scout-canvas default-canvas">
+  <div class="canvas-header text-center mb-5">
+    <div class="canvas-hero">
+      <div class="hero-icon mb-3">
+        <i class="fas fa-robot text-primary" style="font-size: 4rem;"></i>
+      </div>
+      <h4 class="mb-2">Scout AI Assistant</h4>
+      <p class="text-muted mb-4">
+        I'm here to help you with marketing tasks. Ask me about your campaigns, contacts, or landing pages,<br>
+        and I'll show you relevant data and insights in this intelligent canvas.
+      </p>
+    </div>
+  </div>
+  
+  <!-- Quick Actions -->
+  <div class="row mb-4">
+    <div class="col-lg-8 mx-auto">
+      <h6 class="text-muted mb-3">Quick Actions</h6>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <div class="action-card h-100" onclick="scoutQuickAction('landing_pages')">
+            <div class="action-icon">
+              <i class="fas fa-globe text-primary"></i>
+            </div>
+            <div class="action-content">
+              <h6 class="mb-1">View Landing Pages</h6>
+              <p class="text-muted small mb-0">Manage your marketing pages</p>
+            </div>
+            <div class="action-arrow">
+              <i class="fas fa-chevron-right"></i>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <div class="action-card h-100" onclick="scoutQuickAction('contacts')">
+            <div class="action-icon">
+              <i class="fas fa-users text-success"></i>
+            </div>
+            <div class="action-content">
+              <h6 class="mb-1">View Contacts</h6>
+              <p class="text-muted small mb-0">Manage your customer database</p>
+            </div>
+            <div class="action-arrow">
+              <i class="fas fa-chevron-right"></i>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <div class="action-card h-100" onclick="scoutQuickAction('campaigns')">
+            <div class="action-icon">
+              <i class="fas fa-envelope text-warning"></i>
+            </div>
+            <div class="action-content">
+              <h6 class="mb-1">View Campaigns</h6>
+              <p class="text-muted small mb-0">Manage email campaigns</p>
+            </div>
+            <div class="action-arrow">
+              <i class="fas fa-chevron-right"></i>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <div class="action-card h-100" onclick="scoutQuickAction('analytics')">
+            <div class="action-icon">
+              <i class="fas fa-chart-bar text-info"></i>
+            </div>
+            <div class="action-content">
+              <h6 class="mb-1">View Analytics</h6>
+              <p class="text-muted small mb-0">Marketing performance dashboard</p>
+            </div>
+            <div class="action-arrow">
+              <i class="fas fa-chevron-right"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Example Commands -->
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+      <h6 class="text-muted mb-3">Try asking me...</h6>
+      <div class="example-commands">
+        <button class="btn btn-outline-secondary me-2 mb-2" onclick="scoutSendExample(this.textContent)">
+          Show me my recent campaigns
+        </button>
+        <button class="btn btn-outline-secondary me-2 mb-2" onclick="scoutSendExample(this.textContent)">
+          Create a new landing page
+        </button>
+        <button class="btn btn-outline-secondary me-2 mb-2" onclick="scoutSendExample(this.textContent)">
+          Add a new contact
+        </button>
+        <button class="btn btn-outline-secondary me-2 mb-2" onclick="scoutSendExample(this.textContent)">
+          Show my email performance
+        </button>
+        <button class="btn btn-outline-secondary me-2 mb-2" onclick="scoutSendExample(this.textContent)">
+          Import contacts from CSV
+        </button>
+        <button class="btn btn-outline-secondary me-2 mb-2" onclick="scoutSendExample(this.textContent)">
+          Create a newsletter campaign
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Entity Info -->
+  <div class="row mt-5">
+    <div class="col-lg-6 mx-auto">
+      <div class="entity-info text-center">
+        <h6 class="text-muted mb-2">Current Workspace</h6>
+        <div class="d-flex align-items-center justify-content-center">
+          <div class="entity-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
+               style="width: 32px; height: 32px; font-size: 14px;">
+            <%= entity.name.first.upcase %>
+          </div>
+          <span class="fw-medium"><%= entity.name %></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function scoutQuickAction(action) {
+  switch(action) {
+    case 'landing_pages':
+      window.scoutLoadCanvas?.('landing_page_viewer');
+      break;
+    case 'contacts':
+      window.scoutLoadCanvas?.('contact_viewer');
+      break;
+    case 'campaigns':
+      window.scoutLoadCanvas?.('campaign_viewer');
+      break;
+    case 'analytics':
+      window.scoutLoadCanvas?.('analytics_dashboard');
+      break;
+  }
+}
+
+function scoutSendExample(message) {
+  window.scoutSendMessage?.(message);
+}
+</script>
+
+<style>
+.default-canvas {
+  padding: 2rem;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.canvas-hero {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.action-card {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 0.5rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.action-card:hover {
+  border-color: #007bff;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+  color: inherit;
+  text-decoration: none;
+}
+
+.action-icon {
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  flex-shrink: 0;
+}
+
+.action-content {
+  flex-grow: 1;
+}
+
+.action-arrow {
+  color: #6c757d;
+  flex-shrink: 0;
+}
+
+.action-card:hover .action-arrow {
+  color: #007bff;
+}
+
+.example-commands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.example-commands button {
+  transition: all 0.2s ease;
+}
+
+.example-commands button:hover {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.entity-info {
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 0.5rem;
+}
+
+.entity-avatar {
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .default-canvas {
+    padding: 1rem;
+  }
+  
+  .canvas-hero h4 {
+    font-size: 1.5rem;
+  }
+  
+  .canvas-hero p {
+    font-size: 0.9rem;
+  }
+  
+  .action-card {
+    padding: 0.75rem;
+  }
+  
+  .action-icon {
+    font-size: 1.25rem;
+    margin-right: 0.75rem;
+  }
+}
+</style> 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_16_114039) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_18_113641) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -302,36 +302,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_16_114039) do
     t.string "title", null: false
     t.string "slug", null: false
     t.text "description"
-    t.jsonb "content", default: {}
     t.string "status", default: "draft"
-    t.string "page_type"
-    t.text "meta_description"
-    t.string "meta_keywords"
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
     t.bigint "campaign_id"
-    t.string "custom_domain"
-    t.boolean "published", default: false
-    t.datetime "published_at"
-    t.string "headline"
-    t.text "subheadline"
-    t.string "cta_text"
-    t.string "cta_url"
-    t.string "primary_color"
-    t.string "secondary_color"
-    t.string "font_family"
-    t.string "image_url"
-    t.jsonb "image_prompts"
-    t.jsonb "ai_settings"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "migration_status", default: "pending"
     t.text "html_content"
-    t.text "clarification_questions"
-    t.text "clarification_answers"
     t.index ["campaign_id"], name: "index_landing_pages_on_campaign_id"
     t.index ["entity_id"], name: "index_landing_pages_on_entity_id"
-    t.index ["published"], name: "index_landing_pages_on_published"
     t.index ["slug"], name: "index_landing_pages_on_slug", unique: true
     t.index ["user_id"], name: "index_landing_pages_on_user_id"
   end

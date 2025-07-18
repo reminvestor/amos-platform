@@ -1,11 +1,34 @@
+# Scout AI Service with configurable AI providers
+#
+# CONFIGURATION:
+# To use Grok 4 (default): export AI_PROVIDER=grok && export XAI_API_KEY=your_key
+# To use Claude:           export AI_PROVIDER=claude && export ANTHROPIC_API_KEY=your_key
+#
+# Easy switching:
+# - Development: Add to .env file
+# - Production: Set environment variables
+# - Runtime: ScoutGenericToolsService::AI_PROVIDER = 'claude'
+
 class ScoutGenericToolsService
+  # AI Provider Configuration - Easy to switch between providers
+  AI_PROVIDER = ENV['AI_PROVIDER'] || 'grok' # Options: 'grok', 'claude'
+  
   def initialize(user, entity)
     @user = user
     @entity = entity
-    @claude_service = ClaudeService.new
+    @ai_service = case AI_PROVIDER.downcase
+    when 'grok'
+      GrokService.new
+    when 'claude'
+      ClaudeService.new
+    else
+      raise "Unknown AI provider: #{AI_PROVIDER}. Use 'grok' or 'claude'"
+    end
+    @ai_provider_name = AI_PROVIDER.downcase == 'grok' ? 'Grok' : 'Claude'
+    Rails.logger.info "🤖 Scout using AI provider: #{AI_PROVIDER}"
   end
 
-  # Generic function calling tools for Claude
+  # Generic function calling tools for AI providers
   TOOLS = [
     {
       name: "get_data",
@@ -69,15 +92,15 @@ class ScoutGenericToolsService
       system_prompt = build_system_prompt_with_dynamic_schema
       
       # Prepare conversation messages with history
-      conversation_messages = format_conversation_for_claude(conversation_history, user_message)
+      conversation_messages = format_conversation_for_ai(conversation_history, user_message)
       
-      Rails.logger.info "Sending #{conversation_messages.length} messages to Claude (including history)"
+      Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name} (including history)"
       
-      # Send to Claude with function calling
-      response = @claude_service.send_message(
+      # Send to AI service with function calling
+      response = @ai_service.send_message(
         system_prompt,
         conversation_messages,
-        model: 'claude-3-5-sonnet-20241022',
+        
         max_tokens: 4000,
         temperature: 0.7
       )
@@ -89,7 +112,7 @@ class ScoutGenericToolsService
         # Execute the tools
         tool_results = execute_tools(tool_calls)
         
-        # Send the real tool results back to Claude for an updated response
+        # Send the real tool results back to AI service for an updated response
         final_message = generate_response_with_tool_results(user_message, @parsed_user_message, tool_results)
         
         return {
@@ -97,13 +120,15 @@ class ScoutGenericToolsService
           tools_used: true,
           tools_list: tool_calls.map { |t| t[:name] }.uniq,
           success_count: tool_results.count { |r| r[:success] },
-          error_count: tool_results.count { |r| !r[:success] }
+          error_count: tool_results.count { |r| !r[:success] },
+          canvas: @suggested_canvas
         }
       else
         # No tools needed, return original response
         return {
           message: @parsed_user_message || response,
-          tools_used: false
+          tools_used: false,
+          canvas: @suggested_canvas
         }
       end
       
@@ -136,21 +161,21 @@ class ScoutGenericToolsService
       system_prompt = build_system_prompt_with_dynamic_schema
       
       # Prepare conversation messages with history
-      conversation_messages = format_conversation_for_claude(conversation_history, user_message)
+      conversation_messages = format_conversation_for_ai(conversation_history, user_message)
       
-      Rails.logger.info "Sending #{conversation_messages.length} messages to Claude (including history)"
-      progress_callback&.call("🤖 Sending request to Claude with conversation context...")
+      Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name} (including history)"
+      progress_callback&.call("🤖 Sending request to #{@ai_provider_name} with conversation context...")
       
-      # Send to Claude with function calling
-      response = @claude_service.send_message(
+      # Send to AI service with function calling
+      response = @ai_service.send_message(
         system_prompt,
         conversation_messages,
-        model: 'claude-3-5-sonnet-20241022',
+        
         max_tokens: 4000,
         temperature: 0.7
       )
       
-      progress_callback&.call("📝 Parsing Claude's response...")
+      progress_callback&.call("📝 Parsing #{@ai_provider_name}'s response...")
       
       # Parse response for JSON structure with message and tool calls
       if tool_calls = parse_function_calls_from_response(response)
@@ -173,7 +198,7 @@ class ScoutGenericToolsService
         
         progress_callback&.call("🎯 Generating personalized response...")
         
-        # Send the real tool results back to Claude for an updated response
+        # Send the real tool results back to AI service for an updated response
         final_message = generate_response_with_tool_results(user_message, @parsed_user_message, tool_results)
         
         return {
@@ -217,8 +242,18 @@ class ScoutGenericToolsService
   def build_system_prompt_with_dynamic_schema
     available_models = ScoutDataRegistry.available_object_types
     
+    # Dynamic AI identity based on provider
+    ai_identity = case AI_PROVIDER.downcase
+    when 'grok'
+      "You are Scout, the AI marketing assistant powered by Grok. You have access to a simple, powerful toolset for accessing and creating marketing data."
+    when 'claude'
+      "You are Scout, the AI marketing assistant powered by Claude. You have access to a simple, powerful toolset for accessing and creating marketing data."
+    else
+      "You are Scout, the AI marketing assistant. You have access to a simple, powerful toolset for accessing and creating marketing data."
+    end
+    
     <<~PROMPT
-      You are Scout, the AI marketing assistant. You have access to a simple, powerful toolset for accessing and creating marketing data.
+      #{ai_identity}
 
       USER CONTEXT:
       - User: #{@user.first_name} #{@user.last_name}
@@ -231,6 +266,31 @@ class ScoutGenericToolsService
 
       AVAILABLE DATA MODELS:
       #{available_models.join(', ')}
+
+      **ADDITIONAL SERVICES AVAILABLE:**
+      
+      INTELLIGENT CANVAS:
+      You can load data viewers and interactive canvases to display information visually.
+      Available canvases: landing_page_viewer, landing_page_generator, contact_viewer, contact_generator,
+      campaign_viewer, analytics_dashboard
+      
+      When users ask to "show", "view", or "see" data, suggest loading the appropriate canvas.
+      Example responses with canvas suggestions:
+      - "Let me show you your landing pages" → suggest loading landing_page_viewer canvas
+      - "Here are your contacts" → suggest loading contact_viewer canvas  
+      - "I'll create a landing page for you" → suggest loading landing_page_generator canvas
+      
+      LANDING PAGE FORM TEMPLATES:
+      You can reference predefined form templates when creating landing pages with html_content.
+      Available templates: contact_form, newsletter_signup, lead_magnet, demo_request, event_registration, 
+      free_trial, quote_request, consultation_booking
+      
+      Each template provides Bootstrap-styled HTML forms that submit to /api/v1/contacts with proper field names.
+      When generating landing page HTML, you can include these forms or create custom forms following the same pattern.
+      
+      MODEL METADATA:
+      All business models have comprehensive metadata including purpose, business context, relationships, 
+      and usage examples. This helps you understand how models relate and what they're used for in marketing.
 
       **CRITICAL: WHEN TO USE TOOLS - BE AGGRESSIVE!**
       
@@ -271,6 +331,15 @@ class ScoutGenericToolsService
       - order_by: "field_name desc/asc" (use ONLY fields that exist!)
       - filters: object with field names that actually exist
 
+      **AVAILABLE CANVASES (optional):**
+      When appropriate, you can suggest loading a visual canvas:
+      - "analytics_dashboard" - for performance metrics and analytics
+      - "landing_page_viewer" - to show existing landing pages
+      - "landing_page_generator" - to create new landing pages
+      - "campaign_viewer" - to show email campaigns
+      - "contact_viewer" - to show contacts
+      - "contact_generator" - to create new contacts
+
       **CRITICAL RESPONSE FORMAT:**
       You MUST respond with valid JSON in this exact format:
 
@@ -285,10 +354,19 @@ class ScoutGenericToolsService
             "name": "get_data",
             "arguments": {"object_type": "campaigns", "filters": {"status": "sent"}, "options": {"limit": 20}}
           }
-        ]
+        ],
+        "canvas": "analytics_dashboard"
       }
 
       OR if no tools are needed:
+
+      {
+        "message": "Your conversational response to the user",
+        "tool_calls": [],
+        "canvas": "contact_viewer"
+      }
+
+      OR for simple conversation (no canvas needed):
 
       {
         "message": "Your conversational response to the user",
@@ -330,9 +408,7 @@ class ScoutGenericToolsService
   end
 
   def parse_function_calls_from_response(response)
-    Rails.logger.info "=== PARSING CLAUDE RESPONSE FOR TOOLS ==="
-    Rails.logger.info "Raw Claude response length: #{response.length}"
-    Rails.logger.info "Raw Claude response: #{response}"
+    Rails.logger.info "Raw #{@ai_provider_name} response: #{response}"
     
     begin
       # Try to parse the response as JSON
@@ -340,6 +416,7 @@ class ScoutGenericToolsService
       Rails.logger.info "Successfully parsed JSON response: #{parsed.keys}"
       
       @parsed_user_message = parsed['message']
+      @suggested_canvas = parsed['canvas']
       tool_calls = parsed['tool_calls']
       
       if tool_calls && tool_calls.is_a?(Array) && tool_calls.any?
@@ -356,13 +433,53 @@ class ScoutGenericToolsService
       end
       
     rescue JSON::ParserError => e
-      Rails.logger.error "Failed to parse Claude response as JSON: #{e.message}"
-      Rails.logger.error "This suggests Claude returned plain text instead of JSON format"
+      Rails.logger.error "Failed to parse #{@ai_provider_name} response as JSON: #{e.message}"
+      Rails.logger.error "This suggests #{@ai_provider_name} returned plain text instead of JSON format"
       
-      # Store the raw response for fallback
-      @parsed_user_message = response
+      # Try to extract message from malformed JSON
+      extracted_message = extract_message_from_malformed_json(response)
+      @parsed_user_message = extracted_message || "I apologize, but I'm having trouble processing that request. Could you please try rephrasing it?"
+      
       return nil
     end
+  end
+
+  private
+
+  def extract_message_from_malformed_json(response)
+    # Try different patterns to extract the message content from malformed JSON
+    
+    # Pattern 1: Look for "message": "content" in the string
+    if match = response.match(/"message"\s*:\s*"([^"]*)"/)
+      return match[1]
+    end
+    
+    # Pattern 2: Look for message content after a JSON structure
+    if match = response.match(/\}\s*(.+)$/)
+      cleaned = match[1].strip
+      return cleaned unless cleaned.empty?
+    end
+    
+    # Pattern 3: If it's just plain text with no JSON structure
+    if !response.include?('"tool_calls"') && !response.include?('{')
+      return response.strip
+    end
+    
+    # Pattern 4: Extract content before "tool_calls": []
+    if match = response.match(/^(.*?)\s*,?\s*"tool_calls"\s*:\s*\[\]?\s*\}?\s*$/m)
+      content = match[1].strip
+      # Remove leading JSON structure if present
+      content = content.gsub(/^\{\s*"message"\s*:\s*"/, '').gsub(/"$/, '')
+      return content unless content.empty?
+    end
+    
+    # Pattern 5: Try to find any text that looks like a message
+    if match = response.match(/([A-Z][^{}\[\]]*[.!?])/)
+      return match[1].strip
+    end
+    
+    Rails.logger.warn "Could not extract message from malformed response: #{response}"
+    return nil
   end
 
   def execute_tools(tool_calls)
@@ -598,17 +715,32 @@ class ScoutGenericToolsService
   end
 
   def generate_response_with_tool_results(user_message, initial_message, tool_results)
-    # Format tool results for Claude
-    results_summary = format_tool_results_for_claude(tool_results)
+    # Format tool results for AI
+    results_summary = format_tool_results_for_ai(tool_results)
     
-    Rails.logger.info "=== TOOL RESULTS SUMMARY FOR CLAUDE ==="
+    Rails.logger.info "=== TOOL RESULTS SUMMARY FOR #{@ai_provider_name.upcase} ==="
     Rails.logger.info "Number of tool results: #{tool_results.length}"
     tool_results.each_with_index do |result, i|
       Rails.logger.info "Tool #{i+1}: #{result[:tool_name]} - Success: #{result[:success]}"
-      if result[:success] && result[:result]&.dig(:data)
-        Rails.logger.info "  Data keys: #{result[:result][:data].keys}"
-        result[:result][:data].each do |type, data|
-          Rails.logger.info "    #{type}: #{data.dig(:records)&.length || 0} records"
+      if result[:success] && result[:result]
+        case result[:tool_name]
+        when 'get_data'
+          if result[:result][:data]
+            Rails.logger.info "  Data keys: #{result[:result][:data].keys}"
+            result[:result][:data].each do |type, data|
+              if data.is_a?(Hash) && data[:records]
+                Rails.logger.info "    #{type}: #{data[:records]&.length || 0} records"
+              else
+                Rails.logger.info "    #{type}: #{data.inspect}"
+              end
+            end
+          end
+        when 'create_object'
+          Rails.logger.info "  Created object: #{result[:result].inspect}"
+        when 'get_schema'
+          Rails.logger.info "  Schema result: #{result[:result][:object_type] || 'unknown'}"
+        else
+          Rails.logger.info "  Result: #{result[:result].inspect}"
         end
       end
     end
@@ -648,9 +780,9 @@ class ScoutGenericToolsService
     PROMPT
     
     # Log the complete prompt being sent to Claude
-    Rails.logger.info "=== COMPLETE PROMPT BEING SENT TO CLAUDE ==="
+    Rails.logger.info "=== COMPLETE PROMPT BEING SENT TO #{@ai_provider_name.upcase} ==="
     Rails.logger.info final_prompt
-    Rails.logger.info "=== END CLAUDE PROMPT ==="
+    Rails.logger.info "=== END #{@ai_provider_name.upcase} PROMPT ==="
     Rails.logger.info "Prompt length: #{final_prompt.length} characters"
     
     # Ensure we're not sending empty content
@@ -661,7 +793,7 @@ class ScoutGenericToolsService
     
     # Send to Claude with a fallback message
     begin
-      response = @claude_service.send_message(final_prompt, "Please provide your response.")
+      response = @ai_service.send_message(final_prompt, "Please provide your response.")
       response.present? ? response : "I was able to process your request but had trouble generating a response. Please try again."
     rescue => e
       Rails.logger.error "Error generating final response: #{e.message}"
@@ -669,7 +801,7 @@ class ScoutGenericToolsService
     end
   end
 
-  def format_tool_results_for_claude(tool_results)
+  def format_tool_results_for_ai(tool_results)
     formatted = []
     
     tool_results.each do |result|
@@ -694,7 +826,7 @@ class ScoutGenericToolsService
     return "No data found" unless result[:data]
     
     # Log what we're sending to Claude
-    Rails.logger.info "=== FORMATTING DATA FOR CLAUDE ==="
+    Rails.logger.info "=== FORMATTING DATA FOR #{@ai_provider_name.upcase} ==="
     Rails.logger.info "Result structure: #{result.keys}"
     Rails.logger.info "Data keys: #{result[:data].keys}"
     
@@ -704,7 +836,7 @@ class ScoutGenericToolsService
       records = data[:records] || []
       
       if records.any?
-        Rails.logger.info "Formatting #{records.length} #{object_type} records for Claude"
+        Rails.logger.info "Formatting #{records.length} #{object_type} records for #{@ai_provider_name}"
         
         section = []
         section << "=== #{object_type.upcase} DATA (#{records.length} records) ==="
@@ -714,14 +846,14 @@ class ScoutGenericToolsService
           
           # Include all relevant fields based on object type
           case object_type
-          when 'campaigns'
-            section << format_campaign_for_claude(record)
-          when 'contacts' 
-            section << format_contact_for_claude(record)
+                    when 'campaigns'
+            section << format_campaign_for_ai(record)
+          when 'contacts'
+            section << format_contact_for_ai(record)
           when 'landing_pages'
-            section << format_landing_page_for_claude(record)
+            section << format_landing_page_for_ai(record)
           else
-            section << format_generic_object_for_claude(record)
+            section << format_generic_object_for_ai(record)
           end
         end
         
@@ -734,17 +866,17 @@ class ScoutGenericToolsService
     final_result = formatted_sections.join("\n\n")
     
     # Log the final formatted result
-    Rails.logger.info "=== FINAL FORMATTED DATA FOR CLAUDE ==="
+    Rails.logger.info "=== FINAL FORMATTED DATA FOR #{@ai_provider_name.upcase} ==="
     Rails.logger.info final_result
-    Rails.logger.info "=== END CLAUDE DATA ==="
+    Rails.logger.info "=== END #{@ai_provider_name.upcase} DATA ==="
     
     final_result
   end
 
-  def format_campaign_for_claude(record)
-    Rails.logger.info "=== SENDING COMPLETE CAMPAIGN DATA TO CLAUDE ==="
+  def format_campaign_for_ai(record)
+    Rails.logger.info "=== SENDING COMPLETE CAMPAIGN DATA TO #{@ai_provider_name.upcase} ==="
     
-    # Convert the record to a readable format for Claude
+    # Convert the record to a readable format for AI
     if record.respond_to?(:to_json)
       data = JSON.parse(record.to_json)
     elsif record.is_a?(Hash)
@@ -755,7 +887,7 @@ class ScoutGenericToolsService
     
     Rails.logger.info "Campaign data being sent: #{data.inspect}"
     
-    # Format as clean, readable text for Claude
+    # Format as clean, readable text for AI
     lines = []
     lines << "  COMPLETE CAMPAIGN DATA:"
     
@@ -773,94 +905,80 @@ class ScoutGenericToolsService
     lines.join("\n")
   end
 
-  def format_contact_for_claude(record)
-    Rails.logger.info "=== SENDING COMPLETE CONTACT DATA TO CLAUDE ==="
+  def format_contact_for_ai(record)
+    Rails.logger.info "=== SENDING COMPLETE CONTACT DATA TO #{@ai_provider_name.upcase} ==="
     
     # Convert to readable format
     if record.respond_to?(:to_json)
       data = JSON.parse(record.to_json)
-    elsif record.is_a?(Hash)
-      data = record
     else
-      data = record.as_json rescue record.to_h rescue record.inspect
+      data = record.attributes rescue record.to_h
     end
     
     Rails.logger.info "Contact data being sent: #{data.inspect}"
     
     lines = []
-    lines << "  COMPLETE CONTACT DATA:"
+    lines << "  CONTACT RECORD:"
+    lines << "    - ID: #{data['id']}"
+    lines << "    - Name: #{data['first_name']} #{data['last_name']}"
+    lines << "    - Email: #{data['email']}"
+    lines << "    - Created: #{data['created_at']}"
+    lines << "    - Groups: #{data['contact_groups']&.map { |g| g['name'] }&.join(', ') || 'None'}"
     
-    data.each do |key, value|
-      if value.is_a?(Hash)
-        lines << "    #{key}:"
-        value.each do |sub_key, sub_value|
-          lines << "      #{sub_key}: #{sub_value}"
-        end
-      else
-        lines << "    #{key}: #{value}"
-      end
+    # Add engagement metrics if available
+    if data['email_deliveries']
+      lines << "    - Email Performance: #{data['email_deliveries'].length} emails sent"
     end
     
     lines.join("\n")
   end
 
-  def format_landing_page_for_claude(record)
-    Rails.logger.info "=== SENDING COMPLETE LANDING PAGE DATA TO CLAUDE ==="
+  def format_landing_page_for_ai(record)
+    Rails.logger.info "=== SENDING COMPLETE LANDING PAGE DATA TO #{@ai_provider_name.upcase} ==="
     
     # Convert to readable format
     if record.respond_to?(:to_json)
       data = JSON.parse(record.to_json)
-    elsif record.is_a?(Hash)
-      data = record
     else
-      data = record.as_json rescue record.to_h rescue record.inspect
+      data = record.attributes rescue record.to_h
     end
     
     Rails.logger.info "Landing page data being sent: #{data.inspect}"
     
     lines = []
-    lines << "  COMPLETE LANDING PAGE DATA:"
+    lines << "  LANDING PAGE RECORD:"
+    lines << "    - ID: #{data['id']}"
+    lines << "    - Title: #{data['title']}"
+    lines << "    - Slug: #{data['slug']}"
+    lines << "    - Status: #{data['status']}"
+    lines << "    - Description: #{data['description']}"
+    lines << "    - Created: #{data['created_at']}"
     
-    data.each do |key, value|
-      if value.is_a?(Hash)
-        lines << "    #{key}:"
-        value.each do |sub_key, sub_value|
-          lines << "      #{sub_key}: #{sub_value}"
-        end
-      else
-        lines << "    #{key}: #{value}"
-      end
+    # Add content preview if available
+    if data['html_content']
+      content_preview = data['html_content'].to_s.strip[0..100] + "..."
+      lines << "    - Content Preview: #{content_preview}"
     end
     
     lines.join("\n")
   end
 
-  def format_generic_object_for_claude(record)
-    Rails.logger.info "=== SENDING COMPLETE GENERIC OBJECT DATA TO CLAUDE ==="
+  def format_generic_object_for_ai(record)
+    Rails.logger.info "=== SENDING COMPLETE GENERIC OBJECT DATA TO #{@ai_provider_name.upcase} ==="
     
     # Convert to readable format
     if record.respond_to?(:to_json)
       data = JSON.parse(record.to_json)
-    elsif record.is_a?(Hash)
-      data = record
     else
-      data = record.as_json rescue record.to_h rescue record.inspect
+      data = record.attributes rescue record.to_h
     end
     
     Rails.logger.info "Generic object data being sent: #{data.inspect}"
     
     lines = []
-    lines << "  COMPLETE OBJECT DATA:"
-    
+    lines << "  OBJECT RECORD:"
     data.each do |key, value|
-      if value.is_a?(Hash)
-        lines << "    #{key}:"
-        value.each do |sub_key, sub_value|
-          lines << "      #{sub_key}: #{sub_value}"
-        end
-      else
-        lines << "    #{key}: #{value}"
-      end
+      lines << "    - #{key.humanize}: #{value}"
     end
     
     lines.join("\n")
@@ -985,9 +1103,10 @@ class ScoutGenericToolsService
     end
   end
 
-  def format_conversation_for_claude(conversation_history, current_message)
+  def format_conversation_for_ai(conversation_history, user_message)
+    # Format conversation messages for AI consumption
     messages = []
-    
+
     # Add conversation history (limit to recent messages to avoid token limits)
     recent_history = conversation_history.last(10) # Last 10 messages for context
     
@@ -1001,7 +1120,7 @@ class ScoutGenericToolsService
     end
     
     # Add current message
-    messages << { role: 'user', content: current_message }
+    messages << { role: 'user', content: user_message }
     
     Rails.logger.info "Formatted conversation: #{messages.length} messages total"
     Rails.logger.info "Messages: #{messages.map { |m| "#{m[:role]}: #{m[:content][0..50]}..." }.join(' | ')}"
