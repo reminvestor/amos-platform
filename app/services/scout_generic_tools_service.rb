@@ -207,13 +207,15 @@ class ScoutGenericToolsService
           tools_used: true,
           tools_list: tool_names,
           success_count: tool_results.count { |r| r[:success] },
-          error_count: tool_results.count { |r| !r[:success] }
+          error_count: tool_results.count { |r| !r[:success] },
+          canvas: @suggested_canvas
         }
       else
         # No tools needed, return original response
         return {
           message: @parsed_user_message || response,
-          tools_used: false
+          tools_used: false,
+          canvas: @suggested_canvas
         }
       end
       
@@ -403,6 +405,18 @@ class ScoutGenericToolsService
       7. **BE AGGRESSIVE WITH TOOLS** - If user wants to analyze/query anything, USE TOOLS!
       8. **NO LINE BREAKS OR NEWLINES** in the message field - use \\n instead
       9. **ALWAYS use tools for analysis requests**
+      10. **FORMAT RESPONSES IN MARKDOWN** for better readability:
+          - Use ## headers for main sections
+          - Use ### for subsections  
+          - Use **bold** for important metrics
+          - Use bullet points (- ) for lists
+          - Use numbered lists (1. ) for recommendations
+          - Use > blockquotes for key insights
+          - Use `code` formatting for technical terms
+          - Keep paragraphs short and scannable
+
+      **MARKDOWN FORMATTING EXAMPLE:**
+      "## 📊 Campaign Analysis\\n\\n**Overall Performance:**\\n- 6 total campaigns\\n- 3 completed, 1 in progress, 2 drafts\\n\\n### 🎯 Top Performer\\n**\\"new test\\"** campaign:\\n- **50% click rate** (excellent!)\\n- 100% delivery rate\\n- 0 unsubscribes\\n\\n### ⚠️ Areas for Improvement\\n1. **Open rates at 0%** - check spam folders\\n2. **Subject line optimization** needed\\n3. **A/B testing** recommended"
 
       Be conversational in your message but use tools intelligently behind the scenes.
     PROMPT

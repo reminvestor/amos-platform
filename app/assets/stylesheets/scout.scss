@@ -844,3 +844,77 @@
     transform: scale(1.2);
   }
 } 
+
+/* Markdown formatting in Scout messages */
+.message-content {
+  h1, h2, h3 {
+    margin: 0.5rem 0;
+    color: var(--scout-text);
+    font-weight: 600;
+  }
+  
+  h1 { font-size: 1.25rem; }
+  h2 { 
+    font-size: 1.1rem; 
+    border-bottom: 1px solid var(--scout-border);
+    padding-bottom: 0.25rem;
+  }
+  h3 { font-size: 1rem; }
+  
+  strong {
+    font-weight: 600;
+    color: var(--scout-primary);
+  }
+  
+  code {
+    background: var(--scout-code-bg, #f1f3f4);
+    color: var(--scout-code-text, #333);
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+  }
+  
+  blockquote {
+    border-left: 3px solid var(--scout-primary);
+    margin: 0.5rem 0;
+    padding: 0.5rem 0 0.5rem 1rem;
+    background: var(--scout-bg-secondary, rgba(0,0,0,0.02));
+    font-style: italic;
+    color: var(--scout-text-muted);
+  }
+  
+  ul, ol {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+    
+    li {
+      margin: 0.25rem 0;
+      line-height: 1.4;
+    }
+  }
+  
+  p {
+    margin: 0.5rem 0;
+    line-height: 1.5;
+    
+    &:first-child { margin-top: 0; }
+    &:last-child { margin-bottom: 0; }
+  }
+  
+  br {
+    line-height: 1.5;
+  }
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .message-content {
+  code {
+    background: #2d3748;
+    color: #e2e8f0;
+  }
+  
+  blockquote {
+    background: rgba(255,255,255,0.05);
+  }
+} 

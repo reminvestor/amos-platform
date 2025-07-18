@@ -84,12 +84,15 @@ export default class extends Controller {
     
     const avatar = role === "ai" ? "fas fa-robot" : "fas fa-user"
     
+    // Parse markdown for AI messages
+    const formattedContent = role === "ai" ? this.parseMarkdown(content) : this.escapeHtml(content)
+    
     messageDiv.innerHTML = `
       <div class="message-avatar">
         <i class="${avatar}"></i>
       </div>
       <div class="message-content">
-        <p>${content}</p>
+        ${formattedContent}
       </div>
     `
     
@@ -282,7 +285,7 @@ export default class extends Controller {
     try {
       console.log(`🎨 Loading Scout canvas: ${canvasType}`)
       console.log(`📦 Canvas data:`, canvasData)
-      this.showLoading()
+      this.showCanvasLoading()
 
       console.log("📡 Making request to /scout/load_canvas")
       const response = await fetch("/scout/load_canvas", {
@@ -342,7 +345,7 @@ export default class extends Controller {
       this.addMessage("Sorry, I couldn't load that view. Please try again.", "ai")
     } finally {
       console.log("🔄 Hiding loading overlay")
-      this.hideLoading()
+      this.hideCanvasLoading()
     }
   }
 
@@ -394,9 +397,33 @@ export default class extends Controller {
   }
 
   // Utility methods
+  // Loading methods for different use cases
   showLoading() {
-    // Start with streaming window instead of overlay
+    // For streaming responses - use streaming window
     this.showStreamingWindow("🤖 Scout is thinking...")
+  }
+
+  hideLoading() {
+    // Hide the streaming window when done
+    this.hideStreamingWindow()
+  }
+
+  // Separate loading overlay methods for canvas operations
+  showCanvasLoading() {
+    if (this.hasLoadingOverlayTarget) {
+      this.loadingOverlayTarget.classList.add("active")
+      // Set canvas loading message
+      let messageElement = this.loadingOverlayTarget.querySelector('.loading-spinner p')
+      if (messageElement) {
+        messageElement.textContent = "🎨 Loading canvas..."
+      }
+    }
+  }
+
+  hideCanvasLoading() {
+    if (this.hasLoadingOverlayTarget) {
+      this.loadingOverlayTarget.classList.remove("active")
+    }
   }
 
   showStreamingProgress(message) {
@@ -456,11 +483,6 @@ export default class extends Controller {
         streamingWindow.remove()
       }, 300)
     }
-  }
-
-  hideLoading() {
-    // Hide the streaming window when done
-    this.hideStreamingWindow()
   }
 
   scrollChatToBottom() {
@@ -604,5 +626,87 @@ export default class extends Controller {
         btn.classList.remove('active')
       }
     })
+  }
+
+  // Simple markdown parser for Scout messages
+  parseMarkdown(text) {
+    // Split into lines for better processing
+    let lines = text.split('\n')
+    let html = []
+    let inList = false
+    
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i]
+      
+      // Skip empty lines
+      if (line.trim() === '') {
+        if (inList) {
+          html.push('</ul>')
+          inList = false
+        }
+        html.push('<br>')
+        continue
+      }
+      
+      // Headers
+      if (line.startsWith('### ')) {
+        if (inList) { html.push('</ul>'); inList = false }
+        html.push(`<h3>${line.substr(4)}</h3>`)
+      } else if (line.startsWith('## ')) {
+        if (inList) { html.push('</ul>'); inList = false }
+        html.push(`<h2>${line.substr(3)}</h2>`)
+      } else if (line.startsWith('# ')) {
+        if (inList) { html.push('</ul>'); inList = false }
+        html.push(`<h1>${line.substr(2)}</h1>`)
+      }
+      // Blockquotes
+      else if (line.startsWith('> ')) {
+        if (inList) { html.push('</ul>'); inList = false }
+        html.push(`<blockquote>${line.substr(2)}</blockquote>`)
+      }
+      // Lists
+      else if (line.startsWith('- ') || /^\d+\. /.test(line)) {
+        if (!inList) {
+          html.push('<ul>')
+          inList = true
+        }
+        const content = line.startsWith('- ') ? line.substr(2) : line.replace(/^\d+\. /, '')
+        html.push(`<li>${this.parseInlineMarkdown(content)}</li>`)
+      }
+      // Regular paragraphs
+      else {
+        if (inList) {
+          html.push('</ul>')
+          inList = false
+        }
+        html.push(`<p>${this.parseInlineMarkdown(line)}</p>`)
+      }
+    }
+    
+    // Close any open lists
+    if (inList) {
+      html.push('</ul>')
+    }
+    
+    return html.join('')
+  }
+
+  // Parse inline markdown (bold, code, etc.)
+  parseInlineMarkdown(text) {
+    return text
+      // Bold
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // Code
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      // Escape remaining HTML
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+  }
+
+  // Escape HTML for user messages
+  escapeHtml(text) {
+    const div = document.createElement('div')
+    div.textContent = text
+    return `<p>${div.innerHTML}</p>`
   }
 } 
