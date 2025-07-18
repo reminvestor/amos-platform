@@ -582,6 +582,19 @@ class ScoutGenericToolsService
     # Format tool results for Claude
     results_summary = format_tool_results_for_claude(tool_results)
     
+    Rails.logger.info "=== TOOL RESULTS SUMMARY FOR CLAUDE ==="
+    Rails.logger.info "Number of tool results: #{tool_results.length}"
+    tool_results.each_with_index do |result, i|
+      Rails.logger.info "Tool #{i+1}: #{result[:tool_name]} - Success: #{result[:success]}"
+      if result[:success] && result[:result]&.dig(:data)
+        Rails.logger.info "  Data keys: #{result[:result][:data].keys}"
+        result[:result][:data].each do |type, data|
+          Rails.logger.info "    #{type}: #{data.dig(:records)&.length || 0} records"
+        end
+      end
+    end
+    Rails.logger.info "=== END TOOL RESULTS SUMMARY ==="
+    
     # Check if we have any successful results
     successful_results = tool_results.select { |r| r[:success] }
     failed_results = tool_results.select { |r| !r[:success] }
@@ -589,6 +602,7 @@ class ScoutGenericToolsService
     # If all tools failed, return a simplified error message
     if successful_results.empty?
       error_summary = failed_results.map { |r| r[:result][:error] }.join(', ')
+      Rails.logger.error "All tools failed: #{error_summary}"
       return "I tried to access your marketing data but ran into some technical issues: #{error_summary}. Please try again or let me know if you need help with something else."
     end
     
@@ -604,16 +618,25 @@ class ScoutGenericToolsService
 
       Now provide an updated, conversational response that incorporates the actual data. You should:
       1. Use the REAL data from the tool results, not assumptions
-      2. Be specific about what was found or created
+      2. Be specific about what was found or created  
       3. Don't mention "tools" - just present the information naturally
       4. If any tools failed, explain it helpfully
       5. Suggest relevant next steps based on the actual results
+      6. ANALYZE THE SPECIFIC METRICS provided in the data above
+      7. Provide actionable insights based on the real performance numbers
 
       Provide your updated response as plain text (not JSON):
     PROMPT
     
+    # Log the complete prompt being sent to Claude
+    Rails.logger.info "=== COMPLETE PROMPT BEING SENT TO CLAUDE ==="
+    Rails.logger.info final_prompt
+    Rails.logger.info "=== END CLAUDE PROMPT ==="
+    Rails.logger.info "Prompt length: #{final_prompt.length} characters"
+    
     # Ensure we're not sending empty content
     if final_prompt.strip.empty?
+      Rails.logger.error "Empty prompt generated!"
       return "I'm having trouble processing that request right now. Please try again."
     end
     
@@ -651,29 +674,177 @@ class ScoutGenericToolsService
   def format_data_results(result)
     return "No data found" unless result[:data]
     
-    summary = []
+    # Log what we're sending to Claude
+    Rails.logger.info "=== FORMATTING DATA FOR CLAUDE ==="
+    Rails.logger.info "Result structure: #{result.keys}"
+    Rails.logger.info "Data keys: #{result[:data].keys}"
+    
+    formatted_sections = []
+    
     result[:data].each do |object_type, data|
       records = data[:records] || []
+      
       if records.any?
-        summary << "Found #{records.length} #{object_type}:"
-        records.first(3).each do |record|
+        Rails.logger.info "Formatting #{records.length} #{object_type} records for Claude"
+        
+        section = []
+        section << "=== #{object_type.upcase} DATA (#{records.length} records) ==="
+        
+        records.each_with_index do |record, index|
+          section << "\n#{object_type.singularize.capitalize} ##{index + 1}:"
+          
+          # Include all relevant fields based on object type
           case object_type
           when 'campaigns'
-            summary << "- #{record[:name] || record[:subject] || "Campaign ##{record[:id]}"}"
-          when 'contacts'
-            name = [record[:first_name], record[:last_name]].compact.join(' ')
-            summary << "- #{name} (#{record[:email]})"
+            section << format_campaign_for_claude(record)
+          when 'contacts' 
+            section << format_contact_for_claude(record)
+          when 'landing_pages'
+            section << format_landing_page_for_claude(record)
           else
-            summary << "- #{record[:name] || record[:title] || "Item ##{record[:id]}"}"
+            section << format_generic_object_for_claude(record)
           end
         end
-        summary << "... and #{records.length - 3} more" if records.length > 3
+        
+        formatted_sections << section.join("\n")
       else
-        summary << "No #{object_type} found"
+        formatted_sections << "No #{object_type} found"
       end
     end
     
-    summary.join("\n")
+    final_result = formatted_sections.join("\n\n")
+    
+    # Log the final formatted result
+    Rails.logger.info "=== FINAL FORMATTED DATA FOR CLAUDE ==="
+    Rails.logger.info final_result
+    Rails.logger.info "=== END CLAUDE DATA ==="
+    
+    final_result
+  end
+
+  def format_campaign_for_claude(record)
+    Rails.logger.info "=== SENDING COMPLETE CAMPAIGN DATA TO CLAUDE ==="
+    
+    # Convert the record to a readable format for Claude
+    if record.respond_to?(:to_json)
+      data = JSON.parse(record.to_json)
+    elsif record.is_a?(Hash)
+      data = record
+    else
+      data = record.as_json rescue record.to_h rescue record.inspect
+    end
+    
+    Rails.logger.info "Campaign data being sent: #{data.inspect}"
+    
+    # Format as clean, readable text for Claude
+    lines = []
+    lines << "  COMPLETE CAMPAIGN DATA:"
+    
+    data.each do |key, value|
+      if value.is_a?(Hash)
+        lines << "    #{key}:"
+        value.each do |sub_key, sub_value|
+          lines << "      #{sub_key}: #{sub_value}"
+        end
+      else
+        lines << "    #{key}: #{value}"
+      end
+    end
+    
+    lines.join("\n")
+  end
+
+  def format_contact_for_claude(record)
+    Rails.logger.info "=== SENDING COMPLETE CONTACT DATA TO CLAUDE ==="
+    
+    # Convert to readable format
+    if record.respond_to?(:to_json)
+      data = JSON.parse(record.to_json)
+    elsif record.is_a?(Hash)
+      data = record
+    else
+      data = record.as_json rescue record.to_h rescue record.inspect
+    end
+    
+    Rails.logger.info "Contact data being sent: #{data.inspect}"
+    
+    lines = []
+    lines << "  COMPLETE CONTACT DATA:"
+    
+    data.each do |key, value|
+      if value.is_a?(Hash)
+        lines << "    #{key}:"
+        value.each do |sub_key, sub_value|
+          lines << "      #{sub_key}: #{sub_value}"
+        end
+      else
+        lines << "    #{key}: #{value}"
+      end
+    end
+    
+    lines.join("\n")
+  end
+
+  def format_landing_page_for_claude(record)
+    Rails.logger.info "=== SENDING COMPLETE LANDING PAGE DATA TO CLAUDE ==="
+    
+    # Convert to readable format
+    if record.respond_to?(:to_json)
+      data = JSON.parse(record.to_json)
+    elsif record.is_a?(Hash)
+      data = record
+    else
+      data = record.as_json rescue record.to_h rescue record.inspect
+    end
+    
+    Rails.logger.info "Landing page data being sent: #{data.inspect}"
+    
+    lines = []
+    lines << "  COMPLETE LANDING PAGE DATA:"
+    
+    data.each do |key, value|
+      if value.is_a?(Hash)
+        lines << "    #{key}:"
+        value.each do |sub_key, sub_value|
+          lines << "      #{sub_key}: #{sub_value}"
+        end
+      else
+        lines << "    #{key}: #{value}"
+      end
+    end
+    
+    lines.join("\n")
+  end
+
+  def format_generic_object_for_claude(record)
+    Rails.logger.info "=== SENDING COMPLETE GENERIC OBJECT DATA TO CLAUDE ==="
+    
+    # Convert to readable format
+    if record.respond_to?(:to_json)
+      data = JSON.parse(record.to_json)
+    elsif record.is_a?(Hash)
+      data = record
+    else
+      data = record.as_json rescue record.to_h rescue record.inspect
+    end
+    
+    Rails.logger.info "Generic object data being sent: #{data.inspect}"
+    
+    lines = []
+    lines << "  COMPLETE OBJECT DATA:"
+    
+    data.each do |key, value|
+      if value.is_a?(Hash)
+        lines << "    #{key}:"
+        value.each do |sub_key, sub_value|
+          lines << "      #{sub_key}: #{sub_value}"
+        end
+      else
+        lines << "    #{key}: #{value}"
+      end
+    end
+    
+    lines.join("\n")
   end
 
   def format_creation_results(result)
