@@ -19,6 +19,7 @@ export default class extends Controller {
   connect() {
     this.currentMode = "conversation" // conversation or work
     this.currentTemplate = null
+    this.currentCanvas = null // Track current canvas
     this.isResizing = false
     
     // Auto-focus chat input
@@ -26,13 +27,13 @@ export default class extends Controller {
       this.chatInputTarget.focus()
     }
     
-    // Load user templates
-    this.loadTemplates()
-    
     // Bind resize events
     this.bindResizeEvents()
     
-    console.log("🤖 Scout AI workspace ready! (Powered by Claude 4)")
+    // Set up canvas globals immediately
+    this.setupCanvasGlobals()
+    
+    console.log("🤖 Scout AI ready with intelligent canvas! (Powered by Claude 4)")
   }
 
   // Toggle side navigation
@@ -56,7 +57,7 @@ export default class extends Controller {
     // Show loading
     this.showLoading()
     
-    // Send to Scout AI (now powered by Claude 4)
+    // Process with Scout
     this.processMessage(message)
   }
 
@@ -88,10 +89,12 @@ export default class extends Controller {
     this.scrollChatToBottom()
   }
 
-  // Process message with AI
+  // Enhanced processMessage to handle canvas actions
   async processMessage(message) {
     try {
-      const response = await fetch("/workspace/chat", {
+      console.log("🔄 Processing message:", message)
+      
+      const response = await fetch("/scout/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,42 +103,52 @@ export default class extends Controller {
         body: JSON.stringify({ message: message })
       })
 
+      console.log("📡 Scout response received:", response.status)
       const data = await response.json()
+      console.log("📊 Scout response data:", data)
       
       // Hide loading
       this.hideLoading()
       
-      if (data.success) {
+      if (data.message) {
         // Add AI response
-        this.addMessage(data.response, "ai")
+        this.addMessage(data.message, "ai")
         
-        // Handle any actions (like loading templates)
-        if (data.action) {
-          this.handleAction(data.action, data.payload)
+        // Check if Claude suggested a canvas to load
+        if (data.canvas) {
+          console.log(`🎨 Scout suggested canvas: ${data.canvas}`)
+          console.log("🕐 Loading canvas in 1 second...")
+          setTimeout(() => {
+            console.log("🎯 Actually loading canvas now:", data.canvas)
+            this.loadScoutCanvas(data.canvas, {})
+          }, 1000)
+        } else {
+          console.log("ℹ️ No canvas suggested in response")
         }
+        
+        // Handle data changes that might require canvas refresh
+        this.handleDataChanges(data)
       } else {
+        console.log("❌ No message in response data")
         this.addMessage("Sorry, I couldn't process that request. Please try again.", "ai")
       }
       
     } catch (error) {
-      console.error("Error sending message:", error)
+      console.error("❌ Error sending message:", error)
       this.hideLoading()
       this.addMessage("Sorry, something went wrong. Please try again.", "ai")
     }
   }
 
-  // Handle AI actions
-  handleAction(action, payload) {
-    switch (action) {
-      case "load_template":
-        this.loadTemplate(payload.template_id, payload.template_name)
-        break
-      case "switch_mode":
-        this.switchToMode(payload.mode)
-        break
-      case "update_template":
-        this.updateTemplateContent(payload.content)
-        break
+  // Handle data changes that should refresh current canvas
+  handleDataChanges(data) {
+    if (this.currentCanvas && data.tools_used) {
+      console.log("🔄 Data changed, refreshing current canvas")
+      setTimeout(() => {
+        if (this.currentCanvas) {
+          this.loadScoutCanvas(this.currentCanvas.type, this.currentCanvas.data)
+        }
+      }, 2000)
     }
   }
 
@@ -161,6 +174,7 @@ export default class extends Controller {
       workspace.classList.add("conversation-mode")
       this.currentMode = "conversation"
       this.currentTemplate = null
+      this.currentCanvas = null
       
       // Reset chat area to full width in conversation mode
       if (this.hasChatAreaTarget) {
@@ -183,45 +197,110 @@ export default class extends Controller {
   // Close current template
   closeTemplate() {
     this.switchToMode("conversation")
-    this.addMessage("Template closed. What else can I help you with?", "ai")
+    this.addMessage("Canvas closed. What else can I help you with?", "ai")
   }
 
-  // Load a template
-  async loadTemplate(templateId, templateName) {
+  // ========== SCOUT CANVAS FUNCTIONALITY ==========
+
+  // Load a Scout canvas
+  async loadScoutCanvas(canvasType, canvasData = {}) {
     try {
+      console.log(`🎨 Loading Scout canvas: ${canvasType}`)
+      console.log(`📦 Canvas data:`, canvasData)
       this.showLoading()
-      
-      const response = await fetch("/workspace/load_template", {
+
+      console.log("📡 Making request to /scout/load_canvas")
+      const response = await fetch("/scout/load_canvas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-CSRF-Token": this.getCSRFToken()
         },
-        body: JSON.stringify({ template_id: templateId })
+        body: JSON.stringify({ 
+          canvas_type: canvasType, 
+          canvas_data: canvasData 
+        })
       })
 
+      console.log(`📡 Canvas response status: ${response.status}`)
       const data = await response.json()
-      
+      console.log(`📊 Canvas response data:`, data)
+
       if (data.success) {
-        // Switch to work mode
+        console.log("✅ Canvas loading successful")
+        
+        // Switch to work mode to show the canvas
+        console.log("🔄 Switching to work mode")
         this.switchToMode("work")
         
-        // Update template area
-        this.templateTitleTarget.textContent = templateName || data.template.name
-        this.templateContentTarget.innerHTML = data.template.content
+        // Update canvas area
+        console.log("📝 Updating canvas content")
+        console.log("🎯 Setting title to:", data.canvas.title)
+        this.templateTitleTarget.textContent = data.canvas.title
+        console.log("🎯 Setting content HTML (length:", data.canvas.content.length, ")")
+        this.templateContentTarget.innerHTML = data.canvas.content
         
-        this.currentTemplate = templateId
+        // Store current canvas info
+        this.currentCanvas = {
+          type: canvasType,
+          data: canvasData,
+          title: data.canvas.title
+        }
+        console.log("💾 Stored current canvas:", this.currentCanvas)
+
+        // Set up global canvas functions for the loaded content
+        console.log("⚙️ Setting up canvas globals")
+        this.setupCanvasGlobals()
+
+        console.log(`✅ Canvas loaded successfully: ${data.canvas.title}`)
         
-        // Add confirmation message
-        this.addMessage(`Loaded ${templateName || data.template.name}. What would you like to change?`, "ai")
+        // Add confirmation message to chat
+        this.addMessage(`Loaded ${data.canvas.title}. You can interact with the data on the right while we continue our conversation here.`, "ai")
+        
+      } else {
+        console.error("❌ Failed to load canvas:", data.error)
+        this.addMessage(`Sorry, I couldn't load that view: ${data.error}`, "ai")
       }
-      
+
     } catch (error) {
-      console.error("Error loading template:", error)
-      this.addMessage("Sorry, I couldn't load that template. Please try again.", "ai")
+      console.error("❌ Canvas loading error:", error)
+      this.addMessage("Sorry, I couldn't load that view. Please try again.", "ai")
     } finally {
+      console.log("🔄 Hiding loading overlay")
       this.hideLoading()
     }
+  }
+
+  // Set up global functions that canvas content can call
+  setupCanvasGlobals() {
+    // Make functions available globally for canvas content
+    window.scoutSendMessage = (message) => {
+      this.sendScoutMessage(message)
+    }
+
+    window.scoutLoadCanvas = (canvasType, canvasData = {}) => {
+      this.loadScoutCanvas(canvasType, canvasData)
+    }
+
+    window.scoutRefreshCanvas = () => {
+      if (this.currentCanvas) {
+        this.loadScoutCanvas(this.currentCanvas.type, this.currentCanvas.data)
+      }
+    }
+
+    console.log("🔧 Canvas global functions set up")
+  }
+
+  // Send a message from canvas to Scout
+  sendScoutMessage(message) {
+    console.log(`💬 Canvas sending message: ${message}`)
+    
+    // Add user message to chat
+    this.addMessage(message, "user")
+    
+    // Show loading and process with Scout
+    this.showLoading()
+    this.processMessage(message)
   }
 
   // Update chat header
@@ -237,63 +316,6 @@ export default class extends Controller {
     if (this.hasTemplateContentTarget) {
       this.templateContentTarget.innerHTML = content
     }
-  }
-
-  // Load user templates
-  async loadTemplates() {
-    try {
-      console.log("📋 Loading templates...")
-      const response = await fetch("/workspace/templates")
-      console.log("📋 Templates response:", response)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      
-      const data = await response.json()
-      console.log("📋 Templates data:", data)
-      
-      if (data.templates && this.hasTemplateListTarget) {
-        this.renderTemplateList(data.templates)
-        console.log("📋 Templates rendered successfully")
-      } else {
-        console.warn("📋 No templates data or template list target not found")
-      }
-    } catch (error) {
-      console.error("📋 Error loading templates:", error)
-      
-      // Load default templates as fallback
-      const defaultTemplates = [
-        { id: 'landing_page', name: 'Landing Pages', type: 'builder' },
-        { id: 'campaign', name: 'Email Campaigns', type: 'builder' },
-        { id: 'analytics', name: 'Analytics', type: 'dashboard' }
-      ]
-      
-      if (this.hasTemplateListTarget) {
-        this.renderTemplateList(defaultTemplates)
-        console.log("📋 Default templates loaded as fallback")
-      }
-    }
-  }
-
-  // Render template list in sidebar
-  renderTemplateList(templates) {
-    const listHTML = templates.map(template => `
-      <div class="nav-item" data-action="click->workspace#selectTemplate" data-template-id="${template.id}">
-        <i class="fas fa-file"></i>
-        <span class="nav-text">${template.name}</span>
-      </div>
-    `).join("")
-    
-    this.templateListTarget.innerHTML = listHTML
-  }
-
-  // Select template from sidebar
-  selectTemplate(event) {
-    const templateId = event.target.closest("[data-template-id]").dataset.templateId
-    const templateName = event.target.closest("[data-template-id]").querySelector(".nav-text").textContent
-    
-    this.loadTemplate(templateId, templateName)
   }
 
   // Utility methods
@@ -399,7 +421,7 @@ export default class extends Controller {
   }
 
   loadChatWidth() {
-    const savedWidth = localStorage.getItem('workspace-chat-width')
+    const savedWidth = localStorage.getItem('scout-chat-width')
     const widthToApply = savedWidth ? parseFloat(savedWidth) : 18
     
     console.log(`📐 Loading chat width for work mode: ${widthToApply}%`)
@@ -415,7 +437,7 @@ export default class extends Controller {
     const currentWidth = getComputedStyle(this.element).getPropertyValue('--chat-width')
     if (currentWidth) {
       const widthValue = parseFloat(currentWidth)
-      localStorage.setItem('workspace-chat-width', widthValue.toString())
+      localStorage.setItem('scout-chat-width', widthValue.toString())
       console.log(`💾 Saved chat width: ${widthValue}%`)
     }
   }

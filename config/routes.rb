@@ -177,15 +177,7 @@ Rails.application.routes.draw do
     end
     
     # Workspace routes (AI Chat Interface)
-    resources :workspace, only: [:index] do
-      collection do
-        post :chat
-        post :load_template
-        get :templates
-      end
-    end
-    
-    # Application root for authenticated subdomain - now using Scout with tools!
+    # Application root for authenticated subdomain - Scout with intelligent canvas!
     root "scout#index", as: :application_root
   end
   
@@ -207,6 +199,7 @@ Rails.application.routes.draw do
   post 'onboarding/chat', to: 'onboarding#chat'
   patch 'onboarding/complete', to: 'onboarding#complete'
   get 'onboarding/reset', to: 'onboarding#reset'
+  get 'onboarding/debug_status', to: 'onboarding#debug_status'
   
   # Scout AI Assistant routes
   get 'scout', to: 'scout#index'
@@ -214,6 +207,10 @@ Rails.application.routes.draw do
   post 'scout/chat_stream', to: 'scout#chat_stream'
   delete 'scout/conversation', to: 'scout#clear_conversation'
   get 'scout/export', to: 'scout#conversation_export'
+  
+  # Scout Intelligent Canvas routes
+  post 'scout/load_canvas', to: 'scout#load_canvas'
+  get 'scout/available_canvases', to: 'scout#available_canvases'
 
   # Common routes (regardless of subdomain)
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

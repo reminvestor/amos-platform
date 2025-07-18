@@ -106,6 +106,20 @@ class OnboardingController < ApplicationController
     redirect_to onboarding_path, notice: "Conversation reset. Starting fresh with Scout!"
   end
   
+  # Debug action to check user status without redirects
+  def debug_status
+    render json: {
+      user_id: current_user.id,
+      onboarded: current_user.onboarded?,
+      entities_count: current_user.entities.count,
+      entity_users_count: current_user.entity_users.count,
+      domain: request.domain,
+      subdomain: request.subdomain,
+      path: request.path,
+      has_business_profile: current_user.business_profile.present?
+    }
+  end
+  
   private
   
   def needs_tool_enabled_response?(message)
@@ -121,8 +135,13 @@ class OnboardingController < ApplicationController
   end
   
   def check_if_already_onboarded
+    # Debug logging for production troubleshooting
+    Rails.logger.info "🔍 Onboarding controller check - User: #{current_user.id}, Onboarded: #{current_user.onboarded?}, Path: #{request.path}, Domain: #{request.domain}"
+    
     if current_user.onboarded?
-      redirect_to root_path, notice: "You've already completed onboarding!"
+      Rails.logger.info "🔄 User already onboarded, redirecting to scout - User: #{current_user.id}"
+      # Redirect to scout (main app) instead of root to avoid redirect loop
+      redirect_to scout_path, notice: "You've already completed onboarding!"
     end
   end
   

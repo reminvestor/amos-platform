@@ -1,0 +1,324 @@
+<div class="scout-canvas landing-page-generator">
+  <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="mb-1">
+        <i class="fas fa-magic text-primary me-2"></i>
+        Landing Page Generator
+      </h4>
+      <p class="text-muted mb-0">
+        <% if landing_page.persisted? %>
+          Editing: <%= landing_page.title || "Untitled Landing Page" %>
+        <% else %>
+          Creating a new landing page
+        <% end %>
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary" onclick="scoutBackToLandingPages()">
+        <i class="fas fa-arrow-left me-1"></i>
+        Back to Pages
+      </button>
+      <% if landing_page.persisted? && landing_page.has_content? %>
+        <button class="btn btn-success" onclick="scoutPreviewLandingPage(<%= landing_page.id %>)">
+          <i class="fas fa-eye me-1"></i>
+          Preview
+        </button>
+      <% end %>
+    </div>
+  </div>
+  
+  <div class="row">
+    <!-- Page Details -->
+    <div class="col-lg-4 mb-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">
+            <i class="fas fa-cog me-2"></i>
+            Page Settings
+          </h6>
+        </div>
+        <div class="card-body">
+          <form id="landingPageForm">
+            <div class="mb-3">
+              <label class="form-label">Page Title</label>
+              <input type="text" class="form-control" id="pageTitle" 
+                     value="<%= landing_page.title %>" 
+                     placeholder="Enter page title">
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea class="form-control" id="pageDescription" rows="3" 
+                        placeholder="Brief description of this page"><%= landing_page.description %></textarea>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Status</label>
+              <select class="form-select" id="pageStatus">
+                <option value="draft" <%= 'selected' if landing_page.status == 'draft' %>>Draft</option>
+                <option value="published" <%= 'selected' if landing_page.status == 'published' %>>Published</option>
+                <option value="archived" <%= 'selected' if landing_page.status == 'archived' %>>Archived</option>
+              </select>
+            </div>
+            
+            <% if landing_page.persisted? %>
+              <div class="mb-3">
+                <label class="form-label">Page URL</label>
+                <div class="input-group">
+                  <span class="input-group-text">/landing/</span>
+                  <input type="text" class="form-control" value="<%= landing_page.slug %>" readonly>
+                </div>
+              </div>
+            <% end %>
+            
+            <button type="button" class="btn btn-primary w-100" onclick="scoutSaveLandingPage()">
+              <i class="fas fa-save me-1"></i>
+              Save Changes
+            </button>
+          </form>
+        </div>
+      </div>
+      
+      <!-- Form Templates -->
+      <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">
+            <i class="fas fa-forms me-2"></i>
+            Form Templates
+          </h6>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">Add a contact form to collect leads</p>
+          <% form_templates.each do |template_key, template_desc| %>
+            <button class="btn btn-outline-primary btn-sm mb-2 w-100" 
+                    onclick="scoutAddFormTemplate('<%= template_key %>')">
+              <%= template_desc %>
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Content Preview/Editor -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">
+            <i class="fas fa-code me-2"></i>
+            Page Content
+          </h6>
+          <div class="btn-group" role="group">
+            <button type="button" class="btn btn-sm btn-outline-secondary active" 
+                    onclick="scoutSwitchView('editor')">
+              <i class="fas fa-code"></i> Editor
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" 
+                    onclick="scoutSwitchView('preview')">
+              <i class="fas fa-eye"></i> Preview
+            </button>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <!-- HTML Editor -->
+          <div id="editorView" class="editor-container">
+            <div class="editor-toolbar p-2 bg-light border-bottom">
+              <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Edit the HTML content below. Scout can help generate and modify this content.
+              </small>
+            </div>
+            <textarea id="htmlEditor" class="form-control border-0" rows="20" 
+                      style="font-family: 'Courier New', monospace; resize: none;"
+                      placeholder="<!-- HTML content will appear here -->"><%= landing_page.html_content %></textarea>
+          </div>
+          
+          <!-- Preview -->
+          <div id="previewView" class="preview-container d-none">
+            <div class="preview-toolbar p-2 bg-light border-bottom d-flex justify-content-between align-items-center">
+              <small class="text-muted">
+                <i class="fas fa-eye me-1"></i>
+                Preview of your landing page
+              </small>
+              <button class="btn btn-sm btn-outline-primary" onclick="scoutRefreshPreview()">
+                <i class="fas fa-sync-alt me-1"></i>
+                Refresh
+              </button>
+            </div>
+            <div id="previewContent" class="preview-content p-3" style="min-height: 400px;">
+              <% if landing_page.has_content? %>
+                <%= landing_page.html_content.html_safe %>
+              <% else %>
+                <div class="text-center text-muted py-5">
+                  <i class="fas fa-eye-slash fa-2x mb-3"></i>
+                  <p>No content to preview yet</p>
+                  <button class="btn btn-primary" onclick="scoutGenerateContent()">
+                    Generate Content with Scout
+                  </button>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- AI Generation Progress -->
+  <div id="generationProgress" class="generation-progress d-none">
+    <div class="card border-primary">
+      <div class="card-body text-center">
+        <div class="spinner-border text-primary mb-3" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <h6>Scout is generating your landing page...</h6>
+        <p class="text-muted mb-0" id="generationStatus">Analyzing your requirements</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Landing Page Generator JavaScript
+const landingPageGenerator = {
+  currentView: 'editor',
+  landingPageId: <%= landing_page.persisted? ? landing_page.id : 'null' %>,
+  
+  init() {
+    // Auto-save on content change (debounced)
+    this.setupAutoSave();
+  },
+  
+  setupAutoSave() {
+    let saveTimeout;
+    const editor = document.getElementById('htmlEditor');
+    
+    if (editor) {
+      editor.addEventListener('input', () => {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+          this.autoSave();
+        }, 2000); // Auto-save after 2 seconds of inactivity
+      });
+    }
+  },
+  
+  autoSave() {
+    if (this.landingPageId) {
+      console.log('Auto-saving landing page...');
+      // Could implement auto-save here
+    }
+  }
+};
+
+function scoutSwitchView(view) {
+  const editorView = document.getElementById('editorView');
+  const previewView = document.getElementById('previewView');
+  const buttons = document.querySelectorAll('.btn-group button');
+  
+  buttons.forEach(btn => btn.classList.remove('active'));
+  
+  if (view === 'editor') {
+    editorView.classList.remove('d-none');
+    previewView.classList.add('d-none');
+    buttons[0].classList.add('active');
+    landingPageGenerator.currentView = 'editor';
+  } else {
+    editorView.classList.add('d-none');
+    previewView.classList.remove('d-none');
+    buttons[1].classList.add('active');
+    landingPageGenerator.currentView = 'preview';
+    scoutRefreshPreview();
+  }
+}
+
+function scoutRefreshPreview() {
+  const editor = document.getElementById('htmlEditor');
+  const preview = document.getElementById('previewContent');
+  
+  if (editor && preview) {
+    const content = editor.value;
+    if (content.trim()) {
+      preview.innerHTML = content;
+    } else {
+      preview.innerHTML = `
+        <div class="text-center text-muted py-5">
+          <i class="fas fa-eye-slash fa-2x mb-3"></i>
+          <p>No content to preview yet</p>
+          <button class="btn btn-primary" onclick="scoutGenerateContent()">
+            Generate Content with Scout
+          </button>
+        </div>
+      `;
+    }
+  }
+}
+
+function scoutGenerateContent() {
+  window.scoutSendMessage?.("Generate HTML content for this landing page");
+}
+
+function scoutAddFormTemplate(templateKey) {
+  window.scoutSendMessage?.(`Add a ${templateKey.replace('_', ' ')} form to my landing page`);
+}
+
+function scoutSaveLandingPage() {
+  const title = document.getElementById('pageTitle').value;
+  const description = document.getElementById('pageDescription').value;
+  const status = document.getElementById('pageStatus').value;
+  const htmlContent = document.getElementById('htmlEditor').value;
+  
+  // Send to Scout to save the landing page
+  window.scoutSendMessage?.(`Save this landing page with title "${title}" and status "${status}"`);
+}
+
+function scoutBackToLandingPages() {
+  window.scoutLoadCanvas?.('landing_page_viewer');
+}
+
+function scoutPreviewLandingPage(pageId) {
+  window.open(`/landing_pages/${pageId}/preview`, '_blank');
+}
+
+// Initialize when loaded
+document.addEventListener('DOMContentLoaded', () => {
+  landingPageGenerator.init();
+});
+</script>
+
+<style>
+.landing-page-generator {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.editor-container textarea {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.preview-content {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.generation-progress {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1050;
+  min-width: 300px;
+}
+
+.form-template-btn {
+  transition: all 0.2s ease;
+}
+
+.form-template-btn:hover {
+  transform: translateY(-1px);
+}
+</style> 

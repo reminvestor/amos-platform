@@ -58,7 +58,19 @@ class ApplicationController < ActionController::Base
     return if controller_name == 'onboarding' # Don't redirect from onboarding pages
     return if controller_name == 'campaign_tracking' # Allow campaign tracking
     return if request.path.start_with?('/api/') # Skip API requests
+    return if request.path == '/scout' # Don't redirect from scout path to prevent loops
+    return if request.path == '/onboarding/debug_status' # Allow debug status check
+    
+    # Debug logging for production troubleshooting
+    Rails.logger.info "🔍 Onboarding check - User: #{current_user.id}, Onboarded: #{current_user.onboarded?}, Path: #{request.path}, Domain: #{request.domain}"
+    
     return if current_user.onboarded? # User has completed onboarding
+    
+    # Prevent redirect loops by checking if we're already being redirected to onboarding
+    return if request.path == onboarding_path || request.path.start_with?('/onboarding')
+    
+    # Debug redirect
+    Rails.logger.info "🔄 Redirecting to onboarding - User: #{current_user.id} not onboarded"
     
     # Redirect to onboarding if user hasn't completed it
     redirect_to onboarding_path
