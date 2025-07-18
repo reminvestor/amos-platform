@@ -232,6 +232,19 @@ class ScoutGenericToolsService
       AVAILABLE DATA MODELS:
       #{available_models.join(', ')}
 
+      **CRITICAL: WHEN TO USE TOOLS - BE AGGRESSIVE!**
+      
+      If the user mentions ANY of these, USE TOOLS IMMEDIATELY:
+      - "create a contact" → use create_object("contacts", {email: ..., first_name: ..., last_name: ...})
+      - "create a campaign" → use create_object("campaigns", {...})  
+      - "show me campaigns" → use get_data("campaigns", ...)
+      - "performance" or "metrics" → use get_data with include_metrics: true
+      - "recent" → use get_data with date filters
+
+      CONTACT CREATION EXAMPLES:
+      - "create contact John Doe john@doe.com" → create_object("contacts", {email: "john@doe.com", first_name: "John", last_name: "Doe"})
+      - "add contact for Jane Smith jane@smith.com" → create_object("contacts", {email: "jane@smith.com", first_name: "Jane", last_name: "Smith"})
+
       **SCHEMA DISCOVERY - CRITICAL FOR SUCCESS:**
       
       ALWAYS use get_schema(object_type) FIRST when:
@@ -289,6 +302,7 @@ class ScoutGenericToolsService
       4. Only reference fields that actually exist in the database
       5. When in doubt, check the schema first!
       6. Be transparent: tell users when you're discovering their data structure
+      7. **BE AGGRESSIVE WITH TOOLS** - If user wants to create/query anything, USE TOOLS!
 
       Be conversational in your message but use tools intelligently behind the scenes.
     PROMPT
@@ -316,40 +330,38 @@ class ScoutGenericToolsService
   end
 
   def parse_function_calls_from_response(response)
+    Rails.logger.info "=== PARSING CLAUDE RESPONSE FOR TOOLS ==="
+    Rails.logger.info "Raw Claude response length: #{response.length}"
+    Rails.logger.info "Raw Claude response: #{response}"
+    
     begin
-      # Parse the entire response as JSON
-      parsed_response = JSON.parse(response.strip)
+      # Try to parse the response as JSON
+      parsed = JSON.parse(response)
+      Rails.logger.info "Successfully parsed JSON response: #{parsed.keys}"
       
-      # Extract message and tool calls
-      user_message = parsed_response['message'] || ""
-      tool_calls_data = parsed_response['tool_calls'] || []
+      @parsed_user_message = parsed['message']
+      tool_calls = parsed['tool_calls']
       
-      # Convert tool calls to our expected format
-      tool_calls = []
-      tool_calls_data.each do |tool_call|
-        if tool_call['name'] && tool_call['arguments']
-          tool_calls << {
-            name: tool_call['name'],
-            arguments: tool_call['arguments']
+      if tool_calls && tool_calls.is_a?(Array) && tool_calls.any?
+        Rails.logger.info "Found #{tool_calls.length} tool calls: #{tool_calls.map { |t| t['name'] }}"
+        return tool_calls.map do |call|
+          {
+            name: call['name'],
+            arguments: call['arguments'] || {}
           }
         end
+      else
+        Rails.logger.warn "No tool calls found in response. Tool_calls field: #{tool_calls.inspect}"
+        return nil
       end
       
-      Rails.logger.info "Successfully parsed JSON response: message=#{user_message.length} chars, tools=#{tool_calls.length}"
-      
-      # Store the user message for later use
-      @parsed_user_message = user_message
-      
-      # Return tool calls (or nil if none)
-      tool_calls.empty? ? nil : tool_calls
-      
     rescue JSON::ParserError => e
-      Rails.logger.error "Failed to parse response as JSON: #{e.message}"
-      Rails.logger.error "Response was: #{response}"
+      Rails.logger.error "Failed to parse Claude response as JSON: #{e.message}"
+      Rails.logger.error "This suggests Claude returned plain text instead of JSON format"
       
-      # Fallback: treat as regular conversational response
+      # Store the raw response for fallback
       @parsed_user_message = response
-      nil
+      return nil
     end
   end
 
