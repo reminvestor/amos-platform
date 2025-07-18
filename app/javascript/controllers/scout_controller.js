@@ -22,9 +22,17 @@ export default class extends Controller {
     this.currentCanvas = null // Track current canvas
     this.isResizing = false
     
-    // Auto-focus chat input
-    if (this.hasChatInputTarget) {
-      this.chatInputTarget.focus()
+    // Auto-focus chat input (with defensive check)
+    if (this.hasChatInputTarget && this.chatInputTarget) {
+      try {
+        setTimeout(() => {
+          if (this.chatInputTarget && this.chatInputTarget.focus) {
+            this.chatInputTarget.focus()
+          }
+        }, 100) // Small delay to ensure element is ready
+      } catch (e) {
+        console.log("Could not focus chat input:", e.message)
+      }
     }
     
     // Bind resize events
@@ -94,7 +102,11 @@ export default class extends Controller {
     try {
       console.log("🔄 Processing message:", message)
       
-      const response = await fetch("/scout/chat", {
+      // Ensure streaming window is visible and show initial status
+      this.showStreamingProgress("🤖 Connecting to Scout...")
+      
+      // Use streaming endpoint for better timeout handling
+      const response = await fetch("/scout/chat_stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -103,39 +115,102 @@ export default class extends Controller {
         body: JSON.stringify({ message: message })
       })
 
-      console.log("📡 Scout response received:", response.status)
-      const data = await response.json()
-      console.log("📊 Scout response data:", data)
+      console.log("📡 Scout streaming response received:", response.status)
       
-      // Hide loading
-      this.hideLoading()
+      if (!response.body) {
+        throw new Error("No response body received")
+      }
       
-      if (data.message) {
-        // Add AI response
-        this.addMessage(data.message, "ai")
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let finalResponseData = null
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          
+          const chunk = decoder.decode(value)
+          const lines = chunk.split('\n')
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const jsonStr = line.slice(6)
+                console.log("Parsing JSON:", jsonStr.length > 200 ? jsonStr.substring(0, 200) + "..." : jsonStr)
+                
+                const data = JSON.parse(jsonStr)
+                console.log("📊 Streaming data:", data.type, data.type === 'response' ? '(Final Response)' : data.message)
+                
+                if (data.type === 'update') {
+                  // Show progress update in the streaming window
+                  console.log("🔄 Progress:", data.message)
+                  this.showStreamingProgress(data.message)
+                } else if (data.type === 'response') {
+                  // Final response received - hide streaming window and show message
+                  finalResponseData = data.data
+                  console.log("✅ Final response received, message length:", finalResponseData?.message?.length || 0)
+                  
+                  // Hide streaming window first
+                  this.hideStreamingWindow()
+                }
+              } catch (e) {
+                console.log("JSON parse error for line:", e.message)
+                console.log("Line length:", line.length)
+                console.log("Line sample:", line.substring(0, 100) + "...")
+                
+                // Try to extract data manually if JSON parsing fails
+                if (line.includes('"type":"response"')) {
+                  try {
+                    // Extract the response data manually
+                    const match = line.match(/"data":\s*({.*})}\s*$/)
+                    if (match) {
+                      const dataStr = match[1] + '}'
+                      finalResponseData = JSON.parse(dataStr)
+                      console.log("✅ Manually extracted final response")
+                      this.hideStreamingWindow()
+                    }
+                  } catch (manualError) {
+                    console.log("Manual extraction also failed:", manualError.message)
+                  }
+                }
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock()
+      }
+      
+      // Process the final response data
+      if (finalResponseData && finalResponseData.message) {
+        // Add AI response (streaming window should already be hidden)
+        this.addMessage(finalResponseData.message, "ai")
         
-        // Check if Claude suggested a canvas to load
-        if (data.canvas) {
-          console.log(`🎨 Scout suggested canvas: ${data.canvas}`)
+        // Check if Scout suggested a canvas to load
+        if (finalResponseData.canvas) {
+          console.log(`🎨 Scout suggested canvas: ${finalResponseData.canvas}`)
           console.log("🕐 Loading canvas in 1 second...")
           setTimeout(() => {
-            console.log("🎯 Actually loading canvas now:", data.canvas)
-            this.loadScoutCanvas(data.canvas, {})
+            console.log("🎯 Actually loading canvas now:", finalResponseData.canvas)
+            this.loadScoutCanvas(finalResponseData.canvas, {})
           }, 1000)
         } else {
           console.log("ℹ️ No canvas suggested in response")
         }
         
         // Handle data changes that might require canvas refresh
-        this.handleDataChanges(data)
+        this.handleDataChanges(finalResponseData)
       } else {
+        // Hide streaming window even if no final response
+        this.hideStreamingWindow()
         console.log("❌ No message in response data")
         this.addMessage("Sorry, I couldn't process that request. Please try again.", "ai")
       }
       
     } catch (error) {
       console.error("❌ Error sending message:", error)
-      this.hideLoading()
+      this.hideStreamingWindow()
       this.addMessage("Sorry, something went wrong. Please try again.", "ai")
     }
   }
@@ -320,15 +395,72 @@ export default class extends Controller {
 
   // Utility methods
   showLoading() {
-    if (this.hasLoadingOverlayTarget) {
-      this.loadingOverlayTarget.classList.add("active")
+    // Start with streaming window instead of overlay
+    this.showStreamingWindow("🤖 Scout is thinking...")
+  }
+
+  showStreamingProgress(message) {
+    console.log("🔄 showStreamingProgress called with:", message)
+    
+    // Create or show streaming window instead of overlay
+    this.showStreamingWindow(message)
+  }
+
+  showStreamingWindow(message) {
+    let streamingWindow = document.getElementById('streaming-progress-window')
+    
+    if (!streamingWindow) {
+      // Create the streaming window
+      streamingWindow = document.createElement('div')
+      streamingWindow.id = 'streaming-progress-window'
+      streamingWindow.className = 'streaming-progress-window'
+      streamingWindow.innerHTML = `
+        <div class="streaming-header">
+          <div class="streaming-icon">
+            <i class="fas fa-robot"></i>
+          </div>
+          <div class="streaming-title">Scout is working...</div>
+        </div>
+        <div class="streaming-content">
+          <div class="streaming-message"></div>
+          <div class="streaming-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      `
+      
+      // Add to chat messages area
+      if (this.hasChatMessagesTarget) {
+        this.chatMessagesTarget.appendChild(streamingWindow)
+        this.scrollChatToBottom()
+      }
+    }
+    
+    // Update the message
+    const messageElement = streamingWindow.querySelector('.streaming-message')
+    if (messageElement) {
+      messageElement.textContent = message
+    }
+    
+    // Show the window
+    streamingWindow.classList.add('active')
+  }
+
+  hideStreamingWindow() {
+    const streamingWindow = document.getElementById('streaming-progress-window')
+    if (streamingWindow) {
+      streamingWindow.classList.add('fade-out')
+      setTimeout(() => {
+        streamingWindow.remove()
+      }, 300)
     }
   }
 
   hideLoading() {
-    if (this.hasLoadingOverlayTarget) {
-      this.loadingOverlayTarget.classList.remove("active")
-    }
+    // Hide the streaming window when done
+    this.hideStreamingWindow()
   }
 
   scrollChatToBottom() {
@@ -338,11 +470,20 @@ export default class extends Controller {
   }
 
   getCSRFToken() {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')
+    // Check for CSRF token in multiple possible locations
+    const csrfToken = document.querySelector('meta[name="csrf-token"]') || 
+                     document.querySelector('meta[name="authenticity_token"]')
+    
     if (csrfToken) {
       return csrfToken.getAttribute('content')
     } else {
-      console.warn("⚠️ CSRF token not found!")
+      // Try to get from Rails UJS if available
+      const railsToken = document.querySelector('input[name="authenticity_token"]')
+      if (railsToken) {
+        return railsToken.value
+      }
+      
+      console.warn("⚠️ CSRF token not found! Request may fail.")
       return ""
     }
   }

@@ -1,4 +1,6 @@
 class ScoutController < ApplicationController
+  include ActionController::Live  # Enable real-time streaming
+  
   before_action :authenticate_user!
   before_action :ensure_entity_exists
   before_action :ensure_onboarded
@@ -83,14 +85,23 @@ class ScoutController < ApplicationController
       return
     end
 
-    response.headers['Content-Type'] = 'text/plain'
-    response.headers['Cache-Control'] = 'no-cache'
+    # Set streaming headers
+    response.headers['Content-Type'] = 'text/event-stream'
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response.headers['Connection'] = 'keep-alive'
+    response.headers['X-Accel-Buffering'] = 'no' # Prevent nginx buffering
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    
+    # Force the headers to be sent immediately
+    response.status = 200
     
     begin
+      # Send immediate response to establish streaming
+      stream_update("💬 Message received")
+      
       # Save user message
       save_scout_message('user', user_message)
-      stream_update("💬 Message received")
+      stream_update("📚 Loading conversation history...")
       
       # Get conversation history
       conversation_history = scout_conversation_history
@@ -257,15 +268,74 @@ class ScoutController < ApplicationController
   private
 
   def stream_update(message)
-    response.stream.write("data: #{JSON.generate({ type: 'update', message: message })}\n\n")
+    # Create the SSE (Server-Sent Events) format
+    data = JSON.generate({ type: 'update', message: message })
+    chunk = "data: #{data}\n\n"
+    
+    # Write and try to force immediate sending
+    response.stream.write(chunk)
+    
+    # Try multiple methods to flush
+    begin
+      response.stream.flush if response.stream.respond_to?(:flush)
+    rescue
+      # Ignore flush errors
+    end
+    
+    # Force Rails to send the response chunk immediately
+    begin
+      if defined?(ActionController::Live) && response.stream.is_a?(ActionController::Live::SSE)
+        response.stream.instance_variable_get(:@stream).flush rescue nil
+      end
+    rescue
+      # Ignore if this doesn't work
+    end
+    
+    Rails.logger.info "Streamed update: #{message[0..50]}..."
+    
+  rescue => e
+    Rails.logger.error "Stream update error: #{e.message}"
   end
 
   def stream_final_response(response_data)
-    response.stream.write("data: #{JSON.generate({ type: 'response', data: response_data })}\n\n")
+    # Create the final SSE response
+    data = JSON.generate({ type: 'response', data: response_data })
+    chunk = "data: #{data}\n\n"
+    
+    # Write and try to force immediate sending
+    response.stream.write(chunk)
+    
+    # Try to flush
+    begin
+      response.stream.flush if response.stream.respond_to?(:flush)
+    rescue
+      # Ignore flush errors
+    end
+    
+    Rails.logger.info "Streamed final response"
+    
+  rescue => e
+    Rails.logger.error "Stream final response error: #{e.message}"
   end
   
   def current_entity
-    @current_entity ||= current_user.entity_users.first&.entity
+    @current_entity ||= begin
+      # First check if entity is set in session
+      if session[:entity_id]
+        current_user.entities.find_by(id: session[:entity_id])
+      else
+        # If no entity in session but user has exactly one entity, auto-set it
+        if current_user.entities.count == 1
+          entity = current_user.entities.first
+          session[:entity_id] = entity.id
+          Rails.logger.info "🔧 Auto-set entity for user #{current_user.id}: #{entity.name} (ID: #{entity.id})"
+          entity
+        else
+          # User has no entities or multiple entities - let them choose
+          current_user.entity_users.first&.entity
+        end
+      end
+    end
   end
   
   def ensure_entity_exists
