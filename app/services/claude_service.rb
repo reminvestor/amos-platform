@@ -17,7 +17,7 @@ class ClaudeService
   end
   
   # Send a message to Claude 3.7 using the Messages API
-  def send_message(system_prompt, messages, model: 'claude-3-5-sonnet-20241022', max_tokens: 4000, temperature: 0.7)
+  def send_message(system_prompt, messages, model: 'claude-3-5-sonnet-20241022', max_tokens: 4000, temperature: 0.7, json_mode: false)
     # Ensure messages is an array
     messages_array = case messages
     when Array
@@ -35,11 +35,19 @@ class ClaudeService
       end
     end
     
+    # Modify system prompt for JSON mode if requested
+    final_system_prompt = if json_mode
+      Rails.logger.info "🔧 Claude JSON mode enabled - enforcing structured output"
+      "#{system_prompt}\n\nCRITICAL: You MUST respond with valid JSON only. Do not include any text before or after the JSON. Your entire response must be a valid JSON object."
+    else
+      system_prompt
+    end
+    
     body = {
       model: model,
       max_tokens: max_tokens,
       temperature: temperature,
-      system: system_prompt,
+      system: final_system_prompt,
       messages: messages_array
     }
     

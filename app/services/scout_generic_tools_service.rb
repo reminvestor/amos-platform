@@ -172,7 +172,8 @@ class ScoutGenericToolsService
         conversation_messages,
         
         max_tokens: 4000,
-        temperature: 0.7
+        temperature: 0.7,
+        json_mode: true  # Force JSON output for tool calling
       )
       
       progress_callback&.call("📝 Parsing #{@ai_provider_name}'s response...")
@@ -373,6 +374,25 @@ class ScoutGenericToolsService
         "tool_calls": []
       }
 
+      **CRITICAL EXAMPLES FOR "analyze my campaigns":**
+
+      When user asks "analyze my campaigns" or "help me analyze my email campaigns", respond with:
+
+      {
+        "message": "I'll analyze your email campaigns right now! Let me pull your campaign data and provide detailed performance insights.",
+        "tool_calls": [
+          {
+            "name": "get_schema",
+            "arguments": {"object_type": "campaigns"}
+          },
+          {
+            "name": "get_data", 
+            "arguments": {"object_type": "campaigns", "filters": {}, "options": {"limit": 20, "include_metrics": true}}
+          }
+        ],
+        "canvas": "analytics_dashboard"
+      }
+
       **Key Rules:**
       1. Always respond with valid JSON
       2. The "message" field is what the user will see
@@ -380,7 +400,9 @@ class ScoutGenericToolsService
       4. Only reference fields that actually exist in the database
       5. When in doubt, check the schema first!
       6. Be transparent: tell users when you're discovering their data structure
-      7. **BE AGGRESSIVE WITH TOOLS** - If user wants to create/query anything, USE TOOLS!
+      7. **BE AGGRESSIVE WITH TOOLS** - If user wants to analyze/query anything, USE TOOLS!
+      8. **NO LINE BREAKS OR NEWLINES** in the message field - use \\n instead
+      9. **ALWAYS use tools for analysis requests**
 
       Be conversational in your message but use tools intelligently behind the scenes.
     PROMPT
@@ -411,7 +433,7 @@ class ScoutGenericToolsService
     Rails.logger.info "Raw #{@ai_provider_name} response: #{response}"
     
     begin
-      # Try to parse the response as JSON
+      # First, try to parse the response as-is (for properly formatted JSON)
       parsed = JSON.parse(response)
       Rails.logger.info "Successfully parsed JSON response: #{parsed.keys}"
       
@@ -434,12 +456,49 @@ class ScoutGenericToolsService
       
     rescue JSON::ParserError => e
       Rails.logger.error "Failed to parse #{@ai_provider_name} response as JSON: #{e.message}"
-      Rails.logger.error "This suggests #{@ai_provider_name} returned plain text instead of JSON format"
+      Rails.logger.error "Response length: #{response.length}, Sample: #{response[0..200]}"
       
-      # Try to extract message from malformed JSON
-      extracted_message = extract_message_from_malformed_json(response)
-      @parsed_user_message = extracted_message || "I apologize, but I'm having trouble processing that request. Could you please try rephrasing it?"
+      # Only try cleaning if the initial parse failed
+      begin
+        # Clean the response to handle newlines and control characters
+        cleaned_response = response.to_s
+          .force_encoding('UTF-8')
+          .gsub(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/, '') # Remove control chars but keep newlines
+        
+        # Try to parse the cleaned response
+        parsed = JSON.parse(cleaned_response)
+        Rails.logger.info "Successfully parsed cleaned JSON response: #{parsed.keys}"
+        
+        @parsed_user_message = parsed['message']
+        @suggested_canvas = parsed['canvas']
+        tool_calls = parsed['tool_calls']
+        
+        if tool_calls && tool_calls.is_a?(Array) && tool_calls.any?
+          Rails.logger.info "Found #{tool_calls.length} tool calls after cleaning: #{tool_calls.map { |t| t['name'] }}"
+          return tool_calls.map do |call|
+            {
+              name: call['name'],
+              arguments: call['arguments'] || {}
+            }
+          end
+        else
+          Rails.logger.warn "No tool calls found after cleaning. Tool_calls field: #{tool_calls.inspect}"
+          return nil
+        end
+        
+      rescue JSON::ParserError => e2
+        Rails.logger.error "Failed to parse cleaned #{@ai_provider_name} response: #{e2.message}"
+        
+        # Try to extract message from malformed JSON as fallback
+        extracted_message = extract_message_from_malformed_json(response)
+        @parsed_user_message = extracted_message || "I apologize, but I'm having trouble processing that request. Could you please try rephrasing it?"
+        
+        return nil
+      end
       
+    rescue => e
+      Rails.logger.error "Unexpected error parsing #{@ai_provider_name} response: #{e.message}"
+      @parsed_user_message = "I encountered an unexpected error. Please try again."
       return nil
     end
   end
@@ -449,37 +508,63 @@ class ScoutGenericToolsService
   def extract_message_from_malformed_json(response)
     # Try different patterns to extract the message content from malformed JSON
     
-    # Pattern 1: Look for "message": "content" in the string
-    if match = response.match(/"message"\s*:\s*"([^"]*)"/)
-      return match[1]
+    # First, try to clean the JSON and parse again
+    begin
+      # Remove potential control characters that break JSON parsing
+      cleaned = response.gsub(/[\x00-\x1F\x7F]/, ' ')
+      parsed = JSON.parse(cleaned)
+      return parsed['message'] if parsed.is_a?(Hash) && parsed['message']
+    rescue
+      # Continue with pattern matching if cleaning doesn't work
     end
     
-    # Pattern 2: Look for message content after a JSON structure
-    if match = response.match(/\}\s*(.+)$/)
-      cleaned = match[1].strip
-      return cleaned unless cleaned.empty?
+    # Pattern 1: Look for "message": "content" with proper escaping
+    if match = response.match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)"/m)
+      # Unescape the matched content
+      return match[1].gsub('\n', "\n").gsub('\"', '"').gsub('\\\\', '\\')
     end
     
-    # Pattern 3: If it's just plain text with no JSON structure
-    if !response.include?('"tool_calls"') && !response.include?('{')
-      return response.strip
+    # Pattern 2: Try to extract from Claude's typical JSON structure
+    if response.include?('"message":') && response.include?('"tool_calls":')
+      # Extract everything between "message": " and " before the next field
+      start_pos = response.index('"message":')
+      if start_pos
+        # Find the start of the actual message content
+        message_start = response.index('"', start_pos + 10)
+        if message_start
+          # Find the end of the message (looking for "," or "}" that ends this field)
+          message_end = find_json_string_end(response, message_start + 1)
+          if message_end
+            message_content = response[message_start + 1...message_end]
+            return message_content.gsub('\n', "\n").gsub('\"', '"').gsub('\\\\', '\\')
+          end
+        end
+      end
     end
     
-    # Pattern 4: Extract content before "tool_calls": []
-    if match = response.match(/^(.*?)\s*,?\s*"tool_calls"\s*:\s*\[\]?\s*\}?\s*$/m)
-      content = match[1].strip
-      # Remove leading JSON structure if present
-      content = content.gsub(/^\{\s*"message"\s*:\s*"/, '').gsub(/"$/, '')
-      return content unless content.empty?
-    end
-    
-    # Pattern 5: Try to find any text that looks like a message
-    if match = response.match(/([A-Z][^{}\[\]]*[.!?])/)
+    # Pattern 3: Look for message content after a JSON structure
+    if match = response.match(/\}\s*(.+)$/m)
       return match[1].strip
     end
     
-    Rails.logger.warn "Could not extract message from malformed response: #{response}"
-    return nil
+    # Fallback: Return a safe portion of the response
+    if response.length > 50
+      return response[0..200] + "..." 
+    else
+      return response
+    end
+  end
+  
+  def find_json_string_end(str, start_pos)
+    pos = start_pos
+    while pos < str.length
+      char = str[pos]
+      if char == '"' && str[pos-1] != '\\'
+        return pos
+      end
+      pos += 1
+    end
+    nil
   end
 
   def execute_tools(tool_calls)

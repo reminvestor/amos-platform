@@ -23,7 +23,7 @@ class GrokService
   end
   
   # Send a message to Grok 4 using the chat/completions API
-  def send_message(system_prompt, messages, model: MODEL, max_tokens: 4000, temperature: 0.7)
+  def send_message(system_prompt, messages, model: MODEL, max_tokens: 4000, temperature: 0.7, json_mode: false)
     # Ensure messages is an array and convert to xAI format
     messages_array = case messages
     when Array
@@ -53,6 +53,12 @@ class GrokService
       temperature: temperature,
       stream: false
     }
+    
+    # Add JSON mode if requested
+    if json_mode
+      body[:response_format] = { type: "json_object" }
+      Rails.logger.info "🔧 Grok JSON mode enabled"
+    end
     
     Rails.logger.info "Sending request to Grok API with #{formatted_messages.length} messages"
     start_time = Time.current

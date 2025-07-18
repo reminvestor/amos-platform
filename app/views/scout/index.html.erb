@@ -436,12 +436,16 @@ document.addEventListener('DOMContentLoaded', function() {
   const toolActivity = document.getElementById('tool-activity');
   const toolStatus = document.getElementById('tool-status');
 
-  // Auto-focus on input
-  messageInput.focus();
+  // Auto-focus on input (with defensive check)
+  if (messageInput && messageInput.focus) {
+    messageInput.focus();
+  }
 
-  // Scroll to bottom
+  // Scroll to bottom (with defensive check)
   function scrollToBottom() {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    if (chatMessages && chatMessages.scrollHeight !== undefined) {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
   }
 
   // Initial scroll
@@ -532,7 +536,9 @@ document.addEventListener('DOMContentLoaded', function() {
       console.warn('Streaming timeout - cleaning up UI');
       messageInput.disabled = false;
       sendButton.disabled = false;
-      messageInput.focus();
+      if (messageInput && messageInput.focus) {
+        messageInput.focus();
+      }
       toolActivity.style.display = 'none';
       hideStreamingStatus();
       hideTypingIndicator();
@@ -590,7 +596,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 clearTimeout(timeoutId);
                 messageInput.disabled = false;
                 sendButton.disabled = false;
-                messageInput.focus();
+                if (messageInput && messageInput.focus) {
+                  messageInput.focus();
+                }
                 toolActivity.style.display = 'none';
                 hideStreamingStatus();
                 
@@ -681,7 +689,9 @@ document.addEventListener('DOMContentLoaded', function() {
       // Re-enable input
       messageInput.disabled = false;
       sendButton.disabled = false;
-      messageInput.focus();
+      if (messageInput && messageInput.focus) {
+        messageInput.focus();
+      }
       
       // Hide tool activity and streaming status
       toolActivity.style.display = 'none';
