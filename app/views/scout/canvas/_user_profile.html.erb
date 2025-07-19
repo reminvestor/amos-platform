@@ -1,0 +1,169 @@
+<div class="canvas-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="mb-1">👤 My Profile</h2>
+    <p class="text-muted mb-0">Update your personal information and preferences</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary" onclick="scoutSendMessage('Please help me reset my password')">
+      <i class="fas fa-key"></i> Change Password
+    </button>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-user-edit"></i> Personal Information</h5>
+      </div>
+      <div class="card-body">
+        <%= form_with model: user, url: user_path(user), method: :patch, local: false, class: "row g-3", id: "user-profile-form" do |f| %>
+          <div class="col-md-6">
+            <%= f.label :first_name, class: "form-label" %>
+            <%= f.text_field :first_name, class: "form-control", placeholder: "Enter your first name" %>
+          </div>
+          
+          <div class="col-md-6">
+            <%= f.label :last_name, class: "form-label" %>
+            <%= f.text_field :last_name, class: "form-control", placeholder: "Enter your last name" %>
+          </div>
+          
+          <div class="col-12">
+            <%= f.label :email, class: "form-label" %>
+            <%= f.email_field :email, class: "form-control", placeholder: "Enter your email address" %>
+            <div class="form-text">Your email is used for login and important notifications.</div>
+          </div>
+
+          <% if user.respond_to?(:phone) %>
+          <div class="col-md-6">
+            <%= f.label :phone, class: "form-label" %>
+            <%= f.telephone_field :phone, class: "form-control", placeholder: "Enter your phone number" %>
+          </div>
+          <% end %>
+
+          <% if user.respond_to?(:timezone) %>
+          <div class="col-md-6">
+            <%= f.label :timezone, class: "form-label" %>
+            <%= f.select :timezone, options_for_select([
+              ['Eastern Time', 'America/New_York'],
+              ['Central Time', 'America/Chicago'], 
+              ['Mountain Time', 'America/Denver'],
+              ['Pacific Time', 'America/Los_Angeles'],
+              ['UTC', 'UTC']
+            ], user.timezone), { prompt: 'Select timezone' }, { class: "form-select" } %>
+          </div>
+          <% end %>
+
+          <% if user.respond_to?(:bio) %>
+          <div class="col-12">
+            <%= f.label :bio, "Bio/About", class: "form-label" %>
+            <%= f.text_area :bio, class: "form-control", rows: 3, placeholder: "Tell us a bit about yourself..." %>
+          </div>
+          <% end %>
+          
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Changes
+            </button>
+            <button type="button" class="btn btn-outline-secondary ms-2" onclick="window.scoutRefreshCanvas()">
+              <i class="fas fa-undo"></i> Reset
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-info-circle"></i> Account Info</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label text-muted">Account Created</label>
+          <div><%= user.created_at.strftime("%B %d, %Y") %></div>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label text-muted">Last Updated</label>
+          <div><%= user.updated_at.strftime("%B %d, %Y") %></div>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label text-muted">User ID</label>
+          <div><code>#<%= user.id %></code></div>
+        </div>
+
+        <% if user.respond_to?(:onboarded?) %>
+        <div class="mb-3">
+          <label class="form-label text-muted">Onboarding Status</label>
+          <div>
+            <% if user.onboarded? %>
+              <span class="badge bg-success">✓ Completed</span>
+            <% else %>
+              <span class="badge bg-warning">⏳ Pending</span>
+            <% end %>
+          </div>
+        </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Security</h5>
+      </div>
+      <div class="card-body">
+        <div class="d-grid gap-2">
+          <button class="btn btn-outline-primary btn-sm" onclick="scoutSendMessage('Please help me change my password')">
+            <i class="fas fa-key"></i> Change Password
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="scoutSendMessage('Please help me review my security settings')">
+            <i class="fas fa-user-shield"></i> Security Settings
+          </button>
+          <button class="btn btn-outline-warning btn-sm" onclick="scoutSendMessage('Please help me download my data')">
+            <i class="fas fa-download"></i> Download My Data
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Handle form submission in canvas context
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.querySelector('#user-profile-form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(form);
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      
+      fetch(form.action, {
+        method: 'PATCH',
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'Accept': 'application/json'
+        },
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success !== false) {
+          window.scoutSendMessage('✅ Profile updated successfully!');
+          window.scoutRefreshCanvas();
+        } else {
+          window.scoutSendMessage('❌ Sorry, there was an error updating your profile. Please try again.');
+        }
+      })
+      .catch(error => {
+        console.error('Profile update error:', error);
+        window.scoutSendMessage('❌ Sorry, there was an error updating your profile. Please try again.');
+      });
+    });
+  }
+});
+</script> 

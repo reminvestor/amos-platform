@@ -171,6 +171,12 @@ class ScoutController < ApplicationController
       when 'contact_generator'
         canvas_content = render_contact_generator(canvas_data)
         canvas_title = "Create Contact"
+      when 'user_profile'
+        canvas_content = render_user_profile_canvas(canvas_data)
+        canvas_title = "My Profile"
+      when 'business_profile'
+        canvas_content = render_business_profile_canvas(canvas_data)
+        canvas_title = "Business Settings"
       else
         canvas_content = render_default_canvas
         canvas_title = "Scout Canvas"
@@ -431,7 +437,7 @@ class ScoutController < ApplicationController
   end
 
   def render_contact_canvas(data = {})
-    contacts = current_entity.contacts.includes(:contact_groups).recent.limit(50)
+    contacts = current_entity.contacts.includes(:contact_groups).order(created_at: :desc).limit(50)
     
     # Get summary stats
     stats = {
@@ -517,6 +523,29 @@ class ScoutController < ApplicationController
       locals: { 
         entity: current_entity,
         user: current_user
+      }
+    )
+  end
+
+  def render_user_profile_canvas(data = {})
+    render_to_string(
+      partial: 'scout/canvas/user_profile',
+      locals: { 
+        user: current_user,
+        entity: current_entity,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_business_profile_canvas(data = {})
+    render_to_string(
+      partial: 'scout/canvas/business_profile',
+      locals: {
+        business_profile: current_user.business_profile,
+        user: current_user,
+        entity: current_entity,
+        canvas_data: data
       }
     )
   end

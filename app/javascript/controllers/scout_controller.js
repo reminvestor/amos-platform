@@ -17,31 +17,68 @@ export default class extends Controller {
   ]
 
   connect() {
-    this.currentMode = "conversation" // conversation or work
-    this.currentTemplate = null
-    this.currentCanvas = null // Track current canvas
-    this.isResizing = false
+    this.currentMode = "conversation"
+    this.currentCanvas = null
+    this.resizing = false
     
-    // Auto-focus chat input (with defensive check)
+    console.log("Scout controller connected")
+    
+    // Set up initial canvas functions immediately
+    this.setupCanvasGlobals()
+    
+    // Focus on chat input with defensive check
     if (this.hasChatInputTarget && this.chatInputTarget) {
       try {
         setTimeout(() => {
           if (this.chatInputTarget && this.chatInputTarget.focus) {
             this.chatInputTarget.focus()
           }
-        }, 100) // Small delay to ensure element is ready
+        }, 100)
       } catch (e) {
-        console.log("Could not focus chat input:", e.message)
+        console.log("Could not focus on chat input:", e.message)
       }
     }
     
-    // Bind resize events
-    this.bindResizeEvents()
-    
-    // Set up canvas globals immediately
-    this.setupCanvasGlobals()
-    
-    console.log("🤖 Scout AI ready with intelligent canvas! (Powered by Claude 4)")
+    // Restore canvas state on page load/refresh
+    this.restoreCanvasState()
+  }
+
+  // Save canvas state to localStorage
+  saveCanvasState() {
+    if (this.currentCanvas) {
+      localStorage.setItem('scout_canvas_state', JSON.stringify({
+        type: this.currentCanvas.type,
+        data: this.currentCanvas.data || {},
+        title: this.currentCanvas.title,
+        mode: this.currentMode
+      }))
+      console.log("💾 Saved canvas state:", this.currentCanvas.type)
+    }
+  }
+
+  // Restore canvas state from localStorage
+  restoreCanvasState() {
+    try {
+      const savedState = localStorage.getItem('scout_canvas_state')
+      if (savedState) {
+        const canvasState = JSON.parse(savedState)
+        console.log("🔄 Restoring canvas state:", canvasState.type)
+        
+        // Restore the canvas after a short delay to ensure DOM is ready
+        setTimeout(() => {
+          this.loadScoutCanvas(canvasState.type, canvasState.data || {})
+        }, 500)
+      }
+    } catch (e) {
+      console.log("Could not restore canvas state:", e.message)
+      localStorage.removeItem('scout_canvas_state')
+    }
+  }
+
+  // Clear canvas state
+  clearCanvasState() {
+    localStorage.removeItem('scout_canvas_state')
+    console.log("🗑️ Cleared canvas state")
   }
 
   // Toggle side navigation
@@ -251,25 +288,86 @@ export default class extends Controller {
       workspace.classList.remove("work-mode")
       workspace.classList.add("conversation-mode")
       this.currentMode = "conversation"
-      this.currentTemplate = null
+      
+      // Clear current canvas reference
       this.currentCanvas = null
       
-      // Reset chat area to full width in conversation mode
-      if (this.hasChatAreaTarget) {
-        this.chatAreaTarget.style.removeProperty('width')
-        this.chatAreaTarget.style.removeProperty('flex')
-        console.log("🔄 Reset chat area to full width for conversation mode")
-      }
-      
-      // Update chat header
+      // Reset chat header
       this.updateChatHeader("What can I help you with today?")
     }
   }
 
   // Go to conversation mode
   goToConversation() {
+    console.log("🏠 Going to conversation mode")
     this.switchToMode("conversation")
+    this.clearCanvasState()
     this.addMessage("Scout here! What would you like to work on?", "ai")
+  }
+
+  // Nav handler methods
+  loadLandingPagesCanvas() {
+    console.log("🌐 Loading landing pages canvas")
+    this.loadScoutCanvas("landing_page_viewer", {})
+  }
+
+  loadCampaignsCanvas() {
+    console.log("📧 Loading campaigns canvas")  
+    this.loadScoutCanvas("campaign_viewer", {})
+  }
+
+  loadAnalyticsCanvas() {
+    console.log("📊 Loading analytics canvas")
+    this.loadScoutCanvas("analytics_dashboard", {})
+  }
+
+  loadContactsCanvas() {
+    console.log("👥 Loading contacts canvas")
+    this.loadScoutCanvas("contact_viewer", {})
+  }
+
+  // Profile and settings methods
+  openSettings() {
+    console.log("⚙️ Opening business settings")
+    // Load business profile canvas instead of redirecting
+    this.loadScoutCanvas("business_profile", {})
+  }
+
+  openProfile() {
+    console.log("👤 Opening user profile")
+    // Load user profile canvas instead of redirecting
+    this.loadScoutCanvas("user_profile", {})
+  }
+
+  logout() {
+    console.log("🚪 Logging out")
+    if (confirm('Are you sure you want to logout?')) {
+      // Create a form and submit it with DELETE method (required by Devise)
+      const form = document.createElement('form')
+      form.method = 'POST'
+      form.action = '/users/sign_out'
+      
+      // Add CSRF token
+      const csrfToken = this.getCSRFToken()
+      if (csrfToken) {
+        const csrfInput = document.createElement('input')
+        csrfInput.type = 'hidden'
+        csrfInput.name = 'authenticity_token'
+        csrfInput.value = csrfToken
+        form.appendChild(csrfInput)
+      }
+      
+      // Add method override for DELETE
+      const methodInput = document.createElement('input')
+      methodInput.type = 'hidden'
+      methodInput.name = '_method'
+      methodInput.value = 'delete'
+      form.appendChild(methodInput)
+      
+      // Submit the form
+      document.body.appendChild(form)
+      form.submit()
+    }
   }
 
   // Close current template
@@ -326,6 +424,9 @@ export default class extends Controller {
         }
         console.log("💾 Stored current canvas:", this.currentCanvas)
 
+        // Save canvas state for persistence
+        this.saveCanvasState()
+
         // Set up global canvas functions for the loaded content
         console.log("⚙️ Setting up canvas globals")
         this.setupCanvasGlobals()
@@ -366,7 +467,145 @@ export default class extends Controller {
       }
     }
 
-    console.log("🔧 Canvas global functions set up")
+    // Canvas-specific functions
+    window.scoutSwitchView = (view) => {
+      const editorView = document.getElementById('editorView');
+      const previewView = document.getElementById('previewView');
+      const buttons = document.querySelectorAll('.btn-group button');
+      
+      if (!editorView || !previewView) return;
+      
+      buttons.forEach(btn => btn.classList.remove('active'));
+      
+      if (view === 'editor') {
+        editorView.classList.remove('d-none');
+        previewView.classList.add('d-none');
+        buttons[0]?.classList.add('active');
+      } else {
+        editorView.classList.add('d-none');
+        previewView.classList.remove('d-none');
+        buttons[1]?.classList.add('active');
+        // Trigger preview refresh if function exists
+        if (window.scoutRefreshPreview) {
+          window.scoutRefreshPreview();
+        }
+      }
+    }
+
+    window.scoutRefreshPreview = () => {
+      // Canvas preview refresh functionality
+      const previewFrame = document.getElementById('previewFrame');
+      if (previewFrame) {
+        previewFrame.src = previewFrame.src; // Force refresh
+      }
+    }
+
+    // Quick action functions for default canvas
+    window.scoutQuickAction = (action) => {
+      const actionMap = {
+        'landing_pages': 'landing_page_viewer',
+        'contacts': 'contact_viewer', 
+        'campaigns': 'campaign_viewer',
+        'analytics': 'analytics_dashboard'
+      }
+      if (actionMap[action]) {
+        this.loadScoutCanvas(actionMap[action], {})
+      }
+    }
+
+    window.scoutSendExample = (message) => {
+      this.sendScoutMessage(message)
+    }
+
+    // Navigation functions
+    window.scoutBackToLandingPages = () => this.loadScoutCanvas('landing_page_viewer', {})
+    window.scoutBackToContacts = () => this.loadScoutCanvas('contact_viewer', {})
+
+    // Create functions - send messages to Scout
+    window.scoutCreateContact = () => this.sendScoutMessage("Please help me create a new contact")
+    window.scoutCreateCampaign = () => this.sendScoutMessage("Please help me create a new email campaign")  
+    window.scoutCreateLandingPage = () => this.sendScoutMessage("Please help me create a new landing page")
+
+    // Edit functions
+    window.scoutEditContact = (id) => this.sendScoutMessage(`Please help me edit contact ID ${id}`)
+    window.scoutEditCampaign = (id) => this.sendScoutMessage(`Please help me edit campaign ID ${id}`)
+    window.scoutEditLandingPage = (id) => this.sendScoutMessage(`Please help me edit landing page ID ${id}`)
+
+    // View functions  
+    window.scoutViewContact = (id) => this.sendScoutMessage(`Please show me details for contact ID ${id}`)
+    window.scoutViewCampaign = (id) => this.sendScoutMessage(`Please show me campaign ID ${id} details`)
+    window.scoutPreviewLandingPage = (id) => this.sendScoutMessage(`Please show me landing page ID ${id}`)
+
+    // Delete functions
+    window.scoutDeleteContact = (id) => {
+      if (confirm('Are you sure you want to delete this contact?')) {
+        this.sendScoutMessage(`Please delete contact ID ${id}`)
+      }
+    }
+    window.scoutDeleteCampaign = (id) => {
+      if (confirm('Are you sure you want to delete this campaign?')) {
+        this.sendScoutMessage(`Please delete campaign ID ${id}`)
+      }
+    }
+    window.scoutDeleteLandingPage = (id) => {
+      if (confirm('Are you sure you want to delete this landing page?')) {
+        this.sendScoutMessage(`Please delete landing page ID ${id}`)
+      }
+    }
+
+    // Import/Export functions
+    window.scoutImportContacts = () => this.sendScoutMessage("Please help me import contacts")
+    window.scoutExportContacts = () => this.sendScoutMessage("Please export my contacts")
+    window.scoutExportCampaigns = () => this.sendScoutMessage("Please export my campaigns")
+
+    // Analysis functions
+    window.scoutAnalyzeCampaign = (id) => this.sendScoutMessage(`Please analyze campaign ID ${id}`)
+    window.scoutAnalyzeCampaigns = () => this.sendScoutMessage("Please analyze all my campaigns")
+
+    // Chart/View functions
+    window.scoutChangeChart = (chartType) => {
+      // Simple chart switching for analytics
+      const buttons = document.querySelectorAll('[onclick*="scoutChangeChart"]')
+      buttons.forEach(btn => btn.classList.remove('active'))
+      event?.target?.classList.add('active')
+    }
+
+    // Template and form functions
+    window.scoutAddFormTemplate = (template) => this.sendScoutMessage(`Please add ${template} form template`)
+    window.scoutSaveLandingPage = () => this.sendScoutMessage("Please save this landing page")
+    window.scoutGenerateContent = () => this.sendScoutMessage("Please generate content for this landing page")
+
+    // Contact management functions
+    window.scoutSaveContact = () => this.sendScoutMessage("Please save this contact")
+    window.scoutSaveAndAdd = () => this.sendScoutMessage("Please save this contact and add another")
+    window.scoutClearForm = () => {
+      const form = document.querySelector('form')
+      if (form) form.reset()
+    }
+
+    // Utility functions
+    window.scoutValidateEmail = () => this.sendScoutMessage("Please validate this email address")
+    window.scoutFindSocial = () => this.sendScoutMessage("Please find social media profiles for this contact")
+    window.scoutCheckDuplicates = () => this.sendScoutMessage("Please check for duplicate contacts")
+
+    // Load more functions
+    window.scoutLoadMoreContacts = () => this.sendScoutMessage("Please load more contacts")
+    window.scoutLoadMoreCampaigns = () => this.sendScoutMessage("Please load more campaigns")
+
+    // Group management
+    window.scoutCreateGroup = () => this.sendScoutMessage("Please help me create a new contact group")
+    window.scoutAddToGroup = (contactId) => this.sendScoutMessage(`Please add contact ${contactId} to a group`)
+
+    // Campaign actions
+    window.scoutSendCampaign = (id) => this.sendScoutMessage(`Please send campaign ID ${id}`)
+    window.scoutScheduleCampaign = (id) => this.sendScoutMessage(`Please schedule campaign ID ${id}`)
+    window.scoutDuplicateCampaign = (id) => this.sendScoutMessage(`Please duplicate campaign ID ${id}`)
+
+    // Reports and exports
+    window.scoutExportReport = () => this.sendScoutMessage("Please export analytics report")
+    window.scoutCustomReport = () => this.sendScoutMessage("Please create a custom report")
+
+    console.log("🌐 Canvas globals initialized")
   }
 
   // Send a message from canvas to Scout

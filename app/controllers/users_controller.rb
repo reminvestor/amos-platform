@@ -14,10 +14,10 @@ class UsersController < ApplicationController
     respond_to do |format|
       if @user.update(user_params)
         format.html { redirect_to @user, notice: "Your profile was successfully updated." }
-        format.json { render :show, status: :ok, location: @user }
+        format.json { render json: { success: true, message: "Profile updated successfully" }, status: :ok }
       else
         format.html { render :edit, status: :unprocessable_entity }
-        format.json { render json: @user.errors, status: :unprocessable_entity }
+        format.json { render json: { success: false, errors: @user.errors }, status: :unprocessable_entity }
       end
     end
   end
@@ -29,6 +29,6 @@ class UsersController < ApplicationController
   end
   
   def user_params
-    params.require(:user).permit(:email, :first_name, :last_name)
+    params.require(:user).permit(:email, :first_name, :last_name, :phone, :timezone, :bio)
   end
 end 
