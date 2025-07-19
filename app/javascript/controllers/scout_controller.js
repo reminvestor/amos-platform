@@ -467,6 +467,12 @@ export default class extends Controller {
       }
     }
 
+    // Set up user profile form handling
+    this.setupUserProfileForm()
+    
+    // Set up business profile form handling
+    this.setupBusinessProfileForms()
+
     // Canvas-specific functions
     window.scoutSwitchView = (view) => {
       const editorView = document.getElementById('editorView');
@@ -947,5 +953,167 @@ export default class extends Controller {
     const div = document.createElement('div')
     div.textContent = text
     return `<p>${div.innerHTML}</p>`
+  }
+
+  // Handle user profile form submission in canvas
+  setupUserProfileForm() {
+    console.log("🚀 Setting up user profile form handling");
+    
+    // Wait for canvas content to be loaded
+    setTimeout(() => {
+      const form = document.querySelector('#user-profile-form');
+      console.log("📝 User profile form found:", !!form);
+      
+      if (form) {
+        // Remove any existing event listeners
+        form.removeEventListener('submit', this.handleUserProfileSubmit);
+        form.addEventListener('submit', this.handleUserProfileSubmit.bind(this), true);
+        console.log("✅ User profile form handlers attached");
+      } else {
+        console.log("❌ User profile form not found");
+        console.log("❌ Available forms:", document.querySelectorAll('form'));
+      }
+    }, 200);
+  }
+  
+  // Handle user profile form submission
+  handleUserProfileSubmit(e) {
+    console.log("📤 User profile form submitted via AJAX - PREVENTING DEFAULT!");
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    e.stopPropagation();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
+    // Show visual feedback
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    }
+    
+    console.log("🌐 Making AJAX request to:", form.action);
+    
+    fetch(form.action, {
+      method: 'PATCH',
+      headers: {
+        'X-CSRF-Token': csrfToken,
+        'Accept': 'application/json'
+      },
+      body: formData
+    })
+    .then(response => {
+      console.log("📡 Response received:", response.status, response.statusText);
+      return response.json();
+    })
+    .then(data => {
+      console.log("✅ Profile update response:", data);
+      if (data.success !== false) {
+        this.addMessage('✅ Profile updated successfully!', 'ai');
+        window.scoutRefreshCanvas();
+      } else {
+        this.addMessage('❌ Sorry, there was an error updating your profile. Please try again.', 'ai');
+      }
+    })
+    .catch(error => {
+      console.error('Profile update error:', error);
+      this.addMessage('❌ Sorry, there was an error updating your profile. Please try again.', 'ai');
+    })
+    .finally(() => {
+      // Restore button state
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+      }
+    });
+    
+    return false;
+  }
+
+  // Handle business profile forms submission in canvas
+  setupBusinessProfileForms() {
+    console.log("🏢 Setting up business profile form handling");
+    
+    // Wait for canvas content to be loaded
+    setTimeout(() => {
+      const formIds = ['#basic-info-form', '#brand-form', '#knowledge-form'];
+      
+      formIds.forEach(formId => {
+        const form = document.querySelector(formId);
+        console.log(`📝 Business profile form ${formId} found:`, !!form);
+        
+        if (form) {
+          // Remove any existing event listeners
+          form.removeEventListener('submit', this.handleBusinessProfileSubmit);
+          form.addEventListener('submit', this.handleBusinessProfileSubmit.bind(this), true);
+          console.log(`✅ Business profile form ${formId} handlers attached`);
+        }
+      });
+      
+      if (document.querySelectorAll('#basic-info-form, #brand-form, #knowledge-form').length === 0) {
+        console.log("❌ No business profile forms found");
+        console.log("❌ Available forms:", document.querySelectorAll('form'));
+      }
+    }, 200);
+  }
+  
+  // Handle business profile form submission
+  handleBusinessProfileSubmit(e) {
+    console.log("📤 Business profile form submitted via AJAX - PREVENTING DEFAULT!");
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    e.stopPropagation();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
+    // Show visual feedback
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalBtnContent = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    }
+    
+    console.log("🌐 Making AJAX request to:", form.action);
+    
+    fetch(form.action, {
+      method: form.method.toUpperCase(),
+      headers: {
+        'X-CSRF-Token': csrfToken,
+        'Accept': 'application/json'
+      },
+      body: formData
+    })
+    .then(response => {
+      console.log("📡 Response received:", response.status, response.statusText);
+      return response.json();
+    })
+    .then(data => {
+      console.log("✅ Business profile update response:", data);
+      if (data.success !== false) {
+        this.addMessage('✅ Business profile updated successfully!', 'ai');
+        // Refresh canvas after a short delay to show updates
+        setTimeout(() => window.scoutRefreshCanvas(), 1000);
+      } else {
+        this.addMessage('❌ Sorry, there was an error updating your business profile. Please try again.', 'ai');
+      }
+    })
+    .catch(error => {
+      console.error('Business profile update error:', error);
+      this.addMessage('❌ Sorry, there was an error updating your business profile. Please try again.', 'ai');
+    })
+    .finally(() => {
+      // Restore button state
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnContent;
+      }
+    });
+    
+    return false;
   }
 } 

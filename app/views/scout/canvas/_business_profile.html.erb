@@ -37,7 +37,7 @@
     <div class="tab-content" id="businessProfileTabsContent">
       <!-- Basic Info Tab -->
       <div class="tab-pane fade show active" id="basic" role="tabpanel">
-        <%= form_with model: business_profile, url: business_profile_path, method: :patch, local: false, id: "basic-info-form", class: "needs-validation", novalidate: true do |f| %>
+        <%= form_with model: business_profile, url: business_profile_path, method: :patch, local: false, id: "basic-info-form", class: "needs-validation", novalidate: true, data: { turbo: false } do |f| %>
           <div class="row mb-3">
             <div class="col-md-6">
               <%= f.label :name, "Business Name", class: "form-label" %>
@@ -76,7 +76,7 @@
 
       <!-- Brand & Voice Tab -->
       <div class="tab-pane fade" id="brand" role="tabpanel">
-        <%= form_with model: business_profile, url: business_profile_path, method: :patch, local: false, id: "brand-form", class: "needs-validation", novalidate: true do |f| %>
+        <%= form_with model: business_profile, url: business_profile_path, method: :patch, local: false, id: "brand-form", class: "needs-validation", novalidate: true, data: { turbo: false } do |f| %>
           <div class="mb-3">
             <%= f.label :values, "Core Values & Mission", class: "form-label" %>
             <%= f.text_area :values, class: "form-control", rows: 4, placeholder: "Describe your business values, mission, and what you stand for" %>
@@ -124,7 +124,7 @@
           </div>
         <% end %>
 
-        <%= form_with url: add_knowledge_business_profile_path, method: :post, local: false, id: "knowledge-form" do |f| %>
+        <%= form_with url: add_knowledge_business_profile_path, method: :post, local: false, id: "knowledge-form", data: { turbo: false } do |f| %>
           <div class="row mb-3">
             <div class="col-md-4">
               <%= text_field_tag :section_name, "", class: "form-control", placeholder: "Section name (e.g. Products, Services)" %>
@@ -147,58 +147,4 @@
       </div>
     </div>
   </div>
-</div>
-
-<script>
-// Handle all form submissions in business profile canvas
-document.addEventListener('DOMContentLoaded', function() {
-  const forms = ['#basic-info-form', '#brand-form', '#knowledge-form'];
-  
-  forms.forEach(formSelector => {
-    const form = document.querySelector(formSelector);
-    if (form) {
-      form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(form);
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        
-        fetch(form.action, {
-          method: form.method.toUpperCase(),
-          headers: {
-            'X-CSRF-Token': csrfToken,
-            'Accept': 'application/json'
-          },
-          body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success !== false) {
-            window.scoutSendMessage('✅ Business profile updated successfully!');
-            // Refresh the canvas to show updated data
-            setTimeout(() => window.scoutRefreshCanvas(), 1000);
-          } else {
-            window.scoutSendMessage('❌ Sorry, there was an error updating your business profile. Please try again.');
-          }
-        })
-        .catch(error => {
-          console.error('Business profile update error:', error);
-          window.scoutSendMessage('❌ Sorry, there was an error updating your business profile. Please try again.');
-        });
-      });
-    }
-  });
-
-  // Form validation
-  const forms = document.querySelectorAll('.needs-validation');
-  Array.from(forms).forEach(form => {
-    form.addEventListener('submit', function(event) {
-      if (!form.checkValidity()) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-      form.classList.add('was-validated');
-    });
-  });
-});
-</script> 
+</div> 
