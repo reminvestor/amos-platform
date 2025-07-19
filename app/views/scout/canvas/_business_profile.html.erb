@@ -1,0 +1,204 @@
+<div class="canvas-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="mb-1">⚙️ Business Settings</h2>
+    <p class="text-muted mb-0">Configure your business profile and brand information</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage('Please help me optimize my business profile')">
+      <i class="fas fa-magic"></i> AI Optimize
+    </button>
+  </div>
+</div>
+
+<% business_profile ||= current_user.ensure_business_profile %>
+
+<div class="card">
+  <div class="card-header">
+    <ul class="nav nav-tabs card-header-tabs" id="businessProfileTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
+          <i class="fas fa-building me-1"></i> Basic Info
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="brand-tab" data-bs-toggle="tab" data-bs-target="#brand" type="button" role="tab">
+          <i class="fas fa-paint-brush me-1"></i> Brand & Voice
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="knowledge-tab" data-bs-toggle="tab" data-bs-target="#knowledge" type="button" role="tab">
+          <i class="fas fa-brain me-1"></i> Knowledge Base
+        </button>
+      </li>
+    </ul>
+  </div>
+  
+  <div class="card-body">
+    <div class="tab-content" id="businessProfileTabsContent">
+      <!-- Basic Info Tab -->
+      <div class="tab-pane fade show active" id="basic" role="tabpanel">
+        <%= form_with model: business_profile, url: business_profile_path, method: :patch, local: false, id: "basic-info-form", class: "needs-validation", novalidate: true do |f| %>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <%= f.label :name, "Business Name", class: "form-label" %>
+              <%= f.text_field :name, class: "form-control", placeholder: "Your Business Name", required: true %>
+              <div class="invalid-feedback">Please provide a business name.</div>
+            </div>
+            <div class="col-md-6">
+              <%= f.label :industry, class: "form-label" %>
+              <%= f.text_field :industry, class: "form-control", placeholder: "e.g. Technology, Healthcare, Finance" %>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :description, "Business Description", class: "form-label" %>
+            <%= f.text_area :description, class: "form-control", rows: 4, placeholder: "Describe your business, products, and services" %>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <%= f.label :founded_year, class: "form-label" %>
+              <%= f.number_field :founded_year, class: "form-control", placeholder: "e.g. 2010", min: 1800, max: Date.current.year %>
+            </div>
+            <div class="col-md-6">
+              <%= f.label :website, class: "form-label" %>
+              <%= f.url_field :website, class: "form-control", placeholder: "https://www.yourbusiness.com" %>
+            </div>
+          </div>
+
+          <div class="text-end">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Basic Info
+            </button>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Brand & Voice Tab -->
+      <div class="tab-pane fade" id="brand" role="tabpanel">
+        <%= form_with model: business_profile, url: business_profile_path, method: :patch, local: false, id: "brand-form", class: "needs-validation", novalidate: true do |f| %>
+          <div class="mb-3">
+            <%= f.label :values, "Core Values & Mission", class: "form-label" %>
+            <%= f.text_area :values, class: "form-control", rows: 4, placeholder: "Describe your business values, mission, and what you stand for" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :target_audience, "Target Audience", class: "form-label" %>
+            <%= f.text_area :target_audience, class: "form-control", rows: 4, placeholder: "Describe your ideal customers - demographics, interests, pain points" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :tone_of_voice, "Brand Voice", class: "form-label" %>
+            <%= f.text_area :tone_of_voice, class: "form-control", rows: 3, placeholder: "How should your brand communicate? Professional, friendly, authoritative, casual, etc." %>
+          </div>
+
+          <div class="text-end">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Brand Info
+            </button>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Knowledge Base Tab -->
+      <div class="tab-pane fade" id="knowledge" role="tabpanel">
+        <div class="mb-4">
+          <h5><i class="fas fa-info-circle"></i> Knowledge Base</h5>
+          <p class="text-muted">Add specific information about your business that Scout can use to provide better assistance.</p>
+        </div>
+
+        <% if business_profile.knowledge_base.present? %>
+          <div class="mb-4">
+            <h6>Current Knowledge Sections:</h6>
+            <% business_profile.knowledge_base.each do |section, content| %>
+              <div class="card mb-2">
+                <div class="card-body">
+                  <h6 class="card-title"><%= section.humanize %></h6>
+                  <p class="card-text"><%= truncate(content, length: 200) %></p>
+                  <button class="btn btn-sm btn-outline-danger" onclick="window.scoutSendMessage('Please remove the <%= section %> knowledge section')">
+                    <i class="fas fa-trash"></i> Remove
+                  </button>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%= form_with url: add_knowledge_business_profile_path, method: :post, local: false, id: "knowledge-form" do |f| %>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <%= text_field_tag :section_name, "", class: "form-control", placeholder: "Section name (e.g. Products, Services)" %>
+            </div>
+            <div class="col-md-6">
+              <%= text_area_tag :content, "", class: "form-control", rows: 2, placeholder: "Knowledge content..." %>
+            </div>
+            <div class="col-md-2">
+              <button type="submit" class="btn btn-outline-primary w-100">
+                <i class="fas fa-plus"></i> Add
+              </button>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="alert alert-info">
+          <i class="fas fa-lightbulb"></i>
+          <strong>Tip:</strong> Add sections like "Products", "Services", "Company Culture", "Recent News" to help Scout provide more relevant assistance.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Handle all form submissions in business profile canvas
+document.addEventListener('DOMContentLoaded', function() {
+  const forms = ['#basic-info-form', '#brand-form', '#knowledge-form'];
+  
+  forms.forEach(formSelector => {
+    const form = document.querySelector(formSelector);
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        fetch(form.action, {
+          method: form.method.toUpperCase(),
+          headers: {
+            'X-CSRF-Token': csrfToken,
+            'Accept': 'application/json'
+          },
+          body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success !== false) {
+            window.scoutSendMessage('✅ Business profile updated successfully!');
+            // Refresh the canvas to show updated data
+            setTimeout(() => window.scoutRefreshCanvas(), 1000);
+          } else {
+            window.scoutSendMessage('❌ Sorry, there was an error updating your business profile. Please try again.');
+          }
+        })
+        .catch(error => {
+          console.error('Business profile update error:', error);
+          window.scoutSendMessage('❌ Sorry, there was an error updating your business profile. Please try again.');
+        });
+      });
+    }
+  });
+
+  // Form validation
+  const forms = document.querySelectorAll('.needs-validation');
+  Array.from(forms).forEach(form => {
+    form.addEventListener('submit', function(event) {
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      form.classList.add('was-validated');
+    });
+  });
+});
+</script> 
