@@ -73,27 +73,15 @@ class AgentGenerateLandingPageJob < ApplicationJob
     
     # Update the existing landing page with the generated content
     log_with_context("Preparing to update existing landing page with generated content")
+    
+    # Generate complete HTML content from the orchestrator's output
+    html_content = generate_html_from_orchestrator_output(new_landing_page)
+    
     update_attrs = {
       title: new_landing_page.title,
-      headline: new_landing_page.headline,
-      subheadline: new_landing_page.subheadline,
-      content: new_landing_page.content,
-      primary_color: new_landing_page.primary_color,
-      secondary_color: new_landing_page.secondary_color,
-      font_family: new_landing_page.font_family,
-      meta_description: new_landing_page.meta_description,
-      meta_keywords: new_landing_page.meta_keywords,
-      cta_text: new_landing_page.cta_text,
-      cta_url: new_landing_page.cta_url,
-      ai_settings: {
-        generated_at: Time.current,
-        generation_time: (Time.current - job_start_time).to_i,
-        model: "multi-agent-system",
-        topic: topic,
-        job_id: job_id,
-        original_plan: new_landing_page.ai_settings&.dig('original_plan')
-      },
-      image_prompts: new_landing_page.image_prompts
+      description: new_landing_page.description || landing_page.description,
+      html_content: html_content,
+      status: 'draft'  # Keep as draft until user reviews
     }
     
     # Log all update attributes for debugging
@@ -128,37 +116,8 @@ class AgentGenerateLandingPageJob < ApplicationJob
       raise ActiveRecord::RecordInvalid, "Failed to update landing page: #{error_message}"
     end
     
-    # If image prompts were generated, trigger image generation
-    if new_landing_page.image_prompts.present? && new_landing_page.image_prompts['hero_image'].present?
-      log_with_context("Queuing image generation for hero image")
-      log_with_context("Hero image prompt: #{new_landing_page.image_prompts['hero_image'].truncate(100)}")
-      
-      GenerateLandingPageImageJob.perform_later(
-        landing_page.id,
-        new_landing_page.image_prompts['hero_image'],
-        'hero',
-        job_id  # Pass the job_id for correlation
-      )
-      
-      log_with_context("Hero image generation job enqueued")
-      
-      # Feature images
-      if new_landing_page.image_prompts['feature_images'].present?
-        log_with_context("Queuing image generation for #{new_landing_page.image_prompts['feature_images'].size} feature images")
-        
-        new_landing_page.image_prompts['feature_images'].each_with_index do |prompt, index|
-          GenerateLandingPageImageJob.perform_later(
-            landing_page.id,
-            prompt,
-            "feature_#{index}",
-            job_id  # Pass the job_id for correlation
-          )
-          log_with_context("Feature image #{index} generation job enqueued")
-        end
-      end
-    else
-      log_with_context("No image prompts generated, skipping image generation")
-    end
+    # Note: Image generation is skipped for now since we're using complete HTML content
+    log_with_context("Landing page generation completed - images can be edited directly in HTML")
     
     job_duration = Time.current - job_start_time
     log_with_context("="*80)
@@ -168,6 +127,180 @@ class AgentGenerateLandingPageJob < ApplicationJob
   end
   
   private
+
+  def generate_html_from_orchestrator_output(generated_page)
+    # The orchestrator might return different formats, let's handle them
+    if generated_page.respond_to?(:html_content) && generated_page.html_content.present?
+      # If orchestrator already generated complete HTML
+      return generated_page.html_content
+    elsif generated_page.respond_to?(:content) && generated_page.content.present?
+      # If we have structured content sections, convert to HTML
+      return convert_sections_to_html(generated_page)
+    else
+      # Fallback: create a basic template
+      return create_basic_html_template(generated_page)
+    end
+  end
+
+  def convert_sections_to_html(generated_page)
+    headline = generated_page.respond_to?(:headline) ? generated_page.headline : generated_page.title
+    subheadline = generated_page.respond_to?(:subheadline) ? generated_page.subheadline : ""
+    sections = generated_page.respond_to?(:content) ? generated_page.content : []
+    
+    html = <<~HTML
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>#{generated_page.title}</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+          .hero-section { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 80px 0; }
+          .feature-section { padding: 60px 0; }
+          .cta-section { background: #f8f9fa; padding: 60px 0; }
+        </style>
+      </head>
+      <body>
+        <!-- Hero Section -->
+        <section class="hero-section">
+          <div class="container">
+            <div class="row justify-content-center text-center">
+              <div class="col-lg-8">
+                <h1 class="display-4 fw-bold mb-4">#{headline}</h1>
+                #{subheadline.present? ? "<p class='lead mb-4'>#{subheadline}</p>" : ""}
+                <a href="#contact" class="btn btn-light btn-lg">Get Started</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+    HTML
+
+    # Add sections if they exist
+    if sections.is_a?(Array) && sections.any?
+      sections.each_with_index do |section, index|
+        section_class = index % 2 == 0 ? "bg-white" : "bg-light"
+        html += <<~HTML
+          <section class="feature-section #{section_class}">
+            <div class="container">
+              <div class="row">
+                <div class="col-lg-8 mx-auto text-center">
+                  <h2 class="h3 mb-4">#{section['title'] || "Section #{index + 1}"}</h2>
+                  <p>#{section['content'] || section['description'] || ""}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        HTML
+      end
+    end
+
+    # Add contact form
+    html += <<~HTML
+        <!-- Contact Section -->
+        <section id="contact" class="cta-section">
+          <div class="container">
+            <div class="row justify-content-center">
+              <div class="col-lg-6">
+                <div class="card">
+                  <div class="card-body">
+                    <h3 class="card-title text-center mb-4">Get Started Today</h3>
+                    <form action="/api/v1/contacts" method="POST">
+                      <div class="mb-3">
+                        <label for="first_name" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" required>
+                      </div>
+                      <div class="mb-3">
+                        <label for="last_name" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" required>
+                      </div>
+                      <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                      </div>
+                      <button type="submit" class="btn btn-primary w-100">Submit</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+      </body>
+      </html>
+    HTML
+
+    html
+  end
+
+  def create_basic_html_template(generated_page)
+    title = generated_page.respond_to?(:title) ? generated_page.title : "Landing Page"
+    
+    <<~HTML
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>#{title}</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+          .hero-section { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 80px 0; }
+          .cta-section { background: #f8f9fa; padding: 60px 0; }
+        </style>
+      </head>
+      <body>
+        <!-- Hero Section -->
+        <section class="hero-section">
+          <div class="container">
+            <div class="row justify-content-center text-center">
+              <div class="col-lg-8">
+                <h1 class="display-4 fw-bold mb-4">#{title}</h1>
+                <p class="lead mb-4">AI-generated landing page content will appear here.</p>
+                <a href="#contact" class="btn btn-light btn-lg">Get Started</a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact" class="cta-section">
+          <div class="container">
+            <div class="row justify-content-center">
+              <div class="col-lg-6">
+                <div class="card">
+                  <div class="card-body">
+                    <h3 class="card-title text-center mb-4">Contact Us</h3>
+                    <form action="/api/v1/contacts" method="POST">
+                      <div class="mb-3">
+                        <label for="first_name" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" required>
+                      </div>
+                      <div class="mb-3">
+                        <label for="last_name" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" required>
+                      </div>
+                      <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                      </div>
+                      <button type="submit" class="btn btn-primary w-100">Submit</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+      </body>
+      </html>
+    HTML
+  end
   
   # Helper method to handle logging with or without tagging
   def log_with_context(message, level = :info)

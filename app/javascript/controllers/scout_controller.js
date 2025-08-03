@@ -540,7 +540,8 @@ export default class extends Controller {
     // View functions  
     window.scoutViewContact = (id) => this.sendScoutMessage(`Please show me details for contact ID ${id}`)
     window.scoutViewCampaign = (id) => this.sendScoutMessage(`Please show me campaign ID ${id} details`)
-    window.scoutPreviewLandingPage = (id) => this.sendScoutMessage(`Please show me landing page ID ${id}`)
+    window.scoutViewLandingPage = (id) => this.loadScoutCanvas('landing_page_details', { landing_page_id: id })
+    window.scoutPreviewLandingPageInTab = (id) => window.open(`/landing_pages/${id}/preview`, '_blank')
 
     // Delete functions
     window.scoutDeleteContact = (id) => {

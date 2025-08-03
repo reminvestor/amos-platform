@@ -83,6 +83,33 @@ class ScoutGenericToolsService
         },
         required: ["object_type"]
       }
+    },
+    {
+      name: "generate_ai_landing_page",
+      description: "Generate a complete AI-powered landing page using sophisticated multi-agent system (PREFERRED for landing pages)",
+      input_schema: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "Title/name for the landing page"
+          },
+          description: {
+            type: "string",
+            description: "Detailed description of what the landing page should accomplish"
+          },
+          page_type: {
+            type: "string",
+            description: "Type of landing page to generate",
+            enum: ["lead_generation", "product_launch", "event_registration", "newsletter_signup", "free_trial", "demo_request"]
+          },
+          campaign_id: {
+            type: "integer",
+            description: "Optional campaign ID to associate with this landing page"
+          }
+        },
+        required: ["title", "description"]
+      }
     }
   ]
 
@@ -264,8 +291,9 @@ class ScoutGenericToolsService
 
       AVAILABLE TOOLS:
       1. get_data(object_type, filters, options) - Query any data model
-      2. create_object(object_type, data) - Create new objects  
+      2. create_object(object_type, data) - Create basic objects (campaigns, contacts, groups)
       3. get_schema(object_type) - Get REAL database schema and field information
+      4. generate_ai_landing_page(title, description, page_type) - Create sophisticated AI-powered landing pages (PREFERRED for landing pages)
 
       AVAILABLE DATA MODELS:
       #{available_models.join(', ')}
@@ -300,9 +328,16 @@ class ScoutGenericToolsService
       If the user mentions ANY of these, USE TOOLS IMMEDIATELY:
       - "create a contact" → use create_object("contacts", {email: ..., first_name: ..., last_name: ...})
       - "create a campaign" → use create_object("campaigns", {...})  
+      - "create a landing page" → use generate_ai_landing_page(title, description, page_type) - NEVER use create_object for landing pages!
       - "show me campaigns" → use get_data("campaigns", ...)
       - "performance" or "metrics" → use get_data with include_metrics: true
       - "recent" → use get_data with date filters
+
+      **LANDING PAGE CREATION - CRITICAL:**
+      - For landing pages: ALWAYS use generate_ai_landing_page (uses Claude AI with professional landing page expertise)
+      - Never use create_object for landing pages - it only creates empty records
+      - The AI system creates complete HTML with Bootstrap, responsive design, contact forms, and professional styling
+      - Available page types: lead_generation, product_launch, event_registration, newsletter_signup, free_trial, demo_request
 
       CONTACT CREATION EXAMPLES:
       - "create contact John Doe john@doe.com" → create_object("contacts", {email: "john@doe.com", first_name: "John", last_name: "Doe"})
@@ -592,6 +627,8 @@ class ScoutGenericToolsService
         execute_create_object(tool_call[:arguments])
       when 'get_schema'
         execute_get_schema(tool_call[:arguments])
+      when 'generate_ai_landing_page'
+        execute_generate_ai_landing_page(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -622,6 +659,8 @@ class ScoutGenericToolsService
       when 'create_object'
         object_type = tool_call[:arguments]['object_type']
         progress_callback&.call("✨ Creating new #{object_type}...")
+      when 'generate_ai_landing_page'
+        progress_callback&.call("🤖 Generating AI-powered landing page...")
       end
       
       result = case tool_call[:name]
@@ -631,6 +670,8 @@ class ScoutGenericToolsService
         execute_create_object(tool_call[:arguments])
       when 'get_schema'
         execute_get_schema(tool_call[:arguments])
+      when 'generate_ai_landing_page'
+        execute_generate_ai_landing_page(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -730,6 +771,9 @@ class ScoutGenericToolsService
       scoped_data = data.dup
       scoped_data['entity_id'] = @entity.id if model_class.column_names.include?('entity_id')
       scoped_data['user_id'] = @user.id if model_class.column_names.include?('user_id')
+      
+      # Apply field mapping fixes for common naming inconsistencies
+      scoped_data = apply_field_mapping(scoped_data, object_type)
       
       # Create the object
       new_object = model_class.create!(scoped_data)
@@ -1225,5 +1269,87 @@ class ScoutGenericToolsService
     Rails.logger.info "Messages: #{messages.map { |m| "#{m[:role]}: #{m[:content][0..50]}..." }.join(' | ')}"
     
     messages
+  end
+
+  def apply_field_mapping(data, object_type)
+    mapped_data = data.dup
+    
+    # Landing page field mappings
+    if object_type == 'landing_pages' || object_type == 'landing_page'
+      if mapped_data['name'].present? && mapped_data['title'].blank?
+        mapped_data['title'] = mapped_data.delete('name')
+      end
+    end
+    
+    # Campaign field mappings  
+    if object_type == 'campaigns' || object_type == 'campaign'
+      if mapped_data['title'].present? && mapped_data['name'].blank?
+        mapped_data['name'] = mapped_data['title']
+      end
+    end
+    
+    mapped_data
+  end
+
+  def execute_generate_ai_landing_page(args)
+    title = args['title']
+    description = args['description']
+    page_type = args['page_type'] || 'lead_generation'
+    campaign_id = args['campaign_id']
+    
+    return { error: 'title is required' } unless title.present?
+    return { error: 'description is required' } unless description.present?
+    
+    begin
+      # Create the basic landing page record first
+      landing_page = @entity.landing_pages.create!(
+        title: title,
+        description: description,
+        status: 'draft',
+        user_id: @user.id,
+        campaign_id: campaign_id
+      )
+      
+      # Get business profile for AI context
+      business_profile = @entity.business_profiles.first
+      
+      # Use simplified AI generation that works with current schema
+      Rails.logger.info "Scout: Triggering simplified AI generation for landing page #{landing_page.id}"
+      
+      # Trigger the simplified generation job
+      SimpleAiLandingPageJob.perform_later(
+        landing_page.id,
+        description,
+        page_type,
+        @entity.id,
+        business_profile&.id
+      )
+      
+      # Suggest loading the landing page details canvas
+      @suggested_canvas = 'landing_page_details'
+      @canvas_data = { landing_page_id: landing_page.id }
+      
+      {
+        success: true,
+        object_id: landing_page.id,
+        object_type: 'landing_pages',
+        data: {
+          id: landing_page.id,
+          title: landing_page.title,
+          description: landing_page.description,
+          status: landing_page.status,
+          slug: landing_page.slug
+        },
+        message: "Created landing page '#{title}' and triggered AI generation. The content will be generated using Claude AI with professional landing page expertise. I'll show you the details view where you can monitor the progress.",
+        ai_generation_status: "AI generation started with #{page_type} template using Claude",
+        canvas: 'landing_page_details',
+        canvas_data: { landing_page_id: landing_page.id }
+      }
+    rescue ActiveRecord::RecordInvalid => e
+      { error: "Landing page creation failed: #{e.record.errors.full_messages.join(', ')}" }
+    rescue => e
+      Rails.logger.error "generate_ai_landing_page error: #{e.message}"
+      { error: "AI landing page generation failed: #{e.message}" }
+    end
   end
 end 

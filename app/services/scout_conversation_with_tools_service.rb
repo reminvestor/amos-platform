@@ -66,8 +66,9 @@ class ScoutConversationWithToolsService
 
       AVAILABLE TOOLS:
       1. get_data - Query any data objects (campaigns, landing_pages, contacts, contact_groups, email_templates, email_deliveries)
-      2. analyze_data - Perform intelligent analysis on data with specific questions
-      3. create_object - Create new campaigns, landing pages, contacts, or groups
+      2. get_schema - Get database schema and field information for any object type
+      3. create_object - Create basic objects like campaigns, contacts, or groups (for simple data entry)
+      4. generate_ai_landing_page - Create sophisticated AI-powered landing pages using multi-agent system (PREFERRED for landing pages)
 
       AVAILABLE DATA OBJECTS:
       #{data_objects_info[:available_objects]}
@@ -81,13 +82,20 @@ class ScoutConversationWithToolsService
       
       When users ask about their data:
       1. ALWAYS use get_data first to retrieve real information
-      2. Use analyze_data to provide insights and answer specific questions
+      2. Use get_schema when you need to understand data structure
       3. Never ask users to provide data that you can retrieve yourself
       
+      LANDING PAGE CREATION - CRITICAL:
+      - For landing pages: ALWAYS use generate_ai_landing_page (triggers sophisticated multi-agent system)
+      - Never use create_object for landing pages - it only creates empty records
+      - The AI system includes: web research, planning, content generation, HTML creation, and optimization
+      
       Example flows:
-      - "How are my campaigns performing?" → get_data(campaigns) → analyze_data(performance analysis)
-      - "Show me my best contacts" → get_data(contacts, filters: high engagement) → analyze_data(summary)
-      - "Create a campaign for my top segment" → get_data(contact_groups) → analyze_data(find best) → create_object(campaign)
+      - "How are my campaigns performing?" → get_data(campaigns) 
+      - "Show me my best contacts" → get_data(contacts, filters: high engagement)
+      - "Create a landing page" → generate_ai_landing_page(title, description, page_type)
+      - "Create a contact" → create_object(contacts, data)
+      - "Create a campaign" → create_object(campaigns, data)
 
       CONVERSATION STYLE:
       - Be proactive: "Let me check your recent campaigns..."
