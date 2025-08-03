@@ -1,0 +1,345 @@
+<div class="scout-canvas landing-page-details">
+  <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <button class="btn btn-outline-secondary me-3" onclick="window.scoutBackToLandingPages()">
+        <i class="fas fa-arrow-left me-1"></i>
+        Back to Landing Pages
+      </button>
+      <div class="d-inline-block">
+        <h4 class="mb-1">
+          <i class="fas fa-globe text-primary me-2"></i>
+          <%= landing_page.title.present? ? landing_page.title : "Untitled Landing Page" %>
+        </h4>
+        <p class="text-muted mb-0">Landing Page Details</p>
+      </div>
+    </div>
+    <div class="btn-group" role="group">
+      <button class="btn btn-outline-primary" onclick="scoutEditLandingPage(<%= landing_page.id %>)">
+        <i class="fas fa-edit me-1"></i>
+        Edit
+      </button>
+      <button class="btn btn-outline-success" onclick="scoutPreviewLandingPageInTab(<%= landing_page.id %>)">
+        <i class="fas fa-eye me-1"></i>
+        Preview
+      </button>
+      <% if landing_page.status == 'published' %>
+        <a class="btn btn-outline-info" href="<%= landing_page.full_url(request.base_url) %>" target="_blank">
+          <i class="fas fa-external-link-alt me-1"></i>
+          View Live
+        </a>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Left Column - Details -->
+    <div class="col-lg-4">
+      <!-- Basic Information -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">
+            <i class="fas fa-info-circle me-2"></i>
+            Basic Information
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label text-muted small">Status</label>
+            <div>
+              <span class="badge <%= landing_page.status == 'published' ? 'bg-success' : landing_page.status == 'draft' ? 'bg-warning' : 'bg-secondary' %> fs-6">
+                <%= landing_page.status.titleize %>
+              </span>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label text-muted small">Title</label>
+            <div class="fw-medium">
+              <%= landing_page.title.present? ? landing_page.title : "Untitled Landing Page" %>
+            </div>
+          </div>
+          
+          <% if landing_page.slug.present? %>
+            <div class="mb-3">
+              <label class="form-label text-muted small">URL Slug</label>
+              <div class="font-monospace small bg-light p-2 rounded">
+                <%= landing_page.slug %>
+              </div>
+            </div>
+          <% end %>
+          
+          <% if landing_page.description.present? %>
+            <div class="mb-3">
+              <label class="form-label text-muted small">Description</label>
+              <div>
+                <%= landing_page.description %>
+              </div>
+            </div>
+          <% end %>
+          
+          <div class="mb-3">
+            <label class="form-label text-muted small">Created</label>
+            <div>
+              <%= landing_page.created_at.strftime("%B %d, %Y at %I:%M %p") %>
+              <br>
+              <small class="text-muted">(<%= time_ago_in_words(landing_page.created_at) %> ago)</small>
+            </div>
+          </div>
+          
+          <div class="mb-0">
+            <label class="form-label text-muted small">Last Updated</label>
+            <div>
+              <%= landing_page.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
+              <br>
+              <small class="text-muted">(<%= time_ago_in_words(landing_page.updated_at) %> ago)</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">
+            <i class="fas fa-bolt me-2"></i>
+            Quick Actions
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <button class="btn btn-primary" onclick="scoutEditLandingPage(<%= landing_page.id %>)">
+              <i class="fas fa-edit me-2"></i>
+              Edit Content
+            </button>
+            
+            <button class="btn btn-outline-success" onclick="scoutPreviewLandingPageInTab(<%= landing_page.id %>)">
+              <i class="fas fa-eye me-2"></i>
+              Preview Page
+            </button>
+            
+            <% if landing_page.status == 'draft' %>
+              <button class="btn btn-outline-success" onclick="scoutPublishLandingPage(<%= landing_page.id %>)">
+                <i class="fas fa-rocket me-2"></i>
+                Publish Page
+              </button>
+            <% elsif landing_page.status == 'published' %>
+              <button class="btn btn-outline-warning" onclick="scoutUnpublishLandingPage(<%= landing_page.id %>)">
+                <i class="fas fa-pause me-2"></i>
+                Unpublish Page
+              </button>
+            <% end %>
+            
+            <hr class="my-2">
+            
+            <button class="btn btn-outline-danger" onclick="scoutDeleteLandingPage(<%= landing_page.id %>)">
+              <i class="fas fa-trash me-2"></i>
+              Delete Page
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Technical Details -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">
+            <i class="fas fa-cog me-2"></i>
+            Technical Details
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label text-muted small">Landing Page ID</label>
+            <div class="font-monospace small">
+              #<%= landing_page.id %>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label text-muted small">Has Content</label>
+            <div>
+              <% if landing_page.html_content.present? %>
+                <span class="badge bg-success">Yes</span>
+                <small class="text-muted d-block">
+                  <%= pluralize(landing_page.html_content.length, 'character') %> of HTML
+                </small>
+              <% else %>
+                <span class="badge bg-warning">No Content</span>
+              <% end %>
+            </div>
+          </div>
+          
+          <% if landing_page.campaign.present? %>
+            <div class="mb-0">
+              <label class="form-label text-muted small">Associated Campaign</label>
+              <div>
+                <a href="#" onclick="scoutViewCampaign(<%= landing_page.campaign.id %>)" class="text-decoration-none">
+                  <%= landing_page.campaign.subject %>
+                </a>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column - Content Preview -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">
+            <i class="fas fa-code me-2"></i>
+            Content Preview
+          </h6>
+          <div class="btn-group btn-group-sm" role="group">
+            <input type="radio" class="btn-check" name="previewMode" id="previewModeVisual" autocomplete="off" checked>
+            <label class="btn btn-outline-secondary" for="previewModeVisual">
+              <i class="fas fa-eye"></i> Visual
+            </label>
+            
+            <input type="radio" class="btn-check" name="previewMode" id="previewModeCode" autocomplete="off">
+            <label class="btn btn-outline-secondary" for="previewModeCode">
+              <i class="fas fa-code"></i> HTML
+            </label>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <!-- Visual Preview -->
+          <div id="visualPreview" class="preview-container">
+            <% if landing_page.html_content.present? %>
+              <iframe 
+                src="/landing_pages/<%= landing_page.id %>/preview"
+                class="w-100 border-0"
+                style="height: 600px;"
+                title="Landing Page Preview">
+              </iframe>
+            <% else %>
+              <div class="text-center py-5 text-muted">
+                <i class="fas fa-robot fa-3x mb-3 text-primary"></i>
+                <h5>AI Generation in Progress</h5>
+                <p>Claude AI is creating your professional landing page content.</p>
+                <div class="progress mb-3" style="height: 6px;">
+                  <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 75%"></div>
+                </div>
+                <p class="small text-muted">This process includes content creation, responsive design, and form integration.</p>
+                <button class="btn btn-outline-primary" onclick="window.scoutRefreshCanvas()">
+                  <i class="fas fa-sync-alt me-2"></i>
+                  Refresh
+                </button>
+              </div>
+            <% end %>
+          </div>
+          
+          <!-- HTML Code Preview -->
+          <div id="codePreview" class="preview-container d-none">
+            <% if landing_page.html_content.present? %>
+              <pre class="code-preview p-3 mb-0"><code class="language-html"><%= html_escape(landing_page.html_content) %></code></pre>
+            <% else %>
+              <div class="text-center py-5 text-muted">
+                <i class="fas fa-robot fa-3x mb-3 text-primary"></i>
+                <h5>AI Generation in Progress</h5>
+                <p>HTML content will appear here once Claude AI completes the generation process.</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Toggle between visual and code preview
+document.addEventListener('DOMContentLoaded', function() {
+  const visualRadio = document.getElementById('previewModeVisual');
+  const codeRadio = document.getElementById('previewModeCode');
+  const visualPreview = document.getElementById('visualPreview');
+  const codePreview = document.getElementById('codePreview');
+  
+  if (visualRadio && codeRadio && visualPreview && codePreview) {
+    visualRadio.addEventListener('change', function() {
+      if (this.checked) {
+        visualPreview.classList.remove('d-none');
+        codePreview.classList.add('d-none');
+      }
+    });
+    
+    codeRadio.addEventListener('change', function() {
+      if (this.checked) {
+        codePreview.classList.remove('d-none');
+        visualPreview.classList.add('d-none');
+      }
+    });
+  }
+
+  // Auto-refresh if AI generation is in progress
+  <% unless landing_page.has_content? %>
+    let refreshCount = 0;
+    const maxRefreshes = 30; // Stop after 5 minutes (10s * 30 = 5min)
+    
+    const autoRefresh = setInterval(function() {
+      refreshCount++;
+      
+      if (refreshCount >= maxRefreshes) {
+        clearInterval(autoRefresh);
+        console.log('Auto-refresh stopped after maximum attempts');
+        return;
+      }
+      
+      console.log(`Auto-refreshing landing page details (attempt ${refreshCount}/${maxRefreshes})`);
+      window.scoutRefreshCanvas?.();
+    }, 10000); // Refresh every 10 seconds
+    
+    // Stop auto-refresh when user leaves the page
+    window.addEventListener('beforeunload', function() {
+      clearInterval(autoRefresh);
+    });
+  <% end %>
+});
+
+// Landing page action functions
+function scoutPreviewLandingPageInTab(pageId) {
+  window.open(`/landing_pages/${pageId}/preview`, '_blank');
+}
+
+function scoutPublishLandingPage(pageId) {
+  if (confirm('Are you sure you want to publish this landing page?')) {
+    window.scoutSendMessage?.(`Please publish landing page ID ${pageId}`);
+  }
+}
+
+function scoutUnpublishLandingPage(pageId) {
+  if (confirm('Are you sure you want to unpublish this landing page?')) {
+    window.scoutSendMessage?.(`Please unpublish landing page ID ${pageId}`);
+  }
+}
+</script>
+
+<style>
+.scout-canvas {
+  padding: 1rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.preview-container {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.code-preview {
+  background: #f8f9fa;
+  border-radius: 0;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.badge.fs-6 {
+  font-size: 0.875rem !important;
+}
+</style> 

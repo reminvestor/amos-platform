@@ -156,6 +156,9 @@ class ScoutController < ApplicationController
       when 'landing_page_viewer'
         canvas_content = render_landing_page_canvas(canvas_data)
         canvas_title = "Landing Page Viewer"
+      when 'landing_page_details'
+        canvas_content = render_landing_page_details(canvas_data)
+        canvas_title = "Landing Page Details"
       when 'landing_page_generator' 
         canvas_content = render_landing_page_generator(canvas_data)
         canvas_title = "Landing Page Generator"
@@ -407,6 +410,39 @@ class ScoutController < ApplicationController
       partial: 'scout/canvas/landing_page_viewer',
       locals: { 
         landing_pages: landing_pages,
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_landing_page_details(data = {})
+    landing_page_id = data['landing_page_id'] || data[:landing_page_id]
+    
+    if landing_page_id.present?
+      begin
+        landing_page = current_entity.landing_pages.find(landing_page_id)
+      rescue ActiveRecord::RecordNotFound
+        # Fallback to most recent landing page if ID not found
+        landing_page = current_entity.landing_pages.recent.first
+      end
+    else
+      # Fallback to most recent landing page if no ID provided
+      landing_page = current_entity.landing_pages.recent.first
+    end
+    
+    # If no landing pages exist, return a helpful message
+    if landing_page.nil?
+      return render_to_string(
+        inline: "<div class='text-center py-5'><h5>No Landing Pages Found</h5><p>Create your first landing page to get started.</p><button class='btn btn-primary' onclick='window.scoutCreateLandingPage()'>Create Landing Page</button></div>"
+      )
+    end
+    
+    render_to_string(
+      partial: 'scout/canvas/landing_page_details',
+      locals: { 
+        landing_page: landing_page,
         entity: current_entity,
         user: current_user,
         canvas_data: data
