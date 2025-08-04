@@ -1355,9 +1355,9 @@ class ScoutGenericToolsService
         business_profile&.id
       )
       
-      # Suggest loading the landing page details canvas
-      @suggested_canvas = 'landing_page_details'
-      @canvas_data = { landing_page_id: landing_page.id }
+      # Suggest loading the landing page viewer canvas to show the new page in the list
+      @suggested_canvas = 'landing_page_viewer'
+      @canvas_data = {}
       
       {
         success: true,
@@ -1370,10 +1370,10 @@ class ScoutGenericToolsService
           status: landing_page.status,
           slug: landing_page.slug
         },
-        message: "Created landing page '#{title}' and triggered AI generation. The content will be generated using Claude AI with professional landing page expertise. I'll show you the details view where you can monitor the progress.",
+        message: "✅ Successfully created landing page '#{title}'! AI content generation is running in the background and will be ready shortly. Your new page appears in the list below.",
         ai_generation_status: "AI generation started with #{page_type} template using Claude",
-        canvas: 'landing_page_details',
-        canvas_data: { landing_page_id: landing_page.id }
+        canvas: 'landing_page_viewer',
+        canvas_data: {}
       }
     rescue ActiveRecord::RecordInvalid => e
       { error: "Landing page creation failed: #{e.record.errors.full_messages.join(', ')}" }

@@ -3,14 +3,10 @@
     <div>
       <h4 class="mb-1">
         <i class="fas fa-magic text-primary me-2"></i>
-        Landing Page Generator
+        Landing Page Wizard
       </h4>
       <p class="text-muted mb-0">
-        <% if landing_page.persisted? %>
-          Editing: <%= landing_page.title || "Untitled Landing Page" %>
-        <% else %>
-          Creating a new landing page
-        <% end %>
+        Create a professional landing page in 2 simple steps
       </p>
     </div>
     <div class="d-flex gap-2">
@@ -18,307 +14,384 @@
         <i class="fas fa-arrow-left me-1"></i>
         Back to Pages
       </button>
-      <% if landing_page.persisted? && landing_page.has_content? %>
-        <button class="btn btn-success" onclick="scoutPreviewLandingPage(<%= landing_page.id %>)">
-          <i class="fas fa-eye me-1"></i>
-          Preview
-        </button>
-      <% end %>
     </div>
   </div>
-  
-  <div class="row">
-    <!-- Page Details -->
-    <div class="col-lg-4 mb-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light">
-          <h6 class="mb-0">
-            <i class="fas fa-cog me-2"></i>
-            Page Settings
-          </h6>
+
+  <!-- Progress Steps -->
+  <div class="wizard-progress mb-4">
+    <div class="d-flex justify-content-center">
+      <div class="step-indicator">
+        <div class="step active" id="step-indicator-1">
+          <div class="step-number">1</div>
+          <div class="step-label">Page Details</div>
         </div>
-        <div class="card-body">
-          <form id="landingPageForm">
-            <div class="mb-3">
-              <label class="form-label">Page Title</label>
-              <input type="text" class="form-control" id="pageTitle" 
-                     value="<%= landing_page.title %>" 
-                     placeholder="Enter page title">
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea class="form-control" id="pageDescription" rows="3" 
-                        placeholder="Brief description of this page"><%= landing_page.description %></textarea>
-            </div>
-            
-            <div class="mb-3">
-              <label class="form-label">Status</label>
-              <select class="form-select" id="pageStatus">
-                <option value="draft" <%= 'selected' if landing_page.status == 'draft' %>>Draft</option>
-                <option value="published" <%= 'selected' if landing_page.status == 'published' %>>Published</option>
-                <option value="archived" <%= 'selected' if landing_page.status == 'archived' %>>Archived</option>
-              </select>
-            </div>
-            
-            <% if landing_page.persisted? %>
-              <div class="mb-3">
-                <label class="form-label">Page URL</label>
-                <div class="input-group">
-                  <span class="input-group-text">/landing/</span>
-                  <input type="text" class="form-control" value="<%= landing_page.slug %>" readonly>
-                </div>
-              </div>
-            <% end %>
-            
-            <button type="button" class="btn btn-primary w-100" onclick="scoutSaveLandingPage()">
-              <i class="fas fa-save me-1"></i>
-              Save Changes
-            </button>
-          </form>
+        <div class="step-connector"></div>
+        <div class="step" id="step-indicator-2">
+          <div class="step-number">2</div>
+          <div class="step-label">Choose Form</div>
         </div>
-      </div>
-      
-      <!-- Form Templates -->
-      <div class="card border-0 shadow-sm mt-4">
-        <div class="card-header bg-light">
-          <h6 class="mb-0">
-            <i class="fas fa-forms me-2"></i>
-            Form Templates
-          </h6>
-        </div>
-        <div class="card-body">
-          <p class="text-muted small mb-3">Add a contact form to collect leads</p>
-          <% form_templates.each do |template_key, template_desc| %>
-            <button class="btn btn-outline-primary btn-sm mb-2 w-100" 
-                    onclick="scoutAddFormTemplate('<%= template_key %>')">
-              <%= template_desc %>
-            </button>
-          <% end %>
+        <div class="step-connector"></div>
+        <div class="step" id="step-indicator-3">
+          <div class="step-number">3</div>
+          <div class="step-label">Create Page</div>
         </div>
       </div>
     </div>
-    
-    <!-- Content Preview/Editor -->
-    <div class="col-lg-8">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-          <h6 class="mb-0">
-            <i class="fas fa-code me-2"></i>
-            Page Content
-          </h6>
-          <div class="btn-group" role="group">
-            <button type="button" class="btn btn-sm btn-outline-secondary active" 
-                    onclick="scoutSwitchView('editor')">
-              <i class="fas fa-code"></i> Editor
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" 
-                    onclick="scoutSwitchView('preview')">
-              <i class="fas fa-eye"></i> Preview
-            </button>
+  </div>
+
+  <!-- Step 1: Page Details -->
+  <div class="wizard-step" id="wizard-step-1">
+    <div class="row justify-content-center">
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-primary text-white text-center">
+            <h5 class="mb-0">
+              <i class="fas fa-edit me-2"></i>
+              Step 1: Page Details
+            </h5>
+          </div>
+          <div class="card-body p-4">
+            <form id="step1Form">
+              <div class="mb-4">
+                <label class="form-label h6">Page Title *</label>
+                <input type="text" class="form-control form-control-lg" id="pageTitle" 
+                       placeholder="e.g., Free Marketing Consultation, Download Our Guide..." 
+                       required>
+                <small class="text-muted">This will be the main headline of your landing page</small>
+              </div>
+              
+              <div class="mb-4">
+                <label class="form-label h6">
+                  Page Description * 
+                  <span class="text-muted fw-normal">(for AI understanding)</span>
+                </label>
+                <textarea class="form-control" id="pageDescription" rows="4" 
+                          placeholder="Describe what this landing page should accomplish. For example: 'Generate leads for our marketing consultation service by highlighting our expertise and offering a free 30-minute strategy session. Target small business owners who need help with digital marketing.'"
+                          required></textarea>
+                <small class="text-muted">
+                  <i class="fas fa-robot me-1"></i>
+                  This helps our AI understand your goals and create better content. Be specific about your target audience and desired outcomes.
+                </small>
+              </div>
+
+              <div class="d-grid">
+                <button type="button" class="btn btn-primary btn-lg" onclick="goToStep2()">
+                  Continue to Form Selection
+                  <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-        <div class="card-body p-0">
-          <!-- HTML Editor -->
-          <div id="editorView" class="editor-container">
-            <div class="editor-toolbar p-2 bg-light border-bottom">
-              <small class="text-muted">
-                <i class="fas fa-info-circle me-1"></i>
-                Edit the HTML content below. Scout can help generate and modify this content.
-              </small>
-            </div>
-            <textarea id="htmlEditor" class="form-control border-0" rows="20" 
-                      style="font-family: 'Courier New', monospace; resize: none;"
-                      placeholder="<!-- HTML content will appear here -->"><%= landing_page.html_content %></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Form Selection -->
+  <div class="wizard-step d-none" id="wizard-step-2">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-success text-white text-center">
+            <h5 class="mb-0">
+              <i class="fas fa-wpforms me-2"></i>
+              Step 2: Choose a Contact Form
+            </h5>
           </div>
-          
-          <!-- Preview -->
-          <div id="previewView" class="preview-container d-none">
-            <div class="preview-toolbar p-2 bg-light border-bottom d-flex justify-content-between align-items-center">
-              <small class="text-muted">
-                <i class="fas fa-eye me-1"></i>
-                Preview of your landing page
-              </small>
-              <button class="btn btn-sm btn-outline-primary" onclick="scoutRefreshPreview()">
-                <i class="fas fa-sync-alt me-1"></i>
-                Refresh
-              </button>
-            </div>
-            <div id="previewContent" class="preview-content p-3" style="min-height: 400px;">
-              <% if landing_page.has_content? %>
-                <%= landing_page.html_content.html_safe %>
-              <% else %>
-                <div class="text-center text-muted py-5">
-                  <i class="fas fa-eye-slash fa-2x mb-3"></i>
-                  <p>No content to preview yet</p>
-                  <button class="btn btn-primary" onclick="scoutGenerateContent()">
-                    Generate Content with Scout
-                  </button>
+          <div class="card-body p-4">
+            <p class="text-center text-muted mb-4">
+              Select a form template to collect visitor information, or choose no form if you prefer.
+            </p>
+
+            <div class="form-selection-grid">
+              <!-- No Form Option -->
+              <div class="form-option" data-form-type="none">
+                <div class="form-option-card">
+                  <div class="form-option-icon">
+                    <i class="fas fa-times-circle"></i>
+                  </div>
+                  <h6>No Form</h6>
+                  <small class="text-muted">Just content, no contact collection</small>
+                </div>
+              </div>
+
+              <!-- Custom Form Option -->
+              <div class="form-option" data-form-type="custom">
+                <div class="form-option-card">
+                  <div class="form-option-icon">
+                    <i class="fas fa-paint-brush"></i>
+                  </div>
+                  <h6>Custom Form</h6>
+                  <small class="text-muted">I'll describe what I need</small>
+                </div>
+              </div>
+
+              <!-- Template Forms -->
+              <% form_templates.each do |template_key, template_desc| %>
+                <div class="form-option" data-form-type="<%= template_key %>">
+                  <div class="form-option-card">
+                    <div class="form-option-icon">
+                      <i class="fas fa-<%= template_key == 'contact_form' ? 'envelope' : 
+                                       template_key == 'newsletter_signup' ? 'newspaper' :
+                                       template_key == 'lead_magnet' ? 'download' :
+                                       template_key == 'demo_request' ? 'play-circle' :
+                                       template_key == 'event_registration' ? 'calendar' :
+                                       template_key == 'free_trial' ? 'gift' :
+                                       template_key == 'quote_request' ? 'calculator' :
+                                       template_key == 'consultation_booking' ? 'handshake' : 'wpforms' %>"></i>
+                    </div>
+                    <h6><%= template_desc.split(' with ').first.split(' for ').first %></h6>
+                    <small class="text-muted"><%= template_desc %></small>
+                  </div>
                 </div>
               <% end %>
             </div>
+
+            <div class="mt-4">
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary" onclick="goToStep1()">
+                  <i class="fas fa-arrow-left me-1"></i>
+                  Back
+                </button>
+                <button type="button" class="btn btn-success flex-fill" id="createPageBtn" onclick="createLandingPage()" disabled>
+                  <i class="fas fa-magic me-1"></i>
+                  Create My Landing Page
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  
-  <!-- AI Generation Progress -->
-  <div id="generationProgress" class="generation-progress d-none">
-    <div class="card border-primary">
-      <div class="card-body text-center">
-        <div class="spinner-border text-primary mb-3" role="status">
-          <span class="visually-hidden">Loading...</span>
+
+  <!-- Step 3: Creating Page -->
+  <div class="wizard-step d-none" id="wizard-step-3">
+    <div class="row justify-content-center">
+      <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body text-center p-5">
+            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <h5 class="mb-3">Creating Your Landing Page...</h5>
+            <p class="text-muted mb-0" id="creationStatus">
+              Our AI is analyzing your requirements and generating professional content
+            </p>
+            <div class="progress mt-3" style="height: 8px;">
+              <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                   role="progressbar" style="width: 100%"></div>
+            </div>
+          </div>
         </div>
-        <h6>Scout is generating your landing page...</h6>
-        <p class="text-muted mb-0" id="generationStatus">Analyzing your requirements</p>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-// Landing Page Generator JavaScript
-const landingPageGenerator = {
-  currentView: 'editor',
-  landingPageId: <%= landing_page.persisted? ? landing_page.id : 'null' %>,
-  
-  init() {
-    // Auto-save on content change (debounced)
-    this.setupAutoSave();
-  },
-  
-  setupAutoSave() {
-    let saveTimeout;
-    const editor = document.getElementById('htmlEditor');
-    
-    if (editor) {
-      editor.addEventListener('input', () => {
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
-          this.autoSave();
-        }, 2000); // Auto-save after 2 seconds of inactivity
-      });
-    }
-  },
-  
-  autoSave() {
-    if (this.landingPageId) {
-      console.log('Auto-saving landing page...');
-      // Could implement auto-save here
-    }
-  }
-};
-
-function scoutSwitchView(view) {
-  const editorView = document.getElementById('editorView');
-  const previewView = document.getElementById('previewView');
-  const buttons = document.querySelectorAll('.btn-group button');
-  
-  buttons.forEach(btn => btn.classList.remove('active'));
-  
-  if (view === 'editor') {
-    editorView.classList.remove('d-none');
-    previewView.classList.add('d-none');
-    buttons[0].classList.add('active');
-    landingPageGenerator.currentView = 'editor';
-  } else {
-    editorView.classList.add('d-none');
-    previewView.classList.remove('d-none');
-    buttons[1].classList.add('active');
-    landingPageGenerator.currentView = 'preview';
-    scoutRefreshPreview();
-  }
-}
-
-function scoutRefreshPreview() {
-  const editor = document.getElementById('htmlEditor');
-  const preview = document.getElementById('previewContent');
-  
-  if (editor && preview) {
-    const content = editor.value;
-    if (content.trim()) {
-      preview.innerHTML = content;
-    } else {
-      preview.innerHTML = `
-        <div class="text-center text-muted py-5">
-          <i class="fas fa-eye-slash fa-2x mb-3"></i>
-          <p>No content to preview yet</p>
-          <button class="btn btn-primary" onclick="scoutGenerateContent()">
-            Generate Content with Scout
-          </button>
-        </div>
-      `;
-    }
-  }
-}
-
-function scoutGenerateContent() {
-  window.scoutSendMessage?.("Generate HTML content for this landing page");
-}
-
-function scoutAddFormTemplate(templateKey) {
-  window.scoutSendMessage?.(`Add a ${templateKey.replace('_', ' ')} form to my landing page`);
-}
-
-function scoutSaveLandingPage() {
-  const title = document.getElementById('pageTitle').value;
-  const description = document.getElementById('pageDescription').value;
-  const status = document.getElementById('pageStatus').value;
-  const htmlContent = document.getElementById('htmlEditor').value;
-  
-  // Send to Scout to save the landing page
-  window.scoutSendMessage?.(`Save this landing page with title "${title}" and status "${status}"`);
-}
-
 function scoutBackToLandingPages() {
   window.scoutLoadCanvas?.('landing_page_viewer');
 }
 
-function scoutPreviewLandingPage(pageId) {
-  window.open(`/landing_pages/${pageId}/preview`, '_blank');
-}
-
-// Initialize when loaded
-document.addEventListener('DOMContentLoaded', () => {
-  landingPageGenerator.init();
+// Initialize wizard when canvas loads
+console.log('Landing page wizard loaded');
+console.log('Wizard functions available:', {
+  goToStep1: typeof window.goToStep1,
+  goToStep2: typeof window.goToStep2,
+  createLandingPage: typeof window.createLandingPage,
+  landingPageWizard: typeof window.landingPageWizard
 });
+
+// Initialize form selection when DOM is ready
+setTimeout(() => {
+  if (window.landingPageWizard) {
+    window.landingPageWizard.init();
+  }
+}, 100);
 </script>
 
 <style>
 .landing-page-generator {
-  height: 100%;
-  overflow-y: auto;
+  min-height: 100%;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 20px;
 }
 
-.editor-container textarea {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.preview-content {
+/* Wizard Progress Styles */
+.wizard-progress {
   background: white;
-  border: 1px solid #dee2e6;
-  border-radius: 0.375rem;
-  max-height: 500px;
-  overflow-y: auto;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
-.generation-progress {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1050;
-  min-width: 300px;
+.step-indicator {
+  display: flex;
+  align-items: center;
+  max-width: 600px;
 }
 
-.form-template-btn {
-  transition: all 0.2s ease;
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
 }
 
-.form-template-btn:hover {
-  transform: translateY(-1px);
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e9ecef;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  margin-bottom: 8px;
+}
+
+.step.active .step-number {
+  background: #0d6efd;
+  color: white;
+}
+
+.step.completed .step-number {
+  background: #198754;
+  color: white;
+}
+
+.step-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6c757d;
+  text-align: center;
+}
+
+.step.active .step-label {
+  color: #0d6efd;
+  font-weight: 600;
+}
+
+.step.completed .step-label {
+  color: #198754;
+}
+
+.step-connector {
+  width: 100px;
+  height: 2px;
+  background: #e9ecef;
+  margin: 0 20px;
+  margin-bottom: 20px;
+}
+
+/* Form Selection Grid */
+.form-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.form-option {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.form-option:hover {
+  transform: translateY(-2px);
+}
+
+.form-option-card {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.form-option:hover .form-option-card {
+  border-color: #0d6efd;
+  box-shadow: 0 4px 15px rgba(13, 110, 253, 0.15);
+}
+
+.form-option.selected .form-option-card {
+  border-color: #198754;
+  background: #f8fff9;
+  box-shadow: 0 4px 15px rgba(25, 135, 84, 0.15);
+}
+
+.form-option-icon {
+  font-size: 24px;
+  color: #6c757d;
+  margin-bottom: 8px;
+}
+
+.form-option.selected .form-option-icon {
+  color: #198754;
+}
+
+.form-option-card h6 {
+  margin-bottom: 4px;
+  color: #212529;
+}
+
+.form-option.selected .form-option-card h6 {
+  color: #198754;
+  font-weight: 600;
+}
+
+/* Card Enhancements */
+.card {
+  border-radius: 15px !important;
+  overflow: hidden;
+}
+
+.card-header {
+  border-radius: 15px 15px 0 0 !important;
+}
+
+/* Animation for step transitions */
+.wizard-step {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .form-selection-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .step-connector {
+    width: 60px;
+    margin: 0 10px;
+  }
+  
+  .step-indicator {
+    font-size: 14px;
+  }
+  
+  .step-number {
+    width: 35px;
+    height: 35px;
+  }
 }
 </style> 

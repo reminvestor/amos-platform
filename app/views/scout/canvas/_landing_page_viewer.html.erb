@@ -84,9 +84,16 @@
         <div class="col-lg-6 col-xl-4 mb-4">
           <div class="card landing-page-card h-100 border-0 shadow-sm" onclick="scoutViewLandingPage(<%= page.id %>)" style="cursor: pointer;">
             <div class="card-header bg-white border-bottom-0 d-flex justify-content-between align-items-center">
-              <span class="badge <%= page.status == 'published' ? 'bg-success' : page.status == 'draft' ? 'bg-warning' : 'bg-secondary' %>">
-                <%= page.status.titleize %>
-              </span>
+              <div class="d-flex gap-2">
+                <span class="badge <%= page.status == 'published' ? 'bg-success' : page.status == 'draft' ? 'bg-warning' : 'bg-secondary' %>">
+                  <%= page.status.titleize %>
+                </span>
+                <% unless page.has_content? %>
+                  <span class="badge bg-info">
+                    <i class="fas fa-cog fa-spin me-1"></i>Generating
+                  </span>
+                <% end %>
+              </div>
               <div class="dropdown">
                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
                   <i class="fas fa-ellipsis-h"></i>
@@ -115,11 +122,16 @@
             </div>
             <div class="card-body">
               <div class="landing-page-preview mb-3">
-                <div class="preview-placeholder bg-light rounded d-flex align-items-center justify-content-center" style="height: 120px;">
+                <div class="preview-placeholder bg-light rounded d-flex align-items-center justify-content-center position-relative" style="height: 120px;">
                   <% if page.has_content? %>
                     <i class="fas fa-globe text-primary fa-2x"></i>
                   <% else %>
-                    <i class="fas fa-file-alt text-muted fa-2x"></i>
+                    <div class="text-center">
+                      <div class="spinner-border text-primary mb-2" role="status" style="width: 1.5rem; height: 1.5rem;">
+                        <span class="visually-hidden">Loading...</span>
+                      </div>
+                      <div class="small text-muted">AI Generating</div>
+                    </div>
                   <% end %>
                 </div>
               </div>
