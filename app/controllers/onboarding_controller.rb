@@ -151,7 +151,7 @@ class OnboardingController < ApplicationController
     
     welcome_message = "👋 Hi #{current_user.first_name}! I'm Scout, your AI marketing agent. 
 
-I see you're working with #{business_name} - that's exciting! I'm here to learn more about your business so I can help you create amazing campaigns. This will only take a few minutes, and I promise to make it conversational - no boring forms!
+I see you're working with #{business_name} - that's exciting! I'm here to learn more about your business so I can help you succeed across all marketing channels. This will only take a few minutes, and I promise to make it conversational - no boring forms!
 
 Since I already know your business name, let's dive deeper: What industry is #{business_name} in? Are you in tech, retail, healthcare, consulting, or something else?"
 
