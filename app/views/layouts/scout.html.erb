@@ -6,6 +6,12 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     
+    <script>
+      // Make CSRF token available globally for Scout
+      window.Rails = window.Rails || {};
+      window.Rails.csrfToken = '<%= form_authenticity_token %>';
+    </script>
+    
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "trix", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "actiontext", "data-turbo-track": "reload" %>
