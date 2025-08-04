@@ -546,6 +546,138 @@ export default class extends Controller {
     window.scoutViewLandingPage = (id) => this.loadScoutCanvas('landing_page_details', { landing_page_id: id })
     window.scoutPreviewLandingPageInTab = (id) => window.open(`/landing_pages/${id}/preview`, '_blank')
     
+    // Landing page preview toggle functions
+    window.switchToVisualMode = () => {
+      console.log('Switching to visual mode');
+      const visualPreview = document.getElementById('visual-preview');
+      const htmlPreview = document.getElementById('html-preview');
+      const visualBtn = document.getElementById('visual-mode-btn');
+      const htmlBtn = document.getElementById('html-mode-btn');
+      
+      if (visualPreview && htmlPreview && visualBtn && htmlBtn) {
+        // Show visual, hide HTML
+        visualPreview.classList.remove('d-none');
+        htmlPreview.classList.add('d-none');
+        
+        // Update button states
+        visualBtn.classList.remove('btn-outline-primary');
+        visualBtn.classList.add('btn-primary');
+        htmlBtn.classList.remove('btn-primary');
+        htmlBtn.classList.add('btn-outline-primary');
+      }
+    }
+    
+    window.switchToHtmlMode = () => {
+      console.log('Switching to HTML mode');
+      const visualPreview = document.getElementById('visual-preview');
+      const htmlPreview = document.getElementById('html-preview');
+      const visualBtn = document.getElementById('visual-mode-btn');
+      const htmlBtn = document.getElementById('html-mode-btn');
+      
+      if (visualPreview && htmlPreview && visualBtn && htmlBtn) {
+        // Show HTML, hide visual
+        htmlPreview.classList.remove('d-none');
+        visualPreview.classList.add('d-none');
+        
+        // Update button states
+        htmlBtn.classList.remove('btn-outline-primary');
+        htmlBtn.classList.add('btn-primary');
+        visualBtn.classList.remove('btn-primary');
+        visualBtn.classList.add('btn-outline-primary');
+      }
+    }
+    
+    window.saveHtmlChanges = (landingPageId) => {
+      console.log('saveHtmlChanges called for landing page:', landingPageId);
+      const htmlEditor = document.getElementById('html-editor');
+      
+      if (!htmlEditor) {
+        console.error('HTML editor not found');
+        alert('HTML editor not found');
+        return;
+      }
+      
+      const htmlContent = htmlEditor.value;
+      console.log('HTML content length:', htmlContent.length);
+      
+      if (!htmlContent.trim()) {
+        alert('HTML content cannot be empty');
+        return;
+      }
+      
+      // Show saving indicator
+      const saveBtn = event.target;
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+      saveBtn.disabled = true;
+      
+      console.log('Sending PATCH request to update landing page...');
+      
+      // Get CSRF token safely
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                        document.querySelector('[name="csrf-token"]')?.value ||
+                        document.querySelector('[name="authenticity_token"]')?.value;
+      
+      if (!csrfToken) {
+        console.error('CSRF token not found');
+        alert('Security token not found. Please refresh the page and try again.');
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+        return;
+      }
+      
+      // Send PATCH request to update landing page
+      fetch(`/landing_pages/${landingPageId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({
+          landing_page: {
+            html_content: htmlContent
+          }
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          saveBtn.innerHTML = '<i class="fas fa-check me-1"></i> Saved!';
+          saveBtn.classList.remove('btn-success');
+          saveBtn.classList.add('btn-success');
+          
+          // Refresh visual preview if visible
+          const visualPreview = document.getElementById('visual-preview');
+          if (visualPreview && !visualPreview.classList.contains('d-none')) {
+            const iframe = visualPreview.querySelector('iframe');
+            if (iframe) {
+              iframe.src = iframe.src; // Reload iframe
+            }
+          }
+          
+          setTimeout(() => {
+            saveBtn.innerHTML = originalText;
+            saveBtn.classList.remove('btn-success');
+            saveBtn.classList.add('btn-success');
+            saveBtn.disabled = false;
+          }, 2000);
+        } else {
+          throw new Error(data.error || 'Failed to save');
+        }
+      })
+      .catch(error => {
+        console.error('Save error:', error);
+        saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> Error';
+        saveBtn.classList.add('btn-danger');
+        
+        setTimeout(() => {
+          saveBtn.innerHTML = originalText;
+          saveBtn.classList.remove('btn-danger');
+          saveBtn.disabled = false;
+        }, 3000);
+      });
+    }
+    
     // Landing page management functions
     window.scoutPublishLandingPage = (id) => {
       if (confirm('Are you sure you want to publish this landing page?')) {
@@ -626,6 +758,132 @@ export default class extends Controller {
     // Reports and exports
     window.scoutExportReport = () => this.sendScoutMessage("Please export analytics report")
     window.scoutCustomReport = () => this.sendScoutMessage("Please create a custom report")
+    
+    // Landing Page Wizard Functions
+    window.landingPageWizard = {
+      currentStep: 1,
+      selectedFormType: null,
+      
+      init() {
+        this.setupFormSelection();
+      },
+      
+      setupFormSelection() {
+        // Handle form option selection
+        document.querySelectorAll('.form-option').forEach(option => {
+          option.addEventListener('click', () => {
+            // Remove selection from all options
+            document.querySelectorAll('.form-option').forEach(opt => 
+              opt.classList.remove('selected'));
+            
+            // Select clicked option
+            option.classList.add('selected');
+            this.selectedFormType = option.dataset.formType;
+            
+            // Enable create button
+            const createBtn = document.getElementById('createPageBtn');
+            if (createBtn) createBtn.disabled = false;
+          });
+        });
+      }
+    }
+    
+    window.goToStep1 = () => {
+      const step1 = document.getElementById('wizard-step-1');
+      const step2 = document.getElementById('wizard-step-2');
+      const indicator1 = document.getElementById('step-indicator-1');
+      const indicator2 = document.getElementById('step-indicator-2');
+      
+      if (step1 && step2 && indicator1 && indicator2) {
+        step2.classList.add('d-none');
+        step1.classList.remove('d-none');
+        
+        // Update step indicators
+        indicator2.classList.remove('active');
+        indicator1.classList.add('active');
+        
+        window.landingPageWizard.currentStep = 1;
+      }
+    }
+    
+    window.goToStep2 = () => {
+      const title = document.getElementById('pageTitle')?.value.trim();
+      const description = document.getElementById('pageDescription')?.value.trim();
+      
+      if (!title || !description) {
+        alert('Please fill in both the title and description fields.');
+        return;
+      }
+      
+      const step1 = document.getElementById('wizard-step-1');
+      const step2 = document.getElementById('wizard-step-2');
+      const indicator1 = document.getElementById('step-indicator-1');
+      const indicator2 = document.getElementById('step-indicator-2');
+      
+      if (step1 && step2 && indicator1 && indicator2) {
+        step1.classList.add('d-none');
+        step2.classList.remove('d-none');
+        
+        // Update step indicators
+        indicator1.classList.remove('active');
+        indicator1.classList.add('completed');
+        indicator2.classList.add('active');
+        
+        window.landingPageWizard.currentStep = 2;
+        
+        // Setup form selection if not already done
+        window.landingPageWizard.setupFormSelection();
+      }
+    }
+    
+    window.createLandingPage = () => {
+      const title = document.getElementById('pageTitle')?.value.trim();
+      const description = document.getElementById('pageDescription')?.value.trim();
+      const formType = window.landingPageWizard.selectedFormType;
+      
+      if (!title || !description || !formType) {
+        alert('Please complete all steps before creating the page.');
+        return;
+      }
+      
+      const step2 = document.getElementById('wizard-step-2');
+      const step3 = document.getElementById('wizard-step-3');
+      const indicator2 = document.getElementById('step-indicator-2');
+      const indicator3 = document.getElementById('step-indicator-3');
+      
+      if (step2 && step3 && indicator2 && indicator3) {
+        // Show creation step
+        step2.classList.add('d-none');
+        step3.classList.remove('d-none');
+        
+        // Update step indicators
+        indicator2.classList.remove('active');
+        indicator2.classList.add('completed');
+        indicator3.classList.add('active');
+        
+        window.landingPageWizard.currentStep = 3;
+        
+        // Update status message
+        const statusElement = document.getElementById('creationStatus');
+        if (statusElement) {
+          statusElement.textContent = 'Creating your landing page with AI-powered content generation...';
+        }
+        
+        // Build the creation message
+        let message = `Create a landing page titled "${title}". ${description}`;
+        
+        if (formType === 'none') {
+          message += ' This page should not include any contact forms.';
+        } else if (formType === 'custom') {
+          message += ' Please ask me what type of custom contact form I need for this page.';
+        } else {
+          message += ` Include a ${formType.replace('_', ' ')} form to collect visitor information.`;
+        }
+        
+        // Send to Scout
+        this.sendScoutMessage(message);
+      }
+    }
 
     console.log("🌐 Canvas globals initialized")
   }

@@ -198,17 +198,15 @@
             Content Preview
           </h6>
           <div class="btn-group btn-group-sm" role="group">
-            <input type="radio" class="btn-check" name="preview-mode" id="visual-mode" checked>
-            <label class="btn btn-outline-primary" for="visual-mode">
+            <button type="button" class="btn btn-primary" id="visual-mode-btn" onclick="switchToVisualMode()">
               <i class="fas fa-eye me-1"></i>
               Visual
-            </label>
+            </button>
             
-            <input type="radio" class="btn-check" name="preview-mode" id="html-mode">
-            <label class="btn btn-outline-primary" for="html-mode">
+            <button type="button" class="btn btn-outline-primary" id="html-mode-btn" onclick="switchToHtmlMode()">
               <i class="fas fa-code me-1"></i>
               HTML
-            </label>
+            </button>
           </div>
         </div>
         <div class="card-body p-0 d-flex flex-column flex-grow-1">
@@ -307,30 +305,6 @@ function showCopySuccess(button) {
   }, 2000);
 }
 
-// Handle preview mode toggle
-document.addEventListener('DOMContentLoaded', function() {
-  const visualMode = document.getElementById('visual-mode');
-  const htmlMode = document.getElementById('html-mode');
-  const visualPreview = document.getElementById('visual-preview');
-  const htmlPreview = document.getElementById('html-preview');
-  
-  if (visualMode && htmlMode && visualPreview && htmlPreview) {
-    visualMode.addEventListener('change', function() {
-      if (this.checked) {
-        visualPreview.classList.remove('d-none');
-        htmlPreview.classList.add('d-none');
-      }
-    });
-    
-    htmlMode.addEventListener('change', function() {
-      if (this.checked) {
-        htmlPreview.classList.remove('d-none');
-        visualPreview.classList.add('d-none');
-      }
-    });
-  }
-});
-
 // Auto-refresh when AI generation is in progress
 <% unless landing_page.html_content.present? %>
 setInterval(() => {
@@ -338,73 +312,13 @@ setInterval(() => {
 }, 10000); // Refresh every 10 seconds when content is being generated
 <% end %>
 
-// Save HTML changes
-function saveHtmlChanges(landingPageId) {
-  const htmlEditor = document.getElementById('html-editor');
-  const htmlContent = htmlEditor.value;
-  
-  if (!htmlContent.trim()) {
-    alert('HTML content cannot be empty');
-    return;
-  }
-  
-  // Show saving indicator
-  const saveBtn = event.target;
-  const originalText = saveBtn.innerHTML;
-  saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
-  saveBtn.disabled = true;
-  
-  // Send PATCH request to update landing page
-  fetch(`/landing_pages/${landingPageId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-    },
-    body: JSON.stringify({
-      landing_page: {
-        html_content: htmlContent
-      }
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      saveBtn.innerHTML = '<i class="fas fa-check me-1"></i> Saved!';
-      saveBtn.classList.remove('btn-success');
-      saveBtn.classList.add('btn-success');
-      
-      // Refresh visual preview if visible
-      const visualPreview = document.getElementById('visual-preview');
-      if (visualPreview && !visualPreview.classList.contains('d-none')) {
-        const iframe = visualPreview.querySelector('iframe');
-        if (iframe) {
-          iframe.src = iframe.src; // Reload iframe
-        }
-      }
-      
-      setTimeout(() => {
-        saveBtn.innerHTML = originalText;
-        saveBtn.classList.remove('btn-success');
-        saveBtn.classList.add('btn-success');
-        saveBtn.disabled = false;
-      }, 2000);
-    } else {
-      throw new Error(data.error || 'Failed to save');
-    }
-  })
-  .catch(error => {
-    console.error('Save error:', error);
-    saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> Error';
-    saveBtn.classList.add('btn-danger');
-    
-    setTimeout(() => {
-      saveBtn.innerHTML = originalText;
-      saveBtn.classList.remove('btn-danger');
-      saveBtn.disabled = false;
-    }, 3000);
-  });
-}
+// Initialize the canvas
+console.log('Landing page details canvas loaded');
+console.log('Toggle functions available:', {
+  switchToVisualMode: typeof window.switchToVisualMode,
+  switchToHtmlMode: typeof window.switchToHtmlMode,
+  saveHtmlChanges: typeof window.saveHtmlChanges
+});
 </script>
 
 <style>

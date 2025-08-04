@@ -216,7 +216,7 @@ class ScoutController < ApplicationController
           icon: 'fas fa-globe'
         },
         { 
-          type: 'contact_viewer', 
+          type: 'contact_viewer',
           name: 'Contacts', 
           description: 'View and manage contacts',
           icon: 'fas fa-users'
