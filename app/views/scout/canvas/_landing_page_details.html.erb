@@ -72,10 +72,10 @@
                 <label class="form-label text-muted small">Public URL</label>
                 <div class="input-group">
                   <input type="text" class="form-control font-monospace small" 
-                         value="<%= request.protocol + request.host_with_port + '/landing/' + landing_page.slug %>" 
+                         value="<%= request.protocol + request.host_with_port.sub(/^www\./, '') + '/landing/' + landing_page.slug %>" 
                          readonly onclick="this.select()">
                   <button class="btn btn-outline-secondary" type="button" 
-                          onclick="window.open('<%= request.protocol + request.host_with_port + '/landing/' + landing_page.slug %>', '_blank')"
+                          onclick="window.open('<%= request.protocol + request.host_with_port.sub(/^www\./, '') + '/landing/' + landing_page.slug %>', '_blank')"
                           title="Open public page">
                     <i class="fas fa-external-link-alt"></i>
                   </button>
