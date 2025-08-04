@@ -15,6 +15,23 @@ class ApplicationController < ActionController::Base
   before_action :check_onboarding_status
   before_action :configure_permitted_parameters, if: :devise_controller?
   
+  # Handle Warden authentication failures gracefully
+  rescue_from Warden::NotAuthenticated do |exception|
+    Rails.logger.info "🚨 Warden authentication failure - Subdomain: #{request.subdomain}, Path: #{request.path}, User-Agent: #{request.user_agent}"
+    handle_authentication_failure
+  end
+  
+  # Handle uncaught Warden throws (UncaughtThrowError)
+  rescue_from UncaughtThrowError do |exception|
+    if exception.tag == :warden
+      Rails.logger.info "🚨 Uncaught Warden throw - Subdomain: #{request.subdomain}, Path: #{request.path}"
+      handle_authentication_failure
+    else
+      # Re-raise if it's not a Warden throw
+      raise exception
+    end
+  end
+  
   protected
   
   # Check if this is an API request based on the path
@@ -50,6 +67,18 @@ class ApplicationController < ActionController::Base
     end
   end
   
+  # Override the default devise sign out redirect
+  def after_sign_out_path_for(resource_or_scope)
+    # Check if we're on the app subdomain
+    if request.subdomain == 'app'
+      # Redirect to login page on app subdomain
+      new_user_session_path
+    else
+      # Not on app subdomain, redirect to marketing site
+      root_path
+    end
+  end
+  
   # Helper to determine if we're on the app subdomain
   def app_subdomain?
     request.subdomain == 'app'
@@ -74,6 +103,18 @@ class ApplicationController < ActionController::Base
   end
   
   private
+  
+  def handle_authentication_failure
+    if request.subdomain == 'app'
+      # On app subdomain, redirect to login
+      Rails.logger.info "🔄 Redirecting to login page for app subdomain"
+      redirect_to new_user_session_path
+    else
+      # On other subdomains, redirect to marketing site
+      Rails.logger.info "🔄 Redirecting to marketing site for non-app subdomain"
+      redirect_to root_url(subdomain: false)
+    end
+  end
   
   def check_onboarding_status
     return unless user_signed_in?

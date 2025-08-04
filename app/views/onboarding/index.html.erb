@@ -1,134 +1,112 @@
 <!-- Onboarding Chat Interface -->
-<div class="min-vh-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);">
+<div class="onboarding-page">
   <!-- Header -->
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-12">
-        <nav class="navbar navbar-expand-lg" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);">
-          <div class="container">
-            <a class="navbar-brand text-white fw-bold d-flex align-items-center" href="#">
-              <%= image_tag "crux_logo_white_long.png", alt: "Crux Marketing", style: "height: 30px;" %>
-              Crux Marketing
-              <span class="badge ms-2" style="background: rgba(255, 255, 255, 0.2); color: white; font-size: 0.7em;">Onboarding</span>
-            </a>
-            <div class="d-flex align-items-center text-white">
-              <%= link_to '/onboarding/reset', class: "btn btn-sm btn-outline-light me-3", style: "border-color: rgba(255,255,255,0.3);" do %>
-                <i class="fas fa-redo me-1"></i> Reset Chat
-              <% end %>
-              <div>
-                <i class="fas fa-user-circle me-2"></i>
-                <%= current_user.full_name %>
-              </div>
-            </div>
+  <div class="onboarding-header">
+    <nav class="onboarding-nav">
+      <div class="onboarding-nav-content">
+        <a class="onboarding-brand" href="#">
+          <%= image_tag "crux_logo_white_long.png", alt: "Crux Marketing", class: "onboarding-logo" %>
+          <span class="onboarding-badge">Onboarding</span>
+        </a>
+        <div class="onboarding-user-info">
+          <%# Reset chat link commented out - not needed anymore %>
+          <%#= link_to '/onboarding/reset', class: "onboarding-reset-btn" do %>
+            <%#<i class="fas fa-redo me-1"></i> Reset Chat%>
+          <%# end %>
+          <div class="onboarding-user">
+            <i class="fas fa-user-circle me-2"></i>
+            <%= current_user.full_name %>
           </div>
-        </nav>
+        </div>
       </div>
-    </div>
+    </nav>
   </div>
 
   <!-- Main Chat Interface -->
-  <div class="container-fluid p-0" style="height: calc(100vh - 80px);">
-    <div class="row h-100 g-0">
-      <div class="col-12">
-        <div class="chat-container h-100 d-flex flex-column">
-          
-          <!-- Welcome Banner -->
-          <div class="welcome-banner p-4 mb-3" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 1rem; margin: 1rem;">
-            <div class="text-center text-white">
-              <h4 class="fw-bold mb-2">🚀 Welcome to Crux Marketing!</h4>
-              <p class="mb-0 opacity-75">Scout is going to learn about your business so we can create amazing campaigns together.</p>
+  <div class="onboarding-main">
+    <!-- Welcome Banner -->
+    <div class="onboarding-welcome">
+      <div class="onboarding-welcome-content">
+                 <h4 class="onboarding-welcome-title">🚀 Welcome to Crux Marketing!</h4>
+         <p class="onboarding-welcome-text">Scout is your AI marketing agent who continually learns about your business and helps you succeed across all marketing channels.  Let's get started!</p>
+      </div>
+    </div>
+    
+    <!-- Chat Messages -->
+    <div id="onboarding-messages" class="onboarding-messages">
+      <% @conversation_history.each do |message| %>
+        <div class="onboarding-message-container onboarding-message-<%= message[:role] %>">
+          <div class="onboarding-message">
+            <!-- Avatar -->
+            <div class="onboarding-avatar onboarding-avatar-<%= message[:role] %>">
+              <i class="fas fa-<%= message[:role] == 'user' ? 'user' : 'robot' %>"></i>
             </div>
-          </div>
-          
-          <!-- Chat Messages -->
-          <div id="chat-messages" class="chat-messages flex-grow-1 overflow-auto px-4" style="max-height: calc(100vh - 400px);">
-            <% @conversation_history.each do |message| %>
-              <div class="message-container mb-4 d-flex <%= message[:role] == 'user' ? 'justify-content-end' : 'justify-content-start' %>">
-                <div class="message d-flex align-items-start <%= message[:role] == 'user' ? 'flex-row-reverse' : '' %>" style="max-width: 75%;">
-                  <!-- Avatar -->
-                  <div class="avatar <%= message[:role] == 'user' ? 'ms-3' : 'me-3' %>" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; <%= message[:role] == 'user' ? 'background: #667eea;' : 'background: linear-gradient(45deg, #ff6b6b, #ff8e8e);' %> flex-shrink: 0;">
-                    <% if message[:role] == 'user' %>
-                      <i class="fas fa-user text-white"></i>
-                    <% else %>
-                      <i class="fas fa-robot text-white"></i>
-                    <% end %>
-                  </div>
-                  
-                  <!-- Message Bubble -->
-                  <div class="message-bubble p-3" style="<%= message[:role] == 'user' ? 'background: #8b5cf6; color: white;' : 'background: white; color: #333;' %> border-radius: 1rem; word-wrap: break-word; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
-                    <% if message[:role] == 'assistant' %>
-                      <div class="assistant-name mb-2">
-                        <small class="fw-semibold" style="color: #ff6b6b;">
-                          <i class="fas fa-robot me-1"></i>
-                          Scout
-                        </small>
-                      </div>
-                    <% end %>
-                    <div class="message-content">
-                      <%= simple_format(h(message[:content])) %>
-                    </div>
-                    <div class="message-time mt-2">
-                      <small class="opacity-75" style="<%= message[:role] == 'user' ? 'color: rgba(255, 255, 255, 0.8);' : 'color: #666;' %>">
-                        <%= Time.parse(message[:timestamp]).strftime("%I:%M %p") rescue Time.current.strftime("%I:%M %p") %>
-                      </small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-          </div>
-          
-          <!-- Typing Indicator -->
-          <div id="typing-indicator" class="typing-indicator px-4 mb-3" style="display: none;">
-            <div class="d-flex align-items-start" style="max-width: 75%;">
-              <div class="avatar me-3" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(45deg, #ff6b6b, #ff8e8e); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <i class="fas fa-robot text-white"></i>
-              </div>
-              <div class="message-bubble p-3" style="background: white; border-radius: 1rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
-                <div class="assistant-name mb-2">
-                  <small class="fw-semibold" style="color: #ff6b6b;">
-                    <i class="fas fa-robot me-1"></i>
-                    Scout
-                  </small>
-                </div>
-                <div class="typing-dots">
-                  <span class="text-muted">Scout is thinking</span>
-                  <span class="dots ms-1">
-                    <span>.</span><span>.</span><span>.</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Chat Input - Fixed at bottom -->
-          <div class="chat-input p-3 mt-auto" style="background: rgba(0, 0, 0, 0.2); margin: 0;">
-            <form id="chat-form" class="d-flex gap-3 mb-0">
-              <div class="input-group" style="flex-grow: 1;">
-                <input type="text" 
-                       id="message-input" 
-                       class="form-control form-control-lg" 
-                       placeholder="Tell Scout about your business..." 
-                       style="border-radius: 1rem 0 0 1rem; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.9);"
-                       maxlength="1000">
-                <button type="submit" 
-                        id="send-button"
-                        class="btn btn-lg" 
-                        style="background: linear-gradient(45deg, #ff6b6b, #ff8e8e); border: none; border-radius: 0 1rem 1rem 0; color: white; padding: 0 1.5rem;">
-                  <i class="fas fa-paper-plane"></i>
-                </button>
-              </div>
-            </form>
             
-            <!-- Progress Indicator -->
-            <div class="progress-indicator mt-2 text-center">
-              <small class="text-white opacity-75">
-                <i class="fas fa-shield-alt me-1"></i>
-                Your information is secure and will only be used to personalize your experience
-              </small>
+            <!-- Message Bubble -->
+            <div class="onboarding-bubble onboarding-bubble-<%= message[:role] %>">
+              <% if message[:role] == 'assistant' %>
+                <div class="onboarding-assistant-name">
+                  <small><i class="fas fa-robot me-1"></i>Scout</small>
+                </div>
+              <% end %>
+              <div class="onboarding-message-text">
+                <%= simple_format(h(message[:content])) %>
+              </div>
+              <div class="onboarding-message-time">
+                <small><%= Time.parse(message[:timestamp]).strftime("%I:%M %p") rescue Time.current.strftime("%I:%M %p") %></small>
+              </div>
             </div>
           </div>
         </div>
+      <% end %>
+    </div>
+    
+    <!-- Typing Indicator -->
+    <div id="onboarding-typing" class="onboarding-typing" style="display: none;">
+      <div class="onboarding-message">
+        <div class="onboarding-avatar onboarding-avatar-assistant">
+          <i class="fas fa-robot"></i>
+        </div>
+        <div class="onboarding-bubble onboarding-bubble-assistant">
+          <div class="onboarding-assistant-name">
+            <small><i class="fas fa-robot me-1"></i>Scout</small>
+          </div>
+          <div class="onboarding-typing-dots">
+            <span>Scout is thinking</span>
+            <span class="onboarding-dots">
+              <span>.</span><span>.</span><span>.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+  
+    <!-- Chat Input - Outside main container for edge-to-edge -->
+  <div class="onboarding-input-area">
+    <div class="onboarding-input-content">
+      <form id="onboarding-form" class="onboarding-form">
+        <div class="onboarding-input-group">
+          <input type="text" 
+                 id="onboarding-message-input" 
+                 class="onboarding-input" 
+                 placeholder="Tell Scout about your business..." 
+                 maxlength="1000">
+          <button type="submit" 
+                  id="onboarding-send-button"
+                  class="onboarding-send-btn">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </form>
+      
+      <!-- Progress Indicator -->
+      <div class="onboarding-security-text">
+        <small>
+          <i class="fas fa-shield-alt me-1"></i>
+          Your information is secure and will only be used to personalize your experience
+        </small>
       </div>
     </div>
   </div>
@@ -144,10 +122,10 @@
             <i class="fas fa-check text-white" style="font-size: 2rem;"></i>
           </div>
           <h4 class="fw-bold mb-2">🎉 Perfect! You're all set!</h4>
-          <p class="text-muted">Scout now knows about your business and is ready to help you create amazing campaigns.</p>
+          <p class="text-muted">Scout now knows about your business and is ready to help you succeed with comprehensive marketing strategies.</p>
         </div>
         <button type="button" class="btn btn-lg" style="background: linear-gradient(45deg, #ff6b6b, #ff8e8e); border: none; border-radius: 0.75rem; color: white; padding: 0.75rem 2rem;" onclick="completeOnboarding()">
-          Start Creating Campaigns
+          Let's Get Started
         </button>
       </div>
     </div>
@@ -155,79 +133,379 @@
 </div>
 
 <style>
-  .chat-messages {
-    scroll-behavior: smooth;
-  }
-  
-  .message-bubble {
-    word-break: break-word;
-  }
-  
-  .message-bubble p {
-    margin-bottom: 0;
-  }
-  
-  .message-bubble p:not(:last-child) {
-    margin-bottom: 0.5rem;
-  }
-  
-  /* Override workspace.scss styles that are causing dark backgrounds */
-  .message-content {
-    background: transparent !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-    color: inherit !important;
-  }
-  
-  .message-content p {
-    background: transparent !important;
-    color: inherit !important;
-    margin-bottom: 0;
-  }
-  
-  .message-content p:not(:last-child) {
-    margin-bottom: 0.5rem;
-  }
-  
-  .typing-dots .dots {
-    animation: typing 1.4s infinite;
-  }
-  
-  @keyframes typing {
-    0%, 60%, 100% { opacity: 0; }
-    30% { opacity: 1; }
-  }
-  
-  .typing-dots .dots span:nth-child(2) {
-    animation-delay: 0.2s;
-  }
-  
-  .typing-dots .dots span:nth-child(3) {
-    animation-delay: 0.4s;
-  }
-  
-  .form-control:focus {
-    border-color: rgba(255, 255, 255, 0.5) !important;
-    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25) !important;
-  }
-  
-  .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 107, 107, 0.3) !important;
-  }
-  
-  .chat-container {
-    min-height: 100%;
-  }
+/* ONBOARDING-SPECIFIC STYLES */
+
+/* Reset any global margins/padding for this page */
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Base Page Layout */
+ .onboarding-page {
+   min-height: 100vh;
+   background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);
+   display: flex;
+   flex-direction: column;
+   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+   margin: 0;
+   padding: 0;
+ }
+
+/* Header */
+.onboarding-header {
+  flex-shrink: 0;
+}
+
+.onboarding-nav {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 1rem 0;
+}
+
+.onboarding-nav-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.onboarding-brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: white;
+  font-weight: 600;
+}
+
+.onboarding-logo {
+  height: 30px;
+}
+
+.onboarding-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 0.7em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  margin-left: 0.5rem;
+}
+
+.onboarding-user-info {
+  display: flex;
+  align-items: center;
+  color: white;
+  gap: 1rem;
+}
+
+.onboarding-reset-btn {
+  color: white;
+  text-decoration: none;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.onboarding-reset-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  text-decoration: none;
+}
+
+.onboarding-user {
+  display: flex;
+  align-items: center;
+}
+
+/* Main Chat Area */
+.onboarding-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 1rem;
+  min-height: 0; /* Important for flex child */
+}
+
+/* Welcome Banner */
+.onboarding-welcome {
+  flex-shrink: 0;
+  margin: 1rem 0;
+}
+
+.onboarding-welcome-content {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: white;
+}
+
+.onboarding-welcome-title {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+}
+
+.onboarding-welcome-text {
+  margin: 0;
+  opacity: 0.85;
+}
+
+/* Messages Area */
+.onboarding-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 0;
+  min-height: 0; /* Important for flex child */
+}
+
+.onboarding-message-container {
+  margin-bottom: 1.5rem;
+}
+
+.onboarding-message-container.onboarding-message-user {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.onboarding-message-container.onboarding-message-assistant {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.onboarding-message {
+  display: flex;
+  align-items: flex-start;
+  max-width: 75%;
+  gap: 0.75rem;
+}
+
+.onboarding-message-user .onboarding-message {
+  flex-direction: row-reverse;
+}
+
+/* Avatars */
+.onboarding-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.onboarding-avatar-user {
+  background: #667eea;
+}
+
+.onboarding-avatar-assistant {
+  background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+}
+
+/* Message Bubbles */
+.onboarding-bubble {
+  padding: 1rem;
+  border-radius: 1rem;
+  word-wrap: break-word;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  flex: 1;
+}
+
+.onboarding-bubble-user {
+  background: #8b5cf6;
+  color: white;
+}
+
+.onboarding-bubble-assistant {
+  background: white;
+  color: #333;
+}
+
+.onboarding-assistant-name {
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-assistant-name small {
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+.onboarding-message-text p {
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.onboarding-message-text p:last-child {
+  margin-bottom: 0;
+}
+
+.onboarding-message-time {
+  margin-top: 0.5rem;
+}
+
+.onboarding-message-time small {
+  opacity: 0.75;
+  font-size: 0.75rem;
+}
+
+.onboarding-bubble-user .onboarding-message-time small {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.onboarding-bubble-assistant .onboarding-message-time small {
+  color: #666;
+}
+
+/* Typing Indicator */
+.onboarding-typing {
+  padding: 0 0 1rem 0;
+}
+
+.onboarding-typing-dots {
+  color: #666;
+}
+
+.onboarding-dots {
+  margin-left: 0.5rem;
+  animation: onboardingTyping 1.4s infinite;
+}
+
+.onboarding-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.onboarding-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes onboardingTyping {
+  0%, 60%, 100% { opacity: 0; }
+  30% { opacity: 1; }
+}
+
+ /* Input Area */
+ .onboarding-input-area {
+   flex-shrink: 0;
+   background: rgba(0, 0, 0, 0.2);
+   border-radius: 0;
+   /* Full width edge-to-edge background */
+   width: 100%;
+   padding: 0.75rem 0;
+ }
+
+ .onboarding-input-content {
+   max-width: 1200px;
+   margin: 0 auto;
+   padding: 0 1rem;
+ }
+
+.onboarding-form {
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.onboarding-input {
+  flex: 1;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 1rem 0 0 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.75rem 1rem;
+  color: #333;
+  outline: none;
+}
+
+.onboarding-input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+}
+
+.onboarding-input::placeholder {
+  color: #666;
+}
+
+.onboarding-send-btn {
+  background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+  border: none;
+  border-radius: 0 1rem 1rem 0;
+  color: white;
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.onboarding-send-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(255, 107, 107, 0.3);
+}
+
+.onboarding-security-text {
+  text-align: center;
+}
+
+.onboarding-security-text small {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.7rem;
+}
+
+/* Smooth scrolling */
+.onboarding-messages {
+  scroll-behavior: smooth;
+}
+
+ /* Responsive Design */
+ @media (max-width: 768px) {
+   .onboarding-nav-content {
+     padding: 0 0.5rem;
+   }
+   
+   .onboarding-main {
+     padding: 0 0.5rem;
+   }
+   
+   .onboarding-welcome-content {
+     padding: 1rem;
+   }
+   
+   .onboarding-message {
+     max-width: 90%;
+   }
+   
+   .onboarding-user-info {
+     gap: 0.5rem;
+   }
+   
+   .onboarding-user {
+     display: none; /* Hide user name on mobile */
+   }
+   
+   /* Adjust input content for mobile padding */
+   .onboarding-input-content {
+     padding: 0 0.5rem;
+   }
+ }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const chatForm = document.getElementById('chat-form');
-  const messageInput = document.getElementById('message-input');
-  const sendButton = document.getElementById('send-button');
-  const chatMessages = document.getElementById('chat-messages');
-  const typingIndicator = document.getElementById('typing-indicator');
+  const chatForm = document.getElementById('onboarding-form');
+  const messageInput = document.getElementById('onboarding-message-input');
+  const sendButton = document.getElementById('onboarding-send-button');
+  const chatMessages = document.getElementById('onboarding-messages');
+  const typingIndicator = document.getElementById('onboarding-typing');
   
   // Auto-focus input
   messageInput.focus();
@@ -308,16 +586,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     const messageHTML = `
-      <div class="message-container mb-4 d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'}">
-        <div class="message d-flex align-items-start ${isUser ? 'flex-row-reverse' : ''}" style="max-width: 75%;">
-          <div class="avatar ${isUser ? 'ms-3' : 'me-3'}" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; ${isUser ? 'background: #667eea;' : 'background: linear-gradient(45deg, #ff6b6b, #ff8e8e);'} flex-shrink: 0;">
-            <i class="fas fa-${isUser ? 'user' : 'robot'} text-white"></i>
+      <div class="onboarding-message-container onboarding-message-${role}">
+        <div class="onboarding-message">
+          <div class="onboarding-avatar onboarding-avatar-${role}">
+            <i class="fas fa-${isUser ? 'user' : 'robot'}"></i>
           </div>
-          <div class="message-bubble p-3" style="${isUser ? 'background: #8b5cf6; color: white;' : 'background: white; color: #333;'} border-radius: 1rem; word-wrap: break-word; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
-            ${!isUser ? `<div class="assistant-name mb-2"><small class="fw-semibold" style="color: #ff6b6b;"><i class="fas fa-robot me-1"></i>Scout</small></div>` : ''}
-            <div class="message-content">${content.replace(/\n/g, '<br>')}</div>
-            <div class="message-time mt-2">
-              <small class="opacity-75" style="${isUser ? 'color: rgba(255, 255, 255, 0.8);' : 'color: #666;'}">${timeString}</small>
+          <div class="onboarding-bubble onboarding-bubble-${role}">
+            ${!isUser ? '<div class="onboarding-assistant-name"><small><i class="fas fa-robot me-1"></i>Scout</small></div>' : ''}
+            <div class="onboarding-message-text">${content.replace(/\n/g, '<br>')}</div>
+            <div class="onboarding-message-time">
+              <small>${timeString}</small>
             </div>
           </div>
         </div>

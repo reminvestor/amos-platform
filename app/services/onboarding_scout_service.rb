@@ -81,7 +81,7 @@ class OnboardingScoutService
       - Build excitement about using Crux Marketing
 
       IMPORTANT RULES:
-      1. If all required info is collected, congratulate them and let them know they're ready to start creating campaigns
+      1. If all required info is collected, congratulate them and let them know they're ready to leverage Scout's full marketing capabilities
       2. If they provide new information, acknowledge it specifically before asking the next question
       3. If they ask about Crux Marketing features, briefly explain but guide back to completing their profile
       4. Stay focused on the onboarding process
@@ -103,7 +103,7 @@ class OnboardingScoutService
   
   def build_conversation_goals(missing_fields, current_profile)
     if missing_fields.empty?
-      "🎉 ONBOARDING COMPLETE! Thank them and let them know they're ready to start creating campaigns."
+      "🎉 ONBOARDING COMPLETE! Thank them and let them know they're ready to unlock Scout's full marketing potential."
     elsif missing_fields.include?('industry') 
       "Focus on understanding what industry they're in and what their business does."
     elsif missing_fields.include?('description')

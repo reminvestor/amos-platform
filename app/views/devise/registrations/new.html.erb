@@ -8,8 +8,7 @@
             <!-- Logo/Brand -->
             <div class="text-center mb-4">
               <h3 class="fw-bold mb-2 d-flex align-items-center justify-content-center">
-                <%= image_tag "crux_logo_white_long.png", alt: "Crux Marketing", style: "height: 25px;" %>
-                Crux Marketing
+                <%= image_tag "Crux_Logo_Secondary_Black.png", alt: "Crux Marketing", style: "height: 100px;" %>
               </h3>
               <p class="text-muted">Get started with Scout, your AI marketing agent</p>
             </div>
@@ -18,20 +17,26 @@
               <%= render "devise/shared/error_messages", resource: resource %>
 
               <div class="mb-4">
-                <%= f.label :full_name, "Full Name", class: "form-label fw-semibold" %>
-                <%= f.text_field :full_name, 
-                    autofocus: true, 
-                    class: "form-control form-control-lg", 
-                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
-                    placeholder: "John Smith" %>
+                <label for="user_full_name" class="form-label fw-semibold">Full Name</label>
+                <input type="text" 
+                       name="user[full_name]" 
+                       id="user_full_name"
+                       autofocus 
+                       class="form-control form-control-lg" 
+                       style="border-radius: 0.75rem; border: 2px solid #e9ecef;"
+                       placeholder="John Smith"
+                       required>
               </div>
 
               <div class="mb-4">
-                <%= f.label :business_name, "Business Name", class: "form-label fw-semibold" %>
-                <%= f.text_field :business_name, 
-                    class: "form-control form-control-lg", 
-                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
-                    placeholder: "Acme Corporation" %>
+                <label for="user_business_name" class="form-label fw-semibold">Business Name <span class="text-muted">(Optional)</span></label>
+                <input type="text" 
+                       name="user[business_name]" 
+                       id="user_business_name"
+                       class="form-control form-control-lg" 
+                       style="border-radius: 0.75rem; border: 2px solid #e9ecef;"
+                       placeholder="Acme Corporation">
+                <small class="text-muted">If left blank, we'll use your name + "Inc" (e.g., "John Smith Inc")</small>
               </div>
 
               <div class="mb-4">
