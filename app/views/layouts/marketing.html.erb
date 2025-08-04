@@ -237,8 +237,8 @@
             </li>
           </ul>
           <div class="d-flex">
-            <a href="<%= request.protocol %>app.<%= request.host_with_port %>/users/sign_in" class="btn btn-outline-light me-2">Log In</a>
-            <a href="<%= request.protocol %>app.<%= request.host_with_port %>/users/sign_up" class="btn btn-primary">Sign Up!</a>
+            <a href="<%= request.protocol %>app.<%= request.host_with_port.sub(/^www\./, '') %>/users/sign_in" class="btn btn-outline-light me-2">Log In</a>
+            <a href="<%= request.protocol %>app.<%= request.host_with_port.sub(/^www\./, '') %>/users/sign_up" class="btn btn-primary">Sign Up!</a>
           </div>
         </div>
       </div>
@@ -286,7 +286,7 @@
           <div class="col-md-4 mb-4">
             <h5 class="text-white">Ready to Grow?</h5>
             <p>Get started with Scout in minutes. No complex setup, no learning curve.</p>
-            <a href="<%= request.protocol %>app.<%= request.host_with_port %>/users/sign_up" class="btn btn-primary">Launch a Campaign</a>
+            <a href="<%= request.protocol %>app.<%= request.host_with_port.sub(/^www\./, '') %>/users/sign_up" class="btn btn-primary">Launch a Campaign</a>
           </div>
         </div>
         <div class="border-top pt-3 mt-3">
