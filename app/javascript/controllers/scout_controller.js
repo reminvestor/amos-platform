@@ -613,10 +613,11 @@ export default class extends Controller {
       
       console.log('Sending PATCH request to update landing page...');
       
-      // Get CSRF token safely
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
-                        document.querySelector('[name="csrf-token"]')?.value ||
-                        document.querySelector('[name="authenticity_token"]')?.value;
+      // Get CSRF token safely - try Rails global first, then fallback to meta tags
+      let csrfToken = window.Rails?.csrfToken ||
+                      document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                      document.querySelector('[name="csrf-token"]')?.value ||
+                      document.querySelector('[name="authenticity_token"]')?.value;
       
       if (!csrfToken) {
         console.error('CSRF token not found');
@@ -626,11 +627,14 @@ export default class extends Controller {
         return;
       }
       
+      console.log('CSRF token found and ready for request');
+      
       // Send PATCH request to update landing page
       fetch(`/landing_pages/${landingPageId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'X-CSRF-Token': csrfToken
         },
         body: JSON.stringify({
