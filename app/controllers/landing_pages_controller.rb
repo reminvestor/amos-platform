@@ -129,9 +129,15 @@ class LandingPagesController < ApplicationController
 
   def update
     if @landing_page.update(landing_page_params)
-      redirect_to chat_landing_page_path(@landing_page), notice: 'Landing page was successfully updated.'
+      respond_to do |format|
+        format.html { redirect_to chat_landing_page_path(@landing_page), notice: 'Landing page was successfully updated.' }
+        format.json { render json: { success: true, message: 'Landing page was successfully updated.' } }
+      end
     else
-      render :chat, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :chat, status: :unprocessable_entity }
+        format.json { render json: { success: false, error: @landing_page.errors.full_messages.join(', ') }, status: :unprocessable_entity }
+      end
     end
   end
 
