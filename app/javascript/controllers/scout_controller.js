@@ -230,10 +230,13 @@ export default class extends Controller {
         // Check if Scout suggested a canvas to load
         if (finalResponseData.canvas) {
           console.log(`🎨 Scout suggested canvas: ${finalResponseData.canvas}`)
+          if (finalResponseData.canvas_data) {
+            console.log("📊 Canvas data:", finalResponseData.canvas_data)
+          }
           console.log("🕐 Loading canvas in 1 second...")
           setTimeout(() => {
             console.log("🎯 Actually loading canvas now:", finalResponseData.canvas)
-            this.loadScoutCanvas(finalResponseData.canvas, {})
+            this.loadScoutCanvas(finalResponseData.canvas, finalResponseData.canvas_data || {})
           }, 1000)
         } else {
           console.log("ℹ️ No canvas suggested in response")
@@ -542,6 +545,18 @@ export default class extends Controller {
     window.scoutViewCampaign = (id) => this.sendScoutMessage(`Please show me campaign ID ${id} details`)
     window.scoutViewLandingPage = (id) => this.loadScoutCanvas('landing_page_details', { landing_page_id: id })
     window.scoutPreviewLandingPageInTab = (id) => window.open(`/landing_pages/${id}/preview`, '_blank')
+    
+    // Landing page management functions
+    window.scoutPublishLandingPage = (id) => {
+      if (confirm('Are you sure you want to publish this landing page?')) {
+        this.sendScoutMessage(`Please publish landing page ID ${id}`)
+      }
+    }
+    window.scoutUnpublishLandingPage = (id) => {
+      if (confirm('Are you sure you want to unpublish this landing page?')) {
+        this.sendScoutMessage(`Please unpublish landing page ID ${id}`)
+      }
+    }
 
     // Delete functions
     window.scoutDeleteContact = (id) => {
