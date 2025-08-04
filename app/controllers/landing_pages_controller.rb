@@ -2,6 +2,9 @@ class LandingPagesController < ApplicationController
   before_action :authenticate_user!
   before_action :set_landing_page, only: [:show, :edit, :update, :destroy, :publish, :unpublish, :preview, :generate_image, :generate_content, :chat, :apply_change, :no_header_preview, :get_chat_messages, :clarify, :answer_clarification]
   
+  # Skip authentication for public landing page views
+  skip_before_action :authenticate_user!, only: [:public_view]
+  
   def index
     @landing_pages = current_user.landing_pages.where(entity_id: current_entity.id).order(created_at: :desc)
   end
@@ -259,7 +262,12 @@ class LandingPagesController < ApplicationController
     # Track the view
     track_landing_page_view
     
-    render layout: 'landing_page', inline: ""
+    # Render the complete HTML content directly (like preview method)
+    if @landing_page.html_content.present?
+      render html: @landing_page.html_content.html_safe
+    else
+      render plain: "This landing page is not yet available.", status: :not_found
+    end
   rescue ActiveRecord::RecordNotFound
     render file: "#{Rails.root}/public/404.html", layout: false, status: :not_found
   end

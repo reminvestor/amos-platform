@@ -110,6 +110,25 @@ class ScoutGenericToolsService
         },
         required: ["title", "description"]
       }
+    },
+    {
+      name: "update_landing_page_status",
+      description: "Update the status of a landing page (publish, unpublish, archive)",
+      input_schema: {
+        type: "object",
+        properties: {
+          landing_page_id: {
+            type: "integer",
+            description: "ID of the landing page to update"
+          },
+          status: {
+            type: "string",
+            description: "New status for the landing page",
+            enum: ["draft", "published", "archived"]
+          }
+        },
+        required: ["landing_page_id", "status"]
+      }
     }
   ]
 
@@ -148,14 +167,16 @@ class ScoutGenericToolsService
           tools_list: tool_calls.map { |t| t[:name] }.uniq,
           success_count: tool_results.count { |r| r[:success] },
           error_count: tool_results.count { |r| !r[:success] },
-          canvas: @suggested_canvas
+          canvas: @suggested_canvas,
+        canvas_data: @canvas_data
         }
       else
         # No tools needed, return original response
         return {
           message: @parsed_user_message || response,
           tools_used: false,
-          canvas: @suggested_canvas
+          canvas: @suggested_canvas,
+          canvas_data: @canvas_data
         }
       end
       
@@ -235,7 +256,8 @@ class ScoutGenericToolsService
           tools_list: tool_names,
           success_count: tool_results.count { |r| r[:success] },
           error_count: tool_results.count { |r| !r[:success] },
-          canvas: @suggested_canvas
+          canvas: @suggested_canvas,
+          canvas_data: @canvas_data
         }
       else
         # No tools needed, return original response
@@ -294,6 +316,7 @@ class ScoutGenericToolsService
       2. create_object(object_type, data) - Create basic objects (campaigns, contacts, groups)
       3. get_schema(object_type) - Get REAL database schema and field information
       4. generate_ai_landing_page(title, description, page_type) - Create sophisticated AI-powered landing pages (PREFERRED for landing pages)
+      5. update_landing_page_status(landing_page_id, status) - Publish, unpublish, or archive landing pages
 
       AVAILABLE DATA MODELS:
       #{available_models.join(', ')}
@@ -329,6 +352,8 @@ class ScoutGenericToolsService
       - "create a contact" → use create_object("contacts", {email: ..., first_name: ..., last_name: ...})
       - "create a campaign" → use create_object("campaigns", {...})  
       - "create a landing page" → use generate_ai_landing_page(title, description, page_type) - NEVER use create_object for landing pages!
+      - "publish landing page" → use update_landing_page_status(landing_page_id, "published")
+      - "unpublish landing page" → use update_landing_page_status(landing_page_id, "draft")
       - "show me campaigns" → use get_data("campaigns", ...)
       - "performance" or "metrics" → use get_data with include_metrics: true
       - "recent" → use get_data with date filters
@@ -629,6 +654,8 @@ class ScoutGenericToolsService
         execute_get_schema(tool_call[:arguments])
       when 'generate_ai_landing_page'
         execute_generate_ai_landing_page(tool_call[:arguments])
+      when 'update_landing_page_status'
+        execute_update_landing_page_status(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -661,6 +688,8 @@ class ScoutGenericToolsService
         progress_callback&.call("✨ Creating new #{object_type}...")
       when 'generate_ai_landing_page'
         progress_callback&.call("🤖 Generating AI-powered landing page...")
+      when 'update_landing_page_status'
+        progress_callback&.call("📝 Updating landing page status...")
       end
       
       result = case tool_call[:name]
@@ -672,6 +701,8 @@ class ScoutGenericToolsService
         execute_get_schema(tool_call[:arguments])
       when 'generate_ai_landing_page'
         execute_generate_ai_landing_page(tool_call[:arguments])
+      when 'update_landing_page_status'
+        execute_update_landing_page_status(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -916,8 +947,7 @@ class ScoutGenericToolsService
       3. Don't mention "tools" - just present the information naturally
       4. If any tools failed, explain it helpfully
       5. Suggest relevant next steps based on the actual results
-      6. ANALYZE THE SPECIFIC METRICS provided in the data above
-      7. Provide actionable insights based on the real performance numbers
+      #{has_metrics?(tool_results) ? "6. ANALYZE THE SPECIFIC METRICS provided in the data above\n      7. Provide actionable insights based on the real performance numbers" : "6. Focus on confirming the action was completed successfully"}
 
       Provide your updated response as plain text (not JSON):
     PROMPT
@@ -1350,6 +1380,78 @@ class ScoutGenericToolsService
     rescue => e
       Rails.logger.error "generate_ai_landing_page error: #{e.message}"
       { error: "AI landing page generation failed: #{e.message}" }
+    end
+  end
+
+  def has_metrics?(tool_results)
+    # Check if any tool results contain metrics/performance data
+    tool_results.any? do |result|
+      data = result[:result]
+      next false unless data.is_a?(Hash)
+      
+      # Look for common metrics indicators
+      has_metrics_data = data.key?(:metrics) || 
+                        data.key?(:performance) || 
+                        data.key?(:analytics) ||
+                        data.key?(:stats) ||
+                        (data.key?(:data) && data[:data].is_a?(Array) && data[:data].any? { |item| item.is_a?(Hash) && (item.key?('open_rate') || item.key?('click_rate') || item.key?('sent_count')) })
+      
+      has_metrics_data
+    end
+  end
+
+  def execute_update_landing_page_status(args)
+    landing_page_id = args['landing_page_id']
+    status = args['status']
+    
+    return { error: 'landing_page_id is required' } unless landing_page_id.present?
+    return { error: 'status is required' } unless status.present?
+    
+    unless %w[draft published archived].include?(status)
+      return { error: 'status must be one of: draft, published, archived' }
+    end
+    
+    begin
+      landing_page = @entity.landing_pages.find(landing_page_id)
+      
+      # Check if landing page has content before publishing
+      if status == 'published' && !landing_page.has_content?
+        return { error: 'Cannot publish landing page without content. Please generate content first.' }
+      end
+      
+      landing_page.update!(status: status)
+      
+      status_action = case status
+      when 'published' then 'published'
+      when 'draft' then 'unpublished' 
+      when 'archived' then 'archived'
+      end
+      
+      # Set canvas refresh data
+      @suggested_canvas = 'landing_page_details'
+      @canvas_data = { landing_page_id: landing_page.id }
+      
+      {
+        success: true,
+        object_id: landing_page.id,
+        object_type: 'landing_pages',
+        data: {
+          id: landing_page.id,
+          title: landing_page.title,
+          status: landing_page.status,
+          slug: landing_page.slug
+        },
+        message: "Successfully #{status_action} landing page '#{landing_page.title}'",
+        canvas: 'landing_page_details',
+        canvas_data: { landing_page_id: landing_page.id }
+      }
+    rescue ActiveRecord::RecordNotFound
+      { error: "Landing page with ID #{landing_page_id} not found" }
+    rescue ActiveRecord::RecordInvalid => e
+      { error: "Status update failed: #{e.record.errors.full_messages.join(', ')}" }
+    rescue => e
+      Rails.logger.error "update_landing_page_status error: #{e.message}"
+      { error: "Status update failed: #{e.message}" }
     end
   end
 end 

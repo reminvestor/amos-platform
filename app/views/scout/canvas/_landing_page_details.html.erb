@@ -66,6 +66,28 @@
                 <%= landing_page.slug %>
               </div>
             </div>
+            
+            <% if landing_page.status == 'published' %>
+              <div class="mb-3">
+                <label class="form-label text-muted small">Public URL</label>
+                <div class="input-group">
+                  <input type="text" class="form-control font-monospace small" 
+                         value="<%= request.protocol + request.host_with_port + '/landing/' + landing_page.slug %>" 
+                         readonly onclick="this.select()">
+                  <button class="btn btn-outline-secondary" type="button" 
+                          onclick="window.open('<%= request.protocol + request.host_with_port + '/landing/' + landing_page.slug %>', '_blank')"
+                          title="Open public page">
+                    <i class="fas fa-external-link-alt"></i>
+                  </button>
+                  <button class="btn btn-outline-secondary" type="button" 
+                          onclick="copyPublicUrl(this)"
+                          title="Copy URL">
+                    <i class="fas fa-copy"></i>
+                  </button>
+                </div>
+                <small class="text-muted">This is the public URL that anyone can access without logging in.</small>
+              </div>
+            <% end %>
           <% end %>
           
           <% if landing_page.description.present? %>
@@ -302,16 +324,47 @@ function scoutPreviewLandingPageInTab(pageId) {
   window.open(`/landing_pages/${pageId}/preview`, '_blank');
 }
 
-function scoutPublishLandingPage(pageId) {
-  if (confirm('Are you sure you want to publish this landing page?')) {
-    window.scoutSendMessage?.(`Please publish landing page ID ${pageId}`);
+function copyPublicUrl(button) {
+  const urlInput = button.previousElementSibling.previousElementSibling;
+  
+  // Use modern clipboard API with fallback
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(urlInput.value).then(() => {
+      showCopySuccess(button);
+    }).catch(() => {
+      fallbackCopyText(urlInput, button);
+    });
+  } else {
+    fallbackCopyText(urlInput, button);
   }
 }
 
-function scoutUnpublishLandingPage(pageId) {
-  if (confirm('Are you sure you want to unpublish this landing page?')) {
-    window.scoutSendMessage?.(`Please unpublish landing page ID ${pageId}`);
+function fallbackCopyText(input, button) {
+  input.select();
+  input.setSelectionRange(0, 99999); // For mobile devices
+  try {
+    document.execCommand('copy');
+    showCopySuccess(button);
+  } catch (err) {
+    console.error('Failed to copy text: ', err);
+    button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+    setTimeout(() => {
+      button.innerHTML = '<i class="fas fa-copy"></i>';
+    }, 2000);
   }
+}
+
+function showCopySuccess(button) {
+  const originalHtml = button.innerHTML;
+  button.innerHTML = '<i class="fas fa-check text-success"></i> Copied!';
+  button.classList.add('btn-success');
+  button.classList.remove('btn-outline-secondary');
+  
+  setTimeout(() => {
+    button.innerHTML = '<i class="fas fa-copy"></i>';
+    button.classList.remove('btn-success');
+    button.classList.add('btn-outline-secondary');
+  }, 2000);
 }
 </script>
 

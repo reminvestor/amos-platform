@@ -219,8 +219,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
       <div class="container">
         <a class="navbar-brand d-flex align-items-center" href="<%= marketing_root_path %>">
-          <i class="fas fa-mountain me-2"></i>
-          Crux Marketing
+          <%= image_tag "crux_logo_white_long.png", alt: "Crux Marketing", style: "height: 40px;" %>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
@@ -238,8 +237,8 @@
             </li>
           </ul>
           <div class="d-flex">
-            <a href="/users/sign_in" class="btn btn-outline-light me-2">Log In</a>
-            <a href="/users/sign_up" class="btn btn-primary">Sign Up!</a>
+            <a href="<%= request.protocol %>app.<%= request.host_with_port %>/users/sign_in" class="btn btn-outline-light me-2">Log In</a>
+            <a href="<%= request.protocol %>app.<%= request.host_with_port %>/users/sign_up" class="btn btn-primary">Sign Up!</a>
           </div>
         </div>
       </div>
@@ -256,8 +255,7 @@
         <div class="row">
           <div class="col-md-4 mb-4">
             <h5 class="text-white d-flex align-items-center">
-              <i class="fas fa-mountain me-2"></i>
-              Crux Marketing
+              <%= image_tag "crux_logo_white_long.png", alt: "Crux Marketing", style: "height: 30px;" %>
             </h5>
             <p class="mb-3">AI-powered marketing that actually grows your business. Scout learns, adapts, and delivers results while you focus on what matters.</p>
             <div class="d-flex gap-3">
@@ -288,7 +286,7 @@
           <div class="col-md-4 mb-4">
             <h5 class="text-white">Ready to Grow?</h5>
             <p>Get started with Scout in minutes. No complex setup, no learning curve.</p>
-            <a href="/users/sign_up" class="btn btn-primary">Launch a Campaign</a>
+            <a href="<%= request.protocol %>app.<%= request.host_with_port %>/users/sign_up" class="btn btn-primary">Launch a Campaign</a>
           </div>
         </div>
         <div class="border-top pt-3 mt-3">
