@@ -152,7 +152,10 @@ export default class extends Controller {
           "Content-Type": "application/json",
           "X-CSRF-Token": this.getCSRFToken()
         },
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ 
+          message: message,
+          current_canvas: this.currentCanvas
+        })
       })
 
       console.log("📡 Scout streaming response received:", response.status)
@@ -233,17 +236,28 @@ export default class extends Controller {
           if (finalResponseData.canvas_data) {
             console.log("📊 Canvas data:", finalResponseData.canvas_data)
           }
-          console.log("🕐 Loading canvas in 1 second...")
-          setTimeout(() => {
-            console.log("🎯 Actually loading canvas now:", finalResponseData.canvas)
-            this.loadScoutCanvas(finalResponseData.canvas, finalResponseData.canvas_data || {})
-          }, 1000)
+          
+          // Check if suggested canvas is the same as current (stay and refresh vs navigate)
+          const isSameCanvas = this.currentCanvas && 
+                              this.currentCanvas.type === finalResponseData.canvas &&
+                              this.currentCanvas.data?.landing_page_id === finalResponseData.canvas_data?.landing_page_id
+          
+          if (isSameCanvas) {
+            console.log("🔄 Staying on same canvas, just refreshing content...")
+            setTimeout(() => {
+              this.loadScoutCanvas(finalResponseData.canvas, finalResponseData.canvas_data || {})
+            }, 1500) // Slight delay for background jobs to complete
+          } else {
+            console.log("🎯 Loading different canvas...")
+            setTimeout(() => {
+              this.loadScoutCanvas(finalResponseData.canvas, finalResponseData.canvas_data || {})
+            }, 1000)
+          }
         } else {
           console.log("ℹ️ No canvas suggested in response")
+          // Handle data changes that might require canvas refresh
+          this.handleDataChanges(finalResponseData)
         }
-        
-        // Handle data changes that might require canvas refresh
-        this.handleDataChanges(finalResponseData)
       } else {
         // Hide streaming window even if no final response
         this.hideStreamingWindow()
@@ -386,6 +400,22 @@ export default class extends Controller {
     try {
       console.log(`🎨 Loading Scout canvas: ${canvasType}`)
       console.log(`📦 Canvas data:`, canvasData)
+      
+      // Check if wizard is waiting for completion
+      if (window.landingPageWizard?.waitingForCompletion && canvasType === 'landing_page_viewer') {
+        console.log('🎯 Landing page creation completed - wizard detected canvas change')
+        window.landingPageWizard.waitingForCompletion = false;
+        // The wizard step 3 will be replaced when the new canvas loads
+        
+        // Trigger auto-refresh for newly created page after canvas loads
+        setTimeout(() => {
+          console.log('🔄 Triggering auto-refresh for newly created landing page');
+          if (window.initLandingPageAutoRefresh) {
+            window.initLandingPageAutoRefresh();
+          }
+        }, 1500); // Give canvas time to load content
+      }
+      
       this.showCanvasLoading()
 
       console.log("📡 Making request to /scout/load_canvas")
@@ -523,6 +553,11 @@ export default class extends Controller {
     }
 
     window.scoutSendExample = (message) => {
+      this.sendScoutMessage(message)
+    }
+    
+    // Make sendMessage available globally for canvas interactions
+    window.scoutSendMessage = (message) => {
       this.sendScoutMessage(message)
     }
 
@@ -767,8 +802,12 @@ export default class extends Controller {
     window.landingPageWizard = {
       currentStep: 1,
       selectedFormType: null,
+      waitingForCompletion: false,
       
       init() {
+        this.currentStep = 1
+        this.selectedFormType = null
+        this.waitingForCompletion = false
         this.setupFormSelection();
       },
       
@@ -872,6 +911,18 @@ export default class extends Controller {
         if (statusElement) {
           statusElement.textContent = 'Creating your landing page with AI-powered content generation...';
         }
+        
+        // Set up detection for when canvas changes (indicating success)
+        window.landingPageWizard.waitingForCompletion = true;
+        
+        // Fallback timeout in case canvas detection fails
+        setTimeout(() => {
+          if (window.landingPageWizard?.waitingForCompletion) {
+            console.log('⚠️ Landing page wizard timeout - forcing redirect to viewer');
+            window.landingPageWizard.waitingForCompletion = false;
+            window.scoutLoadCanvas?.('landing_page_viewer');
+          }
+        }, 30000); // 30 second timeout (more reasonable with auto-refresh)
         
         // Build the creation message
         let message = `Create a landing page titled "${title}". ${description}`;

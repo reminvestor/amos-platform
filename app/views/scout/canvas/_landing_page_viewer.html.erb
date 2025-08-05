@@ -82,7 +82,11 @@
     <div class="row">
       <% landing_pages.each do |page| %>
         <div class="col-lg-6 col-xl-4 mb-4">
-          <div class="card landing-page-card h-100 border-0 shadow-sm" onclick="scoutViewLandingPage(<%= page.id %>)" style="cursor: pointer;">
+          <div class="card landing-page-card h-100 border-0 shadow-sm" 
+               data-page-id="<%= page.id %>" 
+               data-has-content="<%= page.has_content? %>"
+               onclick="scoutViewLandingPage(<%= page.id %>)" 
+               style="cursor: pointer;">
             <div class="card-header bg-white border-bottom-0 d-flex justify-content-between align-items-center">
               <div class="d-flex gap-2">
                 <span class="badge <%= page.status == 'published' ? 'bg-success' : page.status == 'draft' ? 'bg-warning' : 'bg-secondary' %>">
@@ -214,6 +218,82 @@ function scoutDeleteLandingPage(pageId) {
     });
   }
 }
+
+// Auto-refresh functionality for detecting AI generation completion
+window.initLandingPageAutoRefresh = function() {
+  console.log('🔄 Initializing landing page auto-refresh for AI generation detection');
+  
+  // Check if there are any pages currently generating
+  function hasGeneratingPages() {
+    // Primary detection: data attributes
+    const pagesWithoutContent = document.querySelectorAll('.landing-page-card[data-has-content="false"]');
+    
+    // Secondary detection: visual indicators
+    const generatingBadges = Array.from(document.querySelectorAll('.badge')).filter(badge => 
+      badge.textContent.includes('Generating'));
+    const spinners = document.querySelectorAll('.preview-placeholder .spinner-border');
+    const aiGeneratingText = Array.from(document.querySelectorAll('.small')).filter(el => 
+      el.textContent.includes('AI Generating'));
+    
+    const total = pagesWithoutContent.length + generatingBadges.length + spinners.length + aiGeneratingText.length;
+    console.log(`📊 Found ${pagesWithoutContent.length} pages without content, ${generatingBadges.length} generating badges, ${spinners.length} spinners, ${aiGeneratingText.length} AI generating text (total: ${total})`);
+    
+    // Get page IDs for tracking
+    const generatingPageIds = Array.from(pagesWithoutContent).map(card => card.dataset.pageId);
+    if (generatingPageIds.length > 0) {
+      console.log(`🔍 Pages generating: ${generatingPageIds.join(', ')}`);
+    }
+    
+    return total > 0;
+  }
+  
+  if (hasGeneratingPages()) {
+    console.log('⏱️ Starting auto-refresh timer for AI generation completion');
+    
+    let refreshCount = 0;
+    const maxRefreshes = 30; // Maximum 30 refreshes (5 minutes at 10-second intervals)
+    
+    // Set up polling every 10 seconds to check for completion
+    const refreshInterval = setInterval(() => {
+      refreshCount++;
+      console.log(`🔍 Checking for AI generation completion... (check ${refreshCount}/${maxRefreshes})`);
+      
+      if (hasGeneratingPages()) {
+        console.log('⏳ Pages still generating, refreshing canvas...');
+        // Refresh the canvas to get updated content
+        window.scoutRefreshCanvas?.();
+        
+        // Safety: stop after max refreshes
+        if (refreshCount >= maxRefreshes) {
+          console.log('⚠️ Maximum refresh attempts reached, stopping auto-refresh');
+          clearInterval(refreshInterval);
+        }
+      } else {
+        console.log('✅ All AI generation completed, stopping auto-refresh');
+        clearInterval(refreshInterval);
+      }
+    }, 10000); // Check every 10 seconds
+    
+    // Fallback: stop after 5 minutes max
+    setTimeout(() => {
+      console.log('⏰ Auto-refresh timeout reached, stopping');
+      clearInterval(refreshInterval);
+    }, 300000); // 5 minutes max
+  } else {
+    console.log('✅ No pages generating, auto-refresh not needed');
+  }
+};
+
+// Initialize auto-refresh when the canvas loads
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('📋 Landing page viewer loaded, initializing auto-refresh');
+  window.initLandingPageAutoRefresh();
+});
+
+// Also initialize after a slight delay for dynamic loading
+setTimeout(() => {
+  window.initLandingPageAutoRefresh();
+}, 1000);
 </script>
 
 <style>

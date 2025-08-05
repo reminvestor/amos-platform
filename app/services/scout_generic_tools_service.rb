@@ -129,16 +129,60 @@ class ScoutGenericToolsService
         },
         required: ["landing_page_id", "status"]
       }
+    },
+    {
+      name: "update_landing_page_content",
+      description: "Update the content of an existing landing page with AI assistance",
+      input_schema: {
+        type: "object",
+        properties: {
+          landing_page_id: {
+            type: "integer",
+            description: "ID of the landing page to update"
+          },
+          instruction: {
+            type: "string",
+            description: "Detailed instruction for how to modify the landing page content"
+          },
+          create_backup: {
+            type: "boolean",
+            description: "Whether to create a backup version for rollback (default: true)",
+            default: true
+          }
+        },
+        required: ["landing_page_id", "instruction"]
+      }
+    },
+    {
+      name: "revert_landing_page_to_version",
+      description: "Revert a landing page to a previous version",
+      input_schema: {
+        type: "object",
+        properties: {
+          landing_page_id: {
+            type: "integer",
+            description: "ID of the landing page to revert"
+          },
+          version_id: {
+            type: "integer",
+            description: "ID of the version to revert to (optional - if not provided, reverts to most recent backup)"
+          }
+        },
+        required: ["landing_page_id"]
+      }
     }
   ]
 
-  def process_message_with_tools(user_message, conversation_history = [])
+  def process_message_with_tools(user_message, conversation_history = [], current_canvas = nil)
     begin
       # Build system prompt with dynamic schema information
       system_prompt = build_system_prompt_with_dynamic_schema
       
+      # Enhance user message with canvas context if available
+      enhanced_user_message = enhance_message_with_canvas_context(user_message, current_canvas)
+      
       # Prepare conversation messages with history
-      conversation_messages = format_conversation_for_ai(conversation_history, user_message)
+      conversation_messages = format_conversation_for_ai(conversation_history, enhanced_user_message)
       
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name} (including history)"
       
@@ -201,15 +245,18 @@ class ScoutGenericToolsService
     end
   end
 
-  def process_message_with_tools_streaming(user_message, progress_callback = nil, conversation_history = [])
+  def process_message_with_tools_streaming(user_message, progress_callback = nil, conversation_history = [], current_canvas = nil)
     begin
       progress_callback&.call("🧠 Building context with available data models...")
       
       # Build system prompt with dynamic schema information
       system_prompt = build_system_prompt_with_dynamic_schema
       
+      # Enhance user message with canvas context if available
+      enhanced_user_message = enhance_message_with_canvas_context(user_message, current_canvas)
+      
       # Prepare conversation messages with history
-      conversation_messages = format_conversation_for_ai(conversation_history, user_message)
+      conversation_messages = format_conversation_for_ai(conversation_history, enhanced_user_message)
       
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name} (including history)"
       progress_callback&.call("🤖 Sending request to #{@ai_provider_name} with conversation context...")
@@ -315,8 +362,10 @@ class ScoutGenericToolsService
       1. get_data(object_type, filters, options) - Query any data model
       2. create_object(object_type, data) - Create basic objects (campaigns, contacts, groups)
       3. get_schema(object_type) - Get REAL database schema and field information
-      4. generate_ai_landing_page(title, description, page_type) - Create sophisticated AI-powered landing pages (PREFERRED for landing pages)
+      4. generate_ai_landing_page(title, description, page_type) - Create sophisticated AI-powered landing pages (PREFERRED for NEW landing pages)
       5. update_landing_page_status(landing_page_id, status) - Publish, unpublish, or archive landing pages
+      6. update_landing_page_content(landing_page_id, instruction) - Update content of existing landing pages (PREFERRED for EDITING existing pages)
+      7. revert_landing_page_to_version(landing_page_id, version_id) - Revert landing pages to previous versions
 
       AVAILABLE DATA MODELS:
       #{available_models.join(', ')}
@@ -352,18 +401,46 @@ class ScoutGenericToolsService
       - "create a contact" → use create_object("contacts", {email: ..., first_name: ..., last_name: ...})
       - "create a campaign" → use create_object("campaigns", {...})  
       - "create a landing page" → use generate_ai_landing_page(title, description, page_type) - NEVER use create_object for landing pages!
+      - "update landing page" or "change landing page" → use update_landing_page_content(landing_page_id, instruction)
+      - "revert landing page" or "undo changes" → use revert_landing_page_to_version(landing_page_id)
       - "publish landing page" → use update_landing_page_status(landing_page_id, "published")
       - "unpublish landing page" → use update_landing_page_status(landing_page_id, "draft")
       - "show me campaigns" → use get_data("campaigns", ...)
       - "performance" or "metrics" → use get_data with include_metrics: true
       - "recent" → use get_data with date filters
 
-      **LANDING PAGE CREATION - CRITICAL:**
-      - For landing pages: ALWAYS use generate_ai_landing_page (uses Claude AI with professional landing page expertise)
+      **LANDING PAGE OPERATIONS - CRITICAL:**
+      
+      FOR NEW LANDING PAGES:
+      - Use generate_ai_landing_page (uses Claude AI with professional landing page expertise)
       - Never use create_object for landing pages - it only creates empty records
       - The AI system creates complete HTML with Bootstrap, responsive design, contact forms, and professional styling
       - Available page types: lead_generation, product_launch, event_registration, newsletter_signup, free_trial, demo_request
+      
+      FOR EXISTING LANDING PAGES:
+      - Use update_landing_page_content when user wants to modify, change, update, or improve existing pages
+      - CRITICAL: If user says "update my landing page" or similar WITHOUT a specific ID, ALWAYS use get_data("landing_pages") FIRST to find their existing pages
+      - Look for recent pages, pages matching keywords from their request, or ask user to clarify which page
+      - NEVER create new pages when user clearly wants to update existing ones
+      - Use get_data("landing_pages") to find existing pages when user refers to them by name/title
+      - Create automatic backups before updates (enabled by default)
+      
+      DECISION LOGIC:
+      - "Create/make/build a new landing page" → generate_ai_landing_page
+      - "Update/change/modify my landing page" → get_data("landing_pages") first, then update_landing_page_content  
+      - "Update page 7" or "change landing page 15" → update_landing_page_content directly with ID
+      
+      FOR ROLLBACKS:
+      - Use revert_landing_page_to_version when user wants to undo changes or go back to previous version
+      - If no version_id specified, automatically reverts to most recent backup
 
+      LANDING PAGE CONVERSATION EXAMPLES:
+      - "Create a landing page for our new product" → generate_ai_landing_page(title, description, page_type)
+      - "Update my holiday landing page to mention 50% off" → get_data("landing_pages") first, then update_landing_page_content(page_id, instruction)
+      - "Change the headline on page 7" → update_landing_page_content(7, "change the headline to...")
+      - "I don't like the changes, go back" → revert_landing_page_to_version(page_id)
+      - "Undo the last update to my landing page" → revert_landing_page_to_version(page_id)
+      
       CONTACT CREATION EXAMPLES:
       - "create contact John Doe john@doe.com" → create_object("contacts", {email: "john@doe.com", first_name: "John", last_name: "Doe"})
       - "add contact for Jane Smith jane@smith.com" → create_object("contacts", {email: "jane@smith.com", first_name: "Jane", last_name: "Smith"})
@@ -656,6 +733,10 @@ class ScoutGenericToolsService
         execute_generate_ai_landing_page(tool_call[:arguments])
       when 'update_landing_page_status'
         execute_update_landing_page_status(tool_call[:arguments])
+      when 'update_landing_page_content'
+        execute_update_landing_page_content(tool_call[:arguments])
+      when 'revert_landing_page_to_version'
+        execute_revert_landing_page_to_version(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -690,6 +771,10 @@ class ScoutGenericToolsService
         progress_callback&.call("🤖 Generating AI-powered landing page...")
       when 'update_landing_page_status'
         progress_callback&.call("📝 Updating landing page status...")
+      when 'update_landing_page_content'
+        progress_callback&.call("✨ Updating landing page content...")
+      when 'revert_landing_page_to_version'
+        progress_callback&.call("⏪ Reverting landing page to previous version...")
       end
       
       result = case tool_call[:name]
@@ -703,6 +788,10 @@ class ScoutGenericToolsService
         execute_generate_ai_landing_page(tool_call[:arguments])
       when 'update_landing_page_status'
         execute_update_landing_page_status(tool_call[:arguments])
+      when 'update_landing_page_content'
+        execute_update_landing_page_content(tool_call[:arguments])
+      when 'revert_landing_page_to_version'
+        execute_revert_landing_page_to_version(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -986,6 +1075,13 @@ class ScoutGenericToolsService
           formatted << format_creation_results(result[:result])
         when 'get_schema'
           formatted << format_schema_results(result[:result])
+        when 'generate_ai_landing_page'
+          formatted << format_landing_page_generation_results(result[:result])
+        when 'update_landing_page_status'
+          formatted << format_landing_page_status_results(result[:result])
+        else
+          # Generic success format for other tools
+          formatted << format_generic_tool_success(result[:tool_name], result[:result])
         end
       else
         formatted << "#{result[:tool_name]} failed: #{result[:result][:error]}"
@@ -1178,6 +1274,57 @@ class ScoutGenericToolsService
       "Relationships: #{(schema[:relationships] || []).join(', ')}"
     else
       "Failed to get schema: #{result[:error]}"
+    end
+  end
+
+  def format_landing_page_generation_results(result)
+    return "Landing page generation failed" unless result[:success]
+    
+    landing_page_data = result[:data] || {}
+    
+    formatted = []
+    formatted << "=== LANDING PAGE SUCCESSFULLY CREATED ==="
+    formatted << "✅ Successfully created landing page: '#{landing_page_data[:title]}'"
+    formatted << "📄 Page ID: #{landing_page_data[:id]}"
+    formatted << "🏷️  Status: #{landing_page_data[:status]}"
+    formatted << "🔗 Slug: #{landing_page_data[:slug]}"
+    formatted << "📝 Description: #{landing_page_data[:description]}"
+    formatted << ""
+    formatted << "🤖 AI Generation Status: #{result[:ai_generation_status]}"
+    formatted << "📋 The landing page has been created and AI content generation is running in the background."
+    formatted << "🎯 User can now see their new page in the landing page list."
+    
+    formatted.join("\n")
+  end
+
+  def format_landing_page_status_results(result)
+    return "Landing page status update failed" unless result[:success]
+    
+    landing_page_data = result[:data] || {}
+    action = case landing_page_data[:status]
+             when 'published' then 'published'
+             when 'draft' then 'unpublished'
+             when 'archived' then 'archived'
+             else 'updated'
+             end
+    
+    formatted = []
+    formatted << "=== LANDING PAGE STATUS UPDATED ==="
+    formatted << "✅ Successfully #{action} landing page: '#{landing_page_data[:title]}'"
+    formatted << "📄 Page ID: #{landing_page_data[:id]}"
+    formatted << "🏷️  New Status: #{landing_page_data[:status]}"
+    formatted << "🔗 Slug: #{landing_page_data[:slug]}"
+    
+    formatted.join("\n")
+  end
+
+  def format_generic_tool_success(tool_name, result)
+    if result[:message]
+      "✅ #{tool_name} completed successfully: #{result[:message]}"
+    elsif result[:success]
+      "✅ #{tool_name} completed successfully"
+    else
+      "#{tool_name} result: #{result.inspect}"
     end
   end
 
@@ -1453,5 +1600,162 @@ class ScoutGenericToolsService
       Rails.logger.error "update_landing_page_status error: #{e.message}"
       { error: "Status update failed: #{e.message}" }
     end
+  end
+
+  def execute_update_landing_page_content(args)
+    landing_page_id = args['landing_page_id']
+    instruction = args['instruction']
+    create_backup = args.fetch('create_backup', true)
+    
+    return { error: 'landing_page_id is required' } unless landing_page_id.present?
+    return { error: 'instruction is required' } unless instruction.present?
+    
+    begin
+      landing_page = @entity.landing_pages.find(landing_page_id)
+      
+      # Create backup version if requested and content exists
+      if create_backup && landing_page.has_content?
+        landing_page.create_version_backup("Before update: #{instruction.truncate(100)}")
+      end
+      
+      # Get business profile for context
+      business_profile = @entity.business_profiles.first || @user.business_profile
+      
+      # Create a job to apply the content change
+      job = ApplyHtmlLandingPageChangeJob.perform_later(
+        landing_page.id,
+        instruction,
+        @entity.id,
+        @user.id,
+        business_profile&.id
+      )
+      
+      # Set canvas refresh data
+      @suggested_canvas = 'landing_page_details'
+      @canvas_data = { landing_page_id: landing_page.id }
+      
+      {
+        success: true,
+        object_id: landing_page.id,
+        object_type: 'landing_pages',
+        data: {
+          id: landing_page.id,
+          title: landing_page.title,
+          status: landing_page.status,
+          slug: landing_page.slug,
+          job_id: job.job_id
+        },
+        message: "Successfully started content update for landing page '#{landing_page.title}'. Changes will be applied shortly.",
+        canvas: 'landing_page_details',
+        canvas_data: { landing_page_id: landing_page.id }
+      }
+    rescue ActiveRecord::RecordNotFound
+      { error: "Landing page with ID #{landing_page_id} not found" }
+    rescue => e
+      Rails.logger.error "update_landing_page_content error: #{e.message}"
+      { error: "Content update failed: #{e.message}" }
+    end
+  end
+
+  def execute_revert_landing_page_to_version(args)
+    landing_page_id = args['landing_page_id']
+    version_id = args['version_id']
+    
+    return { error: 'landing_page_id is required' } unless landing_page_id.present?
+    
+    begin
+      landing_page = @entity.landing_pages.find(landing_page_id)
+      
+      # If no specific version_id provided, get the most recent backup version
+      if version_id.present?
+        version = landing_page.landing_page_versions.find(version_id)
+      else
+        # Get the most recent version that has html_content
+        version = landing_page.landing_page_versions
+          .where("content->>'html_content' IS NOT NULL")
+          .order(created_at: :desc)
+          .first
+      end
+      
+      return { error: 'No version found to revert to' } unless version
+      return { error: 'Version does not contain html_content' } unless version.content.is_a?(Hash) && version.content['html_content'].present?
+      
+      # Perform the revert
+      if landing_page.restore_from_version(version)
+        # Set canvas refresh data
+        @suggested_canvas = 'landing_page_details'
+        @canvas_data = { landing_page_id: landing_page.id }
+        
+        {
+          success: true,
+          object_id: landing_page.id,
+          object_type: 'landing_pages',
+          data: {
+            id: landing_page.id,
+            title: landing_page.title,
+            status: landing_page.status,
+            slug: landing_page.slug,
+            reverted_version_id: version.id
+          },
+          message: "Successfully reverted landing page '#{landing_page.title}' to version from #{version.created_at.strftime('%Y-%m-%d %H:%M')}",
+          canvas: 'landing_page_details',
+          canvas_data: { landing_page_id: landing_page.id }
+        }
+      else
+        { error: "Failed to revert landing page to specified version" }
+      end
+    rescue ActiveRecord::RecordNotFound => e
+      if e.model == 'LandingPage'
+        { error: "Landing page with ID #{landing_page_id} not found" }
+      else
+        { error: "Version with ID #{version_id} not found" }
+      end
+    rescue => e
+      Rails.logger.error "revert_landing_page_to_version error: #{e.message}"
+      { error: "Revert failed: #{e.message}" }
+    end
+  end
+
+  # Enhance user message with current canvas context to provide better AI understanding
+  def enhance_message_with_canvas_context(user_message, current_canvas)
+    return user_message unless current_canvas.present?
+    
+    enhanced_message = user_message
+    canvas_context = ""
+    
+    case current_canvas['type']
+    when 'landing_page_details'
+      if landing_page_id = current_canvas.dig('data', 'landing_page_id')
+        begin
+          landing_page = @entity.landing_pages.find(landing_page_id)
+          canvas_context = "\n\n[CONTEXT: Currently viewing landing page ID #{landing_page_id} titled '#{landing_page.title}']"
+          
+          # If user uses vague language, make it more specific
+          if user_message.match?(/\b(update|change|modify|edit)\s+(this|my|the)\s+(page|landing\s*page)\b/i)
+            enhanced_message = user_message.gsub(
+              /\b(update|change|modify|edit)\s+(this|my|the)\s+(page|landing\s*page)\b/i,
+              "\\1 landing page ID #{landing_page_id}"
+            )
+          elsif user_message.match?(/\b(this|my|the)\s+(page|landing\s*page)\b/i)
+            enhanced_message = user_message.gsub(
+              /\b(this|my|the)\s+(page|landing\s*page)\b/i,
+              "landing page ID #{landing_page_id}"
+            )
+          end
+        rescue ActiveRecord::RecordNotFound
+          canvas_context = "\n\n[CONTEXT: Currently viewing landing page canvas]"
+        end
+      end
+    when 'landing_page_viewer'
+      canvas_context = "\n\n[CONTEXT: Currently viewing landing pages list]"
+    when 'contact_viewer'
+      canvas_context = "\n\n[CONTEXT: Currently viewing contacts list]"
+    when 'campaign_viewer'
+      canvas_context = "\n\n[CONTEXT: Currently viewing campaigns list]"
+    end
+    
+    Rails.logger.info "Enhanced message: '#{user_message}' → '#{enhanced_message}#{canvas_context}'"
+    
+    enhanced_message + canvas_context
   end
 end 

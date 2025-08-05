@@ -1,16 +1,17 @@
 <div class="scout-canvas landing-page-generator">
   <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h4 class="mb-1">
-        <i class="fas fa-magic text-primary me-2"></i>
+      <h4 class="mb-1" style="color: var(--scout-text);">
+        <i class="fas fa-magic me-2" style="color: var(--scout-primary);"></i>
         Landing Page Wizard
       </h4>
-      <p class="text-muted mb-0">
+      <p class="mb-0" style="color: var(--scout-text-muted);">
         Create a professional landing page in 2 simple steps
       </p>
     </div>
     <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="scoutBackToLandingPages()">
+      <button class="btn btn-outline-secondary" onclick="scoutBackToLandingPages()" 
+              style="color: var(--scout-text); border-color: var(--scout-border);">
         <i class="fas fa-arrow-left me-1"></i>
         Back to Pages
       </button>
@@ -43,32 +44,34 @@
   <div class="wizard-step" id="wizard-step-1">
     <div class="row justify-content-center">
       <div class="col-lg-6">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-primary text-white text-center">
+        <div class="card border-0 shadow-sm" style="background: var(--scout-secondary); border: 1px solid var(--scout-border) !important;">
+          <div class="card-header text-white text-center" style="background: var(--scout-primary); border-bottom: 1px solid var(--scout-border);">
             <h5 class="mb-0">
               <i class="fas fa-edit me-2"></i>
               Step 1: Page Details
             </h5>
           </div>
-          <div class="card-body p-4">
+          <div class="card-body p-4" style="background: var(--scout-secondary); color: var(--scout-text);">
             <form id="step1Form">
               <div class="mb-4">
-                <label class="form-label h6">Page Title *</label>
+                <label class="form-label h6" style="color: var(--scout-text);">Page Title *</label>
                 <input type="text" class="form-control form-control-lg" id="pageTitle" 
+                       style="background: var(--scout-bg); border: 1px solid var(--scout-border); color: var(--scout-text);"
                        placeholder="e.g., Free Marketing Consultation, Download Our Guide..." 
                        required>
-                <small class="text-muted">This will be the main headline of your landing page</small>
+                <small class="text-muted" style="color: var(--scout-text-muted);">This will be the main headline of your landing page</small>
               </div>
               
               <div class="mb-4">
-                <label class="form-label h6">
+                <label class="form-label h6" style="color: var(--scout-text);">
                   Page Description * 
-                  <span class="text-muted fw-normal">(for AI understanding)</span>
+                  <span class="text-muted fw-normal" style="color: var(--scout-text-muted);">(for AI understanding)</span>
                 </label>
                 <textarea class="form-control" id="pageDescription" rows="4" 
+                          style="background: var(--scout-bg); border: 1px solid var(--scout-border); color: var(--scout-text);"
                           placeholder="Describe what this landing page should accomplish. For example: 'Generate leads for our marketing consultation service by highlighting our expertise and offering a free 30-minute strategy session. Target small business owners who need help with digital marketing.'"
                           required></textarea>
-                <small class="text-muted">
+                <small class="text-muted" style="color: var(--scout-text-muted);">
                   <i class="fas fa-robot me-1"></i>
                   This helps our AI understand your goals and create better content. Be specific about your target audience and desired outcomes.
                 </small>
@@ -91,15 +94,15 @@
   <div class="wizard-step d-none" id="wizard-step-2">
     <div class="row justify-content-center">
       <div class="col-lg-8">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-success text-white text-center">
+        <div class="card border-0 shadow-sm" style="background: var(--scout-secondary); border: 1px solid var(--scout-border) !important;">
+          <div class="card-header text-white text-center" style="background: #198754; border-bottom: 1px solid var(--scout-border);">
             <h5 class="mb-0">
               <i class="fas fa-wpforms me-2"></i>
               Step 2: Choose a Contact Form
             </h5>
           </div>
-          <div class="card-body p-4">
-            <p class="text-center text-muted mb-4">
+          <div class="card-body p-4" style="background: var(--scout-secondary); color: var(--scout-text);">
+            <p class="text-center mb-4" style="color: var(--scout-text-muted);">
               Select a form template to collect visitor information, or choose no form if you prefer.
             </p>
 
@@ -111,7 +114,7 @@
                     <i class="fas fa-times-circle"></i>
                   </div>
                   <h6>No Form</h6>
-                  <small class="text-muted">Just content, no contact collection</small>
+                  <small style="color: var(--scout-text-muted);">Just content, no contact collection</small>
                 </div>
               </div>
 
@@ -122,7 +125,7 @@
                     <i class="fas fa-paint-brush"></i>
                   </div>
                   <h6>Custom Form</h6>
-                  <small class="text-muted">I'll describe what I need</small>
+                  <small style="color: var(--scout-text-muted);">I'll describe what I need</small>
                 </div>
               </div>
 
@@ -141,7 +144,7 @@
                                        template_key == 'consultation_booking' ? 'handshake' : 'wpforms' %>"></i>
                     </div>
                     <h6><%= template_desc.split(' with ').first.split(' for ').first %></h6>
-                    <small class="text-muted"><%= template_desc %></small>
+                    <small style="color: var(--scout-text-muted);"><%= template_desc %></small>
                   </div>
                 </div>
               <% end %>
@@ -149,7 +152,8 @@
 
             <div class="mt-4">
               <div class="d-flex gap-2">
-                <button type="button" class="btn btn-outline-secondary" onclick="goToStep1()">
+                <button type="button" class="btn btn-outline-secondary" onclick="goToStep1()"
+                        style="color: var(--scout-text); border-color: var(--scout-border);">
                   <i class="fas fa-arrow-left me-1"></i>
                   Back
                 </button>
@@ -169,18 +173,18 @@
   <div class="wizard-step d-none" id="wizard-step-3">
     <div class="row justify-content-center">
       <div class="col-lg-6">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body text-center p-5">
-            <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+        <div class="card border-0 shadow-sm" style="background: var(--scout-secondary); border: 1px solid var(--scout-border) !important;">
+          <div class="card-body text-center p-5" style="background: var(--scout-secondary); color: var(--scout-text);">
+            <div class="spinner-border mb-3" role="status" style="width: 3rem; height: 3rem; color: var(--scout-primary);">
               <span class="visually-hidden">Loading...</span>
             </div>
-            <h5 class="mb-3">Creating Your Landing Page...</h5>
-            <p class="text-muted mb-0" id="creationStatus">
+            <h5 class="mb-3" style="color: var(--scout-text);">Creating Your Landing Page...</h5>
+            <p class="mb-0" id="creationStatus" style="color: var(--scout-text-muted);">
               Our AI is analyzing your requirements and generating professional content
             </p>
-            <div class="progress mt-3" style="height: 8px;">
+            <div class="progress mt-3" style="height: 8px; background: var(--scout-border);">
               <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                   role="progressbar" style="width: 100%"></div>
+                   role="progressbar" style="width: 100%; background: var(--scout-primary);"></div>
             </div>
           </div>
         </div>
@@ -214,16 +218,18 @@ setTimeout(() => {
 <style>
 .landing-page-generator {
   min-height: 100%;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: var(--scout-bg);
   padding: 20px;
+  color: var(--scout-text);
 }
 
 /* Wizard Progress Styles */
 .wizard-progress {
-  background: white;
+  background: var(--scout-secondary);
   border-radius: 15px;
   padding: 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 10px var(--scout-shadow);
+  border: 1px solid var(--scout-border);
 }
 
 .step-indicator {
@@ -243,8 +249,8 @@ setTimeout(() => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #e9ecef;
-  color: #6c757d;
+  background: var(--scout-border);
+  color: var(--scout-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -254,7 +260,7 @@ setTimeout(() => {
 }
 
 .step.active .step-number {
-  background: #0d6efd;
+  background: var(--scout-primary);
   color: white;
 }
 
@@ -266,12 +272,12 @@ setTimeout(() => {
 .step-label {
   font-size: 12px;
   font-weight: 500;
-  color: #6c757d;
+  color: var(--scout-text-muted);
   text-align: center;
 }
 
 .step.active .step-label {
-  color: #0d6efd;
+  color: var(--scout-primary);
   font-weight: 600;
 }
 
@@ -282,7 +288,7 @@ setTimeout(() => {
 .step-connector {
   width: 100px;
   height: 2px;
-  background: #e9ecef;
+  background: var(--scout-border);
   margin: 0 20px;
   margin-bottom: 20px;
 }
@@ -305,8 +311,8 @@ setTimeout(() => {
 }
 
 .form-option-card {
-  background: white;
-  border: 2px solid #e9ecef;
+  background: var(--scout-secondary);
+  border: 2px solid var(--scout-border);
   border-radius: 12px;
   padding: 20px;
   text-align: center;
@@ -318,19 +324,19 @@ setTimeout(() => {
 }
 
 .form-option:hover .form-option-card {
-  border-color: #0d6efd;
-  box-shadow: 0 4px 15px rgba(13, 110, 253, 0.15);
+  border-color: var(--scout-primary);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.15);
 }
 
 .form-option.selected .form-option-card {
   border-color: #198754;
-  background: #f8fff9;
+  background: var(--scout-bg);
   box-shadow: 0 4px 15px rgba(25, 135, 84, 0.15);
 }
 
 .form-option-icon {
   font-size: 24px;
-  color: #6c757d;
+  color: var(--scout-text-muted);
   margin-bottom: 8px;
 }
 
@@ -340,7 +346,7 @@ setTimeout(() => {
 
 .form-option-card h6 {
   margin-bottom: 4px;
-  color: #212529;
+  color: var(--scout-text);
 }
 
 .form-option.selected .form-option-card h6 {
@@ -356,6 +362,48 @@ setTimeout(() => {
 
 .card-header {
   border-radius: 15px 15px 0 0 !important;
+}
+
+/* Dark theme form inputs */
+.landing-page-generator .form-control {
+  background: var(--scout-bg) !important;
+  border: 1px solid var(--scout-border) !important;
+  color: var(--scout-text) !important;
+}
+
+.landing-page-generator .form-control:focus {
+  background: var(--scout-bg) !important;
+  border-color: var(--scout-primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25) !important;
+  color: var(--scout-text) !important;
+}
+
+.landing-page-generator .form-control::placeholder {
+  color: var(--scout-text-muted) !important;
+  opacity: 0.7;
+}
+
+/* Dark theme button styles */
+.landing-page-generator .btn-outline-secondary {
+  color: var(--scout-text) !important;
+  border-color: var(--scout-border) !important;
+}
+
+.landing-page-generator .btn-outline-secondary:hover {
+  background: var(--scout-secondary) !important;
+  border-color: var(--scout-border) !important;
+  color: var(--scout-text) !important;
+}
+
+/* Override Bootstrap text utilities */
+.landing-page-generator .text-muted {
+  color: var(--scout-text-muted) !important;
+}
+
+.landing-page-generator h6, 
+.landing-page-generator h5, 
+.landing-page-generator h4 {
+  color: var(--scout-text) !important;
 }
 
 /* Animation for step transitions */

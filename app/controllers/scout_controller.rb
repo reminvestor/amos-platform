@@ -25,8 +25,10 @@ class ScoutController < ApplicationController
   def chat
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     user_message = params[:message]&.strip
+    current_canvas = params[:current_canvas]
     
     Rails.logger.info "Scout chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
+    Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
     
     if user_message.blank?
       render json: { error: 'Message cannot be empty' }, status: 400
@@ -41,7 +43,7 @@ class ScoutController < ApplicationController
       # Use the new generic tools service
       generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity)
       conversation_history = scout_conversation_history
-      response = generic_tools_service.process_message_with_tools(user_message, conversation_history)
+      response = generic_tools_service.process_message_with_tools(user_message, conversation_history, current_canvas)
       
       Rails.logger.info "Scout: Got response - tools_used: #{response[:tools_used]}, success_count: #{response[:success_count]}"
       
@@ -77,8 +79,10 @@ class ScoutController < ApplicationController
   def chat_stream
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     user_message = params[:message]&.strip
+    current_canvas = params[:current_canvas]
     
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
+    Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
     
     if user_message.blank?
       render json: { error: 'Message cannot be empty' }, status: 400
@@ -115,7 +119,8 @@ class ScoutController < ApplicationController
       final_response = generic_tools_service.process_message_with_tools_streaming(
         user_message, 
         ->(message) { stream_update(message) },  # Pass streaming callback
-        conversation_history  # Pass conversation history
+        conversation_history,  # Pass conversation history
+        current_canvas  # Pass current canvas context
       )
       
       # Save Scout's response

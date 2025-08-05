@@ -69,7 +69,8 @@ Business Context:
 Landing Page Context:
 - Title: #{lp.title}
 - Description: #{lp.description}
-- Meta Description: #{lp.meta_description}
+- Status: #{lp.status}
+- Slug: #{lp.slug}
 "
     end
     
