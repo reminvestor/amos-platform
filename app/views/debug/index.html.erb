@@ -1,0 +1,45 @@
+<div class="container mt-4">
+  <h1>Debug Console</h1>
+  
+  <div class="row">
+    <div class="col-md-6">
+      <h3>SSE Test</h3>
+      <button id="testSSE" class="btn btn-primary">Test SSE Connection</button>
+      <div id="sseResults" class="mt-3"></div>
+    </div>
+    
+    <div class="col-md-6">
+      <h3>Environment Info</h3>
+      <ul>
+        <li><strong>Rails Environment:</strong> <%= Rails.env %></li>
+        <li><strong>Log Level:</strong> <%= Rails.logger.level %></li>
+        <li><strong>Time:</strong> <%= Time.current %></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('testSSE').addEventListener('click', function() {
+  const resultsDiv = document.getElementById('sseResults');
+  resultsDiv.innerHTML = '<p>🔄 Starting SSE test...</p>';
+  
+  const eventSource = new EventSource('/debug/test_sse');
+  
+  eventSource.addEventListener('debug', function(e) {
+    const data = JSON.parse(e.data);
+    resultsDiv.innerHTML += `<p>📡 ${data.test}</p>`;
+  });
+  
+  eventSource.onerror = function(e) {
+    resultsDiv.innerHTML += `<p>❌ SSE Error: ${e.type}</p>`;
+    eventSource.close();
+  };
+  
+  // Auto-close after 10 seconds
+  setTimeout(() => {
+    eventSource.close();
+    resultsDiv.innerHTML += '<p>✅ SSE test completed</p>';
+  }, 10000);
+});
+</script> 
