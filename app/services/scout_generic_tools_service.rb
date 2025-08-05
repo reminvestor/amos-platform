@@ -1621,6 +1621,19 @@ class ScoutGenericToolsService
       # Get business profile for context
       business_profile = @entity.business_profiles.first || @user.business_profile
       
+      # Store job status in cache BEFORE enqueueing for immediate SSE pickup
+      job_status_key = "job_status_#{@user.id}_#{landing_page.id}"
+      Rails.cache.write(job_status_key, {
+        type: 'job_started',
+        job_type: 'landing_page_update',
+        landing_page_id: landing_page.id,
+        message: 'Updating landing page content...',
+        timestamp: Time.current.iso8601,
+        status: 'processing'
+      }, expires_in: 30.minutes)
+      
+      Rails.logger.info "📊 Pre-stored job status for immediate SSE pickup: #{job_status_key}"
+      
       # Create a job to apply the content change
       job = ApplyHtmlLandingPageChangeJob.perform_later(
         landing_page.id,

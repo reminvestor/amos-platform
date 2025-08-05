@@ -2,10 +2,19 @@ class ApplyHtmlLandingPageChangeJob < ApplicationJob
   queue_as :default
 
   def perform(landing_page_id, instruction, entity_id, user_id, business_profile_id = nil)
+    Rails.logger.info "🚀 ApplyHtmlLandingPageChangeJob started - LP: #{landing_page_id}, User: #{user_id}"
+    
     landing_page = LandingPage.find(landing_page_id)
     entity = Entity.find(entity_id)
     user = User.find(user_id)
     business_profile = business_profile_id ? BusinessProfile.find(business_profile_id) : nil
+    
+    Rails.logger.info "📊 Job context - User: #{user.id} (#{user.email}), Entity: #{entity.id}, LP: #{landing_page.id}"
+    Rails.logger.info "🔍 JobNotificationChannel available: #{defined?(JobNotificationChannel)}"
+    
+    # Job started status now stored by service before enqueue
+    # Just log that job is running
+    Rails.logger.info "🚀 Job is running - status already stored by service"
     
     # Build context for AI
     context = {
@@ -25,11 +34,56 @@ class ApplyHtmlLandingPageChangeJob < ApplicationJob
       html_content: updated_html
     )
     
+    # Store job completed status in cache for SSE streaming (with error protection)
+    begin
+      Rails.logger.info "📡 Storing job_completed status for user #{user.id}, landing page #{landing_page_id}"
+      job_status_key = "job_status_#{user.id}_#{landing_page_id}"
+      
+      Rails.cache.write(job_status_key, {
+        type: 'job_completed',
+        job_type: 'landing_page_update',
+        landing_page_id: landing_page_id,
+        message: 'Landing page updated successfully!',
+        success: true,
+        timestamp: Time.current.iso8601,
+        status: 'completed',
+        data: {
+          id: landing_page.id,
+          title: landing_page.title,
+          updated_at: landing_page.updated_at.iso8601
+        }
+      }, expires_in: 30.minutes)
+      
+      Rails.logger.info "✅ job_completed status stored in cache"
+    rescue => cache_error
+      Rails.logger.error "⚠️  Failed to store job completion status in cache: #{cache_error.message}"
+      Rails.logger.error "But the job completed successfully - landing page was updated"
+    end
+    
     Rails.logger.info "Successfully applied HTML change to landing page #{landing_page_id}"
     
   rescue => e
     Rails.logger.error "Error applying HTML change to landing page #{landing_page_id}: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
+    
+    # Store job failed status in cache for SSE streaming (with error protection)
+    if user
+      begin
+        job_status_key = "job_status_#{user.id}_#{landing_page_id}"
+        Rails.cache.write(job_status_key, {
+          type: 'job_failed',
+          job_type: 'landing_page_update',
+          landing_page_id: landing_page_id,
+          message: "Failed to update landing page: #{e.message}",
+          success: false,
+          timestamp: Time.current.iso8601,
+          status: 'failed',
+          error: e.message
+        }, expires_in: 30.minutes)
+      rescue => cache_error
+        Rails.logger.error "⚠️  Failed to store job failure status in cache: #{cache_error.message}"
+      end
+    end
     
     # Store error message in html_content so user knows something went wrong
     landing_page&.update(html_content: "<!-- Error applying change: #{e.message} -->\n#{landing_page.html_content}")

@@ -39,6 +39,9 @@ export default class extends Controller {
       }
     }
     
+    // Initialize ActionCable subscription for job notifications
+    this.setupJobNotifications()
+    
     // Restore canvas state on page load/refresh
     this.restoreCanvasState()
   }
@@ -135,6 +138,165 @@ export default class extends Controller {
     
     this.chatMessagesTarget.appendChild(messageDiv)
     this.scrollChatToBottom()
+  }
+  
+  // Set up ActionCable subscription for job notifications
+  setupJobNotifications() {
+    console.log("🔌 Setting up ActionCable job notifications")
+    console.log("🔍 Checking ActionCable availability...")
+    console.log("App object:", typeof App)
+    console.log("App.cable:", typeof App?.cable)
+    
+    if (typeof App === 'undefined' || !App.cable) {
+      console.error("❌ ActionCable not available! App:", typeof App, "App.cable:", typeof App?.cable)
+      console.log("🔄 Attempting to create ActionCable consumer manually...")
+      
+      // Try to create consumer manually if App isn't available
+      try {
+        if (typeof createConsumer !== 'undefined') {
+          window.App = { cable: createConsumer() }
+          console.log("✅ Manually created ActionCable consumer")
+        } else {
+          console.error("❌ createConsumer not available either")
+          return
+        }
+      } catch (e) {
+        console.error("❌ Failed to create ActionCable consumer:", e)
+        return
+      }
+    }
+    
+    console.log("🎯 ActionCable consumer available, creating subscription...")
+    
+    // Subscribe to job notification channel
+    try {
+      this.jobNotificationSubscription = App.cable.subscriptions.create("JobNotificationChannel", {
+        connected() {
+          console.log("✅ Connected to JobNotificationChannel")
+        },
+        
+        disconnected() {
+          console.log("❌ Disconnected from JobNotificationChannel")
+        },
+        
+        received: (data) => {
+          console.log("📢 Job notification received:", data)
+          this.handleJobNotification(data)
+        }
+      })
+      console.log("✅ JobNotificationChannel subscription created")
+    } catch (e) {
+      console.error("❌ Failed to create subscription:", e)
+    }
+  }
+  
+  // Handle incoming job notifications
+  handleJobNotification(data) {
+    const { type, job_type, landing_page_id, message, success, timestamp } = data
+    
+    console.log(`🔔 Job ${type}: ${job_type} for landing page ${landing_page_id}`)
+    
+    switch (type) {
+      case 'job_started':
+        this.showJobStartedFeedback(data)
+        break
+        
+      case 'job_completed':
+        this.handleJobCompleted(data)
+        break
+        
+      case 'job_failed':
+        this.handleJobFailed(data)
+        break
+        
+      default:
+        console.log("Unknown job notification type:", type)
+    }
+  }
+  
+  // Show visual feedback when job starts
+  showJobStartedFeedback(data) {
+    console.log("⏳ Job started:", data.message)
+    
+    // Add visual indicator to current canvas if it's the affected landing page
+    if (this.currentCanvas && 
+        this.currentCanvas.type === 'landing_page_details' && 
+        this.currentCanvas.data?.landing_page_id == data.landing_page_id) {
+      
+      console.log("🎨 Adding processing indicator to current canvas")
+      this.showCanvasProcessing(data.message)
+    }
+    
+    // Add message to chat
+    this.addMessage(`✨ ${data.message}`, "ai")
+  }
+  
+  // Handle successful job completion
+  handleJobCompleted(data) {
+    console.log("✅ Job completed successfully:", data.message)
+    
+    // Hide processing indicator
+    this.hideCanvasProcessing()
+    
+    // Refresh canvas if it's the affected landing page
+    if (this.currentCanvas && 
+        this.currentCanvas.type === 'landing_page_details' && 
+        this.currentCanvas.data?.landing_page_id == data.landing_page_id) {
+      
+      console.log("🔄 Refreshing current canvas with updated content")
+      setTimeout(() => {
+        this.loadScoutCanvas(this.currentCanvas.type, this.currentCanvas.data)
+      }, 500) // Small delay to ensure database is updated
+    }
+    
+    // Add success message to chat
+    this.addMessage(`✅ ${data.message}`, "ai")
+  }
+  
+  // Handle job failure
+  handleJobFailed(data) {
+    console.log("❌ Job failed:", data.message)
+    
+    // Hide processing indicator
+    this.hideCanvasProcessing()
+    
+    // Add error message to chat
+    this.addMessage(`❌ ${data.message}`, "ai")
+  }
+  
+  // Show processing indicator on canvas
+  showCanvasProcessing(message) {
+    // Add a processing overlay to the canvas
+    if (this.hasTemplateContentTarget) {
+      const overlay = document.createElement('div')
+      overlay.id = 'canvas-processing-overlay'
+      overlay.className = 'position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center'
+      overlay.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'
+      overlay.style.zIndex = '1000'
+      overlay.innerHTML = `
+        <div class="text-center">
+          <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Processing...</span>
+          </div>
+          <div class="fw-medium">${message}</div>
+        </div>
+      `
+      
+      // Add overlay to canvas content
+      const canvasContainer = this.templateContentTarget.parentElement
+      if (canvasContainer && canvasContainer.style.position !== 'relative') {
+        canvasContainer.style.position = 'relative'
+      }
+      this.templateContentTarget.appendChild(overlay)
+    }
+  }
+  
+  // Hide processing indicator
+  hideCanvasProcessing() {
+    const overlay = document.getElementById('canvas-processing-overlay')
+    if (overlay) {
+      overlay.remove()
+    }
   }
 
   // Enhanced processMessage to handle canvas actions
@@ -243,10 +405,11 @@ export default class extends Controller {
                               this.currentCanvas.data?.landing_page_id === finalResponseData.canvas_data?.landing_page_id
           
           if (isSameCanvas) {
-            console.log("🔄 Staying on same canvas, just refreshing content...")
+            console.log("🔄 Staying on same canvas - refreshing immediately since job is complete")
+            // Job is already done by the time final response arrives, refresh now!
             setTimeout(() => {
               this.loadScoutCanvas(finalResponseData.canvas, finalResponseData.canvas_data || {})
-            }, 1500) // Slight delay for background jobs to complete
+            }, 500)
           } else {
             console.log("🎯 Loading different canvas...")
             setTimeout(() => {
