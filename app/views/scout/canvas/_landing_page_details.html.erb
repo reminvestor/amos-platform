@@ -14,10 +14,6 @@
       </div>
     </div>
     <div class="btn-group" role="group">
-      <button class="btn btn-outline-primary" onclick="scoutEditLandingPage(<%= landing_page.id %>)">
-        <i class="fas fa-edit me-1"></i>
-        Edit
-      </button>
       <button class="btn btn-outline-success" onclick="scoutPreviewLandingPageInTab(<%= landing_page.id %>)">
         <i class="fas fa-eye me-1"></i>
         Preview
@@ -182,6 +178,54 @@
                 </ul>
               </div>
             </div>
+            
+            <% if landing_page.landing_page_versions.any? %>
+              <hr>
+              <div class="row">
+                <div class="col-12">
+                  <strong class="small">Version History:</strong>
+                  <div class="mt-2">
+                    <div class="small text-muted mb-2">
+                      <%= pluralize(landing_page.landing_page_versions.count, 'version') %> available
+                    </div>
+                    <% recent_versions = landing_page.landing_page_versions.where("content->>'html_content' IS NOT NULL").order(created_at: :desc).limit(3) %>
+                    <% if recent_versions.any? %>
+                      <% recent_versions.each do |version| %>
+                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                          <div class="small">
+                            <strong><%= version.created_at.strftime("%m/%d %I:%M %p") %></strong>
+                            <br>
+                            <span class="text-muted"><%= version.description&.truncate(50) || "Version backup" %></span>
+                          </div>
+                          <button class="btn btn-sm btn-outline-warning" 
+                                  onclick="revertToVersion(<%= landing_page.id %>, <%= version.id %>)"
+                                  title="Revert to this version">
+                            <i class="fas fa-undo me-1"></i>Revert
+                          </button>
+                        </div>
+                      <% end %>
+                      <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-secondary" 
+                                onclick="window.scoutSendMessage?.('Show me all versions for landing page <%= landing_page.id %>')"
+                                title="View all versions">
+                          <i class="fas fa-history me-1"></i>View All Versions
+                        </button>
+                      </div>
+                    <% else %>
+                      <div class="small text-muted">No versions with content available for revert</div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% else %>
+              <hr>
+              <div class="row">
+                <div class="col-12">
+                  <strong class="small">Version History:</strong>
+                  <div class="small text-muted mt-2">No backup versions created yet</div>
+                </div>
+              </div>
+            <% end %>
           </div>
         </div>
       </div>
@@ -305,6 +349,24 @@ function showCopySuccess(button) {
   }, 2000);
 }
 
+function revertToVersion(landingPageId, versionId) {
+  if (!confirm('Are you sure you want to revert to this version? This will create a backup of the current content.')) {
+    return;
+  }
+  
+  console.log(`🔄 Reverting landing page ${landingPageId} to version ${versionId}`);
+  
+  // Send message to Scout to revert the landing page
+  const message = `Revert landing page ${landingPageId} to version ${versionId}`;
+  
+  if (window.scoutSendMessage) {
+    window.scoutSendMessage(message);
+  } else {
+    console.error('Scout sendMessage function not available');
+    alert('Unable to revert: Scout communication not available');
+  }
+}
+
 // Auto-refresh when AI generation is in progress
 <% unless landing_page.html_content.present? %>
 setInterval(() => {
@@ -317,7 +379,8 @@ console.log('Landing page details canvas loaded');
 console.log('Toggle functions available:', {
   switchToVisualMode: typeof window.switchToVisualMode,
   switchToHtmlMode: typeof window.switchToHtmlMode,
-  saveHtmlChanges: typeof window.saveHtmlChanges
+  saveHtmlChanges: typeof window.saveHtmlChanges,
+  revertToVersion: typeof revertToVersion
 });
 </script>
 

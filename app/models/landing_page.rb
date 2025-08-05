@@ -117,6 +117,46 @@ class LandingPage < ApplicationRecord
     status == 'published' && has_content?
   end
   
+  # Create a backup version of the current content for rollback purposes
+  # @param description [String] Description of why this backup was created
+  # @return [LandingPageVersion] The created version record
+  def create_version_backup(description = "Content backup")
+    return nil unless has_content?
+    
+    landing_page_versions.create!(
+      content: { html_content: html_content },
+      headline: title, # Store title as headline for compatibility
+      ai_applied: true,
+      description: description
+    )
+  end
+
+  # Restore from a version that contains html_content
+  # @param version [LandingPageVersion] The version to restore from
+  # @return [Boolean] Success status
+  def restore_from_version(version)
+    return false unless version.content.is_a?(Hash) && version.content['html_content'].present?
+    
+    # Create backup of current state
+    create_version_backup("Before restore to: #{version.description}")
+    
+    # Restore the html_content
+    update!(html_content: version.content['html_content'])
+    
+    # Create rollback record
+    landing_page_versions.create!(
+      content: { html_content: version.content['html_content'] },
+      headline: title,
+      ai_applied: false,
+      description: "Restored from version: #{version.description} (#{version.created_at.strftime('%Y-%m-%d %H:%M')})"
+    )
+    
+    true
+  rescue => e
+    Rails.logger.error "Failed to restore landing page version: #{e.message}"
+    false
+  end
+  
   private
   
   # Generate a unique slug from the title
