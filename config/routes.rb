@@ -197,8 +197,10 @@ Rails.application.routes.draw do
     root 'marketing#index'
   end
   
-  # Debug route for troubleshooting redirect loops
+  # Debug routes for troubleshooting 
+  get 'debug', to: 'debug#index'
   get 'debug/status', to: 'debug#status'
+  get 'debug/test_sse', to: 'debug#test_sse'
   
   # Onboarding routes
   get 'onboarding', to: 'onboarding#index'
