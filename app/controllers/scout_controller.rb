@@ -126,9 +126,24 @@ class ScoutController < ApplicationController
       # Save Scout's response
       save_scout_message('assistant', final_response[:message])
       
-      # Send final response
+      # Send completion indicator
       stream_update("✅ Complete")
+      
+      # Send job started status if there's an active job
+      send_job_started_status_if_exists(final_response)
+      
+      # Stream the Claude response as an intermediate update
+      if final_response[:message].present?
+        stream_update("💬 #{final_response[:message]}")
+      end
+      
+      # Always send final response immediately - let job run in background
       stream_final_response(final_response)
+      
+      # Optional: Log that background job is running
+      if final_response[:canvas_data]&.dig(:landing_page_id)
+        Rails.logger.info "🚀 Background job processing, user can refresh to see updates"
+      end
       
     rescue StandardError => e
       Rails.logger.error "Scout streaming chat error: #{e.message}"
@@ -312,6 +327,8 @@ class ScoutController < ApplicationController
   end
 
   def stream_final_response(response_data)
+    Rails.logger.info "🌊 stream_final_response called with data keys: #{response_data.keys}"
+    
     # Create the final SSE response
     data = JSON.generate({ type: 'response', data: response_data })
     chunk = "data: #{data}\n\n"
@@ -332,6 +349,65 @@ class ScoutController < ApplicationController
     Rails.logger.error "Stream final response error: #{e.message}"
   end
   
+  def check_active_job_status(response_data)
+    Rails.logger.info "🔍 Checking active job status for response data: #{response_data.keys}"
+    
+    # Only check for job status if the response includes canvas data with landing_page_id
+    unless response_data[:canvas_data]&.dig(:landing_page_id)
+      Rails.logger.info "❌ No canvas_data or landing_page_id found"
+      return nil
+    end
+    
+    landing_page_id = response_data[:canvas_data][:landing_page_id]
+    job_status_key = "job_status_#{current_user.id}_#{landing_page_id}"
+    
+    Rails.logger.info "🔍 Looking for job status with key: #{job_status_key}"
+    
+    # Get job status from cache
+    job_status = Rails.cache.read(job_status_key)
+    
+    if job_status
+      Rails.logger.info "📊 Found job status for LP #{landing_page_id}: #{job_status[:type]} (#{job_status[:status]})"
+      
+      # Don't clear processing status, only clear completed/failed status
+      if job_status[:status].in?(['completed', 'failed'])
+        Rails.cache.delete(job_status_key)
+        Rails.logger.info "🗑️ Cleared consumed job status from cache"
+      else
+        Rails.logger.info "⏳ Keeping processing job status in cache for future checks"
+      end
+      
+      return job_status
+    else
+      Rails.logger.info "❌ No job status found in cache for key: #{job_status_key}"
+    end
+    
+    nil
+  end
+
+  def send_job_started_status_if_exists(response_data)
+    # Only check if there's a landing page job 
+    return unless response_data[:canvas_data]&.dig(:landing_page_id)
+    
+    landing_page_id = response_data[:canvas_data][:landing_page_id]
+    job_status_key = "job_status_#{current_user.id}_#{landing_page_id}"
+    
+    # Get job status from cache
+    job_status = Rails.cache.read(job_status_key)
+    
+    if job_status && job_status[:status] == 'processing'
+      Rails.logger.info "📡 Sending job_started status via SSE: #{job_status[:type]}"
+      
+      # Send job status through SSE
+      job_data = JSON.generate({ type: 'job_status', data: job_status })
+      job_chunk = "data: #{job_data}\n\n"
+      response.stream.write(job_chunk)
+      response.stream.flush if response.stream.respond_to?(:flush)
+    else
+      Rails.logger.info "❌ No processing job status found to send"
+    end
+  end
+
   def current_entity
     @current_entity ||= begin
       # First check if entity is set in session

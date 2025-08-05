@@ -13,6 +13,9 @@ Rails.application.routes.draw do
     [200, {'Content-Type' => 'application/json'}, [headers.to_json]] 
   }
   
+  # ActionCable for real-time features
+  mount ActionCable.server => '/cable'
+  
   # API routes
   namespace :api do
     namespace :v1 do

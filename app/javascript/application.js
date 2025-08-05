@@ -2,6 +2,7 @@
 import "@hotwired/turbo-rails"
 import "./controllers"
 import * as bootstrap from "bootstrap"
+import "./channels"
 
 // In development, load manual debugging tools
 if (process.env.NODE_ENV !== 'production') {
