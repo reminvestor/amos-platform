@@ -64,6 +64,10 @@ Rails.application.configure do
 
   # Change to "debug" to log everything (including potentially personally-identifiable information!)
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "debug")
+  
+  # Force Rails to log to STDOUT for Heroku visibility
+  config.logger = ActiveSupport::Logger.new(STDOUT)
+  config.logger.level = Logger::DEBUG
 
   # Prevent health checks from clogging up the logs.
   config.silence_healthcheck_path = "/up"
