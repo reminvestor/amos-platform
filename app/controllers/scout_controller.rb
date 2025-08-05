@@ -82,6 +82,8 @@ class ScoutController < ApplicationController
     current_canvas = params[:current_canvas]
     
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
+    puts "🚨 PRODUCTION DEBUG: Scout chat request received - #{Time.current}"
+    STDOUT.flush
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
     
     if user_message.blank?
@@ -95,6 +97,8 @@ class ScoutController < ApplicationController
     response.headers['Connection'] = 'keep-alive'
     response.headers['X-Accel-Buffering'] = 'no' # Prevent nginx buffering
     response.headers['Access-Control-Allow-Origin'] = '*'
+    puts "🚨 PRODUCTION DEBUG: SSE Headers set - #{Time.current}"
+    STDOUT.flush
     
     # Force the headers to be sent immediately
     response.status = 200
@@ -297,6 +301,8 @@ class ScoutController < ApplicationController
   private
 
   def stream_update(message)
+    puts "🚨 PRODUCTION DEBUG: Streaming update: #{message}"
+    STDOUT.flush
     # Create the SSE (Server-Sent Events) format
     data = JSON.generate({ type: 'update', message: message })
     chunk = "data: #{data}\n\n"
