@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_18_113641) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_13_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -157,7 +157,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_18_113641) do
     t.bigint "entity_id"
     t.boolean "opted_out", default: false
     t.datetime "opted_out_at"
+    t.boolean "lead", default: true, null: false
     t.index ["entity_id"], name: "index_contacts_on_entity_id"
+    t.index ["lead"], name: "index_contacts_on_lead"
     t.index ["opted_out"], name: "index_contacts_on_opted_out"
     t.index ["user_id"], name: "index_contacts_on_user_id"
   end
@@ -270,6 +272,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_18_113641) do
     t.index ["user_id"], name: "index_entity_users_on_user_id"
   end
 
+  create_table "image_assets", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "title"
+    t.text "description"
+    t.string "source", default: "upload", null: false
+    t.string "tags", default: [], array: true
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_image_assets_on_entity_id"
+    t.index ["tags"], name: "index_image_assets_on_tags", using: :gin
+    t.index ["user_id"], name: "index_image_assets_on_user_id"
+  end
+
   create_table "landing_page_chat_messages", force: :cascade do |t|
     t.bigint "landing_page_id", null: false
     t.text "content"
@@ -337,6 +354,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_18_113641) do
     t.datetime "updated_at", null: false
     t.index ["entity_id"], name: "index_scout_conversations_on_entity_id"
     t.index ["user_id"], name: "index_scout_conversations_on_user_id"
+  end
+
+  create_table "scout_messages", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id"
+    t.string "session_id", null: false
+    t.string "role", null: false
+    t.text "content", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_scout_messages_on_entity_id"
+    t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_id_and_created_at"
+    t.index ["user_id"], name: "index_scout_messages_on_user_id"
   end
 
   create_table "social_media_accounts", force: :cascade do |t|
@@ -563,6 +594,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_18_113641) do
   add_foreign_key "email_templates", "users"
   add_foreign_key "entity_users", "entities"
   add_foreign_key "entity_users", "users"
+  add_foreign_key "image_assets", "entities"
+  add_foreign_key "image_assets", "users"
   add_foreign_key "landing_page_chat_messages", "landing_pages"
   add_foreign_key "landing_page_chat_messages", "users"
   add_foreign_key "landing_page_versions", "landing_pages"
@@ -572,6 +605,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_18_113641) do
   add_foreign_key "rich_text_sections", "landing_pages"
   add_foreign_key "scout_conversations", "entities"
   add_foreign_key "scout_conversations", "users"
+  add_foreign_key "scout_messages", "entities"
+  add_foreign_key "scout_messages", "users"
   add_foreign_key "social_media_accounts", "entities"
   add_foreign_key "social_media_accounts", "users"
   add_foreign_key "social_post_analytics", "social_posts"

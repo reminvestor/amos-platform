@@ -9,12 +9,12 @@ class ScoutController < ApplicationController
   
   def index
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
-    @conversation_history = scout_conversation_history
+    @conversation_history = persisted_history_last_k(10)
     
     # If this is a fresh start, add Scout's welcome message
     if @conversation_history.empty?
       create_welcome_message
-      @conversation_history = scout_conversation_history
+      @conversation_history = persisted_history_last_k(10)
     end
     
     # Business context for display
@@ -42,7 +42,7 @@ class ScoutController < ApplicationController
       
       # Use the new generic tools service
       generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity)
-      conversation_history = scout_conversation_history
+      conversation_history = persisted_history_last_k(12)
       response = generic_tools_service.process_message_with_tools(user_message, conversation_history, current_canvas)
       
       Rails.logger.info "Scout: Got response - tools_used: #{response[:tools_used]}, success_count: #{response[:success_count]}"
@@ -112,17 +112,18 @@ class ScoutController < ApplicationController
       stream_update("📚 Loading conversation history...")
       
       # Get conversation history
-      conversation_history = scout_conversation_history
+      conversation_history = persisted_history_last_k(12)
       stream_update("📚 Loading conversation history (#{conversation_history.length} messages)")
       
       # Use generic tools service with streaming updates
       stream_update("🧠 Analyzing your request...")
+      stream_update("📋 Preparing context and tools...")
       generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity)
       
       # Process message with streaming progress updates
       final_response = generic_tools_service.process_message_with_tools_streaming(
         user_message, 
-        ->(message) { stream_update(message) },  # Pass streaming callback
+        ->(message) { stream_update(message) },  # Pass streaming callback (multi-line supported below)
         conversation_history,  # Pass conversation history
         current_canvas  # Pass current canvas context
       )
@@ -300,6 +301,27 @@ class ScoutController < ApplicationController
   
   private
 
+  # GET /scout/history?before_id=<id>&limit=20
+  def history
+    session_id = session[:scout_session_id]
+    limit = params[:limit].to_i
+    limit = 20 if limit <= 0 || limit > 100
+    before_id = params[:before_id]
+
+    scope = ScoutMessage.for_session(session_id).oldest_first
+    if before_id.present?
+      # Load messages older than the given id
+      before_message = ScoutMessage.find_by(id: before_id)
+      scope = scope.where('created_at < ?', before_message.created_at) if before_message
+    end
+
+    batch = scope.last(limit)
+    render json: {
+      messages: batch.map { |m| { id: m.id, role: m.role, content: m.content, timestamp: m.created_at.iso8601 } },
+      has_more: ScoutMessage.for_session(session_id).count > (before_id.present? ? ScoutMessage.for_session(session_id).where('created_at <= ?', batch.first&.created_at).count : batch.count)
+    }
+  end
+
   def stream_update(message)
     puts "🚨 PRODUCTION DEBUG: Streaming update: #{message}"
     STDOUT.flush
@@ -326,7 +348,7 @@ class ScoutController < ApplicationController
       # Ignore if this doesn't work
     end
     
-    Rails.logger.info "Streamed update: #{message[0..50]}..."
+    Rails.logger.info "Streamed update: #{message.to_s.lines.first&.strip.to_s[0..80]}..."
     
   rescue => e
     Rails.logger.error "Stream update error: #{e.message}"
@@ -452,23 +474,32 @@ class ScoutController < ApplicationController
     
     Rails.cache.fetch("scout_conversation_#{session_id}", expires_in: 2.hours) || []
   end
+
+  # DB-backed persistent history, paged
+  def persisted_history_last_k(k = 10)
+    session_id = session[:scout_session_id]
+    return [] unless session_id
+    ScoutMessage.for_session(session_id).oldest_first.last(k).map do |m|
+      { role: m.role, content: m.content, timestamp: m.created_at.iso8601 }
+    end
+  end
   
   def save_scout_message(role, message)
     session_id = session[:scout_session_id]
     return unless session_id
     
-    conversation = scout_conversation_history
-    conversation << {
+    # Persist in DB (durable)
+    ScoutMessage.create!(
+      user_id: current_user.id,
+      entity_id: current_entity&.id,
+      session_id: session_id,
       role: role,
-      content: message,
-      timestamp: Time.current.iso8601,
-      session_id: session_id
-    }
+      content: message
+    )
     
-    # Keep conversation manageable (last 50 messages)
-    conversation = conversation.last(50) if conversation.length > 50
-    
-    Rails.cache.write("scout_conversation_#{session_id}", conversation, expires_in: 2.hours)
+    # Mirror the last 50 in cache for fast UI render
+    conversation = persisted_history_last_k(50)
+    Rails.cache.write("scout_conversation_#{session_id}", conversation, expires_in: 12.hours)
   end
   
   def create_welcome_message

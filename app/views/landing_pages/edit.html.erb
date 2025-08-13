@@ -123,6 +123,15 @@
           </div>
         <% end %>
       </div>
+
+      <!-- Generate real images for placeholders -->
+      <div class="alert alert-info d-flex justify-content-between align-items-center">
+        <div>
+          <strong>Replace placeholders with real images</strong>
+          <div class="small text-muted">We will generate marketing-ready images for sizes detected in this page (e.g., 1200x600, 100x100).</div>
+        </div>
+        <%= button_to 'Generate Images', generate_images_landing_page_path(@landing_page), method: :post, class: 'btn btn-warning' %>
+      </div>
     </div>
     
     <!-- Sidebar with AI tools -->

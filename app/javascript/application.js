@@ -2,6 +2,8 @@
 import "@hotwired/turbo-rails"
 import "./controllers"
 import * as bootstrap from "bootstrap"
+// Expose Bootstrap for inline scripts loaded via server-rendered canvases
+window.bootstrap = bootstrap
 import "./channels"
 
 // In development, load manual debugging tools

@@ -47,6 +47,8 @@ class Contact < ApplicationRecord
   # Scopes
   scope :by_entity, ->(entity_id) { where(entity_id: entity_id) if entity_id.present? }
   scope :global, -> { where(entity_id: nil) }
+  scope :leads, -> { where(lead: true) }
+  scope :customers, -> { where(lead: false) }
   
   # Methods
   def full_name

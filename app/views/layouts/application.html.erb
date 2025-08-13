@@ -216,6 +216,12 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="nav-link <%= current_page?(image_assets_path) ? 'active' : '' %>" href="<%= image_assets_path %>">
+            <i class="fas fa-image fa-fw me-2"></i>
+            <span class="nav-link-text">Images</span>
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link <%= current_page?(social_posts_path) ? 'active' : '' %>" href="<%= social_posts_path %>">
             <i class="fas fa-share-alt fa-fw me-2"></i>
             <span class="nav-link-text">Social Media</span>

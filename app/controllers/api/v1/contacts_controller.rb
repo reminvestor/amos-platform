@@ -249,6 +249,7 @@ module Api
                         first_name: params[:first_name],
                         last_name: params[:last_name],
                         status: params[:status] || 'active',
+                        lead: params.key?(:lead) ? parse_boolean(params[:lead]) : true,
                         user_id: current_user.id,
                         entity_id: user_entity_id,
                         metadata: {

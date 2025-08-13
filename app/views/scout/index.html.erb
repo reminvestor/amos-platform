@@ -459,22 +459,41 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initial scroll
   scrollToBottom();
 
-  // Add message to chat
-  function addMessage(content, role, timestamp = null) {
-    const messageWrapper = document.createElement('div');
-    messageWrapper.className = `message-wrapper ${role === 'user' ? 'user-message' : 'assistant-message'}`;
-    
+  // Build a message DOM element (optionally tagged with DB id)
+  function buildMessageElement({ id = null, content, role, timestamp = null }) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `message-wrapper ${role === 'user' ? 'user-message' : 'assistant-message'}`;
+    if (id) wrapper.dataset.messageId = id;
+
     const time = timestamp || new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
-    
-    messageWrapper.innerHTML = `
+    wrapper.innerHTML = `
       <div class="message-bubble">
         <div class="message-content">${content.replace(/\n/g, '<br>')}</div>
         <small class="message-time">${time}</small>
       </div>
     `;
-    
-    chatMessages.appendChild(messageWrapper);
+    return wrapper;
+  }
+
+  function appendMessage(content, role, timestamp = null, id = null) {
+    const el = buildMessageElement({ id, content, role, timestamp });
+    chatMessages.appendChild(el);
     scrollToBottom();
+  }
+
+  function prependMessages(list) {
+    // Preserve scroll position when prepending
+    const prevScrollHeight = chatMessages.scrollHeight;
+    const fragment = document.createDocumentFragment();
+    list.forEach(msg => fragment.appendChild(buildMessageElement(msg)));
+    chatMessages.insertBefore(fragment, chatMessages.firstChild);
+    const newScrollHeight = chatMessages.scrollHeight;
+    chatMessages.scrollTop = newScrollHeight - prevScrollHeight + chatMessages.scrollTop;
+  }
+
+  // Backward-compatible helper
+  function addMessage(content, role, timestamp = null) {
+    appendMessage(content, role, timestamp);
   }
 
   // Show typing indicator
@@ -501,9 +520,13 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Show streaming status indicator
+  // Keep a rolling log of recent streaming updates (up to 6 lines)
+  const streamingLog = []
   function showStreamingStatus(message) {
     const statusDiv = document.getElementById('streaming-status') || createStreamingStatusDiv();
-    statusDiv.textContent = message;
+    streamingLog.push(message)
+    if (streamingLog.length > 6) streamingLog.shift()
+    statusDiv.innerHTML = streamingLog.map(m => `<div>${m.replace(/</g,'&lt;')}</div>`).join('')
     statusDiv.style.display = 'block';
   }
 
@@ -528,8 +551,12 @@ document.addEventListener('DOMContentLoaded', function() {
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       z-index: 1000;
-      font-size: 14px;
-      max-width: 300px;
+      font-size: 13px;
+      max-width: 420px;
+      white-space: normal;
+      line-height: 1.35;
+      max-height: 180px;
+      overflow: auto;
     `;
     document.body.appendChild(statusDiv);
     return statusDiv;
@@ -550,7 +577,7 @@ document.addEventListener('DOMContentLoaded', function() {
       toolActivity.style.display = 'none';
       hideStreamingStatus();
       hideTypingIndicator();
-    }, 30000); // 30 second timeout
+    }, 120000); // 120 second timeout
     
     try {
       const response = await fetch('/scout/chat_stream', {
@@ -624,6 +651,51 @@ document.addEventListener('DOMContentLoaded', function() {
       throw error; // Re-throw to fallback to regular chat
     }
   }
+
+  // ============================
+  // History pagination (load older on scroll-up)
+  // ============================
+  const historyState = { isLoading: false, hasMore: true, oldestId: null };
+
+  function getOldestRenderedId() {
+    const first = chatMessages.querySelector('.message-wrapper');
+    return first ? first.dataset.messageId || null : null;
+  }
+
+  async function loadMoreHistory(initial = false) {
+    if (historyState.isLoading || (!historyState.hasMore && !initial)) return;
+    historyState.isLoading = true;
+    try {
+      const beforeId = initial ? null : (historyState.oldestId || getOldestRenderedId());
+      const url = new URL('/scout/history', window.location.origin);
+      if (beforeId) url.searchParams.set('before_id', beforeId);
+      url.searchParams.set('limit', initial ? '10' : '20');
+      const res = await fetch(url.toString());
+      if (!res.ok) throw new Error('Failed to load history');
+      const data = await res.json();
+      if (Array.isArray(data.messages) && data.messages.length > 0) {
+        // Normalize to the structure buildMessageElement expects
+        const items = data.messages.map(m => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp }));
+        prependMessages(items);
+        historyState.oldestId = items[0].id;
+      }
+      historyState.hasMore = !!data.has_more;
+    } catch (e) {
+      console.warn('History load failed:', e);
+    } finally {
+      historyState.isLoading = false;
+    }
+  }
+
+  // Initial fetch of recent history when page loads
+  loadMoreHistory(true);
+
+  // Attach scroll-up listener to load older history
+  chatMessages.addEventListener('scroll', function() {
+    if (chatMessages.scrollTop <= 20) {
+      loadMoreHistory(false);
+    }
+  });
 
   // Handle form submission
   messageForm.addEventListener('submit', async function(e) {

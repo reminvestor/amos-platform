@@ -80,6 +80,12 @@ Rails.application.routes.draw do
         post :upload_csv
       end
     end
+    # Media library
+    resources :image_assets, only: [:index, :new, :create, :show, :destroy] do
+      collection do
+        post :generate
+      end
+    end
     resources :email_templates do
       member do
         post :test_email
@@ -112,6 +118,7 @@ Rails.application.routes.draw do
         get :no_header_preview
         post :generate_content
         post :generate_image
+        post :generate_images
         post :apply_change
         get :get_chat_messages
         get :versions
@@ -213,6 +220,7 @@ Rails.application.routes.draw do
   get 'scout', to: 'scout#index'
   post 'scout/chat', to: 'scout#chat'
   post 'scout/chat_stream', to: 'scout#chat_stream'
+  get 'scout/history', to: 'scout#history' # paginated history
   delete 'scout/conversation', to: 'scout#clear_conversation'
   get 'scout/export', to: 'scout#conversation_export'
   
