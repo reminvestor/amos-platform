@@ -7,10 +7,16 @@
       </h4>
       <p class="text-muted mb-0">Manage your marketing landing pages</p>
     </div>
-    <button class="btn btn-primary" onclick="scoutCreateLandingPage()">
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary" id="autoRefreshToggle" onclick="toggleAutoRefresh()" title="Toggle auto refresh">
+        <i class="fas fa-rotate"></i>
+        <span id="autoRefreshLabel">Auto-refresh: On</span>
+      </button>
+      <button class="btn btn-primary" onclick="scoutCreateLandingPage()">
       <i class="fas fa-plus me-1"></i>
       Create New Page
-    </button>
+      </button>
+    </div>
   </div>
   
   <% if landing_pages.any? %>
@@ -184,9 +190,17 @@
 </div>
 
 <script>
+// Global flag to control auto-refresh behavior
+window.scoutAutoRefreshEnabled = true;
+function toggleAutoRefresh(){
+  window.scoutAutoRefreshEnabled = !window.scoutAutoRefreshEnabled;
+  const label = document.getElementById('autoRefreshLabel');
+  if (label) label.textContent = `Auto-refresh: ${window.scoutAutoRefreshEnabled ? 'On' : 'Off'}`;
+}
+
 function scoutCreateLandingPage() {
-  // Send message to Scout to create a landing page
-  window.scoutSendMessage?.("Create a new landing page");
+  // Fast-path: open the landing page wizard directly (bypass chat)
+  window.scoutLoadCanvas?.('landing_page_generator', {});
 }
 
 function scoutViewLandingPage(pageId) {
@@ -251,17 +265,28 @@ window.initLandingPageAutoRefresh = function() {
     console.log('⏱️ Starting auto-refresh timer for AI generation completion');
     
     let refreshCount = 0;
-    const maxRefreshes = 30; // Maximum 30 refreshes (5 minutes at 10-second intervals)
+    const maxRefreshes = 6; // Limit to ~1 minute (6 * 10s)
     
     // Set up polling every 10 seconds to check for completion
     const refreshInterval = setInterval(() => {
+      if (!window.scoutAutoRefreshEnabled) {
+        console.log('⏸️ Auto-refresh paused');
+        return;
+      }
       refreshCount++;
       console.log(`🔍 Checking for AI generation completion... (check ${refreshCount}/${maxRefreshes})`);
       
       if (hasGeneratingPages()) {
         console.log('⏳ Pages still generating, refreshing canvas...');
         // Refresh the canvas to get updated content
-        window.scoutRefreshCanvas?.();
+        // Avoid disrupting user typing: skip if chat input is focused
+        const active = document.activeElement;
+        const chatInput = document.querySelector('[data-scout-target="chatInput"]');
+        if (active && chatInput && active === chatInput) {
+          console.log('✋ Skipping refresh while user is typing');
+        } else {
+          window.scoutRefreshCanvas?.();
+        }
         
         // Safety: stop after max refreshes
         if (refreshCount >= maxRefreshes) {

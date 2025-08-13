@@ -1,0 +1,28 @@
+<div class="container py-4">
+  <h2 class="mb-3">Upload Image</h2>
+
+  <%= form_with model: @image_asset, url: image_assets_path, local: true, html: { multipart: true, class: 'card p-3 shadow-sm' } do |f| %>
+    <div class="mb-3">
+      <%= f.label :title, class: 'form-label' %>
+      <%= f.text_field :title, class: 'form-control' %>
+    </div>
+
+    <div class="mb-3">
+      <%= f.label :description, class: 'form-label' %>
+      <%= f.text_area :description, rows: 3, class: 'form-control' %>
+    </div>
+
+    <div class="mb-3">
+      <%= f.label :file, 'Image File', class: 'form-label' %>
+      <%= f.file_field :file, class: 'form-control', accept: 'image/*' %>
+    </div>
+
+    <div class="d-flex gap-2">
+      <%= f.submit 'Upload', class: 'btn btn-primary' %>
+      <%= link_to 'Cancel', image_assets_path, class: 'btn btn-outline-secondary' %>
+    </div>
+  <% end %>
+</div>
+
+
+

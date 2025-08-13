@@ -1,0 +1,32 @@
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Image Library</h2>
+    <%= link_to 'Upload Image', new_image_asset_path, class: 'btn btn-primary' %>
+  </div>
+
+  <% if @image_assets.any? %>
+    <div class="row g-3">
+      <% @image_assets.each do |asset| %>
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card h-100 shadow-sm">
+            <% if asset.file.attached? %>
+              <%= image_tag asset.file.variant(resize_to_fill: [400, 250]).processed, class: 'card-img-top', alt: asset.display_title %>
+            <% end %>
+            <div class="card-body">
+              <h6 class="card-title text-truncate" title="<%= asset.display_title %>"><%= asset.display_title %></h6>
+              <div class="d-flex gap-2">
+                <%= link_to 'View', image_asset_path(asset), class: 'btn btn-sm btn-outline-secondary' %>
+                <%= button_to 'Delete', image_asset_path(asset), method: :delete, data: { confirm: 'Delete this image?' }, class: 'btn btn-sm btn-outline-danger' %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="text-center text-muted py-5">No images yet. Upload your first image.</div>
+  <% end %>
+</div>
+
+
+

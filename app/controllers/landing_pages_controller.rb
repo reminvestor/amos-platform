@@ -200,6 +200,13 @@ class LandingPagesController < ApplicationController
     redirect_to edit_landing_page_path(@landing_page), notice: 'Content generation has been started using our advanced AI agent system. This process may take a bit longer but will produce higher quality results.'
   end
   
+  # Generate images to replace placeholders like 1200x600 or placehold.co URLs
+  def generate_images
+    sizes_map = params[:sizes_map] || {}
+    GenerateImagesForLandingPageJob.perform_later(@landing_page.id, sizes_map, user_id: current_user.id, entity_id: current_entity.id)
+    redirect_to edit_landing_page_path(@landing_page), notice: 'Image generation started. Refresh in a moment.'
+  end
+
   def generate_image
     description = params[:image_description]
     section = params[:section] || 'hero'

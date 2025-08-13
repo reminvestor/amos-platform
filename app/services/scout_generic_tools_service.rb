@@ -3,6 +3,7 @@
 # CONFIGURATION:
 # To use Grok 4 (default): export AI_PROVIDER=grok && export XAI_API_KEY=your_key
 # To use Claude:           export AI_PROVIDER=claude && export ANTHROPIC_API_KEY=your_key
+# To use OpenAI GPT-5:     export AI_PROVIDER=openai && export OPENAI_API_KEY=your_key
 #
 # Easy switching:
 # - Development: Add to .env file
@@ -11,7 +12,7 @@
 
 class ScoutGenericToolsService
   # AI Provider Configuration - Easy to switch between providers
-  AI_PROVIDER = ENV['AI_PROVIDER'] || 'grok' # Options: 'grok', 'claude'
+  AI_PROVIDER = ENV['AI_PROVIDER'] || 'grok' # Options: 'grok', 'claude', 'openai'
   
   def initialize(user, entity)
     @user = user
@@ -21,10 +22,17 @@ class ScoutGenericToolsService
       GrokService.new
     when 'claude'
       ClaudeService.new
+    when 'openai'
+      OpenaiService.new
     else
-      raise "Unknown AI provider: #{AI_PROVIDER}. Use 'grok' or 'claude'"
+      raise "Unknown AI provider: #{AI_PROVIDER}. Use 'grok', 'claude', or 'openai'"
     end
-    @ai_provider_name = AI_PROVIDER.downcase == 'grok' ? 'Grok' : 'Claude'
+    @ai_provider_name = case AI_PROVIDER.downcase
+                        when 'grok' then 'Grok'
+                        when 'claude' then 'Claude'
+                        when 'openai' then 'OpenAI GPT-5'
+                        else AI_PROVIDER
+                        end
     Rails.logger.info "🤖 Scout using AI provider: #{AI_PROVIDER}"
   end
 
@@ -68,6 +76,20 @@ class ScoutGenericToolsService
           }
         },
         required: ["object_type", "data"]
+      }
+    },
+    {
+      name: "get_schema",
+      description: "Get the schema and field information for any data model (use this before creating/updating records to ensure you use the right fields).",
+      input_schema: {
+        type: "object",
+        properties: {
+          object_type: {
+            type: "string",
+            description: "The type of object to get schema for (e.g., 'contact', 'campaign', 'landing_page')"
+          }
+        },
+        required: ["object_type"]
       }
     },
     {
@@ -347,6 +369,8 @@ class ScoutGenericToolsService
       "You are Scout, the AI marketing assistant powered by Grok. You have access to a simple, powerful toolset for accessing and creating marketing data."
     when 'claude'
       "You are Scout, the AI marketing assistant powered by Claude. You have access to a simple, powerful toolset for accessing and creating marketing data."
+    when 'openai'
+      "You are Scout, the AI marketing assistant powered by OpenAI GPT-5. You have access to a simple, powerful toolset for accessing and creating marketing data."
     else
       "You are Scout, the AI marketing assistant. You have access to a simple, powerful toolset for accessing and creating marketing data."
     end
@@ -361,7 +385,7 @@ class ScoutGenericToolsService
       AVAILABLE TOOLS:
       1. get_data(object_type, filters, options) - Query any data model
       2. create_object(object_type, data) - Create basic objects (campaigns, contacts, groups)
-      3. get_schema(object_type) - Get REAL database schema and field information
+      3. get_schema(object_type) - Get REAL database schema and field information. Before creating or updating records, call get_schema to confirm field names and types. For contacts, note the boolean field 'lead' (default true) and 'status' values: active, inactive, unsubscribed.
       4. generate_ai_landing_page(title, description, page_type) - Create sophisticated AI-powered landing pages (PREFERRED for NEW landing pages)
       5. update_landing_page_status(landing_page_id, status) - Publish, unpublish, or archive landing pages
       6. update_landing_page_content(landing_page_id, instruction) - Update content of existing landing pages (PREFERRED for EDITING existing pages)
@@ -974,6 +998,12 @@ class ScoutGenericToolsService
       end
     end
     
+    # Add contact-specific fields
+    if object.is_a?(Contact)
+      result[:lead] = object.lead
+      result[:status] = object.status
+    end
+
     result
   end
 
@@ -1469,8 +1499,11 @@ class ScoutGenericToolsService
   end
 
   def execute_generate_ai_landing_page(args)
-    title = args['title']
-    description = args['description']
+    title = args['title'].to_s.strip
+    # Clamp description to model limit to avoid validation errors
+    description = args['description'].to_s.strip
+    description = description[0, 1000]
+    title = title[0, 255] if title.present?
     page_type = args['page_type'] || 'lead_generation'
     campaign_id = args['campaign_id']
     
@@ -1518,7 +1551,7 @@ class ScoutGenericToolsService
           slug: landing_page.slug
         },
         message: "✅ Successfully created landing page '#{title}'! AI content generation is running in the background and will be ready shortly. Your new page appears in the list below.",
-        ai_generation_status: "AI generation started with #{page_type} template using Claude",
+        ai_generation_status: "AI generation started with #{page_type} template using #{@ai_provider_name}",
         canvas: 'landing_page_viewer',
         canvas_data: {}
       }

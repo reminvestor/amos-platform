@@ -29,11 +29,16 @@
         <div class="step-connector"></div>
         <div class="step" id="step-indicator-2">
           <div class="step-number">2</div>
-          <div class="step-label">Choose Form</div>
+          <div class="step-label">Pictures</div>
         </div>
         <div class="step-connector"></div>
         <div class="step" id="step-indicator-3">
           <div class="step-number">3</div>
+          <div class="step-label">Choose Form</div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step" id="step-indicator-4">
+          <div class="step-number">4</div>
           <div class="step-label">Create Page</div>
         </div>
       </div>
@@ -90,8 +95,92 @@
     </div>
   </div>
 
-  <!-- Step 2: Form Selection -->
+  <!-- Step 2: Pictures -->
   <div class="wizard-step d-none" id="wizard-step-2">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="card border-0 shadow-sm" style="background: var(--scout-secondary); border: 1px solid var(--scout-border) !important;">
+          <div class="card-header text-white text-center" style="background: #0d6efd; border-bottom: 1px solid var(--scout-border);">
+            <h5 class="mb-0">
+              <i class="fas fa-image me-2"></i>
+              Step 2: Pictures
+            </h5>
+          </div>
+          <div class="card-body p-4" style="background: var(--scout-secondary); color: var(--scout-text);">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <h6 class="mb-2">Hero Image</h6>
+                <div class="input-group mb-2">
+                  <input id="heroPrompt" type="text" class="form-control" placeholder="Describe a hero image to generate (optional)"/>
+                  <button class="btn btn-outline-primary" type="button" onclick="generateAiImage('heroPrompt','heroPreview','1200x600')">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                  </button>
+                </div>
+                <div class="mb-2 d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-secondary" type="button" onclick="loadImageLibrary('heroPreview')">
+                    <i class="fas fa-photo-video me-1"></i>Select from Library
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" onclick="openImageFilePicker('heroPreview','heroFileInput')">
+                    <i class="fas fa-upload me-1"></i>Upload
+                  </button>
+                  <input id="heroFileInput" type="file" accept="image/*" class="d-none" />
+                </div>
+                <div class="border rounded p-2 bg-light" style="min-height:140px">
+                  <img id="heroPreview" src="https://placehold.co/1200x600?text=Hero" class="img-fluid rounded" alt="Hero preview"/>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <h6 class="mb-2">Feature Images</h6>
+                <div class="row g-2">
+                  <div class="col-6">
+                    <div class="input-group input-group-sm mb-1">
+                      <input id="feature1Prompt" type="text" class="form-control" placeholder="Feature 1 prompt (optional)"/>
+                      <button class="btn btn-outline-primary" type="button" onclick="generateAiImage('feature1Prompt','feature1Preview','100x100')"><i class="fas fa-wand-magic-sparkles"></i></button>
+                    </div>
+                    <div class="mb-1 d-flex gap-2">
+                      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="loadImageLibrary('feature1Preview')">Library</button>
+                      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="openImageFilePicker('feature1Preview','feature1FileInput')">Upload</button>
+                      <input id="feature1FileInput" type="file" accept="image/*" class="d-none" />
+                    </div>
+                    <img id="feature1Preview" src="https://placehold.co/100x100?text=1" class="img-fluid rounded border bg-light" alt="Feature 1"/>
+                  </div>
+                  <div class="col-6">
+                    <div class="input-group input-group-sm mb-1">
+                      <input id="feature2Prompt" type="text" class="form-control" placeholder="Feature 2 prompt (optional)"/>
+                      <button class="btn btn-outline-primary" type="button" onclick="generateAiImage('feature2Prompt','feature2Preview','100x100')"><i class="fas fa-wand-magic-sparkles"></i></button>
+                    </div>
+                    <div class="mb-1 d-flex gap-2">
+                      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="loadImageLibrary('feature2Preview')">Library</button>
+                      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="openImageFilePicker('feature2Preview','feature2FileInput')">Upload</button>
+                      <input id="feature2FileInput" type="file" accept="image/*" class="d-none" />
+                    </div>
+                    <img id="feature2Preview" src="https://placehold.co/100x100?text=2" class="img-fluid rounded border bg-light" alt="Feature 2"/>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary" onclick="goToStep1()"
+                        style="color: var(--scout-text); border-color: var(--scout-border);">
+                  <i class="fas fa-arrow-left me-1"></i>
+                  Back
+                </button>
+                <button type="button" class="btn btn-primary" onclick="goToStep3()">
+                  Continue to Form Selection
+                  <i class="fas fa-arrow-right ms-2"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Form Selection -->
+  <div class="wizard-step d-none" id="wizard-step-3">
     <div class="row justify-content-center">
       <div class="col-lg-8">
         <div class="card border-0 shadow-sm" style="background: var(--scout-secondary); border: 1px solid var(--scout-border) !important;">
@@ -169,8 +258,8 @@
     </div>
   </div>
 
-  <!-- Step 3: Creating Page -->
-  <div class="wizard-step d-none" id="wizard-step-3">
+  <!-- Step 4: Creating Page -->
+  <div class="wizard-step d-none" id="wizard-step-4">
     <div class="row justify-content-center">
       <div class="col-lg-6">
         <div class="card border-0 shadow-sm" style="background: var(--scout-secondary); border: 1px solid var(--scout-border) !important;">
@@ -443,3 +532,138 @@ setTimeout(() => {
   }
 }
 </style> 
+
+<!-- Image Library Modal -->
+<div class="modal fade" id="imageLibraryModal" tabindex="-1" aria-labelledby="imageLibraryLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content" style="background: var(--scout-secondary); color: var(--scout-text); border: 1px solid var(--scout-border)">
+      <div class="modal-header" style="border-bottom: 1px solid var(--scout-border)">
+        <h5 class="modal-title" id="imageLibraryLabel"><i class="fas fa-photo-video me-2"></i>Select Image</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3" id="imageLibraryGrid">
+          <!-- thumbnails injected here -->
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <small class="text-muted" id="imageLibraryCount"></small>
+          <div class="btn-group">
+            <button class="btn btn-sm btn-outline-secondary" id="libPrevBtn">Prev</button>
+            <button class="btn btn-sm btn-outline-secondary" id="libNextBtn">Next</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid var(--scout-border)">
+        <button type="button" class="btn btn-primary" id="libSelectBtn" disabled>Select</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function(){
+      let libState = { page: 1, perPage: 12, images: [], targetImgId: null, selectedUrl: null };
+      const grid = () => document.getElementById('imageLibraryGrid');
+      const count = () => document.getElementById('imageLibraryCount');
+      const prevBtn = () => document.getElementById('libPrevBtn');
+      const nextBtn = () => document.getElementById('libNextBtn');
+      const selectBtn = () => document.getElementById('libSelectBtn');
+      let modalInstance = null;
+
+      window.openImageLibraryModal = async function(targetId){
+        libState.targetImgId = targetId;
+        await loadLibraryPage();
+        const modalEl = document.getElementById('imageLibraryModal');
+        // Use global bootstrap if available, otherwise fallback to window.bootstrap
+        const bs = window.bootstrap || bootstrap;
+        // Ensure modal is attached directly to <body> for proper stacking context
+        if (modalEl.parentNode !== document.body) {
+          document.body.appendChild(modalEl)
+        }
+        modalInstance = bs.Modal.getOrCreateInstance(modalEl);
+        modalEl.classList.add('show-on-top')
+        // Reset selection each time
+        libState.selectedUrl = null;
+        updateSelectState();
+        modalEl.addEventListener('hidden.bs.modal', () => {
+          libState.selectedUrl = null;
+          updateSelectState();
+        }, { once: true })
+        modalInstance.show();
+      }
+
+      async function loadLibraryPage(){
+        const res = await fetch('/image_assets.json');
+        const data = await res.json();
+        libState.images = data.images || [];
+        renderPage();
+      }
+
+      function renderPage(){
+        const start = (libState.page - 1) * libState.perPage;
+        const slice = libState.images.slice(start, start + libState.perPage);
+        const html = slice.map(img => `
+          <div class="col-6 col-md-4 col-lg-3">
+            <div class="card h-100 border-0 shadow-sm lib-thumb ${libState.selectedUrl===img.url?'selected':''}" style="background: var(--scout-bg); border: 1px solid var(--scout-border) !important; cursor: pointer; user-select: none;" data-url="${img.url}">
+              <div class="ratio ratio-1x1">
+                <img src="${img.url}" class="card-img-top" alt="${img.title}" style="object-fit: cover;">
+              </div>
+              <div class="card-body p-2">
+                <div class="small text-truncate" title="${img.title}">${img.title}</div>
+              </div>
+            </div>
+          </div>`).join('');
+        grid().innerHTML = html || '<div class="text-center text-muted">No images yet</div>';
+        count().textContent = `${libState.images.length} images`;
+        wireThumbClicks();
+        wirePager();
+        updateSelectState();
+      }
+
+      function wireThumbClicks(){
+        grid().querySelectorAll('[data-url]').forEach(card => {
+          card.addEventListener('click', () => {
+            libState.selectedUrl = card.getAttribute('data-url');
+            grid().querySelectorAll('.lib-thumb').forEach(el => el.classList.remove('selected'))
+            card.classList.add('selected')
+            updateSelectState();
+          });
+        });
+        // Footer Select button
+        selectBtn().onclick = (e) => {
+          e.preventDefault();
+          if (!libState.selectedUrl) return;
+          const imgEl = document.getElementById(libState.targetImgId);
+          if (imgEl) imgEl.src = libState.selectedUrl;
+          if (window.rememberSelectedImage) window.rememberSelectedImage(libState.targetImgId, libState.selectedUrl);
+          if (modalInstance) modalInstance.hide();
+        }
+      }
+
+      function updateSelectState(){
+        if (!selectBtn()) return;
+        selectBtn().disabled = !libState.selectedUrl;
+      }
+
+      function wirePager(){
+        prevBtn().onclick = () => { if (libState.page > 1) { libState.page--; renderPage(); } };
+        const maxPage = Math.max(1, Math.ceil(libState.images.length / libState.perPage));
+        nextBtn().onclick = () => { if (libState.page < maxPage) { libState.page++; renderPage(); } };
+      }
+
+      // Expose a nicer entry point used by the wizard buttons
+      window.loadImageLibrary = function(targetImgId){
+        openImageLibraryModal(targetImgId);
+      }
+    })();
+  </script>
+</div>
+
+<style>
+  /* Ensure the modal overlays all canvas elements */
+  #imageLibraryModal.show-on-top { z-index: 2000; }
+  .modal-backdrop { z-index: 1990; }
+  .lib-thumb.selected { outline: 3px solid var(--scout-primary); }
+  .lib-thumb:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.12) !important; }
+  .lib-thumb { transition: transform .15s ease, box-shadow .15s ease; }
+  .modal .btn-primary:disabled { opacity: .5; }
+</style>

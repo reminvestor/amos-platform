@@ -96,10 +96,18 @@ class ApplyHtmlLandingPageChangeJob < ApplicationJob
     user_prompt = build_html_change_prompt(context)
     
     # Use Claude to modify the HTML
-    response = ClaudeService.new.send_message(system_prompt, user_prompt)
+    # Use Claude Opus 4.1 for higher fidelity edits
+    response = ClaudeService.new.send_message(system_prompt, user_prompt, model: 'claude-opus-4-1-20250805', max_tokens: 6000, temperature: 0.4)
     
-    # Extract HTML from response
-    extract_html_from_response(response)
+    # Extract either full HTML or a partial snippet
+    extracted = extract_full_or_partial_html(response)
+
+    if extracted[:type] == :full
+      ensure_doctype(extracted[:content])
+    else
+      # Merge partial changes into the existing page instead of replacing everything
+      merge_partial_into_document(context[:current_html].to_s, extracted[:content], context[:instruction])
+    end
   end
   
   def build_html_change_prompt(context)
@@ -141,28 +149,105 @@ User's Instruction:
 Current HTML Content:
 #{current_html}
 
-Please modify the HTML content according to the user's instruction. Make sure to:
-1. Keep the existing structure and styling where appropriate
-2. Maintain Bootstrap 5 compatibility
-3. Ensure the changes are professional and effective
+Please modify the HTML content according to the user's instruction. CRITICAL RULES:
+1. Do NOT remove existing content unless the instruction explicitly asks you to remove it
+2. Prefer targeted edits to the relevant section; keep all unrelated sections intact
+3. Maintain Bootstrap 5 compatibility and responsiveness
 4. Keep the HTML valid and well-formed
-5. Maintain responsiveness
-6. Apply the changes precisely as requested
+5. Apply the changes precisely as requested
 
-Return ONLY the complete modified HTML code, starting with <!DOCTYPE html> and ending with </html>. Do not include any explanatory text before or after the HTML.
+Output:
+- Return ONLY raw HTML. Do NOT include explanations, lists of changes, or commentary.
+- If you produced a full page, return the COMPLETE HTML document (<!DOCTYPE html> ... </html>)
+- If you only produced a small snippet or section, return just the SNIPPET without wrapping it in <!DOCTYPE html>, <html>, or <body>
 
 If the current HTML is empty or invalid, create a new professional landing page that incorporates the user's request."
   end
   
-  def extract_html_from_response(response)
-    # Remove any markdown code blocks if present
-    html = response.gsub(/```html\n?/, '').gsub(/```\n?/, '')
-    
-    # Ensure we start with DOCTYPE if not present
-    unless html.strip.start_with?('<!DOCTYPE')
-      html = "<!DOCTYPE html>\n" + html
+  # Decide if the model returned a full document or just a snippet
+  def extract_full_or_partial_html(response)
+    # Remove common wrappers and commentary
+    cleaned = response.to_s
+      .gsub(/```html\n?/i, '')
+      .gsub(/```/m, '')
+      .gsub(/^\s*I['’]ll.*$/i, '')
+      .gsub(/^\s*I have.*$/i, '')
+      .gsub(/\[Rest of the HTML.*?\]/i, '')
+      .strip
+
+    # If full document markers exist, extract from the first < to the last >
+    if cleaned.match?(/<!DOCTYPE/i) || cleaned.match?(/<html[\s>]/i)
+      start = cleaned.index('<')
+      end_idx = cleaned.rindex('>')
+      html = start ? cleaned[start..end_idx] : cleaned
+      return { type: :full, content: html }
     end
-    
-    html.strip
+
+    # Try to isolate the HTML-like portion by slicing from the first tag
+    if (idx = cleaned.index('<'))
+      candidate = cleaned[idx..(cleaned.rindex('>') || -1)]
+      # If it contains at least one element tag, treat as partial HTML
+      if candidate.match?(/<\w+[\s>]/)
+        return { type: :partial, content: candidate }
+      end
+    end
+
+    # Fallback: return cleaned as partial (will be appended to body)
+    { type: :partial, content: cleaned }
+  end
+
+  def ensure_doctype(html)
+    return html if html.to_s.strip.start_with?('<!DOCTYPE')
+    "<!DOCTYPE html>\n" + html.to_s
+  end
+
+  # Heuristic merge when we receive only a partial snippet
+  def merge_partial_into_document(current_html, partial_html, instruction)
+    require 'nokogiri'
+    return ensure_doctype(partial_html) if current_html.to_s.strip.empty?
+
+    doc = Nokogiri::HTML(current_html)
+    frag = Nokogiri::HTML::DocumentFragment.parse(partial_html)
+
+    # Try to replace by id if the snippet contains a top-level element with id
+    target_with_id = frag.children.find { |n| n.element? && n['id'].present? }
+    if target_with_id
+      existing = doc.at_css("##{target_with_id['id']}")
+      if existing
+        existing.replace(target_with_id)
+        return doc.to_html
+      end
+    end
+
+    # Try to replace by a recognizable section/container selector
+    selectors = [
+      '[data-section]',
+      '.section',
+      'section',
+      '.container',
+      'main'
+    ]
+    target = target_with_id || selectors.lazy.map { |sel| frag.at_css(sel) }.find(&:present?)
+    if target && target['class']
+      # Find a similar container by the first class name
+      first_class = target['class'].split.first
+      if first_class
+        existing = doc.at_css(".#{first_class}")
+        if existing
+          existing.replace(target)
+          return doc.to_html
+        end
+      end
+    end
+
+    # Fallback: append to the end of <body> with clear markers
+    body = doc.at('body') || doc.root
+    body.add_child(Nokogiri::XML::Text.new("\n<!-- AI update start: #{instruction.to_s[0..80]} -->\n", doc))
+    wrapper = Nokogiri::XML::Node.new('section', doc)
+    wrapper['class'] = 'container my-5'
+    wrapper.inner_html = partial_html
+    body.add_child(wrapper)
+    body.add_child(Nokogiri::XML::Text.new("\n<!-- AI update end -->\n", doc))
+    doc.to_html
   end
 end 

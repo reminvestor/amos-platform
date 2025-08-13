@@ -2,3 +2,7 @@
 <span class="avatar-placeholder bg-primary text-white">
   <%= current_user&.first_name&.first || current_user&.email&.first&.upcase || 'U' %>
 </span> 
+<%# Quick link to Image Library if authenticated %>
+<% if user_signed_in? %>
+  <%= link_to 'Images', image_assets_path, class: 'btn btn-sm btn-outline-light ms-2' %>
+<% end %>

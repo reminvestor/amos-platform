@@ -611,6 +611,9 @@ export default class extends Controller {
         this.templateTitleTarget.textContent = data.canvas.title
         console.log("🎯 Setting content HTML (length:", data.canvas.content.length, ")")
         this.templateContentTarget.innerHTML = data.canvas.content
+
+        // Execute any inline <script> tags from the injected canvas content
+        this.executeInlineScripts(this.templateContentTarget)
         
         // Store current canvas info
         this.currentCanvas = {
@@ -728,15 +731,17 @@ export default class extends Controller {
     window.scoutBackToLandingPages = () => this.loadScoutCanvas('landing_page_viewer', {})
     window.scoutBackToContacts = () => this.loadScoutCanvas('contact_viewer', {})
 
-    // Create functions - send messages to Scout
+    // Create functions
     window.scoutCreateContact = () => this.sendScoutMessage("Please help me create a new contact")
     window.scoutCreateCampaign = () => this.sendScoutMessage("Please help me create a new email campaign")  
-    window.scoutCreateLandingPage = () => this.sendScoutMessage("Please help me create a new landing page")
+    // Fast-path: open the landing page wizard directly (bypass chat)
+    window.scoutCreateLandingPage = () => this.loadScoutCanvas('landing_page_generator', {})
 
     // Edit functions
     window.scoutEditContact = (id) => this.sendScoutMessage(`Please help me edit contact ID ${id}`)
     window.scoutEditCampaign = (id) => this.sendScoutMessage(`Please help me edit campaign ID ${id}`)
-    window.scoutEditLandingPage = (id) => this.sendScoutMessage(`Please help me edit landing page ID ${id}`)
+    // Fast-path: open the landing page wizard preloaded with the page (bypass chat)
+    window.scoutEditLandingPage = (id) => this.loadScoutCanvas('landing_page_generator', { landing_page_id: id })
 
     // View functions  
     window.scoutViewContact = (id) => this.sendScoutMessage(`Please show me details for contact ID ${id}`)
@@ -966,11 +971,13 @@ export default class extends Controller {
       currentStep: 1,
       selectedFormType: null,
       waitingForCompletion: false,
+      selectedImages: {},
       
       init() {
         this.currentStep = 1
         this.selectedFormType = null
         this.waitingForCompletion = false
+        this.selectedImages = {}
         this.setupFormSelection();
       },
       
@@ -1014,7 +1021,12 @@ export default class extends Controller {
     
     window.goToStep2 = () => {
       const title = document.getElementById('pageTitle')?.value.trim();
-      const description = document.getElementById('pageDescription')?.value.trim();
+      let description = document.getElementById('pageDescription')?.value.trim();
+      // Enforce backend limits to prevent validation failures downstream
+      if (description && description.length > 1000) {
+        description = description.slice(0, 1000);
+        document.getElementById('pageDescription').value = description;
+      }
       
       if (!title || !description) {
         alert('Please fill in both the title and description fields.');
@@ -1036,15 +1048,34 @@ export default class extends Controller {
         indicator2.classList.add('active');
         
         window.landingPageWizard.currentStep = 2;
-        
-        // Setup form selection if not already done
-        window.landingPageWizard.setupFormSelection();
       }
     }
     
+    window.goToStep3 = () => {
+      const step2 = document.getElementById('wizard-step-2');
+      const step3 = document.getElementById('wizard-step-3');
+      const indicator2 = document.getElementById('step-indicator-2');
+      const indicator3 = document.getElementById('step-indicator-3');
+
+      if (step2 && step3 && indicator2 && indicator3) {
+        step2.classList.add('d-none');
+        step3.classList.remove('d-none');
+
+        indicator2.classList.remove('active');
+        indicator2.classList.add('completed');
+        indicator3.classList.add('active');
+
+        window.landingPageWizard.currentStep = 3;
+        window.landingPageWizard.setupFormSelection();
+      }
+    }
+
     window.createLandingPage = () => {
       const title = document.getElementById('pageTitle')?.value.trim();
-      const description = document.getElementById('pageDescription')?.value.trim();
+      let description = document.getElementById('pageDescription')?.value.trim();
+      if (description && description.length > 1000) {
+        description = description.slice(0, 1000);
+      }
       const formType = window.landingPageWizard.selectedFormType;
       
       if (!title || !description || !formType) {
@@ -1052,22 +1083,22 @@ export default class extends Controller {
         return;
       }
       
-      const step2 = document.getElementById('wizard-step-2');
       const step3 = document.getElementById('wizard-step-3');
-      const indicator2 = document.getElementById('step-indicator-2');
+      const step4 = document.getElementById('wizard-step-4');
       const indicator3 = document.getElementById('step-indicator-3');
+      const indicator4 = document.getElementById('step-indicator-4');
       
-      if (step2 && step3 && indicator2 && indicator3) {
+      if (step3 && step4 && indicator3 && indicator4) {
         // Show creation step
-        step2.classList.add('d-none');
-        step3.classList.remove('d-none');
+        step3.classList.add('d-none');
+        step4.classList.remove('d-none');
         
         // Update step indicators
-        indicator2.classList.remove('active');
-        indicator2.classList.add('completed');
-        indicator3.classList.add('active');
+        indicator3.classList.remove('active');
+        indicator3.classList.add('completed');
+        indicator4.classList.add('active');
         
-        window.landingPageWizard.currentStep = 3;
+        window.landingPageWizard.currentStep = 4;
         
         // Update status message
         const statusElement = document.getElementById('creationStatus');
@@ -1097,13 +1128,145 @@ export default class extends Controller {
         } else {
           message += ` Include a ${formType.replace('_', ' ')} form to collect visitor information.`;
         }
+
+        // Pass any selected/generated images as hints (encode as JSON block too)
+        const imgs = window.landingPageWizard.selectedImages;
+        const hero = imgs.hero;
+        const f1 = imgs.feature1; const f2 = imgs.feature2;
+        const imageHints = [];
+        if (hero) imageHints.push(`Use this hero image URL: ${hero}`);
+        if (f1) imageHints.push(`Use this feature image URL: ${f1}`);
+        if (f2) imageHints.push(`Use this feature image URL: ${f2}`);
+        if (imageHints.length) {
+          message += ` Images: ${imageHints.join(' ')}.`;
+        }
+        const imagesJson = { hero: hero || null, feature1: f1 || null, feature2: f2 || null };
+        message += `\n\nSELECTED_IMAGES_JSON: ${JSON.stringify(imagesJson)}`;
+
+        // Include structured form selection for deterministic handling server-side
+        if (formType) {
+          message += `\n\nSELECTED_FORM: ${formType}`;
+        }
         
         // Send to Scout
         this.sendScoutMessage(message);
       }
     }
 
+    // === Pictures step helpers ===
+    // Delegates to the Bootstrap modal-based image picker defined in the wizard template
+    window.loadImageLibrary = (targetImgId) => {
+      if (window.openImageLibraryModal) {
+        window.openImageLibraryModal(targetImgId)
+      } else {
+        alert('Image library not available yet. Please try again.')
+      }
+    }
+
+    // Upload image from local disk to library and set preview
+    window.openImageFilePicker = (targetImgId, inputId) => {
+      const input = document.getElementById(inputId)
+      if (input) {
+        // Attach a one-time change handler
+        input.onchange = () => {
+          window.uploadImageFromInput(inputId, targetImgId)
+        }
+        input.click()
+      }
+    }
+
+    window.uploadImageFromInput = async (inputId, targetImgId) => {
+      const input = document.getElementById(inputId)
+      if (!input || !input.files || !input.files[0]) { return }
+      const file = input.files[0]
+
+      const formData = new FormData()
+      formData.append('image_asset[file]', file)
+      formData.append('image_asset[title]', file.name)
+      formData.append('image_asset[source]', 'upload')
+
+      try {
+        const res = await fetch('/image_assets.json', {
+          method: 'POST',
+          headers: { 'X-CSRF-Token': this.getCSRFToken() },
+          body: formData
+        })
+        const data = await res.json()
+        if (data.image?.url) {
+          const imgEl = document.getElementById(targetImgId)
+          if (imgEl) imgEl.src = data.image.url
+          rememberSelectedImage(targetImgId, data.image.url)
+        } else {
+          alert(data.error || 'Upload failed.')
+        }
+      } catch (e) {
+        alert('Upload failed.')
+      } finally {
+        // reset input so same file can be picked again if needed
+        input.value = ''
+      }
+    }
+
+    window.generateAiImage = async (promptInputId, targetImgId, size) => {
+      const prompt = document.getElementById(promptInputId)?.value.trim();
+      if (!prompt) { alert('Enter a description first.'); return; }
+      const btn = event?.currentTarget; if (btn) btn.disabled = true;
+      try {
+        // Map requested sizes to OpenAI-supported sizes
+        const sizeMap = (s) => {
+          if (!s) return '1024x1024'
+          const [w, h] = s.split('x').map(Number)
+          if (!w || !h) return '1024x1024'
+          if (w === h) return '1024x1024'
+          return w > h ? '1792x1024' : '1024x1792'
+        }
+        const res = await fetch('/image_assets/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': this.getCSRFToken() },
+          body: JSON.stringify({ prompt, size: sizeMap(size) })
+        });
+        const data = await res.json();
+        if (data.image?.url) {
+          const imgEl = document.getElementById(targetImgId);
+          if (imgEl) imgEl.src = data.image.url;
+          rememberSelectedImage(targetImgId, data.image.url);
+        } else {
+          alert('Image generation failed.');
+        }
+      } catch (e) {
+        alert('Image generation failed.');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    // Expose so modal (inline script) can call it
+    window.rememberSelectedImage = function rememberSelectedImage(targetId, url) {
+      if (!window.landingPageWizard) return;
+      if (targetId.includes('hero')) window.landingPageWizard.selectedImages.hero = url;
+      if (targetId.includes('feature1')) window.landingPageWizard.selectedImages.feature1 = url;
+      if (targetId.includes('feature2')) window.landingPageWizard.selectedImages.feature2 = url;
+    }
+
     console.log("🌐 Canvas globals initialized")
+  }
+
+  // Execute inline scripts contained within dynamically injected HTML
+  executeInlineScripts(container) {
+    try {
+      const scripts = container.querySelectorAll('script')
+      scripts.forEach(oldScript => {
+        const newScript = document.createElement('script')
+        // Copy attributes
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
+        // Copy inline code
+        newScript.text = oldScript.textContent
+        // Replace to execute
+        oldScript.parentNode.replaceChild(newScript, oldScript)
+      })
+    } catch (e) {
+      console.warn('Failed to execute inline scripts for canvas:', e)
+    }
   }
 
   // Send a message from canvas to Scout
