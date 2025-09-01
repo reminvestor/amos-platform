@@ -127,6 +127,10 @@ class LandingPagesController < ApplicationController
     @business_profile = current_entity.business_profiles.first || current_user.business_profile
   end
 
+  def inline_edit
+    @landing_page = current_entity.landing_pages.find(params[:id])
+  end
+
   def update
     if @landing_page.update(landing_page_params)
       respond_to do |format|

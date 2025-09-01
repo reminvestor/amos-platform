@@ -259,6 +259,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 60px;
+  position: relative;
 }
 
 .brand {
@@ -267,10 +269,15 @@
   gap: 0.5rem;
   opacity: 0;
   transition: opacity 0.3s ease;
+  visibility: hidden;
+  width: 0;
+  overflow: hidden;
 }
 
 .side-nav.expanded .brand {
   opacity: 1;
+  visibility: visible;
+  width: auto;
 }
 
 .brand-text {
@@ -288,6 +295,12 @@
   padding: 0.5rem;
   border-radius: 4px;
   transition: background 0.2s ease;
+  position: absolute;
+  right: 10px;
+}
+
+.side-nav.expanded .nav-toggle {
+  position: static;
 }
 
 .nav-toggle:hover {
