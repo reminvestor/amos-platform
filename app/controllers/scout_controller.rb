@@ -187,6 +187,9 @@ class ScoutController < ApplicationController
       when 'landing_page_generator' 
         canvas_content = render_landing_page_generator(canvas_data)
         canvas_title = "Landing Page Generator"
+      when 'landing_page_editor'
+        canvas_content = render_landing_page_editor(canvas_data)
+        canvas_title = "Edit Landing Page"
       when 'contact_viewer'
         canvas_content = render_contact_canvas(canvas_data)
         canvas_title = "Contacts"
@@ -586,6 +589,19 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
+      }
+    )
+  end
+
+  def render_landing_page_editor(data = {})
+    landing_page = current_entity.landing_pages.find(data['landing_page_id'])
+    
+    render_to_string(
+      partial: 'scout/canvas/landing_page_editor',
+      locals: { 
+        landing_page: landing_page,
+        entity: current_entity,
+        user: current_user
       }
     )
   end

@@ -120,6 +120,7 @@ Rails.application.routes.draw do
         post :generate_image
         post :generate_images
         post :apply_change
+        get :inline_edit
         get :get_chat_messages
         get :versions
         post 'rollback/:version_id', to: 'landing_pages#rollback', as: :rollback
