@@ -1,11 +1,164 @@
-
+<style>
+  /* Page-local styles: only affect this Marketing home page */
+  body { background: var(--dark-bg); }
+  .hero-section.marketing-hero { color: white; padding: 6rem 0; position: relative; overflow: hidden; background: transparent !important; --zigzag: 160px; }
+  .hero-section.marketing-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);
+    z-index: 0;
+    pointer-events: none;
+    /* Irregular peaks only on the right 70vw (start zig-zag at ~30%) */
+    -webkit-clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 12%,
+      92% 73%,
+      84% 34%,
+      76% 82%,
+      68% 65%,
+      60% 98%,
+      50% 85%,
+      40% 100%,
+      0 100%,
+      0 0
+    );
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 12%,
+      92% 73%,
+      84% 34%,
+      76% 82%,
+      68% 65%,
+      60% 98%,
+      50% 85%,
+      40% 100%,
+      0 100%,
+      0 0
+    );
+    filter: drop-shadow(0 14px 20px rgba(0, 0, 0, 0.35)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+    will-change: filter;
+  }
+  .hero-section.marketing-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.05) 100%);
+    z-index: 1;
+    pointer-events: none;
+    -webkit-clip-path: polygon(
+      0 0,
+       100% 0,
+      100% 12%,
+      92% 73%,
+      84% 34%,
+      76% 82%,
+      68% 65%,
+      60% 98%,
+      50% 85%,
+      40% 100%,
+      0 100%,
+      0 0
+    );
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 12%,
+      92% 73%,
+      84% 34%,
+      76% 82%,
+      68% 65%,
+      60% 98%,
+      50% 85%,
+      40% 100%,
+      0 100%,
+      0 0
+    );
+    filter: drop-shadow(0 14px 20px rgba(0, 0, 0, 0.35)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+    will-change: filter;
+  }
+  .hero-section.marketing-hero > * { position: relative; z-index: 3; }
+  
+  /* Prominent problem statement section */
+  .problem-section { 
+    background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.02) 100%);
+    padding-top: 4.5rem; 
+    padding-bottom: 4.5rem; 
+  }
+  .problem-box {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: clamp(2rem, 1.25rem + 2.5vw, 3.5rem);
+    box-shadow: 0 25px 50px rgba(0,0,0,0.25), 0 10px 20px rgba(0,0,0,0.2);
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .problem-text {
+    font-weight: 700;
+    font-size: clamp(1.25rem, 1rem + 1.4vw, 2.1rem);
+    line-height: 1.35;
+    letter-spacing: 0.2px;
+  }
+  .problem-title {
+    font-weight: 800;
+    font-size: clamp(1.6rem, 1.2rem + 2vw, 2.4rem);
+    margin-bottom: 1.75rem;
+  }
+  .problem-title .accent { color: var(--accent-coral); font-style: italic; }
+  .problem-sub {
+    font-size: clamp(1rem, 0.9rem + 0.6vw, 1.4rem);
+    opacity: 0.95;
+    margin-bottom: 2rem;
+    max-width: 68ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .problem-list { list-style: none; padding-left: 12px; margin: 0; }
+  .problem-item { display: flex; align-items: center; gap: 14px; margin-bottom: 1.25rem; }
+  .problem-icon {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: linear-gradient(180deg, #ff8e8e, #ff6b6b);
+    color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;
+    box-shadow: 0 6px 12px rgba(255,107,107,0.35);
+    flex-shrink: 0;
+  }
+  .problem-closing {
+    margin-top: 2.25rem;
+    font-size: clamp(1rem, 0.9rem + 0.5vw, 1.3rem);
+    opacity: 0.95;
+    max-width: 68ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .learn-more-btn {
+    display: inline-block;
+    padding: 0.55rem 1.1rem;
+    border-radius: 10px;
+    color: rgba(255,255,255,0.9);
+    text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.04);
+    transition: all 0.2s ease;
+    font-weight: 600;
+  }
+  .learn-more-btn:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.35);
+    color: #fff;
+  }
+</style>
 <!-- Hero Section -->
-<section class="hero-section">
+<section class="hero-section marketing-hero">
   <div class="container">
     <div class="row align-items-center">
       <div class="col-lg-6">
-        <h1 class="display-1 fw-bold mb-4">You Don't Need a $1000 Tool to Grow.<br/>You Need Crux.</h1>
-        <p class="lead mb-5">Scout does everything you need — simplified, automated, and for a fraction of the cost.</p>
+        <h1 class="display-1 fw-bold mb-4">Marketing shouldn’t be complicated.</h1>
+        <p class="lead mb-5">You shouldn’t have to fight confusing tools to grow your business. Crux makes it simple to launch your first campaign in minutes—so you can focus on winning customers, not learning software.
+        </p>
         <div class="d-grid gap-3 d-md-flex justify-content-md-start">
           <a href="<%= request.protocol %>app.<%= request.host_with_port.sub(/^www\./, '') %>/users/sign_up" class="btn btn-primary btn-lg px-5">Get Started in Minutes</a>
         </div>
@@ -39,6 +192,69 @@
       </div>
     </div>
   </div>
+
+</section>
+
+<!-- Hero Subtext (Problem Statement) -->
+<section class="section-dark problem-section">
+  <div class="container">
+    <div class="problem-box text-white">
+      <h3 class="problem-title text-center">Is Launching Your Marketing Campaign <span class="accent">Feeling Overwhelming?</span></h3>
+      <p class="problem-sub text-center">You spend hours learning confusing tools then don’t feel like they are actually help you build traction.</p>
+
+      <div class="row g-4">
+        <div class="col-md-6">
+          <ul class="problem-list">
+            <li class="problem-item"><span class="problem-icon">✖</span><span>Having to complete tedious tasks over and over.</span></li>
+            <li class="problem-item"><span class="problem-icon">✖</span><span>Time wasted learning confusing tools.</span></li>
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <ul class="problem-list">
+            <li class="problem-item"><span class="problem-icon">✖</span><span>Using multiple apps with everything all spread out.</span></li>
+            <li class="problem-item"><span class="problem-icon">✖</span><span>Using AI tools that never actually learn your product.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="problem-closing text-center mt-3">Crux unifies your marketing in one AI‑powered workspace. No more juggling apps, wasting time on tedious tasks, or relying on tools that never truly learn your business.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Value Proposition -->
+<section class="section-dark py-5">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card gradient-purple text-center">
+          <div class="feature-icon mx-auto">
+            <i class="fas fa-rocket"></i>
+          </div>
+          <h4 class="text-white mb-3">Launch faster</h4>
+          <p class="text-white opacity-75">Go from idea to campaign in under 5 minutes.</p>
+        </div>
+      </div>
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card gradient-pink text-center">
+          <div class="feature-icon mx-auto">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h4 class="text-white mb-3">Grow smarter</h4>
+          <p class="text-white opacity-75">Built-in analytics help you learn what works and improve with each campaign.</p>
+        </div>
+      </div>
+      <div class="col-lg-4 col-md-6">
+        <div class="feature-card gradient-green text-center">
+          <div class="feature-icon mx-auto">
+            <i class="fas fa-user-check"></i>
+          </div>
+          <h4 class="text-white mb-3">Made for you</h4>
+          <p class="text-white opacity-75">No degree, no training—just marketing that works for real businesses.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- Core Features -->
@@ -49,7 +265,7 @@
     </div>
     
     <div class="row g-4">
-      <div class="col-lg-4 col-md-6">
+      <div class="col-lg-3 col-md-6">
         <div class="feature-card text-center">
           <div class="feature-icon mx-auto">
             <i class="fas fa-envelope-open-text"></i>
@@ -59,127 +275,43 @@
         </div>
       </div>
       
-      <div class="col-lg-4 col-md-6">
+      <div class="col-lg-3 col-md-6">
         <div class="feature-card text-center">
           <div class="feature-icon mx-auto">
             <i class="fas fa-bolt"></i>
           </div>
           <h4 class="text-white mb-3">Instant Landing Pages</h4>
-          <p class="text-white opacity-75">Create branded, high-converting landing pages in minutes, no design team needed.</p>
+          <p class="text-white opacity-75">Create branded, high-converting landing pages in minutes—no design team needed.</p>
         </div>
       </div>
       
-      <div class="col-lg-4 col-md-6">
-        <div class="feature-card text-center">
-          <div class="feature-icon mx-auto">
-            <i class="fas fa-brain"></i>
-          </div>
-          <h4 class="text-white mb-3">Smart Lead Insights</h4>
-          <p class="text-white opacity-75">Track engagement and performance with clear, actionable data.</p>
-        </div>
-      </div>
-      
-      <div class="col-lg-4 col-md-6">
+      <div class="col-lg-3 col-md-6">
         <div class="feature-card text-center">
           <div class="feature-icon mx-auto">
             <i class="fas fa-comments"></i>
           </div>
           <h4 class="text-white mb-3">Conversational Interface</h4>
-          <p class="text-white opacity-75">Skip the menus. Run marketing like a conversation—with zero learning curve.</p>
+          <p class="text-white opacity-75">Run marketing like a conversation—with zero learning curve.</p>
         </div>
       </div>
       
-      <div class="col-lg-4 col-md-6">
+      <div class="col-lg-3 col-md-6">
         <div class="feature-card text-center">
           <div class="feature-icon mx-auto">
             <i class="fas fa-robot"></i>
           </div>
           <h4 class="text-white mb-3">Scout AI Agent</h4>
-          <p class="text-white opacity-75">Your personal marketing assistant that learns your business and optimizes campaigns automatically.</p>
+          <p class="text-white opacity-75">A personal marketing assistant that learns your business and optimizes campaigns.</p>
         </div>
       </div>
-      
-      <div class="col-lg-4 col-md-6">
-        <div class="feature-card text-center">
-          <div class="feature-icon mx-auto">
-            <i class="fas fa-thumbtack"></i>
-          </div>
-          <h4 class="text-white mb-3">Pin Custom Pages</h4>
-          <p class="text-white opacity-75">Create pages on chat and pin them for instant access in your custom nav.</p>
-        </div>
-      </div>
+    </div>
+
+    <div class="text-center mt-4">
+      <a href="<%= marketing_features_path %>" class="learn-more-btn">Learn more</a>
     </div>
   </div>
 </section>
 
-<!-- Why Use Crux -->
-<section class="section-darker py-5">
-  <div class="container">
-    <div class="text-center mb-5">
-      <h2 class="display-4 fw-bold text-white mb-3">Why Use Crux?</h2>
-    </div>
-    
-    <div class="row g-4">
-      <div class="col-lg-4 col-md-6">
-        <div class="benefit-card">
-          <h4 class="text-white mb-3">Save Hours Every Week</h4>
-          <p class="text-white opacity-75">Say goodbye to tool overload, scattered workflows, and time-consuming setup. With Crux, you can launch full campaigns and analyze performance—all from one place, in a fraction of the time. It's marketing without the busywork.</p>
-        </div>
-      </div>
-      
-      <div class="col-lg-4 col-md-6">
-        <div class="benefit-card">
-          <h4 class="text-white mb-3">Cut Marketing Costs</h4>
-          <p class="text-white opacity-75">Crux replaces multiple tools, agencies, and extra overhead with one streamlined AI platform. You get high-quality, on-brand content and campaigns without the bloated software fees or agency retainers.</p>
-        </div>
-      </div>
-      
-      <div class="col-lg-4 col-md-6">
-        <div class="benefit-card">
-          <h4 class="text-white mb-3">Market with Confidence</h4>
-          <p class="text-white opacity-75">Crux learns your brand, audience, and goals over time—so your messaging stays consistent and improves with every campaign you run.</p>
-        </div>
-      </div>
-      
-      <div class="col-lg-8 col-md-12">
-        <div class="benefit-card">
-          <h4 class="text-white mb-3">Some relevant graphic/ screen shot... possible of chat window...gif of generating a landing page</h4>
-          <div class="bg-dark bg-opacity-25 rounded p-4">
-            <div class="d-flex align-items-center mb-3">
-              <div class="bg-primary rounded-circle me-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                <i class="fas fa-user text-white"></i>
-              </div>
-              <div>
-                <strong class="text-white">You:</strong>
-                <span class="text-white opacity-75"> "Create a landing page for my new product launch"</span>
-              </div>
-            </div>
-            <div class="d-flex align-items-center mb-3">
-              <div class="bg-success rounded-circle me-3" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                <i class="fas fa-robot text-white"></i>
-              </div>
-              <div>
-                <strong class="text-white">Scout:</strong>
-                <span class="text-white opacity-75"> "I'll create a high-converting landing page for your product. What's the product name and key benefit?"</span>
-              </div>
-            </div>
-            <div class="text-center">
-              <div class="spinner-border text-primary me-2" style="width: 1rem; height: 1rem;"></div>
-              <span class="text-white opacity-75 small">Generating landing page...</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="col-lg-4 col-md-6">
-        <div class="benefit-card">
-          <h4 class="text-white mb-3">Zero Learning Curve</h4>
-          <p class="text-white opacity-75">You don't need training, tutorials, or technical skills to hit your goals—like "create an email campaign for new leads"—and Crux handles the rest. It's marketing that works like a conversation, not a class.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 
 <!-- Comparison Table -->
 <section class="gradient-bg py-5">
@@ -202,37 +334,37 @@
               </thead>
               <tbody class="bg-white">
                 <tr>
-                  <td class="fw-semibold">Email & Landing Pages</td>
+                  <td class="fw-semibold text-center">Email & Landing Pages</td>
                   <td class="text-center"><i class="fas fa-check check-icon"></i></td>
                   <td class="text-center"><i class="fas fa-check check-icon"></i></td>
                 </tr>
                 <tr class="bg-light">
-                  <td class="fw-semibold">Built-in AI Assistant</td>
+                  <td class="fw-semibold text-center">Built-in AI Assistant</td>
                   <td class="text-center"><i class="fas fa-times x-icon"></i></td>
                   <td class="text-center"><i class="fas fa-check check-icon"></i></td>
                 </tr>
                 <tr>
-                  <td class="fw-semibold">Learns Your Business</td>
+                  <td class="fw-semibold text-center">Learns Your Business</td>
                   <td class="text-center"><i class="fas fa-times x-icon"></i></td>
                   <td class="text-center"><i class="fas fa-check check-icon"></i></td>
                 </tr>
                 <tr class="bg-light">
-                  <td class="fw-semibold">Time to First Campaign</td>
+                  <td class="fw-semibold text-center">Time to First Campaign</td>
                   <td class="text-center fw-bold">Days</td>
                   <td class="text-center fw-bold text-success">Minutes</td>
                 </tr>
                 <tr>
-                  <td class="fw-semibold">Monthly Cost</td>
+                  <td class="fw-semibold text-center">Monthly Cost</td>
                   <td class="text-center fw-bold">$$$</td>
                   <td class="text-center fw-bold text-success">$</td>
                 </tr>
                 <tr class="bg-light">
-                  <td class="fw-semibold">Learning Curve</td>
+                  <td class="fw-semibold text-center">Learning Curve</td>
                   <td class="text-center fw-bold text-warning">Steep</td>
                   <td class="text-center fw-bold text-success">None</td>
                 </tr>
                 <tr>
-                  <td class="fw-semibold">Works via Chat</td>
+                  <td class="fw-semibold text-center">Works via Chat</td>
                   <td class="text-center"><i class="fas fa-times x-icon"></i></td>
                   <td class="text-center"><i class="fas fa-check check-icon"></i></td>
                 </tr>
