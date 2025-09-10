@@ -385,6 +385,18 @@ resource "aws_ecs_task_definition" "app" {
         {
           name      = "RAILS_MASTER_KEY"
           valueFrom = aws_secretsmanager_secret.rails_master_key.arn
+        },
+        {
+          name      = "REDIS_URL"
+          valueFrom = aws_secretsmanager_secret.redis_url.arn
+        },
+        {
+          name      = "MAILGUN_API_KEY"
+          valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-mailgun-api-key"
+        },
+        {
+          name      = "MAILGUN_DOMAIN"
+          valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-mailgun-domain"
         }
       ]
       
@@ -399,7 +411,7 @@ resource "aws_ecs_task_definition" "app" {
       }
       
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+        command     = ["CMD-SHELL", "curl -f http://localhost:3000/up || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3

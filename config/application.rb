@@ -11,11 +11,6 @@ require "action_cable/engine"
 require "active_storage/engine"
 require "action_text/engine"
 # require "sprockets/railtie" # Not using Sprockets
-begin
-  require "propshaft"
-rescue LoadError
-  # Propshaft will be loaded by Bundler.require below
-end
 require "propshaft/railtie"
 
 # Require the gems listed in Gemfile, including any gems
