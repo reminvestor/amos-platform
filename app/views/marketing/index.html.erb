@@ -150,6 +150,10 @@
     border-color: rgba(255,255,255,0.35);
     color: #fff;
   }
+
+  /* Simple reveal animation */
+  .reveal { opacity: 0.001; transform: translateY(24px); transition: opacity 600ms ease, transform 600ms ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
 </style>
 <!-- Hero Section -->
 <section class="hero-section marketing-hero">
@@ -200,7 +204,7 @@
   <div class="container">
     <div class="problem-box text-white">
       <h3 class="problem-title text-center">Is Launching Your Marketing Campaign <span class="accent">Feeling Overwhelming?</span></h3>
-      <p class="problem-sub text-center">You spend hours learning confusing tools then don’t feel like they are actually help you build traction.</p>
+      <p class="problem-sub text-center">You spend hours learning confusing tools then don’t feel like they are actually helping you build traction.</p>
 
       <div class="row g-4">
         <div class="col-md-6">
@@ -223,7 +227,7 @@
 </section>
 
 <!-- Value Proposition -->
-<section class="section-dark py-5">
+<section class="section-dark py-5" id="testimonials-section">
   <div class="container">
     <div class="row g-4">
       <div class="col-lg-4 col-md-6">
@@ -376,6 +380,100 @@
     </div>
   </div>
 </section>
+
+<!-- Demo Video -->
+<section class="section-dark py-5">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2 class="display-4 fw-bold text-white mb-3">See Crux in action</h2>
+      <p class="text-white-50 mb-0">Quick demo of launching a campaign (2 minutes)</p>
+    </div>
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="ratio ratio-16x9 rounded" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);">
+          <iframe src="about:blank" title="Crux Demo Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
+      </div>
+    </div>
+    <div class="text-center mt-4">
+      <a href="<%= request.protocol %>app.<%= request.host_with_port.sub(/^www\./, '') %>/users/sign_up" class="btn btn-primary btn-lg px-5">Launch a Campaign</a>
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials -->
+<section class="section-dark py-5" id="testimonials-section">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="display-4 fw-bold text-white mb-3">What customers are saying</h2>
+    </div>
+    <div class="row justify-content-center" id="testimonials">
+      <div class="col-lg-8 reveal" style="transition-delay: 0ms;">
+        <div class="feature-card gradient-pink">
+          <div class="d-flex align-items-start">
+            <div class="me-3">
+              <i class="fas fa-quote-left fa-2x text-white-50"></i>
+            </div>
+            <div>
+              <p class="text-white mb-3">“Before Crux, marketing felt like a guessing game. Within weeks of using it, my business finally started gaining traction with consistent posts, clearer insights, and real leads coming in. It’s the first time marketing has actually felt manageable and effective.”</p>
+              <div class="text-white-50 fw-semibold">— Nuvola Networks</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row justify-content-center mt-4">
+      <div class="col-lg-8 reveal" style="transition-delay: 120ms;">
+        <div class="feature-card gradient-purple">
+          <div class="d-flex align-items-start">
+            <div class="me-3">
+              <i class="fas fa-quote-left fa-2x text-white-50"></i>
+            </div>
+            <div>
+              <p class="text-white mb-3">“Crux helped us streamline marketing and quickly gain real traction with our audience.”</p>
+              <div class="text-white-50 fw-semibold">— DataVine</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row justify-content-center mt-4">
+      <div class="col-lg-8 reveal" style="transition-delay: 240ms;">
+        <div class="feature-card gradient-green">
+          <div class="d-flex align-items-start">
+            <div class="me-3">
+              <i class="fas fa-quote-left fa-2x text-white-50"></i>
+            </div>
+            <div>
+              <p class="text-white mb-3">“I’ve only just started using Crux, but it’s already clear how much easier it makes marketing. For the first time, I feel confident about actually reaching the right audience.”</p>
+              <div class="text-white-50 fw-semibold">— Colton Covert</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+</section>
+
+<script>
+  function initTestimonialsReveal() {
+    const container = document.getElementById('testimonials-section');
+    if (!container) return;
+    const items = container.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    items.forEach(el => observer.observe(el));
+  }
+  document.addEventListener('DOMContentLoaded', initTestimonialsReveal);
+  document.addEventListener('turbo:load', initTestimonialsReveal);
+</script>
 
 <!-- Final CTA -->
 <section class="dark-gradient-bg py-5">

@@ -1,7 +1,7 @@
 <% content_for :title, "Features - Agent Marketing" %>
 
 <!-- Hero Section -->
-<section class="py-5 bg-light">
+<section class="py-5 hero-section">
   <div class="container text-center">
     <h1 class="display-4 fw-bold mb-3">Powerful Marketing Features</h1>
     <p class="lead mb-0">Everything you need to create, manage, and optimize your marketing campaigns</p>
@@ -9,15 +9,15 @@
 </section>
 
 <!-- Features Section -->
-<section class="py-5">
+<section class="py-5 section-dark">
   <div class="container">
     <div class="row align-items-center mb-5">
       <div class="col-lg-6 order-lg-2">
-        <img src="https://via.placeholder.com/600x400" alt="Email Marketing" class="img-fluid rounded shadow-sm">
+        <%= image_tag "icons/crux_email_campaign_icon.png", alt: "Email Marketing", class: "img-fluid rounded shadow-sm", style: "max-width: 360px;" %>
       </div>
       <div class="col-lg-6 order-lg-1">
         <h2 class="fw-bold mb-3">Email Marketing</h2>
-        <p class="text-muted mb-4">Create beautiful email campaigns that convert with our powerful yet easy-to-use tools.</p>
+        <p class="text-white-50 mb-4">Create beautiful email campaigns that convert with our powerful yet easy-to-use tools.</p>
         <ul class="list-unstyled">
           <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Drag-and-drop email editor</li>
           <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Professional templates library</li>
@@ -28,14 +28,48 @@
         </ul>
       </div>
     </div>
-    
+
+    <!-- Blog Post Manager (moved up) -->
+    <div class="row align-items-center mb-5 mt-5">
+      <div class="col-lg-6">
+        <%= image_tag "icons/Crux_conversation_icon.png", alt: "Blog Post Manager", class: "img-fluid rounded shadow-sm", style: "max-width: 360px;" %>
+      </div>
+      <div class="col-lg-6">
+        <h2 class="fw-bold mb-3">Blog Post Manager</h2>
+        <p class="text-white-50 mb-4">Create, organize, and publish blog content in one place.</p>
+        <ul class="list-unstyled">
+          <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Write and edit posts with a simple editor</li>
+          <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Organize posts by tags or categories</li>
+          <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Schedule content for future publishing</li>
+          <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Track engagement and performance</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Smart Link Hub (moved up) -->
+    <div class="row align-items-center mb-0">
+      <div class="col-lg-6 order-lg-2">
+        <%= image_tag "icons/Crux_Pinned_nav_icon.png", alt: "Smart Link Hub", class: "img-fluid rounded shadow-sm", style: "max-width: 360px;" %>
+      </div>
+      <div class="col-lg-6">
+        <h2 class="fw-bold mb-3">Smart Link Hub</h2>
+        <p class="text-white-50 mb-4">Share a single customizable page that organizes all your important links.</p>
+        <ul class="list-unstyled">
+          <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Add unlimited links (socials, websites, products, etc.)</li>
+          <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Customize design and branding</li>
+          <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Track clicks and engagement</li>
+          <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Update instantly without changing your main bio link</li>
+        </ul>
+      </div>
+    </div>
+
     <div class="row align-items-center mb-5">
       <div class="col-lg-6">
-        <img src="https://via.placeholder.com/600x400" alt="Social Media Management" class="img-fluid rounded shadow-sm">
+        <%= image_tag "icons/crux_analytics_icon.png", alt: "Social Media Management", class: "img-fluid rounded shadow-sm", style: "max-width: 360px;" %>
       </div>
       <div class="col-lg-6">
         <h2 class="fw-bold mb-3">Social Media Management</h2>
-        <p class="text-muted mb-4">Schedule, publish, and analyze your social media content across multiple platforms with ease.</p>
+        <p class="text-white-50 mb-4">Schedule, publish, and analyze your social media content across multiple platforms with ease.</p>
         <ul class="list-unstyled">
           <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Multi-platform publishing</li>
           <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Visual content calendar</li>
@@ -49,11 +83,11 @@
     
     <div class="row align-items-center mb-5">
       <div class="col-lg-6 order-lg-2">
-        <img src="https://via.placeholder.com/600x400" alt="AI Content Generation" class="img-fluid rounded shadow-sm">
+        <%= image_tag "icons/Crux_conversation_icon.png", alt: "AI Content Generation", class: "img-fluid rounded shadow-sm", style: "max-width: 360px;" %>
       </div>
       <div class="col-lg-6 order-lg-1">
         <h2 class="fw-bold mb-3">AI Content Generation</h2>
-        <p class="text-muted mb-4">Create high-quality marketing content in seconds with our advanced AI tools.</p>
+        <p class="text-white-50 mb-4">Create high-quality marketing content in seconds with our advanced AI tools.</p>
         <ul class="list-unstyled">
           <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Platform-specific content creation</li>
           <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Email subject line generator</li>
@@ -67,11 +101,11 @@
     
     <div class="row align-items-center mb-5">
       <div class="col-lg-6">
-        <img src="https://via.placeholder.com/600x400" alt="Contact Management" class="img-fluid rounded shadow-sm">
+        <%= image_tag "icons/Crux_Pinned_nav_icon.png", alt: "Contact Management", class: "img-fluid rounded shadow-sm", style: "max-width: 360px;" %>
       </div>
       <div class="col-lg-6">
         <h2 class="fw-bold mb-3">Contact Management</h2>
-        <p class="text-muted mb-4">Organize your contacts and build meaningful relationships with your audience.</p>
+        <p class="text-white-50 mb-4">Organize your contacts and build meaningful relationships with your audience.</p>
         <ul class="list-unstyled">
           <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Custom contact fields</li>
           <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Smart segmentation</li>
@@ -85,11 +119,11 @@
     
     <div class="row align-items-center">
       <div class="col-lg-6 order-lg-2">
-        <img src="https://via.placeholder.com/600x400" alt="Multi-Entity Management" class="img-fluid rounded shadow-sm">
+        <%= image_tag "icons/Landing_Page_Icon.png", alt: "Multi-Entity Management", class: "img-fluid rounded shadow-sm", style: "max-width: 360px;" %>
       </div>
       <div class="col-lg-6 order-lg-1">
         <h2 class="fw-bold mb-3">Multi-Entity Management</h2>
-        <p class="text-muted mb-4">Perfect for agencies and businesses managing multiple brands or clients.</p>
+        <p class="text-white-50 mb-4">Perfect for agencies and businesses managing multiple brands or clients.</p>
         <ul class="list-unstyled">
           <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Separate workspaces for each entity</li>
           <li class="mb-2"><i class="fas fa-check text-primary me-2"></i> Role-based access control</li>

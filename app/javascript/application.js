@@ -30,3 +30,27 @@ import "@rails/actiontext"
 
 // Import landing page module (using the index.js)
 
+// Simple reveal-on-scroll for elements with class .reveal
+function initRevealOnScroll() {
+  const elements = document.querySelectorAll('.reveal');
+  if (elements.length === 0) return;
+
+  if (!('IntersectionObserver' in window)) {
+    elements.forEach(el => el.classList.add('visible'));
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries, obs) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, root: null, rootMargin: '0px 0px -10% 0px' });
+
+  elements.forEach(el => observer.observe(el));
+}
+
+document.addEventListener('DOMContentLoaded', initRevealOnScroll);
+document.addEventListener('turbo:load', initRevealOnScroll);
