@@ -1,0 +1,42 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - echo Installing Terraform...
+      - cd $CODEBUILD_SRC_DIR/aws/terraform
+      - terraform version
+
+  pre_build:
+    commands:
+      - echo Configuring Terraform backend...
+      - |
+        cat > backend.conf <<EOF
+        bucket = "agent-marketing-terraform-state-637423327454"
+        key    = "terraform.tfstate"
+        region = "us-east-1"
+        dynamodb_table = "agent-marketing-terraform-state-lock"
+        encrypt = true
+        EOF
+      - echo Initializing Terraform...
+      - terraform init -backend-config=backend.conf
+      - echo Validating Terraform configuration...
+      - terraform validate
+
+  build:
+    commands:
+      - echo Planning Terraform changes...
+      - terraform plan -out=tfplan -var="domain_name=cruxmarketing.ai"
+      - echo Applying Terraform changes...
+      - terraform apply -auto-approve -var="domain_name=cruxmarketing.ai"
+
+  post_build:
+    commands:
+      - echo Terraform apply completed on `date`
+
+artifacts:
+  files:
+    - '**/*'
+  name: terraform-output
