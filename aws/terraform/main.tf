@@ -497,7 +497,9 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         Resource = [
           aws_secretsmanager_secret.database_url.arn,
           aws_secretsmanager_secret.rails_master_key.arn,
-          aws_secretsmanager_secret.redis_url.arn
+          aws_secretsmanager_secret.redis_url.arn,
+          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-mailgun-api-key*",
+          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-mailgun-domain*"
         ]
       }
     ]

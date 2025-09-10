@@ -55,6 +55,14 @@
         {
           "name": "REDIS_URL",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-redis-url"
+        },
+        {
+          "name": "MAILGUN_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-api-key"
+        },
+        {
+          "name": "MAILGUN_DOMAIN",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-domain"
         }
       ],
       "logConfiguration": {
