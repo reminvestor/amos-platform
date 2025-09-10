@@ -43,7 +43,8 @@ Rails.application.routes.draw do
     # Devise routes for authentication
     devise_for :users, controllers: {
       registrations: 'users/registrations',
-      sessions: 'users/sessions'
+      sessions: 'users/sessions',
+      passwords: 'users/passwords'
     }
     
     # User management
