@@ -41,28 +41,56 @@
         {
           "name": "RAILS_HOSTS",
           "value": ".amazonaws.com,.elb.amazonaws.com,cruxmarketing.ai"
+        },
+        {
+          "name": "AI_PROVIDER",
+          "value": "bedrock"
+        },
+        {
+          "name": "MAILER_SENDER",
+          "value": "noreply@nuvola-networks.com"
         }
       ],
       "secrets": [
         {
           "name": "DATABASE_URL",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-database-url"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-database-url-g77ohU"
         },
         {
           "name": "RAILS_MASTER_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-rails-master-key"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-rails-master-key-2fQEHY"
         },
         {
           "name": "REDIS_URL",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-redis-url"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-redis-url-9HkkES"
         },
         {
           "name": "MAILGUN_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-api-key"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-api-key-8wkcDx"
         },
         {
           "name": "MAILGUN_DOMAIN",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-domain"
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-domain-nBv15L"
+        },
+        {
+          "name": "PINECONE_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-pinecone-api-key-XGOtSa"
+        },
+        {
+          "name": "PINECONE_ENVIRONMENT",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-pinecone-environment-FxYF7A"
+        },
+        {
+          "name": "PINECONE_INDEX_NAME",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-pinecone-index-name-0xhMHd"
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-openai-api-key-HgvFIx"
+        },
+        {
+          "name": "ANTHROPIC_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-anthropic-api-key-4ItdAq"
         }
       ],
       "logConfiguration": {
