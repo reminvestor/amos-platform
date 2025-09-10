@@ -63,10 +63,10 @@ class SimpleAiLandingPageJob < ApplicationJob
 
     Rails.logger.info "Sending request to Claude for HTML generation"
     
-    # Use Claude to generate complete HTML
-    claude_service = ClaudeService.new
+    # Use configured AI service to generate complete HTML
+    ai_service = AiServiceHelper.get_service
     # Use Claude Opus 4.1 specifically for landing page generation
-    response = claude_service.send_message(system_prompt, user_prompt, model: 'claude-opus-4-1-20250805', max_tokens: 6000, temperature: 0.6)
+    response = ai_service.send_message(system_prompt, user_prompt, model: 'claude-opus-4-1-20250805', max_tokens: 6000, temperature: 0.6)
     
     if response.blank?
       raise "Claude API returned empty response"
@@ -373,11 +373,11 @@ class SimpleAiLandingPageJob < ApplicationJob
     return {} if images.blank?
     
     descriptions = {}
-    openai = OpenaiService.new
+    ai_service = AiServiceHelper.get_service
     
     if images[:hero].present?
       begin
-        descriptions[:hero] = openai.analyze_image(images[:hero], "Hero/banner image for a landing page")
+        descriptions[:hero] = ai_service.analyze_image(images[:hero], "Hero/banner image for a landing page")
         Rails.logger.info "Analyzed hero image: #{descriptions[:hero]}"
       rescue => e
         Rails.logger.error "Failed to analyze hero image: #{e.message}"
@@ -387,7 +387,7 @@ class SimpleAiLandingPageJob < ApplicationJob
     
     if images[:feature1].present?
       begin
-        descriptions[:feature1] = openai.analyze_image(images[:feature1], "Feature section image for a landing page")
+        descriptions[:feature1] = ai_service.analyze_image(images[:feature1], "Feature section image for a landing page")
         Rails.logger.info "Analyzed feature1 image: #{descriptions[:feature1]}"
       rescue => e
         Rails.logger.error "Failed to analyze feature1 image: #{e.message}"
@@ -397,7 +397,7 @@ class SimpleAiLandingPageJob < ApplicationJob
     
     if images[:feature2].present?
       begin
-        descriptions[:feature2] = openai.analyze_image(images[:feature2], "Secondary feature image for a landing page")
+        descriptions[:feature2] = ai_service.analyze_image(images[:feature2], "Secondary feature image for a landing page")
         Rails.logger.info "Analyzed feature2 image: #{descriptions[:feature2]}"
       rescue => e
         Rails.logger.error "Failed to analyze feature2 image: #{e.message}"

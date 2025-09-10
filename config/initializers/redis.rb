@@ -45,8 +45,6 @@ end
 REDIS_OPTIONS = {}
 
 if Rails.env.production?
-  # On Heroku: Keep the SSL scheme but disable SSL verification
-  REDIS_OPTIONS[:ssl_params] = { verify_mode: OpenSSL::SSL::VERIFY_NONE }
   REDIS_OPTIONS[:url] = redis_url
   
   # Add additional options to improve reliability - use options compatible with Redis 5.x
@@ -56,7 +54,7 @@ if Rails.env.production?
   REDIS_OPTIONS[:write_timeout] = 5
   
   # Log the Redis connection setup for debugging
-  Rails.logger.info("Configuring Redis with: #{parsed_uri.scheme}://#{parsed_uri.host}:#{parsed_uri.port}")
+  Rails.logger.info("Configuring Redis with: #{masked_url}")
 else
   # For development, just use the URL as-is
   REDIS_OPTIONS[:url] = redis_url

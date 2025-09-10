@@ -1,11 +1,14 @@
 require 'solid_queue'
 
 Rails.application.routes.draw do
+  # Health check endpoints - must be first!
+  get 'up', to: 'health#up'
+  get 'health', to: 'health#index'
+  get 'health_check', to: 'health#up'
+  
   get "crawler_jobs/index"
   get "crawler_jobs/new"
   get "crawler_jobs/create"
-  # Heroku health check
-  get 'health_check' => proc { [200, {}, ['OK']] }
   
   # Diagnostic route for SSL/headers issues
   get 'debug_headers' => proc { |env| 

@@ -149,6 +149,16 @@ Rails.application.configure do
   config.hosts << "www.cruxmarketing.ai"
   config.hosts << "app.cruxmarketing.ai"
   
+  # Allow ALB DNS names
+  config.hosts << /.*\.elb\.amazonaws\.com$/
+  
   # Skip host authorization for health checks
-  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  config.host_authorization = { 
+    exclude: ->(request) { 
+      request.path == "/up" || 
+      request.path == "/health" || 
+      request.path == "/health_check" ||
+      request.user_agent =~ /ELB-HealthChecker/
+    } 
+  }
 end
