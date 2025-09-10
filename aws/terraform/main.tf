@@ -1,0 +1,848 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+# Variables
+variable "aws_region" {
+  description = "AWS region for deployment"
+  default     = "us-east-1"
+}
+
+variable "app_name" {
+  description = "Application name"
+  default     = "agent-marketing"
+}
+
+variable "environment" {
+  description = "Environment name"
+  default     = "production"
+}
+
+variable "domain_name" {
+  description = "Domain name for the application"
+  type        = string
+}
+
+variable "github_owner" {
+  description = "GitHub repository owner"
+  type        = string
+  default     = "rickbarkley"
+}
+
+variable "github_repo" {
+  description = "GitHub repository name"
+  type        = string
+  default     = "agent_marketing"
+}
+
+variable "github_branch" {
+  description = "GitHub branch to deploy from"
+  type        = string
+  default     = "main"
+}
+
+variable "github_token" {
+  description = "GitHub personal access token for CodePipeline"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# VPC Configuration
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+  version = "5.0.0"
+
+  name = "${var.app_name}-vpc"
+  cidr = "10.0.0.0/16"
+
+  azs             = ["${var.aws_region}a", "${var.aws_region}b"]
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
+
+  enable_nat_gateway = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
+# RDS PostgreSQL Database
+resource "aws_db_subnet_group" "main" {
+  name       = "${var.app_name}-db-subnet-group"
+  subnet_ids = module.vpc.private_subnets
+
+  tags = {
+    Name = "${var.app_name} DB subnet group"
+  }
+}
+
+resource "aws_security_group" "rds" {
+  name_prefix = "${var.app_name}-rds"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = [module.vpc.vpc_cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_db_instance" "postgres" {
+  identifier     = "${var.app_name}-db"
+  engine         = "postgres"
+  engine_version = "15.8"
+  instance_class = "db.t3.micro"
+  
+  allocated_storage     = 20
+  max_allocated_storage = 100
+  storage_encrypted     = true
+  
+  db_name  = "agent_marketing_production"
+  username = "postgres"
+  password = random_password.db_password.result
+  
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  
+  skip_final_snapshot = false
+  final_snapshot_identifier = "${var.app_name}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+  
+  backup_retention_period = 7
+  backup_window          = "03:00-04:00"
+  maintenance_window     = "sun:04:00-sun:05:00"
+  
+  tags = {
+    Name        = "${var.app_name}-database"
+    Environment = var.environment
+  }
+}
+
+resource "random_password" "db_password" {
+  length  = 32
+  special = true
+}
+
+# S3 Bucket for Active Storage
+resource "aws_s3_bucket" "storage" {
+  bucket = "${var.app_name}-storage-${data.aws_caller_identity.current.account_id}"
+
+  tags = {
+    Name        = "${var.app_name} Storage"
+    Environment = var.environment
+  }
+}
+
+resource "aws_s3_bucket_versioning" "storage" {
+  bucket = aws_s3_bucket.storage.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "storage" {
+  bucket = aws_s3_bucket.storage.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "storage" {
+  bucket = aws_s3_bucket.storage.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# ECR Repository for Docker images
+resource "aws_ecr_repository" "app" {
+  name                 = var.app_name
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+# ECS Cluster
+resource "aws_ecs_cluster" "main" {
+  name = "${var.app_name}-cluster"
+
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+}
+
+# Application Load Balancer
+resource "aws_lb" "main" {
+  name               = "${var.app_name}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets           = module.vpc.public_subnets
+
+  enable_deletion_protection = false
+  enable_http2              = true
+
+  tags = {
+    Name        = "${var.app_name}-alb"
+    Environment = var.environment
+  }
+}
+
+resource "aws_security_group" "alb" {
+  name_prefix = "${var.app_name}-alb"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Target Group
+resource "aws_lb_target_group" "app" {
+  name     = "${var.app_name}-tg-ssl"
+  port     = 3000
+  protocol = "HTTP"
+  vpc_id   = module.vpc.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/up"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+
+  deregistration_delay = 30
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# HTTP Listener (only)
+# ACM Certificate
+resource "aws_acm_certificate" "main" {
+  count = var.domain_name != "" ? 1 : 0
+  
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+
+  subject_alternative_names = [
+    "*.${var.domain_name}"
+  ]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_acm_certificate_validation" "main" {
+  count = var.domain_name != "" ? 1 : 0
+  
+  certificate_arn = aws_acm_certificate.main[0].arn
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# ALB Listener - HTTP
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+}
+
+# ALB Listener - HTTPS (only created when certificate is validated)
+resource "aws_lb_listener" "https" {
+  count = var.domain_name != "" ? 1 : 0
+  
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
+  certificate_arn   = aws_acm_certificate_validation.main[0].certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+  
+  depends_on = [aws_acm_certificate_validation.main]
+}
+
+# ECS Task Definition
+resource "aws_ecs_task_definition" "app" {
+  family                   = var.app_name
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = var.app_name
+      image = "${aws_ecr_repository.app.repository_url}:latest"
+      
+      portMappings = [
+        {
+          containerPort = 3000
+          protocol      = "tcp"
+        }
+      ]
+      
+      environment = [
+        {
+          name  = "RAILS_ENV"
+          value = "production"
+        },
+        {
+          name  = "RAILS_LOG_TO_STDOUT"
+          value = "true"
+        },
+        {
+          name  = "APPLICATION_HOST"
+          value = aws_lb.main.dns_name
+        },
+        {
+          name  = "AWS_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "AWS_S3_BUCKET"
+          value = aws_s3_bucket.storage.id
+        },
+        {
+          name  = "AI_PROVIDER"
+          value = "bedrock"
+        },
+        {
+          name  = "PORT"
+          value = "3000"
+        }
+      ]
+      
+      secrets = [
+        {
+          name      = "DATABASE_URL"
+          valueFrom = aws_secretsmanager_secret.database_url.arn
+        },
+        {
+          name      = "RAILS_MASTER_KEY"
+          valueFrom = aws_secretsmanager_secret.rails_master_key.arn
+        }
+      ]
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-create-group"  = "true"
+          "awslogs-group"         = "/ecs/${var.app_name}"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+      
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+    }
+  ])
+}
+
+# ECS Service
+resource "aws_ecs_service" "app" {
+  name            = var.app_name
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+  
+  # Give the container more time to start before health checks begin
+  health_check_grace_period_seconds = 300
+  
+  # Enable ECS Execute Command for debugging and maintenance
+  enable_execute_command = true
+
+  network_configuration {
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    subnets          = module.vpc.private_subnets
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name   = var.app_name
+    container_port   = 3000
+  }
+
+  depends_on = [
+    aws_lb_listener.http
+  ]
+}
+
+resource "aws_security_group" "ecs_tasks" {
+  name_prefix = "${var.app_name}-ecs-tasks"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port       = 3000
+    to_port         = 3000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# IAM Roles
+resource "aws_iam_role" "ecs_execution_role" {
+  name = "${var.app_name}-ecs-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
+  role       = aws_iam_role.ecs_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_role_policy" "ecs_execution_secrets" {
+  name = "${var.app_name}-ecs-execution-secrets"
+  role = aws_iam_role.ecs_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [
+          aws_secretsmanager_secret.database_url.arn,
+          aws_secretsmanager_secret.rails_master_key.arn,
+          aws_secretsmanager_secret.redis_url.arn
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "ecs_execution_logs" {
+  name = "${var.app_name}-ecs-execution-logs"
+  role = aws_iam_role.ecs_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:${var.aws_region}:*:*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "ecs_task_role" {
+  name = "${var.app_name}-ecs-task-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# Task role policy for S3 access
+resource "aws_iam_role_policy" "ecs_task_s3" {
+  name = "${var.app_name}-ecs-task-s3"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.storage.arn,
+          "${aws_s3_bucket.storage.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# IAM policy for ECS Execute Command (SSM)
+resource "aws_iam_role_policy" "ecs_task_ssm" {
+  name = "${var.app_name}-ecs-task-ssm"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Task role policy for Bedrock access
+resource "aws_iam_role_policy" "ecs_task_bedrock" {
+  name = "${var.app_name}-ecs-task-bedrock"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+        ]
+        Resource = [
+          "arn:aws:bedrock:${var.aws_region}::foundation-model/anthropic.claude-opus-4-1-20250805-v1:0",
+          "arn:aws:bedrock:${var.aws_region}::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0",
+          "arn:aws:bedrock:${var.aws_region}::foundation-model/amazon.titan-image-generator-v2:0"
+        ]
+      }
+    ]
+  })
+}
+
+# ElastiCache subnet group
+resource "aws_elasticache_subnet_group" "redis" {
+  name       = "${var.app_name}-redis-subnet-group"
+  subnet_ids = module.vpc.private_subnets
+
+  tags = {
+    Name = "${var.app_name}-redis-subnet-group"
+  }
+}
+
+# Security group for ElastiCache
+resource "aws_security_group" "redis" {
+  name        = "${var.app_name}-redis-sg"
+  description = "Security group for ElastiCache Redis"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port       = 6379
+    to_port         = 6379
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ecs_tasks.id]
+    description     = "Allow Redis access from ECS tasks"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.app_name}-redis-sg"
+  }
+}
+
+# ElastiCache Redis cluster
+resource "aws_elasticache_cluster" "redis" {
+  cluster_id           = "${var.app_name}-redis"
+  engine               = "redis"
+  node_type            = "cache.t3.micro"
+  num_cache_nodes      = 1
+  parameter_group_name = "default.redis7"
+  engine_version       = "7.0"
+  port                 = 6379
+  subnet_group_name    = aws_elasticache_subnet_group.redis.name
+  security_group_ids   = [aws_security_group.redis.id]
+
+  tags = {
+    Name = "${var.app_name}-redis"
+  }
+}
+
+# Secrets Manager
+resource "aws_secretsmanager_secret" "database_url" {
+  name = "${var.app_name}-database-url"
+}
+
+resource "aws_secretsmanager_secret_version" "database_url" {
+  secret_id = aws_secretsmanager_secret.database_url.id
+  secret_string = "postgresql://${aws_db_instance.postgres.username}:${random_password.db_password.result}@${aws_db_instance.postgres.endpoint}/${aws_db_instance.postgres.db_name}"
+}
+
+resource "aws_secretsmanager_secret" "rails_master_key" {
+  name = "${var.app_name}-rails-master-key"
+}
+
+resource "aws_secretsmanager_secret" "redis_url" {
+  name = "${var.app_name}-redis-url"
+}
+
+resource "aws_secretsmanager_secret_version" "redis_url" {
+  secret_id = aws_secretsmanager_secret.redis_url.id
+  secret_string = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:${aws_elasticache_cluster.redis.cache_nodes[0].port}"
+}
+
+# Data sources
+data "aws_caller_identity" "current" {}
+
+# VPC Endpoints for private subnet access to AWS services
+resource "aws_vpc_endpoint" "secrets_manager" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.secretsmanager"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = module.vpc.private_subnets
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  
+  private_dns_enabled = true
+  
+  tags = {
+    Name = "${var.app_name}-secrets-manager-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ecr.dkr"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = module.vpc.private_subnets
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  
+  private_dns_enabled = true
+  
+  tags = {
+    Name = "${var.app_name}-ecr-dkr-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.ecr.api"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = module.vpc.private_subnets
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  
+  private_dns_enabled = true
+  
+  tags = {
+    Name = "${var.app_name}-ecr-api-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "logs" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.logs"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = module.vpc.private_subnets
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  
+  private_dns_enabled = true
+  
+  tags = {
+    Name = "${var.app_name}-logs-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = module.vpc.vpc_id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = module.vpc.private_route_table_ids
+  
+  tags = {
+    Name = "${var.app_name}-s3-endpoint"
+  }
+}
+
+resource "aws_security_group" "vpc_endpoints" {
+  name        = "${var.app_name}-vpc-endpoints"
+  description = "Security group for VPC endpoints"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    description = "HTTPS from VPC"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [module.vpc.vpc_cidr_block]
+  }
+
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  tags = {
+    Name = "${var.app_name}-vpc-endpoints"
+  }
+}
+
+# Outputs
+output "alb_dns_name" {
+  value       = aws_lb.main.dns_name
+  description = "DNS name of the load balancer - use this to access your app"
+}
+
+output "ecr_repository_url" {
+  value       = aws_ecr_repository.app.repository_url
+  description = "URL of the ECR repository"
+}
+
+output "database_endpoint" {
+  value       = aws_db_instance.postgres.endpoint
+  description = "RDS database endpoint"
+}
+
+output "certificate_arn" {
+  value       = var.domain_name != "" ? aws_acm_certificate.main[0].arn : ""
+  description = "ARN of the ACM certificate"
+}
+
+output "certificate_validation_records" {
+  value = var.domain_name != "" ? {
+    for dvo in aws_acm_certificate.main[0].domain_validation_options : dvo.domain_name => {
+      name  = dvo.resource_record_name
+      value = dvo.resource_record_value
+      type  = dvo.resource_record_type
+    }
+  } : {}
+  description = "DNS records required for certificate validation"
+}
+
+output "redis_endpoint" {
+  value       = aws_elasticache_cluster.redis.cache_nodes[0].address
+  description = "Redis cluster endpoint"
+}
+
+output "setup_instructions" {
+  value = <<EOF
+🎉 AWS Infrastructure Created Successfully!
+
+Next steps:
+
+1. Store your Rails master key:
+   aws secretsmanager put-secret-value \
+     --secret-id "${aws_secretsmanager_secret.rails_master_key.name}" \
+     --secret-string "$(cat config/master.key)" \
+     --region ${var.aws_region}
+
+2. Build and deploy your application:
+   ./aws/deploy.sh
+
+3. Access your application:
+   http://${aws_lb.main.dns_name}
+
+Note: For production use with a custom domain, you'll need to:
+- Set up an SSL certificate manually
+- Configure your DNS to point to the load balancer
+EOF
+  description = "Setup instructions"
+}
