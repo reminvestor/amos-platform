@@ -115,6 +115,24 @@ resource "aws_codepipeline" "app" {
   }
 
   stage {
+    name = "Terraform"
+
+    action {
+      name             = "Terraform"
+      category         = "Build"
+      owner            = "AWS"
+      provider         = "CodeBuild"
+      input_artifacts  = ["source_output"]
+      output_artifacts = ["terraform_output"]
+      version          = "1"
+
+      configuration = {
+        ProjectName = aws_codebuild_project.terraform.name
+      }
+    }
+  }
+
+  stage {
     name = "Build"
 
     action {
@@ -199,7 +217,10 @@ resource "aws_iam_role_policy" "codepipeline" {
           "codebuild:BatchGetBuilds",
           "codebuild:StartBuild"
         ]
-        Resource = aws_codebuild_project.app.arn
+        Resource = [
+          aws_codebuild_project.app.arn,
+          aws_codebuild_project.terraform.arn
+        ]
       },
       {
         Effect = "Allow"
