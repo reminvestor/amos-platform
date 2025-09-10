@@ -21,7 +21,9 @@ phases:
         encrypt = true
         EOF
       - echo Initializing Terraform...
-      - terraform init -backend-config=backend.conf
+      - terraform init -backend-config=backend.conf -reconfigure
+      - echo Pulling latest state...
+      - terraform refresh -var="domain_name=cruxmarketing.ai"
       - echo Validating Terraform configuration...
       - terraform validate
 
