@@ -378,6 +378,10 @@ resource "aws_ecs_task_definition" "app" {
         {
           name  = "PORT"
           value = "3000"
+        },
+        {
+          name  = "MAILER_SENDER"
+          value = "noreply@nuvola-networks.com"
         }
       ]
       
@@ -396,31 +400,31 @@ resource "aws_ecs_task_definition" "app" {
         },
         {
           name      = "MAILGUN_API_KEY"
-          valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-mailgun-api-key"
+          valueFrom = data.aws_secretsmanager_secret.mailgun_api_key.arn
         },
         {
           name      = "MAILGUN_DOMAIN"
-          valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-mailgun-domain"
+          valueFrom = data.aws_secretsmanager_secret.mailgun_domain.arn
         },
         {
           name      = "PINECONE_API_KEY"
-          valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-pinecone-api-key"
+          valueFrom = data.aws_secretsmanager_secret.pinecone_api_key.arn
         },
         {
           name      = "PINECONE_ENVIRONMENT"
-          valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-pinecone-environment"
+          valueFrom = data.aws_secretsmanager_secret.pinecone_environment.arn
         },
         {
           name      = "PINECONE_INDEX_NAME"
-          valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-pinecone-index-name"
+          valueFrom = data.aws_secretsmanager_secret.pinecone_index_name.arn
         },
         {
           name      = "OPENAI_API_KEY"
-          valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-openai-api-key"
+          valueFrom = data.aws_secretsmanager_secret.openai_api_key.arn
         },
         {
           name      = "ANTHROPIC_API_KEY"
-          valueFrom = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-anthropic-api-key"
+          valueFrom = data.aws_secretsmanager_secret.anthropic_api_key.arn
         }
       ]
       
@@ -534,13 +538,13 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
           aws_secretsmanager_secret.database_url.arn,
           aws_secretsmanager_secret.rails_master_key.arn,
           aws_secretsmanager_secret.redis_url.arn,
-          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-mailgun-api-key-*",
-          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-mailgun-domain-*",
-          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-pinecone-api-key-*",
-          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-pinecone-environment-*",
-          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-pinecone-index-name-*",
-          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-openai-api-key-*",
-          "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.app_name}-anthropic-api-key-*"
+          data.aws_secretsmanager_secret.mailgun_api_key.arn,
+          data.aws_secretsmanager_secret.mailgun_domain.arn,
+          data.aws_secretsmanager_secret.pinecone_api_key.arn,
+          data.aws_secretsmanager_secret.pinecone_environment.arn,
+          data.aws_secretsmanager_secret.pinecone_index_name.arn,
+          data.aws_secretsmanager_secret.openai_api_key.arn,
+          data.aws_secretsmanager_secret.anthropic_api_key.arn
         ]
       }
     ]
@@ -733,6 +737,35 @@ resource "aws_secretsmanager_secret_version" "redis_url" {
 
 # Data sources
 data "aws_caller_identity" "current" {}
+
+# Data sources for externally managed secrets
+data "aws_secretsmanager_secret" "mailgun_api_key" {
+  name = "${var.app_name}-mailgun-api-key"
+}
+
+data "aws_secretsmanager_secret" "mailgun_domain" {
+  name = "${var.app_name}-mailgun-domain"
+}
+
+data "aws_secretsmanager_secret" "pinecone_api_key" {
+  name = "${var.app_name}-pinecone-api-key"
+}
+
+data "aws_secretsmanager_secret" "pinecone_environment" {
+  name = "${var.app_name}-pinecone-environment"
+}
+
+data "aws_secretsmanager_secret" "pinecone_index_name" {
+  name = "${var.app_name}-pinecone-index-name"
+}
+
+data "aws_secretsmanager_secret" "openai_api_key" {
+  name = "${var.app_name}-openai-api-key"
+}
+
+data "aws_secretsmanager_secret" "anthropic_api_key" {
+  name = "${var.app_name}-anthropic-api-key"
+}
 
 # VPC Endpoints for private subnet access to AWS services
 resource "aws_vpc_endpoint" "secrets_manager" {
