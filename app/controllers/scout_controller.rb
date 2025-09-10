@@ -359,6 +359,7 @@ class ScoutController < ApplicationController
 
   def stream_final_response(response_data)
     Rails.logger.info "🌊 stream_final_response called with data keys: #{response_data.keys}"
+    Rails.logger.info "📝 Message content: #{response_data[:message]}"
     
     # Create the final SSE response
     data = JSON.generate({ type: 'response', data: response_data })

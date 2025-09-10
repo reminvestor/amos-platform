@@ -17,23 +17,20 @@ class ScoutGenericToolsService
   def initialize(user, entity)
     @user = user
     @entity = entity
-    @ai_service = case AI_PROVIDER.downcase
-    when 'grok'
-      GrokService.new
-    when 'claude'
-      ClaudeService.new
-    when 'openai'
-      OpenaiService.new
-    else
-      raise "Unknown AI provider: #{AI_PROVIDER}. Use 'grok', 'claude', or 'openai'"
-    end
-    @ai_provider_name = case AI_PROVIDER.downcase
-                        when 'grok' then 'Grok'
-                        when 'claude' then 'Claude'
-                        when 'openai' then 'OpenAI GPT-5'
-                        else AI_PROVIDER
+    
+    # Use the centralized AI service configuration
+    @ai_service = AiServiceHelper.get_service
+    
+    # Get the provider name from the configured service
+    @ai_provider_name = case Rails.application.config.ai_service
+                        when :grok then 'Grok'
+                        when :claude then 'Claude'
+                        when :openai then 'OpenAI GPT-5'
+                        when :bedrock then 'AWS Bedrock'
+                        else Rails.application.config.ai_service.to_s
                         end
-    Rails.logger.info "🤖 Scout using AI provider: #{AI_PROVIDER}"
+    
+    Rails.logger.info "🤖 Scout using AI provider: #{Rails.application.config.ai_service}"
   end
 
   # Generic function calling tools for AI providers
@@ -213,7 +210,7 @@ class ScoutGenericToolsService
         system_prompt,
         conversation_messages,
         
-        max_tokens: 4000,
+        max_tokens: 25000,
         temperature: 0.7
       )
       
@@ -288,7 +285,7 @@ class ScoutGenericToolsService
         system_prompt,
         conversation_messages,
         
-        max_tokens: 4000,
+        max_tokens: 25000,
         temperature: 0.7,
         json_mode: true  # Force JSON output for tool calling
       )
@@ -364,13 +361,15 @@ class ScoutGenericToolsService
     available_models = ScoutDataRegistry.available_object_types
     
     # Dynamic AI identity based on provider
-    ai_identity = case AI_PROVIDER.downcase
-    when 'grok'
+    ai_identity = case Rails.application.config.ai_service
+    when :grok
       "You are Scout, the AI marketing assistant powered by Grok. You have access to a simple, powerful toolset for accessing and creating marketing data."
-    when 'claude'
+    when :claude
       "You are Scout, the AI marketing assistant powered by Claude. You have access to a simple, powerful toolset for accessing and creating marketing data."
-    when 'openai'
+    when :openai
       "You are Scout, the AI marketing assistant powered by OpenAI GPT-5. You have access to a simple, powerful toolset for accessing and creating marketing data."
+    when :bedrock
+      "You are Scout, the AI marketing assistant powered by AWS Bedrock. You have access to a simple, powerful toolset for accessing and creating marketing data."
     else
       "You are Scout, the AI marketing assistant. You have access to a simple, powerful toolset for accessing and creating marketing data."
     end
@@ -508,7 +507,7 @@ class ScoutGenericToolsService
       You MUST respond with valid JSON in this exact format:
 
       {
-        "message": "Your conversational response to the user",
+        "message": "Your conversational response to the user using MARKDOWN formatting (NOT HTML)",
         "tool_calls": [
           {
             "name": "get_schema", 
@@ -569,15 +568,19 @@ class ScoutGenericToolsService
       10. **FORMAT RESPONSES IN MARKDOWN** for better readability:
           - Use ## headers for main sections
           - Use ### for subsections  
-          - Use **bold** for important metrics
+          - Use **bold** for important metrics and emphasis
           - Use bullet points (- ) for lists
           - Use numbered lists (1. ) for recommendations
           - Use > blockquotes for key insights
           - Use `code` formatting for technical terms
           - Keep paragraphs short and scannable
+          - NEVER use HTML tags like <strong>, <em>, <ul>, <li>, etc.
+          - ALWAYS use Markdown syntax: **bold**, *italic*, - bullet, etc.
 
       **MARKDOWN FORMATTING EXAMPLE:**
       "## 📊 Campaign Analysis\\n\\n**Overall Performance:**\\n- 6 total campaigns\\n- 3 completed, 1 in progress, 2 drafts\\n\\n### 🎯 Top Performer\\n**\\"new test\\"** campaign:\\n- **50% click rate** (excellent!)\\n- 100% delivery rate\\n- 0 unsubscribes\\n\\n### ⚠️ Areas for Improvement\\n1. **Open rates at 0%** - check spam folders\\n2. **Subject line optimization** needed\\n3. **A/B testing** recommended"
+      
+      **NEVER use HTML formatting. ALWAYS use Markdown.**
 
       Be conversational in your message but use tools intelligently behind the scenes.
     PROMPT
@@ -1068,7 +1071,14 @@ class ScoutGenericToolsService
       5. Suggest relevant next steps based on the actual results
       #{has_metrics?(tool_results) ? "6. ANALYZE THE SPECIFIC METRICS provided in the data above\n      7. Provide actionable insights based on the real performance numbers" : "6. Focus on confirming the action was completed successfully"}
 
-      Provide your updated response as plain text (not JSON):
+      IMPORTANT: Format your response using Markdown for better readability:
+      - Use **bold** for emphasis (e.g., **50% open rate**)
+      - Use bullet points (-) for lists
+      - Use ### for section headers
+      - Do NOT use HTML tags like <strong> or <em>
+      - Replace newlines with \\n in your response
+
+      Provide your updated response in Markdown format (not JSON):
     PROMPT
     
     # Log the complete prompt being sent to Claude

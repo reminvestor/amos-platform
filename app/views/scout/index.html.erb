@@ -428,6 +428,33 @@
   line-height: 1.5 !important;
 }
 
+#workspace .message-content strong {
+  font-weight: 600 !important;
+  color: inherit !important;
+}
+
+#workspace .message-content em {
+  font-style: italic !important;
+  color: inherit !important;
+}
+
+#workspace .message-content code {
+  background: rgba(0, 0, 0, 0.05) !important;
+  padding: 0.125rem 0.25rem !important;
+  border-radius: 0.25rem !important;
+  font-family: monospace !important;
+  font-size: 0.875em !important;
+}
+
+#workspace .message-content a {
+  color: #007bff !important;
+  text-decoration: underline !important;
+}
+
+#workspace .message-content a:hover {
+  color: #0056b3 !important;
+}
+
 #workspace .message-time {
   opacity: 0.7 !important;
   font-size: 0.75rem !important;
@@ -459,6 +486,34 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initial scroll
   scrollToBottom();
 
+  // Simple markdown parser for messages
+  function parseSimpleMarkdown(text) {
+    console.log('📝 Parsing markdown:', text);
+    
+    // Escape HTML first for security
+    const div = document.createElement('div');
+    div.textContent = text;
+    let html = div.innerHTML;
+    
+    // Convert markdown bold **text** to <strong>
+    // More robust regex that handles multiple bold sections and edge cases
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Convert markdown headers
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    
+    // Convert markdown lists (simple version)
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>');
+    
+    // Convert newlines to <br>
+    html = html.replace(/\n/g, '<br>');
+    
+    console.log('📝 Parsed result:', html);
+    return html;
+  }
+
   // Build a message DOM element (optionally tagged with DB id)
   function buildMessageElement({ id = null, content, role, timestamp = null }) {
     const wrapper = document.createElement('div');
@@ -466,9 +521,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (id) wrapper.dataset.messageId = id;
 
     const time = timestamp || new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    
+    // Parse markdown for assistant messages
+    const processedContent = role === 'assistant' ? parseSimpleMarkdown(content) : content.replace(/\n/g, '<br>');
+    
     wrapper.innerHTML = `
       <div class="message-bubble">
-        <div class="message-content">${content.replace(/\n/g, '<br>')}</div>
+        <div class="message-content">${processedContent}</div>
         <small class="message-time">${time}</small>
       </div>
     `;
@@ -618,6 +677,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.data.error) {
                   addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
                 } else {
+                  console.log('📨 Assistant message content:', data.data.message);
                   addMessage(data.data.message, 'assistant');
                   
                   // Show tool usage info

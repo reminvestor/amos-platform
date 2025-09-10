@@ -4,28 +4,41 @@ require 'json'
 class BedrockService
   def initialize
     @client = Aws::BedrockRuntime::Client.new(
-      region: ENV['AWS_REGION'] || 'us-east-1',
-      credentials: aws_credentials
+      region: ENV['AWS_REGION'] || 'us-east-1'
+      # Let AWS SDK use the default credential chain
+      # This will automatically find credentials from:
+      # 1. Environment variables
+      # 2. ECS/EC2 instance profile  
+      # 3. AWS CLI configuration (~/.aws/credentials)
     )
   end
 
   # Main method to send messages to Claude via Bedrock
-  def send_message(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7)
+  def send_message(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false)
     # Map model names to Bedrock model IDs
+    # Using cross-region inference profiles (us. prefix) for better availability
     model_id = case model
     when 'claude-opus-4-1', 'claude-opus-4-1-20250805'
-      'anthropic.claude-opus-4-1-20250805-v1:0'
+      'us.anthropic.claude-opus-4-1-20250805-v1:0'
     when 'claude-3-5-sonnet', 'claude-3.5-sonnet'
-      'anthropic.claude-3-5-sonnet-20241022-v2:0'
+      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
     when 'claude-3-haiku'
-      'anthropic.claude-3-5-haiku-20241022-v1:0'
+      'us.anthropic.claude-3-5-haiku-20241022-v1:0'
     else
       # Default to Claude 3.5 Sonnet v2
-      'anthropic.claude-3-5-sonnet-20241022-v2:0'
+      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
     end
 
     # Format messages for Claude
     formatted_messages = format_messages_for_claude(messages)
+    
+    # Modify system prompt for JSON mode if requested
+    final_system_prompt = if json_mode && system_prompt.present?
+      Rails.logger.info "🔧 Bedrock JSON mode enabled - enforcing structured output"
+      "#{system_prompt}\n\nCRITICAL: You MUST respond with valid JSON only. Do not include any text before or after the JSON. Your entire response must be a valid JSON object."
+    else
+      system_prompt
+    end
 
     # Build the request body for Claude
     request_body = {
@@ -36,7 +49,7 @@ class BedrockService
     }
 
     # Add system prompt if provided
-    request_body[:system] = system_prompt if system_prompt.present?
+    request_body[:system] = final_system_prompt if final_system_prompt.present?
 
     Rails.logger.info "Sending request to Bedrock Claude (#{model_id})"
     
@@ -166,22 +179,6 @@ class BedrockService
   end
 
   private
-
-  def aws_credentials
-    # Use IAM role credentials if available (in ECS/EC2)
-    # Otherwise fall back to configured credentials
-    if ENV['AWS_EXECUTION_ENV'] || ENV['ECS_CONTAINER_METADATA_URI_V4']
-      # Running in AWS environment, use instance credentials
-      Aws::InstanceProfileCredentials.new
-    else
-      # Local development or explicit credentials
-      Aws::Credentials.new(
-        ENV['AWS_ACCESS_KEY_ID'],
-        ENV['AWS_SECRET_ACCESS_KEY'],
-        ENV['AWS_SESSION_TOKEN'] # Optional, for temporary credentials
-      )
-    end
-  end
 
   def format_messages_for_claude(messages)
     # Ensure messages is an array
