@@ -30,7 +30,7 @@
               <div class="card-header text-center bg-transparent pt-4 border-bottom-0">
                 <h4 class="mb-1">Starter</h4>
                 <p class="text-muted mb-4">For individuals and small teams</p>
-                <h2 class="card-price"><span class="price-value">$29</span><small class="text-muted">/month</small></h2>
+                <h2 class="card-price"><span class="price-value" data-monthly="29">$29</span><small class="text-muted">/month</small></h2>
               </div>
               <div class="card-body">
                 <ul class="list-unstyled">
@@ -54,7 +54,7 @@
                 <span class="badge bg-white text-primary position-absolute top-0 start-50 translate-middle px-3 py-2">MOST POPULAR</span>
                 <h4 class="mb-1">Pro</h4>
                 <p class="text-white-50 mb-4">For growing businesses and teams</p>
-                <h2 class="card-price text-white"><span class="price-value">$119</span><small class="text-white-50">/month</small></h2>
+                <h2 class="card-price text-white"><span class="price-value" data-monthly="119">$119</span><small class="text-white-50">/month</small></h2>
               </div>
               <div class="card-body">
                 <ul class="list-unstyled">
@@ -77,7 +77,7 @@
               <div class="card-header text-center bg-transparent pt-4 border-bottom-0">
                 <h4 class="mb-1">Business</h4>
                 <p class="text-muted mb-4">For established teams</p>
-                <h2 class="card-price"><span class="price-value">$299</span><small class="text-muted">/month</small></h2>
+                <h2 class="card-price"><span class="price-value" data-monthly="299">$299</span><small class="text-muted">/month</small></h2>
               </div>
               <div class="card-body">
                 <ul class="list-unstyled">
@@ -212,18 +212,24 @@
   document.addEventListener('DOMContentLoaded', function() {
     const toggle = document.getElementById('pricingToggle');
     const priceElements = document.querySelectorAll('.price-value');
-    
-    const monthlyPrices = ['$29', '$119', '$299', 'Custom'];
-    const annualPrices = ['$23', '$95', '$239', 'Custom'];
-    
-    toggle.addEventListener('change', function() {
-      priceElements.forEach((el, index) => {
+
+    function formatPrice(value){ return `$${value}`; }
+
+    function updatePrices(){
+      priceElements.forEach((el) => {
+        const monthly = parseFloat(el.getAttribute('data-monthly'));
+        if (isNaN(monthly)) return; // skip 'Custom'
         if (toggle.checked) {
-          el.textContent = annualPrices[index];
+          // Annual pricing = 20% discount billed monthly equivalent
+          const annualMonthly = Math.round(monthly * 0.8);
+          el.textContent = formatPrice(annualMonthly);
         } else {
-          el.textContent = monthlyPrices[index];
+          el.textContent = formatPrice(monthly);
         }
       });
-    });
+    }
+
+    toggle.addEventListener('change', updatePrices);
+    updatePrices();
   });
 </script> 
