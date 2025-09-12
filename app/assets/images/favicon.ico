@@ -1,0 +1,11 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark blue background -->
+  <rect width="32" height="32" fill="#1a1f36"/>
+  
+  <!-- Mountain peaks simplified for small size -->
+  <!-- Left peak -->
+  <path d="M 0 32 L 9 12 L 18 32 Z" fill="#ffffff" opacity="0.9"/>
+  
+  <!-- Right peak (taller) -->
+  <path d="M 12 32 L 22 8 L 32 32 Z" fill="#ffffff"/>
+</svg>

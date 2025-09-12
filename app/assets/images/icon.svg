@@ -1,0 +1,14 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark blue background -->
+  <rect width="512" height="512" fill="#1a1f36"/>
+  
+  <!-- Mountain peaks -->
+  <!-- Left peak -->
+  <path d="M 0 512 L 150 200 L 300 512 Z" fill="#ffffff" opacity="0.9"/>
+  
+  <!-- Right peak (taller) -->
+  <path d="M 200 512 L 350 120 L 512 512 Z" fill="#ffffff"/>
+  
+  <!-- Small accent peak -->
+  <path d="M 380 512 L 450 350 L 512 512 Z" fill="#e0e0e0" opacity="0.8"/>
+</svg>
