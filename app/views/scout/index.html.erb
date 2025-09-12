@@ -490,28 +490,54 @@ document.addEventListener('DOMContentLoaded', function() {
   function parseSimpleMarkdown(text) {
     console.log('📝 Parsing markdown:', text);
     
-    // Escape HTML first for security
-    const div = document.createElement('div');
-    div.textContent = text;
-    let html = div.innerHTML;
+    // First check if the text already contains HTML tags like <strong>
+    // If it does, we need to handle it differently
+    const hasHtmlTags = /<(strong|em|ul|li|h[1-6])>/i.test(text);
     
-    // Convert markdown bold **text** to <strong>
-    // More robust regex that handles multiple bold sections and edge cases
-    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // Convert markdown headers
-    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    
-    // Convert markdown lists (simple version)
-    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-    html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>');
-    
-    // Convert newlines to <br>
-    html = html.replace(/\n/g, '<br>');
-    
-    console.log('📝 Parsed result:', html);
-    return html;
+    if (hasHtmlTags) {
+      // Text already has HTML, so we'll sanitize it but preserve the allowed tags
+      const div = document.createElement('div');
+      div.innerHTML = text; // Use innerHTML to preserve HTML
+      
+      // Remove any dangerous tags but keep formatting tags
+      const allowedTags = ['strong', 'em', 'b', 'i', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'p'];
+      const elements = div.querySelectorAll('*');
+      elements.forEach(el => {
+        if (!allowedTags.includes(el.tagName.toLowerCase())) {
+          el.replaceWith(el.textContent);
+        }
+      });
+      
+      // Convert newlines to <br> outside of tags
+      let html = div.innerHTML;
+      html = html.replace(/\n/g, '<br>');
+      
+      console.log('📝 Parsed HTML (with existing tags):', html);
+      return html;
+    } else {
+      // No HTML tags, treat as markdown
+      // Escape HTML first for security
+      const div = document.createElement('div');
+      div.textContent = text;
+      let html = div.innerHTML;
+      
+      // Convert markdown bold **text** to <strong>
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      
+      // Convert markdown headers
+      html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      
+      // Convert markdown lists (simple version)
+      html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+      html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>');
+      
+      // Convert newlines to <br>
+      html = html.replace(/\n/g, '<br>');
+      
+      console.log('📝 Parsed markdown:', html);
+      return html;
+    }
   }
 
   // Build a message DOM element (optionally tagged with DB id)
