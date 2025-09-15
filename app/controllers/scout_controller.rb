@@ -649,10 +649,7 @@ class ScoutController < ApplicationController
   def render_campaign_canvas(data = {})
     # Use select to avoid loading all email_deliveries
     campaigns = current_entity.campaigns
-      .select('campaigns.*, 
-        (SELECT COUNT(*) FROM email_deliveries WHERE campaign_id = campaigns.id AND sent_at IS NOT NULL) as sent_count_cache,
-        (SELECT COUNT(*) FROM email_deliveries WHERE campaign_id = campaigns.id AND opened_at IS NOT NULL) as opened_count_cache,
-        (SELECT COUNT(*) FROM email_deliveries WHERE campaign_id = campaigns.id AND clicked_at IS NOT NULL) as clicked_count_cache')
+      .select('campaigns.*, (SELECT COUNT(*) FROM email_deliveries WHERE campaign_id = campaigns.id AND sent_at IS NOT NULL) as sent_count_cache, (SELECT COUNT(*) FROM email_deliveries WHERE campaign_id = campaigns.id AND opened_at IS NOT NULL) as opened_count_cache, (SELECT COUNT(*) FROM email_deliveries WHERE campaign_id = campaigns.id AND clicked_at IS NOT NULL) as clicked_count_cache')
       .includes(:contact_group)
       .recent
       .limit(20)
