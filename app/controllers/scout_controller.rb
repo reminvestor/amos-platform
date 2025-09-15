@@ -646,7 +646,7 @@ class ScoutController < ApplicationController
   end
 
   def render_campaign_canvas(data = {})
-    campaigns = current_entity.campaigns.includes(:email_deliveries, :contact_group).recent.limit(20)
+    campaigns = current_entity.campaigns.includes(:contact_group).recent.limit(20)
     
     # Get summary stats
     stats = {

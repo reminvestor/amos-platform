@@ -1,0 +1,52 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Starting database migration on `date`
+      - CLUSTER_NAME="agent-marketing-cluster"
+      - SERVICE_NAME="agent-marketing"
+      - TASK_FAMILY="agent-marketing"
+  build:
+    commands:
+      - echo Getting network configuration from service...
+      - |
+        SERVICE_CONFIG=$(aws ecs describe-services \
+          --cluster $CLUSTER_NAME \
+          --services $SERVICE_NAME \
+          --region $AWS_DEFAULT_REGION \
+          --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+          --output json)
+      - SUBNETS=$(echo $SERVICE_CONFIG | jq -r '.subnets | join(",")')
+      - SECURITY_GROUPS=$(echo $SERVICE_CONFIG | jq -r '.securityGroups | join(",")')
+      - echo Running database migration task...
+      - |
+        TASK_ARN=$(aws ecs run-task \
+          --cluster $CLUSTER_NAME \
+          --task-definition $TASK_FAMILY \
+          --launch-type FARGATE \
+          --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUPS],assignPublicIp=DISABLED}" \
+          --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["./bin/rails","db:migrate"]}]}' \
+          --region $AWS_DEFAULT_REGION \
+          --query 'tasks[0].taskArn' \
+          --output text)
+      - echo "Migration task started: $TASK_ARN"
+      - echo Waiting for migration to complete...
+      - aws ecs wait tasks-stopped --cluster $CLUSTER_NAME --tasks $TASK_ARN --region $AWS_DEFAULT_REGION
+      - |
+        EXIT_CODE=$(aws ecs describe-tasks \
+          --cluster $CLUSTER_NAME \
+          --tasks $TASK_ARN \
+          --region $AWS_DEFAULT_REGION \
+          --query 'tasks[0].containers[0].exitCode' \
+          --output text)
+      - |
+        if [ "$EXIT_CODE" -eq "0" ]; then
+          echo "Migration completed successfully!"
+        else
+          echo "Migration failed with exit code: $EXIT_CODE"
+          exit 1
+        fi
+  post_build:
+    commands:
+      - echo Migration phase completed on `date`
