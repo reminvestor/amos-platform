@@ -549,7 +549,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const time = timestamp || new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
     
     // Parse markdown for assistant messages
-    const processedContent = role === 'assistant' ? parseSimpleMarkdown(content) : content.replace(/\n/g, '<br>');
+    // First, handle the case where content might have HTML entities
+    let processedContent = content;
+    
+    if (role === 'assistant') {
+      // Decode HTML entities first (convert &lt; back to <)
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = content;
+      processedContent = textarea.value;
+      
+      // Now parse as markdown
+      processedContent = parseSimpleMarkdown(processedContent);
+    } else {
+      processedContent = content.replace(/\n/g, '<br>');
+    }
     
     wrapper.innerHTML = `
       <div class="message-bubble">
