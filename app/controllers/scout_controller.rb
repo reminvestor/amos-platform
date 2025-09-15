@@ -223,13 +223,14 @@ class ScoutController < ApplicationController
         }
       }
     rescue => e
-      Rails.logger.error "Canvas loading error: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
+      Rails.logger.error "Canvas loading error: #{e.class.name}: #{e.message}"
+      Rails.logger.error "Canvas type: #{canvas_type}, Data: #{canvas_data}"
+      Rails.logger.error e.backtrace.first(5).join("\n")
       
       render json: {
         success: false,
-        error: "Sorry, I couldn't load that view."
-      }
+        error: "Sorry, I couldn't load that view. Error: #{e.message}"
+      }, status: :ok
     end
   end
 
