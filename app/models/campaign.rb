@@ -84,6 +84,9 @@ class Campaign < ApplicationRecord
   end
   
   def sent_count
+    # Use cached count if available (from SELECT query)
+    return read_attribute(:sent_count_cache) if has_attribute?(:sent_count_cache)
+    
     # Get actual count from our database first
     db_count = email_deliveries.where.not(sent_at: nil).count
     
@@ -107,10 +110,17 @@ class Campaign < ApplicationRecord
   end
   
   def open_rate
-    # Count emails that were opened from our database
-    db_opened_count = email_deliveries.where.not(opened_at: nil).count
-    db_clicked_count = email_deliveries.where.not(clicked_at: nil).count
-    db_sent_count = email_deliveries.where.not(sent_at: nil).count
+    # Use cached counts if available
+    if has_attribute?(:opened_count_cache) && has_attribute?(:sent_count_cache)
+      db_opened_count = read_attribute(:opened_count_cache)
+      db_clicked_count = read_attribute(:clicked_count_cache)
+      db_sent_count = read_attribute(:sent_count_cache)
+    else
+      # Count emails that were opened from our database
+      db_opened_count = email_deliveries.where.not(opened_at: nil).count
+      db_clicked_count = email_deliveries.where.not(clicked_at: nil).count
+      db_sent_count = email_deliveries.where.not(sent_at: nil).count
+    end
     
     # If we have actual opens in the database, prioritize that data
     if db_opened_count > 0 && db_sent_count > 0
@@ -139,9 +149,15 @@ class Campaign < ApplicationRecord
   end
   
   def click_rate
-    # Count emails that were clicked from our database
-    db_clicked_count = email_deliveries.where.not(clicked_at: nil).count
-    db_sent_count = email_deliveries.where.not(sent_at: nil).count
+    # Use cached counts if available
+    if has_attribute?(:clicked_count_cache) && has_attribute?(:sent_count_cache)
+      db_clicked_count = read_attribute(:clicked_count_cache)
+      db_sent_count = read_attribute(:sent_count_cache)
+    else
+      # Count emails that were clicked from our database
+      db_clicked_count = email_deliveries.where.not(clicked_at: nil).count
+      db_sent_count = email_deliveries.where.not(sent_at: nil).count
+    end
     
     # If we have actual clicks in the database, prioritize that data
     if db_clicked_count > 0 && db_sent_count > 0
