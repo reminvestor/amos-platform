@@ -4,12 +4,17 @@ require 'json'
 class BedrockService
   def initialize
     @client = Aws::BedrockRuntime::Client.new(
-      region: ENV['AWS_REGION'] || 'us-east-1'
+      region: ENV['AWS_REGION'] || 'us-east-1',
       # Let AWS SDK use the default credential chain
       # This will automatically find credentials from:
       # 1. Environment variables
       # 2. ECS/EC2 instance profile  
       # 3. AWS CLI configuration (~/.aws/credentials)
+      
+      # Increase timeout for long-running operations like landing page generation
+      # Default is 60 seconds, but landing pages can take 4-5 minutes
+      http_read_timeout: 600, # 10 minutes
+      http_open_timeout: 30   # 30 seconds to establish connection
     )
   end
 

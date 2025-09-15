@@ -1,5 +1,9 @@
 class SimpleAiLandingPageJob < ApplicationJob
   queue_as :ai_generation
+  
+  # Retry the job if it fails, with exponential backoff
+  retry_on Net::ReadTimeout, wait: :exponentially_longer, attempts: 3
+  retry_on Aws::BedrockRuntime::Errors::ServiceError, wait: :exponentially_longer, attempts: 3
 
   def perform(landing_page_id, description, page_type, entity_id, business_profile_id = nil)
     landing_page = LandingPage.find(landing_page_id)
