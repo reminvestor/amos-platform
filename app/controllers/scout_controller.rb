@@ -647,12 +647,45 @@ class ScoutController < ApplicationController
   end
 
   def render_campaign_canvas(data = {})
-    # Use select to avoid loading all email_deliveries
+    # Load campaigns first with associations
     campaigns = current_entity.campaigns
-      .select('campaigns.*, (SELECT COUNT(*) FROM email_deliveries WHERE campaign_id = campaigns.id AND sent_at IS NOT NULL) as sent_count_cache, (SELECT COUNT(*) FROM email_deliveries WHERE campaign_id = campaigns.id AND opened_at IS NOT NULL) as opened_count_cache, (SELECT COUNT(*) FROM email_deliveries WHERE campaign_id = campaigns.id AND clicked_at IS NOT NULL) as clicked_count_cache')
-      .includes(:contact_group)
+      .includes(:contact_groups, :email_template)
       .recent
       .limit(20)
+    
+    # Get all delivery stats in one query
+    campaign_ids = campaigns.pluck(:id)
+    delivery_stats = EmailDelivery
+      .where(campaign_id: campaign_ids)
+      .group(:campaign_id)
+      .pluck(
+        :campaign_id,
+        Arel.sql("COUNT(*) FILTER (WHERE sent_at IS NOT NULL)"),
+        Arel.sql("COUNT(*) FILTER (WHERE opened_at IS NOT NULL)"),
+        Arel.sql("COUNT(*) FILTER (WHERE clicked_at IS NOT NULL)"),
+        Arel.sql("MIN(sent_at)")
+      )
+    
+    # Build a hash for quick lookup
+    stats_by_campaign = {}
+    delivery_stats.each do |campaign_id, sent_count, opened_count, clicked_count, first_sent|
+      stats_by_campaign[campaign_id] = {
+        sent_count: sent_count,
+        opened_count: opened_count,
+        clicked_count: clicked_count,
+        first_sent_at: first_sent
+      }
+    end
+    
+    # Inject stats into campaigns
+    campaigns.each do |campaign|
+      if stats = stats_by_campaign[campaign.id]
+        campaign.instance_variable_set(:@cached_sent_count, stats[:sent_count])
+        campaign.instance_variable_set(:@cached_opened_count, stats[:opened_count])
+        campaign.instance_variable_set(:@cached_clicked_count, stats[:clicked_count])
+        campaign.instance_variable_set(:@cached_first_sent_at, stats[:first_sent_at])
+      end
+    end
     
     # Get summary stats
     stats = {
