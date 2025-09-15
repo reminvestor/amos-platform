@@ -32,7 +32,7 @@ TASK_ARN=$(aws ecs run-task \
   --task-definition $TASK_DEFINITION \
   --launch-type FARGATE \
   --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUPS],assignPublicIp=DISABLED}" \
-  --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["rails","db:migrate"]}]}' \
+  --overrides '{"containerOverrides":[{"name":"agent-marketing","command":["./bin/rails","db:migrate"]}]}' \
   --region $AWS_REGION \
   --query 'tasks[0].taskArn' \
   --output text)
