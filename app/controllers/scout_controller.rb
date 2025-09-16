@@ -312,8 +312,6 @@ class ScoutController < ApplicationController
     end
   end
   
-  private
-
   # GET /scout/history?before_id=<id>&limit=20
   def history
     session_id = session[:scout_session_id]
@@ -334,6 +332,8 @@ class ScoutController < ApplicationController
       has_more: ScoutMessage.for_session(session_id).count > (before_id.present? ? ScoutMessage.for_session(session_id).where('created_at <= ?', batch.first&.created_at).count : batch.count)
     }
   end
+  
+  private
 
   def stream_update(message)
     puts "🚨 PRODUCTION DEBUG: Streaming update: #{message}"
