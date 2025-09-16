@@ -189,6 +189,24 @@ class ScoutGenericToolsService
         },
         required: ["landing_page_id"]
       }
+    },
+    {
+      name: "link_template_to_campaign",
+      description: "Link an email template to a campaign",
+      input_schema: {
+        type: "object",
+        properties: {
+          campaign_id: {
+            type: "integer",
+            description: "The ID of the campaign to update"
+          },
+          template_id: {
+            type: "integer",
+            description: "The ID of the email template to link"
+          }
+        },
+        required: ["campaign_id", "template_id"]
+      }
     }
   ]
 
@@ -467,6 +485,17 @@ class ScoutGenericToolsService
       CONTACT CREATION EXAMPLES:
       - "create contact John Doe john@doe.com" → create_object("contacts", {email: "john@doe.com", first_name: "John", last_name: "Doe"})
       - "add contact for Jane Smith jane@smith.com" → create_object("contacts", {email: "jane@smith.com", first_name: "Jane", last_name: "Smith"})
+
+      **EMAIL TEMPLATE VARIABLES - CRITICAL:**
+      When creating email templates, ALWAYS use double curly braces {{}} for variable substitution:
+      - Use {{first_name}} NOT [first_name]
+      - Use {{last_name}} NOT [last_name]
+      - Use {{email}} NOT [email]
+      - Use {{full_name}} NOT [full_name]
+      
+      Example: "Hello {{first_name}}, thank you for your interest in {{company_name}}."
+      
+      NEVER use square brackets [] for variables - the system only recognizes double curly braces {{}}.
 
       **SCHEMA DISCOVERY - CRITICAL FOR SUCCESS:**
       
@@ -764,6 +793,8 @@ class ScoutGenericToolsService
         execute_update_landing_page_content(tool_call[:arguments])
       when 'revert_landing_page_to_version'
         execute_revert_landing_page_to_version(tool_call[:arguments])
+      when 'link_template_to_campaign'
+        execute_link_template_to_campaign(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -802,6 +833,8 @@ class ScoutGenericToolsService
         progress_callback&.call("✨ Updating landing page content...")
       when 'revert_landing_page_to_version'
         progress_callback&.call("⏪ Reverting landing page to previous version...")
+      when 'link_template_to_campaign'
+        progress_callback&.call("🔗 Linking email template to campaign...")
       end
       
       result = case tool_call[:name]
@@ -819,6 +852,8 @@ class ScoutGenericToolsService
         execute_update_landing_page_content(tool_call[:arguments])
       when 'revert_landing_page_to_version'
         execute_revert_landing_page_to_version(tool_call[:arguments])
+      when 'link_template_to_campaign'
+        execute_link_template_to_campaign(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -1119,6 +1154,8 @@ class ScoutGenericToolsService
           formatted << format_landing_page_generation_results(result[:result])
         when 'update_landing_page_status'
           formatted << format_landing_page_status_results(result[:result])
+        when 'link_template_to_campaign'
+          formatted << result[:result][:message]
         else
           # Generic success format for other tools
           formatted << format_generic_tool_success(result[:tool_name], result[:result])
@@ -1813,5 +1850,40 @@ class ScoutGenericToolsService
     Rails.logger.info "Enhanced message: '#{user_message}' → '#{enhanced_message}#{canvas_context}'"
     
     enhanced_message + canvas_context
+  end
+
+  def execute_link_template_to_campaign(args)
+    begin
+      campaign_id = args['campaign_id']
+      template_id = args['template_id']
+      
+      # Find the campaign
+      campaign = @entity.campaigns.find_by(id: campaign_id)
+      return { success: false, error: "Campaign not found with ID: #{campaign_id}" } unless campaign
+      
+      # Find the template
+      template = @entity.email_templates.find_by(id: template_id)
+      return { success: false, error: "Email template not found with ID: #{template_id}" } unless template
+      
+      # Link the template to the campaign
+      campaign.update!(email_template_id: template.id)
+      
+      {
+        success: true,
+        object_id: campaign.id,
+        object_type: 'campaigns',
+        data: {
+          campaign_id: campaign.id,
+          campaign_name: campaign.name,
+          template_id: template.id,
+          template_name: template.name,
+          template_subject: template.subject
+        },
+        message: "✅ Successfully linked template '#{template.name}' to campaign '#{campaign.name}'"
+      }
+    rescue => e
+      Rails.logger.error "Error linking template to campaign: #{e.message}"
+      { success: false, error: e.message }
+    end
   end
 end 
