@@ -335,19 +335,20 @@ class ScoutGenericToolsService
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name} (including history)"
       progress_callback&.call("🤖 Sending request to #{@ai_provider_name} with conversation context...")
       
-      # If in advisor mode and no complex queries, stream the response directly
-      if detected_mode == 'advisor' && !requires_tools?(user_message)
+      # If in advisor mode, stream the response directly (no JSON mode)
+      if detected_mode == 'advisor'
         Rails.logger.info "Streaming response directly in advisor mode"
         
         accumulated_content = ""
         
-        # Stream the response
+        # Stream the response without JSON mode
         @ai_service.send_message(
           system_prompt,
           conversation_messages,
           max_tokens: 25000,
           temperature: 0.7,
-          stream: true
+          stream: true,
+          json_mode: false  # Don't use JSON mode for advisor responses
         ) do |chunk|
           if chunk[:type] == :content
             accumulated_content += chunk[:content]
@@ -907,12 +908,8 @@ class ScoutGenericToolsService
       return match[1].strip
     end
     
-    # Fallback: Return a safe portion of the response
-    if response.length > 50
-      return response[0..200] + "..." 
-    else
-      return response
-    end
+    # Fallback: Return the full response (it's likely plain text from advisor mode)
+    return response
   end
   
   def find_json_string_end(str, start_pos)
@@ -2028,6 +2025,9 @@ class ScoutGenericToolsService
   def detect_user_intent(message)
     # Keywords that suggest advisory mode
     advisory_patterns = [
+      /when\s+(is|are|should)/i,
+      /what\s+(is|are|should)/i,
+      /best\s+(day|time|practice)/i,
       /should\s+i/i,
       /what\s+do\s+you\s+think/i,
       /how\s+can\s+i\s+improve/i,
@@ -2044,23 +2044,24 @@ class ScoutGenericToolsService
       /pros\s+and\s+cons/i,
       /compare/i,
       /why\s+is/i,
-      /explain/i
+      /explain/i,
+      /hello/i  # Greetings are usually advisory
     ]
     
-    # Keywords that suggest builder mode
+    # Keywords that suggest builder mode - be more specific
     builder_patterns = [
-      /create/i,
-      /make/i,
-      /build/i,
-      /add/i,
-      /update/i,
-      /change/i,
+      /create\s+.*campaign/i,
+      /make\s+.*template/i,
+      /build\s+.*page/i,
+      /add\s+.*contact/i,
+      /update\s+.*campaign/i,
+      /change\s+.*template/i,
       /delete/i,
       /remove/i,
-      /link/i,
+      /link.*to/i,
       /set\s+up/i,
-      /generate/i,
-      /send/i,
+      /generate\s+.*landing/i,
+      /send\s+now|send\s+immediately|send\s+campaign/i,  # Be specific about "send"
       /publish/i
     ]
     
@@ -2068,8 +2069,8 @@ class ScoutGenericToolsService
     advisory_score = advisory_patterns.count { |pattern| message.match?(pattern) }
     builder_score = builder_patterns.count { |pattern| message.match?(pattern) }
     
-    # If message ends with ? it's more likely advisory
-    advisory_score += 1 if message.strip.end_with?('?')
+    # Questions are almost always advisory
+    advisory_score += 2 if message.strip.end_with?('?')
     
     Rails.logger.info "Intent detection - Message: '#{message}', Advisory: #{advisory_score}, Builder: #{builder_score}"
     
