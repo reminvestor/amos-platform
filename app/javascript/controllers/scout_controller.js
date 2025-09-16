@@ -19,12 +19,15 @@ export default class extends Controller {
   connect() {
     this.currentMode = "conversation"
     this.currentCanvas = null
-    this.resizing = false
+    this.isResizing = false
     
     console.log("Scout controller connected")
     
     // Set up initial canvas functions immediately
     this.setupCanvasGlobals()
+    
+    // Bind resize events
+    this.bindResizeEvents()
     
     // Focus on chat input with defensive check
     if (this.hasChatInputTarget && this.chatInputTarget) {
