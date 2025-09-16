@@ -657,7 +657,6 @@ document.addEventListener('DOMContentLoaded', function() {
       max-width: 420px;
       white-space: normal;
       line-height: 1.35;
-      max-height: 180px;
       overflow: auto;
     `;
     document.body.appendChild(statusDiv);
@@ -816,26 +815,21 @@ document.addEventListener('DOMContentLoaded', function() {
     sendButton.disabled = true;
     showTypingIndicator();
     
-    // Check if this looks like a complex data query that benefits from streaming
-    const complexDataKeywords = ['campaign', 'performance', 'analytics', 'contact', 'landing', 'conversion', 'metrics', 'analyze', 'create', 'data', 'insight', 'report'];
-    const isComplexQuery = complexDataKeywords.some(keyword => message.toLowerCase().includes(keyword));
+    // Always use streaming for better user experience
+    toolActivity.style.display = 'block';
+    toolStatus.textContent = 'Scout is thinking...';
     
-    if (isComplexQuery) {
-      toolActivity.style.display = 'block';
-      toolStatus.textContent = 'Scout is preparing to access your data...';
-      
-      try {
-        // Try streaming first for complex queries
-        await handleStreamingChat(message);
-        return; // Success, exit early
-      } catch (streamError) {
-        console.log('Streaming failed, falling back to regular chat:', streamError);
-        hideStreamingStatus();
-        // Continue to regular chat below
-      }
+    try {
+      // Try streaming for all messages
+      await handleStreamingChat(message);
+      return; // Success, exit early
+    } catch (streamError) {
+      console.log('Streaming failed, falling back to regular chat:', streamError);
+      hideStreamingStatus();
+      // Continue to regular chat below
     }
 
-    // Fallback to regular chat for simple queries or if streaming fails
+    // Fallback to regular chat if streaming fails
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
       
