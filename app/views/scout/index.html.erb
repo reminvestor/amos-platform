@@ -69,30 +69,28 @@
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
         <div class="conversation-controls">
-          <div class="conversation-info">
-            <button class="conversation-selector" id="conversation-selector">
-              <i class="fas fa-comments"></i>
-              <span class="conversation-label">Connection Wizard</span>
+          <div class="header-title">
+            <h2>Scout AI</h2>
+          </div>
+          <div class="header-buttons">
+            <div class="conversation-info">
+              <button class="icon-btn" id="conversation-selector" title="Conversation history">
+                <i class="fas fa-history"></i>
+              </button>
               <span class="message-count" id="message-count">0 messages</span>
-              <i class="fas fa-chevron-down"></i>
-            </button>
-            <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
-              <div class="dropdown-header">
-                <h4>Recent Conversations</h4>
-              </div>
-              <div class="conversation-list" id="conversation-list">
-                <!-- Conversations will be loaded here -->
+              <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
+                <div class="dropdown-header">
+                  <h4>Recent Conversations</h4>
+                </div>
+                <div class="conversation-list" id="conversation-list">
+                  <!-- Conversations will be loaded here -->
+                </div>
               </div>
             </div>
+            <button class="icon-btn" id="new-conversation-btn" title="New conversation">
+              <i class="fas fa-plus"></i>
+            </button>
           </div>
-          <button class="new-conversation-btn" id="new-conversation-btn">
-            <i class="fas fa-plus"></i>
-            New
-          </button>
-        </div>
-        <div class="chat-title">
-          <h2>What can I help you with today?</h2>
-          <p class="chat-subtitle">I'm Scout, your AI marketing assistant. I can help with campaigns, landing pages, analytics, and more.</p>
         </div>
       </div>
       
@@ -497,44 +495,53 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
   padding: 0 1rem;
+  height: 100%;
+}
+
+.header-title h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: white;
+  font-weight: 500;
+}
+
+.header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .conversation-info {
   position: relative;
-}
-
-.conversation-selector {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  color: white;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.2s;
+  gap: 0.5rem;
 }
 
-.conversation-selector:hover {
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.icon-btn:hover {
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-.conversation-selector i {
-  opacity: 0.8;
-}
-
-.conversation-label {
-  font-weight: 500;
-}
-
 .message-count {
-  opacity: 0.7;
-  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
 }
 
 .conversation-dropdown {
@@ -595,26 +602,6 @@
   color: #666;
 }
 
-.new-conversation-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
-  color: white;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.new-conversation-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: translateY(-1px);
-}
 </style>
 
 <!-- JavaScript for Scout Chat -->
@@ -715,40 +702,43 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Start new conversation
   newConversationBtn.addEventListener('click', function() {
-    if (messageCount > 0 && confirm('Start a new conversation? Current conversation will be saved.')) {
-      // Clear messages
-      chatMessages.innerHTML = `
-        <div class="message ai-message welcome-message">
-          <div class="message-avatar">
-            <i class="fas fa-robot"></i>
-          </div>
-          <div class="message-content">
-            <p>Hi! I'm Scout, your AI marketing assistant. What would you like to work on today?</p>
-            <div class="message-suggestions">
-              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Create a landing page for my product">
-                Create landing page
-              </button>
-              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Show me my email campaigns">
-                Email campaigns
-              </button>
-              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Analyze my marketing performance">
-                Analytics dashboard
-              </button>
-            </div>
+    // Clear messages
+    chatMessages.innerHTML = `
+      <div class="message ai-message welcome-message">
+        <div class="message-avatar">
+          <i class="fas fa-robot"></i>
+        </div>
+        <div class="message-content">
+          <p>Hi! I'm Scout, your AI marketing assistant. What would you like to work on today?</p>
+          <div class="message-suggestions">
+            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Create a landing page for my product">
+              Create landing page
+            </button>
+            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Show me my email campaigns">
+              Email campaigns
+            </button>
+            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Analyze my marketing performance">
+              Analytics dashboard
+            </button>
           </div>
         </div>
-      `;
-      
-      // Reset session
-      fetch('/scout/new_session', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } })
-        .then(response => response.json())
-        .then(data => {
-          console.log('New session started:', data.session_id);
-        });
-      
-      updateMessageCount();
-      messageInput.focus();
+      </div>
+    `;
+    
+    // Reset session
+    fetch('/scout/new_session', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } })
+      .then(response => response.json())
+      .then(data => {
+        console.log('New session started:', data.session_id);
+      });
+    
+    // Reset to conversation mode (initial canvas view)
+    if (window.scoutController) {
+      window.scoutController.switchToConversationMode();
     }
+    
+    updateMessageCount();
+    messageInput.focus();
   });
   
   // Format time ago
@@ -763,6 +753,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
     return date.toLocaleDateString();
   }
+  
+  // Get Scout controller reference
+  window.scoutController = document.querySelector('[data-controller="scout"]')?._stimulusController;
 
   // Scroll to bottom (with defensive check)
   function scrollToBottom() {
