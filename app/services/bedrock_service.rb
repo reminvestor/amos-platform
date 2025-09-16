@@ -19,7 +19,17 @@ class BedrockService
   end
 
   # Main method to send messages to Claude via Bedrock
-  def send_message(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false)
+  def send_message(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false, stream: false, &block)
+    if stream && block_given?
+      send_message_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, &block)
+    else
+      send_message_non_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode)
+    end
+  end
+
+  private
+
+  def send_message_non_streaming(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false)
     # Map model names to Bedrock model IDs
     # Using cross-region inference profiles (us. prefix) for better availability
     model_id = case model
@@ -181,6 +191,73 @@ class BedrockService
   rescue => e
     Rails.logger.error "Failed to analyze image: #{e.message}"
     "Image analysis unavailable"
+  end
+
+  def send_message_streaming(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false, &block)
+    # Map model names to Bedrock model IDs
+    model_id = case model
+    when 'claude-opus-4-1', 'claude-opus-4-1-20250805'
+      'us.anthropic.claude-opus-4-1-20250805-v1:0'
+    when 'claude-3-5-sonnet', 'claude-3.5-sonnet'
+      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
+    when 'claude-3-haiku'
+      'us.anthropic.claude-3-5-haiku-20241022-v1:0'
+    else
+      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
+    end
+
+    # Format messages for Claude
+    formatted_messages = format_messages_for_claude(messages)
+    
+    # Build the request body
+    request_body = {
+      anthropic_version: "bedrock-2023-05-31",
+      messages: formatted_messages,
+      max_tokens: max_tokens,
+      temperature: temperature
+    }
+    
+    request_body[:system] = system_prompt if system_prompt.present?
+
+    Rails.logger.info "Sending streaming request to Bedrock Claude (#{model_id})"
+
+    begin
+      # Use invoke_model_with_response_stream for streaming
+      response = @client.invoke_model_with_response_stream({
+        model_id: model_id,
+        content_type: "application/json",
+        accept: "application/json",
+        body: JSON.generate(request_body)
+      })
+
+      # Buffer for partial content
+      buffer = ""
+      
+      # Process the streaming response
+      response.body.each do |event|
+        chunk = JSON.parse(event.bytes)
+        
+        if chunk['type'] == 'content_block_delta' && chunk['delta']
+          content = chunk['delta']['text']
+          buffer += content if content
+          
+          # Yield each chunk of text as it arrives
+          yield(type: :content, content: content) if content
+        elsif chunk['type'] == 'message_stop'
+          # Message complete
+          yield(type: :complete, content: buffer)
+        end
+      end
+      
+      buffer
+    rescue Aws::BedrockRuntime::Errors::ServiceError => e
+      Rails.logger.error "Bedrock streaming error: #{e.message}"
+      raise BedrockError, "Bedrock API Error: #{e.message}"
+    rescue => e
+      Rails.logger.error "Unexpected Bedrock streaming error: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      raise BedrockError, "Unexpected error: #{e.message}"
+    end
   end
 
   private
