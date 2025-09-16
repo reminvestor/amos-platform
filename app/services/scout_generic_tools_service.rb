@@ -284,9 +284,20 @@ class ScoutGenericToolsService
           mode: detected_mode
         }
       else
-        # No tools needed, return original response
+        # No tools needed, extract message from response
+        # If @parsed_user_message is nil, try to extract from response
+        final_message = @parsed_user_message
+        if final_message.nil? && response.is_a?(String)
+          begin
+            parsed = JSON.parse(response)
+            final_message = parsed['message'] || response
+          rescue JSON::ParserError
+            final_message = response
+          end
+        end
+        
         return {
-          message: @parsed_user_message || response,
+          message: final_message || response,
           tools_used: false,
           canvas: @suggested_canvas,
           canvas_data: @canvas_data,
@@ -414,11 +425,24 @@ class ScoutGenericToolsService
           canvas_data: @canvas_data
         }
       else
-        # No tools needed, return original response
+        # No tools needed, extract message from response
+        # If @parsed_user_message is nil, try to extract from response
+        final_message = @parsed_user_message
+        if final_message.nil? && response.is_a?(String)
+          begin
+            parsed = JSON.parse(response)
+            final_message = parsed['message'] || response
+          rescue JSON::ParserError
+            final_message = response
+          end
+        end
+        
         return {
-          message: @parsed_user_message || response,
+          message: final_message || response,
           tools_used: false,
-          canvas: @suggested_canvas
+          canvas: @suggested_canvas,
+          canvas_data: @canvas_data,
+          mode: detected_mode
         }
       end
       
