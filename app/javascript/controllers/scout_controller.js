@@ -21,6 +21,14 @@ export default class extends Controller {
     this.currentCanvas = null
     this.isResizing = false
     
+    // Clear canvas viewer on page load
+    if (this.canvasViewerTarget) {
+      this.canvasViewerTarget.innerHTML = ''
+    }
+    
+    // Ensure we're in conversation mode on page load
+    this.switchToMode("conversation")
+    
     console.log("Scout controller connected")
     
     // Set up initial canvas functions immediately
