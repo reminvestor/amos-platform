@@ -700,57 +700,19 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Start new conversation
   newConversationBtn.addEventListener('click', function() {
-    // Clear ALL messages including system messages
-    const allMessages = chatMessages.querySelectorAll('.message');
-    allMessages.forEach(msg => msg.remove());
-    
-    // Add fresh welcome message
-    const welcomeMessage = `
-      <div class="message ai-message welcome-message">
-        <div class="message-avatar">
-          <i class="fas fa-robot"></i>
-        </div>
-        <div class="message-content">
-          <p>Hi! I'm Scout, your AI marketing assistant. What would you like to work on today?</p>
-          <div class="message-suggestions">
-            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Create a landing page for my product">
-              Create landing page
-            </button>
-            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Show me my email campaigns">
-              Email campaigns
-            </button>
-            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Analyze my marketing performance">
-              Analytics dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-    chatMessages.innerHTML = welcomeMessage;
-    
-    // Reset session
+    // Reset session and reload page
     fetch('/scout/new_session', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } })
       .then(response => response.json())
       .then(data => {
         console.log('New session started:', data.session_id);
+        // Reload the page to get fresh session context
+        window.location.reload();
+      })
+      .catch(error => {
+        console.error('Failed to start new session:', error);
+        // Fallback: just reload anyway
+        window.location.reload();
       });
-    
-    // Reset to conversation mode and clear canvas
-    if (window.scoutController) {
-      window.scoutController.switchToConversationMode();
-      // Clear the canvas viewer
-      const canvasViewer = document.querySelector('[data-scout-target="canvasViewer"]');
-      if (canvasViewer) {
-        canvasViewer.innerHTML = '';
-      }
-    }
-    
-    // Reset any streaming state
-    streamingStatusMessage = null;
-    streamingLog.length = 0;
-    
-    updateMessageCount();
-    messageInput.focus();
   });
   
   // Format time ago
