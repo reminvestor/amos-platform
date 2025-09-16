@@ -788,11 +788,14 @@ class ScoutController < ApplicationController
     templates = current_entity.email_templates.order(created_at: :desc)
     
     # Get stats
+    total_count = templates.count
+    used_count = templates.joins(:campaigns).distinct.count
+    
     stats = {
-      total_templates: templates.count,
-      active_templates: templates.joins(:campaigns).distinct.count,
-      used_templates: templates.joins(:campaigns).distinct.count,
-      unused_templates: templates.left_joins(:campaigns).where(campaigns: { id: nil }).count
+      total_templates: total_count,
+      active_templates: used_count,
+      used_templates: used_count,
+      unused_templates: total_count - used_count
     }
     
     render_to_string(
