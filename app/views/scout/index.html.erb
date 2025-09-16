@@ -115,8 +115,8 @@
         </div>
       </div>
       
-      <!-- Tool activity indicator -->
-      <div id="tool-activity" class="tool-activity" style="display: none;">
+      <!-- Tool activity indicator (hidden - using inline streaming status instead) -->
+      <div id="tool-activity" class="tool-activity" style="display: none !important;">
         <div id="tool-status" class="tool-status"></div>
       </div>
       
@@ -803,13 +803,22 @@ document.addEventListener('DOMContentLoaded', function() {
     if (id) wrapper.dataset.messageId = id;
     
     // Parse markdown for assistant messages
-    // First, handle the case where content might have HTML entities
     let processedContent = content;
     
     if (role === 'assistant') {
+      // If content is a JSON string, parse it first
+      if (typeof processedContent === 'string' && processedContent.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(processedContent);
+          processedContent = parsed.message || processedContent;
+        } catch (e) {
+          // Not valid JSON, use as-is
+        }
+      }
+      
       // Decode HTML entities first (convert &lt; back to <)
       const textarea = document.createElement('textarea');
-      textarea.innerHTML = content;
+      textarea.innerHTML = processedContent;
       processedContent = textarea.value;
       
       // Now parse as markdown
@@ -849,7 +858,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Backward-compatible helper
   function addMessage(content, role, timestamp = null) {
-    const el = buildMessageElement({ content, role, timestamp });
+    // If content is a JSON object, extract the message
+    let messageContent = content;
+    if (typeof content === 'object' && content.message) {
+      messageContent = content.message;
+    }
+    
+    const el = buildMessageElement({ content: messageContent, role, timestamp });
     chatMessages.appendChild(el);
     scrollToBottom();
     updateMessageCount();
@@ -900,8 +915,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="message-avatar">
           <i class="fas fa-robot"></i>
         </div>
-        <div class="message-content" style="background: #007bff; color: white; padding: 12px 16px; border-radius: 12px;">
-          <div class="streaming-content"></div>
+        <div class="message-bubble" style="background: #007bff; color: white;">
+          <div class="message-content">
+            <div class="streaming-content"></div>
+          </div>
         </div>
       `;
       
@@ -1106,8 +1123,10 @@ document.addEventListener('DOMContentLoaded', function() {
     showTypingIndicator();
     
     // Always use streaming for better user experience
-    toolActivity.style.display = 'block';
-    toolStatus.textContent = 'Scout is thinking...';
+    // Don't show the tool activity div - we'll use inline streaming status instead
+    // toolActivity.style.display = 'block';
+    // toolStatus.textContent = 'Scout is thinking...';
+    showStreamingStatus('Scout is working...');
     
     try {
       // Try streaming for all messages
@@ -1139,7 +1158,9 @@ document.addEventListener('DOMContentLoaded', function() {
       if (data.error) {
         addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
       } else {
-        addMessage(data.message, 'assistant');
+        // Extract the message from the response, handling both old and new formats
+        const message = typeof data === 'string' ? data : (data.message || JSON.stringify(data));
+        addMessage(message, 'assistant');
         
         // Show tool usage info in development
         if (data.tools_used && data.tools_list?.length > 0) {
