@@ -127,6 +127,7 @@ class ScoutController < ApplicationController
       final_response = generic_tools_service.process_message_with_tools_streaming(
         user_message, 
         ->(update) { 
+          Rails.logger.info "🔄 Streaming callback received: #{update.inspect.first(100)}..."
           if update.is_a?(Hash) && update[:type] == 'content_chunk'
             # Stream content chunks directly to the user
             if !content_streaming
@@ -143,6 +144,8 @@ class ScoutController < ApplicationController
       )
       
       # Save Scout's response
+      Rails.logger.info "📨 Final response type: #{final_response[:message].class}"
+      Rails.logger.info "📨 Final response content: #{final_response[:message].to_s.first(200)}..."
       save_scout_message('assistant', final_response[:message])
       
       # Send completion indicator
