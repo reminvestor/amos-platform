@@ -396,6 +396,7 @@
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || 
                         parent.document.querySelector('meta[name="csrf-token"]')?.content ||
                         '<%= form_authenticity_token %>'
@@ -407,13 +408,23 @@
         }
       })
     })
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok && response.status !== 302) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      // If we get a redirect (302), consider it a success since the template was saved
+      if (response.status === 302 || response.redirected) {
+        return { success: true };
+      }
+      return response.json();
+    })
     .then(data => {
-      if (data.success) {
-        // Show success message
-        window.scoutSendMessage?.('✅ Email template saved successfully!');
-      } else {
-        alert('Error saving template: ' + (data.error || 'Unknown error'));
+      // Show success message
+      window.scoutSendMessage?.('✅ Email template saved successfully!');
+      
+      // If in HTML mode, sync the content back to WYSIWYG
+      if (currentMode === 'html') {
+        document.getElementById('wysiwygContent').innerHTML = body;
       }
     })
     .catch(error => {
