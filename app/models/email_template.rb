@@ -1,7 +1,9 @@
 class EmailTemplate < ApplicationRecord
   belongs_to :user
+  belongs_to :entity
   
   # Associations
+  has_many :campaigns
   has_many :email_deliveries, dependent: :nullify
   
   # Validations
