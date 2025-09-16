@@ -595,7 +595,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Backward-compatible helper
   function addMessage(content, role, timestamp = null) {
-    appendMessage(content, role, timestamp);
+    const el = buildMessageElement({ content, role, timestamp });
+    chatMessages.appendChild(el);
+    scrollToBottom();
+    return el; // Return the element for streaming updates
   }
 
   // Show typing indicator
@@ -667,6 +670,10 @@ document.addEventListener('DOMContentLoaded', function() {
   async function handleStreamingChat(message) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
+    // Track streaming state
+    let streamingMessage = null;
+    let streamingContent = '';
+    
     // Add timeout fallback to prevent getting stuck
     const timeoutId = setTimeout(() => {
       console.warn('Streaming timeout - cleaning up UI');
@@ -712,6 +719,24 @@ document.addEventListener('DOMContentLoaded', function() {
               
               if (data.type === 'update') {
                 showStreamingStatus(data.message);
+                // Check if we're starting to stream content
+                if (data.message === '💬 streaming') {
+                  hideTypingIndicator();
+                  // Create a new message element for streaming
+                  streamingMessage = addMessage('', 'assistant');
+                  streamingContent = '';
+                }
+              } else if (data.type === 'content') {
+                // Append content chunk to the streaming message
+                if (streamingMessage && data.content) {
+                  streamingContent += data.content;
+                  // Update the message content
+                  const messageContent = streamingMessage.querySelector('.message-content');
+                  if (messageContent) {
+                    messageContent.innerHTML = parseSimpleMarkdown(streamingContent);
+                  }
+                  scrollChatToBottom();
+                }
               } else if (data.type === 'response') {
                 hideStreamingStatus();
                 hideTypingIndicator();
@@ -721,7 +746,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                   console.log('📨 Assistant message content:', data.data.message);
                   console.log('📏 Message length:', data.data.message.length);
-                  addMessage(data.data.message, 'assistant');
+                  // Only add a new message if we weren't streaming
+                  if (!streamingMessage) {
+                    addMessage(data.data.message, 'assistant');
+                  }
                   
                   // Show tool usage info
                   if (data.data.tools_used && data.data.tools_list?.length > 0) {

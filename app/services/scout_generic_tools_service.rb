@@ -335,7 +335,39 @@ class ScoutGenericToolsService
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name} (including history)"
       progress_callback&.call("🤖 Sending request to #{@ai_provider_name} with conversation context...")
       
-      # Send to AI service with function calling
+      # If in advisor mode and no complex queries, stream the response directly
+      if detected_mode == 'advisor' && !requires_tools?(user_message)
+        Rails.logger.info "Streaming response directly in advisor mode"
+        
+        accumulated_content = ""
+        
+        # Stream the response
+        @ai_service.send_message(
+          system_prompt,
+          conversation_messages,
+          max_tokens: 25000,
+          temperature: 0.7,
+          stream: true
+        ) do |chunk|
+          if chunk[:type] == :content
+            accumulated_content += chunk[:content]
+            # Send content chunks as they arrive
+            progress_callback&.call({
+              type: 'content_chunk',
+              content: chunk[:content]
+            })
+          elsif chunk[:type] == :complete
+            # Final message
+            return {
+              message: accumulated_content,
+              tools_used: false,
+              mode: detected_mode
+            }
+          end
+        end
+      end
+      
+      # For builder mode or complex queries, use non-streaming for tool detection
       response = @ai_service.send_message(
         system_prompt,
         conversation_messages,
@@ -1977,6 +2009,20 @@ class ScoutGenericToolsService
     Rails.logger.info "Enhanced message: '#{user_message}' → '#{enhanced_message}#{canvas_context}'"
     
     enhanced_message + canvas_context
+  end
+
+  def requires_tools?(message)
+    # Keywords that typically require tool usage
+    tool_patterns = [
+      /create|make|build|add|generate/i,
+      /show.*data|list.*all|get.*all/i,
+      /update|change|modify|edit/i,
+      /delete|remove/i,
+      /link|connect|attach/i,
+      /analyze.*data|compare.*campaigns/i
+    ]
+    
+    tool_patterns.any? { |pattern| message.match?(pattern) }
   end
 
   def detect_user_intent(message)

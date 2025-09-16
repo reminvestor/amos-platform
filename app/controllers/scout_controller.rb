@@ -120,10 +120,24 @@ class ScoutController < ApplicationController
       stream_update("📋 Preparing context and tools...")
       generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity)
       
+      # Track if we've started streaming content
+      content_streaming = false
+      
       # Process message with streaming progress updates
       final_response = generic_tools_service.process_message_with_tools_streaming(
         user_message, 
-        ->(message) { stream_update(message) },  # Pass streaming callback (multi-line supported below)
+        ->(update) { 
+          if update.is_a?(Hash) && update[:type] == 'content_chunk'
+            # Stream content chunks directly to the user
+            if !content_streaming
+              content_streaming = true
+              stream_update("💬 streaming")  # Signal start of content streaming
+            end
+            stream_content_chunk(update[:content])
+          elsif update.is_a?(String)
+            stream_update(update)
+          end
+        },
         conversation_history,  # Pass conversation history
         current_canvas  # Pass current canvas context
       )
@@ -335,6 +349,23 @@ class ScoutController < ApplicationController
   end
   
   private
+
+  def stream_content_chunk(content)
+    # Stream individual content chunks for real-time display
+    data = JSON.generate({ type: 'content', content: content })
+    chunk = "data: #{data}\n\n"
+    
+    response.stream.write(chunk)
+    
+    # Try to flush
+    begin
+      response.stream.flush if response.stream.respond_to?(:flush)
+    rescue
+      # Ignore flush errors
+    end
+  rescue => e
+    Rails.logger.error "Stream content chunk error: #{e.message}"
+  end
 
   def stream_update(message)
     puts "🚨 PRODUCTION DEBUG: Streaming update: #{message}"
