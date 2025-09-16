@@ -212,8 +212,12 @@ class ScoutGenericToolsService
 
   def process_message_with_tools(user_message, conversation_history = [], current_canvas = nil)
     begin
-      # Build system prompt with dynamic schema information
-      system_prompt = build_system_prompt_with_dynamic_schema(current_canvas)
+      # Detect user intent
+      detected_mode = detect_user_intent(user_message)
+      Rails.logger.info "🤖 Scout detected mode: #{detected_mode}"
+      
+      # Build system prompt with dynamic schema information and mode
+      system_prompt = build_system_prompt_with_dynamic_schema(current_canvas, detected_mode)
       
       # Enhance user message with canvas context if available
       enhanced_user_message = enhance_message_with_canvas_context(user_message, current_canvas)
@@ -249,7 +253,8 @@ class ScoutGenericToolsService
           success_count: tool_results.count { |r| r[:success] },
           error_count: tool_results.count { |r| !r[:success] },
           canvas: @suggested_canvas,
-        canvas_data: @canvas_data
+          canvas_data: @canvas_data,
+          mode: detected_mode
         }
       else
         # No tools needed, return original response
@@ -257,7 +262,8 @@ class ScoutGenericToolsService
           message: @parsed_user_message || response,
           tools_used: false,
           canvas: @suggested_canvas,
-          canvas_data: @canvas_data
+          canvas_data: @canvas_data,
+          mode: detected_mode
         }
       end
       
@@ -286,8 +292,12 @@ class ScoutGenericToolsService
     begin
       progress_callback&.call("🧠 Building context with available data models...")
       
-      # Build system prompt with dynamic schema information
-      system_prompt = build_system_prompt_with_dynamic_schema(current_canvas)
+      # Detect user intent
+      detected_mode = detect_user_intent(user_message)
+      Rails.logger.info "🤖 Scout detected mode: #{detected_mode}"
+      
+      # Build system prompt with dynamic schema information and mode
+      system_prompt = build_system_prompt_with_dynamic_schema(current_canvas, detected_mode)
       
       # Enhance user message with canvas context if available
       enhanced_user_message = enhance_message_with_canvas_context(user_message, current_canvas)
@@ -375,7 +385,7 @@ class ScoutGenericToolsService
 
   private
 
-  def build_system_prompt_with_dynamic_schema(context_type = nil)
+  def build_system_prompt_with_dynamic_schema(context_type = nil, mode = nil)
     available_models = ScoutDataRegistry.available_object_types
     
     # Dynamic AI identity based on provider
@@ -455,9 +465,21 @@ class ScoutGenericToolsService
       ""
     end
     
+    # Determine if we should be in advisor mode based on mode parameter or context
+    mode_prompt = case mode
+    when 'advisor'
+      build_advisor_prompt
+    when 'builder'
+      build_builder_prompt
+    else
+      # Default to builder mode
+      build_builder_prompt
+    end
+    
     <<~PROMPT
       #{ai_identity}
       #{context_focus}
+      #{mode_prompt}
       USER CONTEXT:
       - User: #{@user.first_name} #{@user.last_name}
       - Entity: #{@entity.name}
@@ -1913,6 +1935,107 @@ class ScoutGenericToolsService
     Rails.logger.info "Enhanced message: '#{user_message}' → '#{enhanced_message}#{canvas_context}'"
     
     enhanced_message + canvas_context
+  end
+
+  def detect_user_intent(message)
+    # Keywords that suggest advisory mode
+    advisory_patterns = [
+      /should\s+i/i,
+      /what\s+do\s+you\s+think/i,
+      /how\s+can\s+i\s+improve/i,
+      /what.*recommend/i,
+      /any\s+suggestions/i,
+      /best\s+practice/i,
+      /advice\s+on/i,
+      /help\s+me\s+understand/i,
+      /analyze/i,
+      /strategy/i,
+      /tips\s+for/i,
+      /what\s+works\s+best/i,
+      /is\s+it\s+better\s+to/i,
+      /pros\s+and\s+cons/i,
+      /compare/i,
+      /why\s+is/i,
+      /explain/i
+    ]
+    
+    # Keywords that suggest builder mode
+    builder_patterns = [
+      /create/i,
+      /make/i,
+      /build/i,
+      /add/i,
+      /update/i,
+      /change/i,
+      /delete/i,
+      /remove/i,
+      /link/i,
+      /set\s+up/i,
+      /generate/i,
+      /send/i,
+      /publish/i
+    ]
+    
+    # Check for advisory patterns first (since they're often questions)
+    advisory_score = advisory_patterns.count { |pattern| message.match?(pattern) }
+    builder_score = builder_patterns.count { |pattern| message.match?(pattern) }
+    
+    # If message ends with ? it's more likely advisory
+    advisory_score += 1 if message.strip.end_with?('?')
+    
+    Rails.logger.info "Intent detection - Message: '#{message}', Advisory: #{advisory_score}, Builder: #{builder_score}"
+    
+    advisory_score > builder_score ? 'advisor' : 'builder'
+  end
+
+  def build_advisor_prompt
+    <<~ADVISOR
+      
+      **MODE: STRATEGIC ADVISOR**
+      
+      You are operating in ADVISOR MODE. Your role is to:
+      - Provide strategic guidance and recommendations
+      - Analyze data and identify opportunities
+      - Share best practices and industry insights
+      - Help users understand their metrics
+      - Suggest improvements and optimizations
+      - Explain concepts and strategies
+      
+      ADVISORY GUIDELINES:
+      1. Focus on WHY and HOW rather than just WHAT
+      2. Provide context and reasoning for recommendations
+      3. Use data to support your insights
+      4. Suggest A/B testing opportunities
+      5. Share industry benchmarks when relevant
+      6. Be consultative, not directive
+      
+      When analyzing data:
+      - Look for trends and patterns
+      - Identify areas for improvement
+      - Celebrate successes
+      - Provide actionable next steps
+      
+      Still use tools to GET data, but focus on ANALYZING and ADVISING rather than CREATING.
+    ADVISOR
+  end
+
+  def build_builder_prompt
+    <<~BUILDER
+      
+      **MODE: ACTION BUILDER**
+      
+      You are operating in BUILDER MODE. Your role is to:
+      - Take immediate action on user requests
+      - Create, update, and manage marketing assets
+      - Execute tasks efficiently
+      - Use tools proactively
+      
+      BUILDER GUIDELINES:
+      1. Be action-oriented and efficient
+      2. Use tools immediately when appropriate
+      3. Confirm actions taken
+      4. Suggest next steps after completing tasks
+    BUILDER
   end
 
   def execute_link_template_to_campaign(args)
