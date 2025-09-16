@@ -77,7 +77,6 @@
               <button class="icon-btn" id="conversation-selector" title="Conversation history">
                 <i class="fas fa-history"></i>
               </button>
-              <span class="message-count" id="message-count">0 messages</span>
               <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
                 <div class="dropdown-header">
                   <h4>Recent Conversations</h4>
@@ -617,7 +616,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const conversationDropdown = document.getElementById('conversation-dropdown');
   const conversationList = document.getElementById('conversation-list');
   const newConversationBtn = document.getElementById('new-conversation-btn');
-  const messageCountElement = document.getElementById('message-count');
 
   // Auto-focus on input (with defensive check)
   if (messageInput && messageInput.focus) {
@@ -634,7 +632,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function updateMessageCount() {
     const messages = chatMessages.querySelectorAll('.message:not(.welcome-message)');
     messageCount = messages.length;
-    messageCountElement.textContent = `${messageCount} message${messageCount !== 1 ? 's' : ''}`;
+    // Message count element removed, just track the count
   }
   
   // Toggle conversation dropdown
@@ -702,8 +700,12 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Start new conversation
   newConversationBtn.addEventListener('click', function() {
-    // Clear messages
-    chatMessages.innerHTML = `
+    // Clear ALL messages including system messages
+    const allMessages = chatMessages.querySelectorAll('.message');
+    allMessages.forEach(msg => msg.remove());
+    
+    // Add fresh welcome message
+    const welcomeMessage = `
       <div class="message ai-message welcome-message">
         <div class="message-avatar">
           <i class="fas fa-robot"></i>
@@ -724,6 +726,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
       </div>
     `;
+    chatMessages.innerHTML = welcomeMessage;
     
     // Reset session
     fetch('/scout/new_session', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } })
@@ -732,10 +735,19 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('New session started:', data.session_id);
       });
     
-    // Reset to conversation mode (initial canvas view)
+    // Reset to conversation mode and clear canvas
     if (window.scoutController) {
       window.scoutController.switchToConversationMode();
+      // Clear the canvas viewer
+      const canvasViewer = document.querySelector('[data-scout-target="canvasViewer"]');
+      if (canvasViewer) {
+        canvasViewer.innerHTML = '';
+      }
     }
+    
+    // Reset any streaming state
+    streamingStatusMessage = null;
+    streamingLog.length = 0;
     
     updateMessageCount();
     messageInput.focus();
