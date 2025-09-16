@@ -720,6 +720,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
                 } else {
                   console.log('📨 Assistant message content:', data.data.message);
+                  console.log('📏 Message length:', data.data.message.length);
                   addMessage(data.data.message, 'assistant');
                   
                   // Show tool usage info

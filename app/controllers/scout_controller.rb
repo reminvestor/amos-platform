@@ -137,10 +137,11 @@ class ScoutController < ApplicationController
       # Send job started status if there's an active job
       send_job_started_status_if_exists(final_response)
       
-      # Stream the Claude response as an intermediate update
-      if final_response[:message].present?
-        stream_update("💬 #{final_response[:message]}")
-      end
+      # Don't stream the message as an update - it will be in the final response
+      # This prevents duplicate messages
+      # if final_response[:message].present?
+      #   stream_update("💬 #{final_response[:message]}")
+      # end
       
       # Always send final response immediately - let job run in background
       stream_final_response(final_response)
@@ -369,7 +370,8 @@ class ScoutController < ApplicationController
 
   def stream_final_response(response_data)
     Rails.logger.info "🌊 stream_final_response called with data keys: #{response_data.keys}"
-    Rails.logger.info "📝 Message content: #{response_data[:message]}"
+    Rails.logger.info "📝 Message length: #{response_data[:message]&.length} characters"
+    Rails.logger.info "📝 Message preview: #{response_data[:message]&.first(100)}..."
     
     # Create the final SSE response
     data = JSON.generate({ type: 'response', data: response_data })
