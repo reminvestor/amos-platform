@@ -347,6 +347,55 @@ class ScoutController < ApplicationController
       has_more: ScoutMessage.for_session(session_id).count > (before_id.present? ? ScoutMessage.for_session(session_id).where('created_at <= ?', batch.first&.created_at).count : batch.count)
     }
   end
+
+  # GET /scout/conversations
+  def conversations
+    # Get recent conversations for this user
+    recent_sessions = ScoutMessage
+      .where(user_id: current_user.id)
+      .select(:session_id, 'MIN(created_at) as created_at', 'COUNT(*) as message_count')
+      .group(:session_id)
+      .order('MIN(created_at) DESC')
+      .limit(10)
+    
+    # Get first message for each session
+    conversations = recent_sessions.map do |session|
+      first_message = ScoutMessage
+        .where(session_id: session.session_id, role: 'user')
+        .order(:created_at)
+        .first
+      
+      {
+        session_id: session.session_id,
+        created_at: session.created_at,
+        message_count: session.message_count,
+        first_message: first_message&.content&.truncate(50)
+      }
+    end
+    
+    render json: conversations
+  end
+  
+  # GET /scout/conversation/:session_id
+  def conversation
+    session_id = params[:session_id]
+    messages = ScoutMessage
+      .where(session_id: session_id, user_id: current_user.id)
+      .order(:created_at)
+      .map { |m| { 
+        role: m.role, 
+        content: m.content, 
+        created_at: m.created_at.iso8601 
+      } }
+    
+    render json: messages
+  end
+  
+  # POST /scout/new_session
+  def new_session
+    session[:scout_session_id] = SecureRandom.uuid
+    render json: { session_id: session[:scout_session_id] }
+  end
   
   private
 
