@@ -1,22 +1,23 @@
 require 'ostruct'
 
 class EmailTemplatesController < ApplicationController
+  include EntityScoped
   before_action :authenticate_user!
   before_action :set_email_template, only: [:show, :edit, :update, :destroy, :test_email]
   
   def index
-    @email_templates = current_user.email_templates.order(created_at: :desc)
+    @email_templates = current_entity.email_templates.order(created_at: :desc)
   end
 
   def show
   end
 
   def new
-    @email_template = current_user.email_templates.new
+    @email_template = current_entity.email_templates.new
   end
 
   def create
-    @email_template = current_user.email_templates.new(email_template_params)
+    @email_template = current_entity.email_templates.new(email_template_params)
     
     if @email_template.save
       redirect_to email_templates_path, notice: 'Email template was successfully created.'
@@ -30,9 +31,15 @@ class EmailTemplatesController < ApplicationController
 
   def update
     if @email_template.update(email_template_params)
-      redirect_to email_templates_path, notice: 'Email template was successfully updated.'
+      respond_to do |format|
+        format.html { redirect_to email_templates_path, notice: 'Email template was successfully updated.' }
+        format.json { render json: { success: true, email_template: @email_template } }
+      end
     else
-      render :edit, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :edit, status: :unprocessable_entity }
+        format.json { render json: { success: false, errors: @email_template.errors.full_messages }, status: :unprocessable_entity }
+      end
     end
   end
 
@@ -67,7 +74,7 @@ class EmailTemplatesController < ApplicationController
   private
   
   def set_email_template
-    @email_template = current_user.email_templates.find(params[:id])
+    @email_template = current_entity.email_templates.find(params[:id])
   end
   
   def email_template_params

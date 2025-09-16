@@ -208,6 +208,12 @@ class ScoutController < ApplicationController
       when 'business_profile'
         canvas_content = render_business_profile_canvas(canvas_data)
         canvas_title = "Business Settings"
+      when 'email_template_viewer'
+        canvas_content = render_email_template_viewer(canvas_data)
+        canvas_title = "Email Templates"
+      when 'email_template_editor'
+        canvas_content = render_email_template_editor(canvas_data)
+        canvas_title = "Edit Email Template"
       else
         canvas_content = render_default_canvas
         canvas_title = "Scout Canvas"
@@ -776,5 +782,43 @@ class ScoutController < ApplicationController
     
     return 0 if total_sent == 0
     ((total_opened.to_f / total_sent) * 100).round(1)
+  end
+
+  def render_email_template_viewer(data = {})
+    templates = current_entity.email_templates.order(created_at: :desc)
+    
+    # Get stats
+    stats = {
+      total_templates: templates.count,
+      active_templates: templates.joins(:campaigns).distinct.count,
+      used_templates: templates.joins(:campaigns).distinct.count,
+      unused_templates: templates.left_joins(:campaigns).where(campaigns: { id: nil }).count
+    }
+    
+    render_to_string(
+      partial: 'scout/canvas/email_template_viewer',
+      locals: {
+        templates: templates,
+        stats: stats,
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_email_template_editor(data = {})
+    template_id = data['template_id'] || data[:template_id]
+    email_template = current_entity.email_templates.find(template_id)
+    
+    render_to_string(
+      partial: 'scout/canvas/email_template_editor',
+      locals: {
+        email_template: email_template,
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
   end
 end 
