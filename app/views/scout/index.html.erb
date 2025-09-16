@@ -863,10 +863,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Backward-compatible helper
   function addMessage(content, role, timestamp = null) {
+    console.log('🎯 addMessage called with:', { content: content, role: role, contentType: typeof content });
+    
     // If content is a JSON object, extract the message
     let messageContent = content;
     if (typeof content === 'object' && content.message) {
+      console.log('📦 Content is object with message property');
       messageContent = content.message;
+    } else if (typeof content === 'string' && content.trim().startsWith('{')) {
+      console.log('📦 Content is JSON string, attempting to parse');
+      try {
+        const parsed = JSON.parse(content);
+        messageContent = parsed.message || content;
+        console.log('✅ Parsed message:', messageContent);
+      } catch (e) {
+        console.log('❌ Failed to parse JSON string');
+      }
     }
     
     const el = buildMessageElement({ content: messageContent, role, timestamp });
@@ -1027,17 +1039,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.data.error) {
                   addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
                 } else {
+                  console.log('📨 Response data type:', typeof data.data);
+                  console.log('📨 Response data keys:', data.data ? Object.keys(data.data) : 'null');
+                  console.log('📨 Assistant message type:', typeof data.data.message);
                   console.log('📨 Assistant message content:', data.data.message);
                   console.log('📏 Message length:', data.data.message ? data.data.message.length : 0);
                   
                   // Extract the actual message content
                   let messageContent = data.data.message;
                   
+                  // Debug: Check what we have
+                  console.log('🔍 Before parsing - messageContent type:', typeof messageContent);
+                  console.log('🔍 Before parsing - messageContent starts with {?', messageContent && typeof messageContent === 'string' ? messageContent.trim().startsWith('{') : false);
+                  
                   // If the message is a JSON string, parse it
                   if (typeof messageContent === 'string' && messageContent.trim().startsWith('{')) {
                     try {
                       const parsed = JSON.parse(messageContent);
+                      console.log('✅ Successfully parsed JSON, keys:', Object.keys(parsed));
                       messageContent = parsed.message || messageContent;
+                      console.log('✅ Extracted message:', messageContent);
                     } catch (e) {
                       console.warn('Failed to parse message as JSON:', e);
                     }
@@ -1045,6 +1066,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   
                   // Only add a new message if we weren't streaming
                   if (!streamingMessage) {
+                    console.log('➕ Adding message to chat:', messageContent);
                     addMessage(messageContent, 'assistant');
                   }
                   
