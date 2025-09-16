@@ -416,7 +416,7 @@ class ScoutGenericToolsService
       INTELLIGENT CANVAS:
       You can load data viewers and interactive canvases to display information visually.
       Available canvases: landing_page_viewer, landing_page_generator, contact_viewer, contact_generator,
-      campaign_viewer, analytics_dashboard
+      campaign_viewer, analytics_dashboard, email_template_viewer, email_template_editor
       
       When users ask to "show", "view", or "see" data, suggest loading the appropriate canvas.
       Example responses with canvas suggestions:

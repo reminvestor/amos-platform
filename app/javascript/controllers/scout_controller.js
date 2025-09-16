@@ -496,6 +496,11 @@ export default class extends Controller {
     this.loadScoutCanvas("campaign_viewer", {})
   }
 
+  loadEmailTemplatesCanvas() {
+    console.log("📄 Loading email templates canvas")
+    this.loadScoutCanvas("email_template_viewer", {})
+  }
+
   loadAnalyticsCanvas() {
     console.log("📊 Loading analytics canvas")
     this.loadScoutCanvas("analytics_dashboard", {})
