@@ -53,8 +53,8 @@ export default class extends Controller {
     // Initialize ActionCable subscription for job notifications
     this.setupJobNotifications()
     
-    // Restore canvas state on page load/refresh
-    this.restoreCanvasState()
+    // Don't automatically restore canvas state - let user start fresh
+    // this.restoreCanvasState()
   }
 
   // Save canvas state to localStorage

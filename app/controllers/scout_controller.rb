@@ -393,6 +393,13 @@ class ScoutController < ApplicationController
   
   # POST /scout/new_session
   def new_session
+    # Clear old session cache if exists
+    old_session_id = session[:scout_session_id]
+    if old_session_id
+      Rails.cache.delete("scout_conversation_#{old_session_id}")
+    end
+    
+    # Create new session
     session[:scout_session_id] = SecureRandom.uuid
     render json: { session_id: session[:scout_session_id] }
   end
