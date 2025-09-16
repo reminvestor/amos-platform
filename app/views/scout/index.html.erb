@@ -1028,10 +1028,24 @@ document.addEventListener('DOMContentLoaded', function() {
                   addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
                 } else {
                   console.log('📨 Assistant message content:', data.data.message);
-                  console.log('📏 Message length:', data.data.message.length);
+                  console.log('📏 Message length:', data.data.message ? data.data.message.length : 0);
+                  
+                  // Extract the actual message content
+                  let messageContent = data.data.message;
+                  
+                  // If the message is a JSON string, parse it
+                  if (typeof messageContent === 'string' && messageContent.trim().startsWith('{')) {
+                    try {
+                      const parsed = JSON.parse(messageContent);
+                      messageContent = parsed.message || messageContent;
+                    } catch (e) {
+                      console.warn('Failed to parse message as JSON:', e);
+                    }
+                  }
+                  
                   // Only add a new message if we weren't streaming
                   if (!streamingMessage) {
-                    addMessage(data.data.message, 'assistant');
+                    addMessage(messageContent, 'assistant');
                   }
                   
                   // Show tool usage info
