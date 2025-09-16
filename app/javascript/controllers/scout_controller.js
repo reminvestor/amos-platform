@@ -348,12 +348,34 @@ export default class extends Controller {
                 console.log("Parsing JSON:", jsonStr.length > 200 ? jsonStr.substring(0, 200) + "..." : jsonStr)
                 
                 const data = JSON.parse(jsonStr)
-                console.log("📊 Streaming data:", data.type, data.type === 'response' ? '(Final Response)' : data.message)
+                console.log("📊 Streaming data:", data.type, data.type === 'response' ? '(Final Response)' : (data.message || data.content))
                 
                 if (data.type === 'update') {
                   // Show progress update in the streaming window
                   console.log("🔄 Progress:", data.message)
                   this.showStreamingProgress(data.message)
+                  
+                  // Check if we're starting to stream content
+                  if (data.message === '💬 streaming') {
+                    // Create a new message element for streaming
+                    this.addMessage('', 'assistant')
+                    this.currentStreamingContent = ''
+                  }
+                } else if (data.type === 'content') {
+                  // Handle content chunks for streaming
+                  if (data.content) {
+                    this.currentStreamingContent = (this.currentStreamingContent || '') + data.content
+                    // Update the last message with the accumulated content
+                    const messages = this.chatMessagesTarget.querySelectorAll('.message-wrapper')
+                    const lastMessage = messages[messages.length - 1]
+                    if (lastMessage && lastMessage.classList.contains('assistant-message')) {
+                      const messageContent = lastMessage.querySelector('.message-content')
+                      if (messageContent) {
+                        messageContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
+                      }
+                    }
+                    this.scrollChatToBottom()
+                  }
                 } else if (data.type === 'response') {
                   // Final response received - hide streaming window and show message
                   finalResponseData = data.data
@@ -393,7 +415,12 @@ export default class extends Controller {
       // Process the final response data
       if (finalResponseData && finalResponseData.message) {
         // Add AI response (streaming window should already be hidden)
-        this.addMessage(finalResponseData.message, "ai")
+        // Only add a new message if we weren't streaming
+        if (!this.currentStreamingContent) {
+          this.addMessage(finalResponseData.message, "ai")
+        }
+        // Clear streaming content
+        this.currentStreamingContent = null
         
         // Check if Scout suggested a canvas to load
         if (finalResponseData.canvas) {
@@ -1397,6 +1424,27 @@ export default class extends Controller {
     if (this.hasChatMessagesTarget) {
       this.chatMessagesTarget.scrollTop = this.chatMessagesTarget.scrollHeight
     }
+  }
+
+  parseSimpleMarkdown(text) {
+    if (!text) return ''
+    
+    // First decode HTML entities if they exist
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = text
+    let decodedText = tempDiv.textContent || tempDiv.innerText || text
+    
+    // Apply markdown parsing
+    return decodedText
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/### (.*?)$/gm, '<h4>$1</h4>')
+      .replace(/## (.*?)$/gm, '<h3>$1</h3>')
+      .replace(/# (.*?)$/gm, '<h2>$1</h2>')
+      .replace(/- (.*?)$/gm, '<li>$1</li>')
+      .replace(/(\d+)\. (.*?)$/gm, '<li>$1. $2</li>')
+      .replace(/\n/g, '<br>')
+      .replace(/(<li>.*<\/li>)\s*(<br>)?/g, '<ul>$1</ul>')
   }
 
   getCSRFToken() {
