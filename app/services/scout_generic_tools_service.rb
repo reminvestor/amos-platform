@@ -213,7 +213,7 @@ class ScoutGenericToolsService
   def process_message_with_tools(user_message, conversation_history = [], current_canvas = nil)
     begin
       # Build system prompt with dynamic schema information
-      system_prompt = build_system_prompt_with_dynamic_schema
+      system_prompt = build_system_prompt_with_dynamic_schema(current_canvas)
       
       # Enhance user message with canvas context if available
       enhanced_user_message = enhance_message_with_canvas_context(user_message, current_canvas)
@@ -287,7 +287,7 @@ class ScoutGenericToolsService
       progress_callback&.call("🧠 Building context with available data models...")
       
       # Build system prompt with dynamic schema information
-      system_prompt = build_system_prompt_with_dynamic_schema
+      system_prompt = build_system_prompt_with_dynamic_schema(current_canvas)
       
       # Enhance user message with canvas context if available
       enhanced_user_message = enhance_message_with_canvas_context(user_message, current_canvas)
@@ -375,7 +375,7 @@ class ScoutGenericToolsService
 
   private
 
-  def build_system_prompt_with_dynamic_schema
+  def build_system_prompt_with_dynamic_schema(context_type = nil)
     available_models = ScoutDataRegistry.available_object_types
     
     # Dynamic AI identity based on provider
@@ -392,9 +392,72 @@ class ScoutGenericToolsService
       "You are Scout, the AI marketing assistant. You have access to a simple, powerful toolset for accessing and creating marketing data."
     end
     
+    # Add context-specific focus based on what the user is working with
+    context_focus = case context_type
+    when 'email_template', 'email_template_editor', 'email_template_viewer'
+      <<~CONTEXT
+      
+      **CURRENT FOCUS: EMAIL TEMPLATES**
+      The user is working with email templates. Prioritize helping with:
+      - Creating engaging email content with proper personalization using {{variables}}
+      - Improving subject lines for better open rates
+      - Structuring email content for clarity and conversions
+      - Testing and previewing templates
+      - Linking templates to campaigns
+      
+      Remember: ALWAYS use {{first_name}}, {{last_name}}, {{email}}, {{full_name}} for variables, never [brackets].
+      CONTEXT
+    when 'landing_page', 'landing_page_editor', 'landing_page_viewer', 'landing_page_generator'
+      <<~CONTEXT
+      
+      **CURRENT FOCUS: LANDING PAGES**
+      The user is working with landing pages. Prioritize helping with:
+      - Creating high-converting landing pages with clear CTAs
+      - Optimizing page layout and design for conversions
+      - A/B testing suggestions
+      - Form optimization and lead capture
+      - Mobile responsiveness
+      CONTEXT
+    when 'campaign', 'campaign_viewer'
+      <<~CONTEXT
+      
+      **CURRENT FOCUS: EMAIL CAMPAIGNS**
+      The user is working with email campaigns. Prioritize helping with:
+      - Campaign strategy and timing
+      - Selecting the right audience segments
+      - Analyzing campaign performance metrics
+      - Improving open and click rates
+      - Linking appropriate email templates
+      CONTEXT
+    when 'contact', 'contact_viewer', 'contact_generator'
+      <<~CONTEXT
+      
+      **CURRENT FOCUS: CONTACTS & AUDIENCES**
+      The user is working with contacts. Prioritize helping with:
+      - Organizing and segmenting contact lists
+      - Importing and managing contact data
+      - Creating targeted contact groups
+      - Data hygiene and deduplication
+      - GDPR compliance and opt-out management
+      CONTEXT
+    when 'analytics', 'analytics_dashboard'
+      <<~CONTEXT
+      
+      **CURRENT FOCUS: ANALYTICS & REPORTING**
+      The user is viewing analytics. Prioritize helping with:
+      - Interpreting campaign performance data
+      - Identifying trends and insights
+      - Recommending optimization strategies
+      - Comparing campaign effectiveness
+      - ROI calculations and reporting
+      CONTEXT
+    else
+      ""
+    end
+    
     <<~PROMPT
       #{ai_identity}
-
+      #{context_focus}
       USER CONTEXT:
       - User: #{@user.first_name} #{@user.last_name}
       - Entity: #{@entity.name}
