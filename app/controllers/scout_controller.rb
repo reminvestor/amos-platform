@@ -214,6 +214,9 @@ class ScoutController < ApplicationController
       when 'email_template_editor'
         canvas_content = render_email_template_editor(canvas_data)
         canvas_title = "Edit Email Template"
+      when 'dynamic_canvas'
+        canvas_content = render_dynamic_canvas(canvas_data)
+        canvas_title = canvas_data['title'] || "Custom Analysis"
       else
         canvas_content = render_default_canvas
         canvas_title = "Scout Canvas"
@@ -818,6 +821,17 @@ class ScoutController < ApplicationController
       partial: 'scout/canvas/email_template_editor',
       locals: {
         email_template: email_template,
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_dynamic_canvas(data = {})
+    render_to_string(
+      partial: 'scout/canvas/dynamic_canvas',
+      locals: {
         entity: current_entity,
         user: current_user,
         canvas_data: data

@@ -207,6 +207,33 @@ class ScoutGenericToolsService
         },
         required: ["campaign_id", "template_id"]
       }
+    },
+    {
+      name: "create_dynamic_visualization",
+      description: "Create a custom HTML visualization or report to display data insights",
+      input_schema: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "Title for the visualization"
+          },
+          subtitle: {
+            type: "string",
+            description: "Optional subtitle or description"
+          },
+          html_content: {
+            type: "string",
+            description: "Custom HTML content with data visualizations, charts, metrics, insights. Use Bootstrap classes and the provided AI styles (ai-metric-card, ai-chart-container, ai-insight-box, ai-recommendation, ai-warning)"
+          },
+          canvas_type: {
+            type: "string",
+            description: "Always set to 'dynamic_canvas'",
+            default: "dynamic_canvas"
+          }
+        },
+        required: ["title", "html_content"]
+      }
     }
   ]
 
@@ -501,7 +528,16 @@ class ScoutGenericToolsService
       INTELLIGENT CANVAS:
       You can load data viewers and interactive canvases to display information visually.
       Available canvases: landing_page_viewer, landing_page_generator, contact_viewer, contact_generator,
-      campaign_viewer, analytics_dashboard, email_template_viewer, email_template_editor
+      campaign_viewer, analytics_dashboard, email_template_viewer, email_template_editor, dynamic_canvas
+      
+      DYNAMIC VISUALIZATIONS:
+      When users ask for analysis, comparisons, or custom reports, use create_dynamic_visualization to build
+      custom HTML visualizations. This is perfect for:
+      - Year-over-year comparisons
+      - Custom metric dashboards
+      - Campaign performance analysis
+      - ROI calculations and reports
+      - Any custom data visualization
       
       When users ask to "show", "view", or "see" data, suggest loading the appropriate canvas.
       Example responses with canvas suggestions:
@@ -880,6 +916,8 @@ class ScoutGenericToolsService
         execute_revert_landing_page_to_version(tool_call[:arguments])
       when 'link_template_to_campaign'
         execute_link_template_to_campaign(tool_call[:arguments])
+      when 'create_dynamic_visualization'
+        execute_create_dynamic_visualization(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -920,6 +958,8 @@ class ScoutGenericToolsService
         progress_callback&.call("⏪ Reverting landing page to previous version...")
       when 'link_template_to_campaign'
         progress_callback&.call("🔗 Linking email template to campaign...")
+      when 'create_dynamic_visualization'
+        progress_callback&.call("📊 Creating custom visualization...")
       end
       
       result = case tool_call[:name]
@@ -939,6 +979,8 @@ class ScoutGenericToolsService
         execute_revert_landing_page_to_version(tool_call[:arguments])
       when 'link_template_to_campaign'
         execute_link_template_to_campaign(tool_call[:arguments])
+      when 'create_dynamic_visualization'
+        execute_create_dynamic_visualization(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -2015,6 +2057,14 @@ class ScoutGenericToolsService
       - Celebrate successes
       - Provide actionable next steps
       
+      USE DYNAMIC VISUALIZATIONS:
+      When providing analysis or comparisons, use create_dynamic_visualization to create
+      custom HTML dashboards that visualize the insights. Include:
+      - Metric cards with key numbers
+      - Comparison tables
+      - Insights and recommendations boxes
+      - Visual indicators (up/down arrows, colors)
+      
       Still use tools to GET data, but focus on ANALYZING and ADVISING rather than CREATING.
     ADVISOR
   end
@@ -2069,6 +2119,32 @@ class ScoutGenericToolsService
       }
     rescue => e
       Rails.logger.error "Error linking template to campaign: #{e.message}"
+      { success: false, error: e.message }
+    end
+  end
+
+  def execute_create_dynamic_visualization(args)
+    begin
+      title = args['title']
+      subtitle = args['subtitle']
+      html_content = args['html_content']
+      
+      # Store the visualization data for the canvas
+      @suggested_canvas = 'dynamic_canvas'
+      @canvas_data = {
+        'title' => title,
+        'subtitle' => subtitle,
+        'html_content' => html_content
+      }
+      
+      {
+        success: true,
+        message: "📊 Created custom visualization: #{title}",
+        canvas_type: 'dynamic_canvas',
+        canvas_data: @canvas_data
+      }
+    rescue => e
+      Rails.logger.error "Error creating dynamic visualization: #{e.message}"
       { success: false, error: e.message }
     end
   end
