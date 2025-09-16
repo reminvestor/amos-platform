@@ -229,6 +229,9 @@ Rails.application.routes.draw do
   get 'scout/history', to: 'scout#history' # paginated history
   delete 'scout/conversation', to: 'scout#clear_conversation'
   get 'scout/export', to: 'scout#conversation_export'
+  get 'scout/conversations', to: 'scout#conversations'
+  get 'scout/conversation/:session_id', to: 'scout#conversation'
+  post 'scout/new_session', to: 'scout#new_session'
   
   # Scout Intelligent Canvas routes
   post 'scout/load_canvas', to: 'scout#load_canvas'

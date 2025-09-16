@@ -68,6 +68,28 @@
     <!-- Chat Area (Full screen in conversation mode, sidebar in work mode) -->
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
+        <div class="conversation-controls">
+          <div class="conversation-info">
+            <button class="conversation-selector" id="conversation-selector">
+              <i class="fas fa-comments"></i>
+              <span class="conversation-label">Connection Wizard</span>
+              <span class="message-count" id="message-count">0 messages</span>
+              <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
+              <div class="dropdown-header">
+                <h4>Recent Conversations</h4>
+              </div>
+              <div class="conversation-list" id="conversation-list">
+                <!-- Conversations will be loaded here -->
+              </div>
+            </div>
+          </div>
+          <button class="new-conversation-btn" id="new-conversation-btn">
+            <i class="fas fa-plus"></i>
+            New
+          </button>
+        </div>
         <div class="chat-title">
           <h2>What can I help you with today?</h2>
           <p class="chat-subtitle">I'm Scout, your AI marketing assistant. I can help with campaigns, landing pages, analytics, and more.</p>
@@ -469,6 +491,130 @@
   opacity: 0.7 !important;
   font-size: 0.75rem !important;
 }
+
+/* Conversation Controls */
+.conversation-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 0 1rem;
+}
+
+.conversation-info {
+  position: relative;
+}
+
+.conversation-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  color: white;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.conversation-selector:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.conversation-selector i {
+  opacity: 0.8;
+}
+
+.conversation-label {
+  font-weight: 500;
+}
+
+.message-count {
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
+
+.conversation-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.5rem;
+  min-width: 300px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.dropdown-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.dropdown-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.conversation-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.conversation-item {
+  padding: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.conversation-item:hover {
+  background: #f8f9fa;
+}
+
+.conversation-item:last-child {
+  border-bottom: none;
+}
+
+.conversation-item-title {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.conversation-item-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.new-conversation-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.new-conversation-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
 </style>
 
 <!-- JavaScript for Scout Chat -->
@@ -480,10 +626,142 @@ document.addEventListener('DOMContentLoaded', function() {
   const sendButton = document.getElementById('send-button');
   const toolActivity = document.getElementById('tool-activity');
   const toolStatus = document.getElementById('tool-status');
+  const conversationSelector = document.getElementById('conversation-selector');
+  const conversationDropdown = document.getElementById('conversation-dropdown');
+  const conversationList = document.getElementById('conversation-list');
+  const newConversationBtn = document.getElementById('new-conversation-btn');
+  const messageCountElement = document.getElementById('message-count');
 
   // Auto-focus on input (with defensive check)
   if (messageInput && messageInput.focus) {
     messageInput.focus();
+  }
+
+  // Track message count
+  let messageCount = 0;
+  
+  // Get CSRF token
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+  
+  // Update message count display
+  function updateMessageCount() {
+    const messages = chatMessages.querySelectorAll('.message:not(.welcome-message)');
+    messageCount = messages.length;
+    messageCountElement.textContent = `${messageCount} message${messageCount !== 1 ? 's' : ''}`;
+  }
+  
+  // Toggle conversation dropdown
+  conversationSelector.addEventListener('click', function(e) {
+    e.stopPropagation();
+    conversationDropdown.style.display = conversationDropdown.style.display === 'none' ? 'block' : 'none';
+    loadRecentConversations();
+  });
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!conversationDropdown.contains(e.target) && e.target !== conversationSelector) {
+      conversationDropdown.style.display = 'none';
+    }
+  });
+  
+  // Load recent conversations
+  async function loadRecentConversations() {
+    try {
+      const response = await fetch('/scout/conversations');
+      const conversations = await response.json();
+      
+      conversationList.innerHTML = conversations.map(conv => `
+        <div class="conversation-item" data-session-id="${conv.session_id}">
+          <div class="conversation-item-title">${conv.first_message || 'Untitled Conversation'}</div>
+          <div class="conversation-item-meta">
+            <span>${conv.message_count} messages</span>
+            <span>${formatTimeAgo(conv.created_at)}</span>
+          </div>
+        </div>
+      `).join('');
+      
+      // Add click handlers
+      conversationList.querySelectorAll('.conversation-item').forEach(item => {
+        item.addEventListener('click', function() {
+          const sessionId = this.dataset.sessionId;
+          loadConversation(sessionId);
+          conversationDropdown.style.display = 'none';
+        });
+      });
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+    }
+  }
+  
+  // Load a specific conversation
+  async function loadConversation(sessionId) {
+    // Clear current messages
+    chatMessages.innerHTML = '';
+    
+    // Load messages for this session
+    try {
+      const response = await fetch(`/scout/conversation/${sessionId}`);
+      const messages = await response.json();
+      
+      messages.forEach(msg => {
+        addMessage(msg.content, msg.role === 'user' ? 'user' : 'assistant', msg.created_at);
+      });
+      
+      updateMessageCount();
+    } catch (error) {
+      console.error('Failed to load conversation:', error);
+    }
+  }
+  
+  // Start new conversation
+  newConversationBtn.addEventListener('click', function() {
+    if (messageCount > 0 && confirm('Start a new conversation? Current conversation will be saved.')) {
+      // Clear messages
+      chatMessages.innerHTML = `
+        <div class="message ai-message welcome-message">
+          <div class="message-avatar">
+            <i class="fas fa-robot"></i>
+          </div>
+          <div class="message-content">
+            <p>Hi! I'm Scout, your AI marketing assistant. What would you like to work on today?</p>
+            <div class="message-suggestions">
+              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Create a landing page for my product">
+                Create landing page
+              </button>
+              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Show me my email campaigns">
+                Email campaigns
+              </button>
+              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Analyze my marketing performance">
+                Analytics dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Reset session
+      fetch('/scout/new_session', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } })
+        .then(response => response.json())
+        .then(data => {
+          console.log('New session started:', data.session_id);
+        });
+      
+      updateMessageCount();
+      messageInput.focus();
+    }
+  });
+  
+  // Format time ago
+  function formatTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return date.toLocaleDateString();
   }
 
   // Scroll to bottom (with defensive check)
@@ -493,8 +771,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Initial scroll
+  // Initial scroll and message count
   scrollToBottom();
+  updateMessageCount();
 
   // Simple markdown parser for messages
   function parseSimpleMarkdown(text) {
@@ -606,6 +885,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const el = buildMessageElement({ content, role, timestamp });
     chatMessages.appendChild(el);
     scrollToBottom();
+    updateMessageCount();
     return el; // Return the element for streaming updates
   }
 
