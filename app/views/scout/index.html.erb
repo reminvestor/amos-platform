@@ -1,5 +1,6 @@
 <style>
-  /* Tool activity panel styles */
+  /* Tool activity panel styles - DEPRECATED: Now integrated into task progress canvas */
+  /* Keeping CSS for backward compatibility but panel is no longer displayed */
   .tool-activity-panel {
     background: #f8f9fa;
     border: 1px solid #dee2e6;
@@ -344,16 +345,7 @@
         <!-- Messages will be loaded here from history -->
       </div>
       
-      <!-- Tool activity panel with collapsible tool calls -->
-      <div id="tool-activity" class="tool-activity-panel" style="display: none;">
-        <div class="tool-activity-header">
-          <i class="fas fa-tools"></i>
-          <span>Scout is working on your request...</span>
-        </div>
-        <div id="tool-calls-list" class="tool-calls-list">
-          <!-- Tool calls will be dynamically added here -->
-        </div>
-      </div>
+      <!-- Tool activity panel removed - now part of task progress canvas -->
       
       <div class="chat-input-area">
         <form id="message-form" data-scout-target="chatForm">
@@ -1286,9 +1278,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     toolCalls.set(toolCallId, toolCall);
     
-    // Show tool activity panel
-    const toolActivity = document.getElementById('tool-activity');
-    toolActivity.style.display = 'block';
+    // Tool activity panel removed - now part of task progress canvas
+    // const toolActivity = document.getElementById('tool-activity');
+    // toolActivity.style.display = 'block';
     
     // Add tool call to the list
     const toolCallsList = document.getElementById('tool-calls-list');
@@ -1384,11 +1376,12 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   function hideToolActivity() {
-    const toolActivity = document.getElementById('tool-activity');
-    toolActivity.style.display = 'none';
-    const toolCallsList = document.getElementById('tool-calls-list');
-    toolCallsList.innerHTML = '';
-    toolCalls.clear();
+    // Tool activity panel removed - now part of task progress canvas
+    // const toolActivity = document.getElementById('tool-activity');
+    // toolActivity.style.display = 'none';
+    // const toolCallsList = document.getElementById('tool-calls-list');
+    // toolCallsList.innerHTML = '';
+    // toolCalls.clear();
   }
   
   let currentToolIndicator = null;
@@ -1499,7 +1492,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (messageInput && messageInput.focus) {
         messageInput.focus();
       }
-      toolActivity.style.display = 'none';
+      // toolActivity.style.display = 'none';
       hideStreamingStatus();
       hideTypingIndicator();
     }, 120000); // 120 second timeout
@@ -1703,7 +1696,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (messageInput && messageInput.focus) {
                   messageInput.focus();
                 }
-                toolActivity.style.display = 'none';
+                // toolActivity.style.display = 'none';
                 hideStreamingStatus();
                 
                 // Reset streaming state
