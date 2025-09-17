@@ -318,7 +318,7 @@
         <div class="conversation-controls">
           <div class="header-title">
             <h2>Scout AI</h2>
-          </div>
+        </div>
           <div class="header-buttons">
             <div class="conversation-info">
               <button class="icon-btn" id="conversation-selector" title="Conversation history">
@@ -327,17 +327,17 @@
               <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
                 <div class="dropdown-header">
                   <h4>Recent Conversations</h4>
-                </div>
+      </div>
                 <div class="conversation-list" id="conversation-list">
                   <!-- Conversations will be loaded here -->
-                </div>
+          </div>
               </div>
             </div>
             <button class="icon-btn" id="new-conversation-btn" title="New conversation">
               <i class="fas fa-plus"></i>
-            </button>
+              </button>
+            </div>
           </div>
-        </div>
       </div>
       
       <div class="chat-messages" id="chat-messages" data-scout-target="chatMessages">
@@ -1743,15 +1743,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     try {
       // Always use streaming - no fallback
-      await handleStreamingChat(message);
-      return; // Success, exit early
-    } catch (streamError) {
+        await handleStreamingChat(message);
+        return; // Success, exit early
+      } catch (streamError) {
       console.error('Streaming failed:', streamError);
-      hideStreamingStatus();
+        hideStreamingStatus();
       hideTypingIndicator();
-      
+
       // Show error to user instead of falling back
-      addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+        addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
       
       // Re-enable form
       messageInput.disabled = false;
@@ -1772,4 +1772,52 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 });
+
+// Confirmation dialog handling
+let pendingConfirmation = null;
+
+function showConfirmationDialog(message, onConfirm) {
+  const dialog = document.getElementById('confirmation-dialog');
+  const messageEl = document.getElementById('confirmation-message');
+  const proceedBtn = document.getElementById('confirmation-proceed');
+  
+  messageEl.innerHTML = message;
+  pendingConfirmation = onConfirm;
+  
+  // Show the dialog using Bootstrap modal
+  const modal = new bootstrap.Modal(dialog);
+  modal.show();
+}
+
+// Handle confirmation proceed
+document.getElementById('confirmation-proceed')?.addEventListener('click', function() {
+  if (pendingConfirmation) {
+    pendingConfirmation();
+    pendingConfirmation = null;
+  }
+  
+  // Hide the modal
+  const dialog = document.getElementById('confirmation-dialog');
+  const modal = bootstrap.Modal.getInstance(dialog);
+  modal.hide();
+});
 </script> 
+
+<!-- Confirmation Dialog -->
+<div id="confirmation-dialog" class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmation Required</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="confirmation-message">
+        <!-- Dynamic content will be inserted here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmation-proceed">Proceed</button>
+      </div>
+    </div>
+  </div>
+</div> 

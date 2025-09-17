@@ -499,7 +499,7 @@ class ScoutGenericToolsService
                         tool_use_id: tool_call[:id],
                         content: [
                           {
-                            json: result[:success] ? (result[:result] || { success: true }) : { error: result[:error] || "Tool execution failed" }
+                            json: result[:success] ? (result[:result] || result || { success: true }) : { error: result[:error] || "Tool execution failed", details: result }
                           }
                         ]
                       }
@@ -649,7 +649,7 @@ class ScoutGenericToolsService
                             tool_use_id: tool_call[:id],
                             content: [
                               {
-                                json: result[:success] ? (result[:result] || { success: true }) : { error: result[:error] || "Tool execution failed" }
+                                json: result[:success] ? (result[:result] || result || { success: true }) : { error: result[:error] || "Tool execution failed", details: result }
                               }
                             ]
                           }
@@ -2727,6 +2727,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       2. Use tools immediately when appropriate
       3. Confirm actions taken
       4. Suggest next steps after completing tasks
+      5. If a tool returns requires_confirmation: true, explain what would happen and ask the user to confirm
+      6. Never proceed with destructive actions (replacements, deletions) without explicit user confirmation
     BUILDER
   end
   
@@ -2783,6 +2785,26 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       # Find the template
       template = @entity.email_templates.find_by(id: template_id)
       return { success: false, error: "Email template not found with ID: #{template_id}" } unless template
+      
+      # Check if campaign already has a template
+      if campaign.email_template_id.present? && campaign.email_template_id != template.id
+        existing_template = campaign.email_template
+        return {
+          success: false,
+          error: "Campaign '#{campaign.name}' already has a template linked: '#{existing_template.name}'",
+          requires_confirmation: true,
+          confirmation_type: 'replace_template',
+          data: {
+            campaign_id: campaign.id,
+            campaign_name: campaign.name,
+            existing_template_id: existing_template.id,
+            existing_template_name: existing_template.name,
+            new_template_id: template.id,
+            new_template_name: template.name
+          },
+          message: "⚠️ This campaign already has a template. Would you like to replace '#{existing_template.name}' with '#{template.name}'?"
+        }
+      end
       
       # Link the template to the campaign
       campaign.update!(email_template_id: template.id)
