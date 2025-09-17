@@ -574,7 +574,28 @@ class ScoutGenericToolsService
                         tool_use_id: tool_call[:id],
                         content: [
                           {
-                            json: sanitize_for_bedrock(result[:success] ? (result[:result] || result || { success: true }) : { error: result[:error] || "Tool execution failed", details: result })
+                            json: sanitize_for_bedrock(
+                              if result.is_a?(Hash)
+                                if result[:success]
+                                  # For successful results, include all relevant data
+                                  {
+                                    success: true,
+                                    message: result[:message] || "Tool executed successfully",
+                                    data: result.except(:success, :message, :canvas, :canvas_data, :task_list)
+                                  }
+                                else
+                                  # For failures, include error information
+                                  {
+                                    success: false,
+                                    error: result[:error] || "Tool execution failed",
+                                    details: result[:details] || result.except(:success, :error)
+                                  }
+                                end
+                              else
+                                # Fallback for non-hash results
+                                { success: true, result: result }
+                              end
+                            )
                           }
                         ]
                       }
@@ -749,7 +770,28 @@ class ScoutGenericToolsService
                             tool_use_id: tool_call[:id],
                             content: [
                               {
-                                json: sanitize_for_bedrock(result[:success] ? (result[:result] || result || { success: true }) : { error: result[:error] || "Tool execution failed", details: result })
+                                json: sanitize_for_bedrock(
+                                  if result.is_a?(Hash)
+                                    if result[:success]
+                                      # For successful results, include all relevant data
+                                      {
+                                        success: true,
+                                        message: result[:message] || "Tool executed successfully",
+                                        data: result.except(:success, :message, :canvas, :canvas_data, :task_list)
+                                      }
+                                    else
+                                      # For failures, include error information
+                                      {
+                                        success: false,
+                                        error: result[:error] || "Tool execution failed",
+                                        details: result[:details] || result.except(:success, :error)
+                                      }
+                                    end
+                                  else
+                                    # Fallback for non-hash results
+                                    { success: true, result: result }
+                                  end
+                                )
                               }
                             ]
                           }
@@ -877,7 +919,28 @@ class ScoutGenericToolsService
                               tool_use_id: tool_call[:id],
                               content: [
                                 {
-                                  json: result[:success] ? (result[:result] || { success: true }) : { error: result[:error] || "Tool execution failed" }
+                                  json: sanitize_for_bedrock(
+                                    if result.is_a?(Hash)
+                                      if result[:success]
+                                        # For successful results, include all relevant data
+                                        {
+                                          success: true,
+                                          message: result[:message] || "Tool executed successfully",
+                                          data: result.except(:success, :message, :canvas, :canvas_data, :task_list)
+                                        }
+                                      else
+                                        # For failures, include error information
+                                        {
+                                          success: false,
+                                          error: result[:error] || "Tool execution failed",
+                                          details: result[:details] || result.except(:success, :error)
+                                        }
+                                      end
+                                    else
+                                      # Fallback for non-hash results
+                                      { success: true, result: result }
+                                    end
+                                  )
                                 }
                               ]
                             }
@@ -3079,7 +3142,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     return unless task_list && task_list[:tasks]
     
     Rails.logger.info "🔍 Checking task update for tool: #{tool_name}, args: #{args.inspect}"
-    Rails.logger.info "📋 Current tasks in list: #{task_list[:tasks].map { |t| "#{t[:id]}: #{t[:description]} (#{t[:status]})" }.join(', ')}"
+    Rails.logger.info "📋 Current tasks in list: #{task_list[:tasks].map { |t| "#{t['id'] || t[:id]}: #{t['description'] || t[:description]} (#{t['status'] || t[:status]})" }.join(', ')}"
     
     # Find matching task based on tool name and context
     task = nil
@@ -3089,8 +3152,9 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       # Match tasks like "Get campaign schema", "Get campaigns schema"
       object_type = args['object_type']
       task = task_list[:tasks].find do |t|
-        desc = t[:description].downcase
-        t[:status] == 'pending' && 
+        desc = (t['description'] || t[:description] || '').downcase
+        status = t['status'] || t[:status]
+        status == 'pending' && 
         (desc.include?('get') || desc.include?('fetch') || desc.include?('retrieve')) && 
         desc.include?('schema') &&
         (desc.include?(object_type.downcase) || desc.include?(object_type.singularize.downcase) || desc.include?(object_type.pluralize.downcase))
@@ -3101,8 +3165,9 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       object_type = args['object_type']
       object_name = args['name'] || args['title'] || ''
       task = task_list[:tasks].find do |t|
-        desc = t[:description].downcase
-        t[:status] == 'pending' && 
+        desc = (t['description'] || t[:description] || '').downcase
+        status = t['status'] || t[:status]
+        status == 'pending' && 
         desc.include?('create') && 
         (desc.include?(object_type.downcase) || desc.include?(object_type.singularize.downcase)) &&
         (object_name.empty? || desc.include?(object_name.downcase))
@@ -3112,8 +3177,9 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       # Match tasks like "Find most recent email template", "Find the most recent template"
       object_type = args['object_type']
       task = task_list[:tasks].find do |t|
-        desc = t[:description].downcase
-        t[:status] == 'pending' && 
+        desc = (t['description'] || t[:description] || '').downcase
+        status = t['status'] || t[:status]
+        status == 'pending' && 
         (desc.include?('find') || desc.include?('get') || desc.include?('fetch') || desc.include?('retrieve')) &&
         (desc.include?(object_type.downcase) || desc.include?(object_type.singularize.downcase) || desc.include?(object_type.pluralize.downcase)) &&
         (desc.include?('recent') || desc.include?('latest') || desc.include?('template'))
@@ -3122,8 +3188,9 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     when 'link_template_to_campaign'
       # Match tasks like "Link template to campaign", "Link the template to the new campaign"
       task = task_list[:tasks].find do |t|
-        desc = t[:description].downcase
-        t[:status] == 'pending' && 
+        desc = (t['description'] || t[:description] || '').downcase
+        status = t['status'] || t[:status]
+        status == 'pending' && 
         desc.include?('link') && 
         desc.include?('template') &&
         desc.include?('campaign')
@@ -3131,10 +3198,12 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     end
     
     if task
-      Rails.logger.info "✅ Found matching task: #{task[:description]} (ID: #{task[:id]})"
+      task_desc = task['description'] || task[:description]
+      task_id = task['id'] || task[:id]
+      Rails.logger.info "✅ Found matching task: #{task_desc} (ID: #{task_id})"
     else
       Rails.logger.info "❌ No matching task found for tool: #{tool_name}"
-      Rails.logger.info "   Available tasks: #{task_list[:tasks].map { |t| "#{t[:description]} (#{t[:status]})" }.join(', ')}"
+      Rails.logger.info "   Available tasks: #{task_list[:tasks].map { |t| "#{t['description'] || t[:description]} (#{t['status'] || t[:status]})" }.join(', ')}"
       return
     end
     
@@ -3142,7 +3211,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     if success
       result = execute_manage_task_list({
         'action' => 'complete_task',
-        'task_id' => task[:id],
+        'task_id' => task['id'] || task[:id],
         'details' => "Completed successfully"
       })
       
@@ -3160,7 +3229,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     else
       result = execute_manage_task_list({
         'action' => 'fail_task',
-        'task_id' => task[:id],
+        'task_id' => task['id'] || task[:id],
         'details' => "Failed to complete"
       })
       
@@ -3300,15 +3369,78 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         }
       end
       
+    when 'update_task'
+      # Update a task status (e.g., to in_progress)
+      existing_list = Rails.cache.read(cache_key)
+      if existing_list
+        task = existing_list[:tasks].find { |t| (t['id'] || t[:id]).to_s == args['task_id'].to_s }
+        if task
+          # Update status
+          new_status = args['status'] || 'in_progress'
+          task[:status] = new_status
+          task['status'] = new_status  # Ensure both symbol and string keys work
+          task[:details] = args['details'] if args['details']
+          task['details'] = args['details'] if args['details']
+          
+          # Add timestamp based on status
+          case new_status
+          when 'in_progress'
+            task[:started_at] = Time.current
+            task['started_at'] = Time.current
+          when 'completed'
+            task[:completed_at] = Time.current
+            task['completed_at'] = Time.current
+          when 'failed'
+            task[:failed_at] = Time.current
+            task['failed_at'] = Time.current
+          end
+          
+          existing_list[:updated_at] = Time.current
+          Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+          
+          @suggested_canvas = 'task_progress'
+          @canvas_data = existing_list
+          
+          # Send canvas update immediately if we have a callback
+          if @progress_callback
+            @progress_callback.call({
+              type: 'load_canvas',
+              canvas: 'task_progress',
+              canvas_data: existing_list
+            })
+          end
+          
+          {
+            success: true,
+            message: "📝 Task updated: #{task['description'] || task[:description]} → #{new_status}",
+            task_list: existing_list,
+            canvas: 'task_progress'
+          }
+        else
+          {
+            success: false,
+            error: "Task not found: #{args['task_id']}"
+          }
+        end
+      else
+        {
+          success: false,
+          error: "No task list found"
+        }
+      end
+      
     when 'complete_task'
       # Mark a task as completed
       existing_list = Rails.cache.read(cache_key)
       if existing_list
-        task = existing_list[:tasks].find { |t| t[:id] == args['task_id'] }
+        task = existing_list[:tasks].find { |t| (t['id'] || t[:id]).to_s == args['task_id'].to_s }
         if task
           task[:status] = 'completed'
+          task['status'] = 'completed'  # Ensure both symbol and string keys work
           task[:details] = args['details'] if args['details']
+          task['details'] = args['details'] if args['details']
           task[:completed_at] = Time.current
+          task['completed_at'] = Time.current
           existing_list[:updated_at] = Time.current
           Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
           
@@ -3317,12 +3449,12 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
           
           # Calculate progress
           total_tasks = existing_list[:tasks].size
-          completed_tasks = existing_list[:tasks].count { |t| t[:status] == 'completed' }
+          completed_tasks = existing_list[:tasks].count { |t| (t['status'] || t[:status]) == 'completed' }
           progress_percentage = (completed_tasks.to_f / total_tasks * 100).round
           
           {
             success: true,
-            message: "✅ Task completed: #{task[:description]}",
+            message: "✅ Task completed: #{task['description'] || task[:description]}",
             progress: "#{completed_tasks}/#{total_tasks} tasks completed (#{progress_percentage}%)",
             task_list: existing_list,
             canvas: 'task_progress'
@@ -3344,20 +3476,23 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       # Mark a task as failed
       existing_list = Rails.cache.read(cache_key)
       if existing_list
-        task = existing_list[:tasks].find { |t| t[:id] == args['task_id'] }
+        task = existing_list[:tasks].find { |t| (t['id'] || t[:id]).to_s == args['task_id'].to_s }
         if task
           task[:status] = 'failed'
+          task['status'] = 'failed'  # Ensure both symbol and string keys work
           task[:details] = args['details'] || "Task failed"
+          task['details'] = args['details'] || "Task failed"
           task[:failed_at] = Time.current
+          task['failed_at'] = Time.current
           existing_list[:updated_at] = Time.current
           Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
           
           @suggested_canvas = 'task_progress'
           @canvas_data = existing_list
-          
+
           {
             success: true,
-            message: "❌ Task failed: #{task[:description]}",
+            message: "❌ Task failed: #{task['description'] || task[:description]}",
             reason: args['details'],
             task_list: existing_list,
             canvas: 'task_progress'
