@@ -1,0 +1,93 @@
+<div class="dynamic-canvas">
+  <% if canvas_data['title'].present? %>
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">
+          <i class="fas fa-chart-line text-primary me-2"></i>
+          <%= canvas_data['title'] %>
+        </h5>
+        <% if canvas_data['subtitle'].present? %>
+          <small class="text-muted"><%= canvas_data['subtitle'] %></small>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+  
+  <!-- Dynamic Content Area -->
+  <div id="dynamicCanvasContent">
+    <% if canvas_data['html_content'].present? %>
+      <%= raw canvas_data['html_content'] %>
+    <% else %>
+      <div class="text-center py-5">
+        <i class="fas fa-magic fa-3x text-muted mb-3"></i>
+        <h6>Ask Scout to analyze your data</h6>
+        <p class="text-muted">Scout can create custom visualizations, reports, and insights based on your questions.</p>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .dynamic-canvas {
+    height: 100%;
+    overflow-y: auto;
+  }
+  
+  #dynamicCanvasContent {
+    padding: 20px;
+  }
+  
+  /* Default styles for AI-generated content */
+  .ai-metric-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #dee2e6;
+  }
+  
+  .ai-metric-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #0d6efd;
+  }
+  
+  .ai-metric-label {
+    color: #6c757d;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .ai-chart-container {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    margin-bottom: 20px;
+  }
+  
+  .ai-insight-box {
+    background: #e7f3ff;
+    border-left: 4px solid #0d6efd;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 4px;
+  }
+  
+  .ai-recommendation {
+    background: #d4edda;
+    border-left: 4px solid #28a745;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 4px;
+  }
+  
+  .ai-warning {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 4px;
+  }
+</style>

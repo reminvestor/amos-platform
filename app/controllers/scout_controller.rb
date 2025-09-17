@@ -41,7 +41,7 @@ class ScoutController < ApplicationController
       Rails.logger.info "Scout: Saved user message"
       
       # Use the new generic tools service
-      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity)
+      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity, session[:scout_session_id])
       conversation_history = persisted_history_last_k(12)
       response = generic_tools_service.process_message_with_tools(user_message, conversation_history, current_canvas)
       
@@ -118,17 +118,69 @@ class ScoutController < ApplicationController
       # Use generic tools service with streaming updates
       stream_update("🧠 Analyzing your request...")
       stream_update("📋 Preparing context and tools...")
-      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity)
+      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity, session[:scout_session_id])
+      
+      # Track if we've started streaming content
+      content_streaming = false
       
       # Process message with streaming progress updates
       final_response = generic_tools_service.process_message_with_tools_streaming(
         user_message, 
-        ->(message) { stream_update(message) },  # Pass streaming callback (multi-line supported below)
+        ->(update) { 
+          Rails.logger.info "🔄 Streaming callback received: #{update.inspect.first(100)}..."
+          if update.is_a?(Hash)
+            case update[:type]
+            when 'content_chunk'
+              # Stream content chunks directly to the user
+              if !content_streaming
+                content_streaming = true
+                stream_update("💬 streaming")  # Signal start of content streaming
+              end
+              stream_content_chunk(update[:content])
+            when 'save_message'
+              # Save intermediate messages that occur before tool usage
+              save_scout_message(update[:role] || 'assistant', update[:content], metadata: update[:metadata] || {})
+              Rails.logger.info "💾 Saved intermediate message: #{update[:content]}"
+            when 'load_canvas'
+              # Immediately load a canvas (e.g., task progress)
+              stream_update({
+                type: 'load_canvas',
+                canvas: update[:canvas],
+                canvas_data: update[:canvas_data]
+              })
+              Rails.logger.info "🎨 Streaming canvas load: #{update[:canvas]}"
+            when 'tool_detected', 'tool_start'
+              # Save tool call as a message
+              if update[:type] == 'tool_detected'
+                save_scout_message('assistant', "tool:#{update[:name]}", metadata: {
+                  type: 'tool_call',
+                  tool_name: update[:name],
+                  tool_id: update[:tool_id]
+                })
+                # Stream a message event to add the tool message to the UI
+                stream_update({
+                  type: 'add_tool_message',
+                  tool_name: update[:name],
+                  tool_id: update[:tool_id]
+                })
+              end
+              # Stream tool events
+              stream_update(update)
+            else
+              # Other hash updates
+              stream_update(update) if update[:message]
+            end
+          elsif update.is_a?(String)
+            stream_update(update)
+          end
+        },
         conversation_history,  # Pass conversation history
         current_canvas  # Pass current canvas context
       )
       
       # Save Scout's response
+      Rails.logger.info "📨 Final response type: #{final_response[:message].class}"
+      Rails.logger.info "📨 Final response content: #{final_response[:message].to_s.first(200)}..."
       save_scout_message('assistant', final_response[:message])
       
       # Send completion indicator
@@ -137,10 +189,11 @@ class ScoutController < ApplicationController
       # Send job started status if there's an active job
       send_job_started_status_if_exists(final_response)
       
-      # Stream the Claude response as an intermediate update
-      if final_response[:message].present?
-        stream_update("💬 #{final_response[:message]}")
-      end
+      # Don't stream the message as an update - it will be in the final response
+      # This prevents duplicate messages
+      # if final_response[:message].present?
+      #   stream_update("💬 #{final_response[:message]}")
+      # end
       
       # Always send final response immediately - let job run in background
       stream_final_response(final_response)
@@ -208,6 +261,21 @@ class ScoutController < ApplicationController
       when 'business_profile'
         canvas_content = render_business_profile_canvas(canvas_data)
         canvas_title = "Business Settings"
+      when 'email_template_viewer'
+        canvas_content = render_email_template_viewer(canvas_data)
+        canvas_title = "Email Templates"
+      when 'email_template_editor'
+        canvas_content = render_email_template_editor(canvas_data)
+        canvas_title = "Edit Email Template"
+      when 'dynamic_canvas'
+        canvas_content = render_dynamic_canvas(canvas_data)
+        canvas_title = canvas_data['title'] || "Custom Analysis"
+      when 'task_progress'
+        canvas_content = render_task_progress(canvas_data)
+        canvas_title = "Task Progress"
+      when 'campaign_editor'
+        canvas_content = render_campaign_editor(canvas_data)
+        canvas_title = "Campaign Editor"
       else
         canvas_content = render_default_canvas
         canvas_title = "Scout Canvas"
@@ -223,13 +291,14 @@ class ScoutController < ApplicationController
         }
       }
     rescue => e
-      Rails.logger.error "Canvas loading error: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
+      Rails.logger.error "Canvas loading error: #{e.class.name}: #{e.message}"
+      Rails.logger.error "Canvas type: #{canvas_type}, Data: #{canvas_data}"
+      Rails.logger.error e.backtrace.first(5).join("\n")
       
       render json: {
         success: false,
-        error: "Sorry, I couldn't load that view."
-      }
+        error: "Sorry, I couldn't load that view. Error: #{e.message}"
+      }, status: :ok
     end
   end
 
@@ -302,8 +371,6 @@ class ScoutController < ApplicationController
     end
   end
   
-  private
-
   # GET /scout/history?before_id=<id>&limit=20
   def history
     session_id = session[:scout_session_id]
@@ -320,16 +387,110 @@ class ScoutController < ApplicationController
 
     batch = scope.last(limit)
     render json: {
-      messages: batch.map { |m| { id: m.id, role: m.role, content: m.content, timestamp: m.created_at.iso8601 } },
+      messages: batch.map { |m| { 
+        id: m.id, 
+        role: m.role, 
+        content: m.content, 
+        timestamp: m.created_at.iso8601,
+        metadata: m.metadata 
+      } },
       has_more: ScoutMessage.for_session(session_id).count > (before_id.present? ? ScoutMessage.for_session(session_id).where('created_at <= ?', batch.first&.created_at).count : batch.count)
     }
+  end
+
+  # GET /scout/conversations
+  def conversations
+    # Get recent conversations for this user
+    recent_sessions = ScoutMessage
+      .where(user_id: current_user.id)
+      .select(:session_id, 'MIN(created_at) as created_at', 'COUNT(*) as message_count')
+      .group(:session_id)
+      .order('MIN(created_at) DESC')
+      .limit(10)
+    
+    # Get first message for each session
+    conversations = recent_sessions.map do |session|
+      first_message = ScoutMessage
+        .where(session_id: session.session_id, role: 'user')
+        .order(:created_at)
+        .first
+      
+      {
+        session_id: session.session_id,
+        created_at: session.created_at,
+        message_count: session.message_count,
+        first_message: first_message&.content&.truncate(50)
+      }
+    end
+    
+    render json: conversations
+  end
+  
+  # GET /scout/conversation/:session_id
+  def conversation
+    session_id = params[:session_id]
+    messages = ScoutMessage
+      .where(session_id: session_id, user_id: current_user.id)
+      .order(:created_at)
+      .map { |m| { 
+        role: m.role, 
+        content: m.content, 
+        created_at: m.created_at.iso8601 
+      } }
+    
+    render json: messages
+  end
+  
+  # POST /scout/new_session
+  def new_session
+    # Clear old session cache if exists
+    old_session_id = session[:scout_session_id]
+    if old_session_id
+      Rails.cache.delete("scout_conversation_#{old_session_id}")
+    end
+    
+    # Create new session
+    session[:scout_session_id] = SecureRandom.uuid
+    render json: { session_id: session[:scout_session_id] }
+  end
+  
+  private
+
+  def stream_content_chunk(content)
+    # Stream individual content chunks for real-time display
+    puts "🚨 PRODUCTION DEBUG: Streaming content chunk: #{content}"
+    STDOUT.flush
+    
+    data = JSON.generate({ type: 'content', content: content })
+    chunk = "data: #{data}\n\n"
+    
+    response.stream.write(chunk)
+    
+    # Try to flush
+    begin
+      response.stream.flush if response.stream.respond_to?(:flush)
+    rescue
+      # Ignore flush errors
+    end
+    
+    puts "✅ Content chunk streamed successfully"
+    STDOUT.flush
+  rescue => e
+    Rails.logger.error "Stream content chunk error: #{e.message}"
+    puts "❌ Stream content chunk error: #{e.message}"
+    STDOUT.flush
   end
 
   def stream_update(message)
     puts "🚨 PRODUCTION DEBUG: Streaming update: #{message}"
     STDOUT.flush
     # Create the SSE (Server-Sent Events) format
-    data = JSON.generate({ type: 'update', message: message })
+    # Handle both string and hash data
+    data = if message.is_a?(Hash)
+      JSON.generate(message.merge(type: message[:type] || 'update'))
+    else
+      JSON.generate({ type: 'update', message: message })
+    end
     chunk = "data: #{data}\n\n"
     
     # Write and try to force immediate sending
@@ -359,6 +520,8 @@ class ScoutController < ApplicationController
 
   def stream_final_response(response_data)
     Rails.logger.info "🌊 stream_final_response called with data keys: #{response_data.keys}"
+    Rails.logger.info "📝 Message length: #{response_data[:message]&.length} characters"
+    Rails.logger.info "📝 Message preview: #{response_data[:message]&.first(100)}..."
     
     # Create the final SSE response
     data = JSON.generate({ type: 'response', data: response_data })
@@ -483,13 +646,24 @@ class ScoutController < ApplicationController
     session_id = session[:scout_session_id]
     return [] unless session_id
     ScoutMessage.for_session(session_id).oldest_first.last(k).map do |m|
-      { role: m.role, content: m.content, timestamp: m.created_at.iso8601 }
+      { 
+        role: m.role, 
+        content: m.content, 
+        timestamp: m.created_at.iso8601,
+        metadata: m.metadata
+      }
     end
   end
   
-  def save_scout_message(role, message)
+  def save_scout_message(role, message, metadata: {})
     session_id = session[:scout_session_id]
     return unless session_id
+    
+    # Don't save empty messages
+    return if message.blank?
+    
+    # Log what we're about to save
+    Rails.logger.info "💾 Saving #{role} message (#{message.class}): #{message.to_s.first(200)}..."
     
     # Persist in DB (durable)
     ScoutMessage.create!(
@@ -497,7 +671,8 @@ class ScoutController < ApplicationController
       entity_id: current_entity&.id,
       session_id: session_id,
       role: role,
-      content: message
+      content: message,
+      metadata: metadata
     )
     
     # Mirror the last 50 in cache for fast UI render
@@ -645,7 +820,45 @@ class ScoutController < ApplicationController
   end
 
   def render_campaign_canvas(data = {})
-    campaigns = current_entity.campaigns.includes(:email_deliveries, :contact_group).recent.limit(20)
+    # Load campaigns first with associations
+    campaigns = current_entity.campaigns
+      .includes(:contact_groups, :email_template)
+      .recent
+      .limit(20)
+    
+    # Get all delivery stats in one query
+    campaign_ids = campaigns.pluck(:id)
+    delivery_stats = EmailDelivery
+      .where(campaign_id: campaign_ids)
+      .group(:campaign_id)
+      .pluck(
+        :campaign_id,
+        Arel.sql("COUNT(*) FILTER (WHERE sent_at IS NOT NULL)"),
+        Arel.sql("COUNT(*) FILTER (WHERE opened_at IS NOT NULL)"),
+        Arel.sql("COUNT(*) FILTER (WHERE clicked_at IS NOT NULL)"),
+        Arel.sql("MIN(sent_at)")
+      )
+    
+    # Build a hash for quick lookup
+    stats_by_campaign = {}
+    delivery_stats.each do |campaign_id, sent_count, opened_count, clicked_count, first_sent|
+      stats_by_campaign[campaign_id] = {
+        sent_count: sent_count,
+        opened_count: opened_count,
+        clicked_count: clicked_count,
+        first_sent_at: first_sent
+      }
+    end
+    
+    # Inject stats into campaigns
+    campaigns.each do |campaign|
+      if stats = stats_by_campaign[campaign.id]
+        campaign.instance_variable_set(:@cached_sent_count, stats[:sent_count])
+        campaign.instance_variable_set(:@cached_opened_count, stats[:opened_count])
+        campaign.instance_variable_set(:@cached_clicked_count, stats[:clicked_count])
+        campaign.instance_variable_set(:@cached_first_sent_at, stats[:first_sent_at])
+      end
+    end
     
     # Get summary stats
     stats = {
@@ -736,5 +949,100 @@ class ScoutController < ApplicationController
     
     return 0 if total_sent == 0
     ((total_opened.to_f / total_sent) * 100).round(1)
+  end
+
+  def render_email_template_viewer(data = {})
+    templates = current_entity.email_templates.order(created_at: :desc)
+    
+    # Get stats
+    total_count = templates.count
+    used_count = templates.joins(:campaigns).distinct.count
+    
+    stats = {
+      total_templates: total_count,
+      active_templates: used_count,
+      used_templates: used_count,
+      unused_templates: total_count - used_count
+    }
+    
+    render_to_string(
+      partial: 'scout/canvas/email_template_viewer',
+      locals: {
+        templates: templates,
+        stats: stats,
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_email_template_editor(data = {})
+    template_id = data['template_id'] || data[:template_id]
+    email_template = current_entity.email_templates.find(template_id)
+    
+    render_to_string(
+      partial: 'scout/canvas/email_template_editor',
+      locals: {
+        email_template: email_template,
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_dynamic_canvas(data = {})
+    render_to_string(
+      partial: 'scout/canvas/dynamic_canvas',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+
+  def render_task_progress(data = {})
+    # If no data provided, try to load from cache
+    if data.empty? || data.nil?
+      session_id = session[:scout_session_id]
+      cache_key = "scout_task_list_#{current_entity.id}_#{session_id}"
+      data = Rails.cache.read(cache_key) || {}
+    end
+    
+    render_to_string(
+      partial: 'scout/canvas/task_progress',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        task_list: data
+      }
+    )
+  end
+
+  def render_campaign_editor(data = {})
+    # Load campaign if ID provided
+    campaign = if data[:campaign_id]
+      current_entity.campaigns.find_by(id: data[:campaign_id])
+    else
+      current_entity.campaigns.build
+    end
+    
+    # Load contact groups and email templates
+    contact_groups = current_entity.contact_groups.active
+    email_templates = current_entity.email_templates
+    
+    render_to_string(
+      partial: 'scout/canvas/campaign_editor',
+      locals: {
+        campaign: campaign,
+        contact_groups: contact_groups,
+        email_templates: email_templates,
+        entity: current_entity,
+        user: current_user,
+        data: data
+      }
+    )
   end
 end 

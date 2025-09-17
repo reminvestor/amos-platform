@@ -1,11 +1,14 @@
 require 'solid_queue'
 
 Rails.application.routes.draw do
+  # Health check endpoints - must be first!
+  get 'up', to: 'health#up'
+  get 'health', to: 'health#index'
+  get 'health_check', to: 'health#up'
+  
   get "crawler_jobs/index"
   get "crawler_jobs/new"
   get "crawler_jobs/create"
-  # Heroku health check
-  get 'health_check' => proc { [200, {}, ['OK']] }
   
   # Diagnostic route for SSL/headers issues
   get 'debug_headers' => proc { |env| 
@@ -40,7 +43,8 @@ Rails.application.routes.draw do
     # Devise routes for authentication
     devise_for :users, controllers: {
       registrations: 'users/registrations',
-      sessions: 'users/sessions'
+      sessions: 'users/sessions',
+      passwords: 'users/passwords'
     }
     
     # User management
@@ -226,6 +230,9 @@ Rails.application.routes.draw do
   get 'scout/history', to: 'scout#history' # paginated history
   delete 'scout/conversation', to: 'scout#clear_conversation'
   get 'scout/export', to: 'scout#conversation_export'
+  get 'scout/conversations', to: 'scout#conversations'
+  get 'scout/conversation/:session_id', to: 'scout#conversation'
+  post 'scout/new_session', to: 'scout#new_session'
   
   # Scout Intelligent Canvas routes
   post 'scout/load_canvas', to: 'scout#load_canvas'

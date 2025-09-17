@@ -19,12 +19,34 @@ export default class extends Controller {
   connect() {
     this.currentMode = "conversation"
     this.currentCanvas = null
-    this.resizing = false
+    this.isResizing = false
+    
+    // Make controller globally accessible
+    window.scoutController = this
+    
+    // Also listen for custom canvas load events
+    this.handleCanvasLoadEvent = (event) => {
+      const { canvas, data } = event.detail
+      console.log("📨 Received canvas load event:", canvas, data)
+      this.loadScoutCanvas(canvas, data)
+    }
+    document.addEventListener('scout:load-canvas', this.handleCanvasLoadEvent)
+    
+    // Clear canvas viewer on page load
+    if (this.canvasViewerTarget) {
+      this.canvasViewerTarget.innerHTML = ''
+    }
+    
+    // Ensure we're in conversation mode on page load
+    this.switchToMode("conversation")
     
     console.log("Scout controller connected")
     
     // Set up initial canvas functions immediately
     this.setupCanvasGlobals()
+    
+    // Bind resize events
+    this.bindResizeEvents()
     
     // Focus on chat input with defensive check
     if (this.hasChatInputTarget && this.chatInputTarget) {
@@ -42,8 +64,15 @@ export default class extends Controller {
     // Initialize ActionCable subscription for job notifications
     this.setupJobNotifications()
     
-    // Restore canvas state on page load/refresh
-    this.restoreCanvasState()
+    // Don't automatically restore canvas state - let user start fresh
+    // this.restoreCanvasState()
+  }
+  
+  disconnect() {
+    // Clean up event listener
+    if (this.handleCanvasLoadEvent) {
+      document.removeEventListener('scout:load-canvas', this.handleCanvasLoadEvent)
+    }
   }
 
   // Save canvas state to localStorage
@@ -345,12 +374,34 @@ export default class extends Controller {
                 console.log("Parsing JSON:", jsonStr.length > 200 ? jsonStr.substring(0, 200) + "..." : jsonStr)
                 
                 const data = JSON.parse(jsonStr)
-                console.log("📊 Streaming data:", data.type, data.type === 'response' ? '(Final Response)' : data.message)
+                console.log("📊 Streaming data:", data.type, data.type === 'response' ? '(Final Response)' : (data.message || data.content))
                 
                 if (data.type === 'update') {
                   // Show progress update in the streaming window
                   console.log("🔄 Progress:", data.message)
                   this.showStreamingProgress(data.message)
+                  
+                  // Check if we're starting to stream content
+                  if (data.message === '💬 streaming') {
+                    // Create a new message element for streaming
+                    this.addMessage('', 'assistant')
+                    this.currentStreamingContent = ''
+                  }
+                } else if (data.type === 'content') {
+                  // Handle content chunks for streaming
+                  if (data.content) {
+                    this.currentStreamingContent = (this.currentStreamingContent || '') + data.content
+                    // Update the last message with the accumulated content
+                    const messages = this.chatMessagesTarget.querySelectorAll('.message-wrapper')
+                    const lastMessage = messages[messages.length - 1]
+                    if (lastMessage && lastMessage.classList.contains('assistant-message')) {
+                      const messageContent = lastMessage.querySelector('.message-content')
+                      if (messageContent) {
+                        messageContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
+                      }
+                    }
+                    this.scrollChatToBottom()
+                  }
                 } else if (data.type === 'response') {
                   // Final response received - hide streaming window and show message
                   finalResponseData = data.data
@@ -390,7 +441,12 @@ export default class extends Controller {
       // Process the final response data
       if (finalResponseData && finalResponseData.message) {
         // Add AI response (streaming window should already be hidden)
-        this.addMessage(finalResponseData.message, "ai")
+        // Only add a new message if we weren't streaming
+        if (!this.currentStreamingContent) {
+          this.addMessage(finalResponseData.message, "ai")
+        }
+        // Clear streaming content
+        this.currentStreamingContent = null
         
         // Check if Scout suggested a canvas to load
         if (finalResponseData.canvas) {
@@ -494,6 +550,11 @@ export default class extends Controller {
   loadCampaignsCanvas() {
     console.log("📧 Loading campaigns canvas")  
     this.loadScoutCanvas("campaign_viewer", {})
+  }
+
+  loadEmailTemplatesCanvas() {
+    console.log("📄 Loading email templates canvas")
+    this.loadScoutCanvas("email_template_viewer", {})
   }
 
   loadAnalyticsCanvas() {
@@ -1273,12 +1334,34 @@ export default class extends Controller {
   sendScoutMessage(message) {
     console.log(`💬 Canvas sending message: ${message}`)
     
-    // Add user message to chat
-    this.addMessage(message, "user")
-    
-    // Show loading and process with Scout
-    this.showLoading()
-    this.processMessage(message)
+    // Use the new streaming handler if available
+    if (window.handleStreamingChat && typeof window.handleStreamingChat === 'function') {
+      // Add user message
+      if (window.addMessage && typeof window.addMessage === 'function') {
+        window.addMessage(message, 'user');
+      } else {
+        this.addMessage(message, "user");
+      }
+      
+      // Show typing indicator
+      if (window.showTypingIndicator && typeof window.showTypingIndicator === 'function') {
+        window.showTypingIndicator();
+      }
+      
+      // Use the new streaming handler
+      window.handleStreamingChat(message).catch(error => {
+        console.error('Streaming chat error:', error);
+        if (window.hideTypingIndicator) window.hideTypingIndicator();
+        if (window.addMessage) {
+          window.addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+        }
+      });
+    } else {
+      // Fallback to old method
+      this.addMessage(message, "user");
+      this.showLoading();
+      this.processMessage(message);
+    }
   }
 
   // Update chat header
@@ -1389,6 +1472,27 @@ export default class extends Controller {
     if (this.hasChatMessagesTarget) {
       this.chatMessagesTarget.scrollTop = this.chatMessagesTarget.scrollHeight
     }
+  }
+
+  parseSimpleMarkdown(text) {
+    if (!text) return ''
+    
+    // First decode HTML entities if they exist
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = text
+    let decodedText = tempDiv.textContent || tempDiv.innerText || text
+    
+    // Apply markdown parsing
+    return decodedText
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/### (.*?)$/gm, '<h4>$1</h4>')
+      .replace(/## (.*?)$/gm, '<h3>$1</h3>')
+      .replace(/# (.*?)$/gm, '<h2>$1</h2>')
+      .replace(/- (.*?)$/gm, '<li>$1</li>')
+      .replace(/(\d+)\. (.*?)$/gm, '<li>$1. $2</li>')
+      .replace(/\n/g, '<br>')
+      .replace(/(<li>.*<\/li>)\s*(<br>)?/g, '<ul>$1</ul>')
   }
 
   getCSRFToken() {

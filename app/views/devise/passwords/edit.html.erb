@@ -1,25 +1,89 @@
-<h2>Change your password</h2>
+<div class="min-vh-100 d-flex align-items-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-5 col-md-7">
+        <div class="card shadow-lg border-0" style="backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.95); border-radius: 1rem;">
+          <div class="card-body p-5">
+            <!-- Logo -->
+            <div class="text-center mb-4">
+              <h3 class="fw-bold mb-2 d-flex align-items-center justify-content-center">
+                <%= image_tag "Crux_Logo_Secondary_Black.png", alt: "Crux Marketing", style: "height: 100px;" %>
+              </h3>
+              <h4 class="fw-bold mb-2">Change your password</h4>
+              <p class="text-muted">Enter your new password below</p>
+            </div>
 
-<%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :put }) do |f| %>
-  <%= render "devise/shared/error_messages", resource: resource %>
-  <%= f.hidden_field :reset_password_token %>
+            <!-- Flash messages -->
+            <% if flash[:alert] %>
+              <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <%= flash[:alert] %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            <% end %>
 
-  <div class="field">
-    <%= f.label :password, "New password" %><br />
-    <% if @minimum_password_length %>
-      <em>(<%= @minimum_password_length %> characters minimum)</em><br />
-    <% end %>
-    <%= f.password_field :password, autofocus: true, autocomplete: "new-password" %>
+            <!-- Form -->
+            <%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :put }) do |f| %>
+              <%= render "devise/shared/error_messages", resource: resource %>
+              <%= f.hidden_field :reset_password_token %>
+
+              <div class="mb-4">
+                <%= f.label :password, "New password", class: "form-label fw-semibold" %>
+                <% if @minimum_password_length %>
+                  <small class="text-muted d-block mb-2">
+                    (<%= @minimum_password_length %> characters minimum)
+                  </small>
+                <% end %>
+                <%= f.password_field :password, autofocus: true, autocomplete: "new-password",
+                    class: "form-control form-control-lg",
+                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
+                    placeholder: "Enter new password" %>
+              </div>
+
+              <div class="mb-4">
+                <%= f.label :password_confirmation, "Confirm new password", class: "form-label fw-semibold" %>
+                <%= f.password_field :password_confirmation, autocomplete: "new-password",
+                    class: "form-control form-control-lg",
+                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
+                    placeholder: "Confirm new password" %>
+              </div>
+
+              <div class="d-grid mb-4">
+                <%= f.submit "Change my password", 
+                    class: "btn btn-lg fw-semibold w-100", 
+                    style: "background: linear-gradient(45deg, #ff6b6b, #ff8e8e); border: none; border-radius: 0.75rem; color: white; padding: 0.75rem 2rem;" %>
+              </div>
+            <% end %>
+
+            <!-- Links -->
+            <div class="text-center">
+              <%= link_to "Log in", new_session_path(resource_name), class: "text-decoration-none fw-semibold", style: "color: #8b5cf6;" %> |
+              <%= link_to "Sign up", new_registration_path(resource_name), class: "text-decoration-none fw-semibold", style: "color: #8b5cf6;" %>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center mt-4">
+          <p class="text-white opacity-75 small">
+            By changing your password, you agree to our 
+            <a href="#" class="text-white text-decoration-none">Terms of Service</a> and 
+            <a href="#" class="text-white text-decoration-none">Privacy Policy</a>
+          </p>
+        </div>
+      </div>
+    </div>
   </div>
+</div>
 
-  <div class="field">
-    <%= f.label :password_confirmation, "Confirm new password" %><br />
-    <%= f.password_field :password_confirmation, autocomplete: "new-password" %>
-  </div>
-
-  <div class="actions">
-    <%= f.submit "Change my password" %>
-  </div>
-<% end %>
-
-<%= render "devise/shared/links" %>
+<style>
+  .form-control:focus {
+    border-color: #8b5cf6 !important;
+    box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25) !important;
+  }
+  
+  .btn:hover {
+    background: linear-gradient(45deg, #ff5252, #ff7979) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255, 107, 107, 0.3) !important;
+  }
+</style>

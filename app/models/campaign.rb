@@ -6,7 +6,6 @@ class Campaign < ApplicationRecord
   has_many :contact_groups, through: :campaign_groups
   has_many :email_deliveries, dependent: :destroy
   belongs_to :email_template, optional: true
-  belongs_to :contact_group, optional: true
   
   # Drip campaign associations
   has_many :parent_drip_sequences, class_name: 'DrippedCampaign', foreign_key: 'original_campaign_id', dependent: :destroy
@@ -84,6 +83,9 @@ class Campaign < ApplicationRecord
   end
   
   def sent_count
+    # Use cached count if available
+    return @cached_sent_count if defined?(@cached_sent_count)
+    
     # Get actual count from our database first
     db_count = email_deliveries.where.not(sent_at: nil).count
     
@@ -102,15 +104,25 @@ class Campaign < ApplicationRecord
   end
   
   def sent_at
+    # Use cached value if available
+    return @cached_first_sent_at if defined?(@cached_first_sent_at)
+    
     # Return the first sent date of any delivery in this campaign
     email_deliveries.where.not(sent_at: nil).order(sent_at: :asc).first&.sent_at
   end
   
   def open_rate
-    # Count emails that were opened from our database
-    db_opened_count = email_deliveries.where.not(opened_at: nil).count
-    db_clicked_count = email_deliveries.where.not(clicked_at: nil).count
-    db_sent_count = email_deliveries.where.not(sent_at: nil).count
+    # Use cached counts if available
+    if defined?(@cached_opened_count) && defined?(@cached_sent_count)
+      db_opened_count = @cached_opened_count
+      db_clicked_count = @cached_clicked_count || 0
+      db_sent_count = @cached_sent_count
+    else
+      # Count emails that were opened from our database
+      db_opened_count = email_deliveries.where.not(opened_at: nil).count
+      db_clicked_count = email_deliveries.where.not(clicked_at: nil).count
+      db_sent_count = email_deliveries.where.not(sent_at: nil).count
+    end
     
     # If we have actual opens in the database, prioritize that data
     if db_opened_count > 0 && db_sent_count > 0
@@ -139,9 +151,15 @@ class Campaign < ApplicationRecord
   end
   
   def click_rate
-    # Count emails that were clicked from our database
-    db_clicked_count = email_deliveries.where.not(clicked_at: nil).count
-    db_sent_count = email_deliveries.where.not(sent_at: nil).count
+    # Use cached counts if available
+    if defined?(@cached_clicked_count) && defined?(@cached_sent_count)
+      db_clicked_count = @cached_clicked_count
+      db_sent_count = @cached_sent_count
+    else
+      # Count emails that were clicked from our database
+      db_clicked_count = email_deliveries.where.not(clicked_at: nil).count
+      db_sent_count = email_deliveries.where.not(sent_at: nil).count
+    end
     
     # If we have actual clicks in the database, prioritize that data
     if db_clicked_count > 0 && db_sent_count > 0
