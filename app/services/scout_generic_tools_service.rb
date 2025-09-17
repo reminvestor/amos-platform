@@ -346,40 +346,41 @@ class ScoutGenericToolsService
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name} (including history)"
       progress_callback&.call("🤖 Sending request to #{@ai_provider_name} with conversation context...")
       
-      # If in advisor mode, stream the response with JSON mode
+      # If in advisor mode, stream the response
       if detected_mode == 'advisor'
-        Rails.logger.info "Streaming response in advisor mode with JSON parsing"
+        Rails.logger.info "Streaming advisor mode response"
         
         accumulated_content = ""
+        streaming_started = false
         
-        # Stream the response with JSON mode for consistent parsing
+        # When streaming with json_mode: true, Bedrock returns raw text, not JSON
         @ai_service.send_message(
           system_prompt,
           conversation_messages,
           max_tokens: 25000,
           temperature: 0.7,
           stream: true,
-          json_mode: true  # Use JSON mode for consistent message extraction
+          json_mode: true  # This affects the prompt but streaming returns raw text
         ) do |chunk|
           if chunk[:type] == :content
-            accumulated_content += chunk[:content]
-            # Send content chunks as they arrive
-            progress_callback&.call({
-              type: 'content_chunk',
-              content: chunk[:content]
-            })
-          elsif chunk[:type] == :complete
-            # Parse the JSON response to extract the message
-            begin
-              parsed = JSON.parse(accumulated_content)
-              final_message = parsed['message'] || accumulated_content
-            rescue JSON::ParserError
-              final_message = accumulated_content
+            # In streaming mode, we get the raw message content directly
+            if !streaming_started
+              streaming_started = true
+              progress_callback&.call("💬 streaming")
             end
             
-            # Final message
+            # Stream the content chunk directly
+            if chunk[:content] && chunk[:content].length > 0
+              accumulated_content += chunk[:content]
+              progress_callback&.call({
+                type: 'content_chunk',
+                content: chunk[:content]
+              })
+            end
+          elsif chunk[:type] == :complete
+            # The accumulated content is the full message
             return {
-              message: final_message,
+              message: accumulated_content,
               tools_used: false,
               mode: detected_mode
             }
