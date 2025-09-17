@@ -2966,6 +2966,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       6. Suggest next steps after completing tasks
       7. If a tool returns requires_confirmation: true, explain what would happen and ask the user to confirm
       8. Never proceed with destructive actions (replacements, deletions) without explicit user confirmation
+      9. NEVER mention "Loaded [Canvas Name]" or "You can interact with the data on the right" - the user can see the canvas loading
       
       IMPORTANT: When given a multi-step task:
       - Break it down into individual steps
