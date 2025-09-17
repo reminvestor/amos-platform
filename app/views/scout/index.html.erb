@@ -1139,6 +1139,16 @@ document.addEventListener('DOMContentLoaded', function() {
       return buildToolMessageElement({ id, content, metadata });
     }
     
+    // Also check if content indicates a tool message (for backward compatibility)
+    if (role === 'assistant' && typeof content === 'string' && content.startsWith('tool:')) {
+      const toolName = content.replace('tool:', '');
+      return buildToolMessageElement({ 
+        id, 
+        content, 
+        metadata: { tool_name: toolName, type: 'tool_call' } 
+      });
+    }
+    
     const wrapper = document.createElement('div');
     wrapper.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
     if (id) wrapper.dataset.messageId = id;
@@ -1561,11 +1571,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                   console.warn('⚠️ No streaming message to append to!');
                 }
+              } else if (data.type === 'add_tool_message') {
+                // Add tool message to chat UI
+                const toolMessage = buildToolMessageElement({
+                  content: `tool:${data.tool_name}`,
+                  metadata: {
+                    type: 'tool_call',
+                    tool_name: data.tool_name,
+                    tool_id: data.tool_id
+                  }
+                });
+                chatMessages.appendChild(toolMessage);
+                scrollToBottom();
+                updateMessageCount();
+                
+                // Reset streaming message so the next content creates a new message
+                streamingMessage = null;
+                streamingContent = '';
               } else if (data.type === 'tool_detected') {
                 // Tool detected during streaming
                 console.log('🔧 Tool detected:', data.name);
-                // Tool messages are now saved to database and will appear in chat
-                // showInlineToolIndicator(data.name);
+                // Tool messages are now saved to database and shown via add_tool_message event
                 
                 // Track in tool panel if not already tracked
                 if (!currentToolCallId || data.tool_id !== currentToolCallId) {
