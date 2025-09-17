@@ -1103,11 +1103,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const avatar = role === 'assistant' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
     
     wrapper.innerHTML = `
-      <div class="message-avatar">
-        ${avatar}
-      </div>
       <div class="message-content">
-        ${processedContent}
+        <div class="message-avatar">
+          ${avatar}
+        </div>
+        <div class="message-bubble">
+          ${processedContent}
+        </div>
       </div>
     `;
     return wrapper;
@@ -1481,7 +1483,11 @@ document.addEventListener('DOMContentLoaded', function() {
                   // Update the message bubble directly
                   const messageBubble = streamingMessage.querySelector('.message-bubble');
                   if (messageBubble) {
+                    console.log('✅ Found message bubble, updating');
                     messageBubble.innerHTML = parseSimpleMarkdown(streamingContent);
+                  } else {
+                    console.error('❌ Message bubble not found! streamingMessage:', streamingMessage);
+                    console.log('streamingMessage HTML:', streamingMessage.outerHTML);
                   }
                   scrollToBottom();
                 } else {
