@@ -145,6 +145,12 @@ class ScoutController < ApplicationController
                   tool_name: update[:name],
                   tool_id: update[:tool_id]
                 })
+                # Stream a message event to add the tool message to the UI
+                stream_update({
+                  type: 'add_tool_message',
+                  tool_name: update[:name],
+                  tool_id: update[:tool_id]
+                })
               end
               # Stream tool events
               stream_update(update)
