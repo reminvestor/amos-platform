@@ -137,6 +137,10 @@ class ScoutController < ApplicationController
                 stream_update("💬 streaming")  # Signal start of content streaming
               end
               stream_content_chunk(update[:content])
+            when 'save_message'
+              # Save intermediate messages that occur before tool usage
+              save_scout_message(update[:role] || 'assistant', update[:content], metadata: update[:metadata] || {})
+              Rails.logger.info "💾 Saved intermediate message: #{update[:content]}"
             when 'tool_detected', 'tool_start'
               # Save tool call as a message
               if update[:type] == 'tool_detected'
