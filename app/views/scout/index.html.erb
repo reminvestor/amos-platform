@@ -208,6 +208,35 @@
     to { opacity: 0; transform: translateY(-10px); }
   }
   
+  /* Suggestion buttons */
+  .message-suggestions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  
+  .suggestion-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+  }
+  
+  .suggestion-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+  
+  .suggestion-btn:active {
+    transform: translateY(0);
+  }
+  
   /* Ensure typing indicator includes avatar */
   .typing-indicator-wrapper {
     display: flex;
@@ -312,25 +341,7 @@
       </div>
       
       <div class="chat-messages" id="chat-messages" data-scout-target="chatMessages">
-        <div class="message ai-message welcome-message">
-          <div class="message-avatar">
-            <i class="fas fa-robot"></i>
-          </div>
-          <div class="message-content">
-            <p>Hi! I'm Scout, your AI marketing assistant. What would you like to work on today?</p>
-            <div class="message-suggestions">
-              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Create a landing page for my product">
-                Create a landing page
-              </button>
-              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Show me my email campaigns">
-                View campaigns
-              </button>
-              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Analyze my marketing performance">
-                Analytics dashboard
-              </button>
-            </div>
-          </div>
-        </div>
+        <!-- Messages will be loaded here from history -->
       </div>
       
       <!-- Tool activity panel with collapsible tool calls -->
@@ -476,33 +487,60 @@
 
 #workspace .message-bubble {
   max-width: 70% !important;
-  padding: 1rem 1.25rem !important;
-  border-radius: 1.5rem !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
   position: relative !important;
   margin: 0 !important;
   border: none !important;
+  background: transparent !important;
+  word-wrap: break-word !important;
 }
 
 #workspace .user-message .message-bubble {
-  background: rgba(255, 255, 255, 0.2) !important;
-  background-color: rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
-  backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  backdrop-filter: none !important;
+  border: none !important;
 }
 
 #workspace .assistant-message .message-bubble {
-  background: white !important;
-  background-color: white !important;
-  color: #333 !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+#workspace .message {
+  margin-bottom: 1rem !important;
 }
 
 #workspace .message-content {
-  margin-bottom: 0.5rem !important;
-  line-height: 1.5 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  margin-bottom: 0 !important;
   background: none !important;
   background-color: transparent !important;
+}
+
+#workspace .message-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  font-size: 20px !important;
+}
+
+#workspace .user-message .message-avatar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+}
+
+#workspace .ai-message .message-avatar {
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
 }
 
 #workspace .message-content p {
@@ -660,20 +698,20 @@
 }
 
 #workspace .user-message .message-bubble {
-  background: rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
-  padding: 1rem 1.25rem !important;
-  border-radius: 1.5rem !important;
-  backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+  border: none !important;
 }
 
 #workspace .assistant-message .message-bubble {
-  background: white !important;
-  color: #333 !important;
-  padding: 1rem 1.25rem !important;
-  border-radius: 1.5rem !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 /* Tool message overrides - must come after general styles */
@@ -705,7 +743,10 @@
 }
 
 #workspace .message-content {
-  margin-bottom: 0.5rem !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  margin-bottom: 0 !important;
   line-height: 1.5 !important;
 }
 
@@ -1107,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div class="message-avatar">
           ${avatar}
         </div>
-        <div class="message-bubble">
+      <div class="message-bubble">
           ${processedContent}
         </div>
       </div>
@@ -1459,7 +1500,7 @@ document.addEventListener('DOMContentLoaded', function() {
               if (data.type === 'update') {
                 // Don't show streaming status for the "💬 streaming" message
                 if (data.message !== '💬 streaming') {
-                  showStreamingStatus(data.message);
+                showStreamingStatus(data.message);
                 }
                 // Check if we're starting to stream content
                 if (data.message === '💬 streaming') {
@@ -1525,7 +1566,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   // Only add a new message if we weren't streaming
                   if (!streamingMessage && data.data.message) {
                     console.log('➕ Adding non-streamed message to chat');
-                    addMessage(data.data.message, 'assistant');
+                  addMessage(data.data.message, 'assistant');
                   } else if (streamingMessage) {
                     console.log('✅ Message was streamed, not adding duplicate');
                   }
@@ -1640,7 +1681,39 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Initial fetch of recent history when page loads
-  loadMoreHistory(true);
+  loadMoreHistory(true).then(() => {
+    // After initial history is loaded, add buttons to the first welcome message
+    setTimeout(() => {
+      const messages = chatMessages.querySelectorAll('.message.ai-message');
+      if (messages.length > 0) {
+        const firstMessage = messages[0];
+        const messageContent = firstMessage.querySelector('.message-bubble');
+        
+        // Check if this is a welcome message and doesn't already have buttons
+        if (messageContent && messageContent.textContent.includes('Scout') && 
+            messageContent.textContent.includes('marketing assistant') &&
+            !firstMessage.querySelector('.message-suggestions')) {
+          
+          // Add the suggestion buttons
+          const suggestionsDiv = document.createElement('div');
+          suggestionsDiv.className = 'message-suggestions';
+          suggestionsDiv.style.marginTop = '12px';
+          suggestionsDiv.innerHTML = `
+            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Create a landing page for my product">
+              Create a landing page
+            </button>
+            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Show me my email campaigns">
+              View campaigns
+            </button>
+            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Analyze my marketing performance">
+              Analytics dashboard
+            </button>
+          `;
+          messageContent.appendChild(suggestionsDiv);
+        }
+      }
+    }, 100); // Small delay to ensure DOM is updated
+  });
 
   // Attach scroll-up listener to load older history
   chatMessages.addEventListener('scroll', function() {
