@@ -1588,6 +1588,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Reset streaming message so the next content creates a new message
                 streamingMessage = null;
                 streamingContent = '';
+              } else if (data.type === 'load_canvas') {
+                // Immediately load a canvas (e.g., task progress)
+                console.log('🎨 Received canvas load request:', data.canvas);
+                if (data.canvas) {
+                  // Try multiple ways to load the canvas
+                  setTimeout(() => {
+                    // Method 1: Use window.scoutController if available
+                    if (window.scoutController && window.scoutController.loadScoutCanvas) {
+                      window.scoutController.loadScoutCanvas(data.canvas, data.canvas_data || {});
+                    } 
+                    // Method 2: Find the controller through Stimulus
+                    else {
+                      const scoutElement = document.querySelector('[data-controller="scout"]');
+                      if (scoutElement && scoutElement._scoutController) {
+                        scoutElement._scoutController.loadScoutCanvas(data.canvas, data.canvas_data || {});
+                      }
+                      // Method 3: Dispatch a custom event that the controller can listen to
+                      else {
+                        console.log('🎯 Dispatching canvas load event');
+                        const event = new CustomEvent('scout:load-canvas', {
+                          detail: { canvas: data.canvas, data: data.canvas_data || {} }
+                        });
+                        document.dispatchEvent(event);
+                      }
+                    }
+                  }, 100); // Small delay to ensure DOM is ready
+                }
               } else if (data.type === 'tool_detected') {
                 // Tool detected during streaming
                 console.log('🔧 Tool detected:', data.name);
