@@ -694,7 +694,7 @@ export default class extends Controller {
         console.log(`✅ Canvas loaded successfully: ${data.canvas.title}`)
         
         // Add confirmation message to chat
-        this.addMessage(`Loaded ${data.canvas.title}. You can interact with the data on the right while we continue our conversation here.`, "ai")
+        // Don't add a message - the canvas loading is visible to the user
         
       } else {
         console.error("❌ Failed to load canvas:", data.error)
