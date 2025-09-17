@@ -2966,7 +2966,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       6. Suggest next steps after completing tasks
       7. If a tool returns requires_confirmation: true, explain what would happen and ask the user to confirm
       8. Never proceed with destructive actions (replacements, deletions) without explicit user confirmation
-      9. NEVER mention "Loaded [Canvas Name]" or "You can interact with the data on the right" - the user can see the canvas loading
+      9. 🚨 CRITICAL: NEVER say "Loaded [Canvas Name]", "You can interact with the data on the right", "Loaded Task Progress", or ANYTHING about canvas/data loading - the user already sees it visually!
+      10. DO NOT mention loading canvases or interacting with data - just focus on the task results
       
       IMPORTANT: When given a multi-step task:
       - Break it down into individual steps
@@ -3279,19 +3280,33 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     entity_id = @entity&.id
     session_id = @session_id || SecureRandom.uuid
     
+    Rails.logger.info "🔑 Task management - Entity: #{entity_id}, Session: #{session_id}, Action: #{action}"
+    
     # Use Rails cache to store task lists per session
     cache_key = "scout_task_list_#{entity_id}_#{session_id}"
     
     case action
     when 'create'
-      # Create a new task list
+      # Create a new task list - handle both 'description' and 'title' fields
+      tasks = (args['tasks'] || []).map do |task|
+        {
+          id: task['id'],
+          description: task['description'] || task['title'] || '',
+          status: task['status'] || 'pending',
+          details: task['details']
+        }
+      end
+      
       task_list = {
         title: args['title'],
-        tasks: args['tasks'] || [],
+        tasks: tasks,
         created_at: Time.current,
         updated_at: Time.current
       }
       Rails.cache.write(cache_key, task_list, expires_in: 24.hours)
+      
+      Rails.logger.info "📝 Created task list with #{tasks.size} tasks"
+      Rails.logger.info "📝 Tasks: #{tasks.map { |t| "#{t[:id]}: #{t[:description]}" }.join(', ')}"
       
       # Store for canvas display
       @suggested_canvas = 'task_progress'
@@ -3346,7 +3361,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       if existing_list
         new_task = {
           id: args['task_id'] || SecureRandom.hex(4),
-          description: args['task_description'],
+          description: args['task_description'] || args['description'] || args['title'],
           status: 'pending',
           details: nil
         }
@@ -3370,8 +3385,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         }
       end
       
-    when 'update_task'
-      # Update a task status (e.g., to in_progress)
+    when 'update_task', 'update_status'
+      # Update a task status (e.g., to in_progress) - handle both action names
       existing_list = Rails.cache.read(cache_key)
       if existing_list
         task = existing_list[:tasks].find { |t| (t['id'] || t[:id]).to_s == args['task_id'].to_s }
