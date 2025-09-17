@@ -134,28 +134,58 @@
   }
   
   /* Tool messages in chat */
+  .tool-message {
+    margin: 12px 0;
+  }
+  
+  .tool-message .message-content {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .tool-message .message-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  
   .tool-message .message-bubble {
     background: #f0f7ff;
     border: 1px solid #d0e3ff;
-    color: #0066cc;
+    color: #0056b3;
+    box-shadow: 0 1px 2px rgba(0, 86, 179, 0.1);
+    margin: 0;
+    max-width: 70%;
   }
 
   .tool-bubble {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     padding: 10px 16px;
     font-size: 14px;
   }
 
   .tool-bubble .tool-icon {
     font-size: 16px;
-    color: #0066cc;
+    color: #0056b3;
+    opacity: 0.9;
   }
 
   .tool-bubble .tool-name {
-    color: #0066cc;
+    color: #0056b3;
+    font-style: italic;
     font-weight: 500;
+    letter-spacing: 0.3px;
   }
   
   @keyframes fadeIn {
@@ -1081,6 +1111,12 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
     
+    // Don't add empty messages
+    if (!messageContent || messageContent.toString().trim() === '') {
+      console.log('⚠️ Skipping empty message');
+      return null;
+    }
+    
     const el = buildMessageElement({ content: messageContent, role, timestamp });
     chatMessages.appendChild(el);
     scrollToBottom();
@@ -1264,15 +1300,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
               // Create tool message element with consistent structure
               const toolMessage = document.createElement('div');
-              toolMessage.className = 'message tool-message';
+              toolMessage.className = 'message ai-message tool-message';
               toolMessage.innerHTML = `
                 <div class="message-content">
                   <div class="message-avatar">
-                    <i class="fas fa-robot"></i>
+                    <i class="fas fa-cog"></i>
                   </div>
                   <div class="message-bubble tool-bubble">
                     <i class="fas ${icon} tool-icon"></i>
-                    <span class="tool-name">Using ${displayName}</span>
+                    <span class="tool-name">Utilizing ${displayName} tool</span>
                   </div>
                 </div>
               `;
@@ -1405,12 +1441,12 @@ document.addEventListener('DOMContentLoaded', function() {
               } else if (data.type === 'tool_detected') {
                 // Tool detected during streaming
                 console.log('🔧 Tool detected:', data.name);
-                if (!currentToolCallId) {
-                  currentToolCallId = addToolCall(data.name, 'Detected, preparing to execute...');
-                  // Also show inline tool indicator
-                  showInlineToolIndicator(data.name);
-                } else {
-                  console.log('🔧 Tool already being tracked:', currentToolCallId);
+                // Always show the tool indicator, even for chained tools
+                showInlineToolIndicator(data.name);
+                
+                // Track in tool panel if not already tracked
+                if (!currentToolCallId || data.tool_id !== currentToolCallId) {
+                  currentToolCallId = data.tool_id || addToolCall(data.name, 'Detected, preparing to execute...');
                 }
               } else if (data.type === 'tool_start') {
                 // Tool execution starting

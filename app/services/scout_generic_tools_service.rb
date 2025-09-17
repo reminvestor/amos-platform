@@ -460,15 +460,41 @@ class ScoutGenericToolsService
             if results.any? && !tool_calls.any? { |tc| tc[:name] == 'load_canvas' }
               Rails.logger.info "Tool execution complete, continuing conversation with tool results"
               
-              # Create tool result messages in the format Bedrock expects
+              # First, add the assistant's message with tool use
+              # This is required before sending tool results
+              tool_use_content = []
+              
+              # Add any text content that was accumulated
+              if accumulated_content.present?
+                tool_use_content << { text: accumulated_content }
+              end
+              
+              # Add the tool use blocks
+              tool_calls.each do |tool_call|
+                tool_use_content << {
+                  tool_use: {
+                    tool_use_id: tool_call[:id],
+                    name: tool_call[:name],
+                    input: JSON.parse(tool_call[:arguments])
+                  }
+                }
+              end
+              
+              # Add assistant message with tool use
+              conversation_messages << {
+                role: 'assistant',
+                content: tool_use_content
+              }
+              
+              # Now add tool result messages
               tool_calls.zip(results).each do |tool_call, result|
                 # Add tool result as a user message with proper content structure
                 conversation_messages << {
                   role: 'user', 
                   content: [
                     {
-                      toolResult: {
-                        toolUseId: tool_call[:id],
+                      tool_result: {
+                        tool_use_id: tool_call[:id],
                         content: [
                           {
                             json: result[:success] ? (result[:result] || { success: true }) : { error: result[:error] || "Tool execution failed" }
@@ -487,18 +513,324 @@ class ScoutGenericToolsService
               Rails.logger.info "Continuing conversation with #{conversation_messages.length} messages"
               conversation_messages.each_with_index do |msg, idx|
                 Rails.logger.info "Message #{idx}: role=#{msg[:role]}, content_type=#{msg[:content].class}"
+                if msg[:content].is_a?(Array)
+                  Rails.logger.info "  Content array length: #{msg[:content].length}"
+                  msg[:content].each_with_index do |content_item, i|
+                    content_keys = content_item.keys.join(', ')
+                    Rails.logger.info "  Content[#{i}]: #{content_keys}"
+                    if content_item[:tool_use]
+                      Rails.logger.info "    Tool use: #{content_item[:tool_use][:name]}"
+                    elsif content_item[:tool_result]
+                      Rails.logger.info "    Tool result for: #{content_item[:tool_result][:tool_use_id]}"
+                    end
+                  end
+                end
               end
               
               begin
-                final_response = @ai_service.send_message(
+                # Use streaming for the continuation response too
+                tools = get_bedrock_tools
+                final_message = ""
+                
+                # Signal that we're starting to stream the continuation
+                progress_callback&.call("💬 streaming")
+                
+                continuation_tool_calls = []
+                
+                @ai_service.send_message_streaming(
                   system_prompt,
                   conversation_messages,
                   max_tokens: 25000,
                   temperature: 0.7,
-                  json_mode: false
-                )
+                  json_mode: false,
+                  tools: tools
+                ) do |chunk|
+                  if chunk[:type] == :content && chunk[:content]
+                    final_message += chunk[:content]
+                    # Stream the continuation content to the UI
+                    progress_callback&.call({
+                      type: 'content_chunk',
+                      content: chunk[:content]
+                    })
+                  elsif chunk[:type] == :tool_use_start
+                    # AI wants to use another tool in the continuation
+                    Rails.logger.info "Continuation wants to use tool: #{chunk[:tool_name]}"
+                    continuation_tool_calls << {
+                      id: chunk[:tool_id],
+                      name: chunk[:tool_name],
+                      arguments: ""
+                    }
+                    # Notify UI about tool detection
+                    progress_callback&.call({
+                      type: 'tool_detected',
+                      name: chunk[:tool_name],
+                      tool_id: chunk[:tool_id]
+                    })
+                  elsif chunk[:type] == :tool_use && continuation_tool_calls.any?
+                    # Accumulate tool arguments
+                    continuation_tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+                  elsif chunk[:type] == :complete
+                    Rails.logger.info "Continuation streaming complete: #{final_message.length} chars"
+                  end
+                end
                 
-                final_message = final_response
+                # If the continuation wants to use more tools, execute them recursively
+                if continuation_tool_calls.any?
+                  Rails.logger.info "Continuation requested #{continuation_tool_calls.length} more tools"
+                  
+                  # Execute the continuation tools
+                  continuation_results = []
+                  continuation_tool_calls.each do |tool_call|
+                    Rails.logger.info "Processing continuation tool: #{tool_call[:name]} with arguments: #{tool_call[:arguments]}"
+                    
+                    # Parse arguments if they're a string
+                    parsed_args = if tool_call[:arguments].is_a?(String)
+                      begin
+                        JSON.parse(tool_call[:arguments])
+                      rescue JSON::ParserError => e
+                        Rails.logger.error "Failed to parse tool arguments: #{e.message}"
+                        {}
+                      end
+                    else
+                      tool_call[:arguments]
+                    end
+                    
+                    result = execute_tool_by_name(tool_call[:name], parsed_args)
+                    continuation_results << result
+                    
+                    # Notify UI about tool detection first
+                    progress_callback&.call({
+                      type: 'tool_detected',
+                      name: tool_call[:name],
+                      tool_id: tool_call[:id]
+                    })
+                    
+                    # Then notify about tool execution
+                    progress_callback&.call({
+                      type: 'tool_start',
+                      name: tool_call[:name],
+                      arguments: parsed_args
+                    })
+                  end
+                  
+                  # Now we need to continue AGAIN with these new tool results
+                  # This creates a recursive pattern for chained tool calls
+                  
+                  # Add the assistant's message with the continuation tool use
+                  tool_use_content = []
+                  if final_message.present?
+                    tool_use_content << { text: final_message }
+                  end
+                  
+                  continuation_tool_calls.each do |tool_call|
+                    tool_use_content << {
+                      tool_use: {
+                        tool_use_id: tool_call[:id],
+                        name: tool_call[:name],
+                        input: JSON.parse(tool_call[:arguments])
+                      }
+                    }
+                  end
+                  
+                  conversation_messages << {
+                    role: 'assistant',
+                    content: tool_use_content
+                  }
+                  
+                  # Add continuation tool results
+                  continuation_tool_calls.zip(continuation_results).each do |tool_call, result|
+                    conversation_messages << {
+                      role: 'user',
+                      content: [
+                        {
+                          tool_result: {
+                            tool_use_id: tool_call[:id],
+                            content: [
+                              {
+                                json: result[:success] ? (result[:result] || { success: true }) : { error: result[:error] || "Tool execution failed" }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  end
+                  
+                  # Stream another continuation
+                  progress_callback&.call("💬 streaming")
+                  
+                  additional_message = ""
+                  more_tool_calls = []
+                  
+                  @ai_service.send_message_streaming(
+                    system_prompt,
+                    conversation_messages,
+                    max_tokens: 25000,
+                    temperature: 0.7,
+                    json_mode: false,
+                    tools: tools
+                  ) do |chunk|
+                    if chunk[:type] == :content && chunk[:content]
+                      additional_message += chunk[:content]
+                      progress_callback&.call({
+                        type: 'content_chunk',
+                        content: chunk[:content]
+                      })
+                    elsif chunk[:type] == :tool_use_start
+                      # AI wants even more tools!
+                      Rails.logger.info "AI wants another tool in final continuation: #{chunk[:tool_name]}"
+                      more_tool_calls << {
+                        id: chunk[:tool_id],
+                        name: chunk[:tool_name],
+                        arguments: ""
+                      }
+                    elsif chunk[:type] == :tool_use && more_tool_calls.any?
+                      more_tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+                    elsif chunk[:type] == :complete
+                      Rails.logger.info "Final continuation complete: #{additional_message.length} chars"
+                    end
+                  end
+                  
+                  # If the AI wants to use more tools, recursively handle them
+                  # But set a reasonable limit to prevent infinite loops
+                  total_tool_calls = tool_calls.length + continuation_tool_calls.length
+                  
+                  if more_tool_calls.any? && total_tool_calls < 20
+                    Rails.logger.info "AI requested #{more_tool_calls.length} more tools (total: #{total_tool_calls + more_tool_calls.length})"
+                    
+                    # Execute the additional tools
+                    more_results = []
+                    more_tool_calls.each do |tool_call|
+                      Rails.logger.info "Processing additional tool: #{tool_call[:name]} with arguments: #{tool_call[:arguments]}"
+                      
+                      # Parse arguments
+                      parsed_args = if tool_call[:arguments].is_a?(String)
+                        begin
+                          JSON.parse(tool_call[:arguments])
+                        rescue JSON::ParserError => e
+                          Rails.logger.error "Failed to parse tool arguments: #{e.message}"
+                          {}
+                        end
+                      else
+                        tool_call[:arguments]
+                      end
+                      
+                      result = execute_tool_by_name(tool_call[:name], parsed_args)
+                      more_results << result
+                      
+                      # Notify UI about tool detection and execution
+                      progress_callback&.call({
+                        type: 'tool_detected',
+                        name: tool_call[:name],
+                        tool_id: tool_call[:id]
+                      })
+                      progress_callback&.call({
+                        type: 'tool_start',
+                        name: tool_call[:name],
+                        arguments: parsed_args
+                      })
+                    end
+                    
+                    # Add the assistant's message with the additional tool use
+                    additional_tool_content = []
+                    if additional_message.present?
+                      additional_tool_content << { text: additional_message }
+                    end
+                    
+                    more_tool_calls.each do |tool_call|
+                      additional_tool_content << {
+                        tool_use: {
+                          tool_use_id: tool_call[:id],
+                          name: tool_call[:name],
+                          input: JSON.parse(tool_call[:arguments])
+                        }
+                      }
+                    end
+                    
+                    conversation_messages << {
+                      role: 'assistant',
+                      content: additional_tool_content
+                    }
+                    
+                    # Add tool results
+                    more_tool_calls.zip(more_results).each do |tool_call, result|
+                      conversation_messages << {
+                        role: 'user',
+                        content: [
+                          {
+                            tool_result: {
+                              tool_use_id: tool_call[:id],
+                              content: [
+                                {
+                                  json: result[:success] ? (result[:result] || { success: true }) : { error: result[:error] || "Tool execution failed" }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    end
+                    
+                    # One more round of streaming
+                    progress_callback&.call("💬 streaming")
+                    
+                    final_final_message = ""
+                    even_more_tool_calls = []
+                    
+                    @ai_service.send_message_streaming(
+                      system_prompt,
+                      conversation_messages,
+                      max_tokens: 25000,
+                      temperature: 0.7,
+                      json_mode: false,
+                      tools: tools
+                    ) do |chunk|
+                      if chunk[:type] == :content && chunk[:content]
+                        final_final_message += chunk[:content]
+                        progress_callback&.call({
+                          type: 'content_chunk',
+                          content: chunk[:content]
+                        })
+                      elsif chunk[:type] == :tool_use_start
+                        even_more_tool_calls << {
+                          id: chunk[:tool_id],
+                          name: chunk[:tool_name],
+                          arguments: ""
+                        }
+                      elsif chunk[:type] == :tool_use && even_more_tool_calls.any?
+                        even_more_tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+                      elsif chunk[:type] == :complete
+                        Rails.logger.info "Final final continuation complete: #{final_final_message.length} chars"
+                      end
+                    end
+                    
+                    # If still no content but more tools requested, provide a helpful message
+                    if final_final_message.empty? && even_more_tool_calls.any?
+                      Rails.logger.warn "AI still trying to use tools after multiple attempts"
+                      final_final_message = "I apologize, but I'm having trouble creating the campaign with the current system fields. Let me help you understand what's needed:\n\n"
+                      final_final_message += "Based on the campaign schema, a campaign needs:\n"
+                      final_final_message += "- **name**: The campaign name\n"
+                      final_final_message += "- **status**: Either 'draft', 'active', or 'completed'\n"
+                      final_final_message += "- **description**: Optional description\n\n"
+                      final_final_message += "The email content (subject, body, etc.) should be created as a separate Email Template and then linked to the campaign.\n\n"
+                      final_final_message += "Would you like me to:\n"
+                      final_final_message += "1. Create a basic campaign first?\n"
+                      final_final_message += "2. Create an email template with your content?\n"
+                      final_final_message += "3. Show you the campaign viewer to manage existing campaigns?"
+                    end
+                    
+                    final_message = final_final_message
+                  elsif more_tool_calls.any?
+                    Rails.logger.warn "Tool call limit reached (20) - stopping here"
+                    if additional_message.empty?
+                      additional_message = "I've completed the initial setup. Please let me know if you need any adjustments."
+                    end
+                    final_message = additional_message
+                  else
+                    final_message = additional_message
+                  end
+                end
+                
               rescue => e
                 Rails.logger.error "Error getting final response: #{e.message}"
                 Rails.logger.error "Bedrock API error details: #{e.class.name}"
@@ -1884,7 +2216,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
   end
 
   def format_conversation_for_ai(conversation_history, user_message)
-    # Format conversation messages for AI consumption
+    # Format conversation messages for AI consumption (converse API format)
     messages = []
 
     # Add conversation history (limit to recent messages to avoid token limits)
@@ -1895,15 +2227,30 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       content = msg[:content]
       
       if content.present?
-        messages << { role: role, content: content }
+        # Ensure content is always an array for converse API
+        content_array = if content.is_a?(String)
+          [{ text: content }]
+        elsif content.is_a?(Array)
+          # If it's already an array, extract the text from it
+          # This handles cases where content might be [{ text: "..." }] already
+          if content.first.is_a?(Hash) && content.first[:text]
+            [{ text: content.first[:text] }]
+          else
+            [{ text: content.to_s }]
+          end
+        else
+          [{ text: content.to_s }]
+        end
+        
+        messages << { role: role, content: content_array }
       end
     end
     
     # Add current message
-    messages << { role: 'user', content: user_message }
+    messages << { role: 'user', content: [{ text: user_message }] }
     
     Rails.logger.info "Formatted conversation: #{messages.length} messages total"
-    Rails.logger.info "Messages: #{messages.map { |m| "#{m[:role]}: #{m[:content][0..50]}..." }.join(' | ')}"
+    Rails.logger.info "Messages: #{messages.map { |m| "#{m[:role]}: #{m[:content].first[:text][0..50] rescue m[:content].to_s[0..50]}..." }.join(' | ')}"
     
     messages
   end
@@ -2280,6 +2627,9 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     # Keywords that suggest builder mode - be more specific
     builder_patterns = [
       /create\s+.*campaign/i,
+      /create\s+.*email/i,
+      /create\s+a\s+new/i,
+      /create.*for\s+me/i,
       /make\s+.*template/i,
       /build\s+.*page/i,
       /add\s+.*contact/i,
@@ -2291,7 +2641,9 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       /set\s+up/i,
       /generate\s+.*landing/i,
       /send\s+now|send\s+immediately|send\s+campaign/i,  # Be specific about "send"
-      /publish/i
+      /publish/i,
+      /new\s+email\s+campaign/i,
+      /new\s+campaign/i
     ]
     
     # Check for advisory patterns first (since they're often questions)

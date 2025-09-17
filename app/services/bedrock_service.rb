@@ -196,6 +196,75 @@ class BedrockService
   end
 
   public
+  
+  # Non-streaming version using converse API (for tool continuation)
+  def send_message_converse(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, tools: [])
+    # Map model names to Bedrock model IDs
+    model_id = case model
+    when 'claude-opus-4-1', 'claude-opus-4-1-20250805'
+      'us.anthropic.claude-opus-4-1-20250805-v1:0'
+    when 'claude-3-5-sonnet', 'claude-3.5-sonnet'
+      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
+    when 'claude-3-haiku'
+      'us.anthropic.claude-3-5-haiku-20241022-v1:0'
+    else
+      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
+    end
+    
+    # Messages are already in converse format from our formatting
+    # Just ensure they're properly structured
+    converse_messages = messages.map do |msg|
+      {
+        role: msg[:role],
+        content: msg[:content].is_a?(Array) ? msg[:content] : [{ text: msg[:content] }]
+      }
+    end
+    
+    # Build payload for converse
+    payload = {
+      model_id: model_id,
+      messages: converse_messages,
+      inference_config: {
+        max_tokens: max_tokens,
+        temperature: temperature
+      }
+    }
+    
+    # Add system prompt if present
+    if system_prompt.present?
+      payload[:system] = [{ text: system_prompt }]
+    end
+    
+    # Add tools if provided (required when using tool results)
+    if tools.any?
+      payload[:tool_config] = {
+        tools: format_tools_for_bedrock(tools),
+        tool_choice: { auto: {} }
+      }
+    end
+    
+    Rails.logger.info "Sending non-streaming request to Bedrock Claude (#{model_id}) using converse"
+    
+    begin
+      response = @client.converse(payload)
+      
+      # Extract the text from the response
+      content = response.output.message.content.map do |content_block|
+        content_block.text if content_block.respond_to?(:text)
+      end.compact.join('')
+      
+      Rails.logger.info "Bedrock converse response received: #{content.length} characters"
+      
+      content
+    rescue Aws::BedrockRuntime::Errors::ServiceError => e
+      Rails.logger.error "Bedrock API Error: #{e.message}"
+      raise "Bedrock API Error: #{e.message}"
+    rescue StandardError => e
+      Rails.logger.error "Unexpected error from Bedrock: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      raise "Failed to get response from Bedrock: #{e.message}"
+    end
+  end
 
   def send_message_streaming(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false, tools: [], &block)
     # Map model names to Bedrock model IDs
@@ -230,7 +299,7 @@ class BedrockService
       converse_messages = messages.map do |msg|
         {
           role: msg[:role] == 'system' ? 'user' : msg[:role],
-          content: [{ text: msg[:content] }]
+          content: msg[:content].is_a?(Array) ? msg[:content] : [{ text: msg[:content] }]
         }
       end
       
