@@ -1012,10 +1012,19 @@ class ScoutController < ApplicationController
 
   def render_task_progress(data = {})
     # If no data provided, try to load from cache
-    if data.empty? || data.nil?
+    if data.empty? || data.nil? || data['tasks'].nil?
       session_id = session[:scout_session_id]
       cache_key = "scout_task_list_#{current_entity.id}_#{session_id}"
-      data = Rails.cache.read(cache_key) || {}
+      cached_data = Rails.cache.read(cache_key)
+      if cached_data
+        Rails.logger.info "📋 Loaded task list from cache: #{cached_data[:tasks]&.size} tasks"
+        data = cached_data
+      else
+        Rails.logger.info "📋 No task list found in cache for key: #{cache_key}"
+        data = {}
+      end
+    else
+      Rails.logger.info "📋 Using provided task data: #{data['tasks']&.size} tasks"
     end
     
     render_to_string(
