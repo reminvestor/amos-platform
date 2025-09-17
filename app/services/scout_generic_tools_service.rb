@@ -490,6 +490,9 @@ class ScoutGenericToolsService
                 # Execute our existing tools
                 result = execute_tool_by_name(tool_call[:name], args, progress_callback)
                 results << result
+                
+                # Auto-update task progress if we have a task list
+                update_task_for_tool_completion(tool_call[:name], args, result[:success], progress_callback)
               end
             end
             
@@ -671,6 +674,9 @@ class ScoutGenericToolsService
                     result = execute_tool_by_name(tool_call[:name], parsed_args)
                     continuation_results << result
                     
+                    # Auto-update task progress if we have a task list
+                    update_task_for_tool_completion(tool_call[:name], parsed_args, result[:success], progress_callback)
+                    
                     # Notify UI about tool detection first
                     progress_callback&.call({
                       type: 'tool_detected',
@@ -803,6 +809,9 @@ class ScoutGenericToolsService
                         name: tool_call[:name],
                         arguments: parsed_args
                       })
+                      
+                      # Auto-update task progress if we have a task list
+                      update_task_for_tool_completion(tool_call[:name], parsed_args, result[:success], progress_callback)
                     end
                     
                     # Add the assistant's message with the additional tool use
@@ -3027,6 +3036,78 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     end
   end
 
+  def update_task_for_tool_completion(tool_name, args, success, progress_callback)
+    # Check if we have an active task list
+    entity_id = @entity&.id
+    session_id = @session_id || SecureRandom.uuid
+    cache_key = "scout_task_list_#{entity_id}_#{session_id}"
+    
+    task_list = Rails.cache.read(cache_key)
+    return unless task_list && task_list[:tasks]
+    
+    # Map tool names to task descriptions
+    task_mapping = {
+      'get_schema' => ->(args) { "Get #{args['object_type']} schema" },
+      'create_object' => ->(args) { 
+        case args['object_type']
+        when 'campaigns'
+          "Create new campaign '#{args['data']['name']}'"
+        else
+          "Create new #{args['object_type'].singularize}"
+        end
+      },
+      'get_data' => ->(args) { "Find the most recent #{args['object_type'].singularize}" },
+      'link_template_to_campaign' => ->(args) { "Link template to campaign" }
+    }
+    
+    # Find matching task
+    matcher = task_mapping[tool_name]
+    return unless matcher
+    
+    expected_description = matcher.call(args)
+    
+    task = task_list[:tasks].find do |t|
+      t[:status] == 'pending' && t[:description].downcase.include?(expected_description.downcase)
+    end
+    
+    return unless task
+    
+    # Update task status
+    if success
+      execute_manage_task_list({
+        'action' => 'complete_task',
+        'task_id' => task[:id],
+        'details' => "Completed successfully"
+      })
+      
+      # Refresh the canvas with updated task list
+      updated_list = Rails.cache.read(cache_key)
+      if updated_list
+        progress_callback&.call({
+          type: 'load_canvas',
+          canvas: 'task_progress',
+          canvas_data: updated_list
+        })
+      end
+    else
+      execute_manage_task_list({
+        'action' => 'fail_task',
+        'task_id' => task[:id],
+        'details' => "Failed to complete"
+      })
+      
+      # Refresh the canvas with updated task list
+      updated_list = Rails.cache.read(cache_key)
+      if updated_list
+        progress_callback&.call({
+          type: 'load_canvas',
+          canvas: 'task_progress',
+          canvas_data: updated_list
+        })
+      end
+    end
+  end
+
   def execute_create_dynamic_visualization(args)
     begin
       title = args['title']
@@ -3075,6 +3156,13 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       # Store for canvas display
       @suggested_canvas = 'task_progress'
       @canvas_data = task_list
+      
+      # Immediately trigger canvas loading via callback
+      progress_callback&.call({
+        type: 'load_canvas',
+        canvas: 'task_progress',
+        canvas_data: task_list
+      })
       
       {
         success: true,
