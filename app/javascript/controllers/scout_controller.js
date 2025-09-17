@@ -21,6 +21,17 @@ export default class extends Controller {
     this.currentCanvas = null
     this.isResizing = false
     
+    // Make controller globally accessible
+    window.scoutController = this
+    
+    // Also listen for custom canvas load events
+    this.handleCanvasLoadEvent = (event) => {
+      const { canvas, data } = event.detail
+      console.log("📨 Received canvas load event:", canvas, data)
+      this.loadScoutCanvas(canvas, data)
+    }
+    document.addEventListener('scout:load-canvas', this.handleCanvasLoadEvent)
+    
     // Clear canvas viewer on page load
     if (this.canvasViewerTarget) {
       this.canvasViewerTarget.innerHTML = ''
@@ -55,6 +66,13 @@ export default class extends Controller {
     
     // Don't automatically restore canvas state - let user start fresh
     // this.restoreCanvasState()
+  }
+  
+  disconnect() {
+    // Clean up event listener
+    if (this.handleCanvasLoadEvent) {
+      document.removeEventListener('scout:load-canvas', this.handleCanvasLoadEvent)
+    }
   }
 
   // Save canvas state to localStorage

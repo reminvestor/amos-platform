@@ -90,20 +90,6 @@ class ScoutGenericToolsService
       }
     },
     {
-      name: "get_schema",
-      description: "Get the schema and field information for any data model",
-      input_schema: {
-        type: "object",
-        properties: {
-          object_type: {
-            type: "string",
-            description: "The type of object to get schema for (e.g., 'campaign', 'contact')"
-          }
-        },
-        required: ["object_type"]
-      }
-    },
-    {
       name: "generate_ai_landing_page",
       description: "Generate a complete AI-powered landing page using sophisticated multi-agent system (PREFERRED for landing pages)",
       input_schema: {
@@ -328,6 +314,10 @@ class ScoutGenericToolsService
 
   def process_message_with_tools_streaming(user_message, progress_callback = nil, conversation_history = [], current_canvas = nil)
     begin
+      # Initialize instance variables
+      @suggested_canvas = nil
+      @canvas_data = nil
+      
       progress_callback&.call("🧠 Building context with available data models...")
       
       # Detect user intent
@@ -346,47 +336,215 @@ class ScoutGenericToolsService
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name} (including history)"
       progress_callback&.call("🤖 Sending request to #{@ai_provider_name} with conversation context...")
       
-      # If in advisor mode, stream the response
-      if detected_mode == 'advisor'
-        Rails.logger.info "Streaming advisor mode response"
-        
-        accumulated_content = ""
-        streaming_started = false
-        
-        # When streaming with json_mode: true, Bedrock returns raw text, not JSON
-        @ai_service.send_message(
-          system_prompt,
-          conversation_messages,
-          max_tokens: 25000,
-          temperature: 0.7,
-          stream: true,
-          json_mode: true  # This affects the prompt but streaming returns raw text
-        ) do |chunk|
-          if chunk[:type] == :content
-            # In streaming mode, we get the raw message content directly
-            if !streaming_started
-              streaming_started = true
-              progress_callback&.call("💬 streaming")
+      # Always stream responses for better UX
+      Rails.logger.info "Streaming response in #{detected_mode} mode"
+      
+      accumulated_content = ""
+      tool_calls = []
+      streaming_started = false
+      
+      # Stream the response - use native Bedrock tools
+      tools = get_bedrock_tools
+      Rails.logger.info "Sending #{tools.length} tools to Bedrock"
+      Rails.logger.info "Tools: #{tools.map { |t| t[:name] }.join(', ')}"
+      
+      @ai_service.send_message_streaming(
+        system_prompt,
+        conversation_messages,
+        max_tokens: 25000,
+        temperature: 0.7,
+        json_mode: false,  # Let Bedrock handle tool calling natively
+        tools: tools
+      ) do |chunk|
+        if chunk[:type] == :content && chunk[:content]
+          accumulated_content += chunk[:content]
+          
+          if !streaming_started
+            streaming_started = true
+            progress_callback&.call("💬 streaming")
+          end
+          
+          # Stream content directly
+          progress_callback&.call({
+            type: 'content_chunk',
+            content: chunk[:content]
+          })
+        elsif chunk[:type] == :tool_use_start
+          # Tool use is starting
+          progress_callback&.call({
+            type: 'tool_detected',
+            name: chunk[:tool_name],
+            tool_id: chunk[:tool_id]
+          })
+          
+          # Start collecting this tool call
+          tool_calls << {
+            id: chunk[:tool_id],
+            name: chunk[:tool_name],
+            arguments: ""
+          }
+        elsif chunk[:type] == :tool_use
+          # Tool arguments are being streamed
+          if chunk[:tool_use] && tool_calls.last
+            # The tool_use chunk contains the input as a string
+            tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+            Rails.logger.info "Tool use chunk received for #{tool_calls.last[:name]}: #{chunk[:tool_use].inspect}"
+          end
+          
+        elsif chunk[:type] == :complete
+          # Response complete
+          Rails.logger.info "Bedrock response complete. Tool calls: #{tool_calls.length}"
+          
+          # If we have tool calls, execute them
+          if tool_calls.any?
+            Rails.logger.info "Executing tool calls: #{tool_calls.map { |t| t[:name] }}"
+            Rails.logger.info "Tool calls detail: #{tool_calls.inspect}"
+            
+            # Parse and execute each tool
+            results = []
+            tool_calls.each do |tool_call|
+              Rails.logger.info "Processing tool: #{tool_call[:name]} with raw arguments: #{tool_call[:arguments].inspect}"
+              
+              # Parse arguments
+              args = begin
+                JSON.parse(tool_call[:arguments])
+              rescue JSON::ParserError => e
+                Rails.logger.error "Failed to parse tool arguments: #{e.message}"
+                {}
+              end
+              
+              Rails.logger.info "Parsed arguments for #{tool_call[:name]}: #{args.inspect}"
+              
+              progress_callback&.call({
+                type: 'tool_start',
+                name: tool_call[:name],
+                arguments: args
+              })
+              
+              # Handle special canvas loading tool
+              if tool_call[:name] == 'load_canvas'
+                canvas_name = args['canvas_name'] || 'campaign_viewer'  # Default to campaign_viewer if not specified
+                Rails.logger.info "Canvas loading requested: #{canvas_name}"
+                @suggested_canvas = canvas_name
+                Rails.logger.info "Set @suggested_canvas to: #{@suggested_canvas}"
+                results << { success: true, message: "Loading #{canvas_name}" }
+              else
+                # Execute our existing tools
+                result = execute_tool_by_name(tool_call[:name], args, progress_callback)
+                results << result
+              end
             end
             
-            # Stream the content chunk directly
-            if chunk[:content] && chunk[:content].length > 0
-              accumulated_content += chunk[:content]
-              progress_callback&.call({
-                type: 'content_chunk',
-                content: chunk[:content]
-              })
+            # If no message was streamed but tools were used, provide a default message
+            final_message = accumulated_content
+            if final_message.empty? && tool_calls.any? { |tc| tc[:name] == 'load_canvas' }
+              final_message = "I'll load the #{@suggested_canvas.gsub('_', ' ')} for you right now."
+            elsif final_message.empty?
+              final_message = "I've executed the requested tools."
             end
-          elsif chunk[:type] == :complete
-            # The accumulated content is the full message
+            
+            # For get_schema, add information about what to do next
+            if tool_calls.any? { |tc| tc[:name] == 'get_schema' } && results.any? { |r| r[:success] }
+              schema_result = results.find { |r| r[:tool_name] == 'get_schema' }
+              if schema_result && final_message.include?("check the campaign structure")
+                final_message += "\n\nGreat! I've retrieved the campaign structure. Now, please provide me with the following details for your new campaign:\n\n"
+                final_message += "1. **Campaign Name**: What would you like to call this campaign?\n"
+                final_message += "2. **Subject Line**: What subject line should we use?\n"
+                final_message += "3. **Target Audience**: Who should receive this campaign? (You can specify a contact group or describe the recipients)\n"
+                final_message += "4. **Email Template**: Do you have a specific template in mind, or would you like me to help create one?\n\n"
+                final_message += "Once you provide these details, I'll create the campaign for you!"
+              end
+            end
+            
+            # If we have tool results, we need to continue the conversation
+            if results.any? && !tool_calls.any? { |tc| tc[:name] == 'load_canvas' }
+              Rails.logger.info "Tool execution complete, continuing conversation with tool results"
+              
+              # Create tool result messages in the format Bedrock expects
+              tool_calls.zip(results).each do |tool_call, result|
+                # Add tool result as a user message with proper content structure
+                conversation_messages << {
+                  role: 'user', 
+                  content: [
+                    {
+                      toolResult: {
+                        toolUseId: tool_call[:id],
+                        content: [
+                          {
+                            json: result[:success] ? (result[:result] || { success: true }) : { error: result[:error] || "Tool execution failed" }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              end
+              
+              # Call Bedrock again to get the final response
+              progress_callback&.call("🎯 Generating response based on results...")
+              
+              # Log the conversation for debugging
+              Rails.logger.info "Continuing conversation with #{conversation_messages.length} messages"
+              conversation_messages.each_with_index do |msg, idx|
+                Rails.logger.info "Message #{idx}: role=#{msg[:role]}, content_type=#{msg[:content].class}"
+              end
+              
+              begin
+                final_response = @ai_service.send_message(
+                  system_prompt,
+                  conversation_messages,
+                  max_tokens: 25000,
+                  temperature: 0.7,
+                  json_mode: false
+                )
+                
+                final_message = final_response
+              rescue => e
+                Rails.logger.error "Error getting final response: #{e.message}"
+                Rails.logger.error "Bedrock API error details: #{e.class.name}"
+                # Fall back to the constructed message
+              end
+            end
+            
+            # Return with tool results
+            Rails.logger.info "Returning with @suggested_canvas: #{@suggested_canvas.inspect}"
+            return {
+              message: final_message,
+              tools_used: true,
+              tools_list: tool_calls.map { |t| t[:name] },
+              success_count: results.count { |r| r[:success] },
+              error_count: results.count { |r| !r[:success] },
+              canvas: @suggested_canvas,
+              canvas_data: @canvas_data,
+              mode: detected_mode
+            }
+          else
+            # No tools, just return the message
+            # But first check if the message is JSON that contains canvas instructions
+            if accumulated_content.strip.start_with?('{') && accumulated_content.strip.end_with?('}')
+              begin
+                parsed = JSON.parse(accumulated_content)
+                if parsed['canvas']
+                  @suggested_canvas = parsed['canvas']
+                  Rails.logger.info "Canvas found in JSON response: #{@suggested_canvas}"
+                end
+                # Use the message from the JSON if available
+                accumulated_content = parsed['message'] if parsed['message']
+              rescue JSON::ParserError
+                # Not valid JSON, use as-is
+              end
+            end
+            
             return {
               message: accumulated_content,
               tools_used: false,
+              canvas: @suggested_canvas,
               mode: detected_mode
             }
           end
         end
       end
+      
       
       # For builder mode or complex queries, use non-streaming for tool detection
       response = @ai_service.send_message(
@@ -477,6 +635,39 @@ class ScoutGenericToolsService
   end
 
   private
+
+  def get_bedrock_tools
+    # Define tools in Bedrock format
+    tools = []
+    
+    # Add canvas loading tool
+    tools << {
+      name: "load_canvas",
+      description: "Load a specific canvas view in the Scout interface",
+      parameters: {
+        type: "object",
+        properties: {
+          canvas_name: {
+            type: "string",
+            description: "The name of the canvas to load",
+            enum: ["campaign_viewer", "analytics_dashboard", "landing_page_viewer", "contact_viewer", "email_template_viewer"]
+          }
+        },
+        required: ["canvas_name"]
+      }
+    }
+    
+    # Add our existing tools
+    TOOLS.each do |tool|
+      tools << {
+        name: tool[:name],
+        description: tool[:description],
+        parameters: tool[:parameters]
+      }
+    end
+    
+    tools
+  end
 
   def build_system_prompt_with_dynamic_schema(context_type = nil, mode = nil)
     available_models = ScoutDataRegistry.available_object_types
@@ -719,38 +910,15 @@ class ScoutGenericToolsService
       - "contact_viewer" - to show contacts
       - "contact_generator" - to create new contacts
 
-      **CRITICAL RESPONSE FORMAT:**
-      You MUST respond with valid JSON in this exact format:
+**CRITICAL CANVAS LOADING INSTRUCTIONS:**
+When the user explicitly asks to "load", "show", "open" or "view" a specific canvas:
+- YOU MUST USE THE load_canvas TOOL - do not respond with JSON
+- The load_canvas tool takes a canvas_name parameter
+- Available canvases: campaign_viewer, analytics_dashboard, landing_page_viewer, contact_viewer, email_template_viewer
+- Example: User says "load the campaign viewer" → Use tool: load_canvas with canvas_name: "campaign_viewer"
 
-      {
-        "message": "Your conversational response to the user using MARKDOWN formatting (NOT HTML)",
-        "tool_calls": [
-          {
-            "name": "get_schema", 
-            "arguments": {"object_type": "campaigns"}
-          },
-          {
-            "name": "get_data",
-            "arguments": {"object_type": "campaigns", "filters": {"status": "sent"}, "options": {"limit": 20}}
-          }
-        ],
-        "canvas": "analytics_dashboard"
-      }
+      #{mode == 'advisor' ? advisor_response_format : builder_response_format}
 
-      OR if no tools are needed:
-
-      {
-        "message": "Your conversational response to the user",
-        "tool_calls": [],
-        "canvas": "contact_viewer"
-      }
-
-      OR for simple conversation (no canvas needed):
-
-      {
-        "message": "Your conversational response to the user",
-        "tool_calls": []
-      }
 
       **CRITICAL EXAMPLES FOR "analyze my campaigns":**
 
@@ -942,7 +1110,7 @@ class ScoutGenericToolsService
     end
     
     # Fallback: Return the full response (it's likely plain text from advisor mode)
-    return response
+      return response
   end
   
   def find_json_string_end(str, start_pos)
@@ -993,6 +1161,32 @@ class ScoutGenericToolsService
     end
     
     results
+  end
+
+  def execute_tool_by_name(tool_name, args, progress_callback = nil)
+    # Map tool name to execution method
+    case tool_name
+    when 'get_data'
+      execute_get_data(args)
+    when 'create_object'
+      execute_create_object(args)
+    when 'get_schema'
+      execute_get_schema(args)
+    when 'generate_ai_landing_page'
+      execute_generate_ai_landing_page(args)
+    when 'update_landing_page_status'
+      execute_update_landing_page_status(args)
+    when 'update_landing_page_content'
+      execute_update_landing_page_content(args)
+    when 'revert_landing_page_to_version'
+      execute_revert_landing_page_to_version(args)
+    when 'link_template_to_campaign'
+      execute_link_template_to_campaign(args)
+    when 'create_dynamic_visualization'
+      execute_create_dynamic_visualization(args)
+    else
+      { success: false, error: "Unknown tool: #{tool_name}" }
+    end
   end
 
   def execute_tools_with_progress(tool_calls, progress_callback = nil)
@@ -1230,7 +1424,7 @@ class ScoutGenericToolsService
       result[:lead] = object.lead
       result[:status] = object.status
     end
-
+    
     result
   end
 
@@ -2045,11 +2239,13 @@ class ScoutGenericToolsService
     # Keywords that typically require tool usage
     tool_patterns = [
       /create|make|build|add|generate/i,
-      /show.*data|list.*all|get.*all/i,
+      /show\s+me|show\s+my|display|view/i,  # "show me my campaigns"
+      /list.*all|get.*all/i,
       /update|change|modify|edit/i,
       /delete|remove/i,
       /link|connect|attach/i,
-      /analyze.*data|compare.*campaigns/i
+      /analyze.*campaigns|analyze.*data|compare.*campaigns/i,
+      /my\s+(campaigns|contacts|landing\s+pages|emails)/i  # "my campaigns", "my contacts"
     ]
     
     tool_patterns.any? { |pattern| message.match?(pattern) }
@@ -2138,11 +2334,9 @@ class ScoutGenericToolsService
       - Provide actionable next steps
       
       RESPONSE FORMAT:
-      Always respond in JSON format:
-      {
-        "message": "Your advisory response here",
-        "tool_calls": []
-      }
+      When responding without tools, provide conversational, natural language responses.
+      Use markdown formatting for structure (bold, lists, etc).
+      Be friendly and personable in your communication.
       
       USE DYNAMIC VISUALIZATIONS:
       When providing analysis or comparisons, use create_dynamic_visualization to create
@@ -2173,6 +2367,47 @@ class ScoutGenericToolsService
       3. Confirm actions taken
       4. Suggest next steps after completing tasks
     BUILDER
+  end
+  
+  def advisor_response_format
+    <<~FORMAT
+      **RESPONSE GUIDELINES:**
+      - Respond naturally in conversational language using markdown formatting
+      - Use tools when needed to fetch data or perform actions
+      - When asked to load a canvas view, use the load_canvas tool
+      - Focus on analysis, insights, and recommendations
+      
+      **AVAILABLE TOOLS:**
+      You have access to tools for:
+      - Loading canvas views (load_canvas) - USE THIS TOOL when asked to open/load/show a canvas
+      - Fetching and analyzing data (get_data, get_schema)
+      - Creating visualizations (create_dynamic_visualization)
+      - Managing marketing assets (various creation and update tools)
+      
+      IMPORTANT: When the user asks to load/open/show a canvas viewer, you MUST use the load_canvas tool.
+      Do NOT respond with JSON text. Use the actual tool calling mechanism.
+      
+      The system will handle tool calling automatically - just focus on helping the user.
+    FORMAT
+  end
+  
+  def builder_response_format
+    <<~FORMAT
+      **RESPONSE GUIDELINES:**
+      - Respond naturally in conversational language using markdown formatting
+      - Take immediate action using tools when appropriate
+      - When asked to load a canvas view, use the load_canvas tool
+      - Confirm actions taken and suggest next steps
+      
+      **AVAILABLE TOOLS:**
+      You have access to tools for:
+      - Loading canvas views (load_canvas)
+      - Creating and managing campaigns, contacts, landing pages, etc.
+      - Fetching and displaying data
+      - All marketing automation tasks
+      
+      The system will handle tool calling automatically - just focus on helping the user.
+    FORMAT
   end
 
   def execute_link_template_to_campaign(args)

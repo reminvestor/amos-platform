@@ -1,3 +1,181 @@
+<style>
+  /* Tool activity panel styles */
+  .tool-activity-panel {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .tool-activity-header {
+    background: #e9ecef;
+    padding: 12px 16px;
+    font-weight: 500;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .tool-activity-header i {
+    color: #6c757d;
+  }
+  
+  .tool-calls-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .tool-call-item {
+    border-bottom: 1px solid #dee2e6;
+    background: white;
+  }
+  
+  .tool-call-item:last-child {
+    border-bottom: none;
+  }
+  
+  .tool-call-header {
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s;
+  }
+  
+  .tool-call-header:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .tool-call-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .tool-call-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 12px;
+  }
+  
+  .tool-call-icon.pending {
+    background: #ffc107;
+    color: white;
+  }
+  
+  .tool-call-icon.running {
+    background: #007bff;
+    color: white;
+    animation: spin 1s linear infinite;
+  }
+  
+  .tool-call-icon.success {
+    background: #28a745;
+    color: white;
+  }
+  
+  .tool-call-icon.error {
+    background: #dc3545;
+    color: white;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  .tool-call-name {
+    font-weight: 500;
+    color: #212529;
+  }
+  
+  .tool-call-status {
+    font-size: 0.85em;
+    color: #6c757d;
+  }
+  
+  .tool-call-toggle {
+    color: #6c757d;
+    transition: transform 0.2s;
+  }
+  
+  .tool-call-toggle.expanded {
+    transform: rotate(180deg);
+  }
+  
+  .tool-call-details {
+    display: none;
+    padding: 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    font-size: 0.9em;
+  }
+  
+  .tool-call-details.show {
+    display: block;
+  }
+  
+  .tool-call-details pre {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 12px;
+    margin: 8px 0;
+    overflow-x: auto;
+    font-size: 0.85em;
+  }
+  
+  /* Tool messages in chat */
+  .tool-message .message-bubble {
+    background: #f0f7ff;
+    border: 1px solid #d0e3ff;
+    color: #0066cc;
+  }
+
+  .tool-bubble {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  .tool-bubble .tool-icon {
+    font-size: 16px;
+    color: #0066cc;
+  }
+
+  .tool-bubble .tool-name {
+    color: #0066cc;
+    font-weight: 500;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-10px); }
+  }
+  
+  /* Ensure typing indicator includes avatar */
+  .typing-indicator-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+</style>
+
 <div id="workspace" class="workspace conversation-mode" data-controller="scout">
   <!-- Collapsed Side Navigation -->
   <nav class="side-nav collapsed" data-scout-target="sideNav">
@@ -115,9 +293,15 @@
         </div>
       </div>
       
-      <!-- Tool activity indicator (hidden - using inline streaming status instead) -->
-      <div id="tool-activity" class="tool-activity" style="display: none !important;">
-        <div id="tool-status" class="tool-status"></div>
+      <!-- Tool activity panel with collapsible tool calls -->
+      <div id="tool-activity" class="tool-activity-panel" style="display: none;">
+        <div class="tool-activity-header">
+          <i class="fas fa-tools"></i>
+          <span>Scout is working on your request...</span>
+        </div>
+        <div id="tool-calls-list" class="tool-calls-list">
+          <!-- Tool calls will be dynamically added here -->
+        </div>
       </div>
       
       <div class="chat-input-area">
@@ -733,8 +917,24 @@ document.addEventListener('DOMContentLoaded', function() {
     return date.toLocaleDateString();
   }
   
-  // Get Scout controller reference
-  window.scoutController = document.querySelector('[data-controller="scout"]')?._stimulusController;
+  // Get Scout controller reference - wait for Stimulus to initialize
+  function getScoutController() {
+    const element = document.querySelector('[data-controller="scout"]');
+    if (element && window.Stimulus) {
+      const application = window.Stimulus || Stimulus;
+      return application.getControllerForElementAndIdentifier(element, 'scout');
+    }
+    return null;
+  }
+  
+  // Try to get controller immediately and also after a delay
+  window.scoutController = getScoutController();
+  if (!window.scoutController) {
+    setTimeout(() => {
+      window.scoutController = getScoutController();
+      console.log('Scout controller initialized:', window.scoutController);
+    }, 500);
+  }
 
   // Scroll to bottom (with defensive check)
   function scrollToBottom() {
@@ -806,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const wrapper = document.createElement('div');
     wrapper.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
     if (id) wrapper.dataset.messageId = id;
-    
+
     // Parse markdown for assistant messages
     let processedContent = content;
     
@@ -891,10 +1091,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // Show typing indicator
   function showTypingIndicator() {
     const typingWrapper = document.createElement('div');
-    typingWrapper.className = 'message ai-message';
+    typingWrapper.className = 'message ai-message typing-indicator-wrapper';
     typingWrapper.id = 'typing-indicator';
     typingWrapper.innerHTML = `
-      <div class="message-avatar">
+      <div class="message-avatar" id="typing-avatar">
         <i class="fas fa-robot"></i>
       </div>
       <div class="message-content">
@@ -910,54 +1110,225 @@ document.addEventListener('DOMContentLoaded', function() {
   function hideTypingIndicator() {
     const typingDiv = document.getElementById('typing-indicator');
     if (typingDiv) {
+      // Ensure the entire wrapper is removed, including the avatar
       typingDiv.remove();
     }
   }
 
-  // Show streaming status as a message in chat
-  let streamingStatusMessage = null;
-  const streamingLog = []
+  // Tool call tracking
+  const toolCalls = new Map();
+  let toolActivityPanel = null;
   
-  function showStreamingStatus(message) {
-    streamingLog.push(message)
-    if (streamingLog.length > 6) streamingLog.shift()
+  function addToolCall(toolName, message) {
+    const toolCallId = `tool-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const toolCall = {
+      id: toolCallId,
+      name: toolName,
+      message: message,
+      status: 'pending',
+      startTime: Date.now(),
+      details: []
+    };
     
-    // Create or update streaming status message
-    if (!streamingStatusMessage) {
-      streamingStatusMessage = document.createElement('div');
-      streamingStatusMessage.className = 'message ai-message streaming-status-message';
-      streamingStatusMessage.id = 'streaming-status-message';
-      
-      streamingStatusMessage.innerHTML = `
-        <div class="message-avatar">
-          <i class="fas fa-robot"></i>
-        </div>
-        <div class="message-bubble" style="background: #007bff; color: white;">
-          <div class="message-content">
-            <div class="streaming-content"></div>
+    toolCalls.set(toolCallId, toolCall);
+    
+    // Show tool activity panel
+    const toolActivity = document.getElementById('tool-activity');
+    toolActivity.style.display = 'block';
+    
+    // Add tool call to the list
+    const toolCallsList = document.getElementById('tool-calls-list');
+    const toolCallItem = document.createElement('div');
+    toolCallItem.className = 'tool-call-item';
+    toolCallItem.id = toolCallId;
+    
+    toolCallItem.innerHTML = `
+      <div class="tool-call-header" onclick="toggleToolCallDetails('${toolCallId}')">
+        <div class="tool-call-info">
+          <div class="tool-call-icon ${toolCall.status}" id="${toolCallId}-icon">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div>
+            <div class="tool-call-name">${getToolDisplayName(toolName)}</div>
+            <div class="tool-call-status" id="${toolCallId}-status">${message}</div>
           </div>
         </div>
-      `;
-      
-      chatMessages.appendChild(streamingStatusMessage);
-      scrollToBottom();
+        <div class="tool-call-toggle" id="${toolCallId}-toggle">
+          <i class="fas fa-chevron-down"></i>
+        </div>
+      </div>
+      <div class="tool-call-details" id="${toolCallId}-details">
+        <pre id="${toolCallId}-details-content">Initializing...</pre>
+      </div>
+    `;
+    
+    toolCallsList.appendChild(toolCallItem);
+    return toolCallId;
+  }
+  
+  function updateToolCall(toolCallId, status, message, details) {
+    const toolCall = toolCalls.get(toolCallId);
+    if (!toolCall) return;
+    
+    toolCall.status = status;
+    if (message) toolCall.message = message;
+    if (details) toolCall.details.push(details);
+    
+    // Update UI
+    const icon = document.getElementById(`${toolCallId}-icon`);
+    const statusEl = document.getElementById(`${toolCallId}-status`);
+    const detailsContent = document.getElementById(`${toolCallId}-details-content`);
+    
+    if (icon) {
+      icon.className = `tool-call-icon ${status}`;
+      switch(status) {
+        case 'running':
+          icon.innerHTML = '<i class="fas fa-sync-alt"></i>';
+          break;
+        case 'success':
+          icon.innerHTML = '<i class="fas fa-check"></i>';
+          break;
+        case 'error':
+          icon.innerHTML = '<i class="fas fa-times"></i>';
+          break;
+        default:
+          icon.innerHTML = '<i class="fas fa-clock"></i>';
+      }
     }
     
-    // Update the content
-    const contentDiv = streamingStatusMessage.querySelector('.streaming-content');
-    if (contentDiv) {
-      contentDiv.innerHTML = streamingLog.map(m => `<div style="display: flex; align-items: center; gap: 8px; margin: 2px 0;">
-        <span style="opacity: 0.8;">•</span> ${m.replace(/</g,'&lt;')}
-      </div>`).join('');
+    if (statusEl && message) {
+      statusEl.textContent = message;
+    }
+    
+    if (detailsContent && toolCall.details.length > 0) {
+      detailsContent.textContent = toolCall.details.join('\n');
     }
   }
-
-  function hideStreamingStatus() {
-    if (streamingStatusMessage) {
-      streamingStatusMessage.remove();
-      streamingStatusMessage = null;
+  
+  function toggleToolCallDetails(toolCallId) {
+    const details = document.getElementById(`${toolCallId}-details`);
+    const toggle = document.getElementById(`${toolCallId}-toggle`);
+    
+    if (details && toggle) {
+      details.classList.toggle('show');
+      toggle.classList.toggle('expanded');
     }
-    streamingLog.length = 0;
+  }
+  
+  window.toggleToolCallDetails = toggleToolCallDetails; // Make it globally accessible
+  
+  function getToolDisplayName(toolName) {
+    const toolNames = {
+      'get_schema': '📊 Database Schema',
+      'get_data': '🔍 Query Data',
+      'create_object': '✨ Create Object',
+      'update_object': '✏️ Update Object',
+      'link_template_to_campaign': '🔗 Link Template',
+      'create_dynamic_visualization': '📈 Create Visualization'
+    };
+    return toolNames[toolName] || toolName;
+  }
+  
+  function hideToolActivity() {
+    const toolActivity = document.getElementById('tool-activity');
+    toolActivity.style.display = 'none';
+    const toolCallsList = document.getElementById('tool-calls-list');
+    toolCallsList.innerHTML = '';
+    toolCalls.clear();
+  }
+  
+  let currentToolIndicator = null;
+  
+            function showInlineToolIndicator(toolName) {
+              // Create a tool message that persists in the chat
+              const messagesContainer = document.getElementById('chat-messages');
+              
+              // Get appropriate icon for the tool
+              let icon = 'fa-cog'; // default
+              if (toolName === 'load_canvas') {
+                icon = 'fa-window-maximize';
+              } else if (toolName === 'get_data') {
+                icon = 'fa-database';
+              } else if (toolName === 'create_object') {
+                icon = 'fa-plus-circle';
+              } else if (toolName === 'get_schema') {
+                icon = 'fa-list-alt';
+              } else if (toolName === 'generate_ai_landing_page') {
+                icon = 'fa-file-code';
+              } else if (toolName === 'link_template_to_campaign') {
+                icon = 'fa-link';
+              }
+
+              // Get display name
+              const displayName = getToolDisplayName(toolName);
+
+              // Create tool message element with consistent structure
+              const toolMessage = document.createElement('div');
+              toolMessage.className = 'message tool-message';
+              toolMessage.innerHTML = `
+                <div class="message-content">
+                  <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                  </div>
+                  <div class="message-bubble tool-bubble">
+                    <i class="fas ${icon} tool-icon"></i>
+                    <span class="tool-name">Using ${displayName}</span>
+                  </div>
+                </div>
+              `;
+
+              // Add to chat
+              messagesContainer.appendChild(toolMessage);
+              messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              
+              // Store reference by tool name for updates
+              if (!window.activeToolMessages) window.activeToolMessages = {};
+              window.activeToolMessages[toolName] = toolMessage;
+            }
+  
+  function updateInlineToolIndicator(toolName, status) {
+    // Tool messages persist, so we don't need to update them
+    // They remain in the chat history
+  }
+  
+  // Show streaming status as a message in chat (simplified)
+  let currentToolCallId = null;
+  
+  function showStreamingStatus(message) {
+    // Parse the message to see if it's a tool-related update
+    if (message.includes('🔍 Discovering database schema')) {
+      currentToolCallId = addToolCall('get_schema', 'Discovering available data models...');
+      updateToolCall(currentToolCallId, 'running', 'Analyzing database structure...');
+    } else if (message.includes('📊 Querying your marketing data')) {
+      currentToolCallId = addToolCall('get_data', 'Fetching marketing data...');
+      updateToolCall(currentToolCallId, 'running', 'Executing query...');
+    } else if (message.includes('✨ Creating new marketing object')) {
+      currentToolCallId = addToolCall('create_object', 'Creating new object...');
+      updateToolCall(currentToolCallId, 'running', 'Processing creation request...');
+    } else if (message.includes('🎯 Generating personalized response')) {
+      if (currentToolCallId) {
+        updateToolCall(currentToolCallId, 'success', 'Completed successfully');
+      }
+    } else if (currentToolCallId && message.includes('✅')) {
+      updateToolCall(currentToolCallId, 'success', 'Completed');
+      currentToolCallId = null;
+    } else if (currentToolCallId && message.includes('❌')) {
+      updateToolCall(currentToolCallId, 'error', 'Failed');
+      currentToolCallId = null;
+    } else if (currentToolCallId) {
+      // Add as detail to current tool call
+      const toolCall = toolCalls.get(currentToolCallId);
+      if (toolCall) {
+        updateToolCall(currentToolCallId, 'running', message);
+      }
+    }
+  }
+  
+  function hideStreamingStatus() {
+    // Tool activity is hidden when response is complete
+    setTimeout(() => {
+      hideToolActivity();
+    }, 3000); // Keep visible for 3 seconds after completion
   }
 
   // Handle streaming chat
@@ -1016,7 +1387,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check if we're starting to stream content
                 if (data.message === '💬 streaming') {
                   hideTypingIndicator();
-                  hideStreamingStatus(); // Hide the status messages
                   // Create a new message element for streaming
                   streamingMessage = addMessage('', 'assistant');
                   streamingContent = '';
@@ -1032,6 +1402,25 @@ document.addEventListener('DOMContentLoaded', function() {
                   }
                   scrollToBottom();
                 }
+              } else if (data.type === 'tool_detected') {
+                // Tool detected during streaming
+                console.log('🔧 Tool detected:', data.name);
+                if (!currentToolCallId) {
+                  currentToolCallId = addToolCall(data.name, 'Detected, preparing to execute...');
+                  // Also show inline tool indicator
+                  showInlineToolIndicator(data.name);
+                } else {
+                  console.log('🔧 Tool already being tracked:', currentToolCallId);
+                }
+              } else if (data.type === 'tool_start') {
+                // Tool execution starting
+                if (data.name && data.arguments) {
+                  const toolId = addToolCall(data.name, 'Executing with arguments...');
+                  updateToolCall(toolId, 'running', `Running ${getToolDisplayName(data.name)}...`, JSON.stringify(data.arguments, null, 2));
+                  currentToolCallId = toolId;
+                  // Update inline indicator
+                  updateInlineToolIndicator(data.name, 'running');
+                }
               } else if (data.type === 'response') {
                 hideStreamingStatus();
                 hideTypingIndicator();
@@ -1039,41 +1428,57 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.data.error) {
                   addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
                 } else {
-                  console.log('📨 Response data type:', typeof data.data);
-                  console.log('📨 Response data keys:', data.data ? Object.keys(data.data) : 'null');
-                  console.log('📨 Assistant message type:', typeof data.data.message);
-                  console.log('📨 Assistant message content:', data.data.message);
-                  console.log('📏 Message length:', data.data.message ? data.data.message.length : 0);
+                  console.log('📨 Response data:', data.data);
                   
-                  // Extract the actual message content
-                  let messageContent = data.data.message;
-                  
-                  // Debug: Check what we have
-                  console.log('🔍 Before parsing - messageContent type:', typeof messageContent);
-                  console.log('🔍 Before parsing - messageContent starts with {?', messageContent && typeof messageContent === 'string' ? messageContent.trim().startsWith('{') : false);
-                  
-                  // If the message is a JSON string, parse it
-                  if (typeof messageContent === 'string' && messageContent.trim().startsWith('{')) {
-                    try {
-                      const parsed = JSON.parse(messageContent);
-                      console.log('✅ Successfully parsed JSON, keys:', Object.keys(parsed));
-                      messageContent = parsed.message || messageContent;
-                      console.log('✅ Extracted message:', messageContent);
-                    } catch (e) {
-                      console.warn('Failed to parse message as JSON:', e);
-                    }
-                  }
-                  
+                  // For advisor mode with streaming, we've already added the content
                   // Only add a new message if we weren't streaming
-                  if (!streamingMessage) {
-                    console.log('➕ Adding message to chat:', messageContent);
-                    addMessage(messageContent, 'assistant');
+                  if (!streamingMessage && data.data.message) {
+                    console.log('➕ Adding non-streamed message to chat');
+                  addMessage(data.data.message, 'assistant');
                   }
                   
                   // Show tool usage info
                   if (data.data.tools_used && data.data.tools_list?.length > 0) {
                     console.log('Tools used:', data.data.tools_list);
                     console.log('Success count:', data.data.success_count);
+                  }
+                  
+                  // Debug the response structure
+                  console.log('📦 Full response structure:', data);
+                  console.log('📦 data.canvas:', data.canvas);
+                  console.log('📦 data.data:', data.data);
+                  console.log('📦 data.data?.canvas:', data.data?.canvas);
+                  
+                  // Load canvas if suggested - check both possible locations
+                  const canvasName = data.data?.canvas || data.canvas;
+                  const canvasData = data.data?.canvas_data || data.canvas_data || {};
+                  
+                  console.log('🎨 Canvas check - name:', canvasName, 'controller:', window.scoutController);
+                  if (canvasName) {
+                    console.log('🎨 Loading canvas:', canvasName);
+                    
+                    // Try multiple ways to load the canvas
+                    setTimeout(() => {
+                      // Method 1: Use window.scoutController if available
+                      if (window.scoutController && window.scoutController.loadScoutCanvas) {
+                        window.scoutController.loadScoutCanvas(canvasName, canvasData);
+                      } 
+                      // Method 2: Find the controller through Stimulus
+                      else {
+                        const scoutElement = document.querySelector('[data-controller="scout"]');
+                        if (scoutElement && scoutElement._scoutController) {
+                          scoutElement._scoutController.loadScoutCanvas(canvasName, canvasData);
+                        }
+                        // Method 3: Dispatch a custom event that the controller can listen to
+                        else {
+                          console.log('🎯 Dispatching canvas load event');
+                          const event = new CustomEvent('scout:load-canvas', {
+                            detail: { canvas: canvasName, data: canvasData }
+                          });
+                          document.dispatchEvent(event);
+                        }
+                      }
+                    }, 1000);
                   }
                 }
                 
@@ -1164,19 +1569,16 @@ document.addEventListener('DOMContentLoaded', function() {
     showTypingIndicator();
     
     // Always use streaming for better user experience
-    // Don't show the tool activity div - we'll use inline streaming status instead
-    // toolActivity.style.display = 'block';
-    // toolStatus.textContent = 'Scout is thinking...';
-    showStreamingStatus('Scout is working...');
+    // Initial state - typing indicator is already shown
     
     try {
       // Try streaming for all messages
-      await handleStreamingChat(message);
-      return; // Success, exit early
-    } catch (streamError) {
-      console.log('Streaming failed, falling back to regular chat:', streamError);
-      hideStreamingStatus();
-      // Continue to regular chat below
+        await handleStreamingChat(message);
+        return; // Success, exit early
+      } catch (streamError) {
+        console.log('Streaming failed, falling back to regular chat:', streamError);
+        hideStreamingStatus();
+        // Continue to regular chat below
     }
 
     // Fallback to regular chat if streaming fails

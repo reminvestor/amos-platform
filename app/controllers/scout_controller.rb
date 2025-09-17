@@ -128,13 +128,22 @@ class ScoutController < ApplicationController
         user_message, 
         ->(update) { 
           Rails.logger.info "🔄 Streaming callback received: #{update.inspect.first(100)}..."
-          if update.is_a?(Hash) && update[:type] == 'content_chunk'
-            # Stream content chunks directly to the user
-            if !content_streaming
-              content_streaming = true
-              stream_update("💬 streaming")  # Signal start of content streaming
+          if update.is_a?(Hash)
+            case update[:type]
+            when 'content_chunk'
+              # Stream content chunks directly to the user
+              if !content_streaming
+                content_streaming = true
+                stream_update("💬 streaming")  # Signal start of content streaming
+              end
+              stream_content_chunk(update[:content])
+            when 'tool_detected', 'tool_start'
+              # Stream tool events
+              stream_update(update)
+            else
+              # Other hash updates
+              stream_update(update) if update[:message]
             end
-            stream_content_chunk(update[:content])
           elsif update.is_a?(String)
             stream_update(update)
           end
@@ -438,7 +447,12 @@ class ScoutController < ApplicationController
     puts "🚨 PRODUCTION DEBUG: Streaming update: #{message}"
     STDOUT.flush
     # Create the SSE (Server-Sent Events) format
-    data = JSON.generate({ type: 'update', message: message })
+    # Handle both string and hash data
+    data = if message.is_a?(Hash)
+      JSON.generate(message.merge(type: message[:type] || 'update'))
+    else
+      JSON.generate({ type: 'update', message: message })
+    end
     chunk = "data: #{data}\n\n"
     
     # Write and try to force immediate sending
