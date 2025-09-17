@@ -138,6 +138,14 @@ class ScoutController < ApplicationController
               end
               stream_content_chunk(update[:content])
             when 'tool_detected', 'tool_start'
+              # Save tool call as a message
+              if update[:type] == 'tool_detected'
+                save_scout_message('assistant', "tool:#{update[:name]}", metadata: {
+                  type: 'tool_call',
+                  tool_name: update[:name],
+                  tool_id: update[:tool_id]
+                })
+              end
               # Stream tool events
               stream_update(update)
             else
@@ -355,7 +363,13 @@ class ScoutController < ApplicationController
 
     batch = scope.last(limit)
     render json: {
-      messages: batch.map { |m| { id: m.id, role: m.role, content: m.content, timestamp: m.created_at.iso8601 } },
+      messages: batch.map { |m| { 
+        id: m.id, 
+        role: m.role, 
+        content: m.content, 
+        timestamp: m.created_at.iso8601,
+        metadata: m.metadata 
+      } },
       has_more: ScoutMessage.for_session(session_id).count > (before_id.present? ? ScoutMessage.for_session(session_id).where('created_at <= ?', batch.first&.created_at).count : batch.count)
     }
   end
@@ -608,11 +622,16 @@ class ScoutController < ApplicationController
     session_id = session[:scout_session_id]
     return [] unless session_id
     ScoutMessage.for_session(session_id).oldest_first.last(k).map do |m|
-      { role: m.role, content: m.content, timestamp: m.created_at.iso8601 }
+      { 
+        role: m.role, 
+        content: m.content, 
+        timestamp: m.created_at.iso8601,
+        metadata: m.metadata
+      }
     end
   end
   
-  def save_scout_message(role, message)
+  def save_scout_message(role, message, metadata: {})
     session_id = session[:scout_session_id]
     return unless session_id
     
@@ -628,7 +647,8 @@ class ScoutController < ApplicationController
       entity_id: current_entity&.id,
       session_id: session_id,
       role: role,
-      content: message
+      content: message,
+      metadata: metadata
     )
     
     # Mirror the last 50 in cache for fast UI render

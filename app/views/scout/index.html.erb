@@ -1110,8 +1110,35 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
+  // Build a tool message element
+  function buildToolMessageElement({ id, content, metadata }) {
+    const toolMessage = document.createElement('div');
+    toolMessage.className = 'message tool-message';
+    if (id) toolMessage.dataset.messageId = id;
+    
+    const toolName = metadata.tool_name || content.replace('tool:', '');
+    const displayName = getToolDisplayName(toolName);
+    
+    toolMessage.innerHTML = `
+      <div class="message-content">
+        <div class="message-bubble">
+          <div class="tool-bubble">
+            <span class="tool-name">Utilizing ${displayName} tool</span>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    return toolMessage;
+  }
+
   // Build a message DOM element (optionally tagged with DB id)
-  function buildMessageElement({ id = null, content, role, timestamp = null }) {
+  function buildMessageElement({ id = null, content, role, timestamp = null, metadata = null }) {
+    // Check if this is a tool message
+    if (metadata && metadata.type === 'tool_call') {
+      return buildToolMessageElement({ id, content, metadata });
+    }
+    
     const wrapper = document.createElement('div');
     wrapper.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
     if (id) wrapper.dataset.messageId = id;
@@ -1156,8 +1183,8 @@ document.addEventListener('DOMContentLoaded', function() {
     return wrapper;
   }
 
-  function appendMessage(content, role, timestamp = null, id = null) {
-    const el = buildMessageElement({ id, content, role, timestamp });
+  function appendMessage(content, role, timestamp = null, id = null, metadata = null) {
+    const el = buildMessageElement({ id, content, role, timestamp, metadata });
     chatMessages.appendChild(el);
     scrollToBottom();
   }
@@ -1198,7 +1225,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return null;
     }
     
-    const el = buildMessageElement({ content: messageContent, role, timestamp });
+    const el = buildMessageElement({ content: messageContent, role, timestamp, metadata: null });
     chatMessages.appendChild(el);
     scrollToBottom();
     updateMessageCount();
@@ -1537,8 +1564,8 @@ document.addEventListener('DOMContentLoaded', function() {
               } else if (data.type === 'tool_detected') {
                 // Tool detected during streaming
                 console.log('🔧 Tool detected:', data.name);
-                // Always show the tool indicator, even for chained tools
-                showInlineToolIndicator(data.name);
+                // Tool messages are now saved to database and will appear in chat
+                // showInlineToolIndicator(data.name);
                 
                 // Track in tool panel if not already tracked
                 if (!currentToolCallId || data.tool_id !== currentToolCallId) {
@@ -1668,7 +1695,13 @@ document.addEventListener('DOMContentLoaded', function() {
       const data = await res.json();
       if (Array.isArray(data.messages) && data.messages.length > 0) {
         // Normalize to the structure buildMessageElement expects
-        const items = data.messages.map(m => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp }));
+        const items = data.messages.map(m => ({ 
+          id: m.id, 
+          role: m.role, 
+          content: m.content, 
+          timestamp: m.timestamp,
+          metadata: m.metadata 
+        }));
         prependMessages(items);
         historyState.oldestId = items[0].id;
       }
