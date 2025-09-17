@@ -2,6 +2,8 @@ require 'aws-sdk-bedrockruntime'
 require 'json'
 
 class BedrockService
+  class BedrockError < StandardError; end
+  
   def initialize
     @client = Aws::BedrockRuntime::Client.new(
       region: ENV['AWS_REGION'] || 'us-east-1',
@@ -193,7 +195,9 @@ class BedrockService
     "Image analysis unavailable"
   end
 
-  def send_message_streaming(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false, &block)
+  public
+
+  def send_message_streaming(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false, tools: [], &block)
     # Map model names to Bedrock model IDs
     model_id = case model
     when 'claude-opus-4-1', 'claude-opus-4-1-20250805'
@@ -219,33 +223,86 @@ class BedrockService
     
     request_body[:system] = system_prompt if system_prompt.present?
 
-    Rails.logger.info "Sending streaming request to Bedrock Claude (#{model_id})"
+    Rails.logger.info "Sending streaming request to Bedrock Claude (#{model_id}) using converse_stream"
 
     begin
-      # Use invoke_model_with_response_stream for streaming
-      response = @client.invoke_model_with_response_stream({
-        model_id: model_id,
-        content_type: "application/json",
-        accept: "application/json",
-        body: JSON.generate(request_body)
-      })
-
-      # Buffer for partial content
-      buffer = ""
+      # Format messages for converse API (different format than invoke_model)
+      converse_messages = messages.map do |msg|
+        {
+          role: msg[:role] == 'system' ? 'user' : msg[:role],
+          content: [{ text: msg[:content] }]
+        }
+      end
       
-      # Process the streaming response
-      response.body.each do |event|
-        chunk = JSON.parse(event.bytes)
+      # Build payload for converse_stream
+      payload = {
+        model_id: model_id,
+        messages: converse_messages,
+        inference_config: {
+          max_tokens: max_tokens,
+          temperature: temperature
+        }
+      }
+      
+      # Add system prompt if present
+      if system_prompt.present?
+        payload[:system] = [{ text: system_prompt }]
+      end
+      
+      # Add tools if provided
+      if tools.any?
+        payload[:tool_config] = {
+          tools: format_tools_for_bedrock(tools),
+          tool_choice: { auto: {} }
+        }
+      end
+
+      # Buffer for accumulating content
+      buffer = ""
+      start_time = Time.now
+      chunk_count = 0
+      
+      # Use converse_stream for true streaming
+      @client.converse_stream(payload) do |stream|
+        stream.on_error_event do |event|
+          Rails.logger.error "Bedrock stream error: #{event.inspect}"
+          raise BedrockError, "Streaming error: #{event.error_message || 'Unknown error'}"
+        end
         
-        if chunk['type'] == 'content_block_delta' && chunk['delta']
-          content = chunk['delta']['text']
-          buffer += content if content
-          
-          # Yield each chunk of text as it arrives
-          yield(type: :content, content: content) if content
-        elsif chunk['type'] == 'message_stop'
-          # Message complete
-          yield(type: :complete, content: buffer)
+        stream.on_event do |event|
+          case event.event_type
+          when :content_block_delta
+            if event.delta.respond_to?(:text) && event.delta.text
+              content = event.delta.text
+              buffer += content
+              
+              # Log timing
+              chunk_count += 1
+              elapsed = (Time.now - start_time).round(3)
+              Rails.logger.info "Bedrock chunk ##{chunk_count} at #{elapsed}s: #{content.length} chars"
+              
+              # Yield content chunk immediately
+              yield(type: :content, content: content)
+            elsif event.delta.respond_to?(:tool_use) && event.delta.tool_use
+              # Handle tool use chunks
+              tool_use = event.delta.tool_use
+              yield(type: :tool_use, tool_use: tool_use)
+            end
+          when :content_block_start
+            if event.start && event.start.respond_to?(:tool_use)
+              # Tool use is starting
+              tool_info = event.start.tool_use
+              yield(type: :tool_use_start, tool_id: tool_info.tool_use_id, tool_name: tool_info.name)
+            end
+          when :message_stop
+            # Message complete
+            total_elapsed = (Time.now - start_time).round(3)
+            Rails.logger.info "Bedrock streaming complete: #{chunk_count} chunks in #{total_elapsed}s"
+            yield(type: :complete, content: buffer)
+          when :metadata
+            # Can log metadata if needed
+            Rails.logger.debug "Bedrock metadata: #{event.inspect}"
+          end
         end
       end
       
@@ -261,7 +318,25 @@ class BedrockService
   end
 
   private
-
+  
+  def format_tools_for_bedrock(tools)
+    tools.map do |tool|
+      {
+        tool_spec: {
+          name: tool[:name],
+          description: tool[:description],
+          input_schema: {
+            json: tool[:parameters] || {
+              type: "object",
+              properties: {},
+              required: []
+            }
+          }
+        }
+      }
+    end
+  end
+  
   def format_messages_for_claude(messages)
     # Ensure messages is an array
     messages_array = case messages
