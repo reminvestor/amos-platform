@@ -346,20 +346,20 @@ class ScoutGenericToolsService
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name} (including history)"
       progress_callback&.call("🤖 Sending request to #{@ai_provider_name} with conversation context...")
       
-      # If in advisor mode, stream the response directly (no JSON mode)
+      # If in advisor mode, stream the response with JSON mode
       if detected_mode == 'advisor'
-        Rails.logger.info "Streaming response directly in advisor mode"
+        Rails.logger.info "Streaming response in advisor mode with JSON parsing"
         
         accumulated_content = ""
         
-        # Stream the response without JSON mode
+        # Stream the response with JSON mode for consistent parsing
         @ai_service.send_message(
           system_prompt,
           conversation_messages,
           max_tokens: 25000,
           temperature: 0.7,
           stream: true,
-          json_mode: false  # Don't use JSON mode for advisor responses
+          json_mode: true  # Use JSON mode for consistent message extraction
         ) do |chunk|
           if chunk[:type] == :content
             accumulated_content += chunk[:content]
@@ -369,9 +369,17 @@ class ScoutGenericToolsService
               content: chunk[:content]
             })
           elsif chunk[:type] == :complete
+            # Parse the JSON response to extract the message
+            begin
+              parsed = JSON.parse(accumulated_content)
+              final_message = parsed['message'] || accumulated_content
+            rescue JSON::ParserError
+              final_message = accumulated_content
+            end
+            
             # Final message
             return {
-              message: accumulated_content,
+              message: final_message,
               tools_used: false,
               mode: detected_mode
             }
@@ -2127,6 +2135,13 @@ class ScoutGenericToolsService
       - Identify areas for improvement
       - Celebrate successes
       - Provide actionable next steps
+      
+      RESPONSE FORMAT:
+      Always respond in JSON format:
+      {
+        "message": "Your advisory response here",
+        "tool_calls": []
+      }
       
       USE DYNAMIC VISUALIZATIONS:
       When providing analysis or comparisons, use create_dynamic_visualization to create
