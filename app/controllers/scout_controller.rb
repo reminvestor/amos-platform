@@ -616,6 +616,9 @@ class ScoutController < ApplicationController
     session_id = session[:scout_session_id]
     return unless session_id
     
+    # Don't save empty messages
+    return if message.blank?
+    
     # Log what we're about to save
     Rails.logger.info "💾 Saving #{role} message (#{message.class}): #{message.to_s.first(200)}..."
     
