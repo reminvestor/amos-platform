@@ -900,6 +900,9 @@ document.addEventListener('DOMContentLoaded', function() {
   const conversationSelector = document.getElementById('conversation-selector');
   const conversationDropdown = document.getElementById('conversation-dropdown');
   const conversationList = document.getElementById('conversation-list');
+  
+  // Track streamed content to prevent duplicates
+  let streamedContent = new Set();
   const newConversationBtn = document.getElementById('new-conversation-btn');
 
   // Auto-focus on input (with defensive check)
@@ -1600,9 +1603,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
               } else if (data.type === 'intermediate_message') {
                 // Add intermediate message that was saved before tool usage
+                // But only if it wasn't already streamed to prevent duplicates
                 if (data.content && data.content.trim() !== '') {
-                  addMessage(data.content, data.role || 'assistant');
-                  scrollToBottom();
+                  const contentHash = data.content.trim();
+                  if (!streamedContent.has(contentHash)) {
+                    console.log('📝 Adding intermediate message:', contentHash.substring(0, 50) + '...');
+                    addMessage(data.content, data.role || 'assistant');
+                    scrollToBottom();
+                  } else {
+                    console.log('⚠️ Skipping duplicate intermediate message:', contentHash.substring(0, 50) + '...');
+                  }
                 }
               } else if (data.type === 'add_tool_message') {
                 // Add tool message to chat UI
@@ -1617,6 +1627,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 chatMessages.appendChild(toolMessage);
                 scrollToBottom();
                 updateMessageCount();
+                
+                // Track any accumulated content before resetting
+                if (streamingContent.trim()) {
+                  streamedContent.add(streamingContent.trim());
+                  console.log('📝 Tracked streamed content before tool:', streamingContent.trim().substring(0, 50) + '...');
+                }
                 
                 // Reset streaming message so the next content creates a new message
                 streamingMessage = null;
@@ -1739,6 +1755,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 // toolActivity.style.display = 'none';
                 hideStreamingStatus();
+                
+                // Track the final streamed content to prevent duplicates
+                if (streamingContent.trim()) {
+                  streamedContent.add(streamingContent.trim());
+                  console.log('📝 Tracked streamed content:', streamingContent.trim().substring(0, 50) + '...');
+                }
                 
                 // Reset streaming state
                 streamingMessage = null;
