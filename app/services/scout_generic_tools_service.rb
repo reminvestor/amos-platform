@@ -3072,32 +3072,57 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     task_list = Rails.cache.read(cache_key)
     return unless task_list && task_list[:tasks]
     
-    # Map tool names to task descriptions
-    task_mapping = {
-      'get_schema' => ->(args) { "Get #{args['object_type']} schema" },
-      'create_object' => ->(args) { 
-        case args['object_type']
-        when 'campaigns'
-          "Create new campaign '#{args['data']['name']}'"
-        else
-          "Create new #{args['object_type'].singularize}"
-        end
-      },
-      'get_data' => ->(args) { "Find the most recent #{args['object_type'].singularize}" },
-      'link_template_to_campaign' => ->(args) { "Link template to campaign" }
-    }
+    Rails.logger.info "🔍 Checking task update for tool: #{tool_name}, args: #{args.inspect}"
     
-    # Find matching task
-    matcher = task_mapping[tool_name]
-    return unless matcher
+    # Find matching task based on tool name and context
+    task = nil
     
-    expected_description = matcher.call(args)
-    
-    task = task_list[:tasks].find do |t|
-      t[:status] == 'pending' && t[:description].downcase.include?(expected_description.downcase)
+    case tool_name
+    when 'get_schema'
+      # Match tasks like "Get campaign schema", "Get campaigns schema"
+      object_type = args['object_type']
+      task = task_list[:tasks].find do |t|
+        t[:status] == 'pending' && 
+        t[:description].downcase.include?('get') && 
+        t[:description].downcase.include?(object_type.singularize.downcase) &&
+        t[:description].downcase.include?('schema')
+      end
+      
+    when 'create_object'
+      # Match tasks like "Create new campaign 'name'"
+      object_type = args['object_type']
+      task = task_list[:tasks].find do |t|
+        t[:status] == 'pending' && 
+        t[:description].downcase.include?('create') && 
+        t[:description].downcase.include?(object_type.singularize.downcase)
+      end
+      
+    when 'get_data'
+      # Match tasks like "Find most recent email template", "Find the most recent template"
+      object_type = args['object_type']
+      task = task_list[:tasks].find do |t|
+        t[:status] == 'pending' && 
+        (t[:description].downcase.include?('find') || t[:description].downcase.include?('get')) &&
+        t[:description].downcase.include?(object_type.singularize.downcase)
+      end
+      
+    when 'link_template_to_campaign'
+      # Match tasks like "Link template to campaign"
+      task = task_list[:tasks].find do |t|
+        t[:status] == 'pending' && 
+        t[:description].downcase.include?('link') && 
+        t[:description].downcase.include?('template') &&
+        t[:description].downcase.include?('campaign')
+      end
     end
     
-    return unless task
+    if task
+      Rails.logger.info "✅ Found matching task: #{task[:description]} (ID: #{task[:id]})"
+    else
+      Rails.logger.info "❌ No matching task found for tool: #{tool_name}"
+      Rails.logger.info "   Available tasks: #{task_list[:tasks].map { |t| "#{t[:description]} (#{t[:status]})" }.join(', ')}"
+      return
+    end
     
     # Update task status
     if success
