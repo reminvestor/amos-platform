@@ -1464,20 +1464,28 @@ document.addEventListener('DOMContentLoaded', function() {
                   hideTypingIndicator();
                   // Only create a new message if we don't have one already
                   if (!streamingMessage) {
-                    streamingMessage = addMessage('', 'assistant');
+                    // Create a streaming message element manually since addMessage skips empty content
+                    const el = buildMessageElement({ content: '', role: 'assistant', timestamp: Date.now() });
+                    chatMessages.appendChild(el);
+                    streamingMessage = el;
                     streamingContent = '';
+                    updateMessageCount();
                   }
                 }
               } else if (data.type === 'content') {
+                console.log('📝 Content chunk received:', data.content);
                 // Append content chunk to the streaming message
                 if (streamingMessage && data.content) {
                   streamingContent += data.content;
+                  console.log('📝 Total content so far:', streamingContent.length, 'chars');
                   // Update the message bubble directly
                   const messageBubble = streamingMessage.querySelector('.message-bubble');
                   if (messageBubble) {
                     messageBubble.innerHTML = parseSimpleMarkdown(streamingContent);
                   }
                   scrollToBottom();
+                } else {
+                  console.warn('⚠️ No streaming message to append to!');
                 }
               } else if (data.type === 'tool_detected') {
                 // Tool detected during streaming
