@@ -463,6 +463,16 @@ class ScoutGenericToolsService
             Rails.logger.info "Executing tool calls: #{tool_calls.map { |t| t[:name] }}"
             Rails.logger.info "Tool calls detail: #{tool_calls.inspect}"
             
+            # Save any accumulated content before tools as an intermediate message
+            if accumulated_content.present? && accumulated_content.strip.length > 0
+              Rails.logger.info "💾 Saving intermediate message before tools: #{accumulated_content}"
+              progress_callback&.call({
+                type: 'save_message',
+                content: accumulated_content,
+                role: 'assistant'
+              })
+            end
+            
             # Parse and execute each tool
             results = []
             tool_calls.each do |tool_call|
@@ -3220,12 +3230,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       # If we have updated canvas data and a callback, trigger canvas reload
       if result[:canvas] == 'task_progress' && progress_callback
         updated_list = Rails.cache.read(cache_key)
-        if updated_list
+        Rails.logger.info "📊 Canvas reload triggered - Updated list: #{updated_list.inspect}"
+        if updated_list && updated_list[:tasks] && !updated_list[:tasks].empty?
+          Rails.logger.info "✅ Sending canvas update with #{updated_list[:tasks].size} tasks"
           progress_callback.call({
             type: 'load_canvas',
             canvas: 'task_progress',
             canvas_data: updated_list
           })
+        else
+          Rails.logger.warn "⚠️ Skipping canvas update - task list is empty or nil"
         end
       end
     else
@@ -3238,12 +3252,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       # If we have updated canvas data and a callback, trigger canvas reload
       if result[:canvas] == 'task_progress' && progress_callback
         updated_list = Rails.cache.read(cache_key)
-        if updated_list
+        Rails.logger.info "📊 Canvas reload triggered - Updated list: #{updated_list.inspect}"
+        if updated_list && updated_list[:tasks] && !updated_list[:tasks].empty?
+          Rails.logger.info "✅ Sending canvas update with #{updated_list[:tasks].size} tasks"
           progress_callback.call({
             type: 'load_canvas',
             canvas: 'task_progress',
             canvas_data: updated_list
           })
+        else
+          Rails.logger.warn "⚠️ Skipping canvas update - task list is empty or nil"
         end
       end
     end
@@ -3332,27 +3350,38 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       }
       
     when 'update'
-      # Update entire task list
-      existing_list = Rails.cache.read(cache_key)
-      if existing_list
-        existing_list[:tasks] = args['tasks']
-        existing_list[:updated_at] = Time.current
-        Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
-        
-        @suggested_canvas = 'task_progress'
-        @canvas_data = existing_list
-        
-        {
-          success: true,
-          message: "📝 Task list updated",
-          task_list: existing_list,
-          canvas: 'task_progress'
-        }
+      # Handle both task update and list update based on parameters
+      if args['task_id'].present?
+        # This is a task update, redirect to task update logic
+        Rails.logger.info "🔄 Redirecting 'update' with task_id to task update logic"
+        # Recursively call with the correct action
+        return execute_manage_task_list(args.merge('action' => 'update_task'))
       else
-        {
-          success: false,
-          error: "No task list found to update"
-        }
+        # Update entire task list
+        existing_list = Rails.cache.read(cache_key)
+        if existing_list
+          # Only update tasks if provided, otherwise keep existing tasks
+          if args['tasks'].present?
+            existing_list[:tasks] = args['tasks']
+          end
+          existing_list[:updated_at] = Time.current
+          Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+          
+          @suggested_canvas = 'task_progress'
+          @canvas_data = existing_list
+          
+          {
+            success: true,
+            message: "📝 Task list updated",
+            task_list: existing_list,
+            canvas: 'task_progress'
+          }
+        else
+          {
+            success: false,
+            error: "No task list found to update"
+          }
+        end
       end
       
     when 'add_task'
