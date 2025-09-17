@@ -411,6 +411,9 @@ class ScoutController < ApplicationController
 
   def stream_content_chunk(content)
     # Stream individual content chunks for real-time display
+    puts "🚨 PRODUCTION DEBUG: Streaming content chunk: #{content}"
+    STDOUT.flush
+    
     data = JSON.generate({ type: 'content', content: content })
     chunk = "data: #{data}\n\n"
     
@@ -422,8 +425,13 @@ class ScoutController < ApplicationController
     rescue
       # Ignore flush errors
     end
+    
+    puts "✅ Content chunk streamed successfully"
+    STDOUT.flush
   rescue => e
     Rails.logger.error "Stream content chunk error: #{e.message}"
+    puts "❌ Stream content chunk error: #{e.message}"
+    STDOUT.flush
   end
 
   def stream_update(message)
