@@ -1742,62 +1742,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial state - typing indicator is already shown
     
     try {
-      // Try streaming for all messages
-        await handleStreamingChat(message);
-        return; // Success, exit early
-      } catch (streamError) {
-        console.log('Streaming failed, falling back to regular chat:', streamError);
-        hideStreamingStatus();
-        // Continue to regular chat below
-    }
-
-    // Fallback to regular chat if streaming fails
-    try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      // Always use streaming - no fallback
+      await handleStreamingChat(message);
+      return; // Success, exit early
+    } catch (streamError) {
+      console.error('Streaming failed:', streamError);
+      hideStreamingStatus();
+      hideTypingIndicator();
       
-      const response = await fetch('/scout/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken || ''
-        },
-        body: JSON.stringify({ message: message })
-      });
-
-      const data = await response.json();
-
-      hideTypingIndicator();
-
-      if (data.error) {
-        addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
-      } else {
-        // Extract the message from the response, handling both old and new formats
-        const message = typeof data === 'string' ? data : (data.message || JSON.stringify(data));
-        addMessage(message, 'assistant');
-        
-        // Show tool usage info in development
-        if (data.tools_used && data.tools_list?.length > 0) {
-          console.log('Tools used:', data.tools_list);
-          console.log('Success count:', data.success_count);
-        }
-      }
-
-    } catch (error) {
-      console.error('Error:', error);
-      hideTypingIndicator();
-      addMessage('Sorry, I\'m having trouble connecting. Please try again.', 'assistant');
-    } finally {
-      // Re-enable input
+      // Show error to user instead of falling back
+      addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+      
+      // Re-enable form
       messageInput.disabled = false;
       sendButton.disabled = false;
       if (messageInput && messageInput.focus) {
         messageInput.focus();
       }
-      
-      // Hide tool activity and streaming status
-      toolActivity.style.display = 'none';
-      hideStreamingStatus();
+      return;
     }
+
   });
 
   // Handle enter key

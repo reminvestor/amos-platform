@@ -435,24 +435,26 @@ class ScoutGenericToolsService
               end
             end
             
+            # Preserve any streamed content from before tool execution
+            initial_message = accumulated_content
+            
             # If no message was streamed but tools were used, provide a default message
-            final_message = accumulated_content
-            if final_message.empty? && tool_calls.any? { |tc| tc[:name] == 'load_canvas' }
-              final_message = "I'll load the #{@suggested_canvas.gsub('_', ' ')} for you right now."
-            elsif final_message.empty?
-              final_message = "I've executed the requested tools."
+            if initial_message.empty? && tool_calls.any? { |tc| tc[:name] == 'load_canvas' }
+              initial_message = "I'll load the #{@suggested_canvas.gsub('_', ' ')} for you right now."
+            elsif initial_message.empty?
+              initial_message = "I've executed the requested tools."
             end
             
             # For get_schema, add information about what to do next
             if tool_calls.any? { |tc| tc[:name] == 'get_schema' } && results.any? { |r| r[:success] }
               schema_result = results.find { |r| r[:tool_name] == 'get_schema' }
-              if schema_result && final_message.include?("check the campaign structure")
-                final_message += "\n\nGreat! I've retrieved the campaign structure. Now, please provide me with the following details for your new campaign:\n\n"
-                final_message += "1. **Campaign Name**: What would you like to call this campaign?\n"
-                final_message += "2. **Subject Line**: What subject line should we use?\n"
-                final_message += "3. **Target Audience**: Who should receive this campaign? (You can specify a contact group or describe the recipients)\n"
-                final_message += "4. **Email Template**: Do you have a specific template in mind, or would you like me to help create one?\n\n"
-                final_message += "Once you provide these details, I'll create the campaign for you!"
+              if schema_result && initial_message.include?("check the campaign structure")
+                initial_message += "\n\nGreat! I've retrieved the campaign structure. Now, please provide me with the following details for your new campaign:\n\n"
+                initial_message += "1. **Campaign Name**: What would you like to call this campaign?\n"
+                initial_message += "2. **Subject Line**: What subject line should we use?\n"
+                initial_message += "3. **Target Audience**: Who should receive this campaign? (You can specify a contact group or describe the recipients)\n"
+                initial_message += "4. **Email Template**: Do you have a specific template in mind, or would you like me to help create one?\n\n"
+                initial_message += "Once you provide these details, I'll create the campaign for you!"
               end
             end
             
@@ -530,7 +532,7 @@ class ScoutGenericToolsService
               begin
                 # Use streaming for the continuation response too
                 tools = get_bedrock_tools
-                final_message = ""
+                continuation_message = ""
                 
                 # Signal that we're starting to stream the continuation
                 progress_callback&.call("💬 streaming")
@@ -546,7 +548,7 @@ class ScoutGenericToolsService
                   tools: tools
                 ) do |chunk|
                   if chunk[:type] == :content && chunk[:content]
-                    final_message += chunk[:content]
+                    continuation_message += chunk[:content]
                     # Stream the continuation content to the UI
                     progress_callback&.call({
                       type: 'content_chunk',
@@ -570,7 +572,7 @@ class ScoutGenericToolsService
                     # Accumulate tool arguments
                     continuation_tool_calls.last[:arguments] += chunk[:tool_use].input || ""
                   elsif chunk[:type] == :complete
-                    Rails.logger.info "Continuation streaming complete: #{final_message.length} chars"
+                    Rails.logger.info "Continuation streaming complete: #{continuation_message.length} chars"
                   end
                 end
                 
@@ -819,24 +821,31 @@ class ScoutGenericToolsService
                       final_final_message += "3. Show you the campaign viewer to manage existing campaigns?"
                     end
                     
-                    final_message = final_final_message
+                    # Combine all message parts
+                    final_message = [initial_message, continuation_message, additional_message, final_final_message].reject(&:empty?).join("\n\n")
                   elsif more_tool_calls.any?
                     Rails.logger.warn "Tool call limit reached (20) - stopping here"
                     if additional_message.empty?
                       additional_message = "I've completed the initial setup. Please let me know if you need any adjustments."
                     end
-                    final_message = additional_message
+                    # Combine all message parts
+                    final_message = [initial_message, continuation_message, additional_message].reject(&:empty?).join("\n\n")
                   else
-                    final_message = additional_message
+                    # Combine all message parts
+                    final_message = [initial_message, continuation_message, additional_message].reject(&:empty?).join("\n\n")
                   end
                 end
                 
               rescue => e
                 Rails.logger.error "Error getting final response: #{e.message}"
                 Rails.logger.error "Bedrock API error details: #{e.class.name}"
-                # Fall back to the constructed message
+                # Fall back to the initial message if we have one
+                final_message = initial_message unless initial_message.empty?
               end
             end
+            
+            # Ensure we have a final message
+            final_message ||= initial_message.empty? ? "I've processed your request." : initial_message
             
             # Return with tool results
             Rails.logger.info "Returning with @suggested_canvas: #{@suggested_canvas.inspect}"
