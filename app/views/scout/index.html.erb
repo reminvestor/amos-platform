@@ -1036,6 +1036,26 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('Scout controller initialized:', window.scoutController);
     }, 500);
   }
+  
+  // Global function for canvas actions to send messages
+  window.scoutSendMessage = function(message) {
+    const messageInput = document.getElementById('message-input');
+    const messageForm = document.getElementById('message-form');
+    
+    if (messageInput && messageForm) {
+      // Set the message
+      messageInput.value = message;
+      
+      // Trigger form submission
+      const submitEvent = new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      });
+      messageForm.dispatchEvent(submitEvent);
+    } else {
+      console.error('Scout message input or form not found');
+    }
+  };
 
   // Scroll to bottom (with defensive check)
   function scrollToBottom() {
