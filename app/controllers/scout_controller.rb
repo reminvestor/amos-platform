@@ -141,6 +141,13 @@ class ScoutController < ApplicationController
               # Save intermediate messages that occur before tool usage
               save_scout_message(update[:role] || 'assistant', update[:content], metadata: update[:metadata] || {})
               Rails.logger.info "💾 Saved intermediate message: #{update[:content]}"
+              
+              # Also stream the message to the UI immediately
+              stream_update({
+                type: 'intermediate_message',
+                content: update[:content],
+                role: update[:role] || 'assistant'
+              })
             when 'load_canvas'
               # Immediately load a canvas (e.g., task progress)
               stream_update({

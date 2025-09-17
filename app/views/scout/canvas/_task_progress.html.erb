@@ -193,10 +193,10 @@
   <% if task_list.present? && task_list[:tasks].present? %>
     <% 
       total_tasks = task_list[:tasks].size
-      completed_tasks = task_list[:tasks].count { |t| t[:status] == 'completed' }
-      failed_tasks = task_list[:tasks].count { |t| t[:status] == 'failed' }
-      in_progress_tasks = task_list[:tasks].count { |t| t[:status] == 'in_progress' }
-      pending_tasks = task_list[:tasks].count { |t| t[:status] == 'pending' }
+      completed_tasks = task_list[:tasks].count { |t| (t[:status] || t['status']) == 'completed' }
+      failed_tasks = task_list[:tasks].count { |t| (t[:status] || t['status']) == 'failed' }
+      in_progress_tasks = task_list[:tasks].count { |t| (t[:status] || t['status']) == 'in_progress' }
+      pending_tasks = task_list[:tasks].count { |t| (t[:status] || t['status']) == 'pending' }
       # Only show working status if there are pending or in-progress tasks
       is_working = in_progress_tasks > 0 || pending_tasks > 0
     %>
@@ -230,8 +230,9 @@
     <div class="task-list">
       <% task_list[:tasks].each do |task| %>
         <div class="task-item">
-          <div class="task-status-icon <%= task[:status] %>">
-            <% case task[:status] %>
+          <% task_status = task[:status] || task['status'] %>
+          <div class="task-status-icon <%= task_status %>">
+            <% case task_status %>
             <% when 'pending' %>
               <i class="far fa-circle"></i>
             <% when 'in_progress' %>
@@ -247,21 +248,24 @@
           
           <div class="task-content">
             <div class="task-description">
-              <%= task[:description] %>
+              <%= task[:description] || task['description'] %>
             </div>
-            <% if task[:details].present? %>
+            <% task_details = task[:details] || task['details'] %>
+            <% if task_details.present? %>
               <div class="task-details">
-                <%= task[:details] %>
+                <%= task_details %>
               </div>
             <% end %>
           </div>
           
           <div class="task-timestamp">
-            <% if task[:completed_at] %>
-              Completed <%= time_ago_in_words(task[:completed_at]) %> ago
-            <% elsif task[:failed_at] %>
-              Failed <%= time_ago_in_words(task[:failed_at]) %> ago
-            <% elsif task[:status] == 'in_progress' %>
+            <% task_completed_at = task[:completed_at] || task['completed_at'] %>
+            <% task_failed_at = task[:failed_at] || task['failed_at'] %>
+            <% if task_completed_at %>
+              Completed <%= time_ago_in_words(task_completed_at) %> ago
+            <% elsif task_failed_at %>
+              Failed <%= time_ago_in_words(task_failed_at) %> ago
+            <% elsif task_status == 'in_progress' %>
               In progress...
             <% end %>
           </div>
