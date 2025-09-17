@@ -142,50 +142,60 @@
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    gap: 12px;
+    padding-left: 52px; /* Align with other messages that have avatars */
   }
   
   .tool-message .message-avatar {
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 20px;
+    font-size: 18px;
     flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
   }
   
-  .tool-message .message-bubble {
-    background: #f0f7ff;
-    border: 1px solid #d0e3ff;
-    color: #0056b3;
-    box-shadow: 0 1px 2px rgba(0, 86, 179, 0.1);
-    margin: 0;
-    max-width: 70%;
+  #workspace .tool-message .message-bubble {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border: 1px solid rgba(118, 75, 162, 0.3) !important;
+    color: white !important;
+    box-shadow: 0 2px 4px rgba(118, 75, 162, 0.2) !important;
+    margin: 0 !important;
+    max-width: 70% !important;
+    padding: 8px 14px !important;
+    display: flex !important;
+    align-items: center !important;
   }
 
-  .tool-bubble {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
-    font-size: 14px;
+  #workspace .tool-bubble {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    width: 100% !important;
   }
 
-  .tool-bubble .tool-icon {
-    font-size: 16px;
-    color: #0056b3;
-    opacity: 0.9;
+  #workspace .tool-bubble .tool-icon {
+    font-size: 14px !important;
+    color: white !important;
+    opacity: 0.95 !important;
+    flex-shrink: 0 !important;
+    line-height: 1 !important;
   }
 
-  .tool-bubble .tool-name {
-    color: #0056b3;
-    font-style: italic;
-    font-weight: 500;
-    letter-spacing: 0.3px;
+  #workspace .tool-bubble .tool-name {
+    color: white !important;
+    font-style: italic !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.3px !important;
+    opacity: 0.95 !important;
+    line-height: 1 !important;
   }
   
   @keyframes fadeIn {
@@ -664,6 +674,34 @@
   padding: 1rem 1.25rem !important;
   border-radius: 1.5rem !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Tool message overrides - must come after general styles */
+#workspace .tool-message .message-bubble {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+  border: none !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+  padding: 10px 16px !important;
+  border-radius: 20px !important;
+  display: inline-block !important;
+  max-width: fit-content !important;
+}
+
+#workspace .tool-message .tool-bubble {
+  display: block !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+#workspace .tool-message .tool-name {
+  color: white !important;
+  font-style: normal !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.5px !important;
+  opacity: 1 !important;
+  font-size: 13px !important;
+  text-transform: capitalize !important;
 }
 
 #workspace .message-content {
@@ -1303,12 +1341,10 @@ document.addEventListener('DOMContentLoaded', function() {
               toolMessage.className = 'message ai-message tool-message';
               toolMessage.innerHTML = `
                 <div class="message-content">
-                  <div class="message-avatar">
-                    <i class="fas fa-cog"></i>
-                  </div>
-                  <div class="message-bubble tool-bubble">
-                    <i class="fas ${icon} tool-icon"></i>
-                    <span class="tool-name">Utilizing ${displayName} tool</span>
+                  <div class="message-bubble">
+                    <div class="tool-bubble">
+                      <span class="tool-name">Utilizing ${displayName} tool</span>
+                    </div>
                   </div>
                 </div>
               `;
@@ -1419,22 +1455,27 @@ document.addEventListener('DOMContentLoaded', function() {
               const data = JSON.parse(line.slice(6));
               
               if (data.type === 'update') {
-                showStreamingStatus(data.message);
+                // Don't show streaming status for the "💬 streaming" message
+                if (data.message !== '💬 streaming') {
+                  showStreamingStatus(data.message);
+                }
                 // Check if we're starting to stream content
                 if (data.message === '💬 streaming') {
                   hideTypingIndicator();
-                  // Create a new message element for streaming
-                  streamingMessage = addMessage('', 'assistant');
-                  streamingContent = '';
+                  // Only create a new message if we don't have one already
+                  if (!streamingMessage) {
+                    streamingMessage = addMessage('', 'assistant');
+                    streamingContent = '';
+                  }
                 }
               } else if (data.type === 'content') {
                 // Append content chunk to the streaming message
                 if (streamingMessage && data.content) {
                   streamingContent += data.content;
-                  // Update the message content
-                  const messageContent = streamingMessage.querySelector('.message-content');
-                  if (messageContent) {
-                    messageContent.innerHTML = parseSimpleMarkdown(streamingContent);
+                  // Update the message bubble directly
+                  const messageBubble = streamingMessage.querySelector('.message-bubble');
+                  if (messageBubble) {
+                    messageBubble.innerHTML = parseSimpleMarkdown(streamingContent);
                   }
                   scrollToBottom();
                 }
@@ -1470,7 +1511,9 @@ document.addEventListener('DOMContentLoaded', function() {
                   // Only add a new message if we weren't streaming
                   if (!streamingMessage && data.data.message) {
                     console.log('➕ Adding non-streamed message to chat');
-                  addMessage(data.data.message, 'assistant');
+                    addMessage(data.data.message, 'assistant');
+                  } else if (streamingMessage) {
+                    console.log('✅ Message was streamed, not adding duplicate');
                   }
                   
                   // Show tool usage info
@@ -1527,6 +1570,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 toolActivity.style.display = 'none';
                 hideStreamingStatus();
+                
+                // Reset streaming state
+                streamingMessage = null;
+                streamingContent = '';
                 
                 return; // Done processing
               }
