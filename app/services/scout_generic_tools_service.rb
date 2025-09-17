@@ -824,18 +824,18 @@ class ScoutGenericToolsService
                       final_final_message += "3. Show you the campaign viewer to manage existing campaigns?"
                     end
                     
-                    # Combine all message parts
-                    final_message = [initial_message, continuation_message, additional_message, final_final_message].reject(&:empty?).join("\n\n")
+                    # Use only the last message, not accumulated content
+                    final_message = final_final_message.present? ? final_final_message : additional_message
                   elsif more_tool_calls.any?
                     Rails.logger.warn "Tool call limit reached (20) - stopping here"
                     if additional_message.empty?
                       additional_message = "I've completed the initial setup. Please let me know if you need any adjustments."
                     end
-                    # Combine all message parts
-                    final_message = [initial_message, continuation_message, additional_message].reject(&:empty?).join("\n\n")
+                    # Use only the last message, not accumulated content
+                    final_message = additional_message.present? ? additional_message : continuation_message
                   else
-                    # Combine all message parts
-                    final_message = [initial_message, continuation_message, additional_message].reject(&:empty?).join("\n\n")
+                    # Use only the last message, not accumulated content
+                    final_message = additional_message.present? ? additional_message : continuation_message
                   end
                 end
                 
@@ -2728,10 +2728,24 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       BUILDER GUIDELINES:
       1. Be action-oriented and efficient
       2. Use tools immediately when appropriate
-      3. Confirm actions taken
-      4. Suggest next steps after completing tasks
-      5. If a tool returns requires_confirmation: true, explain what would happen and ask the user to confirm
-      6. Never proceed with destructive actions (replacements, deletions) without explicit user confirmation
+      3. ALWAYS complete ALL requested actions - don't just say what you'll do, actually do it
+      4. If the user asks for multiple things (like create AND link), execute ALL the necessary tools
+      5. Confirm actions taken
+      6. Suggest next steps after completing tasks
+      7. If a tool returns requires_confirmation: true, explain what would happen and ask the user to confirm
+      8. Never proceed with destructive actions (replacements, deletions) without explicit user confirmation
+      
+      IMPORTANT: When given a multi-step task:
+      - Break it down into individual steps
+      - Execute each step completely
+      - Don't stop until all steps are done
+      - For example: "create a campaign and link a template" requires:
+        1. create_object to create the campaign
+        2. get_data to find the template (if needed)
+        3. link_template_to_campaign to connect them
+      
+      CRITICAL: After getting data (like template IDs), ALWAYS follow through with the action (like linking).
+      Don't just say "Now let me..." - actually DO IT with the appropriate tool!
     BUILDER
   end
   
