@@ -1,0 +1,285 @@
+<div class="scout-canvas campaign-editor">
+  <% campaign = data[:campaign] %>
+  <% contact_groups = data[:contact_groups] || current_entity.contact_groups %>
+  <% email_templates = data[:email_templates] || current_entity.email_templates %>
+  
+  <% if campaign.nil? %>
+    <div class="alert alert-danger">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      Campaign not found. Please try loading a different campaign.
+    </div>
+  <% else %>
+    <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h4 class="mb-1">
+          <i class="fas fa-envelope me-2"></i>
+          <%= campaign.persisted? ? 'Edit Campaign' : 'New Campaign' %>
+        </h4>
+        <p class="text-muted mb-0">
+          <%= campaign.persisted? ? "Editing: #{campaign.name}" : "Create a new email campaign" %>
+        </p>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage?.('Show me my campaigns')">
+          <i class="fas fa-arrow-left me-1"></i>
+          Back to Campaigns
+        </button>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Campaign Form -->
+      <div class="col-lg-8">
+        <div class="card">
+          <div class="card-body">
+            <form id="campaign-editor-form">
+              <input type="hidden" name="campaign_id" value="<%= campaign.id %>">
+              
+              <!-- Campaign Name -->
+              <div class="mb-3">
+                <label class="form-label">Campaign Name</label>
+                <input type="text" class="form-control" name="name" 
+                       value="<%= campaign.name %>" 
+                       placeholder="Enter campaign name" required>
+              </div>
+
+              <!-- Email Template -->
+              <div class="mb-3">
+                <label class="form-label">Email Template</label>
+                <select class="form-select" name="email_template_id">
+                  <option value="">Select a template...</option>
+                  <% email_templates.each do |template| %>
+                    <option value="<%= template.id %>" 
+                            <%= 'selected' if campaign.email_template_id == template.id %>>
+                      <%= template.name %> - <%= template.subject %>
+                    </option>
+                  <% end %>
+                </select>
+                <small class="form-text text-muted">
+                  <a href="#" onclick="window.scoutSendMessage?.('Create a new email template'); return false;">
+                    Create a new template
+                  </a>
+                </small>
+              </div>
+
+              <!-- Contact Groups -->
+              <div class="mb-3">
+                <label class="form-label">Target Audience</label>
+                <div class="contact-groups-selection">
+                  <% contact_groups.each do |group| %>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" 
+                             name="contact_group_ids[]" 
+                             value="<%= group.id %>"
+                             id="group_<%= group.id %>"
+                             <%= 'checked' if campaign.contact_group_ids.include?(group.id) %>>
+                      <label class="form-check-label" for="group_<%= group.id %>">
+                        <%= group.name %> (<%= group.contacts_count %> contacts)
+                      </label>
+                    </div>
+                  <% end %>
+                </div>
+                <small class="form-text text-muted">
+                  <a href="#" onclick="window.scoutSendMessage?.('Create a new contact group'); return false;">
+                    Create a new group
+                  </a>
+                </small>
+              </div>
+
+              <!-- Description -->
+              <div class="mb-3">
+                <label class="form-label">Description (optional)</label>
+                <textarea class="form-control" name="description" rows="3" 
+                          placeholder="Add notes about this campaign..."><%= campaign.description %></textarea>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-save me-1"></i>
+                  <%= campaign.persisted? ? 'Update Campaign' : 'Create Campaign' %>
+                </button>
+                
+                <% if campaign.persisted? && campaign.status == 'draft' %>
+                  <button type="button" class="btn btn-success" 
+                          onclick="saveThenSendTest()">
+                    <i class="fas fa-paper-plane me-1"></i>
+                    Send Test
+                  </button>
+                  
+                  <button type="button" class="btn btn-info"
+                          onclick="saveThenSchedule()">
+                    <i class="fas fa-clock me-1"></i>
+                    Schedule
+                  </button>
+                <% end %>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Campaign Info & Preview -->
+      <div class="col-lg-4">
+        <% if campaign.persisted? %>
+          <!-- Campaign Status -->
+          <div class="card mb-3">
+            <div class="card-body">
+              <h6 class="card-title">Campaign Status</h6>
+              <div class="d-flex align-items-center mb-2">
+                <span class="badge bg-<%= campaign_status_color(campaign.status) %> me-2">
+                  <%= campaign.status.humanize %>
+                </span>
+                <% if campaign.scheduled_at.present? %>
+                  <small class="text-muted">
+                    Scheduled for <%= campaign.scheduled_at.strftime('%b %d at %l:%M %p') %>
+                  </small>
+                <% end %>
+              </div>
+              
+              <% if campaign.sent? %>
+                <div class="small text-muted">
+                  <div>Sent: <%= campaign.sent_count %></div>
+                  <div>Opened: <%= campaign.email_deliveries.opened.count %> (<%= campaign.open_rate %>%)</div>
+                  <div>Clicked: <%= campaign.email_deliveries.clicked.count %> (<%= campaign.click_rate %>%)</div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Email Preview -->
+        <div class="card">
+          <div class="card-header">
+            <h6 class="mb-0">Email Preview</h6>
+          </div>
+          <div class="card-body">
+            <div id="email-preview" class="email-preview-container">
+              <% if campaign.email_template %>
+                <div class="mb-2">
+                  <strong>Subject:</strong> <%= campaign.email_template.subject %>
+                </div>
+                <div class="mb-2">
+                  <strong>From:</strong> <%= campaign.from_name || current_entity.name %> 
+                  &lt;<%= campaign.from_email || current_entity.email %>&gt;
+                </div>
+                <hr>
+                <div class="email-content">
+                  <%= campaign.email_template.body.html_safe %>
+                </div>
+              <% else %>
+                <p class="text-muted text-center">
+                  Select an email template to see preview
+                </p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.campaign-editor .contact-groups-selection {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+}
+
+.campaign-editor .email-preview-container {
+  max-height: 400px;
+  overflow-y: auto;
+  font-size: 0.9rem;
+}
+
+.campaign-editor .email-content {
+  line-height: 1.6;
+}
+</style>
+
+<script>
+// Helper function to get campaign status color
+function campaign_status_color(status) {
+  const colors = {
+    'draft': 'secondary',
+    'scheduled': 'info',
+    'in_progress': 'warning',
+    'sent': 'success',
+    'completed': 'success',
+    'paused': 'warning',
+    'stopped': 'danger'
+  };
+  return colors[status] || 'secondary';
+}
+
+// Form submission
+document.getElementById('campaign-editor-form')?.addEventListener('submit', function(e) {
+  e.preventDefault();
+  
+  const formData = new FormData(this);
+  const campaignId = formData.get('campaign_id');
+  const action = campaignId ? 'update' : 'create';
+  
+  // Build the message for Scout
+  const contactGroups = Array.from(formData.getAll('contact_group_ids[]')).join(',');
+  const message = `Please ${action} a campaign with name "${formData.get('name')}", ` +
+                  `template ID ${formData.get('email_template_id')}, ` +
+                  `contact groups [${contactGroups}], ` +
+                  `and description "${formData.get('description')}"` +
+                  (campaignId ? ` for campaign ID ${campaignId}` : '');
+  
+  window.scoutSendMessage?.(message);
+});
+
+// Save then send test
+function saveThenSendTest() {
+  const form = document.getElementById('campaign-editor-form');
+  const formData = new FormData(form);
+  const campaignId = formData.get('campaign_id');
+  
+  if (!campaignId) {
+    window.scoutSendMessage?.('Please save the campaign first before sending a test');
+    return;
+  }
+  
+  window.scoutSendMessage?.(`Send a test email for campaign ${campaignId}`);
+}
+
+// Save then schedule
+function saveThenSchedule() {
+  const form = document.getElementById('campaign-editor-form');
+  const formData = new FormData(form);
+  const campaignId = formData.get('campaign_id');
+  
+  if (!campaignId) {
+    window.scoutSendMessage?.('Please save the campaign first before scheduling');
+    return;
+  }
+  
+  window.scoutSendMessage?.(`Schedule campaign ${campaignId}`);
+}
+
+// Update preview when template changes
+document.querySelector('select[name="email_template_id"]')?.addEventListener('change', function() {
+  if (this.value) {
+    window.scoutSendMessage?.(`Show me a preview of email template ${this.value}`);
+  }
+});
+</script>
+
+<% 
+# Helper method for status colors (in case it's not available)
+def campaign_status_color(status)
+  case status
+  when 'draft' then 'secondary'
+  when 'scheduled' then 'info'
+  when 'in_progress', 'paused' then 'warning'
+  when 'sent', 'completed' then 'success'
+  when 'stopped' then 'danger'
+  else 'secondary'
+  end
+end
+%>

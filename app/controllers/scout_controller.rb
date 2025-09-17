@@ -41,7 +41,7 @@ class ScoutController < ApplicationController
       Rails.logger.info "Scout: Saved user message"
       
       # Use the new generic tools service
-      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity)
+      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity, session[:scout_session_id])
       conversation_history = persisted_history_last_k(12)
       response = generic_tools_service.process_message_with_tools(user_message, conversation_history, current_canvas)
       
@@ -118,7 +118,7 @@ class ScoutController < ApplicationController
       # Use generic tools service with streaming updates
       stream_update("🧠 Analyzing your request...")
       stream_update("📋 Preparing context and tools...")
-      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity)
+      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity, session[:scout_session_id])
       
       # Track if we've started streaming content
       content_streaming = false
@@ -273,6 +273,9 @@ class ScoutController < ApplicationController
       when 'task_progress'
         canvas_content = render_task_progress(canvas_data)
         canvas_title = canvas_data[:title] || "Task Progress"
+      when 'campaign_editor'
+        canvas_content = render_campaign_editor(canvas_data)
+        canvas_title = "Campaign Editor"
       else
         canvas_content = render_default_canvas
         canvas_title = "Scout Canvas"
@@ -1001,12 +1004,44 @@ class ScoutController < ApplicationController
   end
 
   def render_task_progress(data = {})
+    # If no data provided, try to load from cache
+    if data.empty? || data.nil?
+      session_id = session[:scout_session_id]
+      cache_key = "scout_task_list_#{current_entity.id}_#{session_id}"
+      data = Rails.cache.read(cache_key) || {}
+    end
+    
     render_to_string(
       partial: 'scout/canvas/task_progress',
       locals: {
         entity: current_entity,
         user: current_user,
         task_list: data
+      }
+    )
+  end
+
+  def render_campaign_editor(data = {})
+    # Load campaign if ID provided
+    campaign = if data[:campaign_id]
+      current_entity.campaigns.find_by(id: data[:campaign_id])
+    else
+      current_entity.campaigns.build
+    end
+    
+    # Load contact groups and email templates
+    contact_groups = current_entity.contact_groups.active
+    email_templates = current_entity.email_templates
+    
+    render_to_string(
+      partial: 'scout/canvas/campaign_editor',
+      locals: {
+        campaign: campaign,
+        contact_groups: contact_groups,
+        email_templates: email_templates,
+        entity: current_entity,
+        user: current_user,
+        data: data
       }
     )
   end
