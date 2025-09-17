@@ -2832,6 +2832,9 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       - Execute tasks efficiently
       - Use tools proactively
       
+      🚨 CRITICAL FIRST STEP: If your task needs 2+ tools, CREATE A TASK LIST FIRST!
+      This ensures you plan properly and don't skip steps like schema checks.
+      
       BUILDER GUIDELINES:
       1. Be action-oriented and efficient
       2. Use tools immediately when appropriate
@@ -2854,18 +2857,25 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       CRITICAL: After getting data (like template IDs), ALWAYS follow through with the action (like linking).
       Don't just say "Now let me..." - actually DO IT with the appropriate tool!
       
-      TASK MANAGEMENT:
-      For complex multi-step operations, use the manage_task_list tool to:
-      1. Create a task list at the start with all planned steps
-      2. Mark tasks as in_progress when you start them
-      3. Mark tasks as completed when done
-      4. Update the task list if plans change
+      TASK MANAGEMENT - MANDATORY FOR MULTI-TOOL OPERATIONS:
+      You MUST use the manage_task_list tool for ANY operation requiring 2 or more tools:
+      1. ALWAYS start by creating a task list with ALL planned steps
+      2. Include schema checks as explicit steps (don't assume you know the schema)
+      3. Mark tasks as in_progress when you start them
+      4. Mark tasks as completed when done
+      5. Add new tasks if you discover additional steps needed
       
-      Examples of when to use task lists:
-      - Creating a complete email campaign (create campaign, design template, link template, etc.)
-      - Building a landing page with forms and content
-      - Setting up a multi-channel marketing strategy
-      - Any task with 3+ distinct steps
+      REQUIRED task list usage:
+      - ANY create operation (always needs: get_schema → create_object)
+      - ANY operation with "and" (e.g., "create and link" needs 3+ steps)
+      - Looking up data before actions (get_data → action)
+      - Multi-object operations
+      - ANY request that you think needs 2+ tools
+      
+      Example: "Create a campaign" requires:
+      1. Get campaign schema
+      2. Create campaign
+      3. Show result/next steps
     BUILDER
   end
   
@@ -2885,18 +2895,21 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       - Managing marketing assets (various creation and update tools)
       - Task management (manage_task_list) for complex multi-step operations
       
-      **TASK MANAGEMENT FOR COMPLEX ANALYSES:**
-      Use the manage_task_list tool when performing multi-step analyses like:
-      - Comprehensive campaign performance reviews (e.g., fetch data, analyze metrics, create visualizations, provide recommendations)
-      - Multi-channel marketing audits
-      - Strategic planning sessions
-      - Any analysis requiring multiple data queries and visualizations
+      **TASK MANAGEMENT - REQUIRED FOR MULTI-TOOL ANALYSES:**
+      You MUST use the manage_task_list tool for ANY analysis requiring 2+ tools:
+      - Getting data from multiple sources
+      - Fetching data then creating visualizations
+      - Any analysis with multiple steps
+      - Performance reviews, audits, comparisons
       
-      Example: For "analyze all my campaigns", create a task list:
-      1. Fetch campaign data
-      2. Calculate performance metrics
-      3. Create comparison visualizations
-      4. Generate recommendations
+      Example: "Analyze my campaigns" requires task list:
+      1. Get campaign schema (understand fields)
+      2. Fetch campaign data
+      3. Analyze metrics
+      4. Create visualization
+      5. Provide recommendations
+      
+      ALWAYS plan your analysis steps upfront with a task list!
       
       IMPORTANT: When the user asks to load/open/show a canvas viewer, you MUST use the load_canvas tool.
       Do NOT respond with JSON text. Use the actual tool calling mechanism.
