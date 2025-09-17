@@ -1,5 +1,5 @@
 class ContactMailer < ApplicationMailer
-  default to: 'lydia@cruxmarketing.ai'
+  DEFAULT_TO = 'lydia@cruxmarketing.ai'
 
   def contact_request
     @name = params[:name]
@@ -7,7 +7,8 @@ class ContactMailer < ApplicationMailer
     @subject_line = params[:subject].presence || 'New website contact'
     @message = params[:message]
 
-    mail(subject: "Contact: #{@subject_line}", reply_to: @email)
+    recipient = params[:to].presence || DEFAULT_TO
+    mail(to: recipient, subject: "Contact: #{@subject_line}", reply_to: @email)
   end
 end
 
