@@ -529,6 +529,9 @@ class ScoutGenericToolsService
                 end
               end
               
+              # Initialize final_message before the begin block
+              final_message = nil
+              
               begin
                 # Use streaming for the continuation response too
                 tools = get_bedrock_tools
@@ -620,8 +623,8 @@ class ScoutGenericToolsService
                   
                   # Add the assistant's message with the continuation tool use
                   tool_use_content = []
-                  if final_message.present?
-                    tool_use_content << { text: final_message }
+                  if continuation_message.present?
+                    tool_use_content << { text: continuation_message }
                   end
                   
                   continuation_tool_calls.each do |tool_call|
