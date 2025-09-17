@@ -491,6 +491,15 @@ class ScoutGenericToolsService
                 result = execute_tool_by_name(tool_call[:name], args, progress_callback)
                 results << result
                 
+                # Check if the tool result includes a canvas to load
+                if result[:canvas] && progress_callback
+                  progress_callback.call({
+                    type: 'load_canvas',
+                    canvas: result[:canvas],
+                    canvas_data: result[:canvas_data] || result[:task_list] || {}
+                  })
+                end
+                
                 # Auto-update task progress if we have a task list
                 update_task_for_tool_completion(tool_call[:name], args, result[:success], progress_callback)
               end
@@ -674,6 +683,15 @@ class ScoutGenericToolsService
                     result = execute_tool_by_name(tool_call[:name], parsed_args)
                     continuation_results << result
                     
+                    # Check if the tool result includes a canvas to load
+                    if result[:canvas] && progress_callback
+                      progress_callback.call({
+                        type: 'load_canvas',
+                        canvas: result[:canvas],
+                        canvas_data: result[:canvas_data] || result[:task_list] || {}
+                      })
+                    end
+                    
                     # Auto-update task progress if we have a task list
                     update_task_for_tool_completion(tool_call[:name], parsed_args, result[:success], progress_callback)
                     
@@ -797,6 +815,15 @@ class ScoutGenericToolsService
                       
                       result = execute_tool_by_name(tool_call[:name], parsed_args)
                       more_results << result
+                      
+                      # Check if the tool result includes a canvas to load
+                      if result[:canvas] && progress_callback
+                        progress_callback.call({
+                          type: 'load_canvas',
+                          canvas: result[:canvas],
+                          canvas_data: result[:canvas_data] || result[:task_list] || {}
+                        })
+                      end
                       
                       # Notify UI about tool detection and execution
                       progress_callback&.call({
@@ -3074,36 +3101,40 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     
     # Update task status
     if success
-      execute_manage_task_list({
+      result = execute_manage_task_list({
         'action' => 'complete_task',
         'task_id' => task[:id],
         'details' => "Completed successfully"
       })
       
-      # Refresh the canvas with updated task list
-      updated_list = Rails.cache.read(cache_key)
-      if updated_list
-        progress_callback&.call({
-          type: 'load_canvas',
-          canvas: 'task_progress',
-          canvas_data: updated_list
-        })
+      # If we have updated canvas data and a callback, trigger canvas reload
+      if result[:canvas] == 'task_progress' && progress_callback
+        updated_list = Rails.cache.read(cache_key)
+        if updated_list
+          progress_callback.call({
+            type: 'load_canvas',
+            canvas: 'task_progress',
+            canvas_data: updated_list
+          })
+        end
       end
     else
-      execute_manage_task_list({
+      result = execute_manage_task_list({
         'action' => 'fail_task',
         'task_id' => task[:id],
         'details' => "Failed to complete"
       })
       
-      # Refresh the canvas with updated task list
-      updated_list = Rails.cache.read(cache_key)
-      if updated_list
-        progress_callback&.call({
-          type: 'load_canvas',
-          canvas: 'task_progress',
-          canvas_data: updated_list
-        })
+      # If we have updated canvas data and a callback, trigger canvas reload
+      if result[:canvas] == 'task_progress' && progress_callback
+        updated_list = Rails.cache.read(cache_key)
+        if updated_list
+          progress_callback.call({
+            type: 'load_canvas',
+            canvas: 'task_progress',
+            canvas_data: updated_list
+          })
+        end
       end
     end
   end
@@ -3157,12 +3188,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       @suggested_canvas = 'task_progress'
       @canvas_data = task_list
       
-      # Immediately trigger canvas loading via callback
-      progress_callback&.call({
-        type: 'load_canvas',
-        canvas: 'task_progress',
-        canvas_data: task_list
-      })
+      # Canvas will be loaded via the return value
+      # The streaming handler will pick up the canvas from the result
       
       {
         success: true,
