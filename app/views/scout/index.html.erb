@@ -339,7 +339,7 @@
               </button>
             </div>
           </div>
-      </div>
+        </div>
       
       <div class="chat-messages" id="chat-messages" data-scout-target="chatMessages">
         <!-- Messages will be loaded here from history -->
@@ -1038,7 +1038,10 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Global function for canvas actions to send messages
+  // Override any existing definition from Stimulus controller
   window.scoutSendMessage = async function(message) {
+    console.log('📨 scoutSendMessage called with:', message);
+    
     // Add user message immediately
     addMessage(message, 'user');
     
@@ -1054,6 +1057,19 @@ document.addEventListener('DOMContentLoaded', function() {
       addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
     }
   };
+  
+  // Ensure our version stays in place even after Stimulus loads
+  setTimeout(() => {
+    const originalScoutSendMessage = window.scoutSendMessage;
+    Object.defineProperty(window, 'scoutSendMessage', {
+      get() { return originalScoutSendMessage; },
+      set(newValue) { 
+        console.warn('Attempt to override scoutSendMessage blocked');
+        return originalScoutSendMessage; 
+      },
+      configurable: false
+    });
+  }, 1000);
 
   // Scroll to bottom (with defensive check)
   function scrollToBottom() {

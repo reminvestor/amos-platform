@@ -1334,12 +1334,34 @@ export default class extends Controller {
   sendScoutMessage(message) {
     console.log(`💬 Canvas sending message: ${message}`)
     
-    // Add user message to chat
-    this.addMessage(message, "user")
-    
-    // Show loading and process with Scout
-    this.showLoading()
-    this.processMessage(message)
+    // Use the new streaming handler if available
+    if (window.handleStreamingChat && typeof window.handleStreamingChat === 'function') {
+      // Add user message
+      if (window.addMessage && typeof window.addMessage === 'function') {
+        window.addMessage(message, 'user');
+      } else {
+        this.addMessage(message, "user");
+      }
+      
+      // Show typing indicator
+      if (window.showTypingIndicator && typeof window.showTypingIndicator === 'function') {
+        window.showTypingIndicator();
+      }
+      
+      // Use the new streaming handler
+      window.handleStreamingChat(message).catch(error => {
+        console.error('Streaming chat error:', error);
+        if (window.hideTypingIndicator) window.hideTypingIndicator();
+        if (window.addMessage) {
+          window.addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+        }
+      });
+    } else {
+      // Fallback to old method
+      this.addMessage(message, "user");
+      this.showLoading();
+      this.processMessage(message);
+    }
   }
 
   // Update chat header

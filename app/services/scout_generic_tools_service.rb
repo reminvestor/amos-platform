@@ -376,6 +376,7 @@ class ScoutGenericToolsService
       # Initialize instance variables
       @suggested_canvas = nil
       @canvas_data = nil
+      @progress_callback = progress_callback
       
       progress_callback&.call("🧠 Building context with available data models...")
       
@@ -447,7 +448,10 @@ class ScoutGenericToolsService
           if chunk[:tool_use] && tool_calls.last
             # The tool_use chunk contains the input as a string
             tool_calls.last[:arguments] += chunk[:tool_use].input || ""
-            Rails.logger.info "Tool use chunk received for #{tool_calls.last[:name]}: #{chunk[:tool_use].inspect}"
+            # Only log first chunk to reduce noise
+            if tool_calls.last[:arguments].length < 10
+              Rails.logger.info "Tool use starting for #{tool_calls.last[:name]}"
+            end
           end
           
         elsif chunk[:type] == :complete
@@ -3227,8 +3231,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       # The streaming handler will pick up the canvas from the result
       
       # Immediately load the canvas if we have a callback
-      if progress_callback
-        progress_callback.call({
+      if @progress_callback
+        @progress_callback.call({
           type: 'load_canvas',
           canvas: 'task_progress',
           canvas_data: task_list
