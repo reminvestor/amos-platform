@@ -499,7 +499,7 @@ class ScoutGenericToolsService
                         tool_use_id: tool_call[:id],
                         content: [
                           {
-                            json: result[:success] ? (result[:result] || result || { success: true }) : { error: result[:error] || "Tool execution failed", details: result }
+                            json: sanitize_for_bedrock(result[:success] ? (result[:result] || result || { success: true }) : { error: result[:error] || "Tool execution failed", details: result })
                           }
                         ]
                       }
@@ -649,7 +649,7 @@ class ScoutGenericToolsService
                             tool_use_id: tool_call[:id],
                             content: [
                               {
-                                json: result[:success] ? (result[:result] || result || { success: true }) : { error: result[:error] || "Tool execution failed", details: result }
+                                json: sanitize_for_bedrock(result[:success] ? (result[:result] || result || { success: true }) : { error: result[:error] || "Tool execution failed", details: result })
                               }
                             ]
                           }
@@ -2825,6 +2825,24 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     rescue => e
       Rails.logger.error "Error linking template to campaign: #{e.message}"
       { success: false, error: e.message }
+    end
+  end
+
+  def sanitize_for_bedrock(data)
+    case data
+    when Hash
+      data.transform_values { |v| sanitize_for_bedrock(v) }
+    when Array
+      data.map { |item| sanitize_for_bedrock(item) }
+    when ActiveSupport::TimeWithZone, Time, DateTime
+      data.iso8601
+    when Date
+      data.to_s
+    when ActiveRecord::Base
+      # Convert ActiveRecord objects to a hash of their attributes
+      sanitize_for_bedrock(data.attributes)
+    else
+      data
     end
   end
 
