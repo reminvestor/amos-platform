@@ -200,6 +200,8 @@ Rails.application.routes.draw do
     get '/pricing', to: 'marketing#pricing', as: :marketing_pricing
     get '/about', to: 'marketing#about', as: :marketing_about
     get '/contact', to: 'marketing#contact', as: :marketing_contact
+    get '/help', to: 'marketing#help', as: :marketing_help
+    post '/contact', to: 'marketing#contact_submit', as: :marketing_contact_submit
     
     # Set the root path for marketing site
     root 'marketing#index'

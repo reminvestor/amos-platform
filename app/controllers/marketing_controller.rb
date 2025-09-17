@@ -38,4 +38,7 @@ class MarketingController < ApplicationController
 
     redirect_to marketing_contact_path
   end
+
+  def help
+  end
 end
