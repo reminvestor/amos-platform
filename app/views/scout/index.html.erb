@@ -1038,22 +1038,20 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Global function for canvas actions to send messages
-  window.scoutSendMessage = function(message) {
-    const messageInput = document.getElementById('message-input');
-    const messageForm = document.getElementById('message-form');
+  window.scoutSendMessage = async function(message) {
+    // Add user message immediately
+    addMessage(message, 'user');
     
-    if (messageInput && messageForm) {
-      // Set the message
-      messageInput.value = message;
-      
-      // Trigger form submission
-      const submitEvent = new Event('submit', {
-        bubbles: true,
-        cancelable: true
-      });
-      messageForm.dispatchEvent(submitEvent);
-    } else {
-      console.error('Scout message input or form not found');
+    // Show typing indicator
+    showTypingIndicator();
+    
+    try {
+      // Use the streaming handler directly
+      await handleStreamingChat(message);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      hideTypingIndicator();
+      addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
     }
   };
 
