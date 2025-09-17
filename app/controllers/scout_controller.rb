@@ -258,6 +258,9 @@ class ScoutController < ApplicationController
       when 'dynamic_canvas'
         canvas_content = render_dynamic_canvas(canvas_data)
         canvas_title = canvas_data['title'] || "Custom Analysis"
+      when 'task_progress'
+        canvas_content = render_task_progress(canvas_data)
+        canvas_title = canvas_data[:title] || "Task Progress"
       else
         canvas_content = render_default_canvas
         canvas_title = "Scout Canvas"
@@ -981,6 +984,17 @@ class ScoutController < ApplicationController
         entity: current_entity,
         user: current_user,
         canvas_data: data
+      }
+    )
+  end
+
+  def render_task_progress(data = {})
+    render_to_string(
+      partial: 'scout/canvas/task_progress',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        task_list: data
       }
     )
   end

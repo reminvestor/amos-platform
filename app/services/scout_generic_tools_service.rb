@@ -220,6 +220,64 @@ class ScoutGenericToolsService
         },
         required: ["title", "html_content"]
       }
+    },
+    {
+      name: "manage_task_list",
+      description: "Create or update a task list to track progress on multi-step operations. Use this for complex tasks like creating campaigns, landing pages, or multi-step workflows.",
+      input_schema: {
+        type: "object",
+        properties: {
+          action: {
+            type: "string",
+            enum: ["create", "update", "add_task", "complete_task", "fail_task"],
+            description: "Action to perform on the task list"
+          },
+          title: {
+            type: "string",
+            description: "Title for the task list (required for 'create' action)"
+          },
+          tasks: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { 
+                  type: "string",
+                  description: "Unique identifier for the task" 
+                },
+                description: { 
+                  type: "string",
+                  description: "Clear description of what needs to be done" 
+                },
+                status: { 
+                  type: "string", 
+                  enum: ["pending", "in_progress", "completed", "failed", "skipped"],
+                  description: "Current status of the task"
+                },
+                details: {
+                  type: "string",
+                  description: "Additional details or results from completing the task"
+                }
+              },
+              required: ["id", "description", "status"]
+            },
+            description: "List of tasks with their status (required for 'create' and 'update' actions)"
+          },
+          task_id: {
+            type: "string",
+            description: "ID of specific task to update (required for 'complete_task', 'fail_task', 'add_task' actions)"
+          },
+          task_description: {
+            type: "string",
+            description: "Description for new task (required for 'add_task' action)"
+          },
+          details: {
+            type: "string",
+            description: "Additional details about the task completion or failure"
+          }
+        },
+        required: ["action"]
+      }
     }
   ]
 
@@ -994,7 +1052,7 @@ class ScoutGenericToolsService
           canvas_name: {
             type: "string",
             description: "The name of the canvas to load",
-            enum: ["campaign_viewer", "analytics_dashboard", "landing_page_viewer", "contact_viewer", "email_template_viewer"]
+            enum: ["campaign_viewer", "analytics_dashboard", "landing_page_viewer", "contact_viewer", "email_template_viewer", "task_progress"]
           }
         },
         required: ["canvas_name"]
@@ -1129,7 +1187,7 @@ class ScoutGenericToolsService
       INTELLIGENT CANVAS:
       You can load data viewers and interactive canvases to display information visually.
       Available canvases: landing_page_viewer, landing_page_generator, contact_viewer, contact_generator,
-      campaign_viewer, analytics_dashboard, email_template_viewer, email_template_editor, dynamic_canvas
+      campaign_viewer, analytics_dashboard, email_template_viewer, email_template_editor, dynamic_canvas, task_progress
       
       DYNAMIC VISUALIZATIONS:
       When users ask for analysis, comparisons, or custom reports, use create_dynamic_visualization to build
@@ -1258,7 +1316,7 @@ class ScoutGenericToolsService
 When the user explicitly asks to "load", "show", "open" or "view" a specific canvas:
 - YOU MUST USE THE load_canvas TOOL - do not respond with JSON
 - The load_canvas tool takes a canvas_name parameter
-- Available canvases: campaign_viewer, analytics_dashboard, landing_page_viewer, contact_viewer, email_template_viewer
+- Available canvases: campaign_viewer, analytics_dashboard, landing_page_viewer, contact_viewer, email_template_viewer, task_progress
 - Example: User says "load the campaign viewer" → Use tool: load_canvas with canvas_name: "campaign_viewer"
 
       #{mode == 'advisor' ? advisor_response_format : builder_response_format}
@@ -1492,6 +1550,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         execute_link_template_to_campaign(tool_call[:arguments])
       when 'create_dynamic_visualization'
         execute_create_dynamic_visualization(tool_call[:arguments])
+      when 'manage_task_list'
+        execute_manage_task_list(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -1528,6 +1588,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       execute_link_template_to_campaign(args)
     when 'create_dynamic_visualization'
       execute_create_dynamic_visualization(args)
+    when 'manage_task_list'
+      execute_manage_task_list(args)
     else
       { success: false, error: "Unknown tool: #{tool_name}" }
     end
@@ -1560,6 +1622,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         progress_callback&.call("🔗 Linking email template to campaign...")
       when 'create_dynamic_visualization'
         progress_callback&.call("📊 Creating custom visualization...")
+      when 'manage_task_list'
+        action = tool_call[:arguments]['action']
+        case action
+        when 'create'
+          progress_callback&.call("📋 Creating task list...")
+        when 'complete_task'
+          progress_callback&.call("✅ Completing task...")
+        else
+          progress_callback&.call("📝 Updating task list...")
+        end
       end
       
       result = case tool_call[:name]
@@ -1581,6 +1653,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         execute_link_template_to_campaign(tool_call[:arguments])
       when 'create_dynamic_visualization'
         execute_create_dynamic_visualization(tool_call[:arguments])
+      when 'manage_task_list'
+        execute_manage_task_list(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -1602,6 +1676,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
           progress_callback&.call("✅ Found #{count} records")
         when 'create_object'
           progress_callback&.call("✅ Successfully created #{tool_call[:arguments]['object_type']}")
+        when 'manage_task_list'
+          action = tool_call[:arguments]['action']
+          case action
+          when 'create'
+            progress_callback&.call("✅ Task list created")
+          when 'complete_task'
+            progress_callback&.call("✅ Task completed")
+          else
+            progress_callback&.call("✅ Task list updated")
+          end
         end
       else
         progress_callback&.call("❌ Tool execution failed: #{result[:error]}")
@@ -1883,6 +1967,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
           formatted << format_landing_page_status_results(result[:result])
         when 'link_template_to_campaign'
           formatted << result[:result][:message]
+        when 'manage_task_list'
+          formatted << format_task_list_results(result[:result])
         else
           # Generic success format for other tools
           formatted << format_generic_tool_success(result[:tool_name], result[:result])
@@ -2129,6 +2215,27 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       "✅ #{tool_name} completed successfully"
     else
       "#{tool_name} result: #{result.inspect}"
+    end
+  end
+
+  def format_task_list_results(result)
+    return result[:error] if result[:error]
+    
+    if result[:task_list]
+      task_list = result[:task_list]
+      tasks = task_list[:tasks]
+      
+      if result[:progress]
+        "#{result[:message]}\n#{result[:progress]}"
+      elsif tasks && tasks.any?
+        completed = tasks.count { |t| t[:status] == 'completed' }
+        total = tasks.size
+        "#{result[:message]} (#{completed}/#{total} tasks)"
+      else
+        result[:message]
+      end
+    else
+      result[:message] || "Task list operation completed"
     end
   end
 
@@ -2746,6 +2853,19 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       
       CRITICAL: After getting data (like template IDs), ALWAYS follow through with the action (like linking).
       Don't just say "Now let me..." - actually DO IT with the appropriate tool!
+      
+      TASK MANAGEMENT:
+      For complex multi-step operations, use the manage_task_list tool to:
+      1. Create a task list at the start with all planned steps
+      2. Mark tasks as in_progress when you start them
+      3. Mark tasks as completed when done
+      4. Update the task list if plans change
+      
+      Examples of when to use task lists:
+      - Creating a complete email campaign (create campaign, design template, link template, etc.)
+      - Building a landing page with forms and content
+      - Setting up a multi-channel marketing strategy
+      - Any task with 3+ distinct steps
     BUILDER
   end
   
@@ -2763,6 +2883,20 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       - Fetching and analyzing data (get_data, get_schema)
       - Creating visualizations (create_dynamic_visualization)
       - Managing marketing assets (various creation and update tools)
+      - Task management (manage_task_list) for complex multi-step operations
+      
+      **TASK MANAGEMENT FOR COMPLEX ANALYSES:**
+      Use the manage_task_list tool when performing multi-step analyses like:
+      - Comprehensive campaign performance reviews (e.g., fetch data, analyze metrics, create visualizations, provide recommendations)
+      - Multi-channel marketing audits
+      - Strategic planning sessions
+      - Any analysis requiring multiple data queries and visualizations
+      
+      Example: For "analyze all my campaigns", create a task list:
+      1. Fetch campaign data
+      2. Calculate performance metrics
+      3. Create comparison visualizations
+      4. Generate recommendations
       
       IMPORTANT: When the user asks to load/open/show a canvas viewer, you MUST use the load_canvas tool.
       Do NOT respond with JSON text. Use the actual tool calling mechanism.
@@ -2886,6 +3020,173 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     rescue => e
       Rails.logger.error "Error creating dynamic visualization: #{e.message}"
       { success: false, error: e.message }
+    end
+  end
+
+  def execute_manage_task_list(args)
+    action = args['action']
+    entity_id = @entity&.id
+    session_id = @session_id || SecureRandom.uuid
+    
+    # Use Rails cache to store task lists per session
+    cache_key = "scout_task_list_#{entity_id}_#{session_id}"
+    
+    case action
+    when 'create'
+      # Create a new task list
+      task_list = {
+        title: args['title'],
+        tasks: args['tasks'] || [],
+        created_at: Time.current,
+        updated_at: Time.current
+      }
+      Rails.cache.write(cache_key, task_list, expires_in: 24.hours)
+      
+      # Store for canvas display
+      @suggested_canvas = 'task_progress'
+      @canvas_data = task_list
+      
+      {
+        success: true,
+        message: "📋 Created task list: #{args['title']}",
+        task_list: task_list,
+        canvas: 'task_progress'
+      }
+      
+    when 'update'
+      # Update entire task list
+      existing_list = Rails.cache.read(cache_key)
+      if existing_list
+        existing_list[:tasks] = args['tasks']
+        existing_list[:updated_at] = Time.current
+        Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+        
+        @suggested_canvas = 'task_progress'
+        @canvas_data = existing_list
+        
+        {
+          success: true,
+          message: "📝 Task list updated",
+          task_list: existing_list,
+          canvas: 'task_progress'
+        }
+      else
+        {
+          success: false,
+          error: "No task list found to update"
+        }
+      end
+      
+    when 'add_task'
+      # Add a single task
+      existing_list = Rails.cache.read(cache_key)
+      if existing_list
+        new_task = {
+          id: args['task_id'] || SecureRandom.hex(4),
+          description: args['task_description'],
+          status: 'pending',
+          details: nil
+        }
+        existing_list[:tasks] << new_task
+        existing_list[:updated_at] = Time.current
+        Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+        
+        @suggested_canvas = 'task_progress'
+        @canvas_data = existing_list
+        
+        {
+          success: true,
+          message: "➕ Task added: #{args['task_description']}",
+          task_list: existing_list,
+          canvas: 'task_progress'
+        }
+      else
+        {
+          success: false,
+          error: "No task list found"
+        }
+      end
+      
+    when 'complete_task'
+      # Mark a task as completed
+      existing_list = Rails.cache.read(cache_key)
+      if existing_list
+        task = existing_list[:tasks].find { |t| t[:id] == args['task_id'] }
+        if task
+          task[:status] = 'completed'
+          task[:details] = args['details'] if args['details']
+          task[:completed_at] = Time.current
+          existing_list[:updated_at] = Time.current
+          Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+          
+          @suggested_canvas = 'task_progress'
+          @canvas_data = existing_list
+          
+          # Calculate progress
+          total_tasks = existing_list[:tasks].size
+          completed_tasks = existing_list[:tasks].count { |t| t[:status] == 'completed' }
+          progress_percentage = (completed_tasks.to_f / total_tasks * 100).round
+          
+          {
+            success: true,
+            message: "✅ Task completed: #{task[:description]}",
+            progress: "#{completed_tasks}/#{total_tasks} tasks completed (#{progress_percentage}%)",
+            task_list: existing_list,
+            canvas: 'task_progress'
+          }
+        else
+          {
+            success: false,
+            error: "Task not found: #{args['task_id']}"
+          }
+        end
+      else
+        {
+          success: false,
+          error: "No task list found"
+        }
+      end
+      
+    when 'fail_task'
+      # Mark a task as failed
+      existing_list = Rails.cache.read(cache_key)
+      if existing_list
+        task = existing_list[:tasks].find { |t| t[:id] == args['task_id'] }
+        if task
+          task[:status] = 'failed'
+          task[:details] = args['details'] || "Task failed"
+          task[:failed_at] = Time.current
+          existing_list[:updated_at] = Time.current
+          Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+          
+          @suggested_canvas = 'task_progress'
+          @canvas_data = existing_list
+          
+          {
+            success: true,
+            message: "❌ Task failed: #{task[:description]}",
+            reason: args['details'],
+            task_list: existing_list,
+            canvas: 'task_progress'
+          }
+        else
+          {
+            success: false,
+            error: "Task not found: #{args['task_id']}"
+          }
+        end
+      else
+        {
+          success: false,
+          error: "No task list found"
+        }
+      end
+      
+    else
+      {
+        success: false,
+        error: "Unknown action: #{action}"
+      }
     end
   end
 end 

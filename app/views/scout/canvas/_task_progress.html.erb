@@ -1,0 +1,246 @@
+<div class="task-progress-container p-4">
+  <style>
+    .task-progress-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .task-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .task-header h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    
+    .task-header .timestamp {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-top: 8px;
+    }
+    
+    .progress-bar-container {
+      background-color: #f3f4f6;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    
+    .progress-stats {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: #4b5563;
+    }
+    
+    .progress {
+      height: 24px;
+      background-color: #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .progress-bar {
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s ease-in-out;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .task-list {
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+    }
+    
+    .task-item {
+      padding: 16px 20px;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: background-color 0.2s;
+    }
+    
+    .task-item:last-child {
+      border-bottom: none;
+    }
+    
+    .task-item:hover {
+      background-color: #f9fafb;
+    }
+    
+    .task-status-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+    
+    .task-status-icon.pending {
+      background-color: #f3f4f6;
+      color: #6b7280;
+    }
+    
+    .task-status-icon.in_progress {
+      background-color: #fef3c7;
+      color: #f59e0b;
+      animation: pulse 2s infinite;
+    }
+    
+    .task-status-icon.completed {
+      background-color: #d1fae5;
+      color: #10b981;
+    }
+    
+    .task-status-icon.failed {
+      background-color: #fee2e2;
+      color: #ef4444;
+    }
+    
+    .task-status-icon.skipped {
+      background-color: #e5e7eb;
+      color: #9ca3af;
+    }
+    
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+    
+    .task-content {
+      flex: 1;
+    }
+    
+    .task-description {
+      font-size: 15px;
+      color: #1f2937;
+      margin-bottom: 4px;
+    }
+    
+    .task-details {
+      font-size: 13px;
+      color: #6b7280;
+    }
+    
+    .task-timestamp {
+      font-size: 12px;
+      color: #9ca3af;
+      white-space: nowrap;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6b7280;
+    }
+    
+    .empty-state i {
+      font-size: 48px;
+      color: #e5e7eb;
+      margin-bottom: 16px;
+    }
+  </style>
+  
+  <% if task_list.present? && task_list[:tasks].present? %>
+    <div class="task-header">
+      <h2><%= task_list[:title] || "Task Progress" %></h2>
+      <div class="timestamp">
+        Started <%= task_list[:created_at] ? time_ago_in_words(task_list[:created_at]) + " ago" : "recently" %>
+      </div>
+    </div>
+    
+    <% 
+      total_tasks = task_list[:tasks].size
+      completed_tasks = task_list[:tasks].count { |t| t[:status] == 'completed' }
+      progress_percentage = total_tasks > 0 ? (completed_tasks.to_f / total_tasks * 100).round : 0
+    %>
+    
+    <div class="progress-bar-container">
+      <div class="progress-stats">
+        <span><%= completed_tasks %> of <%= total_tasks %> tasks completed</span>
+        <span><%= progress_percentage %>%</span>
+      </div>
+      <div class="progress">
+        <div class="progress-bar" style="width: <%= progress_percentage %>%">
+          <% if progress_percentage > 10 %>
+            <%= progress_percentage %>%
+          <% end %>
+        </div>
+      </div>
+    </div>
+    
+    <div class="task-list">
+      <% task_list[:tasks].each do |task| %>
+        <div class="task-item">
+          <div class="task-status-icon <%= task[:status] %>">
+            <% case task[:status] %>
+            <% when 'pending' %>
+              <i class="far fa-circle"></i>
+            <% when 'in_progress' %>
+              <i class="fas fa-spinner fa-spin"></i>
+            <% when 'completed' %>
+              <i class="fas fa-check"></i>
+            <% when 'failed' %>
+              <i class="fas fa-times"></i>
+            <% when 'skipped' %>
+              <i class="fas fa-forward"></i>
+            <% end %>
+          </div>
+          
+          <div class="task-content">
+            <div class="task-description">
+              <%= task[:description] %>
+            </div>
+            <% if task[:details].present? %>
+              <div class="task-details">
+                <%= task[:details] %>
+              </div>
+            <% end %>
+          </div>
+          
+          <div class="task-timestamp">
+            <% if task[:completed_at] %>
+              Completed <%= time_ago_in_words(task[:completed_at]) %> ago
+            <% elsif task[:failed_at] %>
+              Failed <%= time_ago_in_words(task[:failed_at]) %> ago
+            <% elsif task[:status] == 'in_progress' %>
+              In progress...
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="empty-state">
+      <i class="fas fa-tasks"></i>
+      <h3>No Active Tasks</h3>
+      <p>Task progress will appear here when Scout creates a task list for complex operations.</p>
+    </div>
+  <% end %>
+</div>
