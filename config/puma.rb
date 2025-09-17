@@ -31,7 +31,8 @@ threads threads_count, threads_count
 port ENV.fetch("PORT", 3000)
 
 # Set up workers - disable on Windows due to lack of fork support
-if Gem.win_platform?
+# Also disable in development to avoid pg gem segfaults
+if Gem.win_platform? || ENV['RAILS_ENV'] == 'development'
   workers 0
 else
   workers ENV.fetch("WEB_CONCURRENCY", 2)

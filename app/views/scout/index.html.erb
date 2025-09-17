@@ -1629,6 +1629,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   setTimeout(() => {
                     // Method 1: Use window.scoutController if available
                     if (window.scoutController && window.scoutController.loadScoutCanvas) {
+                      console.log('📋 Loading canvas with data:', data.canvas_data);
                       window.scoutController.loadScoutCanvas(data.canvas, data.canvas_data || {});
                     } 
                     // Method 2: Find the controller through Stimulus
