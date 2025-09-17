@@ -194,16 +194,12 @@
     <% 
       total_tasks = task_list[:tasks].size
       completed_tasks = task_list[:tasks].count { |t| t[:status] == 'completed' }
+      failed_tasks = task_list[:tasks].count { |t| t[:status] == 'failed' }
       in_progress_tasks = task_list[:tasks].count { |t| t[:status] == 'in_progress' }
-      is_working = in_progress_tasks > 0 || completed_tasks < total_tasks
+      pending_tasks = task_list[:tasks].count { |t| t[:status] == 'pending' }
+      # Only show working status if there are pending or in-progress tasks
+      is_working = in_progress_tasks > 0 || pending_tasks > 0
     %>
-    
-    <% if is_working %>
-      <div class="working-status">
-        <i class="fas fa-cogs"></i>
-        <span>Scout is working on your request...</span>
-      </div>
-    <% end %>
     
     <div class="task-header">
       <h2><%= task_list[:title] || "Task Progress" %></h2>
@@ -272,6 +268,13 @@
         </div>
       <% end %>
     </div>
+    
+    <% if is_working %>
+      <div class="working-status">
+        <i class="fas fa-cogs"></i>
+        <span>Scout is working on your request...</span>
+      </div>
+    <% end %>
   <% else %>
     <div class="empty-state">
       <i class="fas fa-tasks"></i>

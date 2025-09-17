@@ -14,9 +14,10 @@ class ScoutGenericToolsService
   # AI Provider Configuration - Easy to switch between providers
   AI_PROVIDER = ENV['AI_PROVIDER'] || 'grok' # Options: 'grok', 'claude', 'openai'
   
-  def initialize(user, entity)
+  def initialize(user, entity, session_id = nil)
     @user = user
     @entity = entity
+    @session_id = session_id
     
     # Use the centralized AI service configuration
     @ai_service = AiServiceHelper.get_service
@@ -1362,6 +1363,7 @@ class ScoutGenericToolsService
       - "landing_page_viewer" - to show existing landing pages
       - "landing_page_generator" - to create new landing pages
       - "campaign_viewer" - to show email campaigns
+      - "campaign_editor" - to edit/create campaigns
       - "contact_viewer" - to show contacts
       - "contact_generator" - to create new contacts
 
@@ -1369,7 +1371,7 @@ class ScoutGenericToolsService
 When the user explicitly asks to "load", "show", "open" or "view" a specific canvas:
 - YOU MUST USE THE load_canvas TOOL - do not respond with JSON
 - The load_canvas tool takes a canvas_name parameter
-- Available canvases: campaign_viewer, analytics_dashboard, landing_page_viewer, contact_viewer, email_template_viewer, task_progress
+- Available canvases: campaign_viewer, campaign_editor, analytics_dashboard, landing_page_viewer, contact_viewer, email_template_viewer, task_progress
 - Example: User says "load the campaign viewer" → Use tool: load_canvas with canvas_name: "campaign_viewer"
 
       #{mode == 'advisor' ? advisor_response_format : builder_response_format}
