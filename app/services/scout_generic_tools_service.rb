@@ -765,11 +765,11 @@ class ScoutGenericToolsService
                   end
                   
                   # Continue tool execution in a loop until done or limit reached
-                  MAX_TOOL_ITERATIONS = 20
+                  max_tool_iterations = 20
                   total_tool_calls = tool_calls.length + continuation_tool_calls.length
                   
                   # Keep executing tools while the AI wants more and we haven't hit the limit
-                  while more_tool_calls.any? && total_tool_calls < MAX_TOOL_ITERATIONS
+                  while more_tool_calls.any? && total_tool_calls < max_tool_iterations
                     Rails.logger.info "AI requested #{more_tool_calls.length} more tools (total: #{total_tool_calls + more_tool_calls.length})"
                     
                     # Execute the additional tools
@@ -900,8 +900,8 @@ class ScoutGenericToolsService
                   end # end while loop
                   
                   # After the loop, set the final message
-                  if total_tool_calls >= MAX_TOOL_ITERATIONS && more_tool_calls.any?
-                    Rails.logger.warn "Tool call limit reached (#{MAX_TOOL_ITERATIONS}) - AI still wants to use #{more_tool_calls.length} more tools"
+                  if total_tool_calls >= max_tool_iterations && more_tool_calls.any?
+                    Rails.logger.warn "Tool call limit reached (#{max_tool_iterations}) - AI still wants to use #{more_tool_calls.length} more tools"
                     if additional_message.empty?
                       additional_message = "I've executed #{total_tool_calls} tools to complete your request. The task progress is shown in the canvas above."
                     end
