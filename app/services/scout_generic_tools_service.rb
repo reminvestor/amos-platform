@@ -637,6 +637,16 @@ class ScoutGenericToolsService
                   end
                 end
                 
+                # If the AI provided a message before using continuation tools, save it
+                if continuation_message.present? && continuation_tool_calls.any?
+                  # The AI said something before using tools - this needs to be saved!
+                  progress_callback&.call({
+                    type: 'save_message',
+                    content: continuation_message,
+                    role: 'assistant'
+                  })
+                end
+                
                 # If the continuation wants to use more tools, execute them recursively
                 if continuation_tool_calls.any?
                   Rails.logger.info "Continuation requested #{continuation_tool_calls.length} more tools"
@@ -754,11 +764,12 @@ class ScoutGenericToolsService
                     end
                   end
                   
-                  # If the AI wants to use more tools, recursively handle them
-                  # But set a reasonable limit to prevent infinite loops
+                  # Continue tool execution in a loop until done or limit reached
+                  MAX_TOOL_ITERATIONS = 20
                   total_tool_calls = tool_calls.length + continuation_tool_calls.length
                   
-                  if more_tool_calls.any? && total_tool_calls < 20
+                  # Keep executing tools while the AI wants more and we haven't hit the limit
+                  while more_tool_calls.any? && total_tool_calls < MAX_TOOL_ITERATIONS
                     Rails.logger.info "AI requested #{more_tool_calls.length} more tools (total: #{total_tool_calls + more_tool_calls.length})"
                     
                     # Execute the additional tools
@@ -834,11 +845,19 @@ class ScoutGenericToolsService
                       }
                     end
                     
-                    # One more round of streaming
+                    # Update totals and prepare for next iteration
+                    total_tool_calls += more_tool_calls.length
+                    
+                    # Update tool_calls for the next iteration
+                    all_tool_calls = tool_calls + continuation_tool_calls + more_tool_calls
+                    
+                    # Clear for next iteration
+                    more_tool_calls = []
+                    
+                    # One more round of streaming to see if AI wants more tools
                     progress_callback&.call("💬 streaming")
                     
-                    final_final_message = ""
-                    even_more_tool_calls = []
+                    last_message = ""
                     
                     @ai_service.send_message_streaming(
                       system_prompt,
@@ -849,52 +868,51 @@ class ScoutGenericToolsService
                       tools: tools
                     ) do |chunk|
                       if chunk[:type] == :content && chunk[:content]
-                        final_final_message += chunk[:content]
+                        last_message += chunk[:content]
                         progress_callback&.call({
                           type: 'content_chunk',
                           content: chunk[:content]
                         })
                       elsif chunk[:type] == :tool_use_start
-                        even_more_tool_calls << {
+                        more_tool_calls << {
                           id: chunk[:tool_id],
                           name: chunk[:tool_name],
                           arguments: ""
                         }
-                      elsif chunk[:type] == :tool_use && even_more_tool_calls.any?
-                        even_more_tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+                      elsif chunk[:type] == :tool_use && more_tool_calls.any?
+                        more_tool_calls.last[:arguments] += chunk[:tool_use].input || ""
                       elsif chunk[:type] == :complete
-                        Rails.logger.info "Final final continuation complete: #{final_final_message.length} chars"
+                        Rails.logger.info "Tool iteration complete: #{last_message.length} chars"
                       end
                     end
                     
-                    # If still no content but more tools requested, provide a helpful message
-                    if final_final_message.empty? && even_more_tool_calls.any?
-                      Rails.logger.warn "AI still trying to use tools after multiple attempts"
-                      final_final_message = "I apologize, but I'm having trouble creating the campaign with the current system fields. Let me help you understand what's needed:\n\n"
-                      final_final_message += "Based on the campaign schema, a campaign needs:\n"
-                      final_final_message += "- **name**: The campaign name\n"
-                      final_final_message += "- **status**: Either 'draft', 'active', or 'completed'\n"
-                      final_final_message += "- **description**: Optional description\n\n"
-                      final_final_message += "The email content (subject, body, etc.) should be created as a separate Email Template and then linked to the campaign.\n\n"
-                      final_final_message += "Would you like me to:\n"
-                      final_final_message += "1. Create a basic campaign first?\n"
-                      final_final_message += "2. Create an email template with your content?\n"
-                      final_final_message += "3. Show you the campaign viewer to manage existing campaigns?"
+                    # If there's a message before more tools, save it
+                    if last_message.present? && more_tool_calls.any?
+                      progress_callback&.call({
+                        type: 'save_message',
+                        content: last_message,
+                        role: 'assistant'
+                      })
                     end
                     
-                    # Use only the last message, not accumulated content
-                    final_message = final_final_message.present? ? final_final_message : additional_message
-                  elsif more_tool_calls.any?
-                    Rails.logger.warn "Tool call limit reached (20) - stopping here"
+                    # Update the additional_message with the latest
+                    additional_message = last_message if last_message.present?
+                  end # end while loop
+                  
+                  # After the loop, set the final message
+                  if total_tool_calls >= MAX_TOOL_ITERATIONS && more_tool_calls.any?
+                    Rails.logger.warn "Tool call limit reached (#{MAX_TOOL_ITERATIONS}) - AI still wants to use #{more_tool_calls.length} more tools"
                     if additional_message.empty?
-                      additional_message = "I've completed the initial setup. Please let me know if you need any adjustments."
+                      additional_message = "I've executed #{total_tool_calls} tools to complete your request. The task progress is shown in the canvas above."
                     end
-                    # Use only the last message, not accumulated content
-                    final_message = additional_message.present? ? additional_message : continuation_message
-                  else
-                    # Use only the last message, not accumulated content
-                    final_message = additional_message.present? ? additional_message : continuation_message
                   end
+                  
+                  # Use the last non-empty message
+                  final_message = additional_message.present? ? additional_message : continuation_message
+                else
+                  # No more tools requested in first continuation
+                  final_message = continuation_message
+                end
                 end
                 
               rescue => e
