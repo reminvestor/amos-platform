@@ -14,26 +14,24 @@ class ScoutGenericToolsService
   # AI Provider Configuration - Easy to switch between providers
   AI_PROVIDER = ENV['AI_PROVIDER'] || 'grok' # Options: 'grok', 'claude', 'openai'
   
-  def initialize(user, entity)
+  def initialize(user, entity, session_id = nil)
     @user = user
     @entity = entity
-    @ai_service = case AI_PROVIDER.downcase
-    when 'grok'
-      GrokService.new
-    when 'claude'
-      ClaudeService.new
-    when 'openai'
-      OpenaiService.new
-    else
-      raise "Unknown AI provider: #{AI_PROVIDER}. Use 'grok', 'claude', or 'openai'"
-    end
-    @ai_provider_name = case AI_PROVIDER.downcase
-                        when 'grok' then 'Grok'
-                        when 'claude' then 'Claude'
-                        when 'openai' then 'OpenAI GPT-5'
-                        else AI_PROVIDER
+    @session_id = session_id
+    
+    # Use the centralized AI service configuration
+    @ai_service = AiServiceHelper.get_service
+    
+    # Get the provider name from the configured service
+    @ai_provider_name = case Rails.application.config.ai_service
+                        when :grok then 'Grok'
+                        when :claude then 'Claude'
+                        when :openai then 'OpenAI GPT-5'
+                        when :bedrock then 'AWS Bedrock'
+                        else Rails.application.config.ai_service.to_s
                         end
-    Rails.logger.info "🤖 Scout using AI provider: #{AI_PROVIDER}"
+    
+    Rails.logger.info "🤖 Scout using AI provider: #{Rails.application.config.ai_service}"
   end
 
   # Generic function calling tools for AI providers
@@ -87,20 +85,6 @@ class ScoutGenericToolsService
           object_type: {
             type: "string",
             description: "The type of object to get schema for (e.g., 'contact', 'campaign', 'landing_page')"
-          }
-        },
-        required: ["object_type"]
-      }
-    },
-    {
-      name: "get_schema",
-      description: "Get the schema and field information for any data model",
-      input_schema: {
-        type: "object",
-        properties: {
-          object_type: {
-            type: "string",
-            description: "The type of object to get schema for (e.g., 'campaign', 'contact')"
           }
         },
         required: ["object_type"]
@@ -192,13 +176,120 @@ class ScoutGenericToolsService
         },
         required: ["landing_page_id"]
       }
+    },
+    {
+      name: "link_template_to_campaign",
+      description: "Link an email template to a campaign",
+      input_schema: {
+        type: "object",
+        properties: {
+          campaign_id: {
+            type: "integer",
+            description: "The ID of the campaign to update"
+          },
+          template_id: {
+            type: "integer",
+            description: "The ID of the email template to link"
+          }
+        },
+        required: ["campaign_id", "template_id"]
+      }
+    },
+    {
+      name: "create_dynamic_visualization",
+      description: "Create a custom HTML visualization or report to display data insights",
+      input_schema: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "Title for the visualization"
+          },
+          subtitle: {
+            type: "string",
+            description: "Optional subtitle or description"
+          },
+          html_content: {
+            type: "string",
+            description: "Custom HTML content with data visualizations, charts, metrics, insights. Use Bootstrap classes and the provided AI styles (ai-metric-card, ai-chart-container, ai-insight-box, ai-recommendation, ai-warning)"
+          },
+          canvas_type: {
+            type: "string",
+            description: "Always set to 'dynamic_canvas'",
+            default: "dynamic_canvas"
+          }
+        },
+        required: ["title", "html_content"]
+      }
+    },
+    {
+      name: "manage_task_list",
+      description: "Create or update a task list to track progress on multi-step operations. Use this for complex tasks like creating campaigns, landing pages, or multi-step workflows.",
+      input_schema: {
+        type: "object",
+        properties: {
+          action: {
+            type: "string",
+            enum: ["create", "update", "add_task", "complete_task", "fail_task"],
+            description: "Action to perform on the task list"
+          },
+          title: {
+            type: "string",
+            description: "Title for the task list (required for 'create' action)"
+          },
+          tasks: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { 
+                  type: "string",
+                  description: "Unique identifier for the task" 
+                },
+                description: { 
+                  type: "string",
+                  description: "Clear description of what needs to be done" 
+                },
+                status: { 
+                  type: "string", 
+                  enum: ["pending", "in_progress", "completed", "failed", "skipped"],
+                  description: "Current status of the task"
+                },
+                details: {
+                  type: "string",
+                  description: "Additional details or results from completing the task"
+                }
+              },
+              required: ["id", "description", "status"]
+            },
+            description: "List of tasks with their status (required for 'create' and 'update' actions)"
+          },
+          task_id: {
+            type: "string",
+            description: "ID of specific task to update (required for 'complete_task', 'fail_task', 'add_task' actions)"
+          },
+          task_description: {
+            type: "string",
+            description: "Description for new task (required for 'add_task' action)"
+          },
+          details: {
+            type: "string",
+            description: "Additional details about the task completion or failure"
+          }
+        },
+        required: ["action"]
+      }
     }
   ]
 
   def process_message_with_tools(user_message, conversation_history = [], current_canvas = nil)
     begin
-      # Build system prompt with dynamic schema information
-      system_prompt = build_system_prompt_with_dynamic_schema
+      # Detect user intent
+      detected_mode = detect_user_intent(user_message)
+      Rails.logger.info "🤖 Scout detected mode: #{detected_mode}"
+      
+      # Build system prompt with dynamic schema information and mode
+      system_prompt = build_system_prompt_with_dynamic_schema(current_canvas, detected_mode)
       
       # Enhance user message with canvas context if available
       enhanced_user_message = enhance_message_with_canvas_context(user_message, current_canvas)
@@ -213,7 +304,7 @@ class ScoutGenericToolsService
         system_prompt,
         conversation_messages,
         
-        max_tokens: 4000,
+        max_tokens: 25000,
         temperature: 0.7
       )
       
@@ -234,15 +325,28 @@ class ScoutGenericToolsService
           success_count: tool_results.count { |r| r[:success] },
           error_count: tool_results.count { |r| !r[:success] },
           canvas: @suggested_canvas,
-        canvas_data: @canvas_data
+          canvas_data: @canvas_data,
+          mode: detected_mode
         }
       else
-        # No tools needed, return original response
+        # No tools needed, extract message from response
+        # If @parsed_user_message is nil, try to extract from response
+        final_message = @parsed_user_message
+        if final_message.nil? && response.is_a?(String)
+          begin
+            parsed = JSON.parse(response)
+            final_message = parsed['message'] || response
+          rescue JSON::ParserError
+            final_message = response
+          end
+        end
+        
         return {
-          message: @parsed_user_message || response,
+          message: final_message || response,
           tools_used: false,
           canvas: @suggested_canvas,
-          canvas_data: @canvas_data
+          canvas_data: @canvas_data,
+          mode: detected_mode
         }
       end
       
@@ -269,10 +373,19 @@ class ScoutGenericToolsService
 
   def process_message_with_tools_streaming(user_message, progress_callback = nil, conversation_history = [], current_canvas = nil)
     begin
+      # Initialize instance variables
+      @suggested_canvas = nil
+      @canvas_data = nil
+      @progress_callback = progress_callback
+      
       progress_callback&.call("🧠 Building context with available data models...")
       
-      # Build system prompt with dynamic schema information
-      system_prompt = build_system_prompt_with_dynamic_schema
+      # Detect user intent
+      detected_mode = detect_user_intent(user_message)
+      Rails.logger.info "🤖 Scout detected mode: #{detected_mode}"
+      
+      # Build system prompt with dynamic schema information and mode
+      system_prompt = build_system_prompt_with_dynamic_schema(current_canvas, detected_mode)
       
       # Enhance user message with canvas context if available
       enhanced_user_message = enhance_message_with_canvas_context(user_message, current_canvas)
@@ -283,12 +396,685 @@ class ScoutGenericToolsService
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name} (including history)"
       progress_callback&.call("🤖 Sending request to #{@ai_provider_name} with conversation context...")
       
-      # Send to AI service with function calling
+      # Always stream responses for better UX
+      Rails.logger.info "Streaming response in #{detected_mode} mode"
+      
+      accumulated_content = ""
+      tool_calls = []
+      streaming_started = false
+      
+      # Stream the response - use native Bedrock tools
+      tools = get_bedrock_tools
+      Rails.logger.info "Sending #{tools.length} tools to Bedrock"
+      Rails.logger.info "Tools: #{tools.map { |t| t[:name] }.join(', ')}"
+      
+      @ai_service.send_message_streaming(
+        system_prompt,
+        conversation_messages,
+        max_tokens: 25000,
+        temperature: 0.7,
+        json_mode: false,  # Let Bedrock handle tool calling natively
+        tools: tools
+      ) do |chunk|
+        if chunk[:type] == :content && chunk[:content]
+          accumulated_content += chunk[:content]
+          
+          if !streaming_started
+            streaming_started = true
+            progress_callback&.call("💬 streaming")
+          end
+          
+          # Stream content directly
+          progress_callback&.call({
+            type: 'content_chunk',
+            content: chunk[:content]
+          })
+        elsif chunk[:type] == :tool_use_start
+          # Tool use is starting
+          progress_callback&.call({
+            type: 'tool_detected',
+            name: chunk[:tool_name],
+            tool_id: chunk[:tool_id]
+          })
+          
+          # Start collecting this tool call
+          tool_calls << {
+            id: chunk[:tool_id],
+            name: chunk[:tool_name],
+            arguments: ""
+          }
+        elsif chunk[:type] == :tool_use
+          # Tool arguments are being streamed
+          if chunk[:tool_use] && tool_calls.last
+            # The tool_use chunk contains the input as a string
+            tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+            # Only log first chunk to reduce noise
+            if tool_calls.last[:arguments].length < 10
+              Rails.logger.info "Tool use starting for #{tool_calls.last[:name]}"
+            end
+          end
+          
+        elsif chunk[:type] == :complete
+          # Response complete
+          Rails.logger.info "Bedrock response complete. Tool calls: #{tool_calls.length}"
+          
+          # If we have tool calls, execute them
+          if tool_calls.any?
+            Rails.logger.info "Executing tool calls: #{tool_calls.map { |t| t[:name] }}"
+            Rails.logger.info "Tool calls detail: #{tool_calls.inspect}"
+            
+            # Parse and execute each tool
+            results = []
+            tool_calls.each do |tool_call|
+              Rails.logger.info "Processing tool: #{tool_call[:name]} with raw arguments: #{tool_call[:arguments].inspect}"
+              
+              # Parse arguments
+              args = begin
+                JSON.parse(tool_call[:arguments])
+              rescue JSON::ParserError => e
+                Rails.logger.error "Failed to parse tool arguments: #{e.message}"
+                {}
+              end
+              
+              Rails.logger.info "Parsed arguments for #{tool_call[:name]}: #{args.inspect}"
+              
+              progress_callback&.call({
+                type: 'tool_start',
+                name: tool_call[:name],
+                arguments: args
+              })
+              
+              # Handle special canvas loading tool
+              if tool_call[:name] == 'load_canvas'
+                canvas_name = args['canvas_name'] || 'campaign_viewer'  # Default to campaign_viewer if not specified
+                Rails.logger.info "Canvas loading requested: #{canvas_name}"
+                @suggested_canvas = canvas_name
+                Rails.logger.info "Set @suggested_canvas to: #{@suggested_canvas}"
+                results << { success: true, message: "Loading #{canvas_name}" }
+              else
+                # Execute our existing tools
+                result = execute_tool_by_name(tool_call[:name], args, progress_callback)
+                results << result
+                
+                # Check if the tool result includes a canvas to load
+                if result[:canvas] && progress_callback
+                  progress_callback.call({
+                    type: 'load_canvas',
+                    canvas: result[:canvas],
+                    canvas_data: result[:canvas_data] || result[:task_list] || {}
+                  })
+                end
+                
+                # Auto-update task progress if we have a task list
+                update_task_for_tool_completion(tool_call[:name], args, result[:success], progress_callback)
+              end
+            end
+            
+            # Preserve any streamed content from before tool execution
+            initial_message = accumulated_content
+            
+            # If no message was streamed but tools were used, provide a default message
+            if initial_message.empty? && tool_calls.any? { |tc| tc[:name] == 'load_canvas' }
+              initial_message = "I'll load the #{@suggested_canvas.gsub('_', ' ')} for you right now."
+            elsif initial_message.empty?
+              initial_message = "I've executed the requested tools."
+            end
+            
+            # For get_schema, add information about what to do next
+            if tool_calls.any? { |tc| tc[:name] == 'get_schema' } && results.any? { |r| r[:success] }
+              schema_result = results.find { |r| r[:tool_name] == 'get_schema' }
+              if schema_result && initial_message.include?("check the campaign structure")
+                initial_message += "\n\nGreat! I've retrieved the campaign structure. Now, please provide me with the following details for your new campaign:\n\n"
+                initial_message += "1. **Campaign Name**: What would you like to call this campaign?\n"
+                initial_message += "2. **Subject Line**: What subject line should we use?\n"
+                initial_message += "3. **Target Audience**: Who should receive this campaign? (You can specify a contact group or describe the recipients)\n"
+                initial_message += "4. **Email Template**: Do you have a specific template in mind, or would you like me to help create one?\n\n"
+                initial_message += "Once you provide these details, I'll create the campaign for you!"
+              end
+            end
+            
+            # If we have tool results, we need to continue the conversation
+            if results.any? && !tool_calls.any? { |tc| tc[:name] == 'load_canvas' }
+              Rails.logger.info "Tool execution complete, continuing conversation with tool results"
+              
+              # First, add the assistant's message with tool use
+              # This is required before sending tool results
+              tool_use_content = []
+              
+              # Add any text content that was accumulated
+              if accumulated_content.present?
+                tool_use_content << { text: accumulated_content }
+              end
+              
+              # Add the tool use blocks
+              tool_calls.each do |tool_call|
+                tool_use_content << {
+                  tool_use: {
+                    tool_use_id: tool_call[:id],
+                    name: tool_call[:name],
+                    input: JSON.parse(tool_call[:arguments])
+                  }
+                }
+              end
+              
+              # Add assistant message with tool use
+              conversation_messages << {
+                role: 'assistant',
+                content: tool_use_content
+              }
+              
+              # Now add tool result messages
+              tool_calls.zip(results).each do |tool_call, result|
+                # Add tool result as a user message with proper content structure
+                conversation_messages << {
+                  role: 'user', 
+                  content: [
+                    {
+                      tool_result: {
+                        tool_use_id: tool_call[:id],
+                        content: [
+                          {
+                            json: sanitize_for_bedrock(
+                              if result.is_a?(Hash)
+                                if result[:success]
+                                  # For successful results, include all relevant data
+                                  {
+                                    success: true,
+                                    message: result[:message] || "Tool executed successfully",
+                                    data: result.except(:success, :message, :canvas, :canvas_data, :task_list)
+                                  }
+                                else
+                                  # For failures, include error information
+                                  {
+                                    success: false,
+                                    error: result[:error] || "Tool execution failed",
+                                    details: result[:details] || result.except(:success, :error)
+                                  }
+                                end
+                              else
+                                # Fallback for non-hash results
+                                { success: true, result: result }
+                              end
+                            )
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              end
+              
+              # Call Bedrock again to get the final response
+              progress_callback&.call("🎯 Generating response based on results...")
+              
+              # Log the conversation for debugging
+              Rails.logger.info "Continuing conversation with #{conversation_messages.length} messages"
+              conversation_messages.each_with_index do |msg, idx|
+                Rails.logger.info "Message #{idx}: role=#{msg[:role]}, content_type=#{msg[:content].class}"
+                if msg[:content].is_a?(Array)
+                  Rails.logger.info "  Content array length: #{msg[:content].length}"
+                  msg[:content].each_with_index do |content_item, i|
+                    content_keys = content_item.keys.join(', ')
+                    Rails.logger.info "  Content[#{i}]: #{content_keys}"
+                    if content_item[:tool_use]
+                      Rails.logger.info "    Tool use: #{content_item[:tool_use][:name]}"
+                    elsif content_item[:tool_result]
+                      Rails.logger.info "    Tool result for: #{content_item[:tool_result][:tool_use_id]}"
+                    end
+                  end
+                end
+              end
+              
+              # Initialize final_message before the begin block
+              final_message = nil
+              
+              begin
+                # Use streaming for the continuation response too
+                tools = get_bedrock_tools
+                continuation_message = ""
+                
+                # Signal that we're starting to stream the continuation
+                progress_callback&.call("💬 streaming")
+                
+                continuation_tool_calls = []
+                
+                @ai_service.send_message_streaming(
+                  system_prompt,
+                  conversation_messages,
+                  max_tokens: 25000,
+                  temperature: 0.7,
+                  json_mode: false,
+                  tools: tools
+                ) do |chunk|
+                  if chunk[:type] == :content && chunk[:content]
+                    continuation_message += chunk[:content]
+                    # Stream the continuation content to the UI
+                    progress_callback&.call({
+                      type: 'content_chunk',
+                      content: chunk[:content]
+                    })
+                  elsif chunk[:type] == :tool_use_start
+                    # AI wants to use another tool in the continuation
+                    Rails.logger.info "Continuation wants to use tool: #{chunk[:tool_name]}"
+                    continuation_tool_calls << {
+                      id: chunk[:tool_id],
+                      name: chunk[:tool_name],
+                      arguments: ""
+                    }
+                    # Notify UI about tool detection
+                    progress_callback&.call({
+                      type: 'tool_detected',
+                      name: chunk[:tool_name],
+                      tool_id: chunk[:tool_id]
+                    })
+                  elsif chunk[:type] == :tool_use && continuation_tool_calls.any?
+                    # Accumulate tool arguments
+                    continuation_tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+                  elsif chunk[:type] == :complete
+                    Rails.logger.info "Continuation streaming complete: #{continuation_message.length} chars"
+                  end
+                end
+                
+                # If the AI provided a message before using continuation tools, save it
+                if continuation_message.present? && continuation_tool_calls.any?
+                  # The AI said something before using tools - this needs to be saved!
+                  progress_callback&.call({
+                    type: 'save_message',
+                    content: continuation_message,
+                    role: 'assistant'
+                  })
+                end
+                
+                # If the continuation wants to use more tools, execute them recursively
+                if continuation_tool_calls.any?
+                  Rails.logger.info "Continuation requested #{continuation_tool_calls.length} more tools"
+                  
+                  # Execute the continuation tools
+                  continuation_results = []
+                  continuation_tool_calls.each do |tool_call|
+                    Rails.logger.info "Processing continuation tool: #{tool_call[:name]} with arguments: #{tool_call[:arguments]}"
+                    
+                    # Parse arguments if they're a string
+                    parsed_args = if tool_call[:arguments].is_a?(String)
+                      begin
+                        JSON.parse(tool_call[:arguments])
+                      rescue JSON::ParserError => e
+                        Rails.logger.error "Failed to parse tool arguments: #{e.message}"
+                        {}
+                      end
+                    else
+                      tool_call[:arguments]
+                    end
+                    
+                    result = execute_tool_by_name(tool_call[:name], parsed_args)
+                    continuation_results << result
+                    
+                    # Check if the tool result includes a canvas to load
+                    if result[:canvas] && progress_callback
+                      progress_callback.call({
+                        type: 'load_canvas',
+                        canvas: result[:canvas],
+                        canvas_data: result[:canvas_data] || result[:task_list] || {}
+                      })
+                    end
+                    
+                    # Auto-update task progress if we have a task list
+                    update_task_for_tool_completion(tool_call[:name], parsed_args, result[:success], progress_callback)
+                    
+                    # Notify UI about tool detection first
+                    progress_callback&.call({
+                      type: 'tool_detected',
+                      name: tool_call[:name],
+                      tool_id: tool_call[:id]
+                    })
+                    
+                    # Then notify about tool execution
+                    progress_callback&.call({
+                      type: 'tool_start',
+                      name: tool_call[:name],
+                      arguments: parsed_args
+                    })
+                  end
+                  
+                  # Now we need to continue AGAIN with these new tool results
+                  # This creates a recursive pattern for chained tool calls
+                  
+                  # Add the assistant's message with the continuation tool use
+                  tool_use_content = []
+                  if continuation_message.present?
+                    tool_use_content << { text: continuation_message }
+                  end
+                  
+                  continuation_tool_calls.each do |tool_call|
+                    tool_use_content << {
+                      tool_use: {
+                        tool_use_id: tool_call[:id],
+                        name: tool_call[:name],
+                        input: JSON.parse(tool_call[:arguments])
+                      }
+                    }
+                  end
+                  
+                  conversation_messages << {
+                    role: 'assistant',
+                    content: tool_use_content
+                  }
+                  
+                  # Add continuation tool results
+                  continuation_tool_calls.zip(continuation_results).each do |tool_call, result|
+                    conversation_messages << {
+                      role: 'user',
+                      content: [
+                        {
+                          tool_result: {
+                            tool_use_id: tool_call[:id],
+                            content: [
+                              {
+                                json: sanitize_for_bedrock(
+                                  if result.is_a?(Hash)
+                                    if result[:success]
+                                      # For successful results, include all relevant data
+                                      {
+                                        success: true,
+                                        message: result[:message] || "Tool executed successfully",
+                                        data: result.except(:success, :message, :canvas, :canvas_data, :task_list)
+                                      }
+                                    else
+                                      # For failures, include error information
+                                      {
+                                        success: false,
+                                        error: result[:error] || "Tool execution failed",
+                                        details: result[:details] || result.except(:success, :error)
+                                      }
+                                    end
+                                  else
+                                    # Fallback for non-hash results
+                                    { success: true, result: result }
+                                  end
+                                )
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  end
+                  
+                  # Stream another continuation
+                  progress_callback&.call("💬 streaming")
+                  
+                  additional_message = ""
+                  more_tool_calls = []
+                  
+                  @ai_service.send_message_streaming(
+                    system_prompt,
+                    conversation_messages,
+                    max_tokens: 25000,
+                    temperature: 0.7,
+                    json_mode: false,
+                    tools: tools
+                  ) do |chunk|
+                    if chunk[:type] == :content && chunk[:content]
+                      additional_message += chunk[:content]
+                      progress_callback&.call({
+                        type: 'content_chunk',
+                        content: chunk[:content]
+                      })
+                    elsif chunk[:type] == :tool_use_start
+                      # AI wants even more tools!
+                      Rails.logger.info "AI wants another tool in final continuation: #{chunk[:tool_name]}"
+                      more_tool_calls << {
+                        id: chunk[:tool_id],
+                        name: chunk[:tool_name],
+                        arguments: ""
+                      }
+                    elsif chunk[:type] == :tool_use && more_tool_calls.any?
+                      more_tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+                    elsif chunk[:type] == :complete
+                      Rails.logger.info "Final continuation complete: #{additional_message.length} chars"
+                    end
+                  end
+                  
+                  # Continue tool execution in a loop until done or limit reached
+                  max_tool_iterations = 20
+                  total_tool_calls = tool_calls.length + continuation_tool_calls.length
+                  
+                  # Keep executing tools while the AI wants more and we haven't hit the limit
+                  while more_tool_calls.any? && total_tool_calls < max_tool_iterations
+                    Rails.logger.info "AI requested #{more_tool_calls.length} more tools (total: #{total_tool_calls + more_tool_calls.length})"
+                    
+                    # Execute the additional tools
+                    more_results = []
+                    more_tool_calls.each do |tool_call|
+                      Rails.logger.info "Processing additional tool: #{tool_call[:name]} with arguments: #{tool_call[:arguments]}"
+                      
+                      # Parse arguments
+                      parsed_args = if tool_call[:arguments].is_a?(String)
+                        begin
+                          JSON.parse(tool_call[:arguments])
+                        rescue JSON::ParserError => e
+                          Rails.logger.error "Failed to parse tool arguments: #{e.message}"
+                          {}
+                        end
+                      else
+                        tool_call[:arguments]
+                      end
+                      
+                      result = execute_tool_by_name(tool_call[:name], parsed_args)
+                      more_results << result
+                      
+                      # Check if the tool result includes a canvas to load
+                      if result[:canvas] && progress_callback
+                        progress_callback.call({
+                          type: 'load_canvas',
+                          canvas: result[:canvas],
+                          canvas_data: result[:canvas_data] || result[:task_list] || {}
+                        })
+                      end
+                      
+                      # Notify UI about tool detection and execution
+                      progress_callback&.call({
+                        type: 'tool_detected',
+                        name: tool_call[:name],
+                        tool_id: tool_call[:id]
+                      })
+                      progress_callback&.call({
+                        type: 'tool_start',
+                        name: tool_call[:name],
+                        arguments: parsed_args
+                      })
+                      
+                      # Auto-update task progress if we have a task list
+                      update_task_for_tool_completion(tool_call[:name], parsed_args, result[:success], progress_callback)
+                    end
+                    
+                    # Add the assistant's message with the additional tool use
+                    additional_tool_content = []
+                    if additional_message.present?
+                      additional_tool_content << { text: additional_message }
+                    end
+                    
+                    more_tool_calls.each do |tool_call|
+                      additional_tool_content << {
+                        tool_use: {
+                          tool_use_id: tool_call[:id],
+                          name: tool_call[:name],
+                          input: JSON.parse(tool_call[:arguments])
+                        }
+                      }
+                    end
+                    
+                    conversation_messages << {
+                      role: 'assistant',
+                      content: additional_tool_content
+                    }
+                    
+                    # Add tool results
+                    more_tool_calls.zip(more_results).each do |tool_call, result|
+                      conversation_messages << {
+                        role: 'user',
+                        content: [
+                          {
+                            tool_result: {
+                              tool_use_id: tool_call[:id],
+                              content: [
+                                {
+                                  json: sanitize_for_bedrock(
+                                    if result.is_a?(Hash)
+                                      if result[:success]
+                                        # For successful results, include all relevant data
+                                        {
+                                          success: true,
+                                          message: result[:message] || "Tool executed successfully",
+                                          data: result.except(:success, :message, :canvas, :canvas_data, :task_list)
+                                        }
+                                      else
+                                        # For failures, include error information
+                                        {
+                                          success: false,
+                                          error: result[:error] || "Tool execution failed",
+                                          details: result[:details] || result.except(:success, :error)
+                                        }
+                                      end
+                                    else
+                                      # Fallback for non-hash results
+                                      { success: true, result: result }
+                                    end
+                                  )
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    end
+                    
+                    # Update totals and prepare for next iteration
+                    total_tool_calls += more_tool_calls.length
+                    
+                    # Update tool_calls for the next iteration
+                    all_tool_calls = tool_calls + continuation_tool_calls + more_tool_calls
+                    
+                    # Clear for next iteration
+                    more_tool_calls = []
+                    
+                    # One more round of streaming to see if AI wants more tools
+                    progress_callback&.call("💬 streaming")
+                    
+                    last_message = ""
+                    
+                    @ai_service.send_message_streaming(
+                      system_prompt,
+                      conversation_messages,
+                      max_tokens: 25000,
+                      temperature: 0.7,
+                      json_mode: false,
+                      tools: tools
+                    ) do |chunk|
+                      if chunk[:type] == :content && chunk[:content]
+                        last_message += chunk[:content]
+                        progress_callback&.call({
+                          type: 'content_chunk',
+                          content: chunk[:content]
+                        })
+                      elsif chunk[:type] == :tool_use_start
+                        more_tool_calls << {
+                          id: chunk[:tool_id],
+                          name: chunk[:tool_name],
+                          arguments: ""
+                        }
+                      elsif chunk[:type] == :tool_use && more_tool_calls.any?
+                        more_tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+                      elsif chunk[:type] == :complete
+                        Rails.logger.info "Tool iteration complete: #{last_message.length} chars"
+                      end
+                    end
+                    
+                    # If there's a message before more tools, save it
+                    if last_message.present? && more_tool_calls.any?
+                      progress_callback&.call({
+                        type: 'save_message',
+                        content: last_message,
+                        role: 'assistant'
+                      })
+                    end
+                    
+                    # Update the additional_message with the latest
+                    additional_message = last_message if last_message.present?
+                  end # end while loop
+                  
+                  # After the loop, set the final message
+                  if total_tool_calls >= max_tool_iterations && more_tool_calls.any?
+                    Rails.logger.warn "Tool call limit reached (#{max_tool_iterations}) - AI still wants to use #{more_tool_calls.length} more tools"
+                    if additional_message.empty?
+                      additional_message = "I've executed #{total_tool_calls} tools to complete your request. The task progress is shown in the canvas above."
+                    end
+                  end
+                  
+                  # Use the last non-empty message
+                  final_message = additional_message.present? ? additional_message : continuation_message
+                else
+                  # No more tools requested in first continuation
+                  final_message = continuation_message
+                end
+                
+              rescue => e
+                Rails.logger.error "Error getting final response: #{e.message}"
+                Rails.logger.error "Bedrock API error details: #{e.class.name}"
+                # Fall back to the initial message if we have one
+                final_message = initial_message unless initial_message.empty?
+              end
+            end
+            
+            # Ensure we have a final message
+            final_message ||= initial_message.empty? ? "I've processed your request." : initial_message
+            
+            # Return with tool results
+            Rails.logger.info "Returning with @suggested_canvas: #{@suggested_canvas.inspect}"
+            return {
+              message: final_message,
+              tools_used: true,
+              tools_list: tool_calls.map { |t| t[:name] },
+              success_count: results.count { |r| r[:success] },
+              error_count: results.count { |r| !r[:success] },
+              canvas: @suggested_canvas,
+              canvas_data: @canvas_data,
+              mode: detected_mode
+            }
+          else
+            # No tools, just return the message
+            # But first check if the message is JSON that contains canvas instructions
+            if accumulated_content.strip.start_with?('{') && accumulated_content.strip.end_with?('}')
+              begin
+                parsed = JSON.parse(accumulated_content)
+                if parsed['canvas']
+                  @suggested_canvas = parsed['canvas']
+                  Rails.logger.info "Canvas found in JSON response: #{@suggested_canvas}"
+                end
+                # Use the message from the JSON if available
+                accumulated_content = parsed['message'] if parsed['message']
+              rescue JSON::ParserError
+                # Not valid JSON, use as-is
+              end
+            end
+            
+            return {
+              message: accumulated_content,
+              tools_used: false,
+              canvas: @suggested_canvas,
+              mode: detected_mode
+            }
+          end
+        end
+      end
+      
+      
+      # For builder mode or complex queries, use non-streaming for tool detection
       response = @ai_service.send_message(
         system_prompt,
         conversation_messages,
         
-        max_tokens: 4000,
+        max_tokens: 25000,
         temperature: 0.7,
         json_mode: true  # Force JSON output for tool calling
       )
@@ -329,11 +1115,24 @@ class ScoutGenericToolsService
           canvas_data: @canvas_data
         }
       else
-        # No tools needed, return original response
+        # No tools needed, extract message from response
+        # If @parsed_user_message is nil, try to extract from response
+        final_message = @parsed_user_message
+        if final_message.nil? && response.is_a?(String)
+          begin
+            parsed = JSON.parse(response)
+            final_message = parsed['message'] || response
+          rescue JSON::ParserError
+            final_message = response
+          end
+        end
+        
         return {
-          message: @parsed_user_message || response,
+          message: final_message || response,
           tools_used: false,
-          canvas: @suggested_canvas
+          canvas: @suggested_canvas,
+          canvas_data: @canvas_data,
+          mode: detected_mode
         }
       end
       
@@ -360,24 +1159,134 @@ class ScoutGenericToolsService
 
   private
 
-  def build_system_prompt_with_dynamic_schema
+  def get_bedrock_tools
+    # Define tools in Bedrock format
+    tools = []
+    
+    # Add canvas loading tool
+    tools << {
+      name: "load_canvas",
+      description: "Load a specific canvas view in the Scout interface",
+      parameters: {
+        type: "object",
+        properties: {
+          canvas_name: {
+            type: "string",
+            description: "The name of the canvas to load",
+            enum: ["campaign_viewer", "analytics_dashboard", "landing_page_viewer", "contact_viewer", "email_template_viewer", "task_progress"]
+          }
+        },
+        required: ["canvas_name"]
+      }
+    }
+    
+    # Add our existing tools
+    TOOLS.each do |tool|
+      tools << {
+        name: tool[:name],
+        description: tool[:description],
+        parameters: tool[:parameters]
+      }
+    end
+    
+    tools
+  end
+
+  def build_system_prompt_with_dynamic_schema(context_type = nil, mode = nil)
     available_models = ScoutDataRegistry.available_object_types
     
     # Dynamic AI identity based on provider
-    ai_identity = case AI_PROVIDER.downcase
-    when 'grok'
+    ai_identity = case Rails.application.config.ai_service
+    when :grok
       "You are Scout, the AI marketing assistant powered by Grok. You have access to a simple, powerful toolset for accessing and creating marketing data."
-    when 'claude'
+    when :claude
       "You are Scout, the AI marketing assistant powered by Claude. You have access to a simple, powerful toolset for accessing and creating marketing data."
-    when 'openai'
+    when :openai
       "You are Scout, the AI marketing assistant powered by OpenAI GPT-5. You have access to a simple, powerful toolset for accessing and creating marketing data."
+    when :bedrock
+      "You are Scout, the AI marketing assistant powered by AWS Bedrock. You have access to a simple, powerful toolset for accessing and creating marketing data."
     else
       "You are Scout, the AI marketing assistant. You have access to a simple, powerful toolset for accessing and creating marketing data."
     end
     
+    # Add context-specific focus based on what the user is working with
+    context_focus = case context_type
+    when 'email_template', 'email_template_editor', 'email_template_viewer'
+      <<~CONTEXT
+      
+      **CURRENT FOCUS: EMAIL TEMPLATES**
+      The user is working with email templates. Prioritize helping with:
+      - Creating engaging email content with proper personalization using {{variables}}
+      - Improving subject lines for better open rates
+      - Structuring email content for clarity and conversions
+      - Testing and previewing templates
+      - Linking templates to campaigns
+      
+      Remember: ALWAYS use {{first_name}}, {{last_name}}, {{email}}, {{full_name}} for variables, never [brackets].
+      CONTEXT
+    when 'landing_page', 'landing_page_editor', 'landing_page_viewer', 'landing_page_generator'
+      <<~CONTEXT
+      
+      **CURRENT FOCUS: LANDING PAGES**
+      The user is working with landing pages. Prioritize helping with:
+      - Creating high-converting landing pages with clear CTAs
+      - Optimizing page layout and design for conversions
+      - A/B testing suggestions
+      - Form optimization and lead capture
+      - Mobile responsiveness
+      CONTEXT
+    when 'campaign', 'campaign_viewer'
+      <<~CONTEXT
+      
+      **CURRENT FOCUS: EMAIL CAMPAIGNS**
+      The user is working with email campaigns. Prioritize helping with:
+      - Campaign strategy and timing
+      - Selecting the right audience segments
+      - Analyzing campaign performance metrics
+      - Improving open and click rates
+      - Linking appropriate email templates
+      CONTEXT
+    when 'contact', 'contact_viewer', 'contact_generator'
+      <<~CONTEXT
+      
+      **CURRENT FOCUS: CONTACTS & AUDIENCES**
+      The user is working with contacts. Prioritize helping with:
+      - Organizing and segmenting contact lists
+      - Importing and managing contact data
+      - Creating targeted contact groups
+      - Data hygiene and deduplication
+      - GDPR compliance and opt-out management
+      CONTEXT
+    when 'analytics', 'analytics_dashboard'
+      <<~CONTEXT
+      
+      **CURRENT FOCUS: ANALYTICS & REPORTING**
+      The user is viewing analytics. Prioritize helping with:
+      - Interpreting campaign performance data
+      - Identifying trends and insights
+      - Recommending optimization strategies
+      - Comparing campaign effectiveness
+      - ROI calculations and reporting
+      CONTEXT
+    else
+      ""
+    end
+    
+    # Determine if we should be in advisor mode based on mode parameter or context
+    mode_prompt = case mode
+    when 'advisor'
+      build_advisor_prompt
+    when 'builder'
+      build_builder_prompt
+    else
+      # Default to builder mode
+      build_builder_prompt
+    end
+    
     <<~PROMPT
       #{ai_identity}
-
+      #{context_focus}
+      #{mode_prompt}
       USER CONTEXT:
       - User: #{@user.first_name} #{@user.last_name}
       - Entity: #{@entity.name}
@@ -399,7 +1308,16 @@ class ScoutGenericToolsService
       INTELLIGENT CANVAS:
       You can load data viewers and interactive canvases to display information visually.
       Available canvases: landing_page_viewer, landing_page_generator, contact_viewer, contact_generator,
-      campaign_viewer, analytics_dashboard
+      campaign_viewer, analytics_dashboard, email_template_viewer, email_template_editor, dynamic_canvas, task_progress
+      
+      DYNAMIC VISUALIZATIONS:
+      When users ask for analysis, comparisons, or custom reports, use create_dynamic_visualization to build
+      custom HTML visualizations. This is perfect for:
+      - Year-over-year comparisons
+      - Custom metric dashboards
+      - Campaign performance analysis
+      - ROI calculations and reports
+      - Any custom data visualization
       
       When users ask to "show", "view", or "see" data, suggest loading the appropriate canvas.
       Example responses with canvas suggestions:
@@ -469,6 +1387,17 @@ class ScoutGenericToolsService
       - "create contact John Doe john@doe.com" → create_object("contacts", {email: "john@doe.com", first_name: "John", last_name: "Doe"})
       - "add contact for Jane Smith jane@smith.com" → create_object("contacts", {email: "jane@smith.com", first_name: "Jane", last_name: "Smith"})
 
+      **EMAIL TEMPLATE VARIABLES - CRITICAL:**
+      When creating email templates, ALWAYS use double curly braces {{}} for variable substitution:
+      - Use {{first_name}} NOT [first_name]
+      - Use {{last_name}} NOT [last_name]
+      - Use {{email}} NOT [email]
+      - Use {{full_name}} NOT [full_name]
+      
+      Example: "Hello {{first_name}}, thank you for your interest in {{company_name}}."
+      
+      NEVER use square brackets [] for variables - the system only recognizes double curly braces {{}}.
+
       **SCHEMA DISCOVERY - CRITICAL FOR SUCCESS:**
       
       ALWAYS use get_schema(object_type) FIRST when:
@@ -501,41 +1430,19 @@ class ScoutGenericToolsService
       - "landing_page_viewer" - to show existing landing pages
       - "landing_page_generator" - to create new landing pages
       - "campaign_viewer" - to show email campaigns
+      - "campaign_editor" - to edit/create campaigns
       - "contact_viewer" - to show contacts
       - "contact_generator" - to create new contacts
 
-      **CRITICAL RESPONSE FORMAT:**
-      You MUST respond with valid JSON in this exact format:
+**CRITICAL CANVAS LOADING INSTRUCTIONS:**
+When the user explicitly asks to "load", "show", "open" or "view" a specific canvas:
+- YOU MUST USE THE load_canvas TOOL - do not respond with JSON
+- The load_canvas tool takes a canvas_name parameter
+- Available canvases: campaign_viewer, campaign_editor, analytics_dashboard, landing_page_viewer, contact_viewer, email_template_viewer, task_progress
+- Example: User says "load the campaign viewer" → Use tool: load_canvas with canvas_name: "campaign_viewer"
 
-      {
-        "message": "Your conversational response to the user",
-        "tool_calls": [
-          {
-            "name": "get_schema", 
-            "arguments": {"object_type": "campaigns"}
-          },
-          {
-            "name": "get_data",
-            "arguments": {"object_type": "campaigns", "filters": {"status": "sent"}, "options": {"limit": 20}}
-          }
-        ],
-        "canvas": "analytics_dashboard"
-      }
+      #{mode == 'advisor' ? advisor_response_format : builder_response_format}
 
-      OR if no tools are needed:
-
-      {
-        "message": "Your conversational response to the user",
-        "tool_calls": [],
-        "canvas": "contact_viewer"
-      }
-
-      OR for simple conversation (no canvas needed):
-
-      {
-        "message": "Your conversational response to the user",
-        "tool_calls": []
-      }
 
       **CRITICAL EXAMPLES FOR "analyze my campaigns":**
 
@@ -569,15 +1476,19 @@ class ScoutGenericToolsService
       10. **FORMAT RESPONSES IN MARKDOWN** for better readability:
           - Use ## headers for main sections
           - Use ### for subsections  
-          - Use **bold** for important metrics
+          - Use **bold** for important metrics and emphasis
           - Use bullet points (- ) for lists
           - Use numbered lists (1. ) for recommendations
           - Use > blockquotes for key insights
           - Use `code` formatting for technical terms
           - Keep paragraphs short and scannable
+          - NEVER use HTML tags like <strong>, <em>, <ul>, <li>, etc.
+          - ALWAYS use Markdown syntax: **bold**, *italic*, - bullet, etc.
 
       **MARKDOWN FORMATTING EXAMPLE:**
       "## 📊 Campaign Analysis\\n\\n**Overall Performance:**\\n- 6 total campaigns\\n- 3 completed, 1 in progress, 2 drafts\\n\\n### 🎯 Top Performer\\n**\\"new test\\"** campaign:\\n- **50% click rate** (excellent!)\\n- 100% delivery rate\\n- 0 unsubscribes\\n\\n### ⚠️ Areas for Improvement\\n1. **Open rates at 0%** - check spam folders\\n2. **Subject line optimization** needed\\n3. **A/B testing** recommended"
+      
+      **NEVER use HTML formatting. ALWAYS use Markdown.**
 
       Be conversational in your message but use tools intelligently behind the scenes.
     PROMPT
@@ -722,12 +1633,8 @@ class ScoutGenericToolsService
       return match[1].strip
     end
     
-    # Fallback: Return a safe portion of the response
-    if response.length > 50
-      return response[0..200] + "..." 
-    else
+    # Fallback: Return the full response (it's likely plain text from advisor mode)
       return response
-    end
   end
   
   def find_json_string_end(str, start_pos)
@@ -761,6 +1668,12 @@ class ScoutGenericToolsService
         execute_update_landing_page_content(tool_call[:arguments])
       when 'revert_landing_page_to_version'
         execute_revert_landing_page_to_version(tool_call[:arguments])
+      when 'link_template_to_campaign'
+        execute_link_template_to_campaign(tool_call[:arguments])
+      when 'create_dynamic_visualization'
+        execute_create_dynamic_visualization(tool_call[:arguments])
+      when 'manage_task_list'
+        execute_manage_task_list(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -774,6 +1687,34 @@ class ScoutGenericToolsService
     end
     
     results
+  end
+
+  def execute_tool_by_name(tool_name, args, progress_callback = nil)
+    # Map tool name to execution method
+    case tool_name
+    when 'get_data'
+      execute_get_data(args)
+    when 'create_object'
+      execute_create_object(args)
+    when 'get_schema'
+      execute_get_schema(args)
+    when 'generate_ai_landing_page'
+      execute_generate_ai_landing_page(args)
+    when 'update_landing_page_status'
+      execute_update_landing_page_status(args)
+    when 'update_landing_page_content'
+      execute_update_landing_page_content(args)
+    when 'revert_landing_page_to_version'
+      execute_revert_landing_page_to_version(args)
+    when 'link_template_to_campaign'
+      execute_link_template_to_campaign(args)
+    when 'create_dynamic_visualization'
+      execute_create_dynamic_visualization(args)
+    when 'manage_task_list'
+      execute_manage_task_list(args)
+    else
+      { success: false, error: "Unknown tool: #{tool_name}" }
+    end
   end
 
   def execute_tools_with_progress(tool_calls, progress_callback = nil)
@@ -799,6 +1740,20 @@ class ScoutGenericToolsService
         progress_callback&.call("✨ Updating landing page content...")
       when 'revert_landing_page_to_version'
         progress_callback&.call("⏪ Reverting landing page to previous version...")
+      when 'link_template_to_campaign'
+        progress_callback&.call("🔗 Linking email template to campaign...")
+      when 'create_dynamic_visualization'
+        progress_callback&.call("📊 Creating custom visualization...")
+      when 'manage_task_list'
+        action = tool_call[:arguments]['action']
+        case action
+        when 'create'
+          progress_callback&.call("📋 Creating task list...")
+        when 'complete_task'
+          progress_callback&.call("✅ Completing task...")
+        else
+          progress_callback&.call("📝 Updating task list...")
+        end
       end
       
       result = case tool_call[:name]
@@ -816,6 +1771,12 @@ class ScoutGenericToolsService
         execute_update_landing_page_content(tool_call[:arguments])
       when 'revert_landing_page_to_version'
         execute_revert_landing_page_to_version(tool_call[:arguments])
+      when 'link_template_to_campaign'
+        execute_link_template_to_campaign(tool_call[:arguments])
+      when 'create_dynamic_visualization'
+        execute_create_dynamic_visualization(tool_call[:arguments])
+      when 'manage_task_list'
+        execute_manage_task_list(tool_call[:arguments])
       else
         { success: false, error: "Unknown tool: #{tool_call[:name]}" }
       end
@@ -837,6 +1798,16 @@ class ScoutGenericToolsService
           progress_callback&.call("✅ Found #{count} records")
         when 'create_object'
           progress_callback&.call("✅ Successfully created #{tool_call[:arguments]['object_type']}")
+        when 'manage_task_list'
+          action = tool_call[:arguments]['action']
+          case action
+          when 'create'
+            progress_callback&.call("✅ Task list created")
+          when 'complete_task'
+            progress_callback&.call("✅ Task completed")
+          else
+            progress_callback&.call("✅ Task list updated")
+          end
         end
       else
         progress_callback&.call("❌ Tool execution failed: #{result[:error]}")
@@ -1003,7 +1974,7 @@ class ScoutGenericToolsService
       result[:lead] = object.lead
       result[:status] = object.status
     end
-
+    
     result
   end
 
@@ -1068,7 +2039,14 @@ class ScoutGenericToolsService
       5. Suggest relevant next steps based on the actual results
       #{has_metrics?(tool_results) ? "6. ANALYZE THE SPECIFIC METRICS provided in the data above\n      7. Provide actionable insights based on the real performance numbers" : "6. Focus on confirming the action was completed successfully"}
 
-      Provide your updated response as plain text (not JSON):
+      IMPORTANT: Format your response using Markdown for better readability:
+      - Use **bold** for emphasis (e.g., **50% open rate**)
+      - Use bullet points (-) for lists
+      - Use ### for section headers
+      - Do NOT use HTML tags like <strong> or <em>
+      - Replace newlines with \\n in your response
+
+      Provide your updated response in Markdown format (not JSON):
     PROMPT
     
     # Log the complete prompt being sent to Claude
@@ -1109,6 +2087,10 @@ class ScoutGenericToolsService
           formatted << format_landing_page_generation_results(result[:result])
         when 'update_landing_page_status'
           formatted << format_landing_page_status_results(result[:result])
+        when 'link_template_to_campaign'
+          formatted << result[:result][:message]
+        when 'manage_task_list'
+          formatted << format_task_list_results(result[:result])
         else
           # Generic success format for other tools
           formatted << format_generic_tool_success(result[:tool_name], result[:result])
@@ -1358,6 +2340,27 @@ class ScoutGenericToolsService
     end
   end
 
+  def format_task_list_results(result)
+    return result[:error] if result[:error]
+    
+    if result[:task_list]
+      task_list = result[:task_list]
+      tasks = task_list[:tasks]
+      
+      if result[:progress]
+        "#{result[:message]}\n#{result[:progress]}"
+      elsif tasks && tasks.any?
+        completed = tasks.count { |t| t[:status] == 'completed' }
+        total = tasks.size
+        "#{result[:message]} (#{completed}/#{total} tasks)"
+      else
+        result[:message]
+      end
+    else
+      result[:message] || "Task list operation completed"
+    end
+  end
+
   def fix_field_names(filters, object_type)
     return filters unless filters.is_a?(Hash)
     
@@ -1454,7 +2457,7 @@ class ScoutGenericToolsService
   end
 
   def format_conversation_for_ai(conversation_history, user_message)
-    # Format conversation messages for AI consumption
+    # Format conversation messages for AI consumption (converse API format)
     messages = []
 
     # Add conversation history (limit to recent messages to avoid token limits)
@@ -1465,15 +2468,30 @@ class ScoutGenericToolsService
       content = msg[:content]
       
       if content.present?
-        messages << { role: role, content: content }
+        # Ensure content is always an array for converse API
+        content_array = if content.is_a?(String)
+          [{ text: content }]
+        elsif content.is_a?(Array)
+          # If it's already an array, extract the text from it
+          # This handles cases where content might be [{ text: "..." }] already
+          if content.first.is_a?(Hash) && content.first[:text]
+            [{ text: content.first[:text] }]
+          else
+            [{ text: content.to_s }]
+          end
+        else
+          [{ text: content.to_s }]
+        end
+        
+        messages << { role: role, content: content_array }
       end
     end
     
     # Add current message
-    messages << { role: 'user', content: user_message }
+    messages << { role: 'user', content: [{ text: user_message }] }
     
     Rails.logger.info "Formatted conversation: #{messages.length} messages total"
-    Rails.logger.info "Messages: #{messages.map { |m| "#{m[:role]}: #{m[:content][0..50]}..." }.join(' | ')}"
+    Rails.logger.info "Messages: #{messages.map { |m| "#{m[:role]}: #{m[:content].first[:text][0..50] rescue m[:content].to_s[0..50]}..." }.join(' | ')}"
     
     messages
   end
@@ -1803,5 +2821,700 @@ class ScoutGenericToolsService
     Rails.logger.info "Enhanced message: '#{user_message}' → '#{enhanced_message}#{canvas_context}'"
     
     enhanced_message + canvas_context
+  end
+
+  def requires_tools?(message)
+    # Keywords that typically require tool usage
+    tool_patterns = [
+      /create|make|build|add|generate/i,
+      /show\s+me|show\s+my|display|view/i,  # "show me my campaigns"
+      /list.*all|get.*all/i,
+      /update|change|modify|edit/i,
+      /delete|remove/i,
+      /link|connect|attach/i,
+      /analyze.*campaigns|analyze.*data|compare.*campaigns/i,
+      /my\s+(campaigns|contacts|landing\s+pages|emails)/i  # "my campaigns", "my contacts"
+    ]
+    
+    tool_patterns.any? { |pattern| message.match?(pattern) }
+  end
+
+  def detect_user_intent(message)
+    # Keywords that suggest advisory mode
+    advisory_patterns = [
+      /when\s+(is|are|should)/i,
+      /what\s+(is|are|should)/i,
+      /best\s+(day|time|practice)/i,
+      /should\s+i/i,
+      /what\s+do\s+you\s+think/i,
+      /how\s+can\s+i\s+improve/i,
+      /what.*recommend/i,
+      /any\s+suggestions/i,
+      /best\s+practice/i,
+      /advice\s+on/i,
+      /help\s+me\s+understand/i,
+      /analyze/i,
+      /strategy/i,
+      /tips\s+for/i,
+      /what\s+works\s+best/i,
+      /is\s+it\s+better\s+to/i,
+      /pros\s+and\s+cons/i,
+      /compare/i,
+      /why\s+is/i,
+      /explain/i,
+      /hello/i  # Greetings are usually advisory
+    ]
+    
+    # Keywords that suggest builder mode - be more specific
+    builder_patterns = [
+      /create\s+.*campaign/i,
+      /create\s+.*email/i,
+      /create\s+a\s+new/i,
+      /create.*for\s+me/i,
+      /make\s+.*template/i,
+      /build\s+.*page/i,
+      /add\s+.*contact/i,
+      /update\s+.*campaign/i,
+      /change\s+.*template/i,
+      /delete/i,
+      /remove/i,
+      /link.*to/i,
+      /set\s+up/i,
+      /generate\s+.*landing/i,
+      /send\s+now|send\s+immediately|send\s+campaign/i,  # Be specific about "send"
+      /publish/i,
+      /new\s+email\s+campaign/i,
+      /new\s+campaign/i
+    ]
+    
+    # Check for advisory patterns first (since they're often questions)
+    advisory_score = advisory_patterns.count { |pattern| message.match?(pattern) }
+    builder_score = builder_patterns.count { |pattern| message.match?(pattern) }
+    
+    # Questions are almost always advisory
+    advisory_score += 2 if message.strip.end_with?('?')
+    
+    Rails.logger.info "Intent detection - Message: '#{message}', Advisory: #{advisory_score}, Builder: #{builder_score}"
+    
+    advisory_score > builder_score ? 'advisor' : 'builder'
+  end
+
+  def build_advisor_prompt
+    <<~ADVISOR
+      
+      **MODE: STRATEGIC ADVISOR**
+      
+      You are operating in ADVISOR MODE. Your role is to:
+      - Provide strategic guidance and recommendations
+      - Analyze data and identify opportunities
+      - Share best practices and industry insights
+      - Help users understand their metrics
+      - Suggest improvements and optimizations
+      - Explain concepts and strategies
+      
+      ADVISORY GUIDELINES:
+      1. Focus on WHY and HOW rather than just WHAT
+      2. Provide context and reasoning for recommendations
+      3. Use data to support your insights
+      4. Suggest A/B testing opportunities
+      5. Share industry benchmarks when relevant
+      6. Be consultative, not directive
+      
+      When analyzing data:
+      - Look for trends and patterns
+      - Identify areas for improvement
+      - Celebrate successes
+      - Provide actionable next steps
+      
+      RESPONSE FORMAT:
+      When responding without tools, provide conversational, natural language responses.
+      Use markdown formatting for structure (bold, lists, etc).
+      Be friendly and personable in your communication.
+      
+      USE DYNAMIC VISUALIZATIONS:
+      When providing analysis or comparisons, use create_dynamic_visualization to create
+      custom HTML dashboards that visualize the insights. Include:
+      - Metric cards with key numbers
+      - Comparison tables
+      - Insights and recommendations boxes
+      - Visual indicators (up/down arrows, colors)
+      
+      Still use tools to GET data, but focus on ANALYZING and ADVISING rather than CREATING.
+    ADVISOR
+  end
+
+  def build_builder_prompt
+    <<~BUILDER
+      
+      **MODE: ACTION BUILDER**
+      
+      You are operating in BUILDER MODE. Your role is to:
+      - Take immediate action on user requests
+      - Create, update, and manage marketing assets
+      - Execute tasks efficiently
+      - Use tools proactively
+      
+      🚨 CRITICAL FIRST STEP: If your task needs 2+ tools, CREATE A TASK LIST FIRST!
+      This ensures you plan properly and don't skip steps like schema checks.
+      
+      BUILDER GUIDELINES:
+      1. Be action-oriented and efficient
+      2. Use tools immediately when appropriate
+      3. ALWAYS complete ALL requested actions - don't just say what you'll do, actually do it
+      4. If the user asks for multiple things (like create AND link), execute ALL the necessary tools
+      5. Confirm actions taken
+      6. Suggest next steps after completing tasks
+      7. If a tool returns requires_confirmation: true, explain what would happen and ask the user to confirm
+      8. Never proceed with destructive actions (replacements, deletions) without explicit user confirmation
+      
+      IMPORTANT: When given a multi-step task:
+      - Break it down into individual steps
+      - Execute each step completely
+      - Don't stop until all steps are done
+      - For example: "create a campaign and link a template" requires:
+        1. create_object to create the campaign
+        2. get_data to find the template (if needed)
+        3. link_template_to_campaign to connect them
+      
+      CRITICAL: After getting data (like template IDs), ALWAYS follow through with the action (like linking).
+      Don't just say "Now let me..." - actually DO IT with the appropriate tool!
+      
+      TASK MANAGEMENT - MANDATORY FOR MULTI-TOOL OPERATIONS:
+      You MUST use the manage_task_list tool for ANY operation requiring 2 or more tools:
+      1. ALWAYS start by creating a task list with ALL planned steps
+      2. Include schema checks as explicit steps (don't assume you know the schema)
+      3. Mark tasks as in_progress when you start them
+      4. Mark tasks as completed when done
+      5. Add new tasks if you discover additional steps needed
+      
+      REQUIRED task list usage:
+      - ANY create operation (always needs: get_schema → create_object)
+      - ANY operation with "and" (e.g., "create and link" needs 3+ steps)
+      - Looking up data before actions (get_data → action)
+      - Multi-object operations
+      - ANY request that you think needs 2+ tools
+      
+      Example: "Create a campaign" requires:
+      1. Get campaign schema
+      2. Create campaign
+      3. Show result/next steps
+    BUILDER
+  end
+  
+  def advisor_response_format
+    <<~FORMAT
+      **RESPONSE GUIDELINES:**
+      - Respond naturally in conversational language using markdown formatting
+      - Use tools when needed to fetch data or perform actions
+      - When asked to load a canvas view, use the load_canvas tool
+      - Focus on analysis, insights, and recommendations
+      
+      **AVAILABLE TOOLS:**
+      You have access to tools for:
+      - Loading canvas views (load_canvas) - USE THIS TOOL when asked to open/load/show a canvas
+      - Fetching and analyzing data (get_data, get_schema)
+      - Creating visualizations (create_dynamic_visualization)
+      - Managing marketing assets (various creation and update tools)
+      - Task management (manage_task_list) for complex multi-step operations
+      
+      **TASK MANAGEMENT - REQUIRED FOR MULTI-TOOL ANALYSES:**
+      You MUST use the manage_task_list tool for ANY analysis requiring 2+ tools:
+      - Getting data from multiple sources
+      - Fetching data then creating visualizations
+      - Any analysis with multiple steps
+      - Performance reviews, audits, comparisons
+      
+      Example: "Analyze my campaigns" requires task list:
+      1. Get campaign schema (understand fields)
+      2. Fetch campaign data
+      3. Analyze metrics
+      4. Create visualization
+      5. Provide recommendations
+      
+      ALWAYS plan your analysis steps upfront with a task list!
+      
+      IMPORTANT: When the user asks to load/open/show a canvas viewer, you MUST use the load_canvas tool.
+      Do NOT respond with JSON text. Use the actual tool calling mechanism.
+      
+      The system will handle tool calling automatically - just focus on helping the user.
+    FORMAT
+  end
+  
+  def builder_response_format
+    <<~FORMAT
+      **RESPONSE GUIDELINES:**
+      - Respond naturally in conversational language using markdown formatting
+      - Take immediate action using tools when appropriate
+      - When asked to load a canvas view, use the load_canvas tool
+      - Confirm actions taken and suggest next steps
+      
+      **AVAILABLE TOOLS:**
+      You have access to tools for:
+      - Loading canvas views (load_canvas)
+      - Creating and managing campaigns, contacts, landing pages, etc.
+      - Fetching and displaying data
+      - All marketing automation tasks
+      
+      The system will handle tool calling automatically - just focus on helping the user.
+    FORMAT
+  end
+
+  def execute_link_template_to_campaign(args)
+    begin
+      campaign_id = args['campaign_id']
+      template_id = args['template_id']
+      
+      # Find the campaign
+      campaign = @entity.campaigns.find_by(id: campaign_id)
+      return { success: false, error: "Campaign not found with ID: #{campaign_id}" } unless campaign
+      
+      # Find the template
+      template = @entity.email_templates.find_by(id: template_id)
+      return { success: false, error: "Email template not found with ID: #{template_id}" } unless template
+      
+      # Check if campaign already has a template
+      if campaign.email_template_id.present? && campaign.email_template_id != template.id
+        existing_template = campaign.email_template
+        return {
+          success: false,
+          error: "Campaign '#{campaign.name}' already has a template linked: '#{existing_template.name}'",
+          requires_confirmation: true,
+          confirmation_type: 'replace_template',
+          data: {
+            campaign_id: campaign.id,
+            campaign_name: campaign.name,
+            existing_template_id: existing_template.id,
+            existing_template_name: existing_template.name,
+            new_template_id: template.id,
+            new_template_name: template.name
+          },
+          message: "⚠️ This campaign already has a template. Would you like to replace '#{existing_template.name}' with '#{template.name}'?"
+        }
+      end
+      
+      # Link the template to the campaign
+      campaign.update!(email_template_id: template.id)
+      
+      {
+        success: true,
+        object_id: campaign.id,
+        object_type: 'campaigns',
+        data: {
+          campaign_id: campaign.id,
+          campaign_name: campaign.name,
+          template_id: template.id,
+          template_name: template.name,
+          template_subject: template.subject
+        },
+        message: "✅ Successfully linked template '#{template.name}' to campaign '#{campaign.name}'"
+      }
+    rescue => e
+      Rails.logger.error "Error linking template to campaign: #{e.message}"
+      { success: false, error: e.message }
+    end
+  end
+
+  def sanitize_for_bedrock(data)
+    case data
+    when Hash
+      data.transform_values { |v| sanitize_for_bedrock(v) }
+    when Array
+      data.map { |item| sanitize_for_bedrock(item) }
+    when ActiveSupport::TimeWithZone, Time, DateTime
+      data.iso8601
+    when Date
+      data.to_s
+    when ActiveRecord::Base
+      # Convert ActiveRecord objects to a hash of their attributes
+      sanitize_for_bedrock(data.attributes)
+    else
+      data
+    end
+  end
+
+  def update_task_for_tool_completion(tool_name, args, success, progress_callback)
+    # Check if we have an active task list
+    entity_id = @entity&.id
+    session_id = @session_id || SecureRandom.uuid
+    cache_key = "scout_task_list_#{entity_id}_#{session_id}"
+    
+    task_list = Rails.cache.read(cache_key)
+    return unless task_list && task_list[:tasks]
+    
+    Rails.logger.info "🔍 Checking task update for tool: #{tool_name}, args: #{args.inspect}"
+    Rails.logger.info "📋 Current tasks in list: #{task_list[:tasks].map { |t| "#{t['id'] || t[:id]}: #{t['description'] || t[:description]} (#{t['status'] || t[:status]})" }.join(', ')}"
+    
+    # Find matching task based on tool name and context
+    task = nil
+    
+    case tool_name
+    when 'get_schema'
+      # Match tasks like "Get campaign schema", "Get campaigns schema"
+      object_type = args['object_type']
+      task = task_list[:tasks].find do |t|
+        desc = (t['description'] || t[:description] || '').downcase
+        status = t['status'] || t[:status]
+        status == 'pending' && 
+        (desc.include?('get') || desc.include?('fetch') || desc.include?('retrieve')) && 
+        desc.include?('schema') &&
+        (desc.include?(object_type.downcase) || desc.include?(object_type.singularize.downcase) || desc.include?(object_type.pluralize.downcase))
+      end
+      
+    when 'create_object'
+      # Match tasks like "Create new campaign 'name'"
+      object_type = args['object_type']
+      object_name = args['name'] || args['title'] || ''
+      task = task_list[:tasks].find do |t|
+        desc = (t['description'] || t[:description] || '').downcase
+        status = t['status'] || t[:status]
+        status == 'pending' && 
+        desc.include?('create') && 
+        (desc.include?(object_type.downcase) || desc.include?(object_type.singularize.downcase)) &&
+        (object_name.empty? || desc.include?(object_name.downcase))
+      end
+      
+    when 'get_data'
+      # Match tasks like "Find most recent email template", "Find the most recent template"
+      object_type = args['object_type']
+      task = task_list[:tasks].find do |t|
+        desc = (t['description'] || t[:description] || '').downcase
+        status = t['status'] || t[:status]
+        status == 'pending' && 
+        (desc.include?('find') || desc.include?('get') || desc.include?('fetch') || desc.include?('retrieve')) &&
+        (desc.include?(object_type.downcase) || desc.include?(object_type.singularize.downcase) || desc.include?(object_type.pluralize.downcase)) &&
+        (desc.include?('recent') || desc.include?('latest') || desc.include?('template'))
+      end
+      
+    when 'link_template_to_campaign'
+      # Match tasks like "Link template to campaign", "Link the template to the new campaign"
+      task = task_list[:tasks].find do |t|
+        desc = (t['description'] || t[:description] || '').downcase
+        status = t['status'] || t[:status]
+        status == 'pending' && 
+        desc.include?('link') && 
+        desc.include?('template') &&
+        desc.include?('campaign')
+      end
+    end
+    
+    if task
+      task_desc = task['description'] || task[:description]
+      task_id = task['id'] || task[:id]
+      Rails.logger.info "✅ Found matching task: #{task_desc} (ID: #{task_id})"
+    else
+      Rails.logger.info "❌ No matching task found for tool: #{tool_name}"
+      Rails.logger.info "   Available tasks: #{task_list[:tasks].map { |t| "#{t['description'] || t[:description]} (#{t['status'] || t[:status]})" }.join(', ')}"
+      return
+    end
+    
+    # Update task status
+    if success
+      result = execute_manage_task_list({
+        'action' => 'complete_task',
+        'task_id' => task['id'] || task[:id],
+        'details' => "Completed successfully"
+      })
+      
+      # If we have updated canvas data and a callback, trigger canvas reload
+      if result[:canvas] == 'task_progress' && progress_callback
+        updated_list = Rails.cache.read(cache_key)
+        if updated_list
+          progress_callback.call({
+            type: 'load_canvas',
+            canvas: 'task_progress',
+            canvas_data: updated_list
+          })
+        end
+      end
+    else
+      result = execute_manage_task_list({
+        'action' => 'fail_task',
+        'task_id' => task['id'] || task[:id],
+        'details' => "Failed to complete"
+      })
+      
+      # If we have updated canvas data and a callback, trigger canvas reload
+      if result[:canvas] == 'task_progress' && progress_callback
+        updated_list = Rails.cache.read(cache_key)
+        if updated_list
+          progress_callback.call({
+            type: 'load_canvas',
+            canvas: 'task_progress',
+            canvas_data: updated_list
+          })
+        end
+      end
+    end
+  end
+
+  def execute_create_dynamic_visualization(args)
+    begin
+      title = args['title']
+      subtitle = args['subtitle']
+      html_content = args['html_content']
+      
+      # Store the visualization data for the canvas
+      @suggested_canvas = 'dynamic_canvas'
+      @canvas_data = {
+        'title' => title,
+        'subtitle' => subtitle,
+        'html_content' => html_content
+      }
+      
+      {
+        success: true,
+        message: "📊 Created custom visualization: #{title}",
+        canvas_type: 'dynamic_canvas',
+        canvas_data: @canvas_data
+      }
+    rescue => e
+      Rails.logger.error "Error creating dynamic visualization: #{e.message}"
+      { success: false, error: e.message }
+    end
+  end
+
+  def execute_manage_task_list(args)
+    action = args['action']
+    entity_id = @entity&.id
+    session_id = @session_id || SecureRandom.uuid
+    
+    # Use Rails cache to store task lists per session
+    cache_key = "scout_task_list_#{entity_id}_#{session_id}"
+    
+    case action
+    when 'create'
+      # Create a new task list
+      task_list = {
+        title: args['title'],
+        tasks: args['tasks'] || [],
+        created_at: Time.current,
+        updated_at: Time.current
+      }
+      Rails.cache.write(cache_key, task_list, expires_in: 24.hours)
+      
+      # Store for canvas display
+      @suggested_canvas = 'task_progress'
+      @canvas_data = task_list
+      
+      # Canvas will be loaded via the return value
+      # The streaming handler will pick up the canvas from the result
+      
+      # Immediately load the canvas if we have a callback
+      if @progress_callback
+        @progress_callback.call({
+          type: 'load_canvas',
+          canvas: 'task_progress',
+          canvas_data: task_list
+        })
+      end
+      
+      {
+        success: true,
+        message: "📋 Created task list: #{args['title']}",
+        task_list: task_list,
+        canvas: 'task_progress'
+      }
+      
+    when 'update'
+      # Update entire task list
+      existing_list = Rails.cache.read(cache_key)
+      if existing_list
+        existing_list[:tasks] = args['tasks']
+        existing_list[:updated_at] = Time.current
+        Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+        
+        @suggested_canvas = 'task_progress'
+        @canvas_data = existing_list
+        
+        {
+          success: true,
+          message: "📝 Task list updated",
+          task_list: existing_list,
+          canvas: 'task_progress'
+        }
+      else
+        {
+          success: false,
+          error: "No task list found to update"
+        }
+      end
+      
+    when 'add_task'
+      # Add a single task
+      existing_list = Rails.cache.read(cache_key)
+      if existing_list
+        new_task = {
+          id: args['task_id'] || SecureRandom.hex(4),
+          description: args['task_description'],
+          status: 'pending',
+          details: nil
+        }
+        existing_list[:tasks] << new_task
+        existing_list[:updated_at] = Time.current
+        Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+        
+        @suggested_canvas = 'task_progress'
+        @canvas_data = existing_list
+        
+        {
+          success: true,
+          message: "➕ Task added: #{args['task_description']}",
+          task_list: existing_list,
+          canvas: 'task_progress'
+        }
+      else
+        {
+          success: false,
+          error: "No task list found"
+        }
+      end
+      
+    when 'update_task'
+      # Update a task status (e.g., to in_progress)
+      existing_list = Rails.cache.read(cache_key)
+      if existing_list
+        task = existing_list[:tasks].find { |t| (t['id'] || t[:id]).to_s == args['task_id'].to_s }
+        if task
+          # Update status
+          new_status = args['status'] || 'in_progress'
+          task[:status] = new_status
+          task['status'] = new_status  # Ensure both symbol and string keys work
+          task[:details] = args['details'] if args['details']
+          task['details'] = args['details'] if args['details']
+          
+          # Add timestamp based on status
+          case new_status
+          when 'in_progress'
+            task[:started_at] = Time.current
+            task['started_at'] = Time.current
+          when 'completed'
+            task[:completed_at] = Time.current
+            task['completed_at'] = Time.current
+          when 'failed'
+            task[:failed_at] = Time.current
+            task['failed_at'] = Time.current
+          end
+          
+          existing_list[:updated_at] = Time.current
+          Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+          
+          @suggested_canvas = 'task_progress'
+          @canvas_data = existing_list
+          
+          # Send canvas update immediately if we have a callback
+          if @progress_callback
+            @progress_callback.call({
+              type: 'load_canvas',
+              canvas: 'task_progress',
+              canvas_data: existing_list
+            })
+          end
+          
+          {
+            success: true,
+            message: "📝 Task updated: #{task['description'] || task[:description]} → #{new_status}",
+            task_list: existing_list,
+            canvas: 'task_progress'
+          }
+        else
+          {
+            success: false,
+            error: "Task not found: #{args['task_id']}"
+          }
+        end
+      else
+        {
+          success: false,
+          error: "No task list found"
+        }
+      end
+      
+    when 'complete_task'
+      # Mark a task as completed
+      existing_list = Rails.cache.read(cache_key)
+      if existing_list
+        task = existing_list[:tasks].find { |t| (t['id'] || t[:id]).to_s == args['task_id'].to_s }
+        if task
+          task[:status] = 'completed'
+          task['status'] = 'completed'  # Ensure both symbol and string keys work
+          task[:details] = args['details'] if args['details']
+          task['details'] = args['details'] if args['details']
+          task[:completed_at] = Time.current
+          task['completed_at'] = Time.current
+          existing_list[:updated_at] = Time.current
+          Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+          
+          @suggested_canvas = 'task_progress'
+          @canvas_data = existing_list
+          
+          # Calculate progress
+          total_tasks = existing_list[:tasks].size
+          completed_tasks = existing_list[:tasks].count { |t| (t['status'] || t[:status]) == 'completed' }
+          progress_percentage = (completed_tasks.to_f / total_tasks * 100).round
+          
+          {
+            success: true,
+            message: "✅ Task completed: #{task['description'] || task[:description]}",
+            progress: "#{completed_tasks}/#{total_tasks} tasks completed (#{progress_percentage}%)",
+            task_list: existing_list,
+            canvas: 'task_progress'
+          }
+        else
+          {
+            success: false,
+            error: "Task not found: #{args['task_id']}"
+          }
+        end
+      else
+        {
+          success: false,
+          error: "No task list found"
+        }
+      end
+      
+    when 'fail_task'
+      # Mark a task as failed
+      existing_list = Rails.cache.read(cache_key)
+      if existing_list
+        task = existing_list[:tasks].find { |t| (t['id'] || t[:id]).to_s == args['task_id'].to_s }
+        if task
+          task[:status] = 'failed'
+          task['status'] = 'failed'  # Ensure both symbol and string keys work
+          task[:details] = args['details'] || "Task failed"
+          task['details'] = args['details'] || "Task failed"
+          task[:failed_at] = Time.current
+          task['failed_at'] = Time.current
+          existing_list[:updated_at] = Time.current
+          Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+          
+          @suggested_canvas = 'task_progress'
+          @canvas_data = existing_list
+
+          {
+            success: true,
+            message: "❌ Task failed: #{task['description'] || task[:description]}",
+            reason: args['details'],
+            task_list: existing_list,
+            canvas: 'task_progress'
+          }
+        else
+          {
+            success: false,
+            error: "Task not found: #{args['task_id']}"
+          }
+        end
+      else
+        {
+          success: false,
+          error: "No task list found"
+        }
+      end
+      
+    else
+      {
+        success: false,
+        error: "Unknown action: #{action}"
+      }
+    end
   end
 end 

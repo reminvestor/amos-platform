@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_13_000000) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_15_042147) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -232,9 +232,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_13_000000) do
     t.string "mailgun_message_id"
     t.string "mailgun_status"
     t.text "notes"
+    t.index ["campaign_id", "id"], name: "index_email_deliveries_on_campaign_id_and_id"
+    t.index ["campaign_id", "status"], name: "index_email_deliveries_on_campaign_id_and_status"
     t.index ["campaign_id"], name: "index_email_deliveries_on_campaign_id"
     t.index ["contact_id"], name: "index_email_deliveries_on_contact_id"
     t.index ["email_template_id"], name: "index_email_deliveries_on_email_template_id"
+    t.index ["status"], name: "index_email_deliveries_on_status"
   end
 
   create_table "email_templates", force: :cascade do |t|

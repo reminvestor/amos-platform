@@ -84,7 +84,7 @@ Rails.application.configure do
 
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
-  config.action_mailer.raise_delivery_errors = true
+  config.action_mailer.raise_delivery_errors = false
 
   # Set host to be used by links generated in mailer templates.
   config.action_mailer.default_url_options = { 
@@ -149,6 +149,16 @@ Rails.application.configure do
   config.hosts << "www.cruxmarketing.ai"
   config.hosts << "app.cruxmarketing.ai"
   
+  # Allow ALB DNS names
+  config.hosts << /.*\.elb\.amazonaws\.com$/
+  
   # Skip host authorization for health checks
-  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  config.host_authorization = { 
+    exclude: ->(request) { 
+      request.path == "/up" || 
+      request.path == "/health" || 
+      request.path == "/health_check" ||
+      request.user_agent =~ /ELB-HealthChecker/
+    } 
+  }
 end

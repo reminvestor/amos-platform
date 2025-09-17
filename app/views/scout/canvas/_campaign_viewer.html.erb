@@ -181,13 +181,15 @@
                   </span>
                 </td>
                 <td>
-                  <% if campaign.contact_group %>
-                    <span class="badge bg-light text-dark">
-                      <%= campaign.contact_group.name %>
-                    </span>
+                  <% if campaign.contact_groups.any? %>
+                    <% campaign.contact_groups.each do |group| %>
+                      <span class="badge bg-light text-dark">
+                        <%= group.name %>
+                      </span>
+                    <% end %>
                     <br>
                     <small class="text-muted">
-                      <%= pluralize(campaign.contact_group.contacts.count, 'contact') %>
+                      <%= pluralize(campaign.contacts.count, 'contact') %>
                     </small>
                   <% else %>
                     <span class="text-muted">No group</span>
@@ -341,11 +343,11 @@ function scoutCreateCampaign() {
 }
 
 function scoutViewCampaign(campaignId) {
-  window.scoutSendMessage?.(`Show me details for campaign ${campaignId}`);
+  window.scoutSendMessage?.(`Load the campaign editor for campaign ID ${campaignId}`);
 }
 
 function scoutEditCampaign(campaignId) {
-  window.scoutSendMessage?.(`Edit campaign ${campaignId}`);
+  window.scoutSendMessage?.(`Load the campaign editor for campaign ID ${campaignId}`);
 }
 
 function scoutDeleteCampaign(campaignId) {

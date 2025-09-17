@@ -1,3 +1,251 @@
+<style>
+  /* Tool activity panel styles - DEPRECATED: Now integrated into task progress canvas */
+  /* Keeping CSS for backward compatibility but panel is no longer displayed */
+  .tool-activity-panel {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .tool-activity-header {
+    background: #e9ecef;
+    padding: 12px 16px;
+    font-weight: 500;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .tool-activity-header i {
+    color: #6c757d;
+  }
+  
+  .tool-calls-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .tool-call-item {
+    border-bottom: 1px solid #dee2e6;
+    background: white;
+  }
+  
+  .tool-call-item:last-child {
+    border-bottom: none;
+  }
+  
+  .tool-call-header {
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s;
+  }
+  
+  .tool-call-header:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .tool-call-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .tool-call-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 12px;
+  }
+  
+  .tool-call-icon.pending {
+    background: #ffc107;
+    color: white;
+  }
+  
+  .tool-call-icon.running {
+    background: #007bff;
+    color: white;
+    animation: spin 1s linear infinite;
+  }
+  
+  .tool-call-icon.success {
+    background: #28a745;
+    color: white;
+  }
+  
+  .tool-call-icon.error {
+    background: #dc3545;
+    color: white;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  .tool-call-name {
+    font-weight: 500;
+    color: #212529;
+  }
+  
+  .tool-call-status {
+    font-size: 0.85em;
+    color: #6c757d;
+  }
+  
+  .tool-call-toggle {
+    color: #6c757d;
+    transition: transform 0.2s;
+  }
+  
+  .tool-call-toggle.expanded {
+    transform: rotate(180deg);
+  }
+  
+  .tool-call-details {
+    display: none;
+    padding: 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    font-size: 0.9em;
+  }
+  
+  .tool-call-details.show {
+    display: block;
+  }
+  
+  .tool-call-details pre {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 12px;
+    margin: 8px 0;
+    overflow-x: auto;
+    font-size: 0.85em;
+  }
+  
+  /* Tool messages in chat */
+  .tool-message {
+    margin: 12px 0;
+  }
+  
+  .tool-message .message-content {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding-left: 52px; /* Align with other messages that have avatars */
+  }
+  
+  .tool-message .message-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+  
+  #workspace .tool-message .message-bubble {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border: 1px solid rgba(118, 75, 162, 0.3) !important;
+    color: white !important;
+    box-shadow: 0 2px 4px rgba(118, 75, 162, 0.2) !important;
+    margin: 0 !important;
+    max-width: 70% !important;
+    padding: 8px 14px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  #workspace .tool-bubble {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    width: 100% !important;
+  }
+
+  #workspace .tool-bubble .tool-icon {
+    font-size: 14px !important;
+    color: white !important;
+    opacity: 0.95 !important;
+    flex-shrink: 0 !important;
+    line-height: 1 !important;
+  }
+
+  #workspace .tool-bubble .tool-name {
+    color: white !important;
+    font-style: italic !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.3px !important;
+    opacity: 0.95 !important;
+    line-height: 1 !important;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-10px); }
+  }
+  
+  /* Suggestion buttons */
+  .message-suggestions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  
+  .suggestion-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+  }
+  
+  .suggestion-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+  
+  .suggestion-btn:active {
+    transform: translateY(0);
+  }
+  
+  /* Ensure typing indicator includes avatar */
+  .typing-indicator-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+</style>
+
 <div id="workspace" class="workspace conversation-mode" data-controller="scout">
   <!-- Collapsed Side Navigation -->
   <nav class="side-nav collapsed" data-scout-target="sideNav">
@@ -24,6 +272,10 @@
         <div class="nav-item" data-template-type="campaign" data-action="click->scout#loadCampaignsCanvas">
           <i class="fas fa-envelope"></i>
           <span class="nav-text">Campaigns</span>
+        </div>
+        <div class="nav-item" data-template-type="email_template" data-action="click->scout#loadEmailTemplatesCanvas">
+          <i class="fas fa-file-alt"></i>
+          <span class="nav-text">Email Templates</span>
         </div>
         <div class="nav-item" data-template-type="contact" data-action="click->scout#loadContactsCanvas">
           <i class="fas fa-users"></i>
@@ -64,45 +316,49 @@
     <!-- Chat Area (Full screen in conversation mode, sidebar in work mode) -->
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
-        <div class="chat-title">
-          <h2>What can I help you with today?</h2>
-          <p class="chat-subtitle">I'm Scout, your AI marketing assistant. I can help with campaigns, landing pages, analytics, and more.</p>
+        <div class="conversation-controls">
+          <div class="header-title">
+            <h2>Scout AI</h2>
         </div>
+          <div class="header-buttons">
+            <div class="conversation-info">
+              <button class="icon-btn" id="conversation-selector" title="Conversation history">
+                <i class="fas fa-history"></i>
+              </button>
+              <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
+                <div class="dropdown-header">
+                  <h4>Recent Conversations</h4>
       </div>
-      
-      <div class="chat-messages" data-scout-target="chatMessages">
-        <div class="message ai-message welcome-message">
-          <div class="message-avatar">
-            <i class="fas fa-robot"></i>
+                <div class="conversation-list" id="conversation-list">
+                  <!-- Conversations will be loaded here -->
           </div>
-          <div class="message-content">
-            <p>Hi! I'm Scout, your AI marketing assistant. What would you like to work on today?</p>
-            <div class="message-suggestions">
-              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Create a landing page for my product">
-                Create a landing page
-              </button>
-              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Show me my email campaigns">
-                View campaigns
-              </button>
-              <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Analyze my marketing performance">
-                Analytics dashboard
+              </div>
+            </div>
+            <button class="icon-btn" id="new-conversation-btn" title="New conversation">
+              <i class="fas fa-plus"></i>
               </button>
             </div>
           </div>
         </div>
+      
+      <div class="chat-messages" id="chat-messages" data-scout-target="chatMessages">
+        <!-- Messages will be loaded here from history -->
       </div>
       
+      <!-- Tool activity panel removed - now part of task progress canvas -->
+      
       <div class="chat-input-area">
-        <form data-action="submit->scout#sendMessage" data-scout-target="chatForm">
+        <form id="message-form" data-scout-target="chatForm">
           <div class="input-group">
             <input 
               type="text" 
               class="chat-input" 
+              id="message-input"
               placeholder="Type your message..." 
               data-scout-target="chatInput"
               autocomplete="off"
             >
-            <button type="submit" class="send-btn">
+            <button type="submit" class="send-btn" id="send-button">
               <i class="fas fa-paper-plane"></i>
             </button>
           </div>
@@ -223,33 +479,60 @@
 
 #workspace .message-bubble {
   max-width: 70% !important;
-  padding: 1rem 1.25rem !important;
-  border-radius: 1.5rem !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
   position: relative !important;
   margin: 0 !important;
   border: none !important;
+  background: transparent !important;
+  word-wrap: break-word !important;
 }
 
 #workspace .user-message .message-bubble {
-  background: rgba(255, 255, 255, 0.2) !important;
-  background-color: rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
-  backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  backdrop-filter: none !important;
+  border: none !important;
 }
 
 #workspace .assistant-message .message-bubble {
-  background: white !important;
-  background-color: white !important;
-  color: #333 !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+#workspace .message {
+  margin-bottom: 1rem !important;
 }
 
 #workspace .message-content {
-  margin-bottom: 0.5rem !important;
-  line-height: 1.5 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  margin-bottom: 0 !important;
   background: none !important;
   background-color: transparent !important;
+}
+
+#workspace .message-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  font-size: 20px !important;
+}
+
+#workspace .user-message .message-avatar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+}
+
+#workspace .ai-message .message-avatar {
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
 }
 
 #workspace .message-content p {
@@ -407,31 +690,202 @@
 }
 
 #workspace .user-message .message-bubble {
-  background: rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
-  padding: 1rem 1.25rem !important;
-  border-radius: 1.5rem !important;
-  backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+  border: none !important;
 }
 
 #workspace .assistant-message .message-bubble {
-  background: white !important;
-  color: #333 !important;
-  padding: 1rem 1.25rem !important;
-  border-radius: 1.5rem !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Tool message overrides - must come after general styles */
+#workspace .tool-message .message-bubble {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+  border: none !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+  padding: 10px 16px !important;
+  border-radius: 20px !important;
+  display: inline-block !important;
+  max-width: fit-content !important;
+}
+
+#workspace .tool-message .tool-bubble {
+  display: block !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+#workspace .tool-message .tool-name {
+  color: white !important;
+  font-style: normal !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.5px !important;
+  opacity: 1 !important;
+  font-size: 13px !important;
+  text-transform: capitalize !important;
 }
 
 #workspace .message-content {
-  margin-bottom: 0.5rem !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  margin-bottom: 0 !important;
   line-height: 1.5 !important;
+}
+
+#workspace .message-content strong {
+  font-weight: 600 !important;
+  color: inherit !important;
+}
+
+#workspace .message-content em {
+  font-style: italic !important;
+  color: inherit !important;
+}
+
+#workspace .message-content code {
+  background: rgba(0, 0, 0, 0.05) !important;
+  padding: 0.125rem 0.25rem !important;
+  border-radius: 0.25rem !important;
+  font-family: monospace !important;
+  font-size: 0.875em !important;
+}
+
+#workspace .message-content a {
+  color: #007bff !important;
+  text-decoration: underline !important;
+}
+
+#workspace .message-content a:hover {
+  color: #0056b3 !important;
 }
 
 #workspace .message-time {
   opacity: 0.7 !important;
   font-size: 0.75rem !important;
 }
+
+/* Conversation Controls */
+.conversation-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1rem;
+  height: 100%;
+}
+
+.header-title h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: white;
+  font-weight: 500;
+}
+
+.header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.conversation-info {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.message-count {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+}
+
+.conversation-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.5rem;
+  min-width: 300px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.dropdown-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.dropdown-header h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.conversation-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.conversation-item {
+  padding: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.conversation-item:hover {
+  background: #f8f9fa;
+}
+
+.conversation-item:last-child {
+  border-bottom: none;
+}
+
+.conversation-item-title {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.conversation-item-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #666;
+}
+
 </style>
 
 <!-- JavaScript for Scout Chat -->
@@ -443,11 +897,179 @@ document.addEventListener('DOMContentLoaded', function() {
   const sendButton = document.getElementById('send-button');
   const toolActivity = document.getElementById('tool-activity');
   const toolStatus = document.getElementById('tool-status');
+  const conversationSelector = document.getElementById('conversation-selector');
+  const conversationDropdown = document.getElementById('conversation-dropdown');
+  const conversationList = document.getElementById('conversation-list');
+  const newConversationBtn = document.getElementById('new-conversation-btn');
 
   // Auto-focus on input (with defensive check)
   if (messageInput && messageInput.focus) {
     messageInput.focus();
   }
+
+  // Track message count
+  let messageCount = 0;
+  
+  // Get CSRF token
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+  
+  // Update message count display
+  function updateMessageCount() {
+    const messages = chatMessages.querySelectorAll('.message:not(.welcome-message)');
+    messageCount = messages.length;
+    // Message count element removed, just track the count
+  }
+  
+  // Toggle conversation dropdown
+  conversationSelector.addEventListener('click', function(e) {
+    e.stopPropagation();
+    conversationDropdown.style.display = conversationDropdown.style.display === 'none' ? 'block' : 'none';
+    loadRecentConversations();
+  });
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!conversationDropdown.contains(e.target) && e.target !== conversationSelector) {
+      conversationDropdown.style.display = 'none';
+    }
+  });
+  
+  // Load recent conversations
+  async function loadRecentConversations() {
+    try {
+      const response = await fetch('/scout/conversations');
+      const conversations = await response.json();
+      
+      conversationList.innerHTML = conversations.map(conv => `
+        <div class="conversation-item" data-session-id="${conv.session_id}">
+          <div class="conversation-item-title">${conv.first_message || 'Untitled Conversation'}</div>
+          <div class="conversation-item-meta">
+            <span>${conv.message_count} messages</span>
+            <span>${formatTimeAgo(conv.created_at)}</span>
+          </div>
+        </div>
+      `).join('');
+      
+      // Add click handlers
+      conversationList.querySelectorAll('.conversation-item').forEach(item => {
+        item.addEventListener('click', function() {
+          const sessionId = this.dataset.sessionId;
+          loadConversation(sessionId);
+          conversationDropdown.style.display = 'none';
+        });
+      });
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+    }
+  }
+  
+  // Load a specific conversation
+  async function loadConversation(sessionId) {
+    // Clear current messages
+    chatMessages.innerHTML = '';
+    
+    // Load messages for this session
+    try {
+      const response = await fetch(`/scout/conversation/${sessionId}`);
+      const messages = await response.json();
+      
+      messages.forEach(msg => {
+        addMessage(msg.content, msg.role === 'user' ? 'user' : 'assistant', msg.created_at);
+      });
+      
+      updateMessageCount();
+    } catch (error) {
+      console.error('Failed to load conversation:', error);
+    }
+  }
+  
+  // Start new conversation
+  newConversationBtn.addEventListener('click', function() {
+    // Clear any saved canvas state
+    localStorage.removeItem('scout_canvas_state');
+    
+    // Reset session and reload page
+    fetch('/scout/new_session', { method: 'POST', headers: { 'X-CSRF-Token': csrfToken } })
+      .then(response => response.json())
+      .then(data => {
+        console.log('New session started:', data.session_id);
+        // Reload the page to get fresh session context
+        window.location.reload();
+      })
+      .catch(error => {
+        console.error('Failed to start new session:', error);
+        // Clear canvas state even on error
+        localStorage.removeItem('scout_canvas_state');
+        // Fallback: just reload anyway
+        window.location.reload();
+      });
+  });
+  
+  // Format time ago
+  function formatTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return date.toLocaleDateString();
+  }
+  
+  // Get Scout controller reference - wait for Stimulus to initialize
+  function getScoutController() {
+    const element = document.querySelector('[data-controller="scout"]');
+    if (element && window.Stimulus) {
+      const application = window.Stimulus || Stimulus;
+      return application.getControllerForElementAndIdentifier(element, 'scout');
+    }
+    return null;
+  }
+  
+  // Try to get controller immediately and also after a delay
+  window.scoutController = getScoutController();
+  if (!window.scoutController) {
+    setTimeout(() => {
+      window.scoutController = getScoutController();
+      console.log('Scout controller initialized:', window.scoutController);
+    }, 500);
+  }
+  
+  // Global function for canvas actions to send messages
+  // Override any existing definition from Stimulus controller
+  window.scoutSendMessage = async function(message) {
+    console.log('📨 scoutSendMessage called with:', message);
+    
+    // Add user message immediately
+    addMessage(message, 'user');
+    
+    // Show typing indicator
+    showTypingIndicator();
+    
+    try {
+      // Use the streaming handler directly
+      await handleStreamingChat(message);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      hideTypingIndicator();
+      addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+    }
+  };
+  
+  // Ensure our version stays in place even after Stimulus loads
+  setTimeout(() => {
+    const originalScoutSendMessage = window.scoutSendMessage;
+    Object.defineProperty(window, 'scoutSendMessage', {
+      get() { return originalScoutSendMessage; },
+      set(newValue) { 
+        console.warn('Attempt to override scoutSendMessage blocked');
+        return originalScoutSendMessage; 
+      },
+      configurable: false
+    });
+  }, 1000);
 
   // Scroll to bottom (with defensive check)
   function scrollToBottom() {
@@ -456,27 +1078,149 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Initial scroll
+  // Initial scroll and message count
   scrollToBottom();
+  updateMessageCount();
+
+  // Simple markdown parser for messages
+  function parseSimpleMarkdown(text) {
+    console.log('📝 Parsing markdown:', text);
+    
+    // First check if the text already contains HTML tags like <strong>
+    // If it does, we need to handle it differently
+    const hasHtmlTags = /<(strong|em|ul|li|h[1-6])>/i.test(text);
+    
+    if (hasHtmlTags) {
+      // Text already has HTML, so we'll sanitize it but preserve the allowed tags
+      const div = document.createElement('div');
+      div.innerHTML = text; // Use innerHTML to preserve HTML
+      
+      // Remove any dangerous tags but keep formatting tags
+      const allowedTags = ['strong', 'em', 'b', 'i', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'p'];
+      const elements = div.querySelectorAll('*');
+      elements.forEach(el => {
+        if (!allowedTags.includes(el.tagName.toLowerCase())) {
+          el.replaceWith(el.textContent);
+        }
+      });
+      
+      // Convert newlines to <br> outside of tags
+      let html = div.innerHTML;
+      html = html.replace(/\n/g, '<br>');
+      
+      console.log('📝 Parsed HTML (with existing tags):', html);
+      return html;
+    } else {
+      // No HTML tags, treat as markdown
+      // Escape HTML first for security
+      const div = document.createElement('div');
+      div.textContent = text;
+      let html = div.innerHTML;
+      
+      // Convert markdown bold **text** to <strong>
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      
+      // Convert markdown headers
+      html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      
+      // Convert markdown lists (simple version)
+      html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+      html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>');
+      
+      // Convert newlines to <br>
+      html = html.replace(/\n/g, '<br>');
+      
+      console.log('📝 Parsed markdown:', html);
+      return html;
+    }
+  }
+
+  // Build a tool message element
+  function buildToolMessageElement({ id, content, metadata }) {
+    const toolMessage = document.createElement('div');
+    toolMessage.className = 'message tool-message';
+    if (id) toolMessage.dataset.messageId = id;
+    
+    const toolName = metadata.tool_name || content.replace('tool:', '');
+    const displayName = getToolDisplayName(toolName);
+    
+    toolMessage.innerHTML = `
+      <div class="message-content">
+        <div class="message-bubble">
+          <div class="tool-bubble">
+            <span class="tool-name">Utilizing ${displayName} tool</span>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    return toolMessage;
+  }
 
   // Build a message DOM element (optionally tagged with DB id)
-  function buildMessageElement({ id = null, content, role, timestamp = null }) {
+  function buildMessageElement({ id = null, content, role, timestamp = null, metadata = null }) {
+    // Check if this is a tool message
+    if (metadata && metadata.type === 'tool_call') {
+      return buildToolMessageElement({ id, content, metadata });
+    }
+    
+    // Also check if content indicates a tool message (for backward compatibility)
+    if (role === 'assistant' && typeof content === 'string' && content.startsWith('tool:')) {
+      const toolName = content.replace('tool:', '');
+      return buildToolMessageElement({ 
+        id, 
+        content, 
+        metadata: { tool_name: toolName, type: 'tool_call' } 
+      });
+    }
+    
     const wrapper = document.createElement('div');
-    wrapper.className = `message-wrapper ${role === 'user' ? 'user-message' : 'assistant-message'}`;
+    wrapper.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
     if (id) wrapper.dataset.messageId = id;
 
-    const time = timestamp || new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    // Parse markdown for assistant messages
+    let processedContent = content;
+    
+    if (role === 'assistant') {
+      // If content is a JSON string, parse it first
+      if (typeof processedContent === 'string' && processedContent.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(processedContent);
+          processedContent = parsed.message || processedContent;
+        } catch (e) {
+          // Not valid JSON, use as-is
+        }
+      }
+      
+      // Decode HTML entities first (convert &lt; back to <)
+      const textarea = document.createElement('textarea');
+      textarea.innerHTML = processedContent;
+      processedContent = textarea.value;
+      
+      // Now parse as markdown
+      processedContent = parseSimpleMarkdown(processedContent);
+    } else {
+      processedContent = content.replace(/\n/g, '<br>');
+    }
+    
+    const avatar = role === 'assistant' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
+    
     wrapper.innerHTML = `
+      <div class="message-content">
+        <div class="message-avatar">
+          ${avatar}
+        </div>
       <div class="message-bubble">
-        <div class="message-content">${content.replace(/\n/g, '<br>')}</div>
-        <small class="message-time">${time}</small>
+          ${processedContent}
+        </div>
       </div>
     `;
     return wrapper;
   }
 
-  function appendMessage(content, role, timestamp = null, id = null) {
-    const el = buildMessageElement({ id, content, role, timestamp });
+  function appendMessage(content, role, timestamp = null, id = null, metadata = null) {
+    const el = buildMessageElement({ id, content, role, timestamp, metadata });
     chatMessages.appendChild(el);
     scrollToBottom();
   }
@@ -493,16 +1237,47 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Backward-compatible helper
   function addMessage(content, role, timestamp = null) {
-    appendMessage(content, role, timestamp);
+    console.log('🎯 addMessage called with:', { content: content, role: role, contentType: typeof content });
+    
+    // If content is a JSON object, extract the message
+    let messageContent = content;
+    if (typeof content === 'object' && content.message) {
+      console.log('📦 Content is object with message property');
+      messageContent = content.message;
+    } else if (typeof content === 'string' && content.trim().startsWith('{')) {
+      console.log('📦 Content is JSON string, attempting to parse');
+      try {
+        const parsed = JSON.parse(content);
+        messageContent = parsed.message || content;
+        console.log('✅ Parsed message:', messageContent);
+      } catch (e) {
+        console.log('❌ Failed to parse JSON string');
+      }
+    }
+    
+    // Don't add empty messages
+    if (!messageContent || messageContent.toString().trim() === '') {
+      console.log('⚠️ Skipping empty message');
+      return null;
+    }
+    
+    const el = buildMessageElement({ content: messageContent, role, timestamp, metadata: null });
+    chatMessages.appendChild(el);
+    scrollToBottom();
+    updateMessageCount();
+    return el; // Return the element for streaming updates
   }
 
   // Show typing indicator
   function showTypingIndicator() {
     const typingWrapper = document.createElement('div');
-    typingWrapper.className = 'message-wrapper assistant-message';
+    typingWrapper.className = 'message ai-message typing-indicator-wrapper';
     typingWrapper.id = 'typing-indicator';
     typingWrapper.innerHTML = `
-      <div class="message-bubble">
+      <div class="message-avatar" id="typing-avatar">
+        <i class="fas fa-robot"></i>
+      </div>
+      <div class="message-content">
         <div class="typing-dots">
           <span></span><span></span><span></span>
         </div>
@@ -515,56 +1290,233 @@ document.addEventListener('DOMContentLoaded', function() {
   function hideTypingIndicator() {
     const typingDiv = document.getElementById('typing-indicator');
     if (typingDiv) {
+      // Ensure the entire wrapper is removed, including the avatar
       typingDiv.remove();
     }
   }
 
-  // Show streaming status indicator
-  // Keep a rolling log of recent streaming updates (up to 6 lines)
-  const streamingLog = []
-  function showStreamingStatus(message) {
-    const statusDiv = document.getElementById('streaming-status') || createStreamingStatusDiv();
-    streamingLog.push(message)
-    if (streamingLog.length > 6) streamingLog.shift()
-    statusDiv.innerHTML = streamingLog.map(m => `<div>${m.replace(/</g,'&lt;')}</div>`).join('')
-    statusDiv.style.display = 'block';
+  // Tool call tracking
+  const toolCalls = new Map();
+  let toolActivityPanel = null;
+  
+  function addToolCall(toolName, message) {
+    const toolCallId = `tool-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const toolCall = {
+      id: toolCallId,
+      name: toolName,
+      message: message,
+      status: 'pending',
+      startTime: Date.now(),
+      details: []
+    };
+    
+    toolCalls.set(toolCallId, toolCall);
+    
+    // Tool activity panel removed - now part of task progress canvas
+    // const toolActivity = document.getElementById('tool-activity');
+    // toolActivity.style.display = 'block';
+    
+    // Add tool call to the list
+    const toolCallsList = document.getElementById('tool-calls-list');
+    const toolCallItem = document.createElement('div');
+    toolCallItem.className = 'tool-call-item';
+    toolCallItem.id = toolCallId;
+    
+    toolCallItem.innerHTML = `
+      <div class="tool-call-header" onclick="toggleToolCallDetails('${toolCallId}')">
+        <div class="tool-call-info">
+          <div class="tool-call-icon ${toolCall.status}" id="${toolCallId}-icon">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div>
+            <div class="tool-call-name">${getToolDisplayName(toolName)}</div>
+            <div class="tool-call-status" id="${toolCallId}-status">${message}</div>
+          </div>
+        </div>
+        <div class="tool-call-toggle" id="${toolCallId}-toggle">
+          <i class="fas fa-chevron-down"></i>
+        </div>
+      </div>
+      <div class="tool-call-details" id="${toolCallId}-details">
+        <pre id="${toolCallId}-details-content">Initializing...</pre>
+      </div>
+    `;
+    
+    toolCallsList.appendChild(toolCallItem);
+    return toolCallId;
   }
-
-  function hideStreamingStatus() {
-    const statusDiv = document.getElementById('streaming-status');
-    if (statusDiv) {
-      statusDiv.style.display = 'none';
+  
+  function updateToolCall(toolCallId, status, message, details) {
+    const toolCall = toolCalls.get(toolCallId);
+    if (!toolCall) return;
+    
+    toolCall.status = status;
+    if (message) toolCall.message = message;
+    if (details) toolCall.details.push(details);
+    
+    // Update UI
+    const icon = document.getElementById(`${toolCallId}-icon`);
+    const statusEl = document.getElementById(`${toolCallId}-status`);
+    const detailsContent = document.getElementById(`${toolCallId}-details-content`);
+    
+    if (icon) {
+      icon.className = `tool-call-icon ${status}`;
+      switch(status) {
+        case 'running':
+          icon.innerHTML = '<i class="fas fa-sync-alt"></i>';
+          break;
+        case 'success':
+          icon.innerHTML = '<i class="fas fa-check"></i>';
+          break;
+        case 'error':
+          icon.innerHTML = '<i class="fas fa-times"></i>';
+          break;
+        default:
+          icon.innerHTML = '<i class="fas fa-clock"></i>';
+      }
+    }
+    
+    if (statusEl && message) {
+      statusEl.textContent = message;
+    }
+    
+    if (detailsContent && toolCall.details.length > 0) {
+      detailsContent.textContent = toolCall.details.join('\n');
     }
   }
+  
+  function toggleToolCallDetails(toolCallId) {
+    const details = document.getElementById(`${toolCallId}-details`);
+    const toggle = document.getElementById(`${toolCallId}-toggle`);
+    
+    if (details && toggle) {
+      details.classList.toggle('show');
+      toggle.classList.toggle('expanded');
+    }
+  }
+  
+  window.toggleToolCallDetails = toggleToolCallDetails; // Make it globally accessible
+  
+  function getToolDisplayName(toolName) {
+    const toolNames = {
+      'get_schema': '📊 Database Schema',
+      'get_data': '🔍 Query Data',
+      'create_object': '✨ Create Object',
+      'update_object': '✏️ Update Object',
+      'link_template_to_campaign': '🔗 Link Template',
+      'create_dynamic_visualization': '📈 Create Visualization'
+    };
+    return toolNames[toolName] || toolName;
+  }
+  
+  function hideToolActivity() {
+    // Tool activity panel removed - now part of task progress canvas
+    // const toolActivity = document.getElementById('tool-activity');
+    // toolActivity.style.display = 'none';
+    // const toolCallsList = document.getElementById('tool-calls-list');
+    // toolCallsList.innerHTML = '';
+    // toolCalls.clear();
+  }
+  
+  let currentToolIndicator = null;
+  
+            function showInlineToolIndicator(toolName) {
+              // Create a tool message that persists in the chat
+              const messagesContainer = document.getElementById('chat-messages');
+              
+              // Get appropriate icon for the tool
+              let icon = 'fa-cog'; // default
+              if (toolName === 'load_canvas') {
+                icon = 'fa-window-maximize';
+              } else if (toolName === 'get_data') {
+                icon = 'fa-database';
+              } else if (toolName === 'create_object') {
+                icon = 'fa-plus-circle';
+              } else if (toolName === 'get_schema') {
+                icon = 'fa-list-alt';
+              } else if (toolName === 'generate_ai_landing_page') {
+                icon = 'fa-file-code';
+              } else if (toolName === 'link_template_to_campaign') {
+                icon = 'fa-link';
+              }
 
-  function createStreamingStatusDiv() {
-    const statusDiv = document.createElement('div');
-    statusDiv.id = 'streaming-status';
-    statusDiv.className = 'streaming-status';
-    statusDiv.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #007bff;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      z-index: 1000;
-      font-size: 13px;
-      max-width: 420px;
-      white-space: normal;
-      line-height: 1.35;
-      max-height: 180px;
-      overflow: auto;
-    `;
-    document.body.appendChild(statusDiv);
-    return statusDiv;
+              // Get display name
+              const displayName = getToolDisplayName(toolName);
+
+              // Create tool message element with consistent structure
+              const toolMessage = document.createElement('div');
+              toolMessage.className = 'message ai-message tool-message';
+              toolMessage.innerHTML = `
+                <div class="message-content">
+                  <div class="message-bubble">
+                    <div class="tool-bubble">
+                      <span class="tool-name">Utilizing ${displayName} tool</span>
+                    </div>
+                  </div>
+                </div>
+              `;
+
+              // Add to chat
+              messagesContainer.appendChild(toolMessage);
+              messagesContainer.scrollTop = messagesContainer.scrollHeight;
+              
+              // Store reference by tool name for updates
+              if (!window.activeToolMessages) window.activeToolMessages = {};
+              window.activeToolMessages[toolName] = toolMessage;
+            }
+  
+  function updateInlineToolIndicator(toolName, status) {
+    // Tool messages persist, so we don't need to update them
+    // They remain in the chat history
+  }
+  
+  // Show streaming status as a message in chat (simplified)
+  let currentToolCallId = null;
+  
+  function showStreamingStatus(message) {
+    // Parse the message to see if it's a tool-related update
+    if (message.includes('🔍 Discovering database schema')) {
+      currentToolCallId = addToolCall('get_schema', 'Discovering available data models...');
+      updateToolCall(currentToolCallId, 'running', 'Analyzing database structure...');
+    } else if (message.includes('📊 Querying your marketing data')) {
+      currentToolCallId = addToolCall('get_data', 'Fetching marketing data...');
+      updateToolCall(currentToolCallId, 'running', 'Executing query...');
+    } else if (message.includes('✨ Creating new marketing object')) {
+      currentToolCallId = addToolCall('create_object', 'Creating new object...');
+      updateToolCall(currentToolCallId, 'running', 'Processing creation request...');
+    } else if (message.includes('🎯 Generating personalized response')) {
+      if (currentToolCallId) {
+        updateToolCall(currentToolCallId, 'success', 'Completed successfully');
+      }
+    } else if (currentToolCallId && message.includes('✅')) {
+      updateToolCall(currentToolCallId, 'success', 'Completed');
+      currentToolCallId = null;
+    } else if (currentToolCallId && message.includes('❌')) {
+      updateToolCall(currentToolCallId, 'error', 'Failed');
+      currentToolCallId = null;
+    } else if (currentToolCallId) {
+      // Add as detail to current tool call
+      const toolCall = toolCalls.get(currentToolCallId);
+      if (toolCall) {
+        updateToolCall(currentToolCallId, 'running', message);
+      }
+    }
+  }
+  
+  function hideStreamingStatus() {
+    // Tool activity is hidden when response is complete
+    setTimeout(() => {
+      hideToolActivity();
+    }, 3000); // Keep visible for 3 seconds after completion
   }
 
   // Handle streaming chat
   async function handleStreamingChat(message) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    
+    // Track streaming state
+    let streamingMessage = null;
+    let streamingContent = '';
     
     // Add timeout fallback to prevent getting stuck
     const timeoutId = setTimeout(() => {
@@ -574,7 +1526,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (messageInput && messageInput.focus) {
         messageInput.focus();
       }
-      toolActivity.style.display = 'none';
+      // toolActivity.style.display = 'none';
       hideStreamingStatus();
       hideTypingIndicator();
     }, 120000); // 120 second timeout
@@ -610,7 +1562,104 @@ document.addEventListener('DOMContentLoaded', function() {
               const data = JSON.parse(line.slice(6));
               
               if (data.type === 'update') {
+                // Don't show streaming status for the "💬 streaming" message
+                if (data.message !== '💬 streaming') {
                 showStreamingStatus(data.message);
+                }
+                // Check if we're starting to stream content
+                if (data.message === '💬 streaming') {
+                  hideTypingIndicator();
+                  // Only create a new message if we don't have one already
+                  if (!streamingMessage) {
+                    // Create a streaming message element manually since addMessage skips empty content
+                    const el = buildMessageElement({ content: '', role: 'assistant', timestamp: Date.now() });
+                    chatMessages.appendChild(el);
+                    streamingMessage = el;
+                    streamingContent = '';
+                    updateMessageCount();
+                  }
+                }
+              } else if (data.type === 'content') {
+                console.log('📝 Content chunk received:', data.content);
+                // Append content chunk to the streaming message
+                if (streamingMessage && data.content) {
+                  streamingContent += data.content;
+                  console.log('📝 Total content so far:', streamingContent.length, 'chars');
+                  // Update the message bubble directly
+                  const messageBubble = streamingMessage.querySelector('.message-bubble');
+                  if (messageBubble) {
+                    console.log('✅ Found message bubble, updating');
+                    messageBubble.innerHTML = parseSimpleMarkdown(streamingContent);
+                  } else {
+                    console.error('❌ Message bubble not found! streamingMessage:', streamingMessage);
+                    console.log('streamingMessage HTML:', streamingMessage.outerHTML);
+                  }
+                  scrollToBottom();
+                } else {
+                  console.warn('⚠️ No streaming message to append to!');
+                }
+              } else if (data.type === 'add_tool_message') {
+                // Add tool message to chat UI
+                const toolMessage = buildToolMessageElement({
+                  content: `tool:${data.tool_name}`,
+                  metadata: {
+                    type: 'tool_call',
+                    tool_name: data.tool_name,
+                    tool_id: data.tool_id
+                  }
+                });
+                chatMessages.appendChild(toolMessage);
+                scrollToBottom();
+                updateMessageCount();
+                
+                // Reset streaming message so the next content creates a new message
+                streamingMessage = null;
+                streamingContent = '';
+              } else if (data.type === 'load_canvas') {
+                // Immediately load a canvas (e.g., task progress)
+                console.log('🎨 Received canvas load request:', data.canvas);
+                if (data.canvas) {
+                  // Try multiple ways to load the canvas
+                  setTimeout(() => {
+                    // Method 1: Use window.scoutController if available
+                    if (window.scoutController && window.scoutController.loadScoutCanvas) {
+                      window.scoutController.loadScoutCanvas(data.canvas, data.canvas_data || {});
+                    } 
+                    // Method 2: Find the controller through Stimulus
+                    else {
+                      const scoutElement = document.querySelector('[data-controller="scout"]');
+                      if (scoutElement && scoutElement._scoutController) {
+                        scoutElement._scoutController.loadScoutCanvas(data.canvas, data.canvas_data || {});
+                      }
+                      // Method 3: Dispatch a custom event that the controller can listen to
+                      else {
+                        console.log('🎯 Dispatching canvas load event');
+                        const event = new CustomEvent('scout:load-canvas', {
+                          detail: { canvas: data.canvas, data: data.canvas_data || {} }
+                        });
+                        document.dispatchEvent(event);
+                      }
+                    }
+                  }, 100); // Small delay to ensure DOM is ready
+                }
+              } else if (data.type === 'tool_detected') {
+                // Tool detected during streaming
+                console.log('🔧 Tool detected:', data.name);
+                // Tool messages are now saved to database and shown via add_tool_message event
+                
+                // Track in tool panel if not already tracked
+                if (!currentToolCallId || data.tool_id !== currentToolCallId) {
+                  currentToolCallId = data.tool_id || addToolCall(data.name, 'Detected, preparing to execute...');
+                }
+              } else if (data.type === 'tool_start') {
+                // Tool execution starting
+                if (data.name && data.arguments) {
+                  const toolId = addToolCall(data.name, 'Executing with arguments...');
+                  updateToolCall(toolId, 'running', `Running ${getToolDisplayName(data.name)}...`, JSON.stringify(data.arguments, null, 2));
+                  currentToolCallId = toolId;
+                  // Update inline indicator
+                  updateInlineToolIndicator(data.name, 'running');
+                }
               } else if (data.type === 'response') {
                 hideStreamingStatus();
                 hideTypingIndicator();
@@ -618,12 +1667,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.data.error) {
                   addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
                 } else {
+                  console.log('📨 Response data:', data.data);
+                  
+                  // For advisor mode with streaming, we've already added the content
+                  // Only add a new message if we weren't streaming
+                  if (!streamingMessage && data.data.message) {
+                    console.log('➕ Adding non-streamed message to chat');
                   addMessage(data.data.message, 'assistant');
+                  } else if (streamingMessage) {
+                    console.log('✅ Message was streamed, not adding duplicate');
+                  }
                   
                   // Show tool usage info
                   if (data.data.tools_used && data.data.tools_list?.length > 0) {
                     console.log('Tools used:', data.data.tools_list);
                     console.log('Success count:', data.data.success_count);
+                  }
+                  
+                  // Debug the response structure
+                  console.log('📦 Full response structure:', data);
+                  console.log('📦 data.canvas:', data.canvas);
+                  console.log('📦 data.data:', data.data);
+                  console.log('📦 data.data?.canvas:', data.data?.canvas);
+                  
+                  // Load canvas if suggested - check both possible locations
+                  const canvasName = data.data?.canvas || data.canvas;
+                  const canvasData = data.data?.canvas_data || data.canvas_data || {};
+                  
+                  console.log('🎨 Canvas check - name:', canvasName, 'controller:', window.scoutController);
+                  if (canvasName) {
+                    console.log('🎨 Loading canvas:', canvasName);
+                    
+                    // Try multiple ways to load the canvas
+                    setTimeout(() => {
+                      // Method 1: Use window.scoutController if available
+                      if (window.scoutController && window.scoutController.loadScoutCanvas) {
+                        window.scoutController.loadScoutCanvas(canvasName, canvasData);
+                      } 
+                      // Method 2: Find the controller through Stimulus
+                      else {
+                        const scoutElement = document.querySelector('[data-controller="scout"]');
+                        if (scoutElement && scoutElement._scoutController) {
+                          scoutElement._scoutController.loadScoutCanvas(canvasName, canvasData);
+                        }
+                        // Method 3: Dispatch a custom event that the controller can listen to
+                        else {
+                          console.log('🎯 Dispatching canvas load event');
+                          const event = new CustomEvent('scout:load-canvas', {
+                            detail: { canvas: canvasName, data: canvasData }
+                          });
+                          document.dispatchEvent(event);
+                        }
+                      }
+                    }, 1000);
                   }
                 }
                 
@@ -634,8 +1730,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (messageInput && messageInput.focus) {
                   messageInput.focus();
                 }
-                toolActivity.style.display = 'none';
+                // toolActivity.style.display = 'none';
                 hideStreamingStatus();
+                
+                // Reset streaming state
+                streamingMessage = null;
+                streamingContent = '';
                 
                 return; // Done processing
               }
@@ -658,7 +1758,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const historyState = { isLoading: false, hasMore: true, oldestId: null };
 
   function getOldestRenderedId() {
-    const first = chatMessages.querySelector('.message-wrapper');
+    const first = chatMessages.querySelector('.message');
     return first ? first.dataset.messageId || null : null;
   }
 
@@ -675,7 +1775,13 @@ document.addEventListener('DOMContentLoaded', function() {
       const data = await res.json();
       if (Array.isArray(data.messages) && data.messages.length > 0) {
         // Normalize to the structure buildMessageElement expects
-        const items = data.messages.map(m => ({ id: m.id, role: m.role, content: m.content, timestamp: m.timestamp }));
+        const items = data.messages.map(m => ({ 
+          id: m.id, 
+          role: m.role, 
+          content: m.content, 
+          timestamp: m.timestamp,
+          metadata: m.metadata 
+        }));
         prependMessages(items);
         historyState.oldestId = items[0].id;
       }
@@ -688,7 +1794,39 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Initial fetch of recent history when page loads
-  loadMoreHistory(true);
+  loadMoreHistory(true).then(() => {
+    // After initial history is loaded, add buttons to the first welcome message
+    setTimeout(() => {
+      const messages = chatMessages.querySelectorAll('.message.ai-message');
+      if (messages.length > 0) {
+        const firstMessage = messages[0];
+        const messageContent = firstMessage.querySelector('.message-bubble');
+        
+        // Check if this is a welcome message and doesn't already have buttons
+        if (messageContent && messageContent.textContent.includes('Scout') && 
+            messageContent.textContent.includes('marketing assistant') &&
+            !firstMessage.querySelector('.message-suggestions')) {
+          
+          // Add the suggestion buttons
+          const suggestionsDiv = document.createElement('div');
+          suggestionsDiv.className = 'message-suggestions';
+          suggestionsDiv.style.marginTop = '12px';
+          suggestionsDiv.innerHTML = `
+            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Create a landing page for my product">
+              Create a landing page
+            </button>
+            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Show me my email campaigns">
+              View campaigns
+            </button>
+            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Analyze my marketing performance">
+              Analytics dashboard
+            </button>
+          `;
+          messageContent.appendChild(suggestionsDiv);
+        }
+      }
+    }, 100); // Small delay to ensure DOM is updated
+  });
 
   // Attach scroll-up listener to load older history
   chatMessages.addEventListener('scroll', function() {
@@ -713,70 +1851,30 @@ document.addEventListener('DOMContentLoaded', function() {
     sendButton.disabled = true;
     showTypingIndicator();
     
-    // Check if this looks like a complex data query that benefits from streaming
-    const complexDataKeywords = ['campaign', 'performance', 'analytics', 'contact', 'landing', 'conversion', 'metrics', 'analyze', 'create', 'data', 'insight', 'report'];
-    const isComplexQuery = complexDataKeywords.some(keyword => message.toLowerCase().includes(keyword));
+    // Always use streaming for better user experience
+    // Initial state - typing indicator is already shown
     
-    if (isComplexQuery) {
-      toolActivity.style.display = 'block';
-      toolStatus.textContent = 'Scout is preparing to access your data...';
-      
-      try {
-        // Try streaming first for complex queries
+    try {
+      // Always use streaming - no fallback
         await handleStreamingChat(message);
         return; // Success, exit early
       } catch (streamError) {
-        console.log('Streaming failed, falling back to regular chat:', streamError);
+      console.error('Streaming failed:', streamError);
         hideStreamingStatus();
-        // Continue to regular chat below
-      }
-    }
-
-    // Fallback to regular chat for simple queries or if streaming fails
-    try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-      
-      const response = await fetch('/scout/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken || ''
-        },
-        body: JSON.stringify({ message: message })
-      });
-
-      const data = await response.json();
-
       hideTypingIndicator();
 
-      if (data.error) {
+      // Show error to user instead of falling back
         addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
-      } else {
-        addMessage(data.message, 'assistant');
-        
-        // Show tool usage info in development
-        if (data.tools_used && data.tools_list?.length > 0) {
-          console.log('Tools used:', data.tools_list);
-          console.log('Success count:', data.success_count);
-        }
-      }
-
-    } catch (error) {
-      console.error('Error:', error);
-      hideTypingIndicator();
-      addMessage('Sorry, I\'m having trouble connecting. Please try again.', 'assistant');
-    } finally {
-      // Re-enable input
+      
+      // Re-enable form
       messageInput.disabled = false;
       sendButton.disabled = false;
       if (messageInput && messageInput.focus) {
         messageInput.focus();
       }
-      
-      // Hide tool activity and streaming status
-      toolActivity.style.display = 'none';
-      hideStreamingStatus();
+      return;
     }
+
   });
 
   // Handle enter key
@@ -787,4 +1885,52 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 });
+
+// Confirmation dialog handling
+let pendingConfirmation = null;
+
+function showConfirmationDialog(message, onConfirm) {
+  const dialog = document.getElementById('confirmation-dialog');
+  const messageEl = document.getElementById('confirmation-message');
+  const proceedBtn = document.getElementById('confirmation-proceed');
+  
+  messageEl.innerHTML = message;
+  pendingConfirmation = onConfirm;
+  
+  // Show the dialog using Bootstrap modal
+  const modal = new bootstrap.Modal(dialog);
+  modal.show();
+}
+
+// Handle confirmation proceed
+document.getElementById('confirmation-proceed')?.addEventListener('click', function() {
+  if (pendingConfirmation) {
+    pendingConfirmation();
+    pendingConfirmation = null;
+  }
+  
+  // Hide the modal
+  const dialog = document.getElementById('confirmation-dialog');
+  const modal = bootstrap.Modal.getInstance(dialog);
+  modal.hide();
+});
 </script> 
+
+<!-- Confirmation Dialog -->
+<div id="confirmation-dialog" class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmation Required</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="confirmation-message">
+        <!-- Dynamic content will be inserted here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmation-proceed">Proceed</button>
+      </div>
+    </div>
+  </div>
+</div> 
