@@ -272,7 +272,7 @@ class ScoutController < ApplicationController
         canvas_title = canvas_data['title'] || "Custom Analysis"
       when 'task_progress'
         canvas_content = render_task_progress(canvas_data)
-        canvas_title = canvas_data[:title] || "Task Progress"
+        canvas_title = "Task Progress"
       when 'campaign_editor'
         canvas_content = render_campaign_editor(canvas_data)
         canvas_title = "Campaign Editor"

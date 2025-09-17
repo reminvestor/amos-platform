@@ -3075,6 +3075,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     return unless task_list && task_list[:tasks]
     
     Rails.logger.info "🔍 Checking task update for tool: #{tool_name}, args: #{args.inspect}"
+    Rails.logger.info "📋 Current tasks in list: #{task_list[:tasks].map { |t| "#{t[:id]}: #{t[:description]} (#{t[:status]})" }.join(', ')}"
     
     # Find matching task based on tool name and context
     task = nil
@@ -3084,37 +3085,44 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       # Match tasks like "Get campaign schema", "Get campaigns schema"
       object_type = args['object_type']
       task = task_list[:tasks].find do |t|
+        desc = t[:description].downcase
         t[:status] == 'pending' && 
-        t[:description].downcase.include?('get') && 
-        t[:description].downcase.include?(object_type.singularize.downcase) &&
-        t[:description].downcase.include?('schema')
+        (desc.include?('get') || desc.include?('fetch') || desc.include?('retrieve')) && 
+        desc.include?('schema') &&
+        (desc.include?(object_type.downcase) || desc.include?(object_type.singularize.downcase) || desc.include?(object_type.pluralize.downcase))
       end
       
     when 'create_object'
       # Match tasks like "Create new campaign 'name'"
       object_type = args['object_type']
+      object_name = args['name'] || args['title'] || ''
       task = task_list[:tasks].find do |t|
+        desc = t[:description].downcase
         t[:status] == 'pending' && 
-        t[:description].downcase.include?('create') && 
-        t[:description].downcase.include?(object_type.singularize.downcase)
+        desc.include?('create') && 
+        (desc.include?(object_type.downcase) || desc.include?(object_type.singularize.downcase)) &&
+        (object_name.empty? || desc.include?(object_name.downcase))
       end
       
     when 'get_data'
       # Match tasks like "Find most recent email template", "Find the most recent template"
       object_type = args['object_type']
       task = task_list[:tasks].find do |t|
+        desc = t[:description].downcase
         t[:status] == 'pending' && 
-        (t[:description].downcase.include?('find') || t[:description].downcase.include?('get')) &&
-        t[:description].downcase.include?(object_type.singularize.downcase)
+        (desc.include?('find') || desc.include?('get') || desc.include?('fetch') || desc.include?('retrieve')) &&
+        (desc.include?(object_type.downcase) || desc.include?(object_type.singularize.downcase) || desc.include?(object_type.pluralize.downcase)) &&
+        (desc.include?('recent') || desc.include?('latest') || desc.include?('template'))
       end
       
     when 'link_template_to_campaign'
-      # Match tasks like "Link template to campaign"
+      # Match tasks like "Link template to campaign", "Link the template to the new campaign"
       task = task_list[:tasks].find do |t|
+        desc = t[:description].downcase
         t[:status] == 'pending' && 
-        t[:description].downcase.include?('link') && 
-        t[:description].downcase.include?('template') &&
-        t[:description].downcase.include?('campaign')
+        desc.include?('link') && 
+        desc.include?('template') &&
+        desc.include?('campaign')
       end
     end
     
@@ -3217,6 +3225,15 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       
       # Canvas will be loaded via the return value
       # The streaming handler will pick up the canvas from the result
+      
+      # Immediately load the canvas if we have a callback
+      if progress_callback
+        progress_callback.call({
+          type: 'load_canvas',
+          canvas: 'task_progress',
+          canvas_data: task_list
+        })
+      end
       
       {
         success: true,
