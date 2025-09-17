@@ -913,7 +913,6 @@ class ScoutGenericToolsService
                   # No more tools requested in first continuation
                   final_message = continuation_message
                 end
-                end
                 
               rescue => e
                 Rails.logger.error "Error getting final response: #{e.message}"
