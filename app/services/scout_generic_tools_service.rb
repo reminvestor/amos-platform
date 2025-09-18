@@ -1200,6 +1200,12 @@ class ScoutGenericToolsService
     execute_analyze_landing_page_request_internal(args)
   end
 
+  # Set context for Scout to be aware of current view/page
+  def set_context(context)
+    @context = context
+    Rails.logger.info "🎯 Scout context set: #{context.inspect}"
+  end
+
   private
 
   def get_bedrock_tools
@@ -3850,11 +3856,5 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         error: "Unknown action: #{action}"
       }
     end
-  end
-
-  # Set context for Scout to be aware of current view/page
-  def set_context(context)
-    @context = context
-    Rails.logger.info "🎯 Scout context set: #{context.inspect}"
   end
 end 
