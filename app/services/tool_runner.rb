@@ -5,6 +5,7 @@ class ToolRunner
   
   def initialize(tool_registry = nil)
     @tool_registry = tool_registry || ToolRegistry
+    @observability = ObservabilityService.instance
   end
   
   # Execute a tool with contract validation and idempotency
@@ -37,8 +38,29 @@ class ToolRunner
       }
     end
     
+    # Track tool execution start
+    start_time = Time.current
+    @observability.track_tool_event(:tool_called, tool, {
+      input_size: inputs.to_s.length,
+      idempotency_key: idempotency_key
+    })
+    
     # Execute tool with retries
     result = execute_with_retries(tool, inputs, retries)
+    
+    # Track tool completion
+    duration_ms = ((Time.current - start_time) * 1000).round(2)
+    @observability.track_tool_event(
+      result[:status] == 'success' ? :tool_completed : :tool_failed,
+      tool,
+      {
+        duration_ms: duration_ms,
+        success: result[:status] == 'success',
+        error: result[:error],
+        output_size: result[:data]&.to_s&.length,
+        retries_used: result[:retries] || 0
+      }
+    )
     
     # Validate outputs
     if result[:status] == 'success' && result[:data]

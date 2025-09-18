@@ -5,6 +5,7 @@ class WorkflowEngine
     @task_session = task_session
     @workflow = nil
     @progress_callback = nil
+    @observability = ObservabilityService.instance
   end
   
   # Create and start a new workflow
@@ -18,6 +19,13 @@ class WorkflowEngine
     
     # Create workflow instance
     @workflow = Workflow.new(workflow_spec)
+    
+    # Track workflow start
+    @observability.track_workflow_event(:workflow_started, @task_session, {
+      workflow_type: workflow_spec[:type],
+      total_steps: @workflow.steps.length,
+      initial_inputs_keys: initial_inputs.keys
+    })
     
     # Execute first step
     execute_next_step(initial_inputs)
@@ -313,12 +321,25 @@ class WorkflowEngine
       })
       @task_session.update!(status: 'completed')
       
+      # Track workflow completion
+      @observability.track_workflow_event(:workflow_completed, @task_session, {
+        total_steps: @workflow.steps.length,
+        completion_time_seconds: Time.current - @task_session.created_at
+      })
+      
     when 'failed'
       @task_session.add_event('workflow_failed', {
         failed_step: result[:failed_step],
         error: result[:error]
       })
       @task_session.update!(status: 'failed')
+      
+      # Track workflow failure
+      @observability.track_workflow_event(:workflow_failed, @task_session, {
+        failed_step: result[:failed_step],
+        error: result[:error],
+        steps_completed: @workflow.steps.count { |s| s.status == 'completed' }
+      })
       
     when 'awaiting_input'
       @task_session.add_event('step_awaiting_input', {
