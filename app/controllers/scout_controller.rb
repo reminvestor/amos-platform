@@ -283,13 +283,27 @@ class ScoutController < ApplicationController
         current_canvas  # Pass current canvas context
       )
       
-      # Save Scout's response
-      Rails.logger.info "📨 Final response type: #{final_response[:message].class}"
-      Rails.logger.info "📨 Final response content: #{final_response[:message].to_s.first(200)}..."
-      save_scout_message('assistant', final_response[:message])
+      # Save Scout's response only if it wasn't already saved during streaming
+      if final_response[:message].present? && !final_response[:message_already_saved]
+        Rails.logger.info "📨 Final response type: #{final_response[:message].class}"
+        Rails.logger.info "📨 Final response content: #{final_response[:message].to_s.first(200)}..."
+        save_scout_message('assistant', final_response[:message])
+      else
+        Rails.logger.info "📨 Final message already saved during streaming, skipping duplicate save"
+      end
       
       # Send completion indicator
       stream_update("✅ Complete")
+      
+      # Load suggested canvas if available
+      if final_response[:canvas] && final_response[:canvas] != 'conversation'
+        Rails.logger.info "📋 Loading suggested canvas: #{final_response[:canvas]}"
+        stream_update({
+          type: 'load_canvas',
+          canvas: final_response[:canvas],
+          canvas_data: final_response[:canvas_data] || {}
+        })
+      end
       
       # Send job started status if there's an active job
       send_job_started_status_if_exists(final_response)

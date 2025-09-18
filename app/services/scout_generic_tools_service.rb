@@ -471,6 +471,8 @@ class ScoutGenericToolsService
                 content: accumulated_content,
                 role: 'assistant'
               })
+              # Mark that we've saved messages during streaming
+              @messages_saved_during_streaming = true
             end
             
             # Parse and execute each tool
@@ -693,6 +695,8 @@ class ScoutGenericToolsService
                     content: continuation_message,
                     role: 'assistant'
                   })
+                  # Mark that we've saved messages during streaming
+                  @messages_saved_during_streaming = true
                 end
                 
                 # If the continuation wants to use more tools, execute them recursively
@@ -1043,6 +1047,7 @@ class ScoutGenericToolsService
             Rails.logger.info "Returning with @suggested_canvas: #{@suggested_canvas.inspect}"
             return {
               message: final_message,
+              message_already_saved: @messages_saved_during_streaming || false,
               tools_used: true,
               tools_list: tool_calls.map { |t| t[:name] },
               success_count: results.count { |r| r[:success] },
@@ -1070,6 +1075,7 @@ class ScoutGenericToolsService
             
             return {
               message: accumulated_content,
+              message_already_saved: @messages_saved_during_streaming || false,
               tools_used: false,
               canvas: @suggested_canvas,
               mode: detected_mode
