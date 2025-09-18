@@ -402,6 +402,7 @@ class ScoutGenericToolsService
       accumulated_content = ""
       tool_calls = []
       streaming_started = false
+      saved_message_content = Set.new  # Track saved messages to prevent duplicates
       
       # Stream the response - use native Bedrock tools
       tools = get_bedrock_tools
@@ -465,14 +466,20 @@ class ScoutGenericToolsService
             
             # Save any accumulated content before tools as an intermediate message
             if accumulated_content.present? && accumulated_content.strip.length > 0
-              Rails.logger.info "💾 Saving intermediate message before tools: #{accumulated_content}"
-              progress_callback&.call({
-                type: 'save_message',
-                content: accumulated_content,
-                role: 'assistant'
-              })
-              # Mark that we've saved messages during streaming
-              @messages_saved_during_streaming = true
+              content_hash = accumulated_content.strip
+              unless saved_message_content.include?(content_hash)
+                Rails.logger.info "💾 Saving intermediate message before tools: #{accumulated_content}"
+                progress_callback&.call({
+                  type: 'save_message',
+                  content: accumulated_content,
+                  role: 'assistant'
+                })
+                saved_message_content.add(content_hash)
+                # Mark that we've saved messages during streaming
+                @messages_saved_during_streaming = true
+              else
+                Rails.logger.info "⚠️ Skipping duplicate intermediate message: #{accumulated_content.strip.first(50)}..."
+              end
             end
             
             # Parse and execute each tool
@@ -689,14 +696,20 @@ class ScoutGenericToolsService
                 
                 # If the AI provided a message before using continuation tools, save it
                 if continuation_message.present? && continuation_tool_calls.any?
-                  # The AI said something before using tools - this needs to be saved!
-                  progress_callback&.call({
-                    type: 'save_message',
-                    content: continuation_message,
-                    role: 'assistant'
-                  })
-                  # Mark that we've saved messages during streaming
-                  @messages_saved_during_streaming = true
+                  content_hash = continuation_message.strip
+                  unless saved_message_content.include?(content_hash)
+                    Rails.logger.info "💾 Saving continuation message before tools: #{continuation_message}"
+                    progress_callback&.call({
+                      type: 'save_message',
+                      content: continuation_message,
+                      role: 'assistant'
+                    })
+                    saved_message_content.add(content_hash)
+                    # Mark that we've saved messages during streaming
+                    @messages_saved_during_streaming = true
+                  else
+                    Rails.logger.info "⚠️ Skipping duplicate continuation message: #{continuation_message.strip.first(50)}..."
+                  end
                 end
                 
                 # If the continuation wants to use more tools, execute them recursively
@@ -1006,11 +1019,18 @@ class ScoutGenericToolsService
                     
                     # If there's a message before more tools, save it
                     if last_message.present? && more_tool_calls.any?
-                      progress_callback&.call({
-                        type: 'save_message',
-                        content: last_message,
-                        role: 'assistant'
-                      })
+                      content_hash = last_message.strip
+                      unless saved_message_content.include?(content_hash)
+                        Rails.logger.info "💾 Saving last message before more tools: #{last_message}"
+                        progress_callback&.call({
+                          type: 'save_message',
+                          content: last_message,
+                          role: 'assistant'
+                        })
+                        saved_message_content.add(content_hash)
+                      else
+                        Rails.logger.info "⚠️ Skipping duplicate last message: #{last_message.strip.first(50)}..."
+                      end
                     end
                     
                     # Update the additional_message with the latest

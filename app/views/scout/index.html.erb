@@ -903,6 +903,21 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Track streamed content to prevent duplicates
   let streamedContent = new Set();
+  
+  // Populate streamedContent with existing messages on page load
+  function initializeStreamedContent() {
+    const existingMessages = document.querySelectorAll('#chat-messages .message-content');
+    existingMessages.forEach(messageEl => {
+      const content = messageEl.textContent.trim();
+      if (content) {
+        streamedContent.add(content);
+      }
+    });
+    console.log(`📝 Initialized streamedContent with ${streamedContent.size} existing messages`);
+  }
+  
+  // Initialize after DOM is ready
+  setTimeout(initializeStreamedContent, 100);
   const newConversationBtn = document.getElementById('new-conversation-btn');
 
   // Auto-focus on input (with defensive check)
@@ -1284,6 +1299,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const el = buildMessageElement({ content: messageContent, role, timestamp, metadata: null });
     chatMessages.appendChild(el);
+    
+    // Track the content to prevent future duplicates
+    streamedContent.add(messageContent.toString().trim());
+    
     scrollToBottom();
     updateMessageCount();
     return el; // Return the element for streaming updates
@@ -1523,7 +1542,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   }
-  
+
   function hideStreamingStatus() {
     // Tool activity is hidden when response is complete
     setTimeout(() => {
@@ -1673,12 +1692,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 // But only if it wasn't already streamed to prevent duplicates
                 if (data.content && data.content.trim() !== '') {
                   const contentHash = data.content.trim();
-                  if (!streamedContent.has(contentHash)) {
+                  
+                  // Check both streamedContent Set AND existing messages in the chat
+                  const existingMessages = Array.from(chatMessages.querySelectorAll('.message-content')).map(el => el.textContent.trim());
+                  const alreadyExists = streamedContent.has(contentHash) || existingMessages.includes(contentHash);
+                  
+                  if (!alreadyExists) {
                     console.log('📝 Adding intermediate message:', contentHash.substring(0, 50) + '...');
                     addMessage(data.content, data.role || 'assistant');
+                    streamedContent.add(contentHash); // Track it immediately
                     scrollToBottom();
                   } else {
-                    console.log('⚠️ Skipping duplicate intermediate message:', contentHash.substring(0, 50) + '...');
+                    console.log('⚠️ Skipping duplicate intermediate message (already in chat):', contentHash.substring(0, 50) + '...');
                   }
                 }
               } else if (data.type === 'add_tool_message') {
