@@ -88,11 +88,11 @@
     <div class="onboarding-input-content">
       <form id="onboarding-form" class="onboarding-form">
         <div class="onboarding-input-group">
-          <input type="text" 
-                 id="onboarding-message-input" 
-                 class="onboarding-input" 
-                 placeholder="Tell Scout about your business..." 
-                 maxlength="1000">
+          <textarea id="onboarding-message-input" 
+                    class="onboarding-input" 
+                    placeholder="Tell Scout about your business..." 
+                    maxlength="1000"
+                    rows="1"></textarea>
           <button type="submit" 
                   id="onboarding-send-button"
                   class="onboarding-send-btn">
@@ -426,6 +426,15 @@ body {
   padding: 0.75rem 1rem;
   color: #333;
   outline: none;
+  resize: none;
+  height: 50px;
+  min-height: 50px;
+  max-height: 150px;
+  overflow-y: hidden;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  box-sizing: border-box;
 }
 
 .onboarding-input:focus {
@@ -513,14 +522,41 @@ document.addEventListener('DOMContentLoaded', function() {
   // Scroll to bottom initially
   scrollToBottom();
   
+  // Auto-resize textarea
+  function autoResizeTextarea() {
+    // Reset height to recalculate
+    messageInput.style.height = 'auto';
+    
+    // Calculate new height based on scroll height
+    const scrollHeight = messageInput.scrollHeight;
+    const newHeight = Math.min(Math.max(scrollHeight, 50), 150);
+    messageInput.style.height = newHeight + 'px';
+    
+    // Enable scrolling if content exceeds max height
+    if (scrollHeight > 150) {
+      messageInput.style.overflowY = 'auto';
+    } else {
+      messageInput.style.overflowY = 'hidden';
+    }
+    
+    console.log('📏 Textarea resize - scrollHeight:', scrollHeight, 'newHeight:', newHeight);
+  }
+  
+  // Add input event listener for auto-resize
+  messageInput.addEventListener('input', autoResizeTextarea);
+  messageInput.addEventListener('paste', () => setTimeout(autoResizeTextarea, 10));
+  
+  // Initial resize in case there's default content
+  setTimeout(autoResizeTextarea, 100);
+  
   // Handle form submission
   chatForm.addEventListener('submit', function(e) {
     e.preventDefault();
     sendMessage();
   });
   
-  // Handle Enter key
-  messageInput.addEventListener('keypress', function(e) {
+  // Handle Enter key (send on Enter, new line on Shift+Enter)
+  messageInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -538,6 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Clear input and disable form
     messageInput.value = '';
+    messageInput.style.height = '50px'; // Reset to initial height after sending
     setFormState(false);
     
     // Show typing indicator

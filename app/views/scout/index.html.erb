@@ -350,14 +350,14 @@
       <div class="chat-input-area">
         <form id="message-form" data-scout-target="chatForm">
           <div class="input-group">
-            <input 
-              type="text" 
+            <textarea 
               class="chat-input" 
               id="message-input"
               placeholder="Type your message..." 
               data-scout-target="chatInput"
               autocomplete="off"
-            >
+              rows="1"
+            ></textarea>
             <button type="submit" class="send-btn" id="send-button">
               <i class="fas fa-paper-plane"></i>
             </button>
@@ -905,6 +905,34 @@ document.addEventListener('turbo:load', function() {
   const chatMessages = document.getElementById('chat-messages');
   const sendButton = document.getElementById('send-button');
   const toolActivity = document.getElementById('tool-activity');
+  
+  // Auto-resize textarea functionality
+  function autoResizeTextarea() {
+    if (!messageInput) return;
+    
+    // Reset height to recalculate
+    messageInput.style.height = 'auto';
+    
+    // Calculate new height based on scroll height
+    const scrollHeight = messageInput.scrollHeight;
+    const newHeight = Math.min(Math.max(scrollHeight, 42), 150);
+    messageInput.style.height = newHeight + 'px';
+    
+    // Enable scrolling if content exceeds max height
+    if (scrollHeight > 150) {
+      messageInput.style.overflowY = 'auto';
+    } else {
+      messageInput.style.overflowY = 'hidden';
+    }
+  }
+  
+  // Add auto-resize event listeners
+  if (messageInput) {
+    messageInput.addEventListener('input', autoResizeTextarea);
+    messageInput.addEventListener('paste', () => setTimeout(autoResizeTextarea, 10));
+    // Initial resize
+    setTimeout(autoResizeTextarea, 100);
+  }
   const toolStatus = document.getElementById('tool-status');
   const conversationSelector = document.getElementById('conversation-selector');
   const conversationDropdown = document.getElementById('conversation-dropdown');
@@ -2052,6 +2080,7 @@ document.addEventListener('turbo:load', function() {
     // Add user message immediately
     addMessage(message, 'user');
     messageInput.value = '';
+    messageInput.style.height = '42px'; // Reset height after sending
     
     // Disable input and show activity
     messageInput.disabled = true;
@@ -2088,8 +2117,8 @@ document.addEventListener('turbo:load', function() {
 
   });
 
-  // Handle enter key
-  messageInput.addEventListener('keypress', function(e) {
+  // Handle enter key (send on Enter, new line on Shift+Enter)
+  messageInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       messageForm.dispatchEvent(new Event('submit'));
