@@ -3,7 +3,7 @@ class LandingPageSubmission < ApplicationRecord
   belongs_to :contact, optional: true
   
   # Status enum
-  enum status: {
+  enum :status, {
     pending: 'pending',
     processed: 'processed',
     failed: 'failed',
