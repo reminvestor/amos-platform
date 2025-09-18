@@ -97,6 +97,12 @@ class WorkflowEngine
     # Trigger progress callback if set
     trigger_progress_callback(result)
     
+    # If step completed and next step is user_input, continue automatically
+    if result[:status] == 'step_completed' && @workflow.current_step&.type == 'user_input'
+      Rails.logger.info "Auto-continuing to next user input step: #{@workflow.current_step.id}"
+      return execute_next_step({})
+    end
+    
     result
   end
   
