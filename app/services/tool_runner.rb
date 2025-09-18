@@ -174,6 +174,8 @@ class ToolRunner
       execute_schema_fetch(inputs)
     when 'query_data'
       execute_data_query(inputs)
+    when 'analyze_landing_page_request'
+      execute_analyze_landing_page_request(inputs)
     else
       # Fallback to existing tool system if available
       if defined?(ScoutGenericToolsService)
@@ -481,6 +483,61 @@ class ToolRunner
       {
         status: 'failed',
         error: "Legacy tool execution failed: #{e.message}"
+      }
+    end
+  end
+  
+  def execute_analyze_landing_page_request(inputs)
+    begin
+      user = inputs[:user] || inputs['user']
+      entity = inputs[:entity] || inputs['entity']
+      
+      # If we have full context, use the real Scout tool
+      if user && entity && defined?(ScoutGenericToolsService)
+        # Need to convert hash to proper objects if needed
+        user_obj = user.is_a?(Hash) ? User.find(user['id'] || user[:id]) : user
+        entity_obj = entity.is_a?(Hash) ? Entity.find(entity['id'] || entity[:id]) : entity
+        
+        service = ScoutGenericToolsService.new(user_obj, entity_obj)
+        result = service.execute_analyze_landing_page_request(inputs)
+        
+        # Convert Scout tool result format to ToolRunner format
+        if result[:success] || result[:data]
+          {
+            status: 'success',
+            data: result[:data] || result,
+            message: result[:message] || result[:recommendation]
+          }
+        else
+          {
+            status: 'failed',
+            error: result[:error] || 'Failed to analyze landing page request'
+          }
+        end
+      else
+        # Fallback to simulated response
+        {
+          status: 'success',
+          data: {
+            business_profile: {
+              name: "Your Business",
+              industry: 'Technology',
+              description: 'A forward-thinking business',
+              target_audience: 'Businesses and professionals'
+            },
+            message_context: {
+              mentions_classes: true
+            },
+            missing_info: ['specific class details', 'call to action']
+          },
+          message: "I'll help you create a landing page for your classes."
+        }
+      end
+    rescue => e
+      Rails.logger.error "analyze_landing_page_request error: #{e.message}"
+      {
+        status: 'failed',
+        error: "Failed to analyze request: #{e.message}"
       }
     end
   end

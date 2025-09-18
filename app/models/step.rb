@@ -275,6 +275,34 @@ class Step
   def simulate_tool_execution(tool_name, inputs)
     # Simulate different tool responses for testing
     case tool_name
+    when 'analyze_landing_page_request'
+      # Simulate analyzing business context
+      user = inputs[:user] || {}
+      entity = inputs[:entity] || {}
+      
+      {
+        status: 'success',
+        data: {
+          business_profile: {
+            name: entity[:name] || entity['name'] || "#{user[:first_name] || user['first_name']}'s Business",
+            industry: 'Technology',
+            description: 'A forward-thinking business focused on innovation',
+            target_audience: 'Small to medium businesses',
+            tone_of_voice: 'Professional yet approachable'
+          },
+          entity: {
+            name: entity[:name] || entity['name'] || 'My Business',
+            subdomain: entity[:subdomain] || entity['subdomain'] || 'mybiz'
+          },
+          message_context: {
+            mentions_classes: true,
+            mentions_new: true,
+            mentions_series: true
+          },
+          missing_info: ['specific class/course details', 'call to action', 'urgency/deadline information']
+        },
+        message: "I've analyzed your business profile. Now let's gather specific details about your classes."
+      }
     when 'generate_landing_page'
       {
         status: 'success',
