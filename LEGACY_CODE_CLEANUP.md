@@ -2,28 +2,54 @@
 
 ## 🗑️ Files and Code to Remove After Implementation
 
-### Phase 1: After TaskSession Implementation
-- **Remove Rails Cache Usage**:
-  - `scout_controller.rb`: Remove all `Rails.cache.read/write` for wizard state
-  - `scout_generic_tools_service.rb`: Remove cache-based task list storage
-  
-### Phase 2: After DSL Implementation  
-- **Remove Direct HTML Generation**:
-  - `landing_page_agent.rb`: Remove raw HTML generation code
-  - `email_template_agent.rb`: Consider migrating to DSL pattern
-  - Remove any `sanitize` calls that won't be needed with DSL
+### ✅ IDENTIFIED LEGACY CODE TO REMOVE:
 
-### Phase 3: After Workflow Engine
-- **Consolidate Canvas Views**:
-  - Merge `_task_progress.html.erb` and `_interactive_wizard.html.erb`
-  - Remove wizard-specific JavaScript in favor of unified workflow UI
-  - Consolidate `wizard_controller.js` and `scout_controller.js`
+#### **1. Old Landing Page Generation Jobs**
+- `app/jobs/simple_ai_landing_page_job.rb` - Raw HTML generation
+- `app/jobs/generate_full_landing_page_job.rb` - Direct HTML generation
+- `app/jobs/agent_generate_landing_page_job.rb` - Old agent system
+- `app/jobs/generate_landing_page_content_job.rb` - OpenAI direct calls
 
-### Phase 4: After Tool Contracts
-- **Remove Unvalidated Tool Calls**:
-  - Direct tool invocations without schema validation
-  - Manual parameter checking code
-  - Ad-hoc retry logic
+#### **2. Legacy AI Agents (Raw HTML)**
+- `app/services/ai_agents/orchestrator.rb` - Complex multi-agent system
+- `app/services/ai_agents/prompt_agent.rb` - Raw HTML prompts
+- `app/services/ai_agents/landing_page_edit_agent.rb` - Direct HTML editing
+
+#### **3. Form Template Service (Replaced by DSL)**
+- `app/services/landing_page_form_templates_service.rb` - Static HTML templates
+
+#### **4. Rails Cache Usage (Replaced by TaskSession)**
+- `scout_controller.rb`: All `Rails.cache.read/write` for task lists
+- `scout_generic_tools_service.rb`: Cache-based task management
+
+#### **5. Old Canvas Views (Can be consolidated)**
+- Consider merging similar canvas views after workflow unification
+- Remove wizard-specific JavaScript duplicates
+
+#### **6. Direct HTML Generation Code**
+- Any remaining `sanitize` calls for raw HTML
+- Direct HTML string concatenation
+- Unsafe HTML generation patterns
+
+### Phase 1: Critical Removals (High Impact)
+- **Old landing page jobs** - These create raw HTML unsafely
+- **Rails cache usage** - Replaced by database-backed TaskSession
+- **Legacy form templates** - Replaced by DSL form generation
+
+### Phase 2: Agent System Cleanup  
+- **Old AI agents** - Replaced by LandingPageDslAgent
+- **Raw HTML generation** - All moved to DSL system
+- **Unsafe HTML handling** - Replaced by sanitized compilation
+
+### Phase 3: UI Consolidation
+- **Duplicate canvas logic** - Merge similar views
+- **Redundant JavaScript** - Consolidate workflow handling
+- **Unused CSS** - Remove wizard-specific styles
+
+### Phase 4: Final Polish
+- **Commented code** - Remove old implementations
+- **Unused imports** - Clean up require statements  
+- **Dead routes** - Remove unused endpoints
 
 ## 🔍 Code Patterns to Search and Remove
 
