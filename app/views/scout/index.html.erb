@@ -890,17 +890,22 @@
 
 <!-- JavaScript for Scout Chat -->
 <script>
-// Prevent re-initialization on Turbo navigation
-if (!window.scoutInitialized) {
-  window.scoutInitialized = true;
+document.addEventListener('turbo:load', function() {
+  // Clean up any previous event listeners to prevent duplicates
+  if (window.scoutCleanup) {
+    window.scoutCleanup();
+  }
   
-  document.addEventListener('DOMContentLoaded', function() {
-    const messageForm = document.getElementById('message-form');
-    const messageInput = document.getElementById('message-input');
-    const chatMessages = document.getElementById('chat-messages');
-    const sendButton = document.getElementById('send-button');
-    const toolActivity = document.getElementById('tool-activity');
-    const toolStatus = document.getElementById('tool-status');
+  // Store cleanup function
+  window.scoutCleanup = function() {
+    // This will be populated with cleanup tasks
+  };
+  const messageForm = document.getElementById('message-form');
+  const messageInput = document.getElementById('message-input');
+  const chatMessages = document.getElementById('chat-messages');
+  const sendButton = document.getElementById('send-button');
+  const toolActivity = document.getElementById('tool-activity');
+  const toolStatus = document.getElementById('tool-status');
   const conversationSelector = document.getElementById('conversation-selector');
   const conversationDropdown = document.getElementById('conversation-dropdown');
   const conversationList = document.getElementById('conversation-list');
@@ -1963,17 +1968,26 @@ if (!window.scoutInitialized) {
           suggestionsDiv.className = 'message-suggestions';
           suggestionsDiv.style.marginTop = '12px';
           suggestionsDiv.innerHTML = `
-            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Create a landing page for my product">
+            <button class="suggestion-btn" data-suggestion="Create a landing page for my product">
               Create a landing page
             </button>
-            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Show me my email campaigns">
+            <button class="suggestion-btn" data-suggestion="Show me my email campaigns">
               View campaigns
             </button>
-            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Analyze my marketing performance">
+            <button class="suggestion-btn" data-suggestion="Analyze my marketing performance">
               Analytics dashboard
             </button>
           `;
           messageContent.appendChild(suggestionsDiv);
+          
+          // Add click handlers to suggestion buttons
+          suggestionsDiv.querySelectorAll('.suggestion-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+              const suggestion = this.dataset.suggestion;
+              messageInput.value = suggestion;
+              messageForm.dispatchEvent(new Event('submit'));
+            });
+          });
         }
       }
     }, 100); // Small delay to ensure DOM is updated
@@ -2067,8 +2081,7 @@ document.getElementById('confirmation-proceed')?.addEventListener('click', funct
   modal.hide();
 });
 
-}); // End DOMContentLoaded
-} // End scoutInitialized check
+}); // End turbo:load
 </script> 
 
 <!-- Confirmation Dialog -->
