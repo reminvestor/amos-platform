@@ -198,12 +198,11 @@
 </div>
 
 <script>
-// Global flag to control auto-refresh behavior
-window.scoutAutoRefreshEnabled = true;
+// Disabled auto-refresh - now using real-time WebSocket updates
+window.scoutAutoRefreshEnabled = false;
 function toggleAutoRefresh(){
-  window.scoutAutoRefreshEnabled = !window.scoutAutoRefreshEnabled;
-  const label = document.getElementById('autoRefreshLabel');
-  if (label) label.textContent = `Auto-refresh: ${window.scoutAutoRefreshEnabled ? 'On' : 'Off'}`;
+  // Auto-refresh disabled - using real-time updates instead
+  console.log('Auto-refresh disabled - using real-time WebSocket updates');
 }
 
 function scoutCreateLandingPage() {
@@ -330,16 +329,10 @@ window.initLandingPageAutoRefresh = function() {
   }
 };
 
-// Initialize auto-refresh when the canvas loads
+// Auto-refresh disabled - using real-time updates instead
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('📋 Landing page viewer loaded, initializing auto-refresh');
-  window.initLandingPageAutoRefresh();
+  console.log('📋 Landing page viewer loaded - auto-refresh disabled');
 });
-
-// Also initialize after a slight delay for dynamic loading
-setTimeout(() => {
-  window.initLandingPageAutoRefresh();
-}, 1000);
 </script>
 
 <style>

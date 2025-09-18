@@ -42,6 +42,12 @@ class ScoutController < ApplicationController
       
       # Use the new generic tools service
       generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity, session[:scout_session_id])
+      
+      # Pass context to the service if available
+      if context.present?
+        generic_tools_service.set_context(context)
+      end
+      
       conversation_history = persisted_history_last_k(12)
       response = generic_tools_service.process_message_with_tools(user_message, conversation_history, current_canvas)
       
@@ -221,6 +227,11 @@ class ScoutController < ApplicationController
       stream_update("🧠 Analyzing your request...")
       stream_update("📋 Preparing context and tools...")
       generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity, session[:scout_session_id])
+      
+      # Pass context to the service if available
+      if context.present?
+        generic_tools_service.set_context(context)
+      end
       
       # Track if we've started streaming content
       content_streaming = false
