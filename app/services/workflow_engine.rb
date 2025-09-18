@@ -385,7 +385,7 @@ class WorkflowEngine
     # Find and mark completed steps based on task session state
     completed_steps = @task_session.task_events
                                   .by_type('step_completed')
-                                  .pluck('payload -> step_id')
+                                  .pluck(Arel.sql("payload ->> 'step_id'"))
     
     @workflow.steps.each do |step|
       if completed_steps.include?(step.id)
