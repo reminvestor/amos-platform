@@ -1194,6 +1194,11 @@ class ScoutGenericToolsService
     end
   end
 
+  # Public method to execute analyze_landing_page_request tool
+  def execute_analyze_landing_page_request(args)
+    execute_analyze_landing_page_request_internal(args)
+  end
+
   private
 
   def get_bedrock_tools
@@ -1752,7 +1757,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     when 'manage_task_list'
       execute_manage_task_list(args)
     when 'analyze_landing_page_request'
-      execute_analyze_landing_page_request(args)
+      execute_analyze_landing_page_request_internal(args)
     else
       { success: false, error: "Unknown tool: #{tool_name}" }
     end
@@ -2907,7 +2912,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     end
   end
 
-  def execute_analyze_landing_page_request(args)
+  def execute_analyze_landing_page_request_internal(args)
     Rails.logger.info "Scout: Analyzing landing page request and existing business info"
     
     user_message = args['user_message'] || ''
