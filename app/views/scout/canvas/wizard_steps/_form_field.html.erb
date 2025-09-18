@@ -1,0 +1,183 @@
+<% 
+  field_name = field['name'] || field[:name]
+  field_type = field['type'] || field[:type] || 'text'
+  field_label = field['label'] || field[:label] || field_name.humanize
+  field_required = field['required'] || field[:required] || false
+  field_placeholder = field['placeholder'] || field[:placeholder] || ''
+  field_options = field['options'] || field[:options] || []
+  field_descriptions = field['descriptions'] || field[:descriptions] || {}
+%>
+
+<label for="<%= field_name %>" class="form-label">
+  <%= field_label %>
+  <% if field_required %>
+    <span class="text-danger">*</span>
+  <% end %>
+</label>
+
+<% case field_type %>
+<% when 'text', 'email', 'tel', 'url' %>
+  <input type="<%= field_type %>" 
+         class="form-control" 
+         id="<%= field_name %>" 
+         name="<%= field_name %>"
+         placeholder="<%= field_placeholder %>"
+         <% if field_required %>required<% end %>>
+
+<% when 'textarea' %>
+  <textarea class="form-control" 
+            id="<%= field_name %>" 
+            name="<%= field_name %>"
+            rows="3"
+            placeholder="<%= field_placeholder %>"
+            <% if field_required %>required<% end %>></textarea>
+
+<% when 'select' %>
+  <select class="form-select" 
+          id="<%= field_name %>" 
+          name="<%= field_name %>"
+          <% if field_required %>required<% end %>>
+    <option value="">Choose...</option>
+    <% field_options.each do |option| %>
+      <option value="<%= option %>"><%= option %></option>
+    <% end %>
+  </select>
+  
+  <!-- Show descriptions if available -->
+  <% if field_descriptions.any? %>
+    <div class="field-descriptions mt-2">
+      <% field_descriptions.each do |value, description| %>
+        <div class="option-description d-none" data-option="<%= value %>">
+          <small class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            <%= description %>
+          </small>
+        </div>
+      <% end %>
+    </div>
+    
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const select = document.getElementById('<%= field_name %>');
+        const descriptions = document.querySelectorAll('[data-option]');
+        
+        if (select && descriptions.length > 0) {
+          select.addEventListener('change', function() {
+            // Hide all descriptions
+            descriptions.forEach(desc => desc.classList.add('d-none'));
+            
+            // Show description for selected option
+            const selectedDesc = document.querySelector(`[data-option="${this.value}"]`);
+            if (selectedDesc) {
+              selectedDesc.classList.remove('d-none');
+            }
+          });
+        }
+      });
+    </script>
+  <% end %>
+
+<% when 'color' %>
+  <div class="input-group">
+    <input type="color" 
+           class="form-control form-control-color" 
+           id="<%= field_name %>" 
+           name="<%= field_name %>"
+           value="<%= field_placeholder.presence || '#2563eb' %>"
+           <% if field_required %>required<% end %>>
+    <input type="text" 
+           class="form-control" 
+           placeholder="<%= field_placeholder %>"
+           id="<%= field_name %>_text">
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const colorInput = document.getElementById('<%= field_name %>');
+      const textInput = document.getElementById('<%= field_name %>_text');
+      
+      if (colorInput && textInput) {
+        // Sync color picker with text input
+        colorInput.addEventListener('input', function() {
+          textInput.value = this.value;
+        });
+        
+        textInput.addEventListener('input', function() {
+          if (/^#[0-9A-F]{6}$/i.test(this.value)) {
+            colorInput.value = this.value;
+          }
+        });
+        
+        // Initialize text input with color value
+        textInput.value = colorInput.value;
+      }
+    });
+  </script>
+
+<% when 'number' %>
+  <input type="number" 
+         class="form-control" 
+         id="<%= field_name %>" 
+         name="<%= field_name %>"
+         placeholder="<%= field_placeholder %>"
+         <% if field['min'] %>min="<%= field['min'] %>"<% end %>
+         <% if field['max'] %>max="<%= field['max'] %>"<% end %>
+         <% if field_required %>required<% end %>>
+
+<% when 'checkbox' %>
+  <div class="form-check">
+    <input class="form-check-input" 
+           type="checkbox" 
+           id="<%= field_name %>" 
+           name="<%= field_name %>"
+           value="true"
+           <% if field_required %>required<% end %>>
+    <label class="form-check-label" for="<%= field_name %>">
+      <%= field_label %>
+    </label>
+  </div>
+
+<% when 'radio' %>
+  <% field_options.each_with_index do |option, index| %>
+    <div class="form-check">
+      <input class="form-check-input" 
+             type="radio" 
+             name="<%= field_name %>" 
+             id="<%= field_name %>_<%= index %>"
+             value="<%= option %>"
+             <% if field_required && index == 0 %>required<% end %>>
+      <label class="form-check-label" for="<%= field_name %>_<%= index %>">
+        <%= option %>
+      </label>
+    </div>
+  <% end %>
+
+<% when 'file' %>
+  <input type="file" 
+         class="form-control" 
+         id="<%= field_name %>" 
+         name="<%= field_name %>"
+         <% if field['accept'] %>accept="<%= field['accept'] %>"<% end %>
+         <% if field_required %>required<% end %>>
+
+<% else %>
+  <!-- Fallback to text input -->
+  <input type="text" 
+         class="form-control" 
+         id="<%= field_name %>" 
+         name="<%= field_name %>"
+         placeholder="<%= field_placeholder %>"
+         <% if field_required %>required<% end %>>
+<% end %>
+
+<!-- Field Help Text -->
+<% if field['help'] || field[:help] %>
+  <div class="form-text">
+    <%= field['help'] || field[:help] %>
+  </div>
+<% end %>
+
+<!-- Validation Feedback -->
+<div class="invalid-feedback">
+  Please provide a valid <%= field_label.downcase %>.
+</div>

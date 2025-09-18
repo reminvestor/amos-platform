@@ -76,6 +76,104 @@ class ScoutController < ApplicationController
     end
   end
 
+  def chat_interactive
+    @session_id = session[:scout_session_id] ||= SecureRandom.uuid
+    user_message = params[:message]&.strip
+    current_canvas = params[:current_canvas]
+    
+    Rails.logger.info "Scout interactive chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
+    
+    if user_message.blank?
+      render json: { error: 'Message cannot be empty' }, status: 400
+      return
+    end
+    
+    begin
+      # Save user message
+      save_scout_message('user', user_message)
+      
+      # Initialize interactive task service
+      interactive_service = InteractiveTaskService.new(current_user, current_entity, @session_id)
+      
+      # Set up progress callback for real-time updates
+      interactive_service.on_progress do |progress_data|
+        # This could be used for WebSocket updates in the future
+        Rails.logger.info "Workflow progress: #{progress_data.inspect}"
+      end
+      
+      # Process the message
+      result = interactive_service.process_message(user_message, persisted_history_last_k(12), current_canvas)
+      
+      # Save assistant response if present
+      if result[:message]
+        save_scout_message('assistant', result[:message])
+      end
+      
+      # Return structured response
+      render json: {
+        success: result[:success],
+        message: result[:message],
+        canvas: result[:canvas],
+        canvas_data: result[:canvas_data],
+        mode: result[:mode],
+        awaiting_input: result[:awaiting_input],
+        workflow_completed: result[:workflow_completed],
+        step_completed: result[:step_completed]
+      }
+      
+    rescue => e
+      Rails.logger.error "Scout interactive chat error: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      
+      render json: {
+        success: false,
+        message: "I encountered an error processing your request. Please try again.",
+        error: e.message,
+        canvas: 'conversation'
+      }, status: 500
+    end
+  end
+  
+  def continue_workflow
+    @session_id = session[:scout_session_id] ||= SecureRandom.uuid
+    user_inputs = params[:inputs] || {}
+    
+    Rails.logger.info "Scout continue workflow - Session: #{@session_id}, Inputs: #{user_inputs.keys}"
+    
+    begin
+      # Initialize interactive task service
+      interactive_service = InteractiveTaskService.new(current_user, current_entity, @session_id)
+      
+      # Continue the workflow
+      result = interactive_service.continue_workflow(user_inputs)
+      
+      # Save any assistant response
+      if result[:message]
+        save_scout_message('assistant', result[:message])
+      end
+      
+      render json: {
+        success: result[:success],
+        message: result[:message],
+        canvas: result[:canvas],
+        canvas_data: result[:canvas_data],
+        workflow_completed: result[:workflow_completed],
+        step_completed: result[:step_completed]
+      }
+      
+    rescue => e
+      Rails.logger.error "Scout continue workflow error: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      
+      render json: {
+        success: false,
+        message: "I encountered an error continuing the workflow. Please try again.",
+        error: e.message,
+        canvas: 'conversation'
+      }, status: 500
+    end
+  end
+
   def chat_stream
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     user_message = params[:message]&.strip
@@ -250,6 +348,9 @@ class ScoutController < ApplicationController
       when 'landing_page_editor'
         canvas_content = render_landing_page_editor(canvas_data)
         canvas_title = "Edit Landing Page"
+      when 'interactive_wizard'
+        canvas_content = render_interactive_wizard(canvas_data)
+        canvas_title = determine_wizard_title(canvas_data)
       when 'contact_viewer'
         canvas_content = render_contact_canvas(canvas_data)
         canvas_title = "Contacts"
@@ -1008,6 +1109,40 @@ class ScoutController < ApplicationController
         canvas_data: data
       }
     )
+  end
+
+  def render_interactive_wizard(data = {})
+    render_to_string(
+      partial: 'scout/canvas/interactive_wizard',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data,
+        step: data[:step],
+        form: data[:form],
+        progress: data[:progress]
+      }
+    )
+  end
+  
+  def determine_wizard_title(canvas_data)
+    step = canvas_data[:step]
+    progress = canvas_data[:progress]
+    
+    if step && step[:config] && step[:config][:title]
+      step[:config][:title]
+    elsif progress && progress[:workflow_type]
+      case progress[:workflow_type]
+      when 'landing_page_creation'
+        "Landing Page Wizard"
+      when 'campaign_creation'
+        "Campaign Wizard"
+      else
+        "Interactive Wizard"
+      end
+    else
+      "Interactive Wizard"
+    end
   end
 
   def render_task_progress(data = {})

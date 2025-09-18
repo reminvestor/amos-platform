@@ -1052,14 +1052,32 @@ document.addEventListener('DOMContentLoaded', function() {
     showTypingIndicator();
     
     try {
-      // Use the streaming handler directly
-      await handleStreamingChat(message);
+      // Intelligent routing: check if message suggests interactive workflow
+      if (shouldUseInteractiveMode(message)) {
+        console.log('🎯 Using interactive mode for:', message);
+        await handleInteractiveChat(message);
+      } else {
+        console.log('⚡ Using streaming mode for:', message);
+        await handleStreamingChat(message);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       hideTypingIndicator();
       addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
     }
   };
+  
+  // Determine if message should use interactive mode
+  function shouldUseInteractiveMode(message) {
+    const interactiveKeywords = [
+      'create landing page', 'design page', 'build website', 'landing page',
+      'campaign strategy', 'help me plan', 'brainstorm',
+      'create content', 'write content', 'design layout'
+    ];
+    
+    const lowerMessage = message.toLowerCase();
+    return interactiveKeywords.some(keyword => lowerMessage.includes(keyword));
+  }
   
   // Ensure our version stays in place even after Stimulus loads
   setTimeout(() => {
@@ -1511,6 +1529,55 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
       hideToolActivity();
     }, 3000); // Keep visible for 3 seconds after completion
+  }
+
+  // Handle interactive workflow chat
+  async function handleInteractiveChat(message) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    
+    try {
+      const response = await fetch('/scout/chat_interactive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({
+          message: message,
+          current_canvas: getCurrentCanvas()
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Add assistant message
+        if (data.message) {
+          addMessage(data.message, 'assistant');
+        }
+        
+        // Load appropriate canvas
+        if (data.canvas && data.canvas !== 'conversation') {
+          loadScoutCanvas(data.canvas, data.canvas_data);
+        }
+        
+        // Handle different workflow states
+        if (data.awaiting_input) {
+          console.log('Workflow awaiting user input');
+        } else if (data.workflow_completed) {
+          console.log('Workflow completed successfully');
+        } else if (data.step_completed) {
+          console.log('Workflow step completed, continuing...');
+        }
+        
+      } else {
+        addMessage(data.message || 'An error occurred', 'assistant');
+      }
+      
+    } catch (error) {
+      console.error('Interactive chat error:', error);
+      addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+    }
   }
 
   // Handle streaming chat

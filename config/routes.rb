@@ -232,6 +232,8 @@ Rails.application.routes.draw do
   get 'scout', to: 'scout#index'
   post 'scout/chat', to: 'scout#chat'
   post 'scout/chat_stream', to: 'scout#chat_stream'
+  post 'scout/chat_interactive', to: 'scout#chat_interactive'
+  post 'scout/continue_workflow', to: 'scout#continue_workflow'
   get 'scout/history', to: 'scout#history' # paginated history
   delete 'scout/conversation', to: 'scout#clear_conversation'
   get 'scout/export', to: 'scout#conversation_export'

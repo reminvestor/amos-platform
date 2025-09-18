@@ -1,0 +1,283 @@
+<div class="interactive-wizard-canvas h-100">
+  <!-- Wizard Header -->
+  <div class="wizard-header bg-light border-bottom p-3">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h4 class="mb-1">
+          <%= step&.dig('config', 'title') || 'Interactive Wizard' %>
+        </h4>
+        <% if step&.dig('config', 'description') %>
+          <p class="text-muted mb-0 small">
+            <%= step['config']['description'] %>
+          </p>
+        <% end %>
+      </div>
+      
+      <!-- Progress Indicator -->
+      <% if progress %>
+        <div class="wizard-progress">
+          <div class="d-flex align-items-center">
+            <small class="text-muted me-2">
+              Step <%= progress['completed_steps'] + 1 %> of <%= progress['total_steps'] %>
+            </small>
+            <div class="progress" style="width: 100px; height: 8px;">
+              <div class="progress-bar" 
+                   style="width: <%= progress['progress_percentage'] %>%"
+                   role="progressbar"></div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+  
+  <!-- Wizard Content -->
+  <div class="wizard-content p-4 flex-grow-1 overflow-auto">
+    <% if step && step['config'] && step['config']['fields'] %>
+      <!-- Render Form Fields -->
+      <form id="wizard-form" class="needs-validation" novalidate>
+        <% step['config']['fields'].each do |field| %>
+          <div class="mb-3">
+            <%= render partial: 'scout/canvas/wizard_steps/form_field', 
+                       locals: { field: field } %>
+          </div>
+        <% end %>
+        
+        <!-- Form Actions -->
+        <div class="wizard-actions mt-4 pt-3 border-top">
+          <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-outline-secondary" id="skip-step-btn">
+              Skip This Step
+            </button>
+            <button type="submit" class="btn btn-primary btn-lg">
+              <%= step.dig('config', 'submit_label') || 'Continue' %>
+              <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+      </form>
+      
+    <% elsif step && step['type'] == 'tool_call' %>
+      <!-- Tool Execution in Progress -->
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary mb-3" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <h5><%= step.dig('config', 'description') || 'Processing...' %></h5>
+        <p class="text-muted">
+          Scout is working on your request. This may take a moment.
+        </p>
+      </div>
+      
+    <% else %>
+      <!-- Default State -->
+      <div class="text-center py-5">
+        <i class="bi bi-magic display-1 text-primary mb-3"></i>
+        <h5>Interactive Wizard</h5>
+        <p class="text-muted">
+          Scout will guide you through this process step by step.
+        </p>
+      </div>
+    <% end %>
+  </div>
+  
+  <!-- Wizard Footer -->
+  <div class="wizard-footer bg-light border-top p-3">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="wizard-info">
+        <% if progress %>
+          <small class="text-muted">
+            <i class="bi bi-clock me-1"></i>
+            Started <%= time_ago_in_words(Time.current - 5.minutes) %> ago
+          </small>
+        <% end %>
+      </div>
+      
+      <div class="wizard-controls">
+        <button type="button" class="btn btn-sm btn-outline-danger" id="cancel-workflow-btn">
+          <i class="bi bi-x-circle me-1"></i>
+          Cancel Workflow
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for Wizard Interaction -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const wizardForm = document.getElementById('wizard-form');
+  const skipBtn = document.getElementById('skip-step-btn');
+  const cancelBtn = document.getElementById('cancel-workflow-btn');
+  
+  // Handle form submission
+  if (wizardForm) {
+    wizardForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // Validate form
+      if (!wizardForm.checkValidity()) {
+        e.stopPropagation();
+        wizardForm.classList.add('was-validated');
+        return;
+      }
+      
+      // Collect form data
+      const formData = new FormData(wizardForm);
+      const inputs = {};
+      
+      for (let [key, value] of formData.entries()) {
+        inputs[key] = value;
+      }
+      
+      // Submit to continue workflow
+      continueWorkflow(inputs);
+    });
+  }
+  
+  // Handle skip step
+  if (skipBtn) {
+    skipBtn.addEventListener('click', function() {
+      if (confirm('Are you sure you want to skip this step?')) {
+        continueWorkflow({}, true);
+      }
+    });
+  }
+  
+  // Handle cancel workflow
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+      if (confirm('Are you sure you want to cancel this workflow? All progress will be lost.')) {
+        cancelWorkflow();
+      }
+    });
+  }
+  
+  function continueWorkflow(inputs, skip = false) {
+    const submitBtn = wizardForm?.querySelector('button[type="submit"]');
+    const originalText = submitBtn?.textContent;
+    
+    // Show loading state
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+    }
+    
+    // Send request
+    fetch('/scout/continue_workflow', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      },
+      body: JSON.stringify({
+        inputs: inputs,
+        skip: skip
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Handle successful workflow continuation
+        if (data.workflow_completed) {
+          // Load final canvas
+          loadScoutCanvas(data.canvas, data.canvas_data);
+          showMessage(data.message, 'success');
+        } else if (data.awaiting_input) {
+          // Update wizard with next step
+          loadScoutCanvas('interactive_wizard', data.canvas_data);
+        } else {
+          // Show progress or other canvas
+          loadScoutCanvas(data.canvas, data.canvas_data);
+        }
+      } else {
+        showMessage(data.message || 'An error occurred', 'error');
+        
+        // Reset button state
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Workflow continuation error:', error);
+      showMessage('An error occurred while processing your request', 'error');
+      
+      // Reset button state
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    });
+  }
+  
+  function cancelWorkflow() {
+    // Navigate back to conversation
+    loadScoutCanvas('conversation', {});
+    showMessage('Workflow cancelled', 'info');
+  }
+  
+  function showMessage(message, type = 'info') {
+    // This would integrate with the existing Scout message system
+    console.log(`${type.toUpperCase()}: ${message}`);
+  }
+  
+  // Make functions available globally for integration
+  window.continueWorkflow = continueWorkflow;
+  window.cancelWorkflow = cancelWorkflow;
+});
+</script>
+
+<style>
+.interactive-wizard-canvas {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.wizard-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.wizard-progress .progress {
+  border-radius: 10px;
+}
+
+.wizard-actions {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  z-index: 10;
+}
+
+.form-field-description {
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+}
+
+.wizard-header {
+  flex-shrink: 0;
+}
+
+.wizard-footer {
+  flex-shrink: 0;
+}
+
+/* Theme-specific styling */
+.theme-clean .wizard-header {
+  background: #f8f9fa;
+}
+
+.theme-modern .wizard-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.theme-professional .wizard-header {
+  background: #343a40;
+  color: white;
+}
+</style>
