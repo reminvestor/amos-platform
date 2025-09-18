@@ -295,14 +295,17 @@ class ScoutController < ApplicationController
       # Send completion indicator
       stream_update("✅ Complete")
       
-      # Load suggested canvas if available
-      if final_response[:canvas] && final_response[:canvas] != 'conversation'
-        Rails.logger.info "📋 Loading suggested canvas: #{final_response[:canvas]}"
+      # Load suggested canvas if available - but only if it hasn't been loaded during streaming
+      # The task_progress canvas is loaded dynamically during task updates, so skip it here
+      if final_response[:canvas] && final_response[:canvas] != 'conversation' && final_response[:canvas] != 'task_progress'
+        Rails.logger.info "📋 Loading suggested canvas at end: #{final_response[:canvas]}"
         stream_update({
           type: 'load_canvas',
           canvas: final_response[:canvas],
           canvas_data: final_response[:canvas_data] || {}
         })
+      elsif final_response[:canvas] == 'task_progress'
+        Rails.logger.info "📋 Skipping task_progress canvas load at end - already loaded during streaming"
       end
       
       # Send job started status if there's an active job
