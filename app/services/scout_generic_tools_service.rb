@@ -19,6 +19,7 @@ class ScoutGenericToolsService
     @entity = entity
     @session_id = session_id
     @saved_message_content = Set.new  # Track saved messages to prevent duplicates
+    @context = nil  # Current canvas/page context
     
     # Use the centralized AI service configuration
     @ai_service = AiServiceHelper.get_service
@@ -285,6 +286,10 @@ class ScoutGenericToolsService
 
   def process_message_with_tools(user_message, conversation_history = [], current_canvas = nil)
     begin
+      # Load context if available
+      context = get_context
+      Rails.logger.info "🎯 Processing with context: #{context.inspect}" if context.present?
+      
       # Detect user intent
       detected_mode = detect_user_intent(user_message)
       Rails.logger.info "🤖 Scout detected mode: #{detected_mode}"
@@ -1197,6 +1202,35 @@ class ScoutGenericToolsService
   # Public method to execute analyze_landing_page_request tool
   def execute_analyze_landing_page_request(args)
     execute_analyze_landing_page_request_internal(args)
+  end
+
+  # Set context for Scout to be aware of current view/page
+  def set_context(context)
+    @context = context
+    Rails.logger.info "🎯 Scout context set: #{context.inspect}"
+    
+    # Store context in session for persistence (convert to hash for serialization)
+    if @session_id && context.present?
+      # Convert ActionController::Parameters to hash for safe caching
+      cacheable_context = context.is_a?(ActionController::Parameters) ? context.to_unsafe_h : context
+      Rails.cache.write("scout_context_#{@session_id}", cacheable_context, expires_in: 1.hour)
+    end
+  end
+  
+  # Get current context (from instance or session)
+  def get_context
+    return @context if @context.present?
+    
+    # Try to load from session cache
+    if @session_id
+      cached_context = Rails.cache.read("scout_context_#{@session_id}")
+      if cached_context.present?
+        @context = cached_context
+        Rails.logger.info "🔄 Restored Scout context from cache: #{@context.inspect}"
+      end
+    end
+    
+    @context
   end
 
   private

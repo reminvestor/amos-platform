@@ -42,6 +42,15 @@ class ScoutController < ApplicationController
       
       # Use the new generic tools service
       generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity, session[:scout_session_id])
+      
+      # Pass context to the service if available, or load from cache
+      if context.present?
+        generic_tools_service.set_context(context)
+      else
+        # Try to load existing context
+        generic_tools_service.get_context
+      end
+      
       conversation_history = persisted_history_last_k(12)
       response = generic_tools_service.process_message_with_tools(user_message, conversation_history, current_canvas)
       
@@ -80,8 +89,10 @@ class ScoutController < ApplicationController
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
+    context = params[:context]
     
     Rails.logger.info "Scout interactive chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
+    Rails.logger.info "Chat context: #{context.inspect}" if context
     
     if user_message.blank?
       render json: { error: 'Message cannot be empty' }, status: 400
@@ -178,11 +189,13 @@ class ScoutController < ApplicationController
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
+    context = params[:context]
     
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
     puts "🚨 PRODUCTION DEBUG: Scout chat request received - #{Time.current}"
     STDOUT.flush
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
+    Rails.logger.info "Chat context: #{context.inspect}" if context
     
     if user_message.blank?
       render json: { error: 'Message cannot be empty' }, status: 400
@@ -217,6 +230,14 @@ class ScoutController < ApplicationController
       stream_update("🧠 Analyzing your request...")
       stream_update("📋 Preparing context and tools...")
       generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity, session[:scout_session_id])
+      
+      # Pass context to the service if available, or load from cache
+      if context.present?
+        generic_tools_service.set_context(context)
+      else
+        # Try to load existing context
+        generic_tools_service.get_context
+      end
       
       # Track if we've started streaming content
       content_streaming = false

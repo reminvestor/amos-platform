@@ -367,11 +367,9 @@ function revertToVersion(landingPageId, versionId) {
   }
 }
 
-// Auto-refresh when AI generation is in progress
+// Auto-refresh disabled - using real-time WebSocket updates instead
 <% unless landing_page.html_content.present? %>
-setInterval(() => {
-  window.scoutRefreshCanvas?.();
-}, 10000); // Refresh every 10 seconds when content is being generated
+console.log('🔄 Landing page content pending - will update via WebSocket when generation completes');
 <% end %>
 
 // Initialize the canvas

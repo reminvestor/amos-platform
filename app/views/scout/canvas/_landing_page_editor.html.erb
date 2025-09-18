@@ -115,21 +115,114 @@
     iframeDoc: null
   };
   
-  // Initialize when canvas loads
-  document.addEventListener('DOMContentLoaded', function() {
+  // Initialize immediately when canvas loads (since this is loaded via AJAX)
+  setTimeout(function() {
     initializeInlineEditor();
-  });
+    setupAutoReloadListener();
+  }, 100);
+  
+  // Set up listener for Scout updates to auto-reload editor
+  function setupAutoReloadListener() {
+    const editor = window.scoutInlineEditor;
+    
+    // Listen for Scout messages that indicate landing page updates
+    document.addEventListener('scout:message-added', function(event) {
+      const message = event.detail;
+      
+      console.log('📨 Scout message received in editor:', {
+        role: message.role,
+        content: message.content?.substring(0, 100) + '...',
+        hasUpdated: message.content?.includes('updated'),
+        hasChanged: message.content?.includes('changed'),
+        hasModified: message.content?.includes('modified'),
+        hasLandingPage: message.content?.includes('landing page'),
+        hasPage: message.content?.includes('page')
+      });
+      
+      // Check if Scout mentioned updating the current landing page
+      if (message.role === 'assistant' && 
+          (message.content.includes('updated') || message.content.includes('changed') || message.content.includes('modified')) &&
+          (message.content.includes('landing page') || message.content.includes('page'))) {
+        
+        console.log('🔄 Detected Scout landing page update, reloading editor content');
+        
+        // Reload the landing page content after a brief delay
+        setTimeout(() => {
+          reloadEditorContent();
+        }, 2000);
+      }
+    });
+    
+    // Also listen for job completion notifications
+    if (window.jobNotificationChannel) {
+      const originalReceived = window.jobNotificationChannel.received || function() {};
+      window.jobNotificationChannel.received = function(data) {
+        originalReceived.call(this, data);
+        
+        if (data.job_type === 'landing_page_update' && 
+            data.landing_page_id == editor.pageId) {
+          console.log('🎉 Landing page update completed via WebSocket, reloading editor');
+          reloadEditorContent();
+        }
+      };
+    }
+  }
+  
+  // Reload the editor content from the server
+  function reloadEditorContent() {
+    const editor = window.scoutInlineEditor;
+    
+    // Fetch updated landing page content
+    fetch(`/landing_pages/${editor.pageId}.json`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.html_content) {
+          console.log('✅ Reloading editor with updated content');
+          
+          // Update the iframe with new content
+          const iframe = document.getElementById('editorFrame');
+          editor.iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+          editor.iframeDoc.open();
+          editor.iframeDoc.write(data.html_content);
+          editor.iframeDoc.close();
+          
+          // Re-initialize editing capabilities
+          iframe.onload = function() {
+            makeContentEditable(editor.iframeDoc);
+            iframe.style.height = editor.iframeDoc.body.scrollHeight + 'px';
+          };
+          
+          // Clear any pending changes since we have fresh content
+          editor.changes = {};
+          updateSaveButton();
+          
+          // Show notification
+          window.scoutShowNotification?.('Landing page updated with latest changes!', 'success');
+        }
+      })
+      .catch(error => {
+        console.error('Error reloading editor content:', error);
+      });
+  }
   
   function initializeInlineEditor() {
     const editor = window.scoutInlineEditor;
     const htmlContent = <%= raw (landing_page.html_content || '<div class="container py-5"><h1>Landing Page Under Construction</h1><p>This landing page is being prepared. Please check back soon!</p></div>').to_json %>;
     const iframe = document.getElementById('editorFrame');
     
+    console.log('🎯 Initializing landing page editor for page ID:', editor.pageId);
+    console.log('📄 HTML content length:', htmlContent.length);
+    console.log('🖼️ Iframe element:', iframe);
+    
     // Write content to iframe
     editor.iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    console.log('📄 Iframe document:', editor.iframeDoc);
+    
     editor.iframeDoc.open();
     editor.iframeDoc.write(htmlContent);
     editor.iframeDoc.close();
+    
+    console.log('✅ HTML content written to iframe');
     
     // Wait for iframe to load
     iframe.onload = function() {
@@ -178,6 +271,12 @@
     // Inject editing styles
     const style = doc.createElement('style');
     style.textContent = `
+      /* Editor-specific overrides for better editing experience */
+      .hero-section {
+        min-height: 300px !important; /* Override the 60vh to fixed height */
+        max-height: 400px !important;
+      }
+      
       .editable-text {
         cursor: text;
         transition: background-color 0.2s;
@@ -450,7 +549,8 @@
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').getAttribute('content')
+        'Accept': 'application/json',
+        'X-CSRF-Token': window.parent.document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
       },
       body: JSON.stringify({
         landing_page: {
