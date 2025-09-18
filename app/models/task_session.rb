@@ -3,7 +3,7 @@ class TaskSession < ApplicationRecord
   has_many :task_events, dependent: :destroy
   
   # Status enums
-  enum status: {
+  enum :status, {
     active: 'active',
     completed: 'completed',
     failed: 'failed',
@@ -11,7 +11,7 @@ class TaskSession < ApplicationRecord
   }
   
   # Session type enums
-  enum session_type: {
+  enum :session_type, {
     autonomous: 'autonomous',
     interactive: 'interactive',
     hybrid: 'hybrid'
