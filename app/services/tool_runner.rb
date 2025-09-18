@@ -211,7 +211,7 @@ class ToolRunner
       Rails.logger.info "ToolRunner: Generating landing page DSL for business: #{business_info[:business_name]}"
       
       # Create the AI agent for DSL generation
-      dsl_agent = LandingPageDslAgent.new
+      dsl_agent = AiAgents::LandingPageDslAgent.new
       
       # Generate DSL using AI
       dsl_result = dsl_agent.generate_dsl(
@@ -225,7 +225,7 @@ class ToolRunner
       )
       
       # Validate the generated DSL
-      validation = LandingPageDSL.validate(dsl_result)
+      validation = ::LandingPageDSL.validate(dsl_result)
       unless validation[:valid]
         raise "Generated DSL failed validation: #{validation[:errors].join(', ')}"
       end

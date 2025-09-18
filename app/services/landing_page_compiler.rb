@@ -205,13 +205,13 @@ class LandingPageCompiler
     @dsl_content = dsl_content.is_a?(String) ? JSON.parse(dsl_content) : dsl_content
     @options = options
     @theme = @dsl_content.dig('page', 'theme') || 'clean'
-    @theme_config = LandingPageDSL.theme_config(@theme)
+    @theme_config = ::LandingPageDSL.theme_config(@theme)
     @landing_page_slug = options[:landing_page_slug]
   end
   
   def compile
     # Validate DSL first
-    validation = LandingPageDSL.validate(@dsl_content)
+    validation = ::LandingPageDSL.validate(@dsl_content)
     unless validation[:valid]
       raise "Invalid DSL: #{validation[:errors].join(', ')}"
     end

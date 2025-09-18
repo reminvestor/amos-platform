@@ -1,3 +1,5 @@
+require_relative '../../models/landing_page_dsl'
+
 module AiAgents
   class LandingPageDslAgent < BaseAgent
     def initialize
@@ -25,25 +27,33 @@ module AiAgents
         user_prompt, 
         model: 'claude-opus-4-1-20250805',
         max_tokens: 4000,
-        temperature: 0.7,
-        response_format: { type: "json_object" }
+        temperature: 0.7
       )
       
       if response.blank?
         raise "AI service returned empty response"
       end
       
-      # Parse JSON response
+      # Parse JSON response (strip markdown code blocks if present)
       begin
-        dsl_content = JSON.parse(response)
+        # Remove markdown code blocks if present
+        cleaned_response = response.strip
+        if cleaned_response.start_with?('```json') && cleaned_response.end_with?('```')
+          cleaned_response = cleaned_response[7..-4] # Remove ```json and ```
+        elsif cleaned_response.start_with?('```') && cleaned_response.end_with?('```')
+          cleaned_response = cleaned_response[3..-4] # Remove ``` and ```
+        end
+        
+        dsl_content = JSON.parse(cleaned_response)
       rescue JSON::ParserError => e
         Rails.logger.error "Failed to parse AI response as JSON: #{e.message}"
-        Rails.logger.error "Response: #{response}"
+        Rails.logger.error "Original response: #{response}"
+        Rails.logger.error "Cleaned response: #{cleaned_response}"
         raise "AI generated invalid JSON: #{e.message}"
       end
       
       # Validate the DSL structure
-      validation = LandingPageDSL.validate(dsl_content)
+      validation = ::LandingPageDSL.validate(dsl_content)
       unless validation[:valid]
         Rails.logger.error "Generated DSL failed validation: #{validation[:errors].join(', ')}"
         
@@ -51,7 +61,7 @@ module AiAgents
         dsl_content = fix_common_dsl_issues(dsl_content)
         
         # Validate again
-        validation = LandingPageDSL.validate(dsl_content)
+        validation = ::LandingPageDSL.validate(dsl_content)
         unless validation[:valid]
           raise "Generated DSL failed validation even after fixes: #{validation[:errors].join(', ')}"
         end

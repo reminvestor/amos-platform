@@ -1135,6 +1135,11 @@ class ScoutController < ApplicationController
   end
 
   def render_interactive_wizard(data = {})
+    # Convert ActionController::Parameters to hash recursively
+    if data.is_a?(ActionController::Parameters)
+      data = JSON.parse(data.to_json).with_indifferent_access
+    end
+    
     render_to_string(
       partial: 'scout/canvas/interactive_wizard',
       locals: {
