@@ -2,7 +2,7 @@ require 'test_helper'
 
 class LandingPageCompilerTest < ActiveSupport::TestCase
   def setup
-    @sample_dsl = LandingPageDSL.sample_dsl('consulting')
+    @sample_dsl = LandingPageDsl.sample_dsl('consulting')
     @compiler = LandingPageCompiler.new(@sample_dsl, landing_page_slug: 'test-page')
   end
   

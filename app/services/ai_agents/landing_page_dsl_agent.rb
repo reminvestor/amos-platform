@@ -53,7 +53,7 @@ module AiAgents
       end
       
       # Validate the DSL structure
-      validation = ::LandingPageDSL.validate(dsl_content)
+      validation = ::LandingPageDsl.validate(dsl_content)
       unless validation[:valid]
         Rails.logger.error "Generated DSL failed validation: #{validation[:errors].join(', ')}"
         
@@ -61,7 +61,7 @@ module AiAgents
         dsl_content = fix_common_dsl_issues(dsl_content)
         
         # Validate again
-        validation = ::LandingPageDSL.validate(dsl_content)
+        validation = ::LandingPageDsl.validate(dsl_content)
         unless validation[:valid]
           raise "Generated DSL failed validation even after fixes: #{validation[:errors].join(', ')}"
         end

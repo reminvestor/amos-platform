@@ -1,6 +1,6 @@
 require 'json-schema'
 
-class LandingPageDSL
+class LandingPageDsl
   # JSON Schema for validating landing page DSL structure
   SCHEMA = {
     "$schema" => "http://json-schema.org/draft-04/schema#",
