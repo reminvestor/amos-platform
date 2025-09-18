@@ -1946,6 +1946,16 @@ document.addEventListener('turbo:load', function() {
         }));
         prependMessages(items);
         historyState.oldestId = items[0].id;
+      } else if (initial) {
+        // No history exists, create welcome message
+        const welcomeMessage = {
+          id: 'welcome-' + Date.now(),
+          role: 'assistant',
+          content: "Hi! I'm Scout, your AI marketing assistant. I can help you create landing pages, manage email campaigns, analyze your marketing performance, and much more. What would you like to work on today?",
+          timestamp: new Date().toISOString(),
+          metadata: {}
+        };
+        prependMessages([welcomeMessage]);
       }
       historyState.hasMore = !!data.has_more;
     } catch (e) {
@@ -1984,45 +1994,44 @@ document.addEventListener('turbo:load', function() {
     // If no canvas was restored, add buttons to the first welcome message
     if (!canvasRestored) {
       setTimeout(() => {
-      const messages = chatMessages.querySelectorAll('.message.ai-message');
-      if (messages.length > 0) {
-        const firstMessage = messages[0];
-        const messageContent = firstMessage.querySelector('.message-bubble');
-        
-        // Check if this is a welcome message and doesn't already have buttons
-        if (messageContent && messageContent.textContent.includes('Scout') && 
-            messageContent.textContent.includes('marketing assistant') &&
-            !firstMessage.querySelector('.message-suggestions')) {
+        const messages = chatMessages.querySelectorAll('.message.ai-message');
+        if (messages.length > 0) {
+          const firstMessage = messages[0];
+          const messageContent = firstMessage.querySelector('.message-bubble');
           
-          // Add the suggestion buttons
-          const suggestionsDiv = document.createElement('div');
-          suggestionsDiv.className = 'message-suggestions';
-          suggestionsDiv.style.marginTop = '12px';
-          suggestionsDiv.innerHTML = `
-            <button class="suggestion-btn" data-suggestion="Create a landing page for my product">
-              Create a landing page
-            </button>
-            <button class="suggestion-btn" data-suggestion="Show me my email campaigns">
-              View campaigns
-            </button>
-            <button class="suggestion-btn" data-suggestion="Analyze my marketing performance">
-              Analytics dashboard
-            </button>
-          `;
-          messageContent.appendChild(suggestionsDiv);
-          
-          // Add click handlers to suggestion buttons
-          suggestionsDiv.querySelectorAll('.suggestion-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-              const suggestion = this.dataset.suggestion;
-              messageInput.value = suggestion;
-              messageForm.dispatchEvent(new Event('submit'));
+          // Check if this is a welcome message and doesn't already have buttons
+          if (messageContent && messageContent.textContent.includes('Scout') && 
+              messageContent.textContent.includes('marketing assistant') &&
+              !firstMessage.querySelector('.message-suggestions')) {
+            
+            // Add the suggestion buttons
+            const suggestionsDiv = document.createElement('div');
+            suggestionsDiv.className = 'message-suggestions';
+            suggestionsDiv.style.marginTop = '12px';
+            suggestionsDiv.innerHTML = `
+              <button class="suggestion-btn" data-suggestion="Create a landing page for my product">
+                Create a landing page
+              </button>
+              <button class="suggestion-btn" data-suggestion="Show me my email campaigns">
+                View campaigns
+              </button>
+              <button class="suggestion-btn" data-suggestion="Analyze my marketing performance">
+                Analytics dashboard
+              </button>
+            `;
+            messageContent.appendChild(suggestionsDiv);
+            
+            // Add click handlers to suggestion buttons
+            suggestionsDiv.querySelectorAll('.suggestion-btn').forEach(btn => {
+              btn.addEventListener('click', function() {
+                const suggestion = this.dataset.suggestion;
+                messageInput.value = suggestion;
+                messageForm.dispatchEvent(new Event('submit'));
+              });
             });
-          });
+          }
         }
-      }
-      }
-    }, 100); // Small delay to ensure DOM is updated
+      }, 100); // Small delay to ensure DOM is updated
     }
   });
 
