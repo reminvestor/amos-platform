@@ -1,0 +1,550 @@
+<div class="form-submissions-canvas h-100">
+  <!-- Header -->
+  <div class="canvas-header bg-light border-bottom p-3">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h4 class="mb-1">
+          <i class="bi bi-inbox me-2"></i>
+          Form Submissions
+        </h4>
+        <p class="text-muted mb-0 small">
+          <% if canvas_data[:landing_page] %>
+            From: <%= canvas_data[:landing_page][:title] %>
+          <% else %>
+            All landing page form submissions
+          <% end %>
+        </p>
+      </div>
+      
+      <!-- Stats Summary -->
+      <div class="submission-stats">
+        <div class="row g-2 text-center">
+          <div class="col">
+            <div class="stat-card bg-primary text-white rounded p-2">
+              <div class="h5 mb-0"><%= canvas_data[:stats][:total] || 0 %></div>
+              <small>Total</small>
+            </div>
+          </div>
+          <div class="col">
+            <div class="stat-card bg-success text-white rounded p-2">
+              <div class="h5 mb-0"><%= canvas_data[:stats][:processed] || 0 %></div>
+              <small>Processed</small>
+            </div>
+          </div>
+          <div class="col">
+            <div class="stat-card bg-warning text-white rounded p-2">
+              <div class="h5 mb-0"><%= canvas_data[:stats][:pending] || 0 %></div>
+              <small>Pending</small>
+            </div>
+          </div>
+          <div class="col">
+            <div class="stat-card bg-info text-white rounded p-2">
+              <div class="h5 mb-0"><%= canvas_data[:stats][:conversion_rate] || 0 %>%</div>
+              <small>Conversion</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Filters -->
+  <div class="filters-section bg-white border-bottom p-3">
+    <div class="row g-3 align-items-center">
+      <div class="col-md-3">
+        <select class="form-select form-select-sm" id="form-type-filter">
+          <option value="">All Form Types</option>
+          <option value="contact">Contact Forms</option>
+          <option value="newsletter">Newsletter Signups</option>
+          <option value="lead_magnet">Lead Magnets</option>
+          <option value="demo_request">Demo Requests</option>
+          <option value="consultation_booking">Consultations</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select class="form-select form-select-sm" id="status-filter">
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="processed">Processed</option>
+          <option value="failed">Failed</option>
+          <option value="spam">Spam</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select class="form-select form-select-sm" id="time-filter">
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-outline-primary btn-sm" id="export-submissions">
+          <i class="bi bi-download me-1"></i>
+          Export CSV
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Submissions List -->
+  <div class="submissions-content flex-grow-1 overflow-auto p-3">
+    <% if canvas_data[:submissions] && canvas_data[:submissions].any? %>
+      <div class="submissions-list">
+        <% canvas_data[:submissions].each do |submission| %>
+          <div class="submission-card card mb-3" data-submission-id="<%= submission[:id] %>">
+            <div class="card-body">
+              <div class="row align-items-center">
+                <!-- Contact Info -->
+                <div class="col-md-4">
+                  <div class="contact-info">
+                    <h6 class="mb-1">
+                      <%= submission[:contact_info][:name] || 'Unknown' %>
+                      <span class="badge bg-<%= submission_status_color(submission[:status]) %> ms-2">
+                        <%= submission[:status].humanize %>
+                      </span>
+                    </h6>
+                    <div class="text-muted small">
+                      <i class="bi bi-envelope me-1"></i>
+                      <%= submission[:contact_info][:email] %>
+                    </div>
+                    <% if submission[:contact_info][:phone] %>
+                      <div class="text-muted small">
+                        <i class="bi bi-phone me-1"></i>
+                        <%= submission[:contact_info][:phone] %>
+                      </div>
+                    <% end %>
+                    <% if submission[:contact_info][:company] %>
+                      <div class="text-muted small">
+                        <i class="bi bi-building me-1"></i>
+                        <%= submission[:contact_info][:company] %>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+                
+                <!-- Form Details -->
+                <div class="col-md-3">
+                  <div class="form-details">
+                    <div class="form-type mb-1">
+                      <span class="badge bg-secondary">
+                        <%= submission[:form_type].humanize %>
+                      </span>
+                    </div>
+                    <div class="text-muted small">
+                      <i class="bi bi-calendar me-1"></i>
+                      <%= time_ago_in_words(Time.parse(submission[:submitted_at])) %> ago
+                    </div>
+                    <% if submission[:source_ip] %>
+                      <div class="text-muted small">
+                        <i class="bi bi-geo me-1"></i>
+                        <%= submission[:source_ip] %>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+                
+                <!-- UTM & Source -->
+                <div class="col-md-3">
+                  <% if submission[:utm_params] && submission[:utm_params].any? %>
+                    <div class="utm-info">
+                      <% submission[:utm_params].each do |key, value| %>
+                        <div class="text-muted small">
+                          <strong><%= key.upcase %>:</strong> <%= value %>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                  <% if submission[:referrer] %>
+                    <div class="text-muted small">
+                      <i class="bi bi-link me-1"></i>
+                      <span title="<%= submission[:referrer] %>">
+                        <%= truncate(submission[:referrer], length: 30) %>
+                      </span>
+                    </div>
+                  <% end %>
+                </div>
+                
+                <!-- Actions -->
+                <div class="col-md-2 text-end">
+                  <div class="btn-group-vertical btn-group-sm">
+                    <button class="btn btn-outline-primary btn-sm" 
+                            onclick="viewSubmissionDetails('<%= submission[:id] %>')">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                    <% if submission[:status] == 'pending' %>
+                      <button class="btn btn-outline-success btn-sm" 
+                              onclick="processSubmission('<%= submission[:id] %>')">
+                        <i class="bi bi-check"></i>
+                      </button>
+                    <% end %>
+                    <% if submission[:status] != 'spam' %>
+                      <button class="btn btn-outline-danger btn-sm" 
+                              onclick="markAsSpam('<%= submission[:id] %>')">
+                        <i class="bi bi-shield-x"></i>
+                      </button>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Expandable Details -->
+              <div class="submission-details collapse mt-3" id="details-<%= submission[:id] %>">
+                <div class="border-top pt-3">
+                  <h6>Submission Data:</h6>
+                  <div class="submission-data bg-light p-3 rounded">
+                    <% if submission[:submission_data] %>
+                      <% submission[:submission_data].each do |key, value| %>
+                        <div class="row mb-2">
+                          <div class="col-sm-3">
+                            <strong><%= key.humanize %>:</strong>
+                          </div>
+                          <div class="col-sm-9">
+                            <%= truncate(value.to_s, length: 100) %>
+                          </div>
+                        </div>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      
+      <!-- Pagination -->
+      <% if canvas_data[:pagination] %>
+        <nav class="mt-4">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted small">
+              Showing <%= canvas_data[:pagination][:current_count] %> of <%= canvas_data[:pagination][:total_count] %> submissions
+            </div>
+            <div class="pagination-controls">
+              <% if canvas_data[:pagination][:has_previous] %>
+                <button class="btn btn-outline-secondary btn-sm me-2" onclick="loadPreviousPage()">
+                  <i class="bi bi-chevron-left"></i> Previous
+                </button>
+              <% end %>
+              <% if canvas_data[:pagination][:has_next] %>
+                <button class="btn btn-outline-secondary btn-sm" onclick="loadNextPage()">
+                  Next <i class="bi bi-chevron-right"></i>
+                </button>
+              <% end %>
+            </div>
+          </div>
+        </nav>
+      <% end %>
+      
+    <% else %>
+      <!-- Empty State -->
+      <div class="text-center py-5">
+        <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+        <h5>No Form Submissions Yet</h5>
+        <p class="text-muted">
+          <% if canvas_data[:landing_page] %>
+            This landing page hasn't received any form submissions yet.
+          <% else %>
+            You don't have any form submissions from your landing pages yet.
+          <% end %>
+        </p>
+        <button class="btn btn-primary" onclick="scoutSendMessage('Create a landing page')">
+          <i class="bi bi-plus me-1"></i>
+          Create Landing Page
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Submission Details Modal -->
+<div class="modal fade" id="submissionDetailsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Submission Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="submissionDetailsContent">
+        <!-- Content loaded dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="contactSubmitterBtn">
+          <i class="bi bi-envelope me-1"></i>
+          Contact Submitter
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Filter handling
+  const formTypeFilter = document.getElementById('form-type-filter');
+  const statusFilter = document.getElementById('status-filter');
+  const timeFilter = document.getElementById('time-filter');
+  
+  [formTypeFilter, statusFilter, timeFilter].forEach(filter => {
+    if (filter) {
+      filter.addEventListener('change', applyFilters);
+    }
+  });
+  
+  // Export handling
+  const exportBtn = document.getElementById('export-submissions');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', exportSubmissions);
+  }
+});
+
+function applyFilters() {
+  const formType = document.getElementById('form-type-filter')?.value || '';
+  const status = document.getElementById('status-filter')?.value || '';
+  const timeRange = document.getElementById('time-filter')?.value || '';
+  
+  // Reload canvas with filters
+  const filters = { form_type: formType, status: status, time_range: timeRange };
+  loadScoutCanvas('form_submissions', { filters: filters });
+}
+
+function viewSubmissionDetails(submissionId) {
+  // Load submission details in modal
+  fetch(`/api/v1/landing_page_submissions/${submissionId}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        displaySubmissionDetails(data.submission);
+      } else {
+        alert('Failed to load submission details');
+      }
+    })
+    .catch(error => {
+      console.error('Error loading submission details:', error);
+      alert('Error loading submission details');
+    });
+}
+
+function displaySubmissionDetails(submission) {
+  const content = document.getElementById('submissionDetailsContent');
+  
+  content.innerHTML = `
+    <div class="submission-detail-view">
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <h6>Contact Information</h6>
+          <div class="contact-details bg-light p-3 rounded">
+            <div><strong>Name:</strong> ${submission.contact_info.name || 'Unknown'}</div>
+            <div><strong>Email:</strong> ${submission.contact_info.email}</div>
+            ${submission.contact_info.phone ? `<div><strong>Phone:</strong> ${submission.contact_info.phone}</div>` : ''}
+            ${submission.contact_info.company ? `<div><strong>Company:</strong> ${submission.contact_info.company}</div>` : ''}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <h6>Submission Details</h6>
+          <div class="submission-meta bg-light p-3 rounded">
+            <div><strong>Form Type:</strong> ${submission.form_type}</div>
+            <div><strong>Status:</strong> <span class="badge bg-secondary">${submission.status}</span></div>
+            <div><strong>Submitted:</strong> ${new Date(submission.submitted_at).toLocaleString()}</div>
+            ${submission.processed_at ? `<div><strong>Processed:</strong> ${new Date(submission.processed_at).toLocaleString()}</div>` : ''}
+          </div>
+        </div>
+      </div>
+      
+      <div class="mb-3">
+        <h6>Form Data</h6>
+        <div class="form-data bg-light p-3 rounded">
+          ${Object.entries(submission.submission_data || {}).map(([key, value]) => 
+            `<div class="row mb-2">
+              <div class="col-sm-3"><strong>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong></div>
+              <div class="col-sm-9">${value}</div>
+            </div>`
+          ).join('')}
+        </div>
+      </div>
+      
+      ${submission.utm_params && Object.keys(submission.utm_params).length > 0 ? `
+        <div class="mb-3">
+          <h6>Marketing Attribution</h6>
+          <div class="utm-data bg-light p-3 rounded">
+            ${Object.entries(submission.utm_params).map(([key, value]) => 
+              `<div><strong>${key.toUpperCase()}:</strong> ${value}</div>`
+            ).join('')}
+          </div>
+        </div>
+      ` : ''}
+      
+      ${submission.referrer ? `
+        <div class="mb-3">
+          <h6>Referrer</h6>
+          <div class="referrer-info bg-light p-3 rounded">
+            <a href="${submission.referrer}" target="_blank" class="text-decoration-none">
+              ${submission.referrer}
+              <i class="bi bi-box-arrow-up-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+  
+  // Show modal
+  const modal = new bootstrap.Modal(document.getElementById('submissionDetailsModal'));
+  modal.show();
+  
+  // Set up contact button
+  const contactBtn = document.getElementById('contactSubmitterBtn');
+  contactBtn.onclick = () => contactSubmitter(submission);
+}
+
+function processSubmission(submissionId) {
+  if (!confirm('Mark this submission as processed?')) return;
+  
+  fetch(`/api/v1/landing_page_submissions/${submissionId}/process`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Refresh the canvas
+      loadScoutCanvas('form_submissions', {});
+      showNotification('Submission marked as processed', 'success');
+    } else {
+      alert('Failed to process submission');
+    }
+  })
+  .catch(error => {
+    console.error('Error processing submission:', error);
+    alert('Error processing submission');
+  });
+}
+
+function markAsSpam(submissionId) {
+  if (!confirm('Mark this submission as spam?')) return;
+  
+  fetch(`/api/v1/landing_page_submissions/${submissionId}/spam`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Refresh the canvas
+      loadScoutCanvas('form_submissions', {});
+      showNotification('Submission marked as spam', 'warning');
+    } else {
+      alert('Failed to mark as spam');
+    }
+  })
+  .catch(error => {
+    console.error('Error marking as spam:', error);
+    alert('Error marking as spam');
+  });
+}
+
+function contactSubmitter(submission) {
+  // Create a draft email or open email composer
+  const subject = `Re: Your ${submission.form_type.replace('_', ' ')} submission`;
+  const body = `Hi ${submission.contact_info.name || 'there'},\n\nThank you for your recent submission. `;
+  
+  const mailto = `mailto:${submission.contact_info.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(mailto);
+}
+
+function exportSubmissions() {
+  // Export current filtered submissions as CSV
+  const filters = {
+    form_type: document.getElementById('form-type-filter')?.value || '',
+    status: document.getElementById('status-filter')?.value || '',
+    time_range: document.getElementById('time-filter')?.value || ''
+  };
+  
+  const params = new URLSearchParams(filters);
+  window.open(`/api/v1/landing_page_submissions/export?${params}`);
+}
+
+function loadPreviousPage() {
+  // Load previous page of submissions
+  console.log('Loading previous page...');
+}
+
+function loadNextPage() {
+  // Load next page of submissions
+  console.log('Loading next page...');
+}
+
+function showNotification(message, type = 'info') {
+  // Show a toast notification
+  console.log(`${type.toUpperCase()}: ${message}`);
+}
+</script>
+
+<style>
+.form-submissions-canvas {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-card {
+  min-width: 60px;
+}
+
+.submission-card {
+  transition: all 0.2s ease;
+}
+
+.submission-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.contact-info h6 {
+  color: #495057;
+}
+
+.form-details .badge {
+  font-size: 0.75rem;
+}
+
+.utm-info {
+  font-size: 0.8rem;
+}
+
+.submission-details .row {
+  margin-bottom: 0.5rem;
+}
+
+.canvas-header {
+  flex-shrink: 0;
+}
+
+.filters-section {
+  flex-shrink: 0;
+}
+
+.submissions-content {
+  flex: 1;
+  overflow-y: auto;
+}
+</style>
+
+<%
+# Helper method for status colors
+def submission_status_color(status)
+  case status
+  when 'processed' then 'success'
+  when 'pending' then 'warning'
+  when 'failed' then 'danger'
+  when 'spam' then 'secondary'
+  when 'duplicate' then 'info'
+  else 'secondary'
+  end
+end
+%>
