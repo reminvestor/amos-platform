@@ -5,7 +5,7 @@ module Api
       protect_from_forgery with: :null_session
       
       # Public endpoint - no authentication required for form submissions
-      skip_before_action :authenticate_api_request, only: [:create]
+      # Note: Api::BaseController already skips authentication
       
       def create
         begin
