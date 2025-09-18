@@ -128,13 +128,9 @@ class WorkflowEngine
           Rails.logger.info "Auto-continuing to next user input step: #{current_step_id} (completed: #{completed_step_id})"
           return execute_next_step({})
         when 'tool_call'
-          # For tool calls, show task progress first, then continue automatically
+          # For tool calls, continue immediately (task progress will be shown via progress callback)
           Rails.logger.info "Auto-continuing to next tool call step: #{current_step_id} (completed: #{completed_step_id})"
-          
-          # Update the result to show task progress, but mark for auto-continuation
-          result[:auto_continue] = true
-          result[:next_step] = @workflow.current_step&.to_hash
-          return result
+          return execute_next_step({})
         else
           Rails.logger.info "Step type '#{current_step_type}' does not auto-continue"
         end
