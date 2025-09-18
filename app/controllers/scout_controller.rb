@@ -1325,12 +1325,15 @@ class ScoutController < ApplicationController
           workflow_engine = WorkflowEngine.new(task_session)
           workflow_progress = workflow_engine.progress
           
+          # Get workflow instance to access steps
+          workflow = workflow_engine.instance_variable_get(:@workflow)
+          
           data = {
-            tasks: workflow_progress[:steps].map do |step|
+            tasks: workflow.steps.map do |step|
               {
-                id: step[:id],
-                description: step[:description],
-                status: step[:status]
+                id: step.id,
+                description: step.description,
+                status: step.status
               }
             end,
             workflow_status: workflow_progress[:status],
