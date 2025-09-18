@@ -1091,7 +1091,9 @@ document.addEventListener('DOMContentLoaded', function() {
     ];
     
     const lowerMessage = message.toLowerCase();
-    return interactiveKeywords.some(keyword => lowerMessage.includes(keyword));
+    const shouldUse = interactiveKeywords.some(keyword => lowerMessage.includes(keyword));
+    console.log('🎯 Interactive mode check:', { message, shouldUse, lowerMessage });
+    return shouldUse;
   }
   
   // Ensure our version stays in place even after Stimulus loads
@@ -1975,19 +1977,20 @@ document.addEventListener('DOMContentLoaded', function() {
     sendButton.disabled = true;
     showTypingIndicator();
     
-    // Always use streaming for better user experience
-    // Initial state - typing indicator is already shown
-    
+    // Use intelligent routing
     try {
-      // Always use streaming - no fallback
+      // Check if message suggests interactive workflow
+      if (shouldUseInteractiveMode(message)) {
+        console.log('🎯 Using interactive mode for:', message);
+        await handleInteractiveChat(message);
+      } else {
+        console.log('⚡ Using streaming mode for:', message);
         await handleStreamingChat(message);
-        return; // Success, exit early
-      } catch (streamError) {
-      console.error('Streaming failed:', streamError);
-        hideStreamingStatus();
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      hideStreamingStatus();
       hideTypingIndicator();
-
-      // Show error to user instead of falling back
         addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
       
       // Re-enable form
