@@ -181,15 +181,36 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle successful workflow continuation
         if (data.workflow_completed) {
           // Load final canvas
-          loadScoutCanvas(data.canvas, data.canvas_data);
+          if (window.scoutController && window.scoutController.loadScoutCanvas) {
+            window.scoutController.loadScoutCanvas(data.canvas, data.canvas_data);
+          } else {
+            // Dispatch custom event as fallback
+            const event = new CustomEvent('scout:load-canvas', {
+              detail: { canvas: data.canvas, data: data.canvas_data }
+            });
+            document.dispatchEvent(event);
+          }
           showMessage(data.message, 'success');
         } else if (data.awaiting_input) {
           // Update wizard with next step
-          loadScoutCanvas('interactive_wizard', data.canvas_data);
+          if (window.scoutController && window.scoutController.loadScoutCanvas) {
+            window.scoutController.loadScoutCanvas('interactive_wizard', data.canvas_data);
+          } else {
+            const event = new CustomEvent('scout:load-canvas', {
+              detail: { canvas: 'interactive_wizard', data: data.canvas_data }
+            });
+            document.dispatchEvent(event);
+          }
         } else {
           // Show progress or other canvas
-          loadScoutCanvas(data.canvas, data.canvas_data);
-        }
+          if (window.scoutController && window.scoutController.loadScoutCanvas) {
+            window.scoutController.loadScoutCanvas(data.canvas, data.canvas_data);
+          } else {
+            const event = new CustomEvent('scout:load-canvas', {
+              detail: { canvas: data.canvas, data: data.canvas_data }
+            });
+            document.dispatchEvent(event);
+          }
       } else {
         showMessage(data.message || 'An error occurred', 'error');
         
@@ -214,7 +235,14 @@ document.addEventListener('DOMContentLoaded', function() {
   
   function cancelWorkflow() {
     // Navigate back to conversation
-    loadScoutCanvas('conversation', {});
+    if (window.scoutController && window.scoutController.loadScoutCanvas) {
+      window.scoutController.loadScoutCanvas('conversation', {});
+    } else {
+      const event = new CustomEvent('scout:load-canvas', {
+        detail: { canvas: 'conversation', data: {} }
+      });
+      document.dispatchEvent(event);
+    }
     showMessage('Workflow cancelled', 'info');
   }
   
