@@ -225,7 +225,7 @@ class ToolRunner
       )
       
       # Validate the generated DSL
-      validation = ::LandingPageDSL.validate(dsl_result)
+      validation = ::LandingPageDsl.validate(dsl_result)
       unless validation[:valid]
         raise "Generated DSL failed validation: #{validation[:errors].join(', ')}"
       end
