@@ -1751,6 +1751,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       execute_create_dynamic_visualization(args)
     when 'manage_task_list'
       execute_manage_task_list(args)
+    when 'analyze_landing_page_request'
+      execute_analyze_landing_page_request(args)
     else
       { success: false, error: "Unknown tool: #{tool_name}" }
     end
@@ -2903,6 +2905,61 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       Rails.logger.error "load_workflow_analytics error: #{e.message}"
       { error: "Failed to load workflow analytics: #{e.message}" }
     end
+  end
+
+  def execute_analyze_landing_page_request(args)
+    Rails.logger.info "Scout: Analyzing landing page request and existing business info"
+    
+    user_message = args['user_message'] || ''
+    user = args['user'] || @user
+    entity = args['entity'] || @entity
+    
+    # Get business profile
+    business_profile = @user.business_profile || @user.ensure_business_profile
+    
+    # Analyze what we already know
+    existing_info = {
+      business_profile: {
+        name: business_profile.name,
+        industry: business_profile.industry,
+        description: business_profile.description,
+        target_audience: business_profile.target_audience,
+        tone_of_voice: business_profile.tone_of_voice,
+        values: business_profile.values,
+        website: business_profile.website
+      },
+      entity: {
+        name: entity.is_a?(Hash) ? (entity['name'] || entity[:name]) : entity.name,
+        subdomain: entity.is_a?(Hash) ? (entity['subdomain'] || entity[:subdomain]) : entity.subdomain
+      }
+    }
+    
+    # Extract context from user message
+    message_context = {
+      mentions_classes: user_message.downcase.include?('class'),
+      mentions_course: user_message.downcase.include?('course'),
+      mentions_event: user_message.downcase.include?('event'),
+      mentions_product: user_message.downcase.include?('product'),
+      mentions_service: user_message.downcase.include?('service'),
+      mentions_new: user_message.downcase.include?('new'),
+      mentions_series: user_message.downcase.include?('series')
+    }
+    
+    # Determine what additional info we need
+    missing_info = []
+    missing_info << 'specific class/course details' if message_context[:mentions_classes] || message_context[:mentions_course]
+    missing_info << 'event details' if message_context[:mentions_event]
+    missing_info << 'product/service details' if message_context[:mentions_product] || message_context[:mentions_service]
+    missing_info << 'call to action' 
+    missing_info << 'urgency/deadline information'
+    
+    {
+      success: true,
+      data: existing_info,
+      message_context: message_context,
+      missing_info: missing_info,
+      recommendation: "I have your business profile information. Now I need specific details about #{missing_info.join(', ')}"
+    }
   end
 
   def execute_revert_landing_page_to_version(args)

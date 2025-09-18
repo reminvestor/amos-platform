@@ -225,42 +225,72 @@ class InteractiveTaskService
       },
       steps: [
         {
-          id: 'collect_business_info',
+          id: 'analyze_context',
+          type: 'tool_call',
+          config: {
+            tool: 'analyze_landing_page_request',
+            description: 'Analyze existing business information and landing page request',
+            inputs: {
+              user_message: message,
+              user: @user.as_json(only: [:id, :email, :first_name, :last_name]),
+              entity: @entity.as_json(only: [:id, :name, :subdomain])
+            }
+          }
+        },
+        {
+          id: 'collect_specific_info',
           type: 'user_input',
           config: {
-            title: 'Business Information',
-            description: 'Tell us about your business so we can create the perfect landing page',
+            title: 'Landing Page Details',
+            description: 'Let\'s gather specific information for your landing page',
             fields: [
               { 
-                name: 'business_name', 
-                type: 'text', 
-                required: true, 
-                label: 'Business Name',
-                placeholder: 'e.g., Acme Consulting'
-              },
-              { 
-                name: 'industry', 
+                name: 'page_purpose', 
                 type: 'select', 
                 required: true, 
-                label: 'Industry',
+                label: 'What is the main purpose of this landing page?',
                 options: [
-                  'Consulting', 'Technology', 'Healthcare', 'Finance', 
-                  'Retail', 'Real Estate', 'Education', 'Legal', 'Other'
+                  'Promote a new product/service',
+                  'Event registration',
+                  'Lead generation',
+                  'Special offer/promotion',
+                  'Course/class enrollment',
+                  'Newsletter signup',
+                  'Coming soon/launch',
+                  'Other'
                 ]
               },
-              { 
-                name: 'target_audience', 
-                type: 'textarea', 
-                required: true, 
-                label: 'Target Audience',
-                placeholder: 'Who are your ideal customers? (e.g., small business owners, tech professionals)'
-              },
               {
-                name: 'key_message',
+                name: 'specific_details',
                 type: 'textarea',
                 required: true,
-                label: 'Key Message',
-                placeholder: 'What is the main message you want to convey?'
+                label: 'Tell us about your new classes',
+                placeholder: 'What classes are you offering? When do they start? What makes them special?'
+              },
+              { 
+                name: 'call_to_action', 
+                type: 'text', 
+                required: true, 
+                label: 'Primary Call to Action',
+                placeholder: 'e.g., "Register Now", "Sign Up Today", "Learn More"'
+              },
+              {
+                name: 'urgency_factor',
+                type: 'select',
+                label: 'Is there a deadline or limited availability?',
+                options: [
+                  'No urgency',
+                  'Limited time offer',
+                  'Limited spots available',
+                  'Early bird pricing',
+                  'Other deadline'
+                ]
+              },
+              {
+                name: 'additional_info',
+                type: 'textarea',
+                label: 'Any other important information?',
+                placeholder: 'Pricing, testimonials, special features, etc.'
               }
             ]
           }
@@ -308,7 +338,8 @@ class InteractiveTaskService
             tool: 'generate_landing_page_dsl',
             description: 'Generate your landing page using AI',
             inputs: {
-              business_info: '${collect_business_info.data}',
+              context_analysis: '${analyze_context.data}',
+              specific_info: '${collect_specific_info.data}',
               design_preferences: '${collect_design_preferences.data}'
             }
           }
@@ -321,7 +352,7 @@ class InteractiveTaskService
             description: 'Compile and save your landing page',
             inputs: {
               dsl: '${generate_landing_page.data.dsl}',
-              business_name: '${collect_business_info.data.business_name}',
+              business_name: '${analyze_context.data.business_profile.name}',
               user: @user,
               entity: @entity
             }
