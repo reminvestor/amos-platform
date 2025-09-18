@@ -354,6 +354,9 @@ class ScoutController < ApplicationController
       when 'form_submissions'
         canvas_content = render_form_submissions_canvas(canvas_data)
         canvas_title = "Form Submissions"
+      when 'workflow_analytics'
+        canvas_content = render_workflow_analytics_canvas(canvas_data)
+        canvas_title = "Workflow Analytics"
       when 'contact_viewer'
         canvas_content = render_contact_canvas(canvas_data)
         canvas_title = "Contacts"
@@ -1247,6 +1250,37 @@ class ScoutController < ApplicationController
       failed: failed,
       spam: spam,
       conversion_rate: conversion_rate
+    }
+  end
+  
+  def render_workflow_analytics_canvas(data = {})
+    # Load analytics data
+    analytics_data = load_workflow_analytics_data(data)
+    
+    render_to_string(
+      partial: 'scout/canvas/workflow_analytics',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: analytics_data
+      }
+    )
+  end
+  
+  def load_workflow_analytics_data(options = {})
+    period = (options[:period] || 30).to_i.days
+    
+    # Get analytics from ObservabilityService
+    observability = ObservabilityService.instance
+    
+    {
+      workflow_analytics: observability.workflow_analytics(period),
+      tool_analytics: observability.tool_analytics(period),
+      user_analytics: observability.user_analytics(period),
+      ai_metrics: observability.ai_metrics(period),
+      performance_metrics: observability.performance_metrics(period),
+      period_days: period.to_i / 1.day,
+      generated_at: Time.current
     }
   end
 

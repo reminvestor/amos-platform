@@ -1310,6 +1310,7 @@ class ScoutGenericToolsService
       6. update_landing_page_content(landing_page_id, instruction) - Update content of existing landing pages (PREFERRED for EDITING existing pages)
       7. revert_landing_page_to_version(landing_page_id, version_id) - Revert landing pages to previous versions
       8. load_form_submissions(landing_page_id) - View form submissions from landing pages
+      9. load_workflow_analytics(period) - View workflow performance and analytics
 
       AVAILABLE DATA MODELS:
       #{available_models.join(', ')}
@@ -2838,6 +2839,42 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         has_next: formatted_submissions.length >= 50
       }
     }
+  end
+
+  def execute_load_workflow_analytics(args)
+    period_days = args[:period] || 30
+    period = period_days.to_i.days
+    
+    begin
+      # Load analytics data
+      observability = ObservabilityService.instance
+      analytics_data = {
+        workflow_analytics: observability.workflow_analytics(period),
+        tool_analytics: observability.tool_analytics(period),
+        user_analytics: observability.user_analytics(period),
+        ai_metrics: observability.ai_metrics(period),
+        performance_metrics: observability.performance_metrics(period),
+        period_days: period_days.to_i
+      }
+      
+      # Set canvas data for loading
+      @suggested_canvas = 'workflow_analytics'
+      @canvas_data = analytics_data
+      
+      {
+        success: true,
+        object_type: 'workflow_analytics',
+        data: analytics_data,
+        message: "📊 Loaded workflow analytics for the last #{period_days} days. " \
+                 "#{analytics_data[:workflow_analytics][:total_workflows]} workflows started, " \
+                 "#{analytics_data[:workflow_analytics][:completion_rate]}% completion rate.",
+        canvas: 'workflow_analytics',
+        canvas_data: analytics_data
+      }
+    rescue => e
+      Rails.logger.error "load_workflow_analytics error: #{e.message}"
+      { error: "Failed to load workflow analytics: #{e.message}" }
+    end
   end
 
   def execute_revert_landing_page_to_version(args)
