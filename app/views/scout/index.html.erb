@@ -890,13 +890,17 @@
 
 <!-- JavaScript for Scout Chat -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  const messageForm = document.getElementById('message-form');
-  const messageInput = document.getElementById('message-input');
-  const chatMessages = document.getElementById('chat-messages');
-  const sendButton = document.getElementById('send-button');
-  const toolActivity = document.getElementById('tool-activity');
-  const toolStatus = document.getElementById('tool-status');
+// Prevent re-initialization on Turbo navigation
+if (!window.scoutInitialized) {
+  window.scoutInitialized = true;
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const chatMessages = document.getElementById('chat-messages');
+    const sendButton = document.getElementById('send-button');
+    const toolActivity = document.getElementById('tool-activity');
+    const toolStatus = document.getElementById('tool-status');
   const conversationSelector = document.getElementById('conversation-selector');
   const conversationDropdown = document.getElementById('conversation-dropdown');
   const conversationList = document.getElementById('conversation-list');
@@ -2035,7 +2039,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Confirmation dialog handling
-let pendingConfirmation = null;
+window.pendingConfirmation = window.pendingConfirmation || null;
 
 function showConfirmationDialog(message, onConfirm) {
   const dialog = document.getElementById('confirmation-dialog');
@@ -2043,7 +2047,7 @@ function showConfirmationDialog(message, onConfirm) {
   const proceedBtn = document.getElementById('confirmation-proceed');
   
   messageEl.innerHTML = message;
-  pendingConfirmation = onConfirm;
+  window.pendingConfirmation = onConfirm;
   
   // Show the dialog using Bootstrap modal
   const modal = new bootstrap.Modal(dialog);
@@ -2052,9 +2056,9 @@ function showConfirmationDialog(message, onConfirm) {
 
 // Handle confirmation proceed
 document.getElementById('confirmation-proceed')?.addEventListener('click', function() {
-  if (pendingConfirmation) {
-    pendingConfirmation();
-    pendingConfirmation = null;
+  if (window.pendingConfirmation) {
+    window.pendingConfirmation();
+    window.pendingConfirmation = null;
   }
   
   // Hide the modal
@@ -2062,6 +2066,9 @@ document.getElementById('confirmation-proceed')?.addEventListener('click', funct
   const modal = bootstrap.Modal.getInstance(dialog);
   modal.hide();
 });
+
+}); // End DOMContentLoaded
+} // End scoutInitialized check
 </script> 
 
 <!-- Confirmation Dialog -->
