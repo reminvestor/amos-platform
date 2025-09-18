@@ -105,10 +105,12 @@
 
 <!-- JavaScript for Wizard Interaction -->
 <script>
-document.addEventListener('turbo:load', function() {
-  const wizardForm = document.getElementById('wizard-form');
-  const skipBtn = document.getElementById('skip-step-btn');
-  const cancelBtn = document.getElementById('cancel-workflow-btn');
+(function() {
+  // Initialize wizard immediately when this partial is loaded
+  const initializeWizard = function() {
+    const wizardForm = document.getElementById('wizard-form');
+    const skipBtn = document.getElementById('skip-step-btn');
+    const cancelBtn = document.getElementById('cancel-workflow-btn');
   
   // Handle form submission
   if (wizardForm) {
@@ -255,7 +257,14 @@ document.addEventListener('turbo:load', function() {
   // Make functions available globally for integration
   window.continueWorkflow = continueWorkflow;
   window.cancelWorkflow = cancelWorkflow;
-});
+  };
+  
+  // Initialize immediately
+  initializeWizard();
+  
+  // Also initialize on turbo:load for full page navigations
+  document.addEventListener('turbo:load', initializeWizard);
+})();
 </script>
 
 <style>
