@@ -68,8 +68,25 @@ class WorkflowEngine
       })
     end
     
-    # Resolve any variable substitutions in step inputs
-    resolved_inputs = resolve_variable_substitutions(inputs)
+    # For user_input steps, check if we have actual form data or just initial workflow inputs
+    if current_step && ['user_input', 'form_input'].include?(current_step.type)
+      # Get the fields expected by this step
+      expected_fields = current_step.config[:fields]&.map { |f| f[:name].to_s } || []
+      
+      # Check if inputs contain any of the expected fields
+      has_form_data = inputs.keys.any? { |key| expected_fields.include?(key.to_s) }
+      
+      if has_form_data
+        # We have form data, resolve and pass it through
+        resolved_inputs = resolve_variable_substitutions(inputs)
+      else
+        # No form data yet, pass empty inputs to get the form
+        resolved_inputs = {}
+      end
+    else
+      # For other step types, resolve variables normally
+      resolved_inputs = resolve_variable_substitutions(inputs)
+    end
     
     # Execute the step
     result = @workflow.execute_next_step(resolved_inputs)
