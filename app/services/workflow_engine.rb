@@ -88,8 +88,26 @@ class WorkflowEngine
       resolved_inputs = resolve_variable_substitutions(inputs)
     end
     
+    # Capture current step ID before execution (workflow advances after completion)
+    executing_step_id = @workflow.current_step&.id
+    
+    # For tool_call steps, also resolve the configured inputs
+    if @workflow.current_step&.type == 'tool_call'
+      step_config_inputs = @workflow.current_step.config[:inputs] || {}
+      resolved_config_inputs = resolve_variable_substitutions(step_config_inputs)
+      Rails.logger.info "🔧 Resolved step config inputs: #{resolved_config_inputs.inspect}"
+      
+      # Update the step's config with resolved inputs
+      @workflow.current_step.config[:inputs] = resolved_config_inputs
+    end
+    
     # Execute the step
     result = @workflow.execute_next_step(resolved_inputs)
+    
+    # Add the executing step ID to the result for proper tracking
+    if result[:status] == 'step_completed'
+      result[:executing_step_id] = executing_step_id
+    end
     
     # Log result and update state
     handle_step_result(result)
@@ -97,15 +115,29 @@ class WorkflowEngine
     # Trigger progress callback if set
     trigger_progress_callback(result)
     
-    # If step completed and next step is user_input, continue automatically
-    if result[:status] == 'step_completed' && @workflow.current_step&.type == 'user_input'
+    # If step completed, continue automatically for certain step types
+    if result[:status] == 'step_completed' && @workflow.current_step
       # Only continue if this is a different step (avoid infinite loops)
       completed_step_id = result.dig(:result, :step_id) || result.dig(:step_id)
       current_step_id = @workflow.current_step&.id
+      current_step_type = @workflow.current_step&.type
       
       if completed_step_id != current_step_id
-        Rails.logger.info "Auto-continuing to next user input step: #{current_step_id} (completed: #{completed_step_id})"
-        return execute_next_step({})
+        case current_step_type
+        when 'user_input'
+          Rails.logger.info "Auto-continuing to next user input step: #{current_step_id} (completed: #{completed_step_id})"
+          return execute_next_step({})
+        when 'tool_call'
+          # For tool calls, show task progress first, then continue automatically
+          Rails.logger.info "Auto-continuing to next tool call step: #{current_step_id} (completed: #{completed_step_id})"
+          
+          # Update the result to show task progress, but mark for auto-continuation
+          result[:auto_continue] = true
+          result[:next_step] = @workflow.current_step&.to_hash
+          return result
+        else
+          Rails.logger.info "Step type '#{current_step_type}' does not auto-continue"
+        end
       else
         Rails.logger.warn "Skipping auto-continuation: same step ID (#{current_step_id})"
       end
@@ -348,7 +380,7 @@ class WorkflowEngine
     case result[:status]
     when 'step_completed'
       @task_session.add_event('step_completed', {
-        step_id: result[:result][:step_id] || @workflow.current_step&.id,
+        step_id: result[:executing_step_id] || result[:result][:step_id] || result[:step_id],
         result: sanitize_result(result[:result])
       })
       
@@ -443,6 +475,12 @@ class WorkflowEngine
     resolved = inputs.deep_dup
     execution_history = @workflow&.execution_history || []
     
+    # Handle special _resolve_from_steps pattern
+    if resolved.key?(:_resolve_from_steps) || resolved.key?('_resolve_from_steps')
+      resolve_spec = resolved.delete(:_resolve_from_steps) || resolved.delete('_resolve_from_steps')
+      return resolve_step_data(resolve_spec, execution_history)
+    end
+    
     resolved.each do |key, value|
       if value.is_a?(String) && value.start_with?('${') && value.end_with?('}')
         # Extract variable path: ${step_id.data.field}
@@ -479,6 +517,142 @@ class WorkflowEngine
     end
     
     current_value
+  end
+
+  def resolve_step_data(resolve_spec, execution_history)
+    result = {}
+    
+    Rails.logger.info "🔍 Resolving step data with spec: #{resolve_spec.inspect}"
+    Rails.logger.info "🔍 Execution history: #{execution_history.map { |h| h[:id] }.inspect}"
+    
+    resolve_spec.each do |output_key, step_ids|
+      Rails.logger.info "🔍 Processing output_key: #{output_key}, step_ids: #{step_ids}"
+      
+      case output_key.to_s
+      when 'business_info'
+        # Get business profile from database and combine with collected info
+        business_profile = @task_session.user.business_profile
+        specific_data = find_step_data('collect_specific_info', execution_history)
+        
+        Rails.logger.info "🔍 Found business_profile: #{business_profile.present?}, specific_data: #{specific_data.present?}"
+        Rails.logger.info "🔍 Business profile: #{business_profile&.attributes&.except('created_at', 'updated_at')}"
+        Rails.logger.info "🔍 Specific data structure: #{specific_data.inspect}"
+        
+        if business_profile && specific_data
+          result[:business_info] = {
+            business_name: business_profile.name.presence || @task_session.user.entity&.name || "Unknown Business",
+            industry: business_profile.industry.presence || "Technology",
+            target_audience: business_profile.target_audience.presence || "General audience",
+            page_purpose: specific_data['page_purpose'] || specific_data[:page_purpose] || "General promotion",
+            specific_details: specific_data['specific_details'] || specific_data[:specific_details] || "",
+            call_to_action: specific_data['call_to_action'] || specific_data[:call_to_action] || "Learn More",
+            urgency_factor: specific_data['urgency_factor'] || specific_data[:urgency_factor] || "No urgency",
+            additional_info: specific_data['additional_info'] || specific_data[:additional_info] || ""
+          }
+          Rails.logger.info "✅ Created business_info: #{result[:business_info].inspect}"
+        else
+          Rails.logger.warn "❌ Missing data - business_profile: #{business_profile.inspect}, specific_data: #{specific_data.inspect}"
+          
+          # Fallback with minimal data
+          result[:business_info] = {
+            business_name: @task_session.user.entity&.name || "Unknown Business",
+            industry: "Technology",
+            target_audience: "General audience",
+            page_purpose: "General promotion",
+            specific_details: "",
+            call_to_action: "Learn More",
+            urgency_factor: "No urgency",
+            additional_info: ""
+          }
+        end
+        
+      when 'design_preferences'
+        # Get data from collect_design_preferences
+        design_data = find_step_data('collect_design_preferences', execution_history)
+        
+        if design_data
+          # Convert ActionController::Parameters to hash safely
+          if design_data.is_a?(ActionController::Parameters)
+            # Use JSON conversion for unpermitted parameters
+            design_data = JSON.parse(design_data.to_json)
+          end
+          
+          result[:design_preferences] = {
+            theme: design_data['theme'] || design_data[:theme] || 'clean',
+            primary_color: design_data['primary_color'] || design_data[:primary_color] || '#2563eb',
+            style_notes: design_data['style_notes'] || design_data[:style_notes] || ''
+          }
+        else
+          # Fallback design preferences
+          result[:design_preferences] = {
+            theme: 'clean',
+            primary_color: '#2563eb',
+            style_notes: ''
+          }
+        end
+        Rails.logger.info "✅ Found design_preferences: #{result[:design_preferences].inspect}"
+        
+      when 'dsl'
+        # Get DSL from generate_landing_page step
+        dsl_data = find_step_data('generate_landing_page', execution_history)
+        Rails.logger.info "🔍 DSL data structure: #{dsl_data.inspect}"
+        
+        if dsl_data
+          # Try different paths for DSL extraction
+          result[:dsl] = dsl_data['dsl'] || dsl_data[:dsl] || dsl_data.dig('data', 'dsl') || dsl_data
+        end
+        Rails.logger.info "✅ Found dsl: #{result[:dsl].present?}, keys: #{result[:dsl]&.keys}"
+        
+      when 'business_name'
+        # Get business name from analyze_context step
+        analyze_data = find_step_data('analyze_context', execution_history)
+        result[:business_name] = analyze_data.dig('business_profile', 'name') || 
+                                 @task_session.user.business_profile&.name ||
+                                 @task_session.user.entity&.name ||
+                                 'Unknown Business'
+        Rails.logger.info "✅ Found business_name: #{result[:business_name]}"
+        
+      when 'user_id'
+        # Return actual User object
+        result[:user] = User.find(step_ids) if step_ids.is_a?(Integer)
+        Rails.logger.info "✅ Found user: #{result[:user]&.email}"
+        
+      when 'entity_id'
+        # Return actual Entity object  
+        result[:entity] = Entity.find(step_ids) if step_ids.is_a?(Integer)
+        Rails.logger.info "✅ Found entity: #{result[:entity]&.name}"
+      end
+    end
+    
+    Rails.logger.info "🎯 Final resolved result: #{result.inspect}"
+    result
+  end
+  
+  def find_step_data(step_id, execution_history)
+    step_result = execution_history.find { |step| step[:id] == step_id }
+    
+    # Try multiple paths to find the actual data
+    data = step_result&.dig(:result, :data) || 
+           step_result&.dig(:result) ||
+           step_result&.dig('result', 'data') ||
+           step_result&.dig('result')
+    
+    # If we got a result but it's just status info, try to find it in task events
+    if data.is_a?(Hash) && data.keys.sort == ['message', 'status'] && data['status'] == 'success'
+      Rails.logger.info "🔍 Step data appears to be status info, checking task events for #{step_id}"
+      
+      # Look in task session events for the actual data
+      step_events = @task_session.task_events.where("payload ->> 'step_id' = ?", step_id)
+      completed_event = step_events.find { |e| e.event_type == 'step_completed' }
+      
+      if completed_event
+        event_data = completed_event.payload.dig('result', 'data')
+        Rails.logger.info "🔍 Found step data in events: #{event_data.inspect}"
+        return event_data
+      end
+    end
+    
+    data
   end
 
   def sanitize_result(result)

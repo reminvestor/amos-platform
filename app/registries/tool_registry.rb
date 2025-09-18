@@ -35,11 +35,19 @@ class ToolRegistry
       },
       output_schema: {
         type: 'object',
-        required: ['dsl'],
+        required: ['data'],
         properties: {
-          dsl: { type: 'object' },
-          business_info: { type: 'object' },
-          design_preferences: { type: 'object' }
+          data: {
+            type: 'object',
+            required: ['dsl'],
+            properties: {
+              dsl: { type: 'object' },
+              business_info: { type: 'object' },
+              design_preferences: { type: 'object' }
+            }
+          },
+          message: { type: 'string' },
+          recommendation: { type: 'string' }
         }
       },
       timeout: 30,
@@ -59,11 +67,20 @@ class ToolRegistry
       },
       output_schema: {
         type: 'object',
-        required: ['html'],
+        required: ['data'],
         properties: {
-          html: { type: 'string', minLength: 100 },
-          dsl: { type: 'object' },
-          slug: { type: 'string' }
+          data: {
+            type: 'object',
+            required: ['html'],
+            properties: {
+              html: { type: 'string', minLength: 100 },
+              dsl: { type: 'object' },
+              slug: { type: 'string' },
+              landing_page_id: { type: 'integer' },
+              landing_page: { type: 'object' }
+            }
+          },
+          message: { type: 'string' }
         }
       },
       timeout: 10,

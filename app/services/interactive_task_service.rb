@@ -338,9 +338,11 @@ class InteractiveTaskService
             tool: 'generate_landing_page_dsl',
             description: 'Generate your landing page using AI',
             inputs: {
-              context_analysis: '${analyze_context.data}',
-              specific_info: '${collect_specific_info.data}',
-              design_preferences: '${collect_design_preferences.data}'
+              # These will be resolved by the workflow engine from step results
+              _resolve_from_steps: {
+                business_info: ['analyze_context', 'collect_specific_info'],
+                design_preferences: ['collect_design_preferences']
+              }
             }
           }
         },
@@ -351,10 +353,12 @@ class InteractiveTaskService
             tool: 'compile_landing_page_html',
             description: 'Compile and save your landing page',
             inputs: {
-              dsl: '${generate_landing_page.data.dsl}',
-              business_name: '${analyze_context.data.business_profile.name}',
-              user: @user,
-              entity: @entity
+              _resolve_from_steps: {
+                dsl: ['generate_landing_page'],
+                business_name: ['analyze_context'],
+                user_id: @user.id,
+                entity_id: @entity.id
+              }
             }
           }
         }
