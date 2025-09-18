@@ -2580,16 +2580,17 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       # Get business profile for AI context
       business_profile = @entity.business_profiles.first
       
-      # Use simplified AI generation that works with current schema
-      Rails.logger.info "Scout: Triggering simplified AI generation for landing page #{landing_page.id}"
+      # Use the new interactive framework for landing page generation
+      Rails.logger.info "Scout: Landing page #{landing_page.id} created - ready for interactive generation"
       
-      # Trigger the simplified generation job
-      SimpleAiLandingPageJob.perform_later(
-        landing_page.id,
-        description,
-        page_type,
-        @entity.id,
-        business_profile&.id
+      # For now, we'll mark it as requiring interactive generation
+      # The user can then use the interactive wizard to complete it
+      landing_page.update!(
+        metadata: {
+          generation_requested: true,
+          page_type: page_type,
+          requested_at: Time.current
+        }
       )
       
       # Suggest loading the landing page viewer canvas to show the new page in the list
@@ -2607,8 +2608,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
           status: landing_page.status,
           slug: landing_page.slug
         },
-        message: "✅ Successfully created landing page '#{title}'! AI content generation is running in the background and will be ready shortly. Your new page appears in the list below.",
-        ai_generation_status: "AI generation started with #{page_type} template using #{@ai_provider_name}",
+        message: "✅ Successfully created landing page '#{title}'! Click on it below to open the interactive wizard and generate content.",
+        ai_generation_status: "Ready for interactive content generation",
         canvas: 'landing_page_viewer',
         canvas_data: {}
       }
@@ -3380,6 +3381,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         desc.include?('link') && 
         desc.include?('template') &&
         desc.include?('campaign')
+      end
+      
+    when 'generate_ai_landing_page'
+      # Match tasks like "Generate AI-powered landing page", "Generate landing page", "Create landing page"
+      task = task_list[:tasks].find do |t|
+        desc = (t['description'] || t[:description] || '').downcase
+        status = t['status'] || t[:status]
+        status == 'pending' && 
+        (desc.include?('generate') || desc.include?('create')) && 
+        desc.include?('landing page')
       end
     end
     
