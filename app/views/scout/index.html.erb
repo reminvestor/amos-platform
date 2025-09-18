@@ -1309,6 +1309,16 @@ document.addEventListener('turbo:load', function() {
     // Track the content to prevent future duplicates
     streamedContent.add(messageContent.toString().trim());
     
+    // Dispatch event for other components to listen to
+    document.dispatchEvent(new CustomEvent('scout:message-added', {
+      detail: {
+        content: messageContent,
+        role: role,
+        timestamp: timestamp,
+        element: el
+      }
+    }));
+    
     scrollToBottom();
     updateMessageCount();
     return el; // Return the element for streaming updates
