@@ -99,8 +99,16 @@ class WorkflowEngine
     
     # If step completed and next step is user_input, continue automatically
     if result[:status] == 'step_completed' && @workflow.current_step&.type == 'user_input'
-      Rails.logger.info "Auto-continuing to next user input step: #{@workflow.current_step.id}"
-      return execute_next_step({})
+      # Only continue if this is a different step (avoid infinite loops)
+      completed_step_id = result.dig(:result, :step_id) || result.dig(:step_id)
+      current_step_id = @workflow.current_step&.id
+      
+      if completed_step_id != current_step_id
+        Rails.logger.info "Auto-continuing to next user input step: #{current_step_id} (completed: #{completed_step_id})"
+        return execute_next_step({})
+      else
+        Rails.logger.warn "Skipping auto-continuation: same step ID (#{current_step_id})"
+      end
     end
     
     result
