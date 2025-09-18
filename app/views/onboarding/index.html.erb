@@ -531,6 +531,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const message = messageInput.value.trim();
     if (!message) return;
     
+    console.log('🚀 Sending message:', message);
+    
     // Add user message to chat
     addMessageToChat('user', message);
     
@@ -543,6 +545,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Send message to server
     const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    console.log('🔑 CSRF Token element:', csrfToken);
+    console.log('🔑 CSRF Token content:', csrfToken ? csrfToken.content : 'NOT FOUND');
+    
     fetch('/onboarding/chat', {
       method: 'POST',
       headers: {
@@ -551,8 +556,13 @@ document.addEventListener('DOMContentLoaded', function() {
       },
       body: JSON.stringify({ message: message })
     })
-    .then(response => response.json())
+    .then(response => {
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', response.headers);
+      return response.json();
+    })
     .then(data => {
+      console.log('📊 Response data:', data);
       hideTypingIndicator();
       
       if (data.error) {
@@ -572,7 +582,7 @@ document.addEventListener('DOMContentLoaded', function() {
       messageInput.focus();
     })
     .catch(error => {
-      console.error('Error:', error);
+      console.error('❌ Fetch error:', error);
       hideTypingIndicator();
       addMessageToChat('assistant', "I'm having trouble connecting. Please try again.");
       setFormState(true);

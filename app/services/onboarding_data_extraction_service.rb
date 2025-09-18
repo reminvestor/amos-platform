@@ -151,13 +151,23 @@ class OnboardingDataExtractionService
       profile.name = entity&.name if entity
     end
     
+    # Ensure required fields have default values during onboarding
+    profile.description ||= "Business details to be updated during onboarding"
+    profile.industry ||= "Industry to be specified during onboarding"
+    
     # Update profile with extracted data
     extracted_data.each do |key, value|
       case key
       when 'industry'
-        profile.industry = value
+        # Replace default industry with actual user-provided industry
+        if value.present? && value != "Industry to be specified during onboarding"
+          profile.industry = value
+        end
       when 'description'
-        profile.description = value
+        # Replace default description with actual user-provided description
+        if value.present? && value != "Business details to be updated during onboarding"
+          profile.description = value
+        end
       when 'target_audience'
         profile.target_audience = value
       when 'founded_year'
