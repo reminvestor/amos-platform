@@ -135,7 +135,14 @@ class WorkflowEngine
   
   # Get workflow progress
   def progress
-    return { status: 'no_workflow' } unless @workflow
+    # Initialize workflow if not already done
+    unless @workflow
+      workflow_spec = @task_session.workflow_spec
+      return { status: 'no_workflow' } unless workflow_spec
+      
+      @workflow = Workflow.new(workflow_spec)
+      restore_workflow_state
+    end
     
     @workflow.progress.merge(
       task_session_id: @task_session.id,

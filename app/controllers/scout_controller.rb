@@ -1321,18 +1321,20 @@ class ScoutController < ApplicationController
           data = task_session.state['task_list']
           Rails.logger.info "📋 Loaded task list from TaskSession state: #{data[:tasks]&.size} tasks"
         elsif task_session.workflow_spec
-          # Convert workflow to task list format for display
-          workflow = Workflow.new(task_session.workflow_spec)
+          # Convert workflow to task list format for display with proper state restoration
+          workflow_engine = WorkflowEngine.new(task_session)
+          workflow_progress = workflow_engine.progress
+          
           data = {
-            tasks: workflow.steps.map do |step|
+            tasks: workflow_progress[:steps].map do |step|
               {
-                id: step.id,
-                description: step.description,
-                status: step.status
+                id: step[:id],
+                description: step[:description],
+                status: step[:status]
               }
             end,
-            workflow_status: workflow.status,
-            progress: workflow.progress
+            workflow_status: workflow_progress[:status],
+            progress: workflow_progress
           }
           Rails.logger.info "📋 Loaded task list from TaskSession workflow: #{data[:tasks]&.size} tasks"
         else
