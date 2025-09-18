@@ -60,8 +60,11 @@ class WorkflowEngine
       })
     end
     
+    # Resolve any variable substitutions in step inputs
+    resolved_inputs = resolve_variable_substitutions(inputs)
+    
     # Execute the step
-    result = @workflow.execute_next_step(inputs)
+    result = @workflow.execute_next_step(resolved_inputs)
     
     # Log result and update state
     handle_step_result(result)
@@ -375,6 +378,50 @@ class WorkflowEngine
     inputs.except(:password, :api_key, :secret, :token)
   end
   
+  def resolve_variable_substitutions(inputs)
+    return inputs unless inputs.is_a?(Hash)
+    
+    resolved = inputs.deep_dup
+    execution_history = @workflow&.execution_history || []
+    
+    resolved.each do |key, value|
+      if value.is_a?(String) && value.start_with?('${') && value.end_with?('}')
+        # Extract variable path: ${step_id.data.field}
+        variable_path = value[2..-2] # Remove ${ and }
+        resolved_value = resolve_variable_path(variable_path, execution_history)
+        resolved[key] = resolved_value if resolved_value
+      elsif value.is_a?(Hash)
+        resolved[key] = resolve_variable_substitutions(value)
+      end
+    end
+    
+    resolved
+  end
+  
+  def resolve_variable_path(path, execution_history)
+    # Parse path like "step_id.data.field"
+    parts = path.split('.')
+    return nil if parts.empty?
+    
+    step_id = parts.first
+    
+    # Find the step result
+    step_result = execution_history.find { |step| step[:id] == step_id }
+    return nil unless step_result && step_result[:result]
+    
+    # Navigate through the path
+    current_value = step_result[:result]
+    parts[1..-1].each do |part|
+      if current_value.is_a?(Hash)
+        current_value = current_value[part] || current_value[part.to_sym]
+      else
+        return nil
+      end
+    end
+    
+    current_value
+  end
+
   def sanitize_result(result)
     return result unless result.is_a?(Hash)
     

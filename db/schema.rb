@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_17_233445) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_18_003956) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -354,8 +354,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_17_233445) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "html_content"
+    t.jsonb "metadata", default: {}, null: false
     t.index ["campaign_id"], name: "index_landing_pages_on_campaign_id"
     t.index ["entity_id"], name: "index_landing_pages_on_entity_id"
+    t.index ["metadata"], name: "index_landing_pages_on_metadata", using: :gin
     t.index ["slug"], name: "index_landing_pages_on_slug", unique: true
     t.index ["user_id"], name: "index_landing_pages_on_user_id"
   end

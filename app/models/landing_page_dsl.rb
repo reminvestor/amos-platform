@@ -28,14 +28,27 @@ class LandingPageDSL
             "minItems" => 1,
             "maxItems" => 10,
             "items" => {
-              "oneOf" => [
-                { "$ref" => "#/definitions/hero" },
-                { "$ref" => "#/definitions/features" },
-                { "$ref" => "#/definitions/cta" },
-                { "$ref" => "#/definitions/testimonials" },
-                { "$ref" => "#/definitions/contact" },
-                { "$ref" => "#/definitions/about" }
-              ]
+              "type" => "object",
+              "required" => ["type"],
+              "properties" => {
+                "type" => {
+                  "type" => "string",
+                  "enum" => ["hero", "features", "cta", "testimonials", "contact", "about"]
+                },
+                "headline" => { "type" => "string" },
+                "subheadline" => { "type" => "string" },
+                "title" => { "type" => "string" },
+                "subtitle" => { "type" => "string" },
+                "description" => { "type" => "string" },
+                "content" => { "type" => "string" },
+                "items" => { "type" => "array" },
+                "fields" => { "type" => "array" },
+                "cta" => { "type" => "object" },
+                "button" => { "type" => "object" },
+                "image" => { "type" => "object" },
+                "background" => { "type" => "object" }
+              },
+              "additionalProperties": false
             }
           }
         }

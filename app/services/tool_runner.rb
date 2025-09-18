@@ -171,20 +171,39 @@ class ToolRunner
       business_info = inputs[:business_info] || {}
       design_prefs = inputs[:design_preferences] || {}
       
-      # This would call the AI service to generate DSL
-      # For now, return a sample DSL
-      sample_dsl = LandingPageDSL.sample_dsl(business_info[:industry] || 'consulting')
+      Rails.logger.info "ToolRunner: Generating landing page DSL for business: #{business_info[:business_name]}"
+      
+      # Create the AI agent for DSL generation
+      dsl_agent = LandingPageDslAgent.new
+      
+      # Generate DSL using AI
+      dsl_result = dsl_agent.generate_dsl(
+        business_name: business_info[:business_name],
+        industry: business_info[:industry],
+        target_audience: business_info[:target_audience],
+        key_message: business_info[:key_message],
+        theme: design_prefs[:theme] || 'professional',
+        primary_color: design_prefs[:primary_color],
+        style_notes: design_prefs[:style_notes]
+      )
+      
+      # Validate the generated DSL
+      validation = LandingPageDSL.validate(dsl_result)
+      unless validation[:valid]
+        raise "Generated DSL failed validation: #{validation[:errors].join(', ')}"
+      end
       
       {
         status: 'success',
         data: {
-          dsl: sample_dsl,
+          dsl: dsl_result,
           business_info: business_info,
           design_preferences: design_prefs
         },
-        message: 'Landing page DSL generated successfully'
+        message: "Landing page DSL generated successfully for #{business_info[:business_name]}"
       }
     rescue => e
+      Rails.logger.error "Landing page DSL generation failed: #{e.message}"
       {
         status: 'failed',
         error: "Failed to generate landing page: #{e.message}"
@@ -195,27 +214,101 @@ class ToolRunner
   def execute_landing_page_compilation(inputs)
     begin
       dsl = inputs[:dsl]
-      slug = inputs[:slug] || 'generated-page'
+      business_name = inputs[:business_name] || inputs.dig(:business_info, :business_name) || 'Generated Page'
+      user = inputs[:user]
+      entity = inputs[:entity]
+      
+      # Generate slug from business name
+      slug = generate_slug_from_name(business_name)
+      
+      Rails.logger.info "ToolRunner: Compiling landing page DSL to HTML for: #{business_name}"
       
       # Compile DSL to HTML
       compiler = LandingPageCompiler.new(dsl, landing_page_slug: slug)
       html = compiler.compile
+      
+      # Create or update landing page record if user and entity provided
+      landing_page = nil
+      if user && entity
+        landing_page = create_landing_page_record(
+          title: business_name,
+          slug: slug,
+          html_content: html,
+          dsl_content: dsl,
+          user: user,
+          entity: entity
+        )
+      end
       
       {
         status: 'success',
         data: {
           html: html,
           dsl: dsl,
-          slug: slug
+          slug: slug,
+          landing_page_id: landing_page&.id,
+          landing_page: landing_page ? {
+            id: landing_page.id,
+            title: landing_page.title,
+            slug: landing_page.slug,
+            status: landing_page.status,
+            url: landing_page.full_url
+          } : nil
         },
-        message: 'Landing page compiled successfully'
+        message: landing_page ? 
+          "Landing page '#{business_name}' compiled and saved successfully!" :
+          "Landing page compiled successfully"
       }
     rescue => e
+      Rails.logger.error "Landing page compilation failed: #{e.message}"
       {
         status: 'failed',
         error: "Failed to compile landing page: #{e.message}"
       }
     end
+  end
+  
+  private
+  
+  def generate_slug_from_name(name)
+    # Convert business name to URL-friendly slug
+    name.downcase
+        .gsub(/[^a-z0-9\s-]/, '')  # Remove special characters
+        .gsub(/\s+/, '-')          # Replace spaces with hyphens
+        .gsub(/-+/, '-')           # Remove duplicate hyphens
+        .gsub(/^-|-$/, '')         # Remove leading/trailing hyphens
+        .presence || 'landing-page'
+  end
+  
+  def create_landing_page_record(title:, slug:, html_content:, dsl_content:, user:, entity:)
+    # Ensure slug is unique
+    original_slug = slug
+    counter = 1
+    
+    while LandingPage.exists?(slug: slug)
+      slug = "#{original_slug}-#{counter}"
+      counter += 1
+    end
+    
+    # Create the landing page record
+    landing_page = LandingPage.create!(
+      title: title,
+      slug: slug,
+      html_content: html_content,
+      status: 'draft',
+      user: user,
+      entity: entity,
+      description: "Landing page for #{title}",
+      metadata: {
+        generated_with: 'dsl_system',
+        dsl_content: dsl_content,
+        generated_at: Time.current,
+        generator_version: '2.0'
+      }
+    )
+    
+    Rails.logger.info "Created landing page record: ID #{landing_page.id}, slug: #{landing_page.slug}"
+    landing_page
   end
   
   def execute_contact_creation(inputs)
