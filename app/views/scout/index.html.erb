@@ -1064,32 +1064,7 @@ document.addEventListener('turbo:load', function() {
     }, 500);
   }
   
-  // Global function for canvas actions to send messages
-  // Override any existing definition from Stimulus controller
-  window.scoutSendMessage = async function(message) {
-    console.log('📨 scoutSendMessage called with:', message);
-    
-    // Add user message immediately
-    addMessage(message, 'user');
-    
-    // Show typing indicator
-    showTypingIndicator();
-    
-    try {
-      // Intelligent routing: check if message suggests interactive workflow
-      if (shouldUseInteractiveMode(message)) {
-        console.log('🎯 Using interactive mode for:', message);
-        await handleInteractiveChat(message);
-      } else {
-        console.log('⚡ Using streaming mode for:', message);
-        await handleStreamingChat(message);
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      hideTypingIndicator();
-      addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
-    }
-  };
+  // Note: window.scoutSendMessage is now defined globally outside turbo:load
   
   // Determine if message should use interactive mode
   function shouldUseInteractiveMode(message) {
@@ -1104,19 +1079,6 @@ document.addEventListener('turbo:load', function() {
     console.log('🎯 Interactive mode check:', { message, shouldUse, lowerMessage });
     return shouldUse;
   }
-  
-  // Ensure our version stays in place even after Stimulus loads
-  setTimeout(() => {
-    const originalScoutSendMessage = window.scoutSendMessage;
-    Object.defineProperty(window, 'scoutSendMessage', {
-      get() { return originalScoutSendMessage; },
-      set(newValue) { 
-        console.warn('Attempt to override scoutSendMessage blocked');
-        return originalScoutSendMessage; 
-      },
-      configurable: false
-    });
-  }, 1000);
 
   // Scroll to bottom (with defensive check)
   function scrollToBottom() {
@@ -2050,10 +2012,33 @@ document.addEventListener('turbo:load', function() {
       messageForm.dispatchEvent(new Event('submit'));
     }
   });
-});
 
-// Confirmation dialog handling
+}); // End turbo:load
+
+// Global functions that need to be accessible outside turbo:load
 window.pendingConfirmation = window.pendingConfirmation || null;
+
+// Global function for canvas actions to send messages
+window.scoutSendMessage = async function(message) {
+  console.log('📨 scoutSendMessage called with:', message);
+  
+  // We need to wait for DOM to be ready
+  const waitForDOM = () => {
+    const messageInput = document.getElementById('message-input');
+    const messageForm = document.getElementById('message-form');
+    
+    if (messageInput && messageForm) {
+      // Set the input value and submit the form
+      messageInput.value = message;
+      messageForm.dispatchEvent(new Event('submit'));
+    } else {
+      // If DOM not ready, try again in 100ms
+      setTimeout(waitForDOM, 100);
+    }
+  };
+  
+  waitForDOM();
+};
 
 function showConfirmationDialog(message, onConfirm) {
   const dialog = document.getElementById('confirmation-dialog');
@@ -2069,19 +2054,19 @@ function showConfirmationDialog(message, onConfirm) {
 }
 
 // Handle confirmation proceed
-document.getElementById('confirmation-proceed')?.addEventListener('click', function() {
-  if (window.pendingConfirmation) {
-    window.pendingConfirmation();
-    window.pendingConfirmation = null;
-  }
-  
-  // Hide the modal
-  const dialog = document.getElementById('confirmation-dialog');
-  const modal = bootstrap.Modal.getInstance(dialog);
-  modal.hide();
+document.addEventListener('turbo:load', function() {
+  document.getElementById('confirmation-proceed')?.addEventListener('click', function() {
+    if (window.pendingConfirmation) {
+      window.pendingConfirmation();
+      window.pendingConfirmation = null;
+    }
+    
+    // Hide the modal
+    const dialog = document.getElementById('confirmation-dialog');
+    const modal = bootstrap.Modal.getInstance(dialog);
+    modal.hide();
+  });
 });
-
-}); // End turbo:load
 </script> 
 
 <!-- Confirmation Dialog -->
