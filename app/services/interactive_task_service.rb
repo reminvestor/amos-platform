@@ -553,6 +553,7 @@ class InteractiveTaskService
       # Extract landing page data from workflow results
       landing_page_data = extract_landing_page_from_workflow(result)
       {
+        landing_page_id: landing_page_data[:landing_page_id],
         landing_page: landing_page_data,
         workflow_completed: true,
         final_result: result[:result]
@@ -585,12 +586,17 @@ class InteractiveTaskService
     compilation_step = execution_history.find { |step| step[:id] == 'compile_and_save' }
     
     if generation_step && compilation_step
+      compilation_data = compilation_step[:result][:data] || compilation_step[:result]
+      generation_data = generation_step[:result][:data] || generation_step[:result]
+      
       {
-        dsl: generation_step[:result][:data][:dsl],
-        html: compilation_step[:result][:data][:html],
-        slug: compilation_step[:result][:data][:slug],
-        business_info: generation_step[:result][:data][:business_info],
-        design_preferences: generation_step[:result][:data][:design_preferences]
+        dsl: generation_data[:dsl] || generation_data['dsl'],
+        html: compilation_data[:html] || compilation_data['html'],
+        slug: compilation_data[:slug] || compilation_data['slug'],
+        landing_page_id: compilation_data[:landing_page_id] || compilation_data['landing_page_id'],
+        landing_page: compilation_data[:landing_page] || compilation_data['landing_page'],
+        business_info: generation_data[:business_info] || generation_data['business_info'],
+        design_preferences: generation_data[:design_preferences] || generation_data['design_preferences']
       }
     else
       {
