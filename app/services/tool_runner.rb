@@ -64,7 +64,16 @@ class ToolRunner
     
     # Validate outputs
     if result[:status] == 'success' && result[:data]
-      output_validation = validate_outputs(contract, result[:data])
+      # For output validation, we need to validate the structure that includes the data wrapper
+      output_to_validate = { data: result[:data] }
+      if result[:message]
+        output_to_validate[:message] = result[:message]
+      end
+      if result[:recommendation]
+        output_to_validate[:recommendation] = result[:recommendation]
+      end
+      
+      output_validation = validate_outputs(contract, output_to_validate)
       unless output_validation[:valid]
         result = {
           status: 'failed',
