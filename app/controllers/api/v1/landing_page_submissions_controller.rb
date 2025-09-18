@@ -63,6 +63,99 @@ module Api
         end
       end
       
+      # Show individual submission details
+      def show
+        submission = LandingPageSubmission.find(params[:id])
+        
+        # Check if user owns the landing page
+        unless submission.landing_page.user == current_user
+          render json: {
+            success: false,
+            message: "Submission not found"
+          }, status: :not_found
+          return
+        end
+        
+        render json: {
+          success: true,
+          submission: submission_response(submission)
+        }
+      rescue ActiveRecord::RecordNotFound
+        render json: {
+          success: false,
+          message: "Submission not found"
+        }, status: :not_found
+      end
+      
+      # Mark submission as processed
+      def process
+        submission = find_user_submission
+        return unless submission
+        
+        submission.mark_as_processed!
+        
+        render json: {
+          success: true,
+          message: "Submission marked as processed",
+          submission: submission_response(submission)
+        }
+      end
+      
+      # Mark submission as spam
+      def spam
+        submission = find_user_submission
+        return unless submission
+        
+        submission.mark_as_spam!
+        
+        render json: {
+          success: true,
+          message: "Submission marked as spam",
+          submission: submission_response(submission)
+        }
+      end
+      
+      # Export submissions as CSV
+      def export
+        landing_page_id = params[:landing_page_id]
+        
+        # Build query
+        query = current_user.landing_pages
+                           .joins(:landing_page_submissions)
+                           .includes(landing_page_submissions: :contact)
+        
+        if landing_page_id.present?
+          query = query.where(id: landing_page_id)
+        end
+        
+        submissions = query.flat_map(&:landing_page_submissions)
+        
+        # Apply filters
+        if params[:form_type].present?
+          submissions = submissions.select { |s| s.form_type == params[:form_type] }
+        end
+        
+        if params[:status].present?
+          submissions = submissions.select { |s| s.status == params[:status] }
+        end
+        
+        case params[:time_range]
+        when 'today'
+          submissions = submissions.select { |s| s.submitted_at >= Date.current.beginning_of_day }
+        when 'week'
+          submissions = submissions.select { |s| s.submitted_at >= 1.week.ago }
+        when 'month'
+          submissions = submissions.select { |s| s.submitted_at >= 1.month.ago }
+        end
+        
+        # Generate CSV
+        csv_data = generate_submissions_csv(submissions)
+        
+        send_data csv_data,
+                  filename: "form_submissions_#{Date.current.strftime('%Y%m%d')}.csv",
+                  type: 'text/csv'
+      end
+
       # Authenticated endpoint for retrieving submissions
       def index
         landing_page = current_user.landing_pages.find(params[:landing_page_id])
@@ -166,6 +259,62 @@ module Api
         }.compact
       end
       
+      def find_user_submission
+        submission = LandingPageSubmission.find(params[:id])
+        
+        # Check if user owns the landing page
+        unless submission.landing_page.user == current_user
+          render json: {
+            success: false,
+            message: "Submission not found"
+          }, status: :not_found
+          return nil
+        end
+        
+        submission
+      rescue ActiveRecord::RecordNotFound
+        render json: {
+          success: false,
+          message: "Submission not found"
+        }, status: :not_found
+        nil
+      end
+      
+      def generate_submissions_csv(submissions)
+        require 'csv'
+        
+        CSV.generate(headers: true) do |csv|
+          # Headers
+          csv << [
+            'ID', 'Landing Page', 'Form Type', 'Status', 'Name', 'Email', 'Phone', 'Company',
+            'Message', 'Submitted At', 'Processed At', 'Source IP', 'Referrer',
+            'UTM Source', 'UTM Medium', 'UTM Campaign'
+          ]
+          
+          # Data rows
+          submissions.each do |submission|
+            csv << [
+              submission.id,
+              submission.landing_page.title,
+              submission.form_type,
+              submission.status,
+              submission.full_name,
+              submission.email,
+              submission.phone,
+              submission.company,
+              submission.message,
+              submission.submitted_at.strftime('%Y-%m-%d %H:%M:%S'),
+              submission.processed_at&.strftime('%Y-%m-%d %H:%M:%S'),
+              submission.source_ip,
+              submission.referrer,
+              submission.utm_source,
+              submission.utm_medium,
+              submission.utm_campaign
+            ]
+          end
+        end
+      end
+
       def submission_response(submission)
         {
           id: submission.id,
@@ -176,7 +325,13 @@ module Api
           contact_info: submission.contact_info,
           utm_params: submission.utm_params,
           source_ip: submission.source_ip,
-          referrer: submission.referrer
+          referrer: submission.referrer,
+          submission_data: submission.submission_data,
+          landing_page: {
+            id: submission.landing_page.id,
+            title: submission.landing_page.title,
+            slug: submission.landing_page.slug
+          }
         }
       end
     end

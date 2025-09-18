@@ -351,6 +351,9 @@ class ScoutController < ApplicationController
       when 'interactive_wizard'
         canvas_content = render_interactive_wizard(canvas_data)
         canvas_title = determine_wizard_title(canvas_data)
+      when 'form_submissions'
+        canvas_content = render_form_submissions_canvas(canvas_data)
+        canvas_title = "Form Submissions"
       when 'contact_viewer'
         canvas_content = render_contact_canvas(canvas_data)
         canvas_title = "Contacts"
@@ -1143,6 +1146,108 @@ class ScoutController < ApplicationController
     else
       "Interactive Wizard"
     end
+  end
+  
+  def render_form_submissions_canvas(data = {})
+    # Load form submissions data
+    submissions_data = load_form_submissions_data(data)
+    
+    render_to_string(
+      partial: 'scout/canvas/form_submissions',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: submissions_data
+      }
+    )
+  end
+  
+  def load_form_submissions_data(filters = {})
+    # Base query for submissions from user's landing pages
+    base_query = LandingPageSubmission.joins(:landing_page)
+                                      .where(landing_pages: { user: current_user, entity: current_entity })
+                                      .includes(:contact, :landing_page)
+    
+    # Apply filters
+    if filters[:landing_page_id]
+      base_query = base_query.where(landing_page_id: filters[:landing_page_id])
+    end
+    
+    if filters[:form_type].present?
+      base_query = base_query.where(form_type: filters[:form_type])
+    end
+    
+    if filters[:status].present?
+      base_query = base_query.where(status: filters[:status])
+    end
+    
+    case filters[:time_range]
+    when 'today'
+      base_query = base_query.today
+    when 'week'
+      base_query = base_query.this_week
+    when 'month'
+      base_query = base_query.this_month
+    end
+    
+    # Get submissions with pagination
+    submissions = base_query.recent.limit(50)
+    
+    # Calculate stats
+    stats = calculate_submission_stats(base_query)
+    
+    # Format submissions for display
+    formatted_submissions = submissions.map do |submission|
+      {
+        id: submission.id,
+        form_type: submission.form_type,
+        status: submission.status,
+        submitted_at: submission.submitted_at.iso8601,
+        processed_at: submission.processed_at&.iso8601,
+        contact_info: submission.contact_info,
+        utm_params: submission.utm_params,
+        source_ip: submission.source_ip,
+        referrer: submission.referrer,
+        landing_page: {
+          id: submission.landing_page.id,
+          title: submission.landing_page.title,
+          slug: submission.landing_page.slug
+        },
+        submission_data: submission.submission_data
+      }
+    end
+    
+    {
+      submissions: formatted_submissions,
+      stats: stats,
+      landing_page: filters[:landing_page_id] ? 
+        LandingPage.find_by(id: filters[:landing_page_id], user: current_user) : nil,
+      pagination: {
+        current_count: formatted_submissions.length,
+        total_count: base_query.count,
+        has_previous: false, # TODO: Implement pagination
+        has_next: formatted_submissions.length >= 50
+      }
+    }
+  end
+  
+  def calculate_submission_stats(base_query)
+    total = base_query.count
+    processed = base_query.where(status: ['processed', 'duplicate']).count
+    pending = base_query.where(status: 'pending').count
+    failed = base_query.where(status: 'failed').count
+    spam = base_query.where(status: 'spam').count
+    
+    conversion_rate = total > 0 ? (processed.to_f / total * 100).round(1) : 0.0
+    
+    {
+      total: total,
+      processed: processed,
+      pending: pending,
+      failed: failed,
+      spam: spam,
+      conversion_rate: conversion_rate
+    }
   end
 
   def render_task_progress(data = {})

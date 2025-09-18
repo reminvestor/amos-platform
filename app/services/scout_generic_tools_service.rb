@@ -1309,6 +1309,7 @@ class ScoutGenericToolsService
       5. update_landing_page_status(landing_page_id, status) - Publish, unpublish, or archive landing pages
       6. update_landing_page_content(landing_page_id, instruction) - Update content of existing landing pages (PREFERRED for EDITING existing pages)
       7. revert_landing_page_to_version(landing_page_id, version_id) - Revert landing pages to previous versions
+      8. load_form_submissions(landing_page_id) - View form submissions from landing pages
 
       AVAILABLE DATA MODELS:
       #{available_models.join(', ')}
@@ -2729,6 +2730,114 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       Rails.logger.error "update_landing_page_content error: #{e.message}"
       { error: "Content update failed: #{e.message}" }
     end
+  end
+
+  def execute_load_form_submissions(args)
+    landing_page_id = args[:landing_page_id]
+    filters = args[:filters] || {}
+    
+    return { error: 'landing_page_id is required' } unless landing_page_id.present?
+    
+    begin
+      # Find the landing page
+      landing_page = @entity.landing_pages.find_by(id: landing_page_id, user: @user)
+      return { error: 'Landing page not found' } unless landing_page
+      
+      # Load submissions data
+      submissions_data = load_form_submissions_data_for_page(landing_page, filters)
+      
+      # Set canvas data for loading
+      @suggested_canvas = 'form_submissions'
+      @canvas_data = submissions_data
+      
+      {
+        success: true,
+        object_type: 'landing_page_submissions',
+        data: submissions_data,
+        message: "📊 Loaded #{submissions_data[:stats][:total]} form submissions for '#{landing_page.title}'. " \
+                 "Conversion rate: #{submissions_data[:stats][:conversion_rate]}%",
+        canvas: 'form_submissions',
+        canvas_data: submissions_data
+      }
+    rescue ActiveRecord::RecordNotFound
+      { error: 'Landing page not found' }
+    rescue => e
+      Rails.logger.error "load_form_submissions error: #{e.message}"
+      { error: "Failed to load form submissions: #{e.message}" }
+    end
+  end
+  
+  def load_form_submissions_data_for_page(landing_page, filters = {})
+    # Base query for submissions from this landing page
+    base_query = landing_page.landing_page_submissions.includes(:contact)
+    
+    # Apply filters
+    if filters[:form_type].present?
+      base_query = base_query.where(form_type: filters[:form_type])
+    end
+    
+    if filters[:status].present?
+      base_query = base_query.where(status: filters[:status])
+    end
+    
+    case filters[:time_range]
+    when 'today'
+      base_query = base_query.today
+    when 'week'
+      base_query = base_query.this_week
+    when 'month'
+      base_query = base_query.this_month
+    end
+    
+    # Get submissions with limit
+    submissions = base_query.recent.limit(50)
+    
+    # Calculate stats
+    total = base_query.count
+    processed = base_query.where(status: ['processed', 'duplicate']).count
+    pending = base_query.where(status: 'pending').count
+    failed = base_query.where(status: 'failed').count
+    spam = base_query.where(status: 'spam').count
+    conversion_rate = total > 0 ? (processed.to_f / total * 100).round(1) : 0.0
+    
+    # Format submissions for display
+    formatted_submissions = submissions.map do |submission|
+      {
+        id: submission.id,
+        form_type: submission.form_type,
+        status: submission.status,
+        submitted_at: submission.submitted_at.iso8601,
+        processed_at: submission.processed_at&.iso8601,
+        contact_info: submission.contact_info,
+        utm_params: submission.utm_params,
+        source_ip: submission.source_ip,
+        referrer: submission.referrer,
+        submission_data: submission.submission_data
+      }
+    end
+    
+    {
+      submissions: formatted_submissions,
+      stats: {
+        total: total,
+        processed: processed,
+        pending: pending,
+        failed: failed,
+        spam: spam,
+        conversion_rate: conversion_rate
+      },
+      landing_page: {
+        id: landing_page.id,
+        title: landing_page.title,
+        slug: landing_page.slug
+      },
+      pagination: {
+        current_count: formatted_submissions.length,
+        total_count: total,
+        has_previous: false, # TODO: Implement pagination
+        has_next: formatted_submissions.length >= 50
+      }
+    }
   end
 
   def execute_revert_landing_page_to_version(args)
