@@ -233,6 +233,58 @@ class ToolRegistry
       },
       timeout: 30,
       retryable: true
+    },
+    
+    'analyze_landing_page_request' => {
+      version: '1.0',
+      description: 'Analyze existing business information and landing page request',
+      input_schema: {
+        type: 'object',
+        required: ['user_message'],
+        properties: {
+          user_message: { type: 'string', minLength: 1 },
+          user: { 
+            type: 'object',
+            properties: {
+              id: { type: 'integer' },
+              email: { type: 'string' },
+              first_name: { type: 'string' },
+              last_name: { type: 'string' }
+            }
+          },
+          entity: {
+            type: 'object', 
+            properties: {
+              id: { type: 'integer' },
+              name: { type: 'string' },
+              subdomain: { type: 'string' }
+            }
+          }
+        }
+      },
+      output_schema: {
+        type: 'object',
+        required: ['data'],
+        properties: {
+          data: {
+            type: 'object',
+            required: ['business_profile'],
+            properties: {
+              business_profile: { type: 'object' },
+              entity: { type: 'object' },
+              message_context: { type: 'object' },
+              missing_info: { 
+                type: 'array',
+                items: { type: 'string' }
+              }
+            }
+          },
+          message: { type: 'string' },
+          recommendation: { type: 'string' }
+        }
+      },
+      timeout: 10,
+      retryable: false
     }
   }.freeze
   
@@ -323,7 +375,7 @@ class ToolRegistry
     # Get tools by category
     def tools_by_category
       {
-        'Content Generation' => ['generate_landing_page_dsl'],
+        'Content Generation' => ['generate_landing_page_dsl', 'analyze_landing_page_request'],
         'Content Processing' => ['compile_landing_page_html'],
         'Data Management' => ['create_contact', 'create_campaign', 'get_contact_groups'],
         'Communication' => ['send_email'],
