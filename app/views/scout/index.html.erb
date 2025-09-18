@@ -1066,6 +1066,39 @@ document.addEventListener('turbo:load', function() {
   
   // Note: window.scoutSendMessage is now defined globally outside turbo:load
   
+  // Get current canvas context for Scout chat
+  function getCurrentCanvasContext() {
+    // Check if we're in a specific canvas view
+    const workspace = document.getElementById('workspace');
+    if (!workspace) return null;
+    
+    // Check for landing page editor
+    const landingPageEditor = workspace.querySelector('.landing-page-editor');
+    if (landingPageEditor) {
+      const pageId = landingPageEditor.dataset.pageId;
+      return {
+        type: 'landing_page_editor',
+        landing_page_id: pageId,
+        context: 'editing_landing_page'
+      };
+    }
+    
+    // Check for other canvas types
+    const taskProgress = workspace.querySelector('.task-progress-container');
+    if (taskProgress) {
+      return {
+        type: 'task_progress',
+        context: 'workflow_in_progress'
+      };
+    }
+    
+    // Default to conversation context
+    return {
+      type: 'conversation',
+      context: 'general_chat'
+    };
+  }
+  
   // Determine if message should use interactive mode
   function shouldUseInteractiveMode(message) {
     const interactiveKeywords = [
@@ -1275,6 +1308,16 @@ document.addEventListener('turbo:load', function() {
     
     // Track the content to prevent future duplicates
     streamedContent.add(messageContent.toString().trim());
+    
+    // Dispatch event for other components to listen to
+    document.dispatchEvent(new CustomEvent('scout:message-added', {
+      detail: {
+        content: messageContent,
+        role: role,
+        timestamp: timestamp,
+        element: el
+      }
+    }));
     
     scrollToBottom();
     updateMessageCount();
@@ -1524,7 +1567,7 @@ document.addEventListener('turbo:load', function() {
   }
 
   // Handle interactive workflow chat
-  async function handleInteractiveChat(message) {
+  async function handleInteractiveChat(message, context = null) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     try {
@@ -1535,7 +1578,8 @@ document.addEventListener('turbo:load', function() {
           'X-CSRF-Token': csrfToken
         },
         body: JSON.stringify({
-          message: message
+          message: message,
+          context: context
         })
       });
       
@@ -1594,7 +1638,7 @@ document.addEventListener('turbo:load', function() {
   }
 
   // Handle streaming chat
-  async function handleStreamingChat(message) {
+  async function handleStreamingChat(message, context = null) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     // Track streaming state
@@ -1621,7 +1665,7 @@ document.addEventListener('turbo:load', function() {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken || ''
         },
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message: message, context: context })
       });
 
       if (!response.body) {
@@ -1902,6 +1946,16 @@ document.addEventListener('turbo:load', function() {
         }));
         prependMessages(items);
         historyState.oldestId = items[0].id;
+      } else if (initial) {
+        // No history exists, create welcome message
+        const welcomeMessage = {
+          id: 'welcome-' + Date.now(),
+          role: 'assistant',
+          content: "Hi! I'm Scout, your AI marketing assistant. I can help you create landing pages, manage email campaigns, analyze your marketing performance, and much more. What would you like to work on today?",
+          timestamp: new Date().toISOString(),
+          metadata: {}
+        };
+        prependMessages([welcomeMessage]);
       }
       historyState.hasMore = !!data.has_more;
     } catch (e) {
@@ -1911,48 +1965,74 @@ document.addEventListener('turbo:load', function() {
     }
   }
 
+  // Check for saved canvas state and restore it
+  function restoreCanvasState() {
+    const savedCanvas = localStorage.getItem('scout_canvas_state');
+    if (savedCanvas) {
+      try {
+        const canvasState = JSON.parse(savedCanvas);
+        console.log('🔄 Restoring canvas state:', canvasState);
+        
+        // Load the saved canvas
+        if (window.scoutController && window.scoutController.loadScoutCanvas) {
+          window.scoutController.loadScoutCanvas(canvasState.type, canvasState.data);
+        }
+        return true;
+      } catch (e) {
+        console.error('❌ Failed to restore canvas state:', e);
+        localStorage.removeItem('scout_canvas_state');
+      }
+    }
+    return false;
+  }
+
   // Initial fetch of recent history when page loads
   loadMoreHistory(true).then(() => {
-    // After initial history is loaded, add buttons to the first welcome message
-    setTimeout(() => {
-      const messages = chatMessages.querySelectorAll('.message.ai-message');
-      if (messages.length > 0) {
-        const firstMessage = messages[0];
-        const messageContent = firstMessage.querySelector('.message-bubble');
-        
-        // Check if this is a welcome message and doesn't already have buttons
-        if (messageContent && messageContent.textContent.includes('Scout') && 
-            messageContent.textContent.includes('marketing assistant') &&
-            !firstMessage.querySelector('.message-suggestions')) {
+    // Try to restore canvas state first
+    const canvasRestored = restoreCanvasState();
+    
+    // If no canvas was restored, add buttons to the first welcome message
+    if (!canvasRestored) {
+      setTimeout(() => {
+        const messages = chatMessages.querySelectorAll('.message.ai-message');
+        if (messages.length > 0) {
+          const firstMessage = messages[0];
+          const messageContent = firstMessage.querySelector('.message-bubble');
           
-          // Add the suggestion buttons
-          const suggestionsDiv = document.createElement('div');
-          suggestionsDiv.className = 'message-suggestions';
-          suggestionsDiv.style.marginTop = '12px';
-          suggestionsDiv.innerHTML = `
-            <button class="suggestion-btn" data-suggestion="Create a landing page for my product">
-              Create a landing page
-            </button>
-            <button class="suggestion-btn" data-suggestion="Show me my email campaigns">
-              View campaigns
-            </button>
-            <button class="suggestion-btn" data-suggestion="Analyze my marketing performance">
-              Analytics dashboard
-            </button>
-          `;
-          messageContent.appendChild(suggestionsDiv);
-          
-          // Add click handlers to suggestion buttons
-          suggestionsDiv.querySelectorAll('.suggestion-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-              const suggestion = this.dataset.suggestion;
-              messageInput.value = suggestion;
-              messageForm.dispatchEvent(new Event('submit'));
+          // Check if this is a welcome message and doesn't already have buttons
+          if (messageContent && messageContent.textContent.includes('Scout') && 
+              messageContent.textContent.includes('marketing assistant') &&
+              !firstMessage.querySelector('.message-suggestions')) {
+            
+            // Add the suggestion buttons
+            const suggestionsDiv = document.createElement('div');
+            suggestionsDiv.className = 'message-suggestions';
+            suggestionsDiv.style.marginTop = '12px';
+            suggestionsDiv.innerHTML = `
+              <button class="suggestion-btn" data-suggestion="Create a landing page for my product">
+                Create a landing page
+              </button>
+              <button class="suggestion-btn" data-suggestion="Show me my email campaigns">
+                View campaigns
+              </button>
+              <button class="suggestion-btn" data-suggestion="Analyze my marketing performance">
+                Analytics dashboard
+              </button>
+            `;
+            messageContent.appendChild(suggestionsDiv);
+            
+            // Add click handlers to suggestion buttons
+            suggestionsDiv.querySelectorAll('.suggestion-btn').forEach(btn => {
+              btn.addEventListener('click', function() {
+                const suggestion = this.dataset.suggestion;
+                messageInput.value = suggestion;
+                messageForm.dispatchEvent(new Event('submit'));
+              });
             });
-          });
+          }
         }
-      }
-    }, 100); // Small delay to ensure DOM is updated
+      }, 100); // Small delay to ensure DOM is updated
+    }
   });
 
   // Attach scroll-up listener to load older history
@@ -1980,13 +2060,16 @@ document.addEventListener('turbo:load', function() {
     
     // Use intelligent routing
     try {
+      // Get current canvas context
+      const currentCanvas = getCurrentCanvasContext();
+      
       // Check if message suggests interactive workflow
       if (shouldUseInteractiveMode(message)) {
         console.log('🎯 Using interactive mode for:', message);
-        await handleInteractiveChat(message);
+        await handleInteractiveChat(message, currentCanvas);
       } else {
         console.log('⚡ Using streaming mode for:', message);
-        await handleStreamingChat(message);
+        await handleStreamingChat(message, currentCanvas);
       }
     } catch (error) {
       console.error('Error sending message:', error);

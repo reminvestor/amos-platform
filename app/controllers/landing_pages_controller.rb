@@ -134,7 +134,7 @@ class LandingPagesController < ApplicationController
   def update
     if @landing_page.update(landing_page_params)
       respond_to do |format|
-        format.html { redirect_to chat_landing_page_path(@landing_page), notice: 'Landing page was successfully updated.' }
+        format.html { redirect_to landing_page_path(@landing_page), notice: 'Landing page was successfully updated.' }
         format.json { render json: { success: true, message: 'Landing page was successfully updated.' } }
       end
     else
@@ -170,7 +170,9 @@ class LandingPagesController < ApplicationController
     respond_to do |format|
       format.html { 
         if @landing_page.html_content.present?
-          render html: @landing_page.html_content.html_safe
+          # Remove all editing-related attributes and classes for clean preview
+          clean_html = strip_editing_attributes(@landing_page.html_content)
+          render html: clean_html.html_safe
         else
           render plain: "No HTML content generated yet. Please generate the landing page first."
         end
@@ -281,7 +283,9 @@ class LandingPagesController < ApplicationController
     
     # Render the complete HTML content directly (like preview method)
     if @landing_page.html_content.present?
-      render html: @landing_page.html_content.html_safe
+      # Remove all editing-related attributes and classes for clean public view
+      clean_html = strip_editing_attributes(@landing_page.html_content)
+      render html: clean_html.html_safe
     else
       render plain: "This landing page is not yet available.", status: :not_found
     end
@@ -320,6 +324,34 @@ class LandingPagesController < ApplicationController
   
   def set_landing_page
     @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find(params[:id])
+  end
+  
+  def strip_editing_attributes(html_content)
+    # Remove all editing-related attributes and classes for clean preview
+    clean_html = html_content.dup
+    
+    # Remove contenteditable attributes
+    clean_html.gsub!(/\s*contenteditable\s*=\s*["']true["']/i, '')
+    clean_html.gsub!(/\s*contenteditable\s*=\s*["']false["']/i, '')
+    clean_html.gsub!(/\s*contenteditable/i, '')
+    
+    # Remove spellcheck attributes
+    clean_html.gsub!(/\s*spellcheck\s*=\s*["']false["']/i, '')
+    clean_html.gsub!(/\s*spellcheck\s*=\s*["']true["']/i, '')
+    
+    # Remove data-original-content attributes
+    clean_html.gsub!(/\s*data-original-content\s*=\s*["'][^"']*["']/i, '')
+    
+    # Remove editing-related classes
+    clean_html.gsub!(/\s*editable-text\s*/, ' ')
+    clean_html.gsub!(/\s*editable-image\s*/, ' ')
+    clean_html.gsub!(/\s*editable-element\s*/, ' ')
+    
+    # Clean up any double spaces left by class removal
+    clean_html.gsub!(/\s+/, ' ')
+    clean_html.gsub!(/class\s*=\s*["']\s*["']/, '')
+    
+    clean_html
   end
   
   def generate_title_and_slug
