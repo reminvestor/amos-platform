@@ -1066,6 +1066,39 @@ document.addEventListener('turbo:load', function() {
   
   // Note: window.scoutSendMessage is now defined globally outside turbo:load
   
+  // Get current canvas context for Scout chat
+  function getCurrentCanvasContext() {
+    // Check if we're in a specific canvas view
+    const workspace = document.getElementById('workspace');
+    if (!workspace) return null;
+    
+    // Check for landing page editor
+    const landingPageEditor = workspace.querySelector('.landing-page-editor');
+    if (landingPageEditor) {
+      const pageId = landingPageEditor.dataset.pageId;
+      return {
+        type: 'landing_page_editor',
+        landing_page_id: pageId,
+        context: 'editing_landing_page'
+      };
+    }
+    
+    // Check for other canvas types
+    const taskProgress = workspace.querySelector('.task-progress-container');
+    if (taskProgress) {
+      return {
+        type: 'task_progress',
+        context: 'workflow_in_progress'
+      };
+    }
+    
+    // Default to conversation context
+    return {
+      type: 'conversation',
+      context: 'general_chat'
+    };
+  }
+  
   // Determine if message should use interactive mode
   function shouldUseInteractiveMode(message) {
     const interactiveKeywords = [
@@ -1524,7 +1557,7 @@ document.addEventListener('turbo:load', function() {
   }
 
   // Handle interactive workflow chat
-  async function handleInteractiveChat(message) {
+  async function handleInteractiveChat(message, context = null) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     try {
@@ -1535,7 +1568,8 @@ document.addEventListener('turbo:load', function() {
           'X-CSRF-Token': csrfToken
         },
         body: JSON.stringify({
-          message: message
+          message: message,
+          context: context
         })
       });
       
@@ -1594,7 +1628,7 @@ document.addEventListener('turbo:load', function() {
   }
 
   // Handle streaming chat
-  async function handleStreamingChat(message) {
+  async function handleStreamingChat(message, context = null) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     // Track streaming state
@@ -1621,7 +1655,7 @@ document.addEventListener('turbo:load', function() {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken || ''
         },
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message: message, context: context })
       });
 
       if (!response.body) {
@@ -1980,13 +2014,16 @@ document.addEventListener('turbo:load', function() {
     
     // Use intelligent routing
     try {
+      // Get current canvas context
+      const currentCanvas = getCurrentCanvasContext();
+      
       // Check if message suggests interactive workflow
       if (shouldUseInteractiveMode(message)) {
         console.log('🎯 Using interactive mode for:', message);
-        await handleInteractiveChat(message);
+        await handleInteractiveChat(message, currentCanvas);
       } else {
         console.log('⚡ Using streaming mode for:', message);
-        await handleStreamingChat(message);
+        await handleStreamingChat(message, currentCanvas);
       }
     } catch (error) {
       console.error('Error sending message:', error);

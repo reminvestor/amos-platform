@@ -80,8 +80,10 @@ class ScoutController < ApplicationController
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
+    context = params[:context]
     
     Rails.logger.info "Scout interactive chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
+    Rails.logger.info "Chat context: #{context.inspect}" if context
     
     if user_message.blank?
       render json: { error: 'Message cannot be empty' }, status: 400
@@ -178,11 +180,13 @@ class ScoutController < ApplicationController
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
+    context = params[:context]
     
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
     puts "🚨 PRODUCTION DEBUG: Scout chat request received - #{Time.current}"
     STDOUT.flush
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
+    Rails.logger.info "Chat context: #{context.inspect}" if context
     
     if user_message.blank?
       render json: { error: 'Message cannot be empty' }, status: 400
