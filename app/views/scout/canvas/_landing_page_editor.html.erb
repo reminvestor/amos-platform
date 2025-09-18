@@ -115,21 +115,29 @@
     iframeDoc: null
   };
   
-  // Initialize when canvas loads
-  document.addEventListener('DOMContentLoaded', function() {
+  // Initialize immediately when canvas loads (since this is loaded via AJAX)
+  setTimeout(function() {
     initializeInlineEditor();
-  });
+  }, 100);
   
   function initializeInlineEditor() {
     const editor = window.scoutInlineEditor;
     const htmlContent = <%= raw (landing_page.html_content || '<div class="container py-5"><h1>Landing Page Under Construction</h1><p>This landing page is being prepared. Please check back soon!</p></div>').to_json %>;
     const iframe = document.getElementById('editorFrame');
     
+    console.log('🎯 Initializing landing page editor for page ID:', editor.pageId);
+    console.log('📄 HTML content length:', htmlContent.length);
+    console.log('🖼️ Iframe element:', iframe);
+    
     // Write content to iframe
     editor.iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    console.log('📄 Iframe document:', editor.iframeDoc);
+    
     editor.iframeDoc.open();
     editor.iframeDoc.write(htmlContent);
     editor.iframeDoc.close();
+    
+    console.log('✅ HTML content written to iframe');
     
     // Wait for iframe to load
     iframe.onload = function() {
@@ -178,6 +186,12 @@
     // Inject editing styles
     const style = doc.createElement('style');
     style.textContent = `
+      /* Editor-specific overrides for better editing experience */
+      .hero-section {
+        min-height: 300px !important; /* Override the 60vh to fixed height */
+        max-height: 400px !important;
+      }
+      
       .editable-text {
         cursor: text;
         transition: background-color 0.2s;
@@ -450,7 +464,8 @@
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector('[name="csrf-token"]').getAttribute('content')
+        'Accept': 'application/json',
+        'X-CSRF-Token': window.parent.document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
       },
       body: JSON.stringify({
         landing_page: {
