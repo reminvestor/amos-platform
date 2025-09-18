@@ -1288,17 +1288,34 @@ class ScoutController < ApplicationController
     # Handle both symbol and string keys
     data = data.with_indifferent_access if data.is_a?(Hash)
     
-    # If no data provided, try to load from cache
+    # If no data provided, try to load from TaskSession
     if data.empty? || data.nil? || data[:tasks].nil?
       session_id = session[:scout_session_id]
-      cache_key = "scout_task_list_#{current_entity.id}_#{session_id}"
-      cached_data = Rails.cache.read(cache_key)
-      if cached_data
-        Rails.logger.info "📋 Loaded task list from cache: #{cached_data[:tasks]&.size} tasks"
-        data = cached_data.with_indifferent_access
+      
+      # Try to find active task session
+      task_session = TaskSession.active
+                               .where(user: current_user)
+                               .where("metadata->>'session_id' = ?", session_id)
+                               .first
+      
+      if task_session && task_session.workflow_spec
+        # Convert workflow to task list format for display
+        workflow = Workflow.new(task_session.workflow_spec)
+        data = {
+          tasks: workflow.steps.map do |step|
+            {
+              id: step.id,
+              description: step.description,
+              status: step.status
+            }
+          end,
+          workflow_status: workflow.status,
+          progress: workflow.progress
+        }
+        Rails.logger.info "📋 Loaded task list from TaskSession: #{data[:tasks]&.size} tasks"
       else
-        Rails.logger.info "📋 No task list found in cache for key: #{cache_key}"
-        data = {}
+        Rails.logger.info "📋 No active task session found for session: #{session_id}"
+        data = { tasks: [] }
       end
     else
       Rails.logger.info "📋 Using provided task data: #{data[:tasks]&.size} tasks"
