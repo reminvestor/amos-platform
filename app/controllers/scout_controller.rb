@@ -76,6 +76,104 @@ class ScoutController < ApplicationController
     end
   end
 
+  def chat_interactive
+    @session_id = session[:scout_session_id] ||= SecureRandom.uuid
+    user_message = params[:message]&.strip
+    current_canvas = params[:current_canvas]
+    
+    Rails.logger.info "Scout interactive chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
+    
+    if user_message.blank?
+      render json: { error: 'Message cannot be empty' }, status: 400
+      return
+    end
+    
+    begin
+      # Save user message
+      save_scout_message('user', user_message)
+      
+      # Initialize interactive task service
+      interactive_service = InteractiveTaskService.new(current_user, current_entity, @session_id)
+      
+      # Set up progress callback for real-time updates
+      interactive_service.on_progress do |progress_data|
+        # This could be used for WebSocket updates in the future
+        Rails.logger.info "Workflow progress: #{progress_data.inspect}"
+      end
+      
+      # Process the message
+      result = interactive_service.process_message(user_message, persisted_history_last_k(12), current_canvas)
+      
+      # Save assistant response if present
+      if result[:message]
+        save_scout_message('assistant', result[:message])
+      end
+      
+      # Return structured response
+      render json: {
+        success: result[:success],
+        message: result[:message],
+        canvas: result[:canvas],
+        canvas_data: result[:canvas_data],
+        mode: result[:mode],
+        awaiting_input: result[:awaiting_input],
+        workflow_completed: result[:workflow_completed],
+        step_completed: result[:step_completed]
+      }
+      
+    rescue => e
+      Rails.logger.error "Scout interactive chat error: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      
+      render json: {
+        success: false,
+        message: "I encountered an error processing your request. Please try again.",
+        error: e.message,
+        canvas: 'conversation'
+      }, status: 500
+    end
+  end
+  
+  def continue_workflow
+    @session_id = session[:scout_session_id] ||= SecureRandom.uuid
+    user_inputs = params[:inputs] || {}
+    
+    Rails.logger.info "Scout continue workflow - Session: #{@session_id}, Inputs: #{user_inputs.keys}"
+    
+    begin
+      # Initialize interactive task service
+      interactive_service = InteractiveTaskService.new(current_user, current_entity, @session_id)
+      
+      # Continue the workflow
+      result = interactive_service.continue_workflow(user_inputs)
+      
+      # Save any assistant response
+      if result[:message]
+        save_scout_message('assistant', result[:message])
+      end
+      
+      render json: {
+        success: result[:success],
+        message: result[:message],
+        canvas: result[:canvas],
+        canvas_data: result[:canvas_data],
+        workflow_completed: result[:workflow_completed],
+        step_completed: result[:step_completed]
+      }
+      
+    rescue => e
+      Rails.logger.error "Scout continue workflow error: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      
+      render json: {
+        success: false,
+        message: "I encountered an error continuing the workflow. Please try again.",
+        error: e.message,
+        canvas: 'conversation'
+      }, status: 500
+    end
+  end
+
   def chat_stream
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     user_message = params[:message]&.strip
@@ -185,13 +283,30 @@ class ScoutController < ApplicationController
         current_canvas  # Pass current canvas context
       )
       
-      # Save Scout's response
-      Rails.logger.info "📨 Final response type: #{final_response[:message].class}"
-      Rails.logger.info "📨 Final response content: #{final_response[:message].to_s.first(200)}..."
-      save_scout_message('assistant', final_response[:message])
+      # Save Scout's response only if it wasn't already saved during streaming
+      if final_response[:message].present? && !final_response[:message_already_saved]
+        Rails.logger.info "📨 Final response type: #{final_response[:message].class}"
+        Rails.logger.info "📨 Final response content: #{final_response[:message].to_s.first(200)}..."
+        save_scout_message('assistant', final_response[:message])
+      else
+        Rails.logger.info "📨 Final message already saved during streaming, skipping duplicate save"
+      end
       
       # Send completion indicator
       stream_update("✅ Complete")
+      
+      # Load suggested canvas if available - but only if it hasn't been loaded during streaming
+      # The task_progress canvas is loaded dynamically during task updates, so skip it here
+      if final_response[:canvas] && final_response[:canvas] != 'conversation' && final_response[:canvas] != 'task_progress'
+        Rails.logger.info "📋 Loading suggested canvas at end: #{final_response[:canvas]}"
+        stream_update({
+          type: 'load_canvas',
+          canvas: final_response[:canvas],
+          canvas_data: final_response[:canvas_data] || {}
+        })
+      elsif final_response[:canvas] == 'task_progress'
+        Rails.logger.info "📋 Skipping task_progress canvas load at end - already loaded during streaming"
+      end
       
       # Send job started status if there's an active job
       send_job_started_status_if_exists(final_response)
@@ -250,6 +365,15 @@ class ScoutController < ApplicationController
       when 'landing_page_editor'
         canvas_content = render_landing_page_editor(canvas_data)
         canvas_title = "Edit Landing Page"
+      when 'interactive_wizard'
+        canvas_content = render_interactive_wizard(canvas_data)
+        canvas_title = determine_wizard_title(canvas_data)
+      when 'form_submissions'
+        canvas_content = render_form_submissions_canvas(canvas_data)
+        canvas_title = "Form Submissions"
+      when 'workflow_analytics'
+        canvas_content = render_workflow_analytics_canvas(canvas_data)
+        canvas_title = "Workflow Analytics"
       when 'contact_viewer'
         canvas_content = render_contact_canvas(canvas_data)
         canvas_title = "Contacts"
@@ -1010,21 +1134,224 @@ class ScoutController < ApplicationController
     )
   end
 
+  def render_interactive_wizard(data = {})
+    # Convert ActionController::Parameters to hash recursively
+    if data.is_a?(ActionController::Parameters)
+      data = JSON.parse(data.to_json).with_indifferent_access
+    end
+    
+    render_to_string(
+      partial: 'scout/canvas/interactive_wizard',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data,
+        step: data[:step],
+        form: data[:form],
+        progress: data[:progress]
+      }
+    )
+  end
+  
+  def determine_wizard_title(canvas_data)
+    step = canvas_data[:step]
+    progress = canvas_data[:progress]
+    
+    if step && step[:config] && step[:config][:title]
+      step[:config][:title]
+    elsif progress && progress[:workflow_type]
+      case progress[:workflow_type]
+      when 'landing_page_creation'
+        "Landing Page Wizard"
+      when 'campaign_creation'
+        "Campaign Wizard"
+      else
+        "Interactive Wizard"
+      end
+    else
+      "Interactive Wizard"
+    end
+  end
+  
+  def render_form_submissions_canvas(data = {})
+    # Load form submissions data
+    submissions_data = load_form_submissions_data(data)
+    
+    render_to_string(
+      partial: 'scout/canvas/form_submissions',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: submissions_data
+      }
+    )
+  end
+  
+  def load_form_submissions_data(filters = {})
+    # Base query for submissions from user's landing pages
+    base_query = LandingPageSubmission.joins(:landing_page)
+                                      .where(landing_pages: { user: current_user, entity: current_entity })
+                                      .includes(:contact, :landing_page)
+    
+    # Apply filters
+    if filters[:landing_page_id]
+      base_query = base_query.where(landing_page_id: filters[:landing_page_id])
+    end
+    
+    if filters[:form_type].present?
+      base_query = base_query.where(form_type: filters[:form_type])
+    end
+    
+    if filters[:status].present?
+      base_query = base_query.where(status: filters[:status])
+    end
+    
+    case filters[:time_range]
+    when 'today'
+      base_query = base_query.today
+    when 'week'
+      base_query = base_query.this_week
+    when 'month'
+      base_query = base_query.this_month
+    end
+    
+    # Get submissions with pagination
+    submissions = base_query.recent.limit(50)
+    
+    # Calculate stats
+    stats = calculate_submission_stats(base_query)
+    
+    # Format submissions for display
+    formatted_submissions = submissions.map do |submission|
+      {
+        id: submission.id,
+        form_type: submission.form_type,
+        status: submission.status,
+        submitted_at: submission.submitted_at.iso8601,
+        processed_at: submission.processed_at&.iso8601,
+        contact_info: submission.contact_info,
+        utm_params: submission.utm_params,
+        source_ip: submission.source_ip,
+        referrer: submission.referrer,
+        landing_page: {
+          id: submission.landing_page.id,
+          title: submission.landing_page.title,
+          slug: submission.landing_page.slug
+        },
+        submission_data: submission.submission_data
+      }
+    end
+    
+    {
+      submissions: formatted_submissions,
+      stats: stats,
+      landing_page: filters[:landing_page_id] ? 
+        LandingPage.find_by(id: filters[:landing_page_id], user: current_user) : nil,
+      pagination: {
+        current_count: formatted_submissions.length,
+        total_count: base_query.count,
+        has_previous: false, # TODO: Implement pagination
+        has_next: formatted_submissions.length >= 50
+      }
+    }
+  end
+  
+  def calculate_submission_stats(base_query)
+    total = base_query.count
+    processed = base_query.where(status: ['processed', 'duplicate']).count
+    pending = base_query.where(status: 'pending').count
+    failed = base_query.where(status: 'failed').count
+    spam = base_query.where(status: 'spam').count
+    
+    conversion_rate = total > 0 ? (processed.to_f / total * 100).round(1) : 0.0
+    
+    {
+      total: total,
+      processed: processed,
+      pending: pending,
+      failed: failed,
+      spam: spam,
+      conversion_rate: conversion_rate
+    }
+  end
+  
+  def render_workflow_analytics_canvas(data = {})
+    # Load analytics data
+    analytics_data = load_workflow_analytics_data(data)
+    
+    render_to_string(
+      partial: 'scout/canvas/workflow_analytics',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: analytics_data
+      }
+    )
+  end
+  
+  def load_workflow_analytics_data(options = {})
+    period = (options[:period] || 30).to_i.days
+    
+    # Get analytics from ObservabilityService
+    observability = ObservabilityService.instance
+    
+    {
+      workflow_analytics: observability.workflow_analytics(period),
+      tool_analytics: observability.tool_analytics(period),
+      user_analytics: observability.user_analytics(period),
+      ai_metrics: observability.ai_metrics(period),
+      performance_metrics: observability.performance_metrics(period),
+      period_days: period.to_i / 1.day,
+      generated_at: Time.current
+    }
+  end
+
   def render_task_progress(data = {})
     # Handle both symbol and string keys
     data = data.with_indifferent_access if data.is_a?(Hash)
     
-    # If no data provided, try to load from cache
+    # If no data provided, try to load from TaskSession
     if data.empty? || data.nil? || data[:tasks].nil?
       session_id = session[:scout_session_id]
-      cache_key = "scout_task_list_#{current_entity.id}_#{session_id}"
-      cached_data = Rails.cache.read(cache_key)
-      if cached_data
-        Rails.logger.info "📋 Loaded task list from cache: #{cached_data[:tasks]&.size} tasks"
-        data = cached_data.with_indifferent_access
+      
+      # Try to find active task session
+      task_session = TaskSession.active
+                               .where(user: current_user)
+                               .where("metadata->>'session_id' = ?", session_id)
+                               .first
+      
+      if task_session
+        # Check if we have a task list in state
+        if task_session.state&.dig('task_list')
+          data = task_session.state['task_list']
+          Rails.logger.info "📋 Loaded task list from TaskSession state: #{data[:tasks]&.size} tasks"
+        elsif task_session.workflow_spec
+          # Convert workflow to task list format for display with proper state restoration
+          workflow_engine = WorkflowEngine.new(task_session)
+          workflow_progress = workflow_engine.progress
+          
+          # Get workflow instance to access steps
+          workflow = workflow_engine.instance_variable_get(:@workflow)
+          
+          data = {
+            tasks: workflow.steps.map do |step|
+              {
+                id: step.id,
+                description: step.description,
+                status: step.status
+              }
+            end,
+            workflow_status: workflow_progress[:status],
+            progress: workflow_progress
+          }
+          Rails.logger.info "📋 Loaded task list from TaskSession workflow: #{data[:tasks]&.size} tasks"
+        else
+          Rails.logger.info "📋 TaskSession found but no task list or workflow"
+          data = { tasks: [] }
+        end
       else
-        Rails.logger.info "📋 No task list found in cache for key: #{cache_key}"
-        data = {}
+        Rails.logger.info "📋 No active task session found for session: #{session_id}"
+        data = { tasks: [] }
       end
     else
       Rails.logger.info "📋 Using provided task data: #{data[:tasks]&.size} tasks"

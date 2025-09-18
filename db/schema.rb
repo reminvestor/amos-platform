@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_15_042147) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_18_003956) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -301,6 +301,31 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_15_042147) do
     t.index ["user_id"], name: "index_landing_page_chat_messages_on_user_id"
   end
 
+  create_table "landing_page_submissions", force: :cascade do |t|
+    t.bigint "landing_page_id", null: false
+    t.bigint "contact_id"
+    t.string "form_type", null: false
+    t.jsonb "submission_data", default: {}, null: false
+    t.string "source_ip"
+    t.text "user_agent"
+    t.datetime "submitted_at", null: false
+    t.datetime "processed_at"
+    t.string "status", default: "pending", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "session_id"
+    t.string "referrer"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contact_id", "submitted_at"], name: "index_landing_page_submissions_on_contact_id_and_submitted_at"
+    t.index ["contact_id"], name: "index_landing_page_submissions_on_contact_id"
+    t.index ["form_type"], name: "index_landing_page_submissions_on_form_type"
+    t.index ["landing_page_id", "submitted_at"], name: "idx_on_landing_page_id_submitted_at_86b17f44bd"
+    t.index ["landing_page_id"], name: "index_landing_page_submissions_on_landing_page_id"
+    t.index ["session_id"], name: "index_landing_page_submissions_on_session_id"
+    t.index ["status"], name: "index_landing_page_submissions_on_status"
+    t.index ["submitted_at"], name: "index_landing_page_submissions_on_submitted_at"
+  end
+
   create_table "landing_page_versions", force: :cascade do |t|
     t.bigint "landing_page_id", null: false
     t.jsonb "content"
@@ -329,8 +354,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_15_042147) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "html_content"
+    t.jsonb "metadata", default: {}, null: false
     t.index ["campaign_id"], name: "index_landing_pages_on_campaign_id"
     t.index ["entity_id"], name: "index_landing_pages_on_entity_id"
+    t.index ["metadata"], name: "index_landing_pages_on_metadata", using: :gin
     t.index ["slug"], name: "index_landing_pages_on_slug", unique: true
     t.index ["user_id"], name: "index_landing_pages_on_user_id"
   end
@@ -543,6 +570,36 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_15_042147) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "task_events", force: :cascade do |t|
+    t.bigint "task_session_id", null: false
+    t.string "event_type", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.string "step_id"
+    t.integer "sequence_number"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_type"], name: "index_task_events_on_event_type"
+    t.index ["task_session_id", "created_at"], name: "index_task_events_on_task_session_id_and_created_at"
+    t.index ["task_session_id", "sequence_number"], name: "index_task_events_on_task_session_id_and_sequence_number", unique: true
+    t.index ["task_session_id"], name: "index_task_events_on_task_session_id"
+  end
+
+  create_table "task_sessions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "status", default: "active", null: false
+    t.jsonb "state", default: {}, null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "session_type"
+    t.string "workflow_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_task_sessions_on_created_at"
+    t.index ["session_type"], name: "index_task_sessions_on_session_type"
+    t.index ["status"], name: "index_task_sessions_on_status"
+    t.index ["user_id", "status"], name: "index_task_sessions_on_user_id_and_status"
+    t.index ["user_id"], name: "index_task_sessions_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -601,6 +658,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_15_042147) do
   add_foreign_key "image_assets", "users"
   add_foreign_key "landing_page_chat_messages", "landing_pages"
   add_foreign_key "landing_page_chat_messages", "users"
+  add_foreign_key "landing_page_submissions", "contacts"
+  add_foreign_key "landing_page_submissions", "landing_pages"
   add_foreign_key "landing_page_versions", "landing_pages"
   add_foreign_key "landing_pages", "campaigns"
   add_foreign_key "landing_pages", "entities"
@@ -621,4 +680,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_15_042147) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "task_events", "task_sessions"
+  add_foreign_key "task_sessions", "users"
 end
