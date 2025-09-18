@@ -1209,9 +1209,11 @@ class ScoutGenericToolsService
     @context = context
     Rails.logger.info "🎯 Scout context set: #{context.inspect}"
     
-    # Store context in session for persistence
+    # Store context in session for persistence (convert to hash for serialization)
     if @session_id && context.present?
-      Rails.cache.write("scout_context_#{@session_id}", context, expires_in: 1.hour)
+      # Convert ActionController::Parameters to hash for safe caching
+      cacheable_context = context.is_a?(ActionController::Parameters) ? context.to_unsafe_h : context
+      Rails.cache.write("scout_context_#{@session_id}", cacheable_context, expires_in: 1.hour)
     end
   end
   
