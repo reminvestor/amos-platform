@@ -156,6 +156,8 @@ class ToolRunner
   end
   
   def execute_tool(tool, inputs)
+    Rails.logger.info "ToolRunner: Executing tool '#{tool}' with input keys: #{inputs.keys}"
+    
     # Map tool names to actual implementations
     case tool
     when 'generate_landing_page_dsl'
@@ -175,8 +177,10 @@ class ToolRunner
     when 'query_data'
       execute_data_query(inputs)
     when 'analyze_landing_page_request'
+      Rails.logger.info "ToolRunner: Matched analyze_landing_page_request case"
       execute_analyze_landing_page_request(inputs)
     else
+      Rails.logger.info "ToolRunner: No direct implementation for '#{tool}', checking legacy system"
       # Fallback to existing tool system if available
       if defined?(ScoutGenericToolsService)
         execute_legacy_tool(tool, inputs)
@@ -488,18 +492,25 @@ class ToolRunner
   end
   
   def execute_analyze_landing_page_request(inputs)
+    Rails.logger.info "ToolRunner: execute_analyze_landing_page_request called with keys: #{inputs.keys}"
     begin
       user = inputs[:user] || inputs['user']
       entity = inputs[:entity] || inputs['entity']
       
+      Rails.logger.info "ToolRunner: User: #{user.inspect}, Entity: #{entity.inspect}"
+      
       # If we have full context, use the real Scout tool
       if user && entity && defined?(ScoutGenericToolsService)
+        Rails.logger.info "ToolRunner: Using real Scout tool service"
         # Need to convert hash to proper objects if needed
         user_obj = user.is_a?(Hash) ? User.find(user['id'] || user[:id]) : user
         entity_obj = entity.is_a?(Hash) ? Entity.find(entity['id'] || entity[:id]) : entity
         
+        Rails.logger.info "ToolRunner: Creating service with user #{user_obj.id} and entity #{entity_obj.id}"
         service = ScoutGenericToolsService.new(user_obj, entity_obj)
         result = service.execute_analyze_landing_page_request(inputs)
+        
+        Rails.logger.info "ToolRunner: Scout service returned: #{result.inspect}"
         
         # Convert Scout tool result format to ToolRunner format
         if result[:success] || result[:data]
@@ -515,6 +526,7 @@ class ToolRunner
           }
         end
       else
+        Rails.logger.info "ToolRunner: Using fallback simulated response"
         # Fallback to simulated response
         {
           status: 'success',
@@ -535,6 +547,7 @@ class ToolRunner
       end
     rescue => e
       Rails.logger.error "analyze_landing_page_request error: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
       {
         status: 'failed',
         error: "Failed to analyze request: #{e.message}"
