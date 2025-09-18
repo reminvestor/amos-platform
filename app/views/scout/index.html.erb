@@ -1955,10 +1955,35 @@ document.addEventListener('turbo:load', function() {
     }
   }
 
+  // Check for saved canvas state and restore it
+  function restoreCanvasState() {
+    const savedCanvas = localStorage.getItem('scout_canvas_state');
+    if (savedCanvas) {
+      try {
+        const canvasState = JSON.parse(savedCanvas);
+        console.log('🔄 Restoring canvas state:', canvasState);
+        
+        // Load the saved canvas
+        if (window.scoutController && window.scoutController.loadScoutCanvas) {
+          window.scoutController.loadScoutCanvas(canvasState.type, canvasState.data);
+        }
+        return true;
+      } catch (e) {
+        console.error('❌ Failed to restore canvas state:', e);
+        localStorage.removeItem('scout_canvas_state');
+      }
+    }
+    return false;
+  }
+
   // Initial fetch of recent history when page loads
   loadMoreHistory(true).then(() => {
-    // After initial history is loaded, add buttons to the first welcome message
-    setTimeout(() => {
+    // Try to restore canvas state first
+    const canvasRestored = restoreCanvasState();
+    
+    // If no canvas was restored, add buttons to the first welcome message
+    if (!canvasRestored) {
+      setTimeout(() => {
       const messages = chatMessages.querySelectorAll('.message.ai-message');
       if (messages.length > 0) {
         const firstMessage = messages[0];
@@ -1996,7 +2021,9 @@ document.addEventListener('turbo:load', function() {
           });
         }
       }
+      }
     }, 100); // Small delay to ensure DOM is updated
+    }
   });
 
   // Attach scroll-up listener to load older history
