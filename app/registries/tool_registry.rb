@@ -1,0 +1,346 @@
+class ToolRegistry
+  # Tool contracts with input/output schemas and metadata
+  TOOLS = {
+    'generate_landing_page_dsl' => {
+      version: '1.0',
+      description: 'Generate landing page DSL from business requirements',
+      input_schema: {
+        type: 'object',
+        required: ['business_info'],
+        properties: {
+          business_info: {
+            type: 'object',
+            required: ['business_name'],
+            properties: {
+              business_name: { type: 'string', minLength: 2, maxLength: 100 },
+              industry: { type: 'string', maxLength: 50 },
+              target_audience: { type: 'string', maxLength: 500 }
+            }
+          },
+          design_preferences: {
+            type: 'object',
+            properties: {
+              theme: { 
+                type: 'string', 
+                enum: ['clean', 'modern', 'bold', 'professional', 'creative'] 
+              },
+              primary_color: { 
+                type: 'string', 
+                pattern: '^#[0-9a-fA-F]{6}$' 
+              },
+              style_notes: { type: 'string', maxLength: 500 }
+            }
+          }
+        }
+      },
+      output_schema: {
+        type: 'object',
+        required: ['dsl'],
+        properties: {
+          dsl: { type: 'object' },
+          business_info: { type: 'object' },
+          design_preferences: { type: 'object' }
+        }
+      },
+      timeout: 30,
+      retryable: true
+    },
+    
+    'compile_landing_page_html' => {
+      version: '1.0',
+      description: 'Compile landing page DSL to HTML',
+      input_schema: {
+        type: 'object',
+        required: ['dsl'],
+        properties: {
+          dsl: { type: 'object' },
+          slug: { type: 'string', pattern: '^[a-z0-9-_]+$' }
+        }
+      },
+      output_schema: {
+        type: 'object',
+        required: ['html'],
+        properties: {
+          html: { type: 'string', minLength: 100 },
+          dsl: { type: 'object' },
+          slug: { type: 'string' }
+        }
+      },
+      timeout: 10,
+      retryable: false
+    },
+    
+    'create_contact' => {
+      version: '1.0',
+      description: 'Create a new contact record',
+      input_schema: {
+        type: 'object',
+        required: ['email'],
+        properties: {
+          email: { 
+            type: 'string', 
+            format: 'email',
+            maxLength: 255
+          },
+          first_name: { type: 'string', maxLength: 100 },
+          last_name: { type: 'string', maxLength: 100 },
+          phone: { type: 'string', maxLength: 20 },
+          company: { type: 'string', maxLength: 100 }
+        }
+      },
+      output_schema: {
+        type: 'object',
+        required: ['contact_id'],
+        properties: {
+          contact_id: { type: 'string' },
+          contact_data: { type: 'object' }
+        }
+      },
+      timeout: 15,
+      retryable: true
+    },
+    
+    'create_campaign' => {
+      version: '1.0',
+      description: 'Create a new marketing campaign',
+      input_schema: {
+        type: 'object',
+        required: ['campaign_name', 'campaign_type'],
+        properties: {
+          campaign_name: { type: 'string', minLength: 3, maxLength: 100 },
+          campaign_type: { 
+            type: 'string',
+            enum: ['Email', 'Social Media', 'Mixed']
+          },
+          description: { type: 'string', maxLength: 500 },
+          contact_group_ids: {
+            type: 'array',
+            items: { type: 'integer' }
+          }
+        }
+      },
+      output_schema: {
+        type: 'object',
+        required: ['campaign_id'],
+        properties: {
+          campaign_id: { type: 'string' },
+          campaign_data: { type: 'object' }
+        }
+      },
+      timeout: 20,
+      retryable: true
+    },
+    
+    'get_contact_groups' => {
+      version: '1.0',
+      description: 'Fetch available contact groups',
+      input_schema: {
+        type: 'object',
+        properties: {
+          user_id: { type: 'integer' },
+          entity_id: { type: 'integer' }
+        }
+      },
+      output_schema: {
+        type: 'object',
+        required: ['contact_groups'],
+        properties: {
+          contact_groups: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['id', 'name'],
+              properties: {
+                id: { type: 'integer' },
+                name: { type: 'string' },
+                count: { type: 'integer' }
+              }
+            }
+          }
+        }
+      },
+      timeout: 10,
+      retryable: true
+    },
+    
+    'send_email' => {
+      version: '1.0',
+      description: 'Send an email message',
+      input_schema: {
+        type: 'object',
+        required: ['recipient', 'subject', 'body'],
+        properties: {
+          recipient: { type: 'string', format: 'email' },
+          subject: { type: 'string', minLength: 1, maxLength: 200 },
+          body: { type: 'string', minLength: 1 },
+          template_id: { type: 'integer' }
+        }
+      },
+      output_schema: {
+        type: 'object',
+        required: ['message_id'],
+        properties: {
+          message_id: { type: 'string' },
+          recipient: { type: 'string' },
+          subject: { type: 'string' }
+        }
+      },
+      timeout: 15,
+      retryable: true
+    },
+    
+    'get_schema' => {
+      version: '1.0',
+      description: 'Get database schema information',
+      input_schema: {
+        type: 'object',
+        properties: {
+          table: { type: 'string' },
+          model: { type: 'string' }
+        }
+      },
+      output_schema: {
+        type: 'object',
+        required: ['schema'],
+        properties: {
+          schema: { type: 'string' },
+          table: { type: 'string' }
+        }
+      },
+      timeout: 5,
+      retryable: false
+    },
+    
+    'query_data' => {
+      version: '1.0',
+      description: 'Execute a data query',
+      input_schema: {
+        type: 'object',
+        required: ['query'],
+        properties: {
+          query: { type: 'string', minLength: 1 },
+          limit: { type: 'integer', minimum: 1, maximum: 1000 }
+        }
+      },
+      output_schema: {
+        type: 'object',
+        required: ['results'],
+        properties: {
+          results: { type: 'string' },
+          query: { type: 'string' },
+          count: { type: 'integer' }
+        }
+      },
+      timeout: 30,
+      retryable: true
+    }
+  }.freeze
+  
+  class << self
+    # Get tool contract by name
+    def get_contract(tool_name)
+      TOOLS[tool_name.to_s]
+    end
+    
+    # Validate inputs for a tool
+    def validate_inputs(tool_name, inputs)
+      contract = get_contract(tool_name)
+      return { valid: false, errors: ["Unknown tool: #{tool_name}"] } unless contract
+      
+      schema = contract[:input_schema]
+      return { valid: true, errors: [] } unless schema
+      
+      begin
+        JSON::Validator.validate!(schema, inputs)
+        { valid: true, errors: [] }
+      rescue JSON::Schema::ValidationError => e
+        { valid: false, errors: [e.message] }
+      rescue => e
+        { valid: false, errors: ["Validation error: #{e.message}"] }
+      end
+    end
+    
+    # Validate outputs for a tool
+    def validate_outputs(tool_name, outputs)
+      contract = get_contract(tool_name)
+      return { valid: false, errors: ["Unknown tool: #{tool_name}"] } unless contract
+      
+      schema = contract[:output_schema]
+      return { valid: true, errors: [] } unless schema
+      
+      begin
+        JSON::Validator.validate!(schema, outputs)
+        { valid: true, errors: [] }
+      rescue JSON::Schema::ValidationError => e
+        { valid: false, errors: [e.message] }
+      rescue => e
+        { valid: false, errors: ["Validation error: #{e.message}"] }
+      end
+    end
+    
+    # Get all available tools
+    def available_tools
+      TOOLS.keys
+    end
+    
+    # Get tool metadata
+    def tool_info(tool_name)
+      contract = get_contract(tool_name)
+      return nil unless contract
+      
+      {
+        name: tool_name,
+        version: contract[:version],
+        description: contract[:description],
+        timeout: contract[:timeout],
+        retryable: contract[:retryable],
+        input_schema: contract[:input_schema],
+        output_schema: contract[:output_schema]
+      }
+    end
+    
+    # Register a new tool
+    def register_tool(name, contract)
+      # Validate contract structure
+      required_keys = [:version, :description, :input_schema, :output_schema]
+      missing_keys = required_keys - contract.keys
+      
+      if missing_keys.any?
+        raise ArgumentError, "Tool contract missing required keys: #{missing_keys.join(', ')}"
+      end
+      
+      # In a real implementation, this would update the registry
+      # For now, we'll just validate the structure
+      Rails.logger.info "Tool '#{name}' registered successfully (simulated)"
+      
+      {
+        success: true,
+        tool: name,
+        version: contract[:version]
+      }
+    end
+    
+    # Get tools by category
+    def tools_by_category
+      {
+        'Content Generation' => ['generate_landing_page_dsl'],
+        'Content Processing' => ['compile_landing_page_html'],
+        'Data Management' => ['create_contact', 'create_campaign', 'get_contact_groups'],
+        'Communication' => ['send_email'],
+        'System' => ['get_schema', 'query_data']
+      }
+    end
+    
+    # Get tool execution statistics (placeholder)
+    def tool_stats(tool_name, period = 30.days)
+      {
+        tool: tool_name,
+        period: period,
+        executions: rand(100..1000),
+        success_rate: rand(85..99),
+        avg_duration: rand(1..10),
+        last_executed: rand(1..24).hours.ago
+      }
+    end
+  end
+end

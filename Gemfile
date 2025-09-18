@@ -53,6 +53,9 @@ gem "redis", "~> 5.0"
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 
+# JSON Schema validation for DSL
+gem "json-schema"
+
 # Deploy this application anywhere as a Docker container [https://kamal-deploy.org]
 gem "kamal", require: false
 
