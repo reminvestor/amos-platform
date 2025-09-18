@@ -2960,9 +2960,13 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     
     {
       success: true,
-      data: existing_info,
-      message_context: message_context,
-      missing_info: missing_info,
+      data: {
+        business_profile: existing_info[:business_profile],
+        entity: existing_info[:entity],
+        message_context: message_context,
+        missing_info: missing_info
+      },
+      message: "I've analyzed your business profile and the landing page request.",
       recommendation: "I have your business profile information. Now I need specific details about #{missing_info.join(', ')}"
     }
   end
