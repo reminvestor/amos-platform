@@ -1,112 +1,121 @@
-<!-- Onboarding Chat Interface -->
-<div class="onboarding-page">
-  <!-- Header -->
-  <div class="onboarding-header">
-    <nav class="onboarding-nav">
-      <div class="onboarding-nav-content">
-        <a class="onboarding-brand" href="#">
-          <%= image_tag "crux_logo_white_long.png", alt: "Crux Marketing", class: "onboarding-logo" %>
-          <span class="onboarding-badge">Onboarding</span>
-        </a>
-        <div class="onboarding-user-info">
-          <%# Reset chat link commented out - not needed anymore %>
-          <%#= link_to '/onboarding/reset', class: "onboarding-reset-btn" do %>
-            <%#<i class="fas fa-redo me-1"></i> Reset Chat%>
-          <%# end %>
-          <div class="onboarding-user">
-            <i class="fas fa-user-circle me-2"></i>
-            <%= current_user.full_name %>
-          </div>
+<!-- Onboarding Chat Interface - Consistent with Main App -->
+<div class="container-fluid h-100">
+  <div class="row h-100">
+    <!-- Main Content Area -->
+    <div class="col-12">
+      <!-- Header with Branding -->
+      <div class="d-flex justify-content-between align-items-center py-3 border-bottom bg-light">
+        <div class="d-flex align-items-center">
+          <h4 class="mb-0 text-primary fw-bold">
+            <i class="fas fa-rocket me-2"></i>
+            Welcome to Crux Marketing!
+          </h4>
+          <span class="badge bg-primary ms-2">Onboarding</span>
+        </div>
+        <div class="text-muted">
+          <i class="fas fa-user-circle me-2"></i>
+          <%= current_user.full_name %>
         </div>
       </div>
-    </nav>
-  </div>
-
-  <!-- Main Chat Interface -->
-  <div class="onboarding-main">
-    <!-- Welcome Banner -->
-    <div class="onboarding-welcome">
-      <div class="onboarding-welcome-content">
-                 <h4 class="onboarding-welcome-title">🚀 Welcome to Crux Marketing!</h4>
-         <p class="onboarding-welcome-text">Scout is your AI marketing agent who continually learns about your business and helps you succeed across all marketing channels.  Let's get started!</p>
-      </div>
-    </div>
-    
-    <!-- Chat Messages -->
-    <div id="onboarding-messages" class="onboarding-messages">
-      <% @conversation_history.each do |message| %>
-        <div class="onboarding-message-container onboarding-message-<%= message[:role] %>">
-          <div class="onboarding-message">
-            <!-- Avatar -->
-            <div class="onboarding-avatar onboarding-avatar-<%= message[:role] %>">
-              <i class="fas fa-<%= message[:role] == 'user' ? 'user' : 'robot' %>"></i>
-            </div>
-            
-            <!-- Message Bubble -->
-            <div class="onboarding-bubble onboarding-bubble-<%= message[:role] %>">
-              <% if message[:role] == 'assistant' %>
-                <div class="onboarding-assistant-name">
-                  <small><i class="fas fa-robot me-1"></i>Scout</small>
-                </div>
-              <% end %>
-              <div class="onboarding-message-text">
-                <%= simple_format(h(message[:content])) %>
-              </div>
-              <div class="onboarding-message-time">
-                <small><%= Time.parse(message[:timestamp]).strftime("%I:%M %p") rescue Time.current.strftime("%I:%M %p") %></small>
-              </div>
-            </div>
-          </div>
-        </div>
-      <% end %>
-    </div>
-    
-    <!-- Typing Indicator -->
-    <div id="onboarding-typing" class="onboarding-typing" style="display: none;">
-      <div class="onboarding-message">
-        <div class="onboarding-avatar onboarding-avatar-assistant">
-          <i class="fas fa-robot"></i>
-        </div>
-        <div class="onboarding-bubble onboarding-bubble-assistant">
-          <div class="onboarding-assistant-name">
-            <small><i class="fas fa-robot me-1"></i>Scout</small>
-          </div>
-          <div class="onboarding-typing-dots">
-            <span>Scout is thinking</span>
-            <span class="onboarding-dots">
-              <span>.</span><span>.</span><span>.</span>
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-  </div>
-  
-    <!-- Chat Input - Outside main container for edge-to-edge -->
-  <div class="onboarding-input-area">
-    <div class="onboarding-input-content">
-      <form id="onboarding-form" class="onboarding-form">
-        <div class="onboarding-input-group">
-          <textarea id="onboarding-message-input" 
-                    class="onboarding-input" 
-                    placeholder="Tell Scout about your business..." 
-                    maxlength="1000"
-                    rows="1"></textarea>
-          <button type="submit" 
-                  id="onboarding-send-button"
-                  class="onboarding-send-btn">
-            <i class="fas fa-paper-plane"></i>
-          </button>
-        </div>
-      </form>
       
-      <!-- Progress Indicator -->
-      <div class="onboarding-security-text">
-        <small>
-          <i class="fas fa-shield-alt me-1"></i>
-          Your information is secure and will only be used to personalize your experience
-        </small>
+      <!-- Welcome Banner -->
+      <div class="alert alert-primary border-0 rounded-0 mb-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);">
+        <div class="text-center text-white py-3">
+          <h5 class="mb-2">🚀 Let's Get Started!</h5>
+          <p class="mb-0">Scout is your AI marketing agent who will learn about your business and help you succeed across all marketing channels. This will only take a few minutes!</p>
+        </div>
+      </div>
+      
+      <!-- Chat Interface -->
+      <div class="d-flex flex-column" style="height: calc(100vh - 200px);">
+        <!-- Messages Area -->
+        <div id="onboarding-messages" class="flex-grow-1 overflow-auto p-3" style="background: #f8f9fa;">
+          <% @conversation_history.each do |message| %>
+            <div class="d-flex mb-3 <%= message[:role] == 'user' ? 'justify-content-end' : 'justify-content-start' %>">
+              <div class="d-flex align-items-start gap-2 <%= message[:role] == 'user' ? 'flex-row-reverse' : '' %>" style="max-width: 75%;">
+                <!-- Avatar -->
+                <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
+                     style="width: 40px; height: 40px; background: <%= message[:role] == 'user' ? '#6c757d' : 'linear-gradient(45deg, #ff6b6b, #ff8e8e)' %>; flex-shrink: 0;">
+                  <i class="fas fa-<%= message[:role] == 'user' ? 'user' : 'robot' %>"></i>
+                </div>
+                
+                <!-- Message Bubble -->
+                <div class="card border-0 shadow-sm">
+                  <div class="card-body p-3" style="background: <%= message[:role] == 'user' ? '#e3f2fd' : 'white' %>;">
+                    <% if message[:role] == 'assistant' %>
+                      <div class="mb-2">
+                        <small class="text-primary fw-bold">
+                          <i class="fas fa-robot me-1"></i>Scout
+                        </small>
+                      </div>
+                    <% end %>
+                    <div class="message-text">
+                      <%= simple_format(h(message[:content])) %>
+                    </div>
+                    <div class="mt-2">
+                      <small class="text-muted">
+                        <%= Time.parse(message[:timestamp]).strftime("%I:%M %p") rescue Time.current.strftime("%I:%M %p") %>
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+          
+          <!-- Typing Indicator -->
+          <div id="onboarding-typing" class="d-flex justify-content-start mb-3" style="display: none !important;">
+            <div class="d-flex align-items-start gap-2" style="max-width: 75%;">
+              <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
+                   style="width: 40px; height: 40px; background: linear-gradient(45deg, #ff6b6b, #ff8e8e); flex-shrink: 0;">
+                <i class="fas fa-robot"></i>
+              </div>
+              <div class="card border-0 shadow-sm">
+                <div class="card-body p-3">
+                  <div class="mb-2">
+                    <small class="text-primary fw-bold">
+                      <i class="fas fa-robot me-1"></i>Scout
+                    </small>
+                  </div>
+                  <div class="text-muted">
+                    <span>Scout is thinking</span>
+                    <span class="typing-dots ms-2">
+                      <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Input Area -->
+        <div class="border-top bg-white p-3">
+          <form id="onboarding-form">
+            <div class="input-group">
+              <textarea 
+                id="onboarding-message-input" 
+                class="form-control"
+                placeholder="Tell Scout about your business..." 
+                maxlength="1000"
+                rows="1"
+                style="resize: none; min-height: 42px; max-height: 150px;"></textarea>
+              <button type="submit" 
+                      id="onboarding-send-button"
+                      class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i>
+              </button>
+            </div>
+          </form>
+          
+          <!-- Security Notice -->
+          <div class="text-center mt-2">
+            <small class="text-muted">
+              <i class="fas fa-shield-alt me-1"></i>
+              Your information is secure and will only be used to personalize your experience
+            </small>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -115,16 +124,19 @@
 <!-- Completion Modal -->
 <div class="modal fade" id="completion-modal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content" style="border-radius: 1rem; border: none;">
+    <div class="modal-content">
       <div class="modal-body p-5 text-center">
         <div class="mb-4">
-          <div class="check-circle mx-auto mb-3" style="width: 80px; height: 80px; background: linear-gradient(45deg, #28a745, #20c997); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-            <i class="fas fa-check text-white" style="font-size: 2rem;"></i>
+          <div class="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center text-white" 
+               style="width: 80px; height: 80px; background: linear-gradient(45deg, #28a745, #20c997);">
+            <i class="fas fa-check" style="font-size: 2rem;"></i>
           </div>
           <h4 class="fw-bold mb-2">🎉 Perfect! You're all set!</h4>
           <p class="text-muted">Scout now knows about your business and is ready to help you succeed with comprehensive marketing strategies.</p>
         </div>
-        <button type="button" class="btn btn-lg" style="background: linear-gradient(45deg, #ff6b6b, #ff8e8e); border: none; border-radius: 0.75rem; color: white; padding: 0.75rem 2rem;" onclick="completeOnboarding()">
+        <button type="button" 
+                class="btn btn-primary btn-lg" 
+                onclick="completeOnboarding()">
           Let's Get Started
         </button>
       </div>
@@ -133,421 +145,86 @@
 </div>
 
 <style>
-/* ONBOARDING-SPECIFIC STYLES */
-
-/* Reset any global margins/padding for this page */
-body {
-  margin: 0 !important;
-  padding: 0 !important;
+/* Minimal inline styles for typing animation only */
+.typing-dots .dot {
+  opacity: 0;
+  animation: typingDots 1.4s infinite;
 }
 
-/* Base Page Layout */
- .onboarding-page {
-   min-height: 100vh;
-   background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);
-   display: flex;
-   flex-direction: column;
-   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-   margin: 0;
-   padding: 0;
- }
-
-/* Header */
-.onboarding-header {
-  flex-shrink: 0;
-}
-
-.onboarding-nav {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  padding: 1rem 0;
-}
-
-.onboarding-nav-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.onboarding-brand {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  color: white;
-  font-weight: 600;
-}
-
-.onboarding-logo {
-  height: 30px;
-}
-
-.onboarding-badge {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  font-size: 0.7em;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
-  margin-left: 0.5rem;
-}
-
-.onboarding-user-info {
-  display: flex;
-  align-items: center;
-  color: white;
-  gap: 1rem;
-}
-
-.onboarding-reset-btn {
-  color: white;
-  text-decoration: none;
-  padding: 0.375rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
-}
-
-.onboarding-reset-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  text-decoration: none;
-}
-
-.onboarding-user {
-  display: flex;
-  align-items: center;
-}
-
-/* Main Chat Area */
-.onboarding-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-  padding: 0 1rem;
-  min-height: 0; /* Important for flex child */
-}
-
-/* Welcome Banner */
-.onboarding-welcome {
-  flex-shrink: 0;
-  margin: 1rem 0;
-}
-
-.onboarding-welcome-content {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  text-align: center;
-  color: white;
-}
-
-.onboarding-welcome-title {
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  font-size: 1.25rem;
-}
-
-.onboarding-welcome-text {
-  margin: 0;
-  opacity: 0.85;
-}
-
-/* Messages Area */
-.onboarding-messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem 0;
-  min-height: 0; /* Important for flex child */
-}
-
-.onboarding-message-container {
-  margin-bottom: 1.5rem;
-}
-
-.onboarding-message-container.onboarding-message-user {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.onboarding-message-container.onboarding-message-assistant {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.onboarding-message {
-  display: flex;
-  align-items: flex-start;
-  max-width: 75%;
-  gap: 0.75rem;
-}
-
-.onboarding-message-user .onboarding-message {
-  flex-direction: row-reverse;
-}
-
-/* Avatars */
-.onboarding-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-}
-
-.onboarding-avatar-user {
-  background: #667eea;
-}
-
-.onboarding-avatar-assistant {
-  background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
-}
-
-/* Message Bubbles */
-.onboarding-bubble {
-  padding: 1rem;
-  border-radius: 1rem;
-  word-wrap: break-word;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  flex: 1;
-}
-
-.onboarding-bubble-user {
-  background: #8b5cf6;
-  color: white;
-}
-
-.onboarding-bubble-assistant {
-  background: white;
-  color: #333;
-}
-
-.onboarding-assistant-name {
-  margin-bottom: 0.5rem;
-}
-
-.onboarding-assistant-name small {
-  color: #ff6b6b;
-  font-weight: 600;
-}
-
-.onboarding-message-text p {
-  margin: 0 0 0.5rem 0;
-  line-height: 1.5;
-}
-
-.onboarding-message-text p:last-child {
-  margin-bottom: 0;
-}
-
-.onboarding-message-time {
-  margin-top: 0.5rem;
-}
-
-.onboarding-message-time small {
-  opacity: 0.75;
-  font-size: 0.75rem;
-}
-
-.onboarding-bubble-user .onboarding-message-time small {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.onboarding-bubble-assistant .onboarding-message-time small {
-  color: #666;
-}
-
-/* Typing Indicator */
-.onboarding-typing {
-  padding: 0 0 1rem 0;
-}
-
-.onboarding-typing-dots {
-  color: #666;
-}
-
-.onboarding-dots {
-  margin-left: 0.5rem;
-  animation: onboardingTyping 1.4s infinite;
-}
-
-.onboarding-dots span:nth-child(2) {
+.typing-dots .dot:nth-child(2) {
   animation-delay: 0.2s;
 }
 
-.onboarding-dots span:nth-child(3) {
+.typing-dots .dot:nth-child(3) {
   animation-delay: 0.4s;
 }
 
-@keyframes onboardingTyping {
+@keyframes typingDots {
   0%, 60%, 100% { opacity: 0; }
   30% { opacity: 1; }
 }
 
- /* Input Area */
- .onboarding-input-area {
-   flex-shrink: 0;
-   background: rgba(0, 0, 0, 0.2);
-   border-radius: 0;
-   /* Full width edge-to-edge background */
-   width: 100%;
-   padding: 0.75rem 0;
- }
-
- .onboarding-input-content {
-   max-width: 1200px;
-   margin: 0 auto;
-   padding: 0 1rem;
- }
-
-.onboarding-form {
-  margin-bottom: 0.5rem;
+/* Auto-resize textarea styles */
+.onboarding-textarea {
+  transition: height 0.1s ease;
 }
-
-.onboarding-input-group {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.onboarding-input {
-  flex: 1;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 1rem 0 0 1rem;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 0.75rem 1rem;
-  color: #333;
-  outline: none;
-  resize: none;
-  height: 50px;
-  min-height: 50px;
-  max-height: 150px;
-  overflow-y: hidden;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.4;
-  box-sizing: border-box;
-}
-
-.onboarding-input:focus {
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
-}
-
-.onboarding-input::placeholder {
-  color: #666;
-}
-
-.onboarding-send-btn {
-  background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
-  border: none;
-  border-radius: 0 1rem 1rem 0;
-  color: white;
-  padding: 0.75rem 1.25rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.onboarding-send-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 107, 107, 0.3);
-}
-
-.onboarding-security-text {
-  text-align: center;
-}
-
-.onboarding-security-text small {
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 0.7rem;
-}
-
-/* Smooth scrolling */
-.onboarding-messages {
-  scroll-behavior: smooth;
-}
-
- /* Responsive Design */
- @media (max-width: 768px) {
-   .onboarding-nav-content {
-     padding: 0 0.5rem;
-   }
-   
-   .onboarding-main {
-     padding: 0 0.5rem;
-   }
-   
-   .onboarding-welcome-content {
-     padding: 1rem;
-   }
-   
-   .onboarding-message {
-     max-width: 90%;
-   }
-   
-   .onboarding-user-info {
-     gap: 0.5rem;
-   }
-   
-   .onboarding-user {
-     display: none; /* Hide user name on mobile */
-   }
-   
-   /* Adjust input content for mobile padding */
-   .onboarding-input-content {
-     padding: 0 0.5rem;
-   }
- }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 Onboarding: DOMContentLoaded event fired');
+  
   const chatForm = document.getElementById('onboarding-form');
   const messageInput = document.getElementById('onboarding-message-input');
   const sendButton = document.getElementById('onboarding-send-button');
   const chatMessages = document.getElementById('onboarding-messages');
   const typingIndicator = document.getElementById('onboarding-typing');
   
+  console.log('📋 Onboarding elements found:', {
+    chatForm: !!chatForm,
+    messageInput: !!messageInput,
+    sendButton: !!sendButton,
+    chatMessages: !!chatMessages,
+    typingIndicator: !!typingIndicator
+  });
+  
+  // Check if all required elements exist
+  if (!chatForm || !messageInput || !sendButton || !chatMessages) {
+    console.error('❌ Onboarding: Missing required elements');
+    return;
+  }
+  
   // Auto-focus input
-  messageInput.focus();
+  try {
+    messageInput.focus();
+  } catch (e) {
+    console.warn('⚠️ Could not focus input:', e);
+  }
   
   // Scroll to bottom initially
   scrollToBottom();
   
   // Auto-resize textarea
   function autoResizeTextarea() {
-    // Reset height to recalculate
-    messageInput.style.height = 'auto';
-    
-    // Calculate new height based on scroll height
-    const scrollHeight = messageInput.scrollHeight;
-    const newHeight = Math.min(Math.max(scrollHeight, 50), 150);
-    messageInput.style.height = newHeight + 'px';
-    
-    // Enable scrolling if content exceeds max height
-    if (scrollHeight > 150) {
-      messageInput.style.overflowY = 'auto';
-    } else {
-      messageInput.style.overflowY = 'hidden';
+    try {
+      messageInput.style.height = 'auto';
+      const scrollHeight = messageInput.scrollHeight;
+      const newHeight = Math.min(Math.max(scrollHeight, 42), 150);
+      messageInput.style.height = newHeight + 'px';
+      
+      if (scrollHeight > 150) {
+        messageInput.style.overflowY = 'auto';
+      } else {
+        messageInput.style.overflowY = 'hidden';
+      }
+    } catch (e) {
+      console.warn('⚠️ Error in autoResizeTextarea:', e);
     }
-    
-    console.log('📏 Textarea resize - scrollHeight:', scrollHeight, 'newHeight:', newHeight);
   }
   
-  // Add input event listener for auto-resize
+  // Add auto-resize event listeners
   messageInput.addEventListener('input', autoResizeTextarea);
   messageInput.addEventListener('paste', () => setTimeout(autoResizeTextarea, 10));
-  
-  // Initial resize in case there's default content
-  setTimeout(autoResizeTextarea, 100);
   
   // Handle form submission
   chatForm.addEventListener('submit', function(e) {
@@ -564,150 +241,197 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   function sendMessage() {
-    const message = messageInput.value.trim();
-    if (!message) return;
-    
-    console.log('🚀 Sending message:', message);
-    
-    // Add user message to chat
-    addMessageToChat('user', message);
-    
-    // Clear input and disable form
-    messageInput.value = '';
-    messageInput.style.height = '50px'; // Reset to initial height after sending
-    setFormState(false);
-    
-    // Show typing indicator
-    showTypingIndicator();
-    
-    // Send message to server
-    const csrfToken = document.querySelector('meta[name="csrf-token"]');
-    console.log('🔑 CSRF Token element:', csrfToken);
-    console.log('🔑 CSRF Token content:', csrfToken ? csrfToken.content : 'NOT FOUND');
-    
-    fetch('/onboarding/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': csrfToken ? csrfToken.content : ''
-      },
-      body: JSON.stringify({ message: message })
-    })
-    .then(response => {
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', response.headers);
-      return response.json();
-    })
-    .then(data => {
-      console.log('📊 Response data:', data);
-      hideTypingIndicator();
+    try {
+      const message = messageInput.value.trim();
+      if (!message) return;
       
-      if (data.error) {
-        addMessageToChat('assistant', 'Sorry, I had trouble processing that. Could you try again?');
-      } else {
-        addMessageToChat('assistant', data.message);
+      console.log('🚀 Sending message:', message);
+      
+      // Add user message to chat
+      addMessageToChat('user', message);
+      
+      // Clear input and disable form
+      messageInput.value = '';
+      messageInput.style.height = '42px';
+      setFormState(false);
+      
+      // Show typing indicator
+      showTypingIndicator();
+      
+      // Send message to server
+      const csrfToken = document.querySelector('meta[name="csrf-token"]');
+      
+      fetch('/onboarding/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken ? csrfToken.content : ''
+        },
+        body: JSON.stringify({ message: message })
+      })
+      .then(response => {
+        console.log('📡 Response status:', response.status);
+        return response.json();
+      })
+      .then(data => {
+        console.log('📊 Response data:', data);
+        hideTypingIndicator();
         
-        // Check if onboarding is complete
-        if (data.completed) {
-          setTimeout(() => {
-            showCompletionModal();
-          }, 1000);
+        if (data.error) {
+          addMessageToChat('assistant', 'Sorry, I had trouble processing that. Could you try again?');
+        } else {
+          addMessageToChat('assistant', data.message);
+          
+          // Check if onboarding is complete
+          if (data.completed) {
+            setTimeout(() => {
+              showCompletionModal();
+            }, 1000);
+          }
         }
-      }
-      
+        
+        setFormState(true);
+        messageInput.focus();
+      })
+      .catch(error => {
+        console.error('❌ Fetch error:', error);
+        hideTypingIndicator();
+        addMessageToChat('assistant', "I'm having trouble connecting. Please try again.");
+        setFormState(true);
+        messageInput.focus();
+      });
+    } catch (e) {
+      console.error('❌ Error in sendMessage:', e);
       setFormState(true);
-      messageInput.focus();
-    })
-    .catch(error => {
-      console.error('❌ Fetch error:', error);
-      hideTypingIndicator();
-      addMessageToChat('assistant', "I'm having trouble connecting. Please try again.");
-      setFormState(true);
-      messageInput.focus();
-    });
+    }
   }
   
   function addMessageToChat(role, content) {
-    const isUser = role === 'user';
-    const now = new Date();
-    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
-    const messageHTML = `
-      <div class="onboarding-message-container onboarding-message-${role}">
-        <div class="onboarding-message">
-          <div class="onboarding-avatar onboarding-avatar-${role}">
-            <i class="fas fa-${isUser ? 'user' : 'robot'}"></i>
-          </div>
-          <div class="onboarding-bubble onboarding-bubble-${role}">
-            ${!isUser ? '<div class="onboarding-assistant-name"><small><i class="fas fa-robot me-1"></i>Scout</small></div>' : ''}
-            <div class="onboarding-message-text">${content.replace(/\n/g, '<br>')}</div>
-            <div class="onboarding-message-time">
-              <small>${timeString}</small>
+    try {
+      const isUser = role === 'user';
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      const messageHTML = `
+        <div class="d-flex mb-3 ${isUser ? 'justify-content-end' : 'justify-content-start'}">
+          <div class="d-flex align-items-start gap-2 ${isUser ? 'flex-row-reverse' : ''}" style="max-width: 75%;">
+            <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
+                 style="width: 40px; height: 40px; background: ${isUser ? '#6c757d' : 'linear-gradient(45deg, #ff6b6b, #ff8e8e)'}; flex-shrink: 0;">
+              <i class="fas fa-${isUser ? 'user' : 'robot'}"></i>
+            </div>
+            <div class="card border-0 shadow-sm">
+              <div class="card-body p-3" style="background: ${isUser ? '#e3f2fd' : 'white'};">
+                ${!isUser ? '<div class="mb-2"><small class="text-primary fw-bold"><i class="fas fa-robot me-1"></i>Scout</small></div>' : ''}
+                <div class="message-text">${content.replace(/\n/g, '<br>')}</div>
+                <div class="mt-2">
+                  <small class="text-muted">${timeString}</small>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    `;
-    
-    chatMessages.insertAdjacentHTML('beforeend', messageHTML);
-    scrollToBottom();
+      `;
+      
+      chatMessages.insertAdjacentHTML('beforeend', messageHTML);
+      scrollToBottom();
+    } catch (e) {
+      console.error('❌ Error adding message to chat:', e);
+    }
   }
   
   function showTypingIndicator() {
-    typingIndicator.style.display = 'block';
-    scrollToBottom();
+    try {
+      if (typingIndicator) {
+        typingIndicator.style.display = 'flex';
+        scrollToBottom();
+      }
+    } catch (e) {
+      console.warn('⚠️ Error showing typing indicator:', e);
+    }
   }
   
   function hideTypingIndicator() {
-    typingIndicator.style.display = 'none';
+    try {
+      if (typingIndicator) {
+        typingIndicator.style.display = 'none';
+      }
+    } catch (e) {
+      console.warn('⚠️ Error hiding typing indicator:', e);
+    }
   }
   
   function setFormState(enabled) {
-    messageInput.disabled = !enabled;
-    sendButton.disabled = !enabled;
-    
-    if (enabled) {
-      sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
-    } else {
-      sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    try {
+      if (messageInput) messageInput.disabled = !enabled;
+      if (sendButton) sendButton.disabled = !enabled;
+      
+      if (sendButton) {
+        if (enabled) {
+          sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+          sendButton.className = 'btn btn-primary';
+        } else {
+          sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+          sendButton.className = 'btn btn-secondary';
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ Error setting form state:', e);
     }
   }
   
   function scrollToBottom() {
-    setTimeout(() => {
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }, 100);
+    try {
+      if (chatMessages) {
+        setTimeout(() => {
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }, 100);
+      }
+    } catch (e) {
+      console.warn('⚠️ Error scrolling to bottom:', e);
+    }
   }
   
   function showCompletionModal() {
-    const modal = new bootstrap.Modal(document.getElementById('completion-modal'));
-    modal.show();
+    try {
+      const modal = new bootstrap.Modal(document.getElementById('completion-modal'));
+      modal.show();
+    } catch (e) {
+      console.error('❌ Error showing completion modal:', e);
+      // Fallback - redirect directly
+      window.location.href = '/onboarding/complete';
+    }
   }
   
+  // Make completeOnboarding globally available
   window.completeOnboarding = function() {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]');
-    
-    // Create a form and submit it to allow the server to handle the redirect properly
-    const form = document.createElement('form');
-    form.method = 'POST';  // HTML forms only support GET/POST
-    form.action = '/onboarding/complete';
-    
-    // Add CSRF token
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = 'authenticity_token';
-    csrfInput.value = csrfToken ? csrfToken.content : '';
-    form.appendChild(csrfInput);
-    
-    // Add _method input for PATCH (Rails convention)
-    const methodInput = document.createElement('input');
-    methodInput.type = 'hidden';
-    methodInput.name = '_method';
-    methodInput.value = 'PATCH';
-    form.appendChild(methodInput);
-    
-    document.body.appendChild(form);
-    form.submit();
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]');
+      
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/onboarding/complete';
+      
+      // Add CSRF token
+      const csrfInput = document.createElement('input');
+      csrfInput.type = 'hidden';
+      csrfInput.name = 'authenticity_token';
+      csrfInput.value = csrfToken ? csrfToken.content : '';
+      form.appendChild(csrfInput);
+      
+      // Add _method input for PATCH
+      const methodInput = document.createElement('input');
+      methodInput.type = 'hidden';
+      methodInput.name = '_method';
+      methodInput.value = 'PATCH';
+      form.appendChild(methodInput);
+      
+      document.body.appendChild(form);
+      form.submit();
+    } catch (e) {
+      console.error('❌ Error completing onboarding:', e);
+      // Fallback
+      window.location.href = '/scout';
+    }
   };
 });
-</script> 
+</script>
