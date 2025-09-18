@@ -144,8 +144,10 @@ class Step
     tool_name = @config[:tool]
     tool_inputs = @config[:inputs] || {}
     
-    # Merge step inputs with provided inputs
+    # Merge step inputs with provided inputs (inputs take precedence)
     merged_inputs = tool_inputs.merge(inputs)
+    
+    Rails.logger.info "Step #{@id}: Executing tool '#{tool_name}' with inputs: #{merged_inputs.keys}"
     
     # Check if ToolRunner exists, otherwise simulate
     if defined?(ToolRunner)

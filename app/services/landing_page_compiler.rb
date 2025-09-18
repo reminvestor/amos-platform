@@ -1,5 +1,6 @@
 require 'erb'
 require 'cgi'
+require 'active_support/core_ext/object/blank'
 
 class LandingPageCompiler
   # Component templates for safe HTML generation
@@ -233,6 +234,7 @@ class LandingPageCompiler
   end
   
   def compile_section(section)
+    @current_section = section
     section_type = section['type']
     component = COMPONENTS[section_type]
     
@@ -549,10 +551,5 @@ class LandingPageCompiler
   # Expose section variable to ERB templates
   def section
     @current_section
-  end
-  
-  def compile_section(section)
-    @current_section = section
-    super(section)
   end
 end

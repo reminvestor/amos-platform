@@ -321,7 +321,9 @@ class InteractiveTaskService
             description: 'Compile and save your landing page',
             inputs: {
               dsl: '${generate_landing_page.data.dsl}',
-              slug: '${collect_business_info.data.business_name}'
+              business_name: '${collect_business_info.data.business_name}',
+              user: @user,
+              entity: @entity
             }
           }
         }
