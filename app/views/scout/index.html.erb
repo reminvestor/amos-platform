@@ -1578,7 +1578,22 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Load appropriate canvas
         if (data.canvas && data.canvas !== 'conversation') {
-          loadScoutCanvas(data.canvas, data.canvas_data);
+          // Use the same pattern as in streaming to load canvas
+          if (window.scoutController && window.scoutController.loadScoutCanvas) {
+            window.scoutController.loadScoutCanvas(data.canvas, data.canvas_data || {});
+          } else {
+            // Try to find the controller through the DOM
+            const scoutElement = document.querySelector('[data-controller="scout"]');
+            if (scoutElement && scoutElement._scoutController) {
+              scoutElement._scoutController.loadScoutCanvas(data.canvas, data.canvas_data || {});
+            } else {
+              // Dispatch a custom event as fallback
+              const event = new CustomEvent('scout:load-canvas', {
+                detail: { canvas: data.canvas, data: data.canvas_data || {} }
+              });
+              document.dispatchEvent(event);
+            }
+          }
         }
         
         // Handle different workflow states
@@ -1597,6 +1612,13 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch (error) {
       console.error('Interactive chat error:', error);
       addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+    } finally {
+      // Re-enable form
+      const messageInput = document.querySelector('#message-input');
+      const sendButton = document.querySelector('#send-button');
+      if (messageInput) messageInput.disabled = false;
+      if (sendButton) sendButton.disabled = false;
+      hideTypingIndicator();
     }
   }
 
