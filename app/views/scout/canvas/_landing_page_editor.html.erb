@@ -129,6 +129,16 @@
     document.addEventListener('scout:message-added', function(event) {
       const message = event.detail;
       
+      console.log('📨 Scout message received in editor:', {
+        role: message.role,
+        content: message.content?.substring(0, 100) + '...',
+        hasUpdated: message.content?.includes('updated'),
+        hasChanged: message.content?.includes('changed'),
+        hasModified: message.content?.includes('modified'),
+        hasLandingPage: message.content?.includes('landing page'),
+        hasPage: message.content?.includes('page')
+      });
+      
       // Check if Scout mentioned updating the current landing page
       if (message.role === 'assistant' && 
           (message.content.includes('updated') || message.content.includes('changed') || message.content.includes('modified')) &&

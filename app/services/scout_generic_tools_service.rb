@@ -286,6 +286,10 @@ class ScoutGenericToolsService
 
   def process_message_with_tools(user_message, conversation_history = [], current_canvas = nil)
     begin
+      # Load context if available
+      context = get_context
+      Rails.logger.info "🎯 Processing with context: #{context.inspect}" if context.present?
+      
       # Detect user intent
       detected_mode = detect_user_intent(user_message)
       Rails.logger.info "🤖 Scout detected mode: #{detected_mode}"
@@ -1204,6 +1208,27 @@ class ScoutGenericToolsService
   def set_context(context)
     @context = context
     Rails.logger.info "🎯 Scout context set: #{context.inspect}"
+    
+    # Store context in session for persistence
+    if @session_id && context.present?
+      Rails.cache.write("scout_context_#{@session_id}", context, expires_in: 1.hour)
+    end
+  end
+  
+  # Get current context (from instance or session)
+  def get_context
+    return @context if @context.present?
+    
+    # Try to load from session cache
+    if @session_id
+      cached_context = Rails.cache.read("scout_context_#{@session_id}")
+      if cached_context.present?
+        @context = cached_context
+        Rails.logger.info "🔄 Restored Scout context from cache: #{@context.inspect}"
+      end
+    end
+    
+    @context
   end
 
   private
