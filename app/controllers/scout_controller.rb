@@ -1315,21 +1315,30 @@ class ScoutController < ApplicationController
                                .where("metadata->>'session_id' = ?", session_id)
                                .first
       
-      if task_session && task_session.workflow_spec
-        # Convert workflow to task list format for display
-        workflow = Workflow.new(task_session.workflow_spec)
-        data = {
-          tasks: workflow.steps.map do |step|
-            {
-              id: step.id,
-              description: step.description,
-              status: step.status
-            }
-          end,
-          workflow_status: workflow.status,
-          progress: workflow.progress
-        }
-        Rails.logger.info "📋 Loaded task list from TaskSession: #{data[:tasks]&.size} tasks"
+      if task_session
+        # Check if we have a task list in state
+        if task_session.state&.dig('task_list')
+          data = task_session.state['task_list']
+          Rails.logger.info "📋 Loaded task list from TaskSession state: #{data[:tasks]&.size} tasks"
+        elsif task_session.workflow_spec
+          # Convert workflow to task list format for display
+          workflow = Workflow.new(task_session.workflow_spec)
+          data = {
+            tasks: workflow.steps.map do |step|
+              {
+                id: step.id,
+                description: step.description,
+                status: step.status
+              }
+            end,
+            workflow_status: workflow.status,
+            progress: workflow.progress
+          }
+          Rails.logger.info "📋 Loaded task list from TaskSession workflow: #{data[:tasks]&.size} tasks"
+        else
+          Rails.logger.info "📋 TaskSession found but no task list or workflow"
+          data = { tasks: [] }
+        end
       else
         Rails.logger.info "📋 No active task session found for session: #{session_id}"
         data = { tasks: [] }

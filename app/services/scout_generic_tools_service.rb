@@ -3301,6 +3301,20 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     end
   end
 
+  def persist_task_list(task_session, cache_key, task_list)
+    # Write to cache for fast access
+    Rails.cache.write(cache_key, task_list, expires_in: 24.hours)
+    
+    # Persist to TaskSession for refresh persistence
+    task_session.update!(
+      state: { task_list: task_list },
+      metadata: task_session.metadata.merge(
+        updated_at: Time.current,
+        task_count: task_list[:tasks]&.size || 0
+      )
+    )
+  end
+
   def sanitize_for_bedrock(data)
     case data
     when Hash
@@ -3325,7 +3339,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     session_id = @session_id || SecureRandom.uuid
     cache_key = "scout_task_list_#{entity_id}_#{session_id}"
     
+    # Try cache first, then TaskSession
     task_list = Rails.cache.read(cache_key)
+    unless task_list && task_list[:tasks]
+      # Try to load from TaskSession
+      task_session = TaskSession.active
+                               .where(user: @user)
+                               .where("metadata->>'session_id' = ?", session_id)
+                               .first
+      task_list = task_session&.state&.dig('task_list')
+    end
     return unless task_list && task_list[:tasks]
     
     Rails.logger.info "🔍 Checking task update for tool: #{tool_name}, args: #{args.inspect}"
@@ -3485,7 +3508,21 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     
     Rails.logger.info "🔑 Task management - Entity: #{entity_id}, Session: #{session_id}, Action: #{action}"
     
-    # Use Rails cache to store task lists per session
+    # Use TaskSession for persistent storage
+    task_session = TaskSession.active
+                             .where(user: @user)
+                             .where("metadata->>'session_id' = ?", session_id)
+                             .first_or_create!(
+                               user: @user,
+                               status: 'active',
+                               metadata: {
+                                 session_id: session_id,
+                                 entity_id: entity_id,
+                                 created_from: 'scout_task_management'
+                               }
+                             )
+    
+    # Use Rails cache as a fast access layer, but persist to TaskSession
     cache_key = "scout_task_list_#{entity_id}_#{session_id}"
     
     case action
@@ -3506,7 +3543,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         created_at: Time.current,
         updated_at: Time.current
       }
-      Rails.cache.write(cache_key, task_list, expires_in: 24.hours)
+      persist_task_list(task_session, cache_key, task_list)
       
       Rails.logger.info "📝 Created task list with #{tasks.size} tasks"
       Rails.logger.info "📝 Tasks: #{tasks.map { |t| "#{t[:id]}: #{t[:description]}" }.join(', ')}"
@@ -3550,7 +3587,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
             existing_list[:tasks] = args['tasks']
           end
           existing_list[:updated_at] = Time.current
-          Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+          persist_task_list(task_session, cache_key, existing_list)
           
           @suggested_canvas = 'task_progress'
           @canvas_data = existing_list
@@ -3581,7 +3618,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         }
         existing_list[:tasks] << new_task
         existing_list[:updated_at] = Time.current
-        Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+        persist_task_list(task_session, cache_key, existing_list)
         
         @suggested_canvas = 'task_progress'
         @canvas_data = existing_list
@@ -3601,7 +3638,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       
     when 'update_task', 'update_status'
       # Update a task status (e.g., to in_progress) - handle both action names
-      existing_list = Rails.cache.read(cache_key)
+      existing_list = Rails.cache.read(cache_key) || task_session.state&.dig('task_list')
       if existing_list
         task = existing_list[:tasks].find { |t| (t['id'] || t[:id]).to_s == args['task_id'].to_s }
         if task
