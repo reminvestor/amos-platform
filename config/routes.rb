@@ -30,6 +30,19 @@ Rails.application.routes.draw do
       
       # Crawler Job Logging
       post 'crawler_jobs/:id/logs', to: 'crawler_job_logs#create'
+      
+      # Landing page form submissions
+      resources :landing_page_submissions, only: [:create, :index, :show] do
+        member do
+          post :process
+          post :spam
+        end
+        collection do
+          get :export
+        end
+      end
+      # Alternative route for submissions by landing page slug
+      post 'landing_pages/:landing_page_slug/submit', to: 'landing_page_submissions#create'
     end
   end
   
@@ -227,6 +240,8 @@ Rails.application.routes.draw do
   get 'scout', to: 'scout#index'
   post 'scout/chat', to: 'scout#chat'
   post 'scout/chat_stream', to: 'scout#chat_stream'
+  post 'scout/chat_interactive', to: 'scout#chat_interactive'
+  post 'scout/continue_workflow', to: 'scout#continue_workflow'
   get 'scout/history', to: 'scout#history' # paginated history
   delete 'scout/conversation', to: 'scout#clear_conversation'
   get 'scout/export', to: 'scout#conversation_export'

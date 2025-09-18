@@ -122,7 +122,7 @@
   
   function initializeInlineEditor() {
     const editor = window.scoutInlineEditor;
-    const htmlContent = <%= raw landing_page.html_content.to_json %>;
+    const htmlContent = <%= raw (landing_page.html_content || '<div class="container py-5"><h1>Landing Page Under Construction</h1><p>This landing page is being prepared. Please check back soon!</p></div>').to_json %>;
     const iframe = document.getElementById('editorFrame');
     
     // Write content to iframe

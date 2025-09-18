@@ -890,7 +890,16 @@
 
 <!-- JavaScript for Scout Chat -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('turbo:load', function() {
+  // Clean up any previous event listeners to prevent duplicates
+  if (window.scoutCleanup) {
+    window.scoutCleanup();
+  }
+  
+  // Store cleanup function
+  window.scoutCleanup = function() {
+    // This will be populated with cleanup tasks
+  };
   const messageForm = document.getElementById('message-form');
   const messageInput = document.getElementById('message-input');
   const chatMessages = document.getElementById('chat-messages');
@@ -903,6 +912,21 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Track streamed content to prevent duplicates
   let streamedContent = new Set();
+  
+  // Populate streamedContent with existing messages on page load
+  function initializeStreamedContent() {
+    const existingMessages = document.querySelectorAll('#chat-messages .message-content');
+    existingMessages.forEach(messageEl => {
+      const content = messageEl.textContent.trim();
+      if (content) {
+        streamedContent.add(content);
+      }
+    });
+    console.log(`📝 Initialized streamedContent with ${streamedContent.size} existing messages`);
+  }
+  
+  // Initialize after DOM is ready
+  setTimeout(initializeStreamedContent, 100);
   const newConversationBtn = document.getElementById('new-conversation-btn');
 
   // Auto-focus on input (with defensive check)
@@ -1040,39 +1064,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 500);
   }
   
-  // Global function for canvas actions to send messages
-  // Override any existing definition from Stimulus controller
-  window.scoutSendMessage = async function(message) {
-    console.log('📨 scoutSendMessage called with:', message);
-    
-    // Add user message immediately
-    addMessage(message, 'user');
-    
-    // Show typing indicator
-    showTypingIndicator();
-    
-    try {
-      // Use the streaming handler directly
-      await handleStreamingChat(message);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      hideTypingIndicator();
-      addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
-    }
-  };
+  // Note: window.scoutSendMessage is now defined globally outside turbo:load
   
-  // Ensure our version stays in place even after Stimulus loads
-  setTimeout(() => {
-    const originalScoutSendMessage = window.scoutSendMessage;
-    Object.defineProperty(window, 'scoutSendMessage', {
-      get() { return originalScoutSendMessage; },
-      set(newValue) { 
-        console.warn('Attempt to override scoutSendMessage blocked');
-        return originalScoutSendMessage; 
-      },
-      configurable: false
-    });
-  }, 1000);
+  // Determine if message should use interactive mode
+  function shouldUseInteractiveMode(message) {
+    const interactiveKeywords = [
+      'create landing page', 'design page', 'build website', 'landing page',
+      'campaign strategy', 'help me plan', 'brainstorm',
+      'create content', 'write content', 'design layout'
+    ];
+    
+    const lowerMessage = message.toLowerCase();
+    const shouldUse = interactiveKeywords.some(keyword => lowerMessage.includes(keyword));
+    console.log('🎯 Interactive mode check:', { message, shouldUse, lowerMessage });
+    return shouldUse;
+  }
 
   // Scroll to bottom (with defensive check)
   function scrollToBottom() {
@@ -1266,6 +1272,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const el = buildMessageElement({ content: messageContent, role, timestamp, metadata: null });
     chatMessages.appendChild(el);
+    
+    // Track the content to prevent future duplicates
+    streamedContent.add(messageContent.toString().trim());
+    
     scrollToBottom();
     updateMessageCount();
     return el; // Return the element for streaming updates
@@ -1505,12 +1515,82 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   }
-  
+
   function hideStreamingStatus() {
     // Tool activity is hidden when response is complete
     setTimeout(() => {
       hideToolActivity();
     }, 3000); // Keep visible for 3 seconds after completion
+  }
+
+  // Handle interactive workflow chat
+  async function handleInteractiveChat(message) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    
+    try {
+      const response = await fetch('/scout/chat_interactive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({
+          message: message
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Add assistant message
+        if (data.message) {
+          addMessage(data.message, 'assistant');
+        }
+        
+        // Load appropriate canvas
+        if (data.canvas && data.canvas !== 'conversation') {
+          // Use the same pattern as in streaming to load canvas
+          if (window.scoutController && window.scoutController.loadScoutCanvas) {
+            window.scoutController.loadScoutCanvas(data.canvas, data.canvas_data || {});
+          } else {
+            // Try to find the controller through the DOM
+            const scoutElement = document.querySelector('[data-controller="scout"]');
+            if (scoutElement && scoutElement._scoutController) {
+              scoutElement._scoutController.loadScoutCanvas(data.canvas, data.canvas_data || {});
+            } else {
+              // Dispatch a custom event as fallback
+              const event = new CustomEvent('scout:load-canvas', {
+                detail: { canvas: data.canvas, data: data.canvas_data || {} }
+              });
+              document.dispatchEvent(event);
+            }
+          }
+        }
+        
+        // Handle different workflow states
+        if (data.awaiting_input) {
+          console.log('Workflow awaiting user input');
+        } else if (data.workflow_completed) {
+          console.log('Workflow completed successfully');
+        } else if (data.step_completed) {
+          console.log('Workflow step completed, continuing...');
+        }
+        
+      } else {
+        addMessage(data.message || 'An error occurred', 'assistant');
+      }
+      
+    } catch (error) {
+      console.error('Interactive chat error:', error);
+      addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+    } finally {
+      // Re-enable form
+      const messageInput = document.querySelector('#message-input');
+      const sendButton = document.querySelector('#send-button');
+      if (messageInput) messageInput.disabled = false;
+      if (sendButton) sendButton.disabled = false;
+      hideTypingIndicator();
+    }
   }
 
   // Handle streaming chat
@@ -1606,12 +1686,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 // But only if it wasn't already streamed to prevent duplicates
                 if (data.content && data.content.trim() !== '') {
                   const contentHash = data.content.trim();
-                  if (!streamedContent.has(contentHash)) {
+                  
+                  // Check both streamedContent Set AND existing messages in the chat
+                  const existingMessages = Array.from(chatMessages.querySelectorAll('.message-content')).map(el => el.textContent.trim());
+                  const alreadyExists = streamedContent.has(contentHash) || existingMessages.includes(contentHash);
+                  
+                  if (!alreadyExists) {
                     console.log('📝 Adding intermediate message:', contentHash.substring(0, 50) + '...');
                     addMessage(data.content, data.role || 'assistant');
+                    streamedContent.add(contentHash); // Track it immediately
                     scrollToBottom();
                   } else {
-                    console.log('⚠️ Skipping duplicate intermediate message:', contentHash.substring(0, 50) + '...');
+                    console.log('⚠️ Skipping duplicate intermediate message (already in chat):', contentHash.substring(0, 50) + '...');
                   }
                 }
               } else if (data.type === 'add_tool_message') {
@@ -1639,13 +1725,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 streamingContent = '';
               } else if (data.type === 'load_canvas') {
                 // Immediately load a canvas (e.g., task progress)
-                console.log('🎨 Received canvas load request:', data.canvas);
+                console.log('🎨 Received canvas load request:', data.canvas, 'at', new Date().toISOString());
+                console.log('🎨 Canvas data keys:', data.canvas_data ? Object.keys(data.canvas_data) : 'no data');
                 if (data.canvas) {
-                  // Try multiple ways to load the canvas
+                  // For task_progress, load immediately without delay
+                  const loadDelay = data.canvas === 'task_progress' ? 0 : 100;
+                  
                   setTimeout(() => {
                     // Method 1: Use window.scoutController if available
                     if (window.scoutController && window.scoutController.loadScoutCanvas) {
-                      console.log('📋 Loading canvas with data:', data.canvas_data);
+                      console.log('📋 Loading canvas via scoutController:', data.canvas);
                       window.scoutController.loadScoutCanvas(data.canvas, data.canvas_data || {});
                     } 
                     // Method 2: Find the controller through Stimulus
@@ -1663,7 +1752,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         document.dispatchEvent(event);
                       }
                     }
-                  }, 100); // Small delay to ensure DOM is ready
+                  }, loadDelay); // Use dynamic delay based on canvas type
                 }
               } else if (data.type === 'tool_detected') {
                 // Tool detected during streaming
@@ -1841,17 +1930,26 @@ document.addEventListener('DOMContentLoaded', function() {
           suggestionsDiv.className = 'message-suggestions';
           suggestionsDiv.style.marginTop = '12px';
           suggestionsDiv.innerHTML = `
-            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Create a landing page for my product">
+            <button class="suggestion-btn" data-suggestion="Create a landing page for my product">
               Create a landing page
             </button>
-            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Show me my email campaigns">
+            <button class="suggestion-btn" data-suggestion="Show me my email campaigns">
               View campaigns
             </button>
-            <button class="suggestion-btn" data-action="click->scout#sendSuggestion" data-suggestion="Analyze my marketing performance">
+            <button class="suggestion-btn" data-suggestion="Analyze my marketing performance">
               Analytics dashboard
             </button>
           `;
           messageContent.appendChild(suggestionsDiv);
+          
+          // Add click handlers to suggestion buttons
+          suggestionsDiv.querySelectorAll('.suggestion-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+              const suggestion = this.dataset.suggestion;
+              messageInput.value = suggestion;
+              messageForm.dispatchEvent(new Event('submit'));
+            });
+          });
         }
       }
     }, 100); // Small delay to ensure DOM is updated
@@ -1880,19 +1978,20 @@ document.addEventListener('DOMContentLoaded', function() {
     sendButton.disabled = true;
     showTypingIndicator();
     
-    // Always use streaming for better user experience
-    // Initial state - typing indicator is already shown
-    
+    // Use intelligent routing
     try {
-      // Always use streaming - no fallback
+      // Check if message suggests interactive workflow
+      if (shouldUseInteractiveMode(message)) {
+        console.log('🎯 Using interactive mode for:', message);
+        await handleInteractiveChat(message);
+      } else {
+        console.log('⚡ Using streaming mode for:', message);
         await handleStreamingChat(message);
-        return; // Success, exit early
-      } catch (streamError) {
-      console.error('Streaming failed:', streamError);
-        hideStreamingStatus();
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      hideStreamingStatus();
       hideTypingIndicator();
-
-      // Show error to user instead of falling back
         addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
       
       // Re-enable form
@@ -1913,10 +2012,33 @@ document.addEventListener('DOMContentLoaded', function() {
       messageForm.dispatchEvent(new Event('submit'));
     }
   });
-});
 
-// Confirmation dialog handling
-let pendingConfirmation = null;
+}); // End turbo:load
+
+// Global functions that need to be accessible outside turbo:load
+window.pendingConfirmation = window.pendingConfirmation || null;
+
+// Global function for canvas actions to send messages
+window.scoutSendMessage = async function(message) {
+  console.log('📨 scoutSendMessage called with:', message);
+  
+  // We need to wait for DOM to be ready
+  const waitForDOM = () => {
+    const messageInput = document.getElementById('message-input');
+    const messageForm = document.getElementById('message-form');
+    
+    if (messageInput && messageForm) {
+      // Set the input value and submit the form
+      messageInput.value = message;
+      messageForm.dispatchEvent(new Event('submit'));
+    } else {
+      // If DOM not ready, try again in 100ms
+      setTimeout(waitForDOM, 100);
+    }
+  };
+  
+  waitForDOM();
+};
 
 function showConfirmationDialog(message, onConfirm) {
   const dialog = document.getElementById('confirmation-dialog');
@@ -1924,7 +2046,7 @@ function showConfirmationDialog(message, onConfirm) {
   const proceedBtn = document.getElementById('confirmation-proceed');
   
   messageEl.innerHTML = message;
-  pendingConfirmation = onConfirm;
+  window.pendingConfirmation = onConfirm;
   
   // Show the dialog using Bootstrap modal
   const modal = new bootstrap.Modal(dialog);
@@ -1932,16 +2054,18 @@ function showConfirmationDialog(message, onConfirm) {
 }
 
 // Handle confirmation proceed
-document.getElementById('confirmation-proceed')?.addEventListener('click', function() {
-  if (pendingConfirmation) {
-    pendingConfirmation();
-    pendingConfirmation = null;
-  }
-  
-  // Hide the modal
-  const dialog = document.getElementById('confirmation-dialog');
-  const modal = bootstrap.Modal.getInstance(dialog);
-  modal.hide();
+document.addEventListener('turbo:load', function() {
+  document.getElementById('confirmation-proceed')?.addEventListener('click', function() {
+    if (window.pendingConfirmation) {
+      window.pendingConfirmation();
+      window.pendingConfirmation = null;
+    }
+    
+    // Hide the modal
+    const dialog = document.getElementById('confirmation-dialog');
+    const modal = bootstrap.Modal.getInstance(dialog);
+    modal.hide();
+  });
 });
 </script> 
 

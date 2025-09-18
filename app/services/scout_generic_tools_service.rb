@@ -18,6 +18,7 @@ class ScoutGenericToolsService
     @user = user
     @entity = entity
     @session_id = session_id
+    @saved_message_content = Set.new  # Track saved messages to prevent duplicates
     
     # Use the centralized AI service configuration
     @ai_service = AiServiceHelper.get_service
@@ -402,6 +403,7 @@ class ScoutGenericToolsService
       accumulated_content = ""
       tool_calls = []
       streaming_started = false
+      # @saved_message_content is initialized in the constructor to persist across all recursive calls
       
       # Stream the response - use native Bedrock tools
       tools = get_bedrock_tools
@@ -465,12 +467,20 @@ class ScoutGenericToolsService
             
             # Save any accumulated content before tools as an intermediate message
             if accumulated_content.present? && accumulated_content.strip.length > 0
-              Rails.logger.info "💾 Saving intermediate message before tools: #{accumulated_content}"
-              progress_callback&.call({
-                type: 'save_message',
-                content: accumulated_content,
-                role: 'assistant'
-              })
+              content_hash = accumulated_content.strip
+              unless @saved_message_content.include?(content_hash)
+                Rails.logger.info "💾 Saving intermediate message before tools: #{accumulated_content}"
+                progress_callback&.call({
+                  type: 'save_message',
+                  content: accumulated_content,
+                  role: 'assistant'
+                })
+                @saved_message_content.add(content_hash)
+                # Mark that we've saved messages during streaming
+                @messages_saved_during_streaming = true
+              else
+                Rails.logger.info "⚠️ Skipping duplicate intermediate message: #{accumulated_content.strip.first(50)}..."
+              end
             end
             
             # Parse and execute each tool
@@ -687,12 +697,20 @@ class ScoutGenericToolsService
                 
                 # If the AI provided a message before using continuation tools, save it
                 if continuation_message.present? && continuation_tool_calls.any?
-                  # The AI said something before using tools - this needs to be saved!
-                  progress_callback&.call({
-                    type: 'save_message',
-                    content: continuation_message,
-                    role: 'assistant'
-                  })
+                  content_hash = continuation_message.strip
+                  unless @saved_message_content.include?(content_hash)
+                    Rails.logger.info "💾 Saving continuation message before tools: #{continuation_message}"
+                    progress_callback&.call({
+                      type: 'save_message',
+                      content: continuation_message,
+                      role: 'assistant'
+                    })
+                    @saved_message_content.add(content_hash)
+                    # Mark that we've saved messages during streaming
+                    @messages_saved_during_streaming = true
+                  else
+                    Rails.logger.info "⚠️ Skipping duplicate continuation message: #{continuation_message.strip.first(50)}..."
+                  end
                 end
                 
                 # If the continuation wants to use more tools, execute them recursively
@@ -1002,11 +1020,18 @@ class ScoutGenericToolsService
                     
                     # If there's a message before more tools, save it
                     if last_message.present? && more_tool_calls.any?
-                      progress_callback&.call({
-                        type: 'save_message',
-                        content: last_message,
-                        role: 'assistant'
-                      })
+                      content_hash = last_message.strip
+                      unless @saved_message_content.include?(content_hash)
+                        Rails.logger.info "💾 Saving last message before more tools: #{last_message}"
+                        progress_callback&.call({
+                          type: 'save_message',
+                          content: last_message,
+                          role: 'assistant'
+                        })
+                        @saved_message_content.add(content_hash)
+                      else
+                        Rails.logger.info "⚠️ Skipping duplicate last message: #{last_message.strip.first(50)}..."
+                      end
                     end
                     
                     # Update the additional_message with the latest
@@ -1043,6 +1068,7 @@ class ScoutGenericToolsService
             Rails.logger.info "Returning with @suggested_canvas: #{@suggested_canvas.inspect}"
             return {
               message: final_message,
+              message_already_saved: @messages_saved_during_streaming || false,
               tools_used: true,
               tools_list: tool_calls.map { |t| t[:name] },
               success_count: results.count { |r| r[:success] },
@@ -1070,6 +1096,7 @@ class ScoutGenericToolsService
             
             return {
               message: accumulated_content,
+              message_already_saved: @messages_saved_during_streaming || false,
               tools_used: false,
               canvas: @suggested_canvas,
               mode: detected_mode
@@ -1165,6 +1192,11 @@ class ScoutGenericToolsService
         error: e.message
       }
     end
+  end
+
+  # Public method to execute analyze_landing_page_request tool
+  def execute_analyze_landing_page_request(args)
+    execute_analyze_landing_page_request_internal(args)
   end
 
   private
@@ -1309,6 +1341,8 @@ class ScoutGenericToolsService
       5. update_landing_page_status(landing_page_id, status) - Publish, unpublish, or archive landing pages
       6. update_landing_page_content(landing_page_id, instruction) - Update content of existing landing pages (PREFERRED for EDITING existing pages)
       7. revert_landing_page_to_version(landing_page_id, version_id) - Revert landing pages to previous versions
+      8. load_form_submissions(landing_page_id) - View form submissions from landing pages
+      9. load_workflow_analytics(period) - View workflow performance and analytics
 
       AVAILABLE DATA MODELS:
       #{available_models.join(', ')}
@@ -1722,6 +1756,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       execute_create_dynamic_visualization(args)
     when 'manage_task_list'
       execute_manage_task_list(args)
+    when 'analyze_landing_page_request'
+      execute_analyze_landing_page_request_internal(args)
     else
       { success: false, error: "Unknown tool: #{tool_name}" }
     end
@@ -2551,16 +2587,17 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       # Get business profile for AI context
       business_profile = @entity.business_profiles.first
       
-      # Use simplified AI generation that works with current schema
-      Rails.logger.info "Scout: Triggering simplified AI generation for landing page #{landing_page.id}"
+      # Use the new interactive framework for landing page generation
+      Rails.logger.info "Scout: Landing page #{landing_page.id} created - ready for interactive generation"
       
-      # Trigger the simplified generation job
-      SimpleAiLandingPageJob.perform_later(
-        landing_page.id,
-        description,
-        page_type,
-        @entity.id,
-        business_profile&.id
+      # For now, we'll mark it as requiring interactive generation
+      # The user can then use the interactive wizard to complete it
+      landing_page.update!(
+        metadata: {
+          generation_requested: true,
+          page_type: page_type,
+          requested_at: Time.current
+        }
       )
       
       # Suggest loading the landing page viewer canvas to show the new page in the list
@@ -2578,8 +2615,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
           status: landing_page.status,
           slug: landing_page.slug
         },
-        message: "✅ Successfully created landing page '#{title}'! AI content generation is running in the background and will be ready shortly. Your new page appears in the list below.",
-        ai_generation_status: "AI generation started with #{page_type} template using #{@ai_provider_name}",
+        message: "✅ Successfully created landing page '#{title}'! Click on it below to open the interactive wizard and generate content.",
+        ai_generation_status: "Ready for interactive content generation",
         canvas: 'landing_page_viewer',
         canvas_data: {}
       }
@@ -2729,6 +2766,209 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       Rails.logger.error "update_landing_page_content error: #{e.message}"
       { error: "Content update failed: #{e.message}" }
     end
+  end
+
+  def execute_load_form_submissions(args)
+    landing_page_id = args[:landing_page_id]
+    filters = args[:filters] || {}
+    
+    return { error: 'landing_page_id is required' } unless landing_page_id.present?
+    
+    begin
+      # Find the landing page
+      landing_page = @entity.landing_pages.find_by(id: landing_page_id, user: @user)
+      return { error: 'Landing page not found' } unless landing_page
+      
+      # Load submissions data
+      submissions_data = load_form_submissions_data_for_page(landing_page, filters)
+      
+      # Set canvas data for loading
+      @suggested_canvas = 'form_submissions'
+      @canvas_data = submissions_data
+      
+      {
+        success: true,
+        object_type: 'landing_page_submissions',
+        data: submissions_data,
+        message: "📊 Loaded #{submissions_data[:stats][:total]} form submissions for '#{landing_page.title}'. " \
+                 "Conversion rate: #{submissions_data[:stats][:conversion_rate]}%",
+        canvas: 'form_submissions',
+        canvas_data: submissions_data
+      }
+    rescue ActiveRecord::RecordNotFound
+      { error: 'Landing page not found' }
+    rescue => e
+      Rails.logger.error "load_form_submissions error: #{e.message}"
+      { error: "Failed to load form submissions: #{e.message}" }
+    end
+  end
+  
+  def load_form_submissions_data_for_page(landing_page, filters = {})
+    # Base query for submissions from this landing page
+    base_query = landing_page.landing_page_submissions.includes(:contact)
+    
+    # Apply filters
+    if filters[:form_type].present?
+      base_query = base_query.where(form_type: filters[:form_type])
+    end
+    
+    if filters[:status].present?
+      base_query = base_query.where(status: filters[:status])
+    end
+    
+    case filters[:time_range]
+    when 'today'
+      base_query = base_query.today
+    when 'week'
+      base_query = base_query.this_week
+    when 'month'
+      base_query = base_query.this_month
+    end
+    
+    # Get submissions with limit
+    submissions = base_query.recent.limit(50)
+    
+    # Calculate stats
+    total = base_query.count
+    processed = base_query.where(status: ['processed', 'duplicate']).count
+    pending = base_query.where(status: 'pending').count
+    failed = base_query.where(status: 'failed').count
+    spam = base_query.where(status: 'spam').count
+    conversion_rate = total > 0 ? (processed.to_f / total * 100).round(1) : 0.0
+    
+    # Format submissions for display
+    formatted_submissions = submissions.map do |submission|
+      {
+        id: submission.id,
+        form_type: submission.form_type,
+        status: submission.status,
+        submitted_at: submission.submitted_at.iso8601,
+        processed_at: submission.processed_at&.iso8601,
+        contact_info: submission.contact_info,
+        utm_params: submission.utm_params,
+        source_ip: submission.source_ip,
+        referrer: submission.referrer,
+        submission_data: submission.submission_data
+      }
+    end
+    
+    {
+      submissions: formatted_submissions,
+      stats: {
+        total: total,
+        processed: processed,
+        pending: pending,
+        failed: failed,
+        spam: spam,
+        conversion_rate: conversion_rate
+      },
+      landing_page: {
+        id: landing_page.id,
+        title: landing_page.title,
+        slug: landing_page.slug
+      },
+      pagination: {
+        current_count: formatted_submissions.length,
+        total_count: total,
+        has_previous: false, # TODO: Implement pagination
+        has_next: formatted_submissions.length >= 50
+      }
+    }
+  end
+
+  def execute_load_workflow_analytics(args)
+    period_days = args[:period] || 30
+    period = period_days.to_i.days
+    
+    begin
+      # Load analytics data
+      observability = ObservabilityService.instance
+      analytics_data = {
+        workflow_analytics: observability.workflow_analytics(period),
+        tool_analytics: observability.tool_analytics(period),
+        user_analytics: observability.user_analytics(period),
+        ai_metrics: observability.ai_metrics(period),
+        performance_metrics: observability.performance_metrics(period),
+        period_days: period_days.to_i
+      }
+      
+      # Set canvas data for loading
+      @suggested_canvas = 'workflow_analytics'
+      @canvas_data = analytics_data
+      
+      {
+        success: true,
+        object_type: 'workflow_analytics',
+        data: analytics_data,
+        message: "📊 Loaded workflow analytics for the last #{period_days} days. " \
+                 "#{analytics_data[:workflow_analytics][:total_workflows]} workflows started, " \
+                 "#{analytics_data[:workflow_analytics][:completion_rate]}% completion rate.",
+        canvas: 'workflow_analytics',
+        canvas_data: analytics_data
+      }
+    rescue => e
+      Rails.logger.error "load_workflow_analytics error: #{e.message}"
+      { error: "Failed to load workflow analytics: #{e.message}" }
+    end
+  end
+
+  def execute_analyze_landing_page_request_internal(args)
+    Rails.logger.info "Scout: Analyzing landing page request and existing business info"
+    
+    user_message = args['user_message'] || ''
+    user = args['user'] || @user
+    entity = args['entity'] || @entity
+    
+    # Get business profile
+    business_profile = @user.business_profile || @user.ensure_business_profile
+    
+    # Analyze what we already know
+    existing_info = {
+      business_profile: {
+        name: business_profile.name,
+        industry: business_profile.industry,
+        description: business_profile.description,
+        target_audience: business_profile.target_audience,
+        tone_of_voice: business_profile.tone_of_voice,
+        values: business_profile.values,
+        website: business_profile.website
+      },
+      entity: {
+        name: entity.is_a?(Hash) ? (entity['name'] || entity[:name]) : entity.name,
+        subdomain: entity.is_a?(Hash) ? (entity['subdomain'] || entity[:subdomain]) : entity.subdomain
+      }
+    }
+    
+    # Extract context from user message
+    message_context = {
+      mentions_classes: user_message.downcase.include?('class'),
+      mentions_course: user_message.downcase.include?('course'),
+      mentions_event: user_message.downcase.include?('event'),
+      mentions_product: user_message.downcase.include?('product'),
+      mentions_service: user_message.downcase.include?('service'),
+      mentions_new: user_message.downcase.include?('new'),
+      mentions_series: user_message.downcase.include?('series')
+    }
+    
+    # Determine what additional info we need
+    missing_info = []
+    missing_info << 'specific class/course details' if message_context[:mentions_classes] || message_context[:mentions_course]
+    missing_info << 'event details' if message_context[:mentions_event]
+    missing_info << 'product/service details' if message_context[:mentions_product] || message_context[:mentions_service]
+    missing_info << 'call to action' 
+    missing_info << 'urgency/deadline information'
+    
+    {
+      success: true,
+      data: {
+        business_profile: existing_info[:business_profile],
+        entity: existing_info[:entity],
+        message_context: message_context,
+        missing_info: missing_info
+      },
+      message: "I've analyzed your business profile and the landing page request.",
+      recommendation: "I have your business profile information. Now I need specific details about #{missing_info.join(', ')}"
+    }
   end
 
   def execute_revert_landing_page_to_version(args)
@@ -3127,6 +3367,20 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     end
   end
 
+  def persist_task_list(task_session, cache_key, task_list)
+    # Write to cache for fast access
+    Rails.cache.write(cache_key, task_list, expires_in: 24.hours)
+    
+    # Persist to TaskSession for refresh persistence
+    task_session.update!(
+      state: { task_list: task_list },
+      metadata: task_session.metadata.merge(
+        updated_at: Time.current,
+        task_count: task_list[:tasks]&.size || 0
+      )
+    )
+  end
+
   def sanitize_for_bedrock(data)
     case data
     when Hash
@@ -3151,7 +3405,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     session_id = @session_id || SecureRandom.uuid
     cache_key = "scout_task_list_#{entity_id}_#{session_id}"
     
+    # Try cache first, then TaskSession
     task_list = Rails.cache.read(cache_key)
+    unless task_list && task_list[:tasks]
+      # Try to load from TaskSession
+      task_session = TaskSession.active
+                               .where(user: @user)
+                               .where("metadata->>'session_id' = ?", session_id)
+                               .first
+      task_list = task_session&.state&.dig('task_list')
+    end
     return unless task_list && task_list[:tasks]
     
     Rails.logger.info "🔍 Checking task update for tool: #{tool_name}, args: #{args.inspect}"
@@ -3207,6 +3470,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         desc.include?('link') && 
         desc.include?('template') &&
         desc.include?('campaign')
+      end
+      
+    when 'generate_ai_landing_page'
+      # Match tasks like "Generate AI-powered landing page", "Generate landing page", "Create landing page"
+      task = task_list[:tasks].find do |t|
+        desc = (t['description'] || t[:description] || '').downcase
+        status = t['status'] || t[:status]
+        status == 'pending' && 
+        (desc.include?('generate') || desc.include?('create')) && 
+        desc.include?('landing page')
       end
     end
     
@@ -3301,7 +3574,21 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     
     Rails.logger.info "🔑 Task management - Entity: #{entity_id}, Session: #{session_id}, Action: #{action}"
     
-    # Use Rails cache to store task lists per session
+    # Use TaskSession for persistent storage
+    task_session = TaskSession.active
+                             .where(user: @user)
+                             .where("metadata->>'session_id' = ?", session_id)
+                             .first_or_create!(
+                               user: @user,
+                               status: 'active',
+                               metadata: {
+                                 session_id: session_id,
+                                 entity_id: entity_id,
+                                 created_from: 'scout_task_management'
+                               }
+                             )
+    
+    # Use Rails cache as a fast access layer, but persist to TaskSession
     cache_key = "scout_task_list_#{entity_id}_#{session_id}"
     
     case action
@@ -3322,7 +3609,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         created_at: Time.current,
         updated_at: Time.current
       }
-      Rails.cache.write(cache_key, task_list, expires_in: 24.hours)
+      persist_task_list(task_session, cache_key, task_list)
       
       Rails.logger.info "📝 Created task list with #{tasks.size} tasks"
       Rails.logger.info "📝 Tasks: #{tasks.map { |t| "#{t[:id]}: #{t[:description]}" }.join(', ')}"
@@ -3366,7 +3653,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
             existing_list[:tasks] = args['tasks']
           end
           existing_list[:updated_at] = Time.current
-          Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+          persist_task_list(task_session, cache_key, existing_list)
           
           @suggested_canvas = 'task_progress'
           @canvas_data = existing_list
@@ -3397,7 +3684,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         }
         existing_list[:tasks] << new_task
         existing_list[:updated_at] = Time.current
-        Rails.cache.write(cache_key, existing_list, expires_in: 24.hours)
+        persist_task_list(task_session, cache_key, existing_list)
         
         @suggested_canvas = 'task_progress'
         @canvas_data = existing_list
@@ -3417,7 +3704,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       
     when 'update_task', 'update_status'
       # Update a task status (e.g., to in_progress) - handle both action names
-      existing_list = Rails.cache.read(cache_key)
+      existing_list = Rails.cache.read(cache_key) || task_session.state&.dig('task_list')
       if existing_list
         task = existing_list[:tasks].find { |t| (t['id'] || t[:id]).to_s == args['task_id'].to_s }
         if task

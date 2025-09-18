@@ -40,6 +40,12 @@ class LandingPage < ApplicationRecord
   has_many :landing_page_chat_messages, dependent: :destroy
   has_many :landing_page_versions, dependent: :destroy
   
+  # Form submissions
+  has_many :landing_page_submissions, dependent: :destroy
+  
+  # Store accessors for metadata JSONB field
+  store_accessor :metadata, :dsl_content, :generated_with, :generator_version, :generated_at
+  
   # Remove rich text sections - we're using html_content now
   # has_many :rich_text_sections, dependent: :destroy # REMOVED
   
