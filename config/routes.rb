@@ -30,6 +30,11 @@ Rails.application.routes.draw do
       
       # Crawler Job Logging
       post 'crawler_jobs/:id/logs', to: 'crawler_job_logs#create'
+      
+      # Landing page form submissions
+      resources :landing_page_submissions, only: [:create, :index]
+      # Alternative route for submissions by landing page slug
+      post 'landing_pages/:landing_page_slug/submit', to: 'landing_page_submissions#create'
     end
   end
   

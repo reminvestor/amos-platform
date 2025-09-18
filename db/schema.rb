@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_17_232006) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_17_233445) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -299,6 +299,31 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_17_232006) do
     t.datetime "updated_at", null: false
     t.index ["landing_page_id"], name: "index_landing_page_chat_messages_on_landing_page_id"
     t.index ["user_id"], name: "index_landing_page_chat_messages_on_user_id"
+  end
+
+  create_table "landing_page_submissions", force: :cascade do |t|
+    t.bigint "landing_page_id", null: false
+    t.bigint "contact_id"
+    t.string "form_type", null: false
+    t.jsonb "submission_data", default: {}, null: false
+    t.string "source_ip"
+    t.text "user_agent"
+    t.datetime "submitted_at", null: false
+    t.datetime "processed_at"
+    t.string "status", default: "pending", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "session_id"
+    t.string "referrer"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contact_id", "submitted_at"], name: "index_landing_page_submissions_on_contact_id_and_submitted_at"
+    t.index ["contact_id"], name: "index_landing_page_submissions_on_contact_id"
+    t.index ["form_type"], name: "index_landing_page_submissions_on_form_type"
+    t.index ["landing_page_id", "submitted_at"], name: "idx_on_landing_page_id_submitted_at_86b17f44bd"
+    t.index ["landing_page_id"], name: "index_landing_page_submissions_on_landing_page_id"
+    t.index ["session_id"], name: "index_landing_page_submissions_on_session_id"
+    t.index ["status"], name: "index_landing_page_submissions_on_status"
+    t.index ["submitted_at"], name: "index_landing_page_submissions_on_submitted_at"
   end
 
   create_table "landing_page_versions", force: :cascade do |t|
@@ -631,6 +656,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_17_232006) do
   add_foreign_key "image_assets", "users"
   add_foreign_key "landing_page_chat_messages", "landing_pages"
   add_foreign_key "landing_page_chat_messages", "users"
+  add_foreign_key "landing_page_submissions", "contacts"
+  add_foreign_key "landing_page_submissions", "landing_pages"
   add_foreign_key "landing_page_versions", "landing_pages"
   add_foreign_key "landing_pages", "campaigns"
   add_foreign_key "landing_pages", "entities"
