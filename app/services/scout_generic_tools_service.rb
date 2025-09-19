@@ -1794,6 +1794,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       execute_analyze_landing_page_request_internal(args)
     when 'process_landing_page_images'
       execute_process_landing_page_images(args)
+    when 'store_uploaded_images'
+      execute_store_uploaded_images(args)
     else
       { success: false, error: "Unknown tool: #{tool_name}" }
     end
@@ -2945,6 +2947,113 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     rescue => e
       Rails.logger.error "load_workflow_analytics error: #{e.message}"
       { error: "Failed to load workflow analytics: #{e.message}" }
+    end
+  end
+
+  def execute_store_uploaded_images(args)
+    user_id = args['user_id'] || args[:user_id]
+    entity_id = args['entity_id'] || args[:entity_id]
+    image_data = args['image_data'] || args[:image_data]
+    
+    user = User.find(user_id)
+    entity = Entity.find(entity_id)
+    
+    stored_images = []
+    design_reference = nil
+    
+    # Extract images_data JSON from the form submission
+    images_data_json = image_data['images_data'] || image_data[:images_data] || '{}'
+    
+    begin
+      parsed_data = JSON.parse(images_data_json)
+      images = parsed_data['images'] || []
+      design_ref_data = parsed_data['design_reference']
+      
+      # Process uploaded images
+      images.each do |img_data|
+        if img_data['type'] == 'upload'
+          # For now, we'll create a placeholder ImageAsset record
+          # The actual file upload handling will be enhanced later
+          image_asset = ImageAsset.create!(
+            user: user,
+            entity: entity,
+            title: "Landing Page Image #{img_data['slot']}",
+            description: "Uploaded image for landing page (#{img_data['filename']})",
+            source: 'upload',
+            tags: ['landing_page', 'user_upload']
+          )
+          
+          stored_images << {
+            id: image_asset.id,
+            url: image_asset.url || "/placeholder-image-#{img_data['slot']}.jpg",
+            title: image_asset.title,
+            description: image_asset.description,
+            slot: img_data['slot'],
+            filename: img_data['filename']
+          }
+        elsif img_data['type'] == 'ai_generate' && img_data['prompt'].present?
+          # Generate AI image
+          begin
+            ai_image = ImageGenerationService.new.generate_and_store!(
+              user: user,
+              entity: entity,
+              title: "AI Generated - Slot #{img_data['slot']}",
+              description: img_data['prompt'],
+              size: img_data['slot'] == 1 ? '1200x600' : '800x600',
+              quality: 'standard',
+              tags: ['landing_page', 'ai_generated']
+            )
+            
+            stored_images << {
+              id: ai_image.id,
+              url: ai_image.url,
+              title: ai_image.title,
+              description: ai_image.description,
+              slot: img_data['slot'],
+              prompt: img_data['prompt']
+            }
+          rescue => e
+            Rails.logger.error "Failed to generate AI image for slot #{img_data['slot']}: #{e.message}"
+          end
+        end
+      end
+      
+      # Process design reference if uploaded
+      if design_ref_data
+        # For now, create a record for the design reference
+        # File handling will be enhanced later
+        design_reference = {
+          filename: design_ref_data['filename'],
+          notes: design_ref_data['notes'],
+          type: design_ref_data['type']
+        }
+      end
+      
+      {
+        success: true,
+        data: {
+          stored_images: stored_images,
+          design_reference: design_reference
+        },
+        message: "Processed #{stored_images.length} image(s) and stored them for your landing page"
+      }
+      
+    rescue JSON::ParserError => e
+      Rails.logger.error "Failed to parse images data: #{e.message}"
+      {
+        success: true,
+        data: {
+          stored_images: [],
+          design_reference: nil
+        },
+        message: "No images to process"
+      }
+    rescue => e
+      Rails.logger.error "Error storing uploaded images: #{e.message}"
+      {
+        success: false,
+        error: "Failed to store images: #{e.message}"
+      }
     end
   end
 

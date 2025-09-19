@@ -349,29 +349,24 @@ class InteractiveTaskService
               _resolve_from_steps: {
                 business_info: ['analyze_context', 'collect_specific_info'],
                 design_preferences: ['collect_design_preferences'],
-                image_preferences: ['collect_images']
+                image_preferences: ['collect_design_preferences'],
+                stored_images: ['process_uploaded_images']
               }
             }
           }
         },
         {
-          id: 'process_images',
+          id: 'process_uploaded_images',
           type: 'tool_call',
           config: {
-            tool: 'process_landing_page_images',
-            description: 'Process and generate images for your landing page',
+            tool: 'store_uploaded_images',
+            description: 'Store uploaded images and prepare context for AI',
             inputs: {
               _resolve_from_steps: {
-                image_preferences: ['collect_design_preferences'],
-                business_info: ['analyze_context', 'collect_specific_info']
+                image_data: ['collect_design_preferences']
               },
               user_id: @user.id,
               entity_id: @entity.id
-            },
-            conditional: {
-              field: 'image_preference',
-              values: ['ai_generate'],
-              source_step: 'collect_design_preferences'
             }
           }
         },

@@ -17,7 +17,7 @@
         <div class="image-options mt-2">
           <div class="btn-group-vertical w-100" role="group">
             <input type="file" id="image-file-1" name="image_file_1" accept="image/*" class="d-none">
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('image-file-1').click()">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="console.log('🔘 Upload button 1 clicked'); document.getElementById('image-file-1').click()">
               <i class="fas fa-upload me-1"></i> Upload Image
             </button>
             <input type="text" 
@@ -43,7 +43,7 @@
         <div class="image-options mt-2">
           <div class="btn-group-vertical w-100" role="group">
             <input type="file" id="image-file-2" name="image_file_2" accept="image/*" class="d-none">
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('image-file-2').click()">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="console.log('🔘 Upload button 2 clicked'); document.getElementById('image-file-2').click()">
               <i class="fas fa-upload me-1"></i> Upload Image
             </button>
             <input type="text" 
@@ -69,7 +69,7 @@
         <div class="image-options mt-2">
           <div class="btn-group-vertical w-100" role="group">
             <input type="file" id="image-file-3" name="image_file_3" accept="image/*" class="d-none">
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('image-file-3').click()">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="console.log('🔘 Upload button 3 clicked'); document.getElementById('image-file-3').click()">
               <i class="fas fa-upload me-1"></i> Upload Image
             </button>
             <input type="text" 
@@ -214,12 +214,31 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('🖼️ Image upload blocks initialized');
-  
-  // Handle design reference upload
-  const designUploadArea = document.getElementById('design-upload-area');
-  const designFileInput = document.getElementById('design-reference-file');
+// Prevent multiple script execution
+if (!window.imageUploadBlocksInitialized) {
+  console.log('🚀 Image upload blocks script loading...');
+
+  function initializeImageUploadBlocks() {
+    console.log('🖼️ Initializing image upload blocks');
+    
+    // Check if elements exist
+    const imageFile1 = document.getElementById('image-file-1');
+    const imagePreview1 = document.getElementById('image-preview-1');
+    const designUploadArea = document.getElementById('design-upload-area');
+    
+    console.log('🔍 Element check:', {
+      imageFile1: !!imageFile1,
+      imagePreview1: !!imagePreview1,
+      designUploadArea: !!designUploadArea
+    });
+    
+    if (!imageFile1 || !imagePreview1) {
+      console.error('❌ Critical elements missing for image upload');
+      return;
+    }
+    
+    // Handle design reference upload
+    const designFileInput = document.getElementById('design-reference-file');
   
   if (designUploadArea && designFileInput) {
     console.log('🎨 Design reference upload initialized');
@@ -405,5 +424,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('images-data').value = JSON.stringify(data);
     console.log('📸 Updated complete data:', data);
   }
-});
+  
+  } // End initializeImageUploadBlocks function
+  
+  // Initialize when DOM is ready or immediately if already ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeImageUploadBlocks);
+  } else {
+    initializeImageUploadBlocks();
+  }
+  
+  window.imageUploadBlocksInitialized = true;
+}
 </script>
