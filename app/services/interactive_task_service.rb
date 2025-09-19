@@ -332,6 +332,43 @@ class InteractiveTaskService
           }
         },
         {
+          id: 'collect_images',
+          type: 'user_input',
+          config: {
+            title: 'Images & Media',
+            description: 'Add images to make your landing page visually compelling',
+            fields: [
+              {
+                name: 'image_preference',
+                type: 'select',
+                required: true,
+                label: 'How would you like to handle images?',
+                options: ['ai_generate', 'upload_own', 'use_placeholders', 'skip_for_now'],
+                descriptions: {
+                  'ai_generate' => 'Let Scout create custom images using AI',
+                  'upload_own' => 'Upload your own images from your device',
+                  'use_placeholders' => 'Use placeholder images for now (can change later)',
+                  'skip_for_now' => 'Skip images and focus on content first'
+                }
+              },
+              {
+                name: 'image_style',
+                type: 'select',
+                label: 'Image Style (for AI generation)',
+                options: ['professional', 'modern', 'creative', 'minimalist', 'bold'],
+                show_when: { image_preference: 'ai_generate' }
+              },
+              {
+                name: 'image_descriptions',
+                type: 'textarea',
+                label: 'Describe the images you need',
+                placeholder: 'e.g., "Professional team photo, product showcase, office environment"',
+                show_when: { image_preference: 'ai_generate' }
+              }
+            ]
+          }
+        },
+        {
           id: 'generate_landing_page',
           type: 'tool_call',
           config: {
@@ -341,8 +378,30 @@ class InteractiveTaskService
               # These will be resolved by the workflow engine from step results
               _resolve_from_steps: {
                 business_info: ['analyze_context', 'collect_specific_info'],
-                design_preferences: ['collect_design_preferences']
+                design_preferences: ['collect_design_preferences'],
+                image_preferences: ['collect_images']
               }
+            }
+          }
+        },
+        {
+          id: 'process_images',
+          type: 'tool_call',
+          config: {
+            tool: 'process_landing_page_images',
+            description: 'Process and generate images for your landing page',
+            inputs: {
+              _resolve_from_steps: {
+                image_preferences: ['collect_images'],
+                business_info: ['analyze_context', 'collect_specific_info'],
+                user_id: @user.id,
+                entity_id: @entity.id
+              }
+            },
+            conditional: {
+              field: 'image_preference',
+              values: ['ai_generate', 'upload_own'],
+              source_step: 'collect_images'
             }
           }
         },

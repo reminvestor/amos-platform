@@ -588,6 +588,26 @@ class WorkflowEngine
         end
         Rails.logger.info "✅ Found design_preferences: #{result[:design_preferences].inspect}"
         
+      when 'image_preferences'
+        image_data = find_step_data('collect_images', execution_history)
+        if image_data
+          if image_data.is_a?(ActionController::Parameters)
+            image_data = JSON.parse(image_data.to_json)
+          end
+          result[:image_preferences] = {
+            image_preference: image_data['image_preference'] || image_data[:image_preference] || 'use_placeholders',
+            image_style: image_data['image_style'] || image_data[:image_style] || 'professional',
+            image_descriptions: image_data['image_descriptions'] || image_data[:image_descriptions] || ''
+          }
+        else
+          result[:image_preferences] = {
+            image_preference: 'use_placeholders',
+            image_style: 'professional',
+            image_descriptions: ''
+          }
+        end
+        Rails.logger.info "✅ Found image_preferences: #{result[:image_preferences].inspect}"
+        
       when 'dsl'
         # Get DSL from generate_landing_page step
         dsl_data = find_step_data('generate_landing_page', execution_history)

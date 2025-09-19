@@ -1792,6 +1792,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       execute_manage_task_list(args)
     when 'analyze_landing_page_request'
       execute_analyze_landing_page_request_internal(args)
+    when 'process_landing_page_images'
+      execute_process_landing_page_images(args)
     else
       { success: false, error: "Unknown tool: #{tool_name}" }
     end
@@ -2943,6 +2945,130 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     rescue => e
       Rails.logger.error "load_workflow_analytics error: #{e.message}"
       { error: "Failed to load workflow analytics: #{e.message}" }
+    end
+  end
+
+  def execute_process_landing_page_images(args)
+    user_id = args['user_id'] || args[:user_id]
+    entity_id = args['entity_id'] || args[:entity_id]
+    image_preferences = args['image_preferences'] || args[:image_preferences]
+    business_info = args['business_info'] || args[:business_info]
+    
+    user = User.find(user_id)
+    entity = Entity.find(entity_id)
+    
+    image_preference = image_preferences['image_preference'] || image_preferences[:image_preference]
+    
+    case image_preference
+    when 'ai_generate'
+      # Generate images using AI
+      image_style = image_preferences['image_style'] || image_preferences[:image_style] || 'professional'
+      image_descriptions = image_preferences['image_descriptions'] || image_preferences[:image_descriptions] || ''
+      business_name = business_info['business_name'] || business_info[:business_name] || 'the business'
+      
+      generated_images = []
+      
+      # Generate hero image
+      hero_prompt = "Professional #{image_style} style hero image for #{business_name}, high quality, modern, engaging"
+      if image_descriptions.present?
+        hero_prompt += ", #{image_descriptions}"
+      end
+      
+      begin
+        hero_image = ImageGenerationService.new.generate_and_store!(
+          user: user,
+          entity: entity,
+          title: "Hero Image - #{business_name}",
+          description: hero_prompt,
+          size: '1200x600',
+          quality: 'hd',
+          tags: ['landing_page', 'hero', image_style]
+        )
+        generated_images << {
+          id: hero_image.id,
+          url: hero_image.url,
+          title: hero_image.title,
+          description: hero_image.description,
+          type: 'hero'
+        }
+      rescue => e
+        Rails.logger.error "Failed to generate hero image: #{e.message}"
+      end
+      
+      # Generate feature/content image if descriptions suggest multiple images
+      if image_descriptions.present? && image_descriptions.include?(',')
+        content_prompt = "Professional #{image_style} style content image for #{business_name}, supporting visual"
+        begin
+          content_image = ImageGenerationService.new.generate_and_store!(
+            user: user,
+            entity: entity,
+            title: "Content Image - #{business_name}",
+            description: content_prompt,
+            size: '800x600',
+            quality: 'standard',
+            tags: ['landing_page', 'content', image_style]
+          )
+          generated_images << {
+            id: content_image.id,
+            url: content_image.url,
+            title: content_image.title,
+            description: content_image.description,
+            type: 'content'
+          }
+        rescue => e
+          Rails.logger.error "Failed to generate content image: #{e.message}"
+        end
+      end
+      
+      {
+        success: true,
+        data: {
+          processed_images: generated_images,
+          image_strategy: 'ai_generated'
+        },
+        message: "Generated #{generated_images.length} custom image(s) for your landing page",
+        recommendation: "Images have been created and will be automatically integrated into your landing page design"
+      }
+      
+    when 'upload_own'
+      # For now, return success and let user upload later in editor
+      {
+        success: true,
+        data: {
+          processed_images: [],
+          image_strategy: 'user_upload'
+        },
+        message: "Image upload prepared - you can add your images in the editor",
+        recommendation: "Use the image editing tools in the landing page editor to upload your custom images"
+      }
+      
+    when 'use_placeholders'
+      {
+        success: true,
+        data: {
+          processed_images: [],
+          image_strategy: 'placeholders'
+        },
+        message: "Using placeholder images for now",
+        recommendation: "Placeholder images will be used initially - you can replace them anytime in the editor"
+      }
+      
+    when 'skip_for_now'
+      {
+        success: true,
+        data: {
+          processed_images: [],
+          image_strategy: 'none'
+        },
+        message: "Skipping images for now - focusing on content",
+        recommendation: "You can add images later using the landing page editor"
+      }
+      
+    else
+      {
+        success: false,
+        error: "Unknown image preference: #{image_preference}"
+      }
     end
   end
 

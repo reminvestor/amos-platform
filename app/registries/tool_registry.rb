@@ -252,7 +252,60 @@ class ToolRegistry
       retryable: true
     },
     
-    'analyze_landing_page_request' => {
+        'process_landing_page_images' => {
+          version: '1.0',
+          description: 'Process and generate images for landing page based on user preferences',
+          input_schema: {
+            type: 'object',
+            required: ['image_preferences', 'user_id', 'entity_id'],
+            properties: {
+              image_preferences: {
+                type: 'object',
+                required: ['image_preference'],
+                properties: {
+                  image_preference: {
+                    type: 'string',
+                    enum: ['ai_generate', 'upload_own', 'use_placeholders', 'skip_for_now']
+                  },
+                  image_style: { type: 'string' },
+                  image_descriptions: { type: 'string' }
+                }
+              },
+              business_info: { type: 'object' },
+              user_id: { type: 'integer' },
+              entity_id: { type: 'integer' }
+            }
+          },
+          output_schema: {
+            type: 'object',
+            required: ['data'],
+            properties: {
+              data: {
+                type: 'object',
+                properties: {
+                  processed_images: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'integer' },
+                        url: { type: 'string' },
+                        title: { type: 'string' },
+                        description: { type: 'string' }
+                      }
+                    }
+                  },
+                  image_strategy: { type: 'string' }
+                }
+              },
+              message: { type: 'string' },
+              recommendation: { type: 'string' }
+            }
+          },
+          timeout: 60,
+          retryable: true
+        },
+        'analyze_landing_page_request' => {
       version: '1.0',
       description: 'Analyze existing business information and landing page request',
       input_schema: {
@@ -392,7 +445,7 @@ class ToolRegistry
     # Get tools by category
     def tools_by_category
       {
-        'Content Generation' => ['generate_landing_page_dsl', 'analyze_landing_page_request'],
+        'Content Generation' => ['generate_landing_page_dsl', 'analyze_landing_page_request', 'process_landing_page_images'],
         'Content Processing' => ['compile_landing_page_html'],
         'Data Management' => ['create_contact', 'create_campaign', 'get_contact_groups'],
         'Communication' => ['send_email'],

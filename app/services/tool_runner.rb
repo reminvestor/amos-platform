@@ -188,6 +188,9 @@ class ToolRunner
     when 'analyze_landing_page_request'
       Rails.logger.info "ToolRunner: Matched analyze_landing_page_request case"
       execute_analyze_landing_page_request(inputs)
+    when 'process_landing_page_images'
+      Rails.logger.info "ToolRunner: Matched process_landing_page_images case"
+      execute_process_landing_page_images(inputs)
     else
       Rails.logger.info "ToolRunner: No direct implementation for '#{tool}', checking legacy system"
       # Fallback to existing tool system if available
@@ -500,6 +503,66 @@ class ToolRunner
     end
   end
   
+  def execute_process_landing_page_images(inputs)
+    Rails.logger.info "🖼️ ToolRunner: Processing landing page images"
+    Rails.logger.info "🖼️ Inputs: #{inputs.inspect}"
+    
+    # Bridge to ScoutGenericToolsService if available
+    if defined?(ScoutGenericToolsService) && inputs['user_id'] && inputs['entity_id']
+      begin
+        # Convert hash representations to actual objects
+        user = inputs['user_id'].is_a?(Integer) ? User.find(inputs['user_id']) : inputs['user_id']
+        entity = inputs['entity_id'].is_a?(Integer) ? Entity.find(inputs['entity_id']) : inputs['entity_id']
+        
+        # Create service instance
+        service = ScoutGenericToolsService.new(user, entity)
+        
+        # Call the service method
+        result = service.execute_process_landing_page_images(inputs)
+        
+        Rails.logger.info "🖼️ ScoutGenericToolsService result: #{result.inspect}"
+        
+        # Convert to ToolRunner format
+        if result[:success]
+          {
+            status: 'success',
+            data: result[:data],
+            message: result[:message],
+            recommendation: result[:recommendation]
+          }
+        else
+          {
+            status: 'error',
+            message: result[:error] || 'Failed to process images',
+            data: {}
+          }
+        end
+      rescue => e
+        Rails.logger.error "🖼️ Error in ScoutGenericToolsService: #{e.message}"
+        Rails.logger.error e.backtrace.join("\n")
+        
+        {
+          status: 'error',
+          message: "Failed to process images: #{e.message}",
+          data: {}
+        }
+      end
+    else
+      # Fallback simulation
+      Rails.logger.warn "🖼️ ScoutGenericToolsService not available, using simulation"
+      
+      {
+        status: 'success',
+        data: {
+          processed_images: [],
+          image_strategy: inputs.dig('image_preferences', 'image_preference') || 'placeholders'
+        },
+        message: "Image processing prepared",
+        recommendation: "Images will be handled in the landing page editor"
+      }
+    end
+  end
+
   def execute_analyze_landing_page_request(inputs)
     Rails.logger.info "ToolRunner: execute_analyze_landing_page_request called with keys: #{inputs.keys}"
     begin
