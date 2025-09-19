@@ -305,6 +305,47 @@ class ToolRegistry
           timeout: 60,
           retryable: true
         },
+        'store_uploaded_images' => {
+          version: '1.0',
+          description: 'Store uploaded images to S3 and create ImageAsset records for LLM context',
+          input_schema: {
+            type: 'object',
+            required: ['image_data', 'user_id', 'entity_id'],
+            properties: {
+              image_data: { type: 'object' },
+              user_id: { type: 'integer' },
+              entity_id: { type: 'integer' }
+            }
+          },
+          output_schema: {
+            type: 'object',
+            required: ['data'],
+            properties: {
+              data: {
+                type: 'object',
+                properties: {
+                  stored_images: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'integer' },
+                        url: { type: 'string' },
+                        title: { type: 'string' },
+                        description: { type: 'string' },
+                        slot: { type: 'integer' }
+                      }
+                    }
+                  },
+                  design_reference: { type: 'object' }
+                }
+              },
+              message: { type: 'string' }
+            }
+          },
+          timeout: 30,
+          retryable: true
+        },
         'analyze_landing_page_request' => {
       version: '1.0',
       description: 'Analyze existing business information and landing page request',
@@ -445,7 +486,7 @@ class ToolRegistry
     # Get tools by category
     def tools_by_category
       {
-        'Content Generation' => ['generate_landing_page_dsl', 'analyze_landing_page_request', 'process_landing_page_images'],
+        'Content Generation' => ['generate_landing_page_dsl', 'analyze_landing_page_request', 'process_landing_page_images', 'store_uploaded_images'],
         'Content Processing' => ['compile_landing_page_html'],
         'Data Management' => ['create_contact', 'create_campaign', 'get_contact_groups'],
         'Communication' => ['send_email'],

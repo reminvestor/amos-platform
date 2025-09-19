@@ -594,11 +594,38 @@ class WorkflowEngine
           if image_data.is_a?(ActionController::Parameters)
             image_data = JSON.parse(image_data.to_json)
           end
-          result[:image_preferences] = {
-            image_preference: image_data['image_preference'] || image_data[:image_preference] || 'use_placeholders',
-            image_style: image_data['image_style'] || image_data[:image_style] || 'professional',
-            image_descriptions: image_data['image_descriptions'] || image_data[:image_descriptions] || ''
-          }
+          
+          # Extract image data from the new format
+          images_data_json = image_data['images_data'] || image_data[:images_data] || '{}'
+          begin
+            parsed_images = JSON.parse(images_data_json)
+            uploaded_images = parsed_images['images'] || []
+            design_reference = parsed_images['design_reference']
+            
+            # Determine preference based on what user provided
+            if uploaded_images.any? { |img| img['type'] == 'upload' }
+              image_preference = 'upload_own'
+            elsif uploaded_images.any? { |img| img['type'] == 'ai_generate' }
+              image_preference = 'ai_generate'
+            else
+              image_preference = 'use_placeholders'
+            end
+            
+            result[:image_preferences] = {
+              image_preference: image_preference,
+              uploaded_images: uploaded_images,
+              design_reference: design_reference,
+              image_style: 'professional',
+              image_descriptions: uploaded_images.select { |img| img['type'] == 'ai_generate' }.map { |img| img['prompt'] }.join(', ')
+            }
+          rescue JSON::ParserError => e
+            Rails.logger.error "Failed to parse images_data JSON: #{e.message}"
+            result[:image_preferences] = {
+              image_preference: 'use_placeholders',
+              image_style: 'professional',
+              image_descriptions: ''
+            }
+          end
         else
           result[:image_preferences] = {
             image_preference: 'use_placeholders',
@@ -607,6 +634,15 @@ class WorkflowEngine
           }
         end
         Rails.logger.info "✅ Found image_preferences: #{result[:image_preferences].inspect}"
+        
+      when 'stored_images'
+        stored_images_data = find_step_data('process_uploaded_images', execution_history)
+        if stored_images_data
+          result[:stored_images] = stored_images_data['stored_images'] || stored_images_data[:stored_images] || []
+        else
+          result[:stored_images] = []
+        end
+        Rails.logger.info "✅ Found stored_images: #{result[:stored_images].length} images"
         
       when 'dsl'
         # Get DSL from generate_landing_page step
