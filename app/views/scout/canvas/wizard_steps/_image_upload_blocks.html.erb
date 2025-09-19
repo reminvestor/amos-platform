@@ -1,5 +1,5 @@
 <div class="image-upload-section">
-  <p class="text-muted mb-3">
+  <p class="text-white mb-3">
     Add up to 3 images for your landing page. You can upload your own images, describe images for AI to create, or leave blank for AI to choose automatically.
   </p>
   
@@ -9,8 +9,8 @@
       <div class="image-upload-block">
         <div class="image-preview" id="image-preview-1">
           <div class="upload-placeholder">
-            <i class="fas fa-image text-muted mb-2"></i>
-            <p class="text-muted small mb-0">Image 1</p>
+            <i class="fas fa-image text-secondary mb-2"></i>
+            <p class="text-dark small mb-0 fw-medium">Image 1</p>
           </div>
         </div>
         
@@ -35,8 +35,8 @@
       <div class="image-upload-block">
         <div class="image-preview" id="image-preview-2">
           <div class="upload-placeholder">
-            <i class="fas fa-image text-muted mb-2"></i>
-            <p class="text-muted small mb-0">Image 2</p>
+            <i class="fas fa-image text-secondary mb-2"></i>
+            <p class="text-dark small mb-0 fw-medium">Image 2</p>
           </div>
         </div>
         
@@ -61,8 +61,8 @@
       <div class="image-upload-block">
         <div class="image-preview" id="image-preview-3">
           <div class="upload-placeholder">
-            <i class="fas fa-image text-muted mb-2"></i>
-            <p class="text-muted small mb-0">Image 3</p>
+            <i class="fas fa-image text-secondary mb-2"></i>
+            <p class="text-dark small mb-0 fw-medium">Image 3</p>
           </div>
         </div>
         
@@ -79,6 +79,40 @@
                    placeholder="Or describe image for AI to create...">
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Design Reference Upload - Below Images -->
+  <div class="design-reference-section mt-4">
+    <h6 class="mb-2 text-white">
+      <i class="fas fa-palette me-2"></i>
+      Design Reference (Optional)
+    </h6>
+    <p class="text-light small mb-3">
+      Upload a design, theme, or website you like as inspiration. AI will analyze it and incorporate the style into your landing page.
+    </p>
+    
+    <div class="design-upload-block">
+      <div class="upload-area" id="design-upload-area">
+        <div class="upload-placeholder text-center p-3">
+          <i class="fas fa-cloud-upload-alt text-primary mb-2" style="font-size: 2rem;"></i>
+          <p class="text-dark mb-2">Drop design reference here or click to browse</p>
+          <p class="text-muted small mb-0">Supports: Images (JPG, PNG), Documents (PDF, DOC), or website screenshots</p>
+        </div>
+        <input type="file" 
+               id="design-reference-file" 
+               name="design_reference_file" 
+               accept="image/*,.pdf,.doc,.docx" 
+               class="d-none">
+      </div>
+      
+      <div class="design-notes mt-2">
+        <input type="text" 
+               id="design-notes" 
+               name="design_notes" 
+               class="form-control form-control-sm" 
+               placeholder="Describe what you like about this design (optional)">
       </div>
     </div>
   </div>
@@ -142,29 +176,170 @@
   border-style: solid;
   background: #f0f0ff;
 }
+
+.design-upload-block {
+  border: 2px dashed #6366f1;
+  border-radius: 0.5rem;
+  background: #f8f9ff;
+  transition: all 0.2s ease;
+}
+
+.design-upload-block:hover {
+  border-color: #5855eb;
+  background: #f0f0ff;
+}
+
+.design-upload-block.has-file {
+  border-color: #28a745;
+  border-style: solid;
+  background: #f8fff8;
+}
+
+.upload-area {
+  cursor: pointer;
+  border-radius: 0.375rem;
+}
+
+.design-file-preview {
+  display: none;
+  padding: 1rem;
+  background: white;
+  border-radius: 0.375rem;
+  border: 1px solid #dee2e6;
+}
+
+.design-file-preview.show {
+  display: block;
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Handle file uploads
+  console.log('🖼️ Image upload blocks initialized');
+  
+  // Handle design reference upload
+  const designUploadArea = document.getElementById('design-upload-area');
+  const designFileInput = document.getElementById('design-reference-file');
+  
+  if (designUploadArea && designFileInput) {
+    console.log('🎨 Design reference upload initialized');
+    
+    // Click to upload
+    designUploadArea.addEventListener('click', function() {
+      console.log('🎨 Design upload area clicked');
+      designFileInput.click();
+    });
+    
+    // File input change
+    designFileInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      console.log('🎨 Design file selected:', file);
+      if (file) {
+        handleDesignFileUpload(file);
+      }
+    });
+  }
+  
+  function handleDesignFileUpload(file) {
+    console.log('🎨 Processing design file:', file.name);
+    const uploadArea = document.getElementById('design-upload-area');
+    const block = uploadArea?.closest('.design-upload-block');
+    
+    if (uploadArea && block) {
+      // Show file info
+      uploadArea.innerHTML = `
+        <div class="design-file-preview show">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-file-${getFileIcon(file.type)} text-primary me-3" style="font-size: 2rem;"></i>
+            <div>
+              <p class="text-dark mb-1 fw-medium">${file.name}</p>
+              <p class="text-muted small mb-0">${formatFileSize(file.size)} • ${file.type}</p>
+            </div>
+            <button type="button" class="btn btn-outline-danger btn-sm ms-auto" onclick="clearDesignReference()">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+      `;
+      
+      block.classList.add('has-file');
+      updateImagesData();
+    }
+  }
+  
+  function getFileIcon(mimeType) {
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.includes('pdf')) return 'pdf';
+    if (mimeType.includes('doc')) return 'word';
+    return 'file';
+  }
+  
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+  
+  window.clearDesignReference = function() {
+    console.log('🎨 Clearing design reference');
+    const uploadArea = document.getElementById('design-upload-area');
+    const fileInput = document.getElementById('design-reference-file');
+    const block = uploadArea?.closest('.design-upload-block');
+    
+    if (uploadArea && fileInput && block) {
+      uploadArea.innerHTML = `
+        <div class="upload-placeholder text-center p-3">
+          <i class="fas fa-cloud-upload-alt text-primary mb-2" style="font-size: 2rem;"></i>
+          <p class="text-dark mb-2">Drop design reference here or click to browse</p>
+          <p class="text-muted small mb-0">Supports: Images (JPG, PNG), Documents (PDF, DOC), or website screenshots</p>
+        </div>
+      `;
+      fileInput.value = '';
+      block.classList.remove('has-file');
+      updateImagesData();
+    }
+  };
+
+  // Handle image uploads with enhanced debugging
   for (let i = 1; i <= 3; i++) {
     const fileInput = document.getElementById(`image-file-${i}`);
     const preview = document.getElementById(`image-preview-${i}`);
     const block = fileInput?.closest('.image-upload-block');
     
+    console.log(`🖼️ Setting up image ${i}:`, {
+      fileInput: !!fileInput,
+      preview: !!preview,
+      block: !!block
+    });
+    
     if (fileInput && preview) {
       fileInput.addEventListener('change', function(e) {
+        console.log(`📸 Image ${i} file selected:`, e.target.files[0]);
         const file = e.target.files[0];
         if (file) {
+          console.log(`📸 Reading file for preview: ${file.name}, size: ${file.size}`);
           const reader = new FileReader();
           reader.onload = function(e) {
-            preview.innerHTML = `<img src="${e.target.result}" alt="Uploaded image ${i}">`;
+            console.log(`📸 File loaded successfully, updating preview for image ${i}`);
+            preview.innerHTML = `<img src="${e.target.result}" alt="Uploaded image ${i}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 0.375rem;">`;
             preview.classList.add('has-image');
             block?.classList.add('has-upload');
+            console.log(`📸 Preview updated for image ${i}`);
             updateImagesData();
+          };
+          reader.onerror = function(e) {
+            console.error(`❌ Error reading file for image ${i}:`, e);
           };
           reader.readAsDataURL(file);
         }
+      });
+    } else {
+      console.warn(`⚠️ Missing elements for image ${i}:`, {
+        fileInput: !!fileInput,
+        preview: !!preview,
+        block: !!block
       });
     }
     
@@ -175,6 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const block = this.closest('.image-upload-block');
         if (this.value.trim()) {
           block?.classList.add('has-prompt');
+          console.log(`🤖 AI prompt added for image ${i}: ${this.value}`);
         } else {
           block?.classList.remove('has-prompt');
         }
@@ -184,8 +360,12 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   function updateImagesData() {
-    const imagesData = [];
+    const data = {
+      images: [],
+      design_reference: null
+    };
     
+    // Collect image data
     for (let i = 1; i <= 3; i++) {
       const fileInput = document.getElementById(`image-file-${i}`);
       const promptInput = document.getElementById(`image-prompt-${i}`);
@@ -205,12 +385,25 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       
       if (imageData.type !== 'none') {
-        imagesData.push(imageData);
+        data.images.push(imageData);
       }
     }
     
-    document.getElementById('images-data').value = JSON.stringify(imagesData);
-    console.log('📸 Updated images data:', imagesData);
+    // Collect design reference data
+    const designFileInput = document.getElementById('design-reference-file');
+    const designNotes = document.getElementById('design-notes');
+    
+    if (designFileInput?.files[0]) {
+      data.design_reference = {
+        filename: designFileInput.files[0].name,
+        size: designFileInput.files[0].size,
+        type: designFileInput.files[0].type,
+        notes: designNotes?.value.trim() || ''
+      };
+    }
+    
+    document.getElementById('images-data').value = JSON.stringify(data);
+    console.log('📸 Updated complete data:', data);
   }
 });
 </script>
