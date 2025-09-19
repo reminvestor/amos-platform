@@ -204,13 +204,15 @@
 </div>
 
 <style>
- .business-profile {
-   height: 100%;
-   display: flex;
-   flex-direction: column;
-   overflow: hidden; /* header sticks, inner scrolls */
-   padding: 1rem;
-   background: var(--scout-bg);
+/* Ensure custom color tokens are available inside this canvas even if global vars aren't loaded yet */
+.business-profile { --scout-tertiary: var(--scout-tertiary, #27244B); }
+.business-profile {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* header sticks, inner scrolls */
+  padding: 0 1rem 1rem; /* tighten top gap under page header */
+  background: var(--scout-bg);
  }
 
  .profile-content {
@@ -221,7 +223,7 @@
  }
 
 .profile-card {
-  background: var(--scout-secondary);
+  background: var(--scout-chat-bg);
   border-radius: 0.75rem;
   padding: 1.25rem;
   border: 1px solid var(--scout-border);
@@ -235,13 +237,42 @@
   padding-bottom: 0.5rem;
 }
 
+/* Form styling */
 .business-profile .form-label { color: var(--scout-text-muted); }
 .business-profile .form-control,
 .business-profile textarea,
 .business-profile .form-select {
   color: var(--scout-text);
-  background-color: var(--scout-secondary);
+  background-color: var(--scout-tertiary, #27244B) !important;
   border-color: var(--scout-border);
+}
+/* Ensure all inputs keep the lighter purple, even on focus/autofill */
+.business-profile input.form-control,
+.business-profile textarea.form-control,
+.business-profile select.form-select,
+.business-profile input[type="text"],
+.business-profile input[type="url"],
+.business-profile input[type="search"],
+.business-profile input[type="email"],
+.business-profile input[type="number"],
+.business-profile select, 
+.business-profile textarea { 
+  background-color: var(--scout-tertiary, #27244B) !important; 
+  background-clip: padding-box; 
+}
+.business-profile .form-control:focus,
+.business-profile .form-select:focus,
+.business-profile textarea:focus {
+  background-color: var(--scout-tertiary) !important;
+  border-color: var(--scout-primary);
+  box-shadow: 0 0 0 .15rem rgba(99, 102, 241, 0.15);
+}
+/* Tame browser autofill styles (WebKit) */
+.business-profile input.form-control:-webkit-autofill,
+.business-profile input.form-control:-webkit-autofill:hover,
+.business-profile input.form-control:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px var(--scout-tertiary) inset;
+  -webkit-text-fill-color: var(--scout-text);
 }
 
 .business-profile .form-control::placeholder,
@@ -252,7 +283,7 @@
 .business-profile .btn-outline-primary:hover { background: var(--scout-primary); color: #fff; }
 
 .existing-knowledge .existing-item {
-  background: var(--scout-secondary);
+  background: var(--scout-chat-bg);
   border: 1px solid var(--scout-border);
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
@@ -270,7 +301,7 @@
 .kb-saved-row { display: grid; grid-template-columns: 140px 1fr; gap: 1rem; align-items: start; }
 .kb-saved-label { color: var(--scout-text); font-weight: 600; padding-top: 0.6rem; }
 .kb-saved-content { }
-.kb-saved-box { background: var(--scout-secondary); border: 1px solid var(--scout-border); border-radius: .5rem; padding: .75rem 1rem; color: var(--scout-text); }
+.kb-saved-box { background: var(--scout-chat-bg); border: 1px solid var(--scout-border); border-radius: .5rem; padding: .75rem 1rem; color: var(--scout-text); }
 .kb-saved-box p { margin: 0; }
 /* Hide left label and collapse column while editing */
 .kb-saved-row.kb-editing { grid-template-columns: 1fr; }
@@ -293,20 +324,20 @@
  /* Match app scrollbar styling (scoped to scroll area) */
  .profile-content {
    scrollbar-width: thin; /* Firefox */
-   scrollbar-color: var(--scout-primary) var(--scout-secondary);
+   scrollbar-color: var(--scout-primary) var(--scout-chat-bg);
  }
 
  .profile-content::-webkit-scrollbar {
   width: 10px;
 }
  .profile-content::-webkit-scrollbar-track {
-  background: var(--scout-secondary);
+  background: var(--scout-chat-bg);
   border-left: 1px solid var(--scout-border);
 }
  .profile-content::-webkit-scrollbar-thumb {
   background-color: var(--scout-primary);
   border-radius: 8px;
-  border: 2px solid var(--scout-secondary);
+  border: 2px solid var(--scout-chat-bg);
 }
  .profile-content::-webkit-scrollbar-thumb:hover {
   background-color: var(--scout-primary-hover);
@@ -332,19 +363,19 @@
 .settings-tabs .nav-link:focus, .settings-tabs .nav-link:focus-visible { outline: none; box-shadow: none; }
 .settings-tabs .nav-link.active {
   color: var(--scout-text) !important;
-  background: var(--scout-secondary);
+  background: var(--scout-chat-bg);
   border-color: var(--scout-border);
 }
 
 /* Dark theme table overrides (remove white) */
 .business-profile .table { color: var(--scout-text); }
 .business-profile .table > :not(caption) > * > * {
-  background: var(--scout-secondary) !important;
+  background: var(--scout-chat-bg) !important;
   border-color: var(--scout-border) !important;
   color: var(--scout-text) !important;
 }
 .business-profile .table thead th {
-  background: var(--scout-secondary) !important;
+  background: var(--scout-chat-bg) !important;
   color: var(--scout-text) !important;
 }
 .business-profile .table tbody tr:hover > * {
@@ -352,7 +383,7 @@
 }
 
 /* Settings bar divider */
-.settings-bar { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--scout-border); padding-bottom: .5rem; background: var(--scout-bg); }
+.settings-bar { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--scout-border); padding-bottom: .5rem; background: var(--scout-bg); margin-top: -0.25rem; }
 </style>
 
 <script>
