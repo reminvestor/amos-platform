@@ -205,10 +205,7 @@ function toggleAutoRefresh(){
   console.log('Auto-refresh disabled - using real-time WebSocket updates');
 }
 
-function scoutCreateLandingPage() {
-  // Use new interactive workflow instead of old generator
-  window.scoutSendMessage?.('Create a landing page');
-}
+// scoutCreateLandingPage function is defined globally in scout_controller.js
 
 function scoutViewLandingPage(pageId) {
   // Load the landing page details canvas

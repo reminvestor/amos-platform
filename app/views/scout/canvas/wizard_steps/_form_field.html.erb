@@ -171,6 +171,11 @@
          <% if field['accept'] %>accept="<%= field['accept'] %>"<% end %>
          <% if field_required %>required<% end %>>
 
+<% when 'custom' %>
+  <% if field['template'] == 'image_upload_blocks' %>
+    <%= render partial: 'scout/canvas/wizard_steps/image_upload_blocks', locals: { field: field } %>
+  <% end %>
+
 <% else %>
   <!-- Fallback to text input -->
   <input type="text" 
