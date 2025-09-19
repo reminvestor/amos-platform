@@ -1,12 +1,19 @@
 <div class="scout-canvas business-profile">
-  <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h4 class="mb-1">
-        <i class="fas fa-cog text-primary me-2"></i>
-        Business Settings
-      </h4>
-      <p class="text-muted mb-0">Configure your business profile and brand information</p>
-    </div>
+
+  <!-- Top-level tabs: Business Profile / Members -->
+  <div class="settings-bar d-flex align-items-center justify-content-between mb-3">
+    <ul class="nav nav-tabs settings-tabs mb-0" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#tab-profile" type="button" role="tab">
+          <i class="fas fa-briefcase me-1"></i> Business Profile
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="members-tab" data-bs-toggle="tab" data-bs-target="#tab-members" type="button" role="tab">
+          <i class="fas fa-users me-1"></i> Members
+        </button>
+      </li>
+    </ul>
     <div class="d-flex gap-2">
       <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage('Please help me optimize my business profile')">
         <i class="fas fa-magic"></i> AI Optimize
@@ -14,140 +21,182 @@
     </div>
   </div>
 
+  <div class="profile-content tab-content">
+    <div class="tab-pane fade show active" id="tab-profile" role="tabpanel" aria-labelledby="profile-tab">
+
   <% business_profile ||= current_user.ensure_business_profile %>
 
-  <div class="card border-0 shadow-sm">
-    <div class="card-header bg-light">
-      <ul class="nav nav-tabs card-header-tabs" id="businessProfileTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
-            <i class="fas fa-building me-1"></i> Basic Info
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="brand-tab" data-bs-toggle="tab" data-bs-target="#brand" type="button" role="tab">
-            <i class="fas fa-paint-brush me-1"></i> Brand & Voice
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="knowledge-tab" data-bs-toggle="tab" data-bs-target="#knowledge" type="button" role="tab">
-            <i class="fas fa-brain me-1"></i> Knowledge Base
-          </button>
-        </li>
-      </ul>
-    </div>
-    
-    <div class="card-body">
-      <div class="tab-content" id="businessProfileTabsContent">
-        <!-- Basic Info Tab -->
-        <div class="tab-pane fade show active" id="basic" role="tabpanel">
-          <%= form_with model: business_profile, url: business_profile_path, method: :patch, local: false, id: "basic-info-form", class: "row g-3 needs-validation", novalidate: true, data: { turbo: false } do |f| %>
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <%= f.label :name, "Business Name", class: "form-label" %>
-                <%= f.text_field :name, class: "form-control", placeholder: "Your Business Name", required: true %>
-                <div class="invalid-feedback">Please provide a business name.</div>
-              </div>
-              <div class="col-md-6">
-                <%= f.label :industry, class: "form-label" %>
-                <%= f.text_field :industry, class: "form-control", placeholder: "e.g. Technology, Healthcare, Finance" %>
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <%= f.label :description, "Business Description", class: "form-label" %>
-              <%= f.text_area :description, class: "form-control", rows: 4, placeholder: "Describe your business, products, and services" %>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <%= f.label :founded_year, class: "form-label" %>
-                <%= f.number_field :founded_year, class: "form-control", placeholder: "e.g. 2010", min: 1800, max: Date.current.year %>
-              </div>
-              <div class="col-md-6">
-                <%= f.label :website, class: "form-label" %>
-                <%= f.url_field :website, class: "form-control", placeholder: "https://www.yourbusiness.com" %>
-              </div>
-            </div>
-
-            <div class="text-end">
-              <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save"></i> Save Basic Info
-              </button>
-            </div>
-          <% end %>
-        </div>
-
-        <!-- Brand & Voice Tab -->
-        <div class="tab-pane fade" id="brand" role="tabpanel">
-          <%= form_with model: business_profile, url: business_profile_path, method: :patch, local: false, id: "brand-form", class: "row g-3 needs-validation", novalidate: true, data: { turbo: false } do |f| %>
-            <div class="mb-3">
-              <%= f.label :values, "Core Values & Mission", class: "form-label" %>
-              <%= f.text_area :values, class: "form-control", rows: 4, placeholder: "Describe your business values, mission, and what you stand for" %>
-            </div>
-
-            <div class="mb-3">
-              <%= f.label :target_audience, "Target Audience", class: "form-label" %>
-              <%= f.text_area :target_audience, class: "form-control", rows: 4, placeholder: "Describe your ideal customers - demographics, interests, pain points" %>
-            </div>
-
-            <div class="mb-3">
-              <%= f.label :tone_of_voice, "Brand Voice", class: "form-label" %>
-              <%= f.text_area :tone_of_voice, class: "form-control", rows: 3, placeholder: "How should your brand communicate? Professional, friendly, authoritative, casual, etc." %>
-            </div>
-
-            <div class="text-end">
-              <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save"></i> Save Brand Info
-              </button>
-            </div>
-          <% end %>
-        </div>
-
-        <!-- Knowledge Base Tab -->
-        <div class="tab-pane fade" id="knowledge" role="tabpanel">
-          <div class="mb-4">
-            <h5><i class="fas fa-info-circle"></i> Knowledge Base</h5>
-            <p class="text-muted">Add specific information about your business that Scout can use to provide better assistance.</p>
+  <div class="profile-card border-0 shadow-sm">
+    <!-- Basic Info -->
+    <div class="section">
+      <h5 class="section-title">Basic Info</h5>
+      <%= form_with model: business_profile, url: business_profile_path, method: :patch, local: false, id: "basic-info-form", class: "row g-3", data: { turbo: false } do |f| %>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <%= f.label :name, "Business Name", class: "form-label" %>
+            <%= f.text_field :name, class: "form-control", placeholder: "Cool Company Inc", required: true %>
           </div>
+          <div class="col-md-6">
+            <%= f.label :industry, "Industry", class: "form-label" %>
+            <%= f.text_field :industry, class: "form-control", placeholder: "Technology" %>
+          </div>
+        </div>
 
-          <% if business_profile.knowledge_base.present? %>
-            <div class="mb-4">
-              <h6>Current Knowledge Sections:</h6>
-              <% business_profile.knowledge_base.each do |section, content| %>
-                <div class="card mb-2">
-                  <div class="card-body">
-                    <h6 class="card-title"><%= section.humanize %></h6>
-                    <p class="card-text"><%= truncate(content, length: 200) %></p>
-                    <button class="btn btn-sm btn-outline-danger" onclick="window.scoutSendMessage('Please remove the <%= section %> knowledge section')">
-                      <i class="fas fa-trash"></i> Remove
-                    </button>
+        <div class="row g-3 mt-0">
+          <div class="col-md-6">
+            <%= f.label :website, "Website URL", class: "form-label" %>
+            <%= f.url_field :website, class: "form-control", placeholder: "https://www.example.com" %>
+          </div>
+          <div class="col-md-6">
+            <%= f.label :founded_year, "Year Founded", class: "form-label" %>
+            <%= f.number_field :founded_year, class: "form-control", placeholder: "2010", min: 1800, max: Date.current.year %>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <%= f.label :description, "Business Description", class: "form-label" %>
+          <%= f.text_area :description, class: "form-control", rows: 4, placeholder: "A business focused on growth and creating the future." %>
+        </div>
+
+        <div class="text-end mt-3">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Basic Info</button>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Brand & Voice -->
+    <div class="section">
+      <h5 class="section-title">Brand & Voice</h5>
+      <%= form_with model: business_profile, url: business_profile_path, method: :patch, local: false, id: "brand-form", class: "row g-3", data: { turbo: false } do |f| %>
+        <div class="mb-3">
+          <%= f.label :values, "Core Values & Mission", class: "form-label" %>
+          <%= f.text_area :values, class: "form-control", rows: 4, placeholder: "Describe your business core values and mission" %>
+        </div>
+
+        <div class="mb-3">
+          <%= f.label :target_audience, "Target Audience", class: "form-label" %>
+          <%= f.text_area :target_audience, class: "form-control", rows: 4, placeholder: "Describe your ideal customer - demographics, interests, pain points, etc." %>
+        </div>
+
+        <div class="mb-3">
+          <%= f.label :tone_of_voice, "Brand Voice", class: "form-label" %>
+          <%= f.text_area :tone_of_voice, class: "form-control", rows: 3, placeholder: "How should your brand communicate? Friendly, Authoritative, etc." %>
+        </div>
+
+        <div class="text-end mt-1">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Brand Info</button>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Knowledge Base -->
+    <div class="section">
+      <h5 class="section-title">Knowledge Base</h5>
+
+      <% if business_profile.knowledge_base.present? %>
+        <div class="kb-saved mb-3">
+          <% business_profile.knowledge_base.each do |section, content| %>
+            <div class="kb-saved-row">
+              <div class="kb-saved-label"><%= section.humanize %></div>
+              <div class="kb-saved-content">
+                <div class="kb-saved-box d-flex justify-content-between align-items-center">
+                  <div class="me-3" style="white-space: pre-wrap;"><%= content %></div>
+                  <div>
+                    <button type="button" class="btn btn-outline-primary btn-sm kb-edit-btn" title="Edit" aria-label="Edit"><i class="fas fa-pen"></i></button>
                   </div>
                 </div>
-              <% end %>
+
+                <%= form_with url: add_knowledge_business_profile_path, method: :post, local: true, class: "kb-inline-form d-none mt-2" do %>
+                  <div class="kb-row">
+                    <div class="kb-label">Section</div>
+                    <div class="kb-input">
+                      <%= text_field_tag :section_name, section, class: "form-control", required: true %>
+                    </div>
+                  </div>
+                  <div class="kb-row mt-2">
+                    <div class="kb-label">Content</div>
+                    <div class="kb-input">
+                      <%= text_area_tag :content, content, class: "form-control", rows: 3, required: true %>
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-end gap-2 mt-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm kb-cancel-edit">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Save</button>
+                  </div>
+                <% end %>
+              </div>
             </div>
           <% end %>
+        </div>
+      <% end %>
 
-          <%= form_with url: add_knowledge_business_profile_path, method: :post, local: false, id: "knowledge-form", data: { turbo: false } do |f| %>
-            <div class="row mb-3">
-              <div class="col-md-4">
-                <%= text_field_tag :section_name, "", class: "form-control", placeholder: "Section name (e.g. Products, Services)" %>
-              </div>
-              <div class="col-md-6">
-                <%= text_area_tag :content, "", class: "form-control", rows: 2, placeholder: "Knowledge content..." %>
-              </div>
-              <div class="col-md-2">
-                <button type="submit" class="btn btn-outline-primary w-100">
-                  <i class="fas fa-plus"></i> Add
-                </button>
-              </div>
+      <div class="d-flex justify-content-end mb-2">
+        <button type="button" class="btn btn-add-section" id="kb-add-launch"><i class="fas fa-plus"></i> Add Section</button>
+      </div>
+
+      <div class="kb-grid kb-add-form d-none" id="kb-add-form">
+        <%= form_with url: add_knowledge_business_profile_path, method: :post, local: false, id: "kb-form", data: { turbo: false } do %>
+          <div class="kb-row">
+            <div class="kb-label">Section</div>
+            <div class="kb-input">
+              <%= text_field_tag :section_name, "", class: "form-control", id: "kb_section_name", placeholder: "Section name (e.g. Products, Services)", required: true %>
             </div>
-          <% end %>
-
-          <div class="alert alert-info">
-            <i class="fas fa-lightbulb"></i>
-            <strong>Tip:</strong> Add sections like "Products", "Services", "Company Culture", "Recent News" to help Scout provide more relevant assistance.
           </div>
+          <div class="kb-row">
+            <div class="kb-label">Content</div>
+            <div class="kb-input">
+              <%= text_area_tag :content, "", class: "form-control", id: "kb_content", rows: 3, placeholder: "Knowledge content...", required: true %>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-2">
+            <button type="button" class="btn btn-outline-secondary kb-add-cancel">Cancel</button>
+            <button type="submit" class="btn btn-add-section"><i class="fas fa-save"></i> Save</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-members" role="tabpanel" aria-labelledby="members-tab">
+      <div class="profile-card border-0 shadow-sm">
+        <h5 class="section-title">Members</h5>
+        <% members = (current_entity&.users || [current_user]) %>
+        <div class="table-responsive">
+          <table class="table align-middle" style="color: var(--scout-text)">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Onboarded</th>
+                <th>Joined</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% members.each do |m| %>
+                <tr>
+                  <td><%= [m.first_name, m.last_name].compact.join(' ').presence || '—' %></td>
+                  <td class="text-muted"><%= m.email %></td>
+                  <td><span class="badge bg-secondary"><%= m.role.presence || 'member' %></span></td>
+                  <td>
+                    <% if m.respond_to?(:onboarded?) && m.onboarded? %>
+                      <span class="badge bg-success">Yes</span>
+                    <% else %>
+                      <span class="badge bg-dark">No</span>
+                    <% end %>
+                  </td>
+                  <td class="text-muted"><%= m.created_at&.strftime('%Y-%m-%d') %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="d-flex justify-content-end mt-3">
+          <button class="btn btn-outline-primary" disabled title="Invite flow coming soon">
+            <i class="fas fa-user-plus"></i> Invite Member
+          </button>
         </div>
       </div>
     </div>
@@ -155,70 +204,208 @@
 </div>
 
 <style>
-.business-profile {
-  height: 100%;
-  overflow-y: auto;
+ .business-profile {
+   height: 100%;
+   display: flex;
+   flex-direction: column;
+   overflow: hidden; /* header sticks, inner scrolls */
+   padding: 1rem;
+   background: var(--scout-bg);
+ }
+
+ .profile-content {
+   flex: 1 1 auto;
+   min-height: 0; /* allow flex child to shrink for overflow */
+   overflow-y: auto;
+   padding-top: .5rem;
+ }
+
+.profile-card {
+  background: var(--scout-secondary);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--scout-border);
 }
 
-.business-profile .card-header {
-  border-bottom: 1px solid #e5e7eb;
+.section { margin-bottom: 1.5rem; }
+.section-title {
+  color: var(--scout-text);
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--scout-border);
+  padding-bottom: 0.5rem;
 }
 
-.business-profile .nav-tabs .nav-link {
-  color: #374151 !important;
-}
-
-.business-profile .nav-tabs .nav-link.active {
-  color: #ffffff !important;
-  background-color: #6366f1 !important;
-  border-color: #6366f1 !important;
-}
-
+.business-profile .form-label { color: var(--scout-text-muted); }
 .business-profile .form-control,
-.business-profile .form-select,
-.business-profile textarea {
-  color: #111827 !important;
-  background-color: #ffffff !important;
-  border-color: #d1d5db !important;
+.business-profile textarea,
+.business-profile .form-select {
+  color: var(--scout-text);
+  background-color: var(--scout-secondary);
+  border-color: var(--scout-border);
 }
 
 .business-profile .form-control::placeholder,
-.business-profile textarea::placeholder {
-  color: #9ca3af !important;
+.business-profile textarea::placeholder { color: var(--scout-text-muted); }
+
+.business-profile .btn-primary { background: var(--scout-primary); border-color: var(--scout-primary); }
+.business-profile .btn-outline-primary { color: var(--scout-primary); border-color: var(--scout-primary); }
+.business-profile .btn-outline-primary:hover { background: var(--scout-primary); color: #fff; }
+
+.existing-knowledge .existing-item {
+  background: var(--scout-secondary);
+  border: 1px solid var(--scout-border);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  color: var(--scout-text);
+  margin-bottom: 0.5rem;
 }
 
-.business-profile .form-text,
-.business-profile .text-muted {
-  color: #6b7280 !important;
+.kb-grid { display: grid; gap: 1rem; }
+.kb-row { display: grid; grid-template-columns: 140px 1fr; gap: 1rem; align-items: start; }
+.kb-label { color: var(--scout-text-muted); padding-top: 0.5rem; }
+.kb-input textarea { min-height: 60px; }
+
+/* Saved knowledge layout (label left, content right) */
+.kb-saved { display: grid; gap: 1rem; }
+.kb-saved-row { display: grid; grid-template-columns: 140px 1fr; gap: 1rem; align-items: start; }
+.kb-saved-label { color: var(--scout-text); font-weight: 600; padding-top: 0.6rem; }
+.kb-saved-content { }
+.kb-saved-box { background: var(--scout-secondary); border: 1px solid var(--scout-border); border-radius: .5rem; padding: .75rem 1rem; color: var(--scout-text); }
+.kb-saved-box p { margin: 0; }
+/* Hide left label and collapse column while editing */
+.kb-saved-row.kb-editing { grid-template-columns: 1fr; }
+.kb-saved-row.kb-editing .kb-saved-label { display: none; }
+
+/* Add Section button variant */
+.btn-add-section { color: var(--scout-primary); border: 1px solid var(--scout-primary); background: transparent; }
+.btn-add-section:hover { background: var(--scout-primary); color: #fff; }
+
+/* Inline KB editor trigger */
+.kb-edit-btn { color: var(--scout-primary); border-color: var(--scout-primary); }
+.kb-edit-btn:hover { background: var(--scout-primary); color: #fff; }
+
+/* Small helper: when editing, highlight the form */
+.kb-editing #kb_section_name, .kb-editing #kb_content { border-color: var(--scout-primary); box-shadow: 0 0 0 .2rem rgba(99,102,241,.15); }
+
+/* Inline form visibility */
+.kb-inline-form.d-none { display: none; }
+
+ /* Match app scrollbar styling (scoped to scroll area) */
+ .profile-content {
+   scrollbar-width: thin; /* Firefox */
+   scrollbar-color: var(--scout-primary) var(--scout-secondary);
+ }
+
+ .profile-content::-webkit-scrollbar {
+  width: 10px;
+}
+ .profile-content::-webkit-scrollbar-track {
+  background: var(--scout-secondary);
+  border-left: 1px solid var(--scout-border);
+}
+ .profile-content::-webkit-scrollbar-thumb {
+  background-color: var(--scout-primary);
+  border-radius: 8px;
+  border: 2px solid var(--scout-secondary);
+}
+ .profile-content::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scout-primary-hover);
 }
 
-.business-profile .btn-outline-secondary {
-  color: #374151 !important;
-  border-color: #d1d5db !important;
-  background-color: #ffffff !important;
+/* Top-level settings tabs color tuning */
+.settings-tabs { border-bottom: 0; gap: .75rem; }
+.settings-tabs .nav-item { flex: 0 0 auto; background: transparent; }
+.settings-tabs .nav-link {
+  display: inline-flex; align-items: center; gap: .5rem;
+  color: var(--scout-primary) !important; /* neon purple accent */
+  background: transparent;
+  border: 1px solid var(--scout-border);
+  border-radius: .75rem;
+  padding: .55rem 1rem;
+  box-shadow: none;
+}
+.settings-tabs .nav-link:hover {
+  background: var(--scout-primary);
+  color: #fff !important;
+  border-color: var(--scout-primary);
+}
+.settings-tabs .nav-link:focus, .settings-tabs .nav-link:focus-visible { outline: none; box-shadow: none; }
+.settings-tabs .nav-link.active {
+  color: var(--scout-text) !important;
+  background: var(--scout-secondary);
+  border-color: var(--scout-border);
 }
 
-.business-profile .btn-outline-secondary:hover {
-  color: #ffffff !important;
-  background-color: #374151 !important;
-  border-color: #374151 !important;
+/* Dark theme table overrides (remove white) */
+.business-profile .table { color: var(--scout-text); }
+.business-profile .table > :not(caption) > * > * {
+  background: var(--scout-secondary) !important;
+  border-color: var(--scout-border) !important;
+  color: var(--scout-text) !important;
+}
+.business-profile .table thead th {
+  background: var(--scout-secondary) !important;
+  color: var(--scout-text) !important;
+}
+.business-profile .table tbody tr:hover > * {
+  background: var(--scout-nav-hover) !important;
 }
 
-.business-profile .btn-outline-danger {
-  color: #b91c1c !important;
-  border-color: #fecaca !important;
-  background-color: #ffffff !important;
-}
-
-.business-profile .btn-outline-danger:hover {
-  color: #ffffff !important;
-  background-color: #dc2626 !important;
-  border-color: #dc2626 !important;
-}
-
-.business-profile .alert-info {
-  background-color: #e0f2fe;
-  border-color: #bae6fd;
-  color: #0c4a6e;
-}
+/* Settings bar divider */
+.settings-bar { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--scout-border); padding-bottom: .5rem; background: var(--scout-bg); }
 </style>
+
+<script>
+  // Basic inline edit handler for Knowledge Base saved items
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.kb-edit-btn');
+    if (btn) {
+      const container = btn.closest('.kb-saved-content');
+      if (!container) return;
+      const displayBox = container.querySelector('.kb-saved-box');
+      const inlineForm = container.querySelector('.kb-inline-form');
+      const row = btn.closest('.kb-saved-row');
+      if (!inlineForm || !displayBox) return;
+      displayBox.classList.add('d-none');
+      inlineForm.classList.remove('d-none');
+      if (row) row.classList.add('kb-editing');
+      inlineForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    const cancel = e.target.closest('.kb-cancel-edit');
+    if (cancel) {
+      const container = cancel.closest('.kb-saved-content');
+      const displayBox = container.querySelector('.kb-saved-box');
+      const inlineForm = container.querySelector('.kb-inline-form');
+      const row = cancel.closest('.kb-saved-row');
+      inlineForm.classList.add('d-none');
+      displayBox.classList.remove('d-none');
+      if (row) row.classList.remove('kb-editing');
+    }
+
+    const launchAdd = e.target.closest('#kb-add-launch');
+    if (launchAdd) {
+      const formWrap = document.getElementById('kb-add-form');
+      if (formWrap) {
+        formWrap.classList.remove('d-none');
+        const name = document.getElementById('kb_section_name');
+        if (name) name.focus();
+      }
+      // hide the Add Section button while editing a new section
+      const addBtn = document.getElementById('kb-add-launch');
+      if (addBtn) addBtn.classList.add('d-none');
+      return;
+    }
+
+    const cancelAdd = e.target.closest('.kb-add-cancel');
+    if (cancelAdd) {
+      const formWrap = document.getElementById('kb-add-form');
+      if (formWrap) formWrap.classList.add('d-none');
+      // show the Add Section button again
+      const addBtn = document.getElementById('kb-add-launch');
+      if (addBtn) addBtn.classList.remove('d-none');
+      return;
+    }
+  });
+</script>
