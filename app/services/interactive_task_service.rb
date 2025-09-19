@@ -300,8 +300,8 @@ class InteractiveTaskService
           id: 'collect_design_preferences',
           type: 'user_input',
           config: {
-            title: 'Design Preferences',
-            description: 'Choose the look and feel for your landing page',
+            title: 'Design Preferences & Images',
+            description: 'Choose the look, feel, and images for your landing page',
             fields: [
               { 
                 name: 'theme', 
@@ -323,22 +323,6 @@ class InteractiveTaskService
                 label: 'Primary Color (optional)',
                 placeholder: '#2563eb'
               },
-              { 
-                name: 'style_notes', 
-                type: 'textarea', 
-                label: 'Additional Style Notes',
-                placeholder: 'Any specific design requirements or preferences?'
-              }
-            ]
-          }
-        },
-        {
-          id: 'collect_images',
-          type: 'user_input',
-          config: {
-            title: 'Images & Media',
-            description: 'Add images to make your landing page visually compelling',
-            fields: [
               {
                 name: 'image_preference',
                 type: 'select',
@@ -364,7 +348,14 @@ class InteractiveTaskService
                 type: 'textarea',
                 label: 'Describe the images you need',
                 placeholder: 'e.g., "Professional team photo, product showcase, office environment"',
+                rows: 3,
                 show_when: { image_preference: 'ai_generate' }
+              },
+              { 
+                name: 'style_notes', 
+                type: 'textarea', 
+                label: 'Additional Style Notes',
+                placeholder: 'Any specific design requirements or preferences?'
               }
             ]
           }
@@ -393,7 +384,7 @@ class InteractiveTaskService
             description: 'Process and generate images for your landing page',
             inputs: {
               _resolve_from_steps: {
-                image_preferences: ['collect_images'],
+                image_preferences: ['collect_design_preferences'],
                 business_info: ['analyze_context', 'collect_specific_info'],
                 user_id: @user.id,
                 entity_id: @entity.id
@@ -402,7 +393,7 @@ class InteractiveTaskService
             conditional: {
               field: 'image_preference',
               values: ['ai_generate', 'upload_own'],
-              source_step: 'collect_images'
+              source_step: 'collect_design_preferences'
             }
           }
         },

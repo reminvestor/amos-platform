@@ -6,7 +6,18 @@
   field_placeholder = field['placeholder'] || field[:placeholder] || ''
   field_options = field['options'] || field[:options] || []
   field_descriptions = field['descriptions'] || field[:descriptions] || {}
+  show_when = field['show_when'] || field[:show_when]
+  
+  # Generate conditional display attributes
+  conditional_attrs = ""
+  if show_when
+    show_when.each do |trigger_field, trigger_value|
+      conditional_attrs += " data-show-when-field='#{trigger_field}' data-show-when-value='#{trigger_value}'"
+    end
+  end
 %>
+
+<div class="form-field-container"<%= conditional_attrs.html_safe %> <% if show_when %>style="display: none;"<% end %>>
 
 <label for="<%= field_name %>" class="form-label">
   <%= field_label %>
@@ -181,3 +192,30 @@
 <div class="invalid-feedback">
   Please provide a valid <%= field_label.downcase %>.
 </div>
+
+</div> <!-- End form-field-container -->
+
+<% if show_when %>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  <% show_when.each do |trigger_field, trigger_value| %>
+    const triggerField = document.getElementById('<%= trigger_field %>');
+    const targetContainer = document.querySelector('[data-show-when-field="<%= trigger_field %>"][data-show-when-value="<%= trigger_value %>"]');
+    
+    if (triggerField && targetContainer) {
+      function toggleConditionalField() {
+        if (triggerField.value === '<%= trigger_value %>') {
+          targetContainer.style.display = 'block';
+        } else {
+          targetContainer.style.display = 'none';
+        }
+      }
+      
+      triggerField.addEventListener('change', toggleConditionalField);
+      // Initial check
+      toggleConditionalField();
+    }
+  <% end %>
+});
+</script>
+<% end %>

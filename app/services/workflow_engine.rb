@@ -589,7 +589,7 @@ class WorkflowEngine
         Rails.logger.info "✅ Found design_preferences: #{result[:design_preferences].inspect}"
         
       when 'image_preferences'
-        image_data = find_step_data('collect_images', execution_history)
+        image_data = find_step_data('collect_design_preferences', execution_history)
         if image_data
           if image_data.is_a?(ActionController::Parameters)
             image_data = JSON.parse(image_data.to_json)
