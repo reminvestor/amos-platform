@@ -1,121 +1,152 @@
-<!-- Onboarding Chat Interface - Consistent with Main App -->
-<div class="container-fluid h-100">
-  <div class="row h-100">
-    <!-- Main Content Area -->
-    <div class="col-12">
-      <!-- Header with Branding -->
-      <div class="d-flex justify-content-between align-items-center py-3 border-bottom bg-light">
-        <div class="d-flex align-items-center">
-          <h4 class="mb-0 text-primary fw-bold">
-            <i class="fas fa-rocket me-2"></i>
-            Welcome to Crux Marketing!
-          </h4>
-          <span class="badge bg-primary ms-2">Onboarding</span>
+<!-- Onboarding Interface - Guided AI Experience -->
+<div class="auth-workspace">
+  <!-- Left Panel - AI Guidance & Tips -->
+  <div class="auth-sidebar">
+    <div class="auth-brand">
+      <div class="brand-logo">
+        <i class="fas fa-cube text-primary"></i>
+        <span class="brand-text">Crux Marketing</span>
+      </div>
+      <p class="brand-tagline">Getting Scout acquainted with your business</p>
+    </div>
+    
+    <div class="auth-features">
+      <h4 class="mb-4">🤖 Meet Scout, Your AI Marketing Agent</h4>
+      <div class="feature-list">
+        <div class="feature-item">
+          <i class="fas fa-comments text-primary"></i>
+          <div>
+            <strong>Conversational Learning</strong>
+            <p>Scout learns about your business through natural conversation. Just chat like you would with a colleague!</p>
+          </div>
         </div>
-        <div class="text-muted">
+        <div class="feature-item">
+          <i class="fas fa-brain text-success"></i>
+          <div>
+            <strong>Intelligent Adaptation</strong>
+            <p>The more Scout knows about your business, the better recommendations and content it can create.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <i class="fas fa-magic text-warning"></i>
+          <div>
+            <strong>Instant Marketing Materials</strong>
+            <p>Once Scout understands your business, it can create landing pages, emails, and campaigns in seconds.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <i class="fas fa-chart-line text-info"></i>
+          <div>
+            <strong>Continuous Optimization</strong>
+            <p>Scout analyzes performance and suggests improvements to help your marketing efforts succeed.</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="guidance-tips mt-4 p-3" style="background: rgba(99, 102, 241, 0.1); border-radius: 0.5rem; border-left: 4px solid var(--scout-primary);">
+        <h6 class="text-primary mb-2">💡 Pro Tips</h6>
+        <ul class="mb-0 small" style="list-style: none; padding: 0; color: var(--scout-text-muted, #9ca3af);">
+          <li class="mb-2">• Share your industry, target audience, and what makes your business unique</li>
+          <li class="mb-2">• Mention your goals - lead generation, sales, brand awareness, etc.</li>
+          <li class="mb-2">• Tell Scout about your current marketing challenges</li>
+          <li>• Don't worry about being perfect - Scout will ask follow-up questions!</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Right Panel - Chat Interface -->
+  <div class="auth-content">
+    <div class="onboarding-chat-container">
+      <!-- Header with User Info -->
+      <div class="onboarding-header">
+        <div class="header-title">
+          <h2>Welcome to Crux Marketing! 🚀</h2>
+          <p class="text-muted mb-0">Let's get Scout acquainted with your business</p>
+        </div>
+        <div class="header-user">
           <i class="fas fa-user-circle me-2"></i>
           <%= current_user.full_name %>
         </div>
       </div>
       
-      <!-- Welcome Banner -->
-      <div class="alert alert-primary border-0 rounded-0 mb-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);">
-        <div class="text-center text-white py-3">
-          <h5 class="mb-2">🚀 Let's Get Started!</h5>
-          <p class="mb-0">Scout is your AI marketing agent who will learn about your business and help you succeed across all marketing channels. This will only take a few minutes!</p>
+      <!-- Chat Messages -->
+      <div class="chat-messages" id="chat-messages">
+        <% @conversation_history.each do |message| %>
+          <div class="message <%= message[:role] %>-message" data-message-id="<%= message[:id] || "msg-#{Time.current.to_i}" %>">
+            <div class="message-avatar">
+              <% if message[:role] == 'assistant' %>
+                <div class="avatar-circle bg-gradient-primary">
+                  <i class="fas fa-robot text-white"></i>
+                </div>
+              <% else %>
+                <div class="avatar-circle bg-secondary">
+                  <i class="fas fa-user text-white"></i>
+                </div>
+              <% end %>
+            </div>
+            <div class="message-content">
+              <div class="message-bubble">
+                <% if message[:role] == 'assistant' %>
+                  <div class="message-header">
+                    <strong class="text-primary">Scout</strong>
+                    <small class="text-muted ms-2">
+                      <%= Time.parse(message[:timestamp]).strftime("%I:%M %p") rescue Time.current.strftime("%I:%M %p") %>
+                    </small>
+                  </div>
+                <% end %>
+                <div class="message-text">
+                  <%= simple_format(h(message[:content])) %>
+                </div>
+                <% if message[:role] == 'user' %>
+                  <div class="message-time">
+                    <small class="text-muted">
+                      <%= Time.parse(message[:timestamp]).strftime("%I:%M %p") rescue Time.current.strftime("%I:%M %p") %>
+                    </small>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+        
+        <!-- Typing Indicator -->
+        <div id="typing-indicator" class="message assistant-message" style="display: none;">
+          <div class="message-avatar">
+            <div class="avatar-circle bg-gradient-primary">
+              <i class="fas fa-robot text-white"></i>
+            </div>
+          </div>
+          <div class="message-content">
+            <div class="message-bubble">
+              <div class="message-header">
+                <strong class="text-primary">Scout</strong>
+              </div>
+              <div class="typing-dots">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
-      <!-- Chat Interface -->
-      <div class="d-flex flex-column" style="height: calc(100vh - 200px);">
-        <!-- Messages Area -->
-        <div id="onboarding-messages" class="flex-grow-1 overflow-auto p-3" style="background: #f8f9fa;">
-          <% @conversation_history.each do |message| %>
-            <div class="d-flex mb-3 <%= message[:role] == 'user' ? 'justify-content-end' : 'justify-content-start' %>">
-              <div class="d-flex align-items-start gap-2 <%= message[:role] == 'user' ? 'flex-row-reverse' : '' %>" style="max-width: 75%;">
-                <!-- Avatar -->
-                <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
-                     style="width: 40px; height: 40px; background: <%= message[:role] == 'user' ? '#6c757d' : 'linear-gradient(45deg, #ff6b6b, #ff8e8e)' %>; flex-shrink: 0;">
-                  <i class="fas fa-<%= message[:role] == 'user' ? 'user' : 'robot' %>"></i>
-                </div>
-                
-                <!-- Message Bubble -->
-                <div class="card border-0 shadow-sm">
-                  <div class="card-body p-3" style="background: <%= message[:role] == 'user' ? '#e3f2fd' : 'white' %>;">
-                    <% if message[:role] == 'assistant' %>
-                      <div class="mb-2">
-                        <small class="text-primary fw-bold">
-                          <i class="fas fa-robot me-1"></i>Scout
-                        </small>
-                      </div>
-                    <% end %>
-                    <div class="message-text">
-                      <%= simple_format(h(message[:content])) %>
-                    </div>
-                    <div class="mt-2">
-                      <small class="text-muted">
-                        <%= Time.parse(message[:timestamp]).strftime("%I:%M %p") rescue Time.current.strftime("%I:%M %p") %>
-                      </small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          <% end %>
-          
-          <!-- Typing Indicator -->
-          <div id="onboarding-typing" class="d-flex justify-content-start mb-3" style="display: none !important;">
-            <div class="d-flex align-items-start gap-2" style="max-width: 75%;">
-              <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
-                   style="width: 40px; height: 40px; background: linear-gradient(45deg, #ff6b6b, #ff8e8e); flex-shrink: 0;">
-                <i class="fas fa-robot"></i>
-              </div>
-              <div class="card border-0 shadow-sm">
-                <div class="card-body p-3">
-                  <div class="mb-2">
-                    <small class="text-primary fw-bold">
-                      <i class="fas fa-robot me-1"></i>Scout
-                    </small>
-                  </div>
-                  <div class="text-muted">
-                    <span>Scout is thinking</span>
-                    <span class="typing-dots ms-2">
-                      <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <!-- Chat Input -->
+      <div class="chat-input-area">
+        <form id="message-form">
+          <div class="input-group">
+            <textarea 
+              class="chat-input" 
+              id="message-input"
+              placeholder="Tell Scout about your business - industry, goals, challenges..." 
+              rows="1"
+              maxlength="1000"></textarea>
+            <button type="submit" class="send-btn" id="send-button">
+              <i class="fas fa-paper-plane"></i>
+            </button>
           </div>
-        </div>
-        
-        <!-- Input Area -->
-        <div class="border-top bg-white p-3">
-          <form id="onboarding-form">
-            <div class="input-group">
-              <textarea 
-                id="onboarding-message-input" 
-                class="form-control"
-                placeholder="Tell Scout about your business..." 
-                maxlength="1000"
-                rows="1"
-                style="resize: none; min-height: 42px; max-height: 150px;"></textarea>
-              <button type="submit" 
-                      id="onboarding-send-button"
-                      class="btn btn-primary">
-                <i class="fas fa-paper-plane"></i>
-              </button>
-            </div>
-          </form>
-          
-          <!-- Security Notice -->
-          <div class="text-center mt-2">
-            <small class="text-muted">
-              <i class="fas fa-shield-alt me-1"></i>
-              Your information is secure and will only be used to personalize your experience
-            </small>
-          </div>
-        </div>
+        </form>
       </div>
     </div>
   </div>
@@ -124,12 +155,12 @@
 <!-- Completion Modal -->
 <div class="modal fade" id="completion-modal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
+    <div class="modal-content bg-dark text-white">
       <div class="modal-body p-5 text-center">
         <div class="mb-4">
-          <div class="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center text-white" 
+          <div class="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center" 
                style="width: 80px; height: 80px; background: linear-gradient(45deg, #28a745, #20c997);">
-            <i class="fas fa-check" style="font-size: 2rem;"></i>
+            <i class="fas fa-check text-white" style="font-size: 2rem;"></i>
           </div>
           <h4 class="fw-bold mb-2">🎉 Perfect! You're all set!</h4>
           <p class="text-muted">Scout now knows about your business and is ready to help you succeed with comprehensive marketing strategies.</p>
@@ -145,8 +176,216 @@
 </div>
 
 <style>
-/* Minimal inline styles for typing animation only */
+/* Onboarding-Specific Styles - Using Auth Layout Pattern */
+.auth-workspace {
+  height: 100vh;
+  display: flex;
+  background: var(--scout-bg, #1a1d23);
+  color: var(--scout-text, #e9ecef);
+  overflow: hidden;
+}
+
+.auth-sidebar {
+  width: 450px;
+  background: var(--scout-secondary, #2c3034);
+  padding: 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  border-right: 1px solid var(--scout-border, #404448);
+  overflow-y: auto;
+}
+
+.auth-brand {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.brand-logo i {
+  font-size: 2.5rem;
+  color: var(--scout-primary, #6366f1);
+}
+
+.brand-tagline {
+  color: var(--scout-text-muted, #9ca3af);
+  margin: 0;
+  font-size: 1rem;
+}
+
+.auth-features h4 {
+  color: white;
+  font-weight: 600;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.feature-item i {
+  font-size: 1.5rem;
+  margin-top: 0.25rem;
+}
+
+.feature-item strong {
+  color: white;
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.feature-item p {
+  color: var(--scout-text-muted, #9ca3af);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.guidance-tips h6 {
+  font-weight: 600;
+}
+
+.auth-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--scout-bg, #1a1d23);
+  height: 100vh;
+  position: relative;
+}
+
+.onboarding-chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+.onboarding-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--scout-border, #404448);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--scout-secondary, #2c3034);
+}
+
+.header-title h2 {
+  color: white;
+  font-weight: 700;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.header-user {
+  color: var(--scout-text-muted, #9ca3af);
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  padding-bottom: 120px; /* Space for fixed input area */
+  background: var(--scout-bg, #1a1d23);
+  min-height: 0;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 1.5rem;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.user-message {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+.message-avatar {
+  flex-shrink: 0;
+}
+
+.avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bg-gradient-primary {
+  background: linear-gradient(45deg, var(--scout-primary, #6366f1), #8b5cf6);
+}
+
+.message-content {
+  max-width: 70%;
+}
+
+.message-bubble {
+  background: var(--scout-secondary, #2c3034);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--scout-border, #404448);
+}
+
+.user-message .message-bubble {
+  background: var(--scout-primary, #6366f1);
+  color: white;
+}
+
+.message-header {
+  margin-bottom: 0.5rem;
+}
+
+.message-text p {
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.message-text p:last-child {
+  margin-bottom: 0;
+}
+
+.message-time {
+  margin-top: 0.5rem;
+  text-align: right;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
 .typing-dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--scout-primary, #6366f1);
   opacity: 0;
   animation: typingDots 1.4s infinite;
 }
@@ -160,13 +399,121 @@
 }
 
 @keyframes typingDots {
-  0%, 60%, 100% { opacity: 0; }
+  0%, 60%, 100% { opacity: 0.3; }
   30% { opacity: 1; }
 }
 
-/* Auto-resize textarea styles */
-.onboarding-textarea {
-  transition: height 0.1s ease;
+.chat-input-area {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid var(--scout-border, #404448);
+  background: var(--scout-secondary, #2c3034);
+  flex-shrink: 0;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--scout-bg, #1a1d23);
+  border: 1px solid var(--scout-border, #404448);
+  color: var(--scout-text, #e9ecef);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  resize: none;
+  min-height: 42px;
+  max-height: 150px;
+  overflow-y: hidden;
+  transition: all 0.2s ease;
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: var(--scout-primary, #6366f1);
+  box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+}
+
+.chat-input::placeholder {
+  color: var(--scout-text-muted, #9ca3af);
+}
+
+.send-btn {
+  background: var(--scout-primary, #6366f1);
+  border: none;
+  color: white;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.send-btn:hover {
+  background: #5855eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.send-btn:disabled {
+  background: var(--scout-text-muted, #9ca3af);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .auth-workspace {
+    flex-direction: column;
+  }
+  
+  .auth-sidebar {
+    width: 100%;
+    padding: 1.5rem;
+    max-height: 40vh;
+  }
+  
+  .auth-features .feature-list {
+    gap: 1rem;
+  }
+  
+  .feature-item {
+    gap: 0.75rem;
+  }
+  
+  .guidance-tips {
+    display: none;
+  }
+  
+  .onboarding-header {
+    padding: 1rem 1.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .chat-messages {
+    padding: 1.5rem;
+    max-height: calc(100vh - 300px);
+  }
+  
+  .chat-input-area {
+    padding: 1rem 1.5rem;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+  
+  .message-content {
+    max-width: 85%;
+  }
 }
 </style>
 
@@ -174,14 +521,14 @@
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 Onboarding: DOMContentLoaded event fired');
   
-  const chatForm = document.getElementById('onboarding-form');
-  const messageInput = document.getElementById('onboarding-message-input');
-  const sendButton = document.getElementById('onboarding-send-button');
-  const chatMessages = document.getElementById('onboarding-messages');
-  const typingIndicator = document.getElementById('onboarding-typing');
+  const messageForm = document.getElementById('message-form');
+  const messageInput = document.getElementById('message-input');
+  const sendButton = document.getElementById('send-button');
+  const chatMessages = document.getElementById('chat-messages');
+  const typingIndicator = document.getElementById('typing-indicator');
   
   console.log('📋 Onboarding elements found:', {
-    chatForm: !!chatForm,
+    messageForm: !!messageForm,
     messageInput: !!messageInput,
     sendButton: !!sendButton,
     chatMessages: !!chatMessages,
@@ -189,7 +536,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // Check if all required elements exist
-  if (!chatForm || !messageInput || !sendButton || !chatMessages) {
+  if (!messageForm || !messageInput || !sendButton || !chatMessages) {
     console.error('❌ Onboarding: Missing required elements');
     return;
   }
@@ -204,9 +551,11 @@ document.addEventListener('DOMContentLoaded', function() {
   // Scroll to bottom initially
   scrollToBottom();
   
-  // Auto-resize textarea
+  // Auto-resize textarea (same as main Scout interface)
   function autoResizeTextarea() {
     try {
+      if (!messageInput) return;
+      
       messageInput.style.height = 'auto';
       const scrollHeight = messageInput.scrollHeight;
       const newHeight = Math.min(Math.max(scrollHeight, 42), 150);
@@ -223,22 +572,29 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   // Add auto-resize event listeners
-  messageInput.addEventListener('input', autoResizeTextarea);
-  messageInput.addEventListener('paste', () => setTimeout(autoResizeTextarea, 10));
+  if (messageInput) {
+    messageInput.addEventListener('input', autoResizeTextarea);
+    messageInput.addEventListener('paste', () => setTimeout(autoResizeTextarea, 10));
+    setTimeout(autoResizeTextarea, 100);
+  }
   
   // Handle form submission
-  chatForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    sendMessage();
-  });
-  
-  // Handle Enter key (send on Enter, new line on Shift+Enter)
-  messageInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  if (messageForm) {
+    messageForm.addEventListener('submit', function(e) {
       e.preventDefault();
       sendMessage();
-    }
-  });
+    });
+  }
+  
+  // Handle Enter key (send on Enter, new line on Shift+Enter)
+  if (messageInput) {
+    messageInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  }
   
   function sendMessage() {
     try {
@@ -248,7 +604,7 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('🚀 Sending message:', message);
       
       // Add user message to chat
-      addMessageToChat('user', message);
+      addMessage(message, 'user');
       
       // Clear input and disable form
       messageInput.value = '';
@@ -278,9 +634,9 @@ document.addEventListener('DOMContentLoaded', function() {
         hideTypingIndicator();
         
         if (data.error) {
-          addMessageToChat('assistant', 'Sorry, I had trouble processing that. Could you try again?');
+          addMessage('Sorry, I had trouble processing that. Could you try again?', 'assistant');
         } else {
-          addMessageToChat('assistant', data.message);
+          addMessage(data.message, 'assistant');
           
           // Check if onboarding is complete
           if (data.completed) {
@@ -296,7 +652,7 @@ document.addEventListener('DOMContentLoaded', function() {
       .catch(error => {
         console.error('❌ Fetch error:', error);
         hideTypingIndicator();
-        addMessageToChat('assistant', "I'm having trouble connecting. Please try again.");
+        addMessage("I'm having trouble connecting. Please try again.", 'assistant');
         setFormState(true);
         messageInput.focus();
       });
@@ -306,36 +662,47 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  function addMessageToChat(role, content) {
+  // Use the same addMessage function as main Scout interface
+  function addMessage(content, role, timestamp = null) {
     try {
-      const isUser = role === 'user';
-      const now = new Date();
-      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      const time = timestamp ? new Date(timestamp) : new Date();
+      const timeString = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       
-      const messageHTML = `
-        <div class="d-flex mb-3 ${isUser ? 'justify-content-end' : 'justify-content-start'}">
-          <div class="d-flex align-items-start gap-2 ${isUser ? 'flex-row-reverse' : ''}" style="max-width: 75%;">
-            <div class="rounded-circle d-flex align-items-center justify-content-center text-white" 
-                 style="width: 40px; height: 40px; background: ${isUser ? '#6c757d' : 'linear-gradient(45deg, #ff6b6b, #ff8e8e)'}; flex-shrink: 0;">
-              <i class="fas fa-${isUser ? 'user' : 'robot'}"></i>
-            </div>
-            <div class="card border-0 shadow-sm">
-              <div class="card-body p-3" style="background: ${isUser ? '#e3f2fd' : 'white'};">
-                ${!isUser ? '<div class="mb-2"><small class="text-primary fw-bold"><i class="fas fa-robot me-1"></i>Scout</small></div>' : ''}
-                <div class="message-text">${content.replace(/\n/g, '<br>')}</div>
-                <div class="mt-2">
-                  <small class="text-muted">${timeString}</small>
-                </div>
+      const messageElement = document.createElement('div');
+      messageElement.className = `message ${role}-message`;
+      messageElement.setAttribute('data-message-id', messageId);
+      
+      const isAssistant = role === 'assistant';
+      
+      messageElement.innerHTML = `
+        <div class="message-avatar">
+          <div class="avatar-circle ${isAssistant ? 'bg-gradient-primary' : 'bg-secondary'}">
+            <i class="fas fa-${isAssistant ? 'robot' : 'user'} text-white"></i>
+          </div>
+        </div>
+        <div class="message-content">
+          <div class="message-bubble">
+            ${isAssistant ? `
+              <div class="message-header">
+                <strong class="text-primary">Scout</strong>
+                <small class="text-muted ms-2">${timeString}</small>
               </div>
-            </div>
+            ` : ''}
+            <div class="message-text">${content.replace(/\n/g, '<br>')}</div>
+            ${!isAssistant ? `
+              <div class="message-time">
+                <small class="text-muted">${timeString}</small>
+              </div>
+            ` : ''}
           </div>
         </div>
       `;
       
-      chatMessages.insertAdjacentHTML('beforeend', messageHTML);
+      chatMessages.appendChild(messageElement);
       scrollToBottom();
     } catch (e) {
-      console.error('❌ Error adding message to chat:', e);
+      console.error('❌ Error adding message:', e);
     }
   }
   
@@ -368,10 +735,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (sendButton) {
         if (enabled) {
           sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
-          sendButton.className = 'btn btn-primary';
+          sendButton.className = 'send-btn';
         } else {
           sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-          sendButton.className = 'btn btn-secondary';
+          sendButton.className = 'send-btn';
         }
       }
     } catch (e) {
@@ -398,11 +765,11 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch (e) {
       console.error('❌ Error showing completion modal:', e);
       // Fallback - redirect directly
-      window.location.href = '/onboarding/complete';
+      completeOnboarding();
     }
   }
   
-  // Make completeOnboarding globally available
+  // Complete onboarding function
   window.completeOnboarding = function() {
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]');
@@ -411,14 +778,12 @@ document.addEventListener('DOMContentLoaded', function() {
       form.method = 'POST';
       form.action = '/onboarding/complete';
       
-      // Add CSRF token
       const csrfInput = document.createElement('input');
       csrfInput.type = 'hidden';
       csrfInput.name = 'authenticity_token';
       csrfInput.value = csrfToken ? csrfToken.content : '';
       form.appendChild(csrfInput);
       
-      // Add _method input for PATCH
       const methodInput = document.createElement('input');
       methodInput.type = 'hidden';
       methodInput.name = '_method';
@@ -429,7 +794,6 @@ document.addEventListener('DOMContentLoaded', function() {
       form.submit();
     } catch (e) {
       console.error('❌ Error completing onboarding:', e);
-      // Fallback
       window.location.href = '/scout';
     }
   };
