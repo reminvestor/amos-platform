@@ -1,124 +1,404 @@
-<!-- Sign Up Page with Crux Marketing Theme -->
-<div class="min-vh-100 d-flex align-items-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #8b5cf6 100%);">
-  <div class="container">
-    <div class="row justify-content-center">
-      <div class="col-lg-6 col-md-8">
-        <div class="card shadow-lg border-0" style="backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.95); border-radius: 1rem;">
-          <div class="card-body p-5">
-            <!-- Logo/Brand -->
-            <div class="text-center mb-4">
-              <h3 class="fw-bold mb-2 d-flex align-items-center justify-content-center">
-                <%= image_tag "Crux_Logo_Secondary_Black.png", alt: "Crux Marketing", style: "height: 100px;" %>
-              </h3>
-              <p class="text-muted">Get started with Scout, your AI marketing agent</p>
-            </div>
-
-            <%= form_for(resource, as: resource_name, url: registration_path(resource_name), local: true, html: { class: "needs-validation", novalidate: true }) do |f| %>
-              <%= render "devise/shared/error_messages", resource: resource %>
-
-              <div class="mb-4">
-                <label for="user_full_name" class="form-label fw-semibold">Full Name</label>
-                <input type="text" 
-                       name="user[full_name]" 
-                       id="user_full_name"
-                       autofocus 
-                       class="form-control form-control-lg" 
-                       style="border-radius: 0.75rem; border: 2px solid #e9ecef;"
-                       placeholder="John Smith"
-                       required>
-              </div>
-
-              <div class="mb-4">
-                <label for="user_business_name" class="form-label fw-semibold">Business Name <span class="text-muted">(Optional)</span></label>
-                <input type="text" 
-                       name="user[business_name]" 
-                       id="user_business_name"
-                       class="form-control form-control-lg" 
-                       style="border-radius: 0.75rem; border: 2px solid #e9ecef;"
-                       placeholder="Acme Corporation">
-                <small class="text-muted">If left blank, we'll use your name + "Inc" (e.g., "John Smith Inc")</small>
-              </div>
-
-              <div class="mb-4">
-                <%= f.label :email, "Email Address", class: "form-label fw-semibold" %>
-                <%= f.email_field :email, 
-                    autocomplete: "email", 
-                    class: "form-control form-control-lg",
-                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
-                    placeholder: "john@company.com" %>
-              </div>
-
-              <!-- Hidden role field - default to marketer -->
-              <%= f.hidden_field :role, value: "marketer" %>
-
-              <div class="mb-4">
-                <%= f.label :password, class: "form-label fw-semibold" %>
-                <% if @minimum_password_length %>
-                  <small class="text-muted">(<%= @minimum_password_length %> characters minimum)</small>
-                <% end %>
-                <%= f.password_field :password, 
-                    autocomplete: "new-password", 
-                    class: "form-control form-control-lg",
-                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
-                    placeholder: "Create a secure password" %>
-              </div>
-
-              <div class="mb-4">
-                <%= f.label :password_confirmation, "Confirm Password", class: "form-label fw-semibold" %>
-                <%= f.password_field :password_confirmation, 
-                    autocomplete: "new-password", 
-                    class: "form-control form-control-lg",
-                    style: "border-radius: 0.75rem; border: 2px solid #e9ecef;",
-                    placeholder: "Confirm your password" %>
-              </div>
-
-              <div class="d-grid mb-4">
-                <%= f.submit "Create Account & Meet Scout", 
-                    class: "btn btn-lg fw-semibold", 
-                    style: "background: linear-gradient(45deg, #ff6b6b, #ff8e8e); border: none; border-radius: 0.75rem; color: white; padding: 0.75rem 2rem;" %>
-              </div>
-            <% end %>
-
-            <!-- Links -->
-            <hr class="my-4">
-            
-            <div class="text-center">
-              <span class="text-muted">Already have an account?</span>
-              <%= link_to "Log in here", new_session_path(resource_name), class: "text-decoration-none fw-semibold ms-1", style: "color: #8b5cf6;" %>
-            </div>
+<!-- Sign Up Page - Matching Main App Dark Theme -->
+<div class="auth-workspace">
+  <!-- Left Panel - Branding & Info -->
+  <div class="auth-sidebar">
+    <div class="auth-brand">
+      <div class="brand-logo">
+        <i class="fas fa-cube text-primary"></i>
+        <span class="brand-text">Crux Marketing</span>
+      </div>
+      <p class="brand-tagline">Your AI Marketing Agent</p>
+    </div>
+    
+    <div class="auth-features">
+      <h4 class="mb-4">Get started with Scout!</h4>
+      <div class="feature-list">
+        <div class="feature-item">
+          <i class="fas fa-robot text-primary"></i>
+          <div>
+            <strong>AI-Powered Marketing</strong>
+            <p>Scout learns your business and creates campaigns that convert</p>
           </div>
         </div>
-        
-        <!-- Footer -->
-        <div class="text-center mt-4">
-          <p class="text-white opacity-75 small">
-            By signing up, you agree to our 
-            <a href="#" class="text-white text-decoration-none">Terms of Service</a> and 
-            <a href="#" class="text-white text-decoration-none">Privacy Policy</a>
-          </p>
+        <div class="feature-item">
+          <i class="fas fa-globe text-success"></i>
+          <div>
+            <strong>Landing Pages</strong>
+            <p>Create beautiful, high-converting landing pages in minutes</p>
+          </div>
         </div>
+        <div class="feature-item">
+          <i class="fas fa-envelope text-info"></i>
+          <div>
+            <strong>Email Campaigns</strong>
+            <p>Design and send targeted email campaigns that engage</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <i class="fas fa-chart-bar text-warning"></i>
+          <div>
+            <strong>Analytics Dashboard</strong>
+            <p>Track performance and optimize your marketing strategy</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Right Panel - Signup Form -->
+  <div class="auth-content">
+    <div class="auth-form-container">
+      <div class="auth-header">
+        <h2 class="mb-2">Create Account</h2>
+        <p class="text-muted">Join thousands of marketers using Scout to grow their business</p>
+      </div>
+      
+      <%= form_for(resource, as: resource_name, url: registration_path(resource_name), local: true, html: { class: "auth-form" }) do |f| %>
+        <%= render "devise/shared/error_messages", resource: resource %>
+
+        <div class="form-group">
+          <label for="user_full_name" class="form-label">Full Name</label>
+          <input type="text" 
+                 name="user[full_name]" 
+                 id="user_full_name"
+                 autofocus 
+                 class="form-control" 
+                 placeholder="John Smith"
+                 required>
+        </div>
+
+        <div class="form-group">
+          <label for="user_business_name" class="form-label">
+            Business Name 
+            <span class="text-muted">(Optional)</span>
+          </label>
+          <input type="text" 
+                 name="user[business_name]" 
+                 id="user_business_name"
+                 class="form-control" 
+                 placeholder="Acme Corporation">
+          <small class="form-text text-muted">
+            If left blank, we'll use your name + "Inc" (e.g., "John Smith Inc")
+          </small>
+        </div>
+
+        <div class="form-group">
+          <%= f.label :email, "Email Address", class: "form-label" %>
+          <%= f.email_field :email, 
+              autocomplete: "email", 
+              class: "form-control",
+              placeholder: "john@company.com" %>
+        </div>
+
+        <!-- Hidden role field - default to marketer -->
+        <%= f.hidden_field :role, value: "marketer" %>
+
+        <div class="form-group">
+          <%= f.label :password, "Password", class: "form-label" %>
+          <% if @minimum_password_length %>
+            <span class="text-muted">(<%= @minimum_password_length %> characters minimum)</span>
+          <% end %>
+          <%= f.password_field :password, 
+              autocomplete: "new-password", 
+              class: "form-control",
+              placeholder: "Create a secure password" %>
+        </div>
+
+        <div class="form-group">
+          <%= f.label :password_confirmation, "Confirm Password", class: "form-label" %>
+          <%= f.password_field :password_confirmation, 
+              autocomplete: "new-password", 
+              class: "form-control",
+              placeholder: "Confirm your password" %>
+        </div>
+
+        <div class="form-group">
+          <%= f.submit "Create Account & Meet Scout", class: "btn btn-primary btn-lg w-100" %>
+        </div>
+      <% end %>
+
+      <div class="auth-divider">
+        <span>Already have an account?</span>
+      </div>
+      
+      <div class="auth-signin">
+        <%= link_to "Sign In", new_session_path(resource_name), class: "btn btn-outline-primary btn-lg w-100" %>
+      </div>
+      
+      <div class="auth-footer">
+        <p class="text-muted small text-center">
+          By creating an account, you agree to our 
+          <a href="#" class="auth-link">Terms of Service</a> and 
+          <a href="#" class="auth-link">Privacy Policy</a>
+        </p>
       </div>
     </div>
   </div>
 </div>
 
 <style>
-  .form-control:focus {
-    border-color: #8b5cf6 !important;
-    box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25) !important;
+/* Auth Pages Dark Theme - Matching Main App */
+.auth-workspace {
+  min-height: 100vh;
+  display: flex;
+  background: var(--scout-bg, #1a1d23);
+  color: var(--scout-text, #e9ecef);
+}
+
+.auth-sidebar {
+  width: 450px;
+  background: var(--scout-secondary, #2c3034);
+  padding: 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 1px solid var(--scout-border, #404448);
+}
+
+.auth-brand {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.brand-logo i {
+  font-size: 2.5rem;
+  color: var(--scout-primary, #6366f1);
+}
+
+.brand-tagline {
+  color: var(--scout-text-muted, #9ca3af);
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.auth-features h4 {
+  color: white;
+  font-weight: 600;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.feature-item i {
+  font-size: 1.5rem;
+  margin-top: 0.25rem;
+}
+
+.feature-item strong {
+  color: white;
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.feature-item p {
+  color: var(--scout-text-muted, #9ca3af);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.auth-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--scout-bg, #1a1d23);
+}
+
+.auth-form-container {
+  width: 100%;
+  max-width: 420px;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.auth-header h2 {
+  color: white;
+  font-weight: 700;
+  font-size: 2rem;
+}
+
+.auth-form {
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  color: var(--scout-text, #e9ecef);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.form-control {
+  background: var(--scout-secondary, #2c3034);
+  border: 1px solid var(--scout-border, #404448);
+  color: var(--scout-text, #e9ecef);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  background: var(--scout-secondary, #2c3034);
+  border-color: var(--scout-primary, #6366f1);
+  box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+  color: var(--scout-text, #e9ecef);
+  outline: none;
+}
+
+.form-control::placeholder {
+  color: var(--scout-text-muted, #9ca3af);
+}
+
+.form-text {
+  color: var(--scout-text-muted, #9ca3af);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.form-check-input {
+  background-color: var(--scout-secondary, #2c3034);
+  border-color: var(--scout-border, #404448);
+}
+
+.form-check-input:checked {
+  background-color: var(--scout-primary, #6366f1);
+  border-color: var(--scout-primary, #6366f1);
+}
+
+.form-check-label {
+  color: var(--scout-text, #e9ecef);
+}
+
+.btn-primary {
+  background: var(--scout-primary, #6366f1);
+  border-color: var(--scout-primary, #6366f1);
+  font-weight: 600;
+  padding: 0.875rem 1.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: #5855eb;
+  border-color: #5855eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-outline-primary {
+  color: var(--scout-primary, #6366f1);
+  border-color: var(--scout-primary, #6366f1);
+  background: transparent;
+  font-weight: 600;
+  padding: 0.875rem 1.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-outline-primary:hover {
+  background: var(--scout-primary, #6366f1);
+  border-color: var(--scout-primary, #6366f1);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.auth-links {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.auth-link {
+  color: var(--scout-primary, #6366f1);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.auth-link:hover {
+  color: #5855eb;
+  text-decoration: underline;
+}
+
+.auth-divider {
+  text-align: center;
+  margin: 2rem 0 1.5rem 0;
+  position: relative;
+}
+
+.auth-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--scout-border, #404448);
+}
+
+.auth-divider span {
+  background: var(--scout-bg, #1a1d23);
+  padding: 0 1rem;
+  color: var(--scout-text-muted, #9ca3af);
+  font-size: 0.9rem;
+}
+
+.auth-footer {
+  margin-top: 2rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .auth-workspace {
+    flex-direction: column;
   }
   
-  .btn:hover {
-    background: linear-gradient(45deg, #ff5252, #ff7979) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(255, 107, 107, 0.3) !important;
+  .auth-sidebar {
+    width: 100%;
+    padding: 2rem 1.5rem;
   }
   
-  .form-control.is-invalid {
-    border-color: #dc3545 !important;
+  .auth-features {
+    display: none;
   }
   
-  .form-control.is-valid {
-    border-color: #28a745 !important;
+  .auth-content {
+    padding: 1.5rem;
   }
+  
+  .auth-form-container {
+    max-width: 100%;
+  }
+}
 </style>
