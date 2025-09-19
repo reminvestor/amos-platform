@@ -206,8 +206,8 @@ function toggleAutoRefresh(){
 }
 
 function scoutCreateLandingPage() {
-  // Fast-path: open the landing page wizard directly (bypass chat)
-  window.scoutLoadCanvas?.('landing_page_generator', {});
+  // Use new interactive workflow instead of old generator
+  window.scoutSendMessage?.('Create a landing page');
 }
 
 function scoutViewLandingPage(pageId) {
@@ -217,7 +217,7 @@ function scoutViewLandingPage(pageId) {
 
 function scoutEditLandingPage(pageId) {
   // Load the landing page generator canvas
-  window.scoutLoadCanvas?.('landing_page_generator', { landing_page_id: pageId });
+  window.scoutSendMessage?.(`Please help me edit landing page ID ${pageId}`);
 }
 
 function scoutEditLandingPageInline(pageId) {

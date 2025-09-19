@@ -28,7 +28,7 @@
   <textarea class="form-control" 
             id="<%= field_name %>" 
             name="<%= field_name %>"
-            rows="3"
+            rows="<%= field['rows'] || field[:rows] || 3 %>"
             placeholder="<%= field_placeholder %>"
             <% if field_required %>required<% end %>></textarea>
 

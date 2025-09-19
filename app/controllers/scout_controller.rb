@@ -899,25 +899,12 @@ class ScoutController < ApplicationController
   end
 
   def render_landing_page_generator(data = {})
-    landing_page = if data['landing_page_id']
-      current_entity.landing_pages.find(data['landing_page_id'])
-    else
-      current_entity.landing_pages.build
-    end
-    
-    # Get available form templates for the generator
-    form_templates = LandingPageFormTemplatesService.available_templates
-    
-    render_to_string(
-      partial: 'scout/canvas/landing_page_generator', 
-      locals: { 
-        landing_page: landing_page,
-        form_templates: form_templates,
-        entity: current_entity,
-        user: current_user,
-        canvas_data: data
-      }
-    )
+    # Legacy method - now redirects to interactive workflow
+    # The old generator canvas is deprecated in favor of interactive task workflow
+    {
+      title: "Landing Page Creation",
+      content: "<div class='alert alert-info'>Landing page creation now uses the interactive workflow. Please use chat to create landing pages.</div>"
+    }
   end
 
   def render_landing_page_editor(data = {})
