@@ -901,10 +901,15 @@ class ScoutController < ApplicationController
   def render_landing_page_generator(data = {})
     # Legacy method - now redirects to interactive workflow
     # The old generator canvas is deprecated in favor of interactive task workflow
-    {
-      title: "Landing Page Creation",
-      content: "<div class='alert alert-info'>Landing page creation now uses the interactive workflow. Please use chat to create landing pages.</div>"
-    }
+    <<~HTML
+      <div class="alert alert-info text-center p-4">
+        <h5><i class="fas fa-info-circle me-2"></i>Landing Page Creation Updated</h5>
+        <p class="mb-3">Landing page creation now uses our improved interactive workflow.</p>
+        <button class="btn btn-primary" onclick="window.scoutSendMessage?.('Create a landing page')">
+          <i class="fas fa-plus me-2"></i>Start Creating Landing Page
+        </button>
+      </div>
+    HTML
   end
 
   def render_landing_page_editor(data = {})

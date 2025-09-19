@@ -324,32 +324,10 @@ class InteractiveTaskService
                 placeholder: '#2563eb'
               },
               {
-                name: 'image_preference',
-                type: 'select',
-                required: true,
-                label: 'How would you like to handle images?',
-                options: ['ai_generate', 'upload_own', 'use_placeholders', 'skip_for_now'],
-                descriptions: {
-                  'ai_generate' => 'Let Scout create custom images using AI',
-                  'upload_own' => 'Upload your own images from your device',
-                  'use_placeholders' => 'Use placeholder images for now (can change later)',
-                  'skip_for_now' => 'Skip images and focus on content first'
-                }
-              },
-              {
-                name: 'image_style',
-                type: 'select',
-                label: 'Image Style (for AI generation)',
-                options: ['professional', 'modern', 'creative', 'minimalist', 'bold'],
-                show_when: { image_preference: 'ai_generate' }
-              },
-              {
-                name: 'image_descriptions',
-                type: 'textarea',
-                label: 'Describe the images you need',
-                placeholder: 'e.g., "Professional team photo, product showcase, office environment"',
-                rows: 3,
-                show_when: { image_preference: 'ai_generate' }
+                name: 'images_section',
+                type: 'custom',
+                label: 'Images for your landing page',
+                template: 'image_upload_blocks'
               },
               { 
                 name: 'style_notes', 
@@ -385,14 +363,14 @@ class InteractiveTaskService
             inputs: {
               _resolve_from_steps: {
                 image_preferences: ['collect_design_preferences'],
-                business_info: ['analyze_context', 'collect_specific_info'],
-                user_id: @user.id,
-                entity_id: @entity.id
-              }
+                business_info: ['analyze_context', 'collect_specific_info']
+              },
+              user_id: @user.id,
+              entity_id: @entity.id
             },
             conditional: {
               field: 'image_preference',
-              values: ['ai_generate', 'upload_own'],
+              values: ['ai_generate'],
               source_step: 'collect_design_preferences'
             }
           }
