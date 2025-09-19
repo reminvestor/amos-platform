@@ -244,10 +244,10 @@ class InteractiveTaskService
             title: 'Landing Page Details',
             description: 'Let\'s gather specific information for your landing page',
             fields: [
-              { 
-                name: 'page_purpose', 
-                type: 'select', 
-                required: true, 
+              {
+                name: 'page_purpose',
+                type: 'select',
+                required: true,
                 label: 'What is the main purpose of this landing page?',
                 options: [
                   'Promote a new product/service',
@@ -264,8 +264,9 @@ class InteractiveTaskService
                 name: 'specific_details',
                 type: 'textarea',
                 required: true,
-                label: 'Tell us about your new classes',
-                placeholder: 'What classes are you offering? When do they start? What makes them special?'
+                label: 'Tell us more about what you\'re promoting',
+                placeholder: 'What are you promoting? What makes it special? Any key details visitors should know?',
+                rows: 4
               },
               { 
                 name: 'call_to_action', 

@@ -1,13 +1,13 @@
 <div class="interactive-wizard-canvas h-100">
   <!-- Wizard Header -->
-  <div class="wizard-header bg-light border-bottom p-3">
+  <div class="wizard-header bg-light border-bottom p-3 rounded-top">
     <div class="d-flex justify-content-between align-items-center">
       <div>
-        <h4 class="mb-1">
+        <h4 class="mb-1 text-dark fw-bold">
           <%= step&.dig('config', 'title') || 'Interactive Wizard' %>
         </h4>
         <% if step&.dig('config', 'description') %>
-          <p class="text-muted mb-0 small">
+          <p class="text-secondary mb-0 small fw-medium">
             <%= step['config']['description'] %>
           </p>
         <% end %>
@@ -43,18 +43,6 @@
           </div>
         <% end %>
         
-        <!-- Form Actions -->
-        <div class="wizard-actions mt-4 pt-3 border-top">
-          <div class="d-flex justify-content-between">
-            <button type="button" class="btn btn-outline-secondary" id="skip-step-btn">
-              Skip This Step
-            </button>
-            <button type="submit" class="btn btn-primary btn-lg">
-              <%= step.dig('config', 'submit_label') || 'Continue' %>
-              <i class="bi bi-arrow-right ms-1"></i>
-            </button>
-          </div>
-        </div>
       </form>
       
     <% elsif step && step['type'] == 'tool_call' %>
@@ -93,10 +81,14 @@
         <% end %>
       </div>
       
-      <div class="wizard-controls">
-        <button type="button" class="btn btn-sm btn-outline-danger" id="cancel-workflow-btn">
-          <i class="bi bi-x-circle me-1"></i>
+      <div class="wizard-controls d-flex justify-content-end align-items-center">
+        <button type="button" class="btn btn-outline-danger me-3" id="cancel-workflow-btn">
+          <i class="fas fa-times me-1"></i>
           Cancel Workflow
+        </button>
+        <button type="submit" class="btn btn-primary" id="continue-btn" form="wizard-form">
+          <i class="fas fa-arrow-right me-1"></i>
+          <%= step&.dig('config', 'submit_label') || 'Continue' %>
         </button>
       </div>
     </div>

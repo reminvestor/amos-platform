@@ -797,14 +797,14 @@ export default class extends Controller {
     // Create functions
     window.scoutCreateContact = () => this.sendScoutMessage("Please help me create a new contact")
     window.scoutCreateCampaign = () => this.sendScoutMessage("Please help me create a new email campaign")  
-    // Fast-path: open the landing page wizard directly (bypass chat)
-    window.scoutCreateLandingPage = () => this.loadScoutCanvas('landing_page_generator', {})
+    // Create functions - use interactive workflow via chat
+    window.scoutCreateLandingPage = () => this.sendScoutMessage('Create a landing page')
 
     // Edit functions
     window.scoutEditContact = (id) => this.sendScoutMessage(`Please help me edit contact ID ${id}`)
     window.scoutEditCampaign = (id) => this.sendScoutMessage(`Please help me edit campaign ID ${id}`)
-    // Fast-path: open the landing page wizard preloaded with the page (bypass chat)
-    window.scoutEditLandingPage = (id) => this.loadScoutCanvas('landing_page_generator', { landing_page_id: id })
+    // Edit landing page - use interactive workflow via chat
+    window.scoutEditLandingPage = (id) => this.sendScoutMessage(`Please help me edit landing page ID ${id}`)
 
     // View functions  
     window.scoutViewContact = (id) => this.sendScoutMessage(`Please show me details for contact ID ${id}`)
