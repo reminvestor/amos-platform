@@ -1,18 +1,20 @@
 /* Scout Layout - AI Chat Interface */
 
 :root {
-  --scout-bg: #1e1e2f;
+  --scout-bg: #0F1522;
   --scout-text: #ffffff;
   --scout-text-muted: #a0a0a0;
   --scout-primary: #6366f1;
   --scout-primary-hover: #5b5bd6;
-  --scout-secondary: #2d2d3f;
-  --scout-border: #3d3d4f;
-  --scout-chat-bg: #252538;
+  --scout-secondary: #27244B; /* Surface cards, message bubbles */
+  /* Slightly lighter variant for inputs/textareas */
+  --scout-tertiary: #27244B;
+  --scout-border: #1a2033; /* Subtle border separating dark surfaces */
+  --scout-chat-bg: #111a2d; /* Chat and canvas background */
   --scout-message-user: #6366f1;
-  --scout-message-ai: #374151;
-  --scout-nav-bg: #1a1a2a;
-  --scout-nav-hover: #2d2d3f;
+  --scout-message-ai: #27244B;
+  --scout-nav-bg: #0F1522;
+  --scout-nav-hover: #27244B;
   --scout-shadow: rgba(0, 0, 0, 0.3);
 }
 
