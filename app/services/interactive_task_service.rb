@@ -339,6 +339,21 @@ class InteractiveTaskService
           }
         },
         {
+          id: 'process_uploaded_images',
+          type: 'tool_call',
+          config: {
+            tool: 'store_uploaded_images',
+            description: 'Store uploaded images and prepare context for AI',
+            inputs: {
+              _resolve_from_steps: {
+                image_data: ['collect_design_preferences']
+              },
+              user_id: @user.id,
+              entity_id: @entity.id
+            }
+          }
+        },
+        {
           id: 'generate_landing_page',
           type: 'tool_call',
           config: {
@@ -352,21 +367,6 @@ class InteractiveTaskService
                 image_preferences: ['collect_design_preferences'],
                 stored_images: ['process_uploaded_images']
               }
-            }
-          }
-        },
-        {
-          id: 'process_uploaded_images',
-          type: 'tool_call',
-          config: {
-            tool: 'store_uploaded_images',
-            description: 'Store uploaded images and prepare context for AI',
-            inputs: {
-              _resolve_from_steps: {
-                image_data: ['collect_design_preferences']
-              },
-              user_id: @user.id,
-              entity_id: @entity.id
             }
           }
         },

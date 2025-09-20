@@ -644,6 +644,19 @@ class WorkflowEngine
         end
         Rails.logger.info "✅ Found stored_images: #{result[:stored_images].length} images"
         
+      when 'image_data'
+        # Get the full form data from collect_design_preferences step
+        step_data = find_step_data('collect_design_preferences', execution_history)
+        if step_data
+          if step_data.is_a?(ActionController::Parameters)
+            step_data = JSON.parse(step_data.to_json)
+          end
+          result[:image_data] = step_data
+        else
+          result[:image_data] = {}
+        end
+        Rails.logger.info "✅ Found image_data: #{result[:image_data].keys rescue 'N/A'}"
+        
       when 'dsl'
         # Get DSL from generate_landing_page step
         dsl_data = find_step_data('generate_landing_page', execution_history)
