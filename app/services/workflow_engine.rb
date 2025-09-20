@@ -474,7 +474,9 @@ class WorkflowEngine
     # Handle special _resolve_from_steps pattern
     if resolved.key?(:_resolve_from_steps) || resolved.key?('_resolve_from_steps')
       resolve_spec = resolved.delete(:_resolve_from_steps) || resolved.delete('_resolve_from_steps')
-      return resolve_step_data(resolve_spec, execution_history)
+      # Merge resolved data with existing inputs (don't replace entirely)
+      resolved_data = resolve_step_data(resolve_spec, execution_history)
+      return resolved.merge(resolved_data)
     end
     
     resolved.each do |key, value|
