@@ -196,12 +196,16 @@
             document.dispatchEvent(event);
           }
         } else {
-          // Show progress or other canvas
+          // Workflow is processing - show task progress
+          console.log('🔄 Workflow processing, loading task progress canvas');
+          const canvasType = data.canvas || 'task_progress';
+          const canvasData = data.canvas_data || {};
+          
           if (window.scoutController && window.scoutController.loadScoutCanvas) {
-            window.scoutController.loadScoutCanvas(data.canvas, data.canvas_data);
+            window.scoutController.loadScoutCanvas(canvasType, canvasData);
           } else {
             const event = new CustomEvent('scout:load-canvas', {
-              detail: { canvas: data.canvas, data: data.canvas_data }
+              detail: { canvas: canvasType, data: canvasData }
             });
             document.dispatchEvent(event);
           }
