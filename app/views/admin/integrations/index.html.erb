@@ -1,0 +1,128 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1 class="mb-0">
+        <i class="fas fa-plug"></i> Integrations
+      </h1>
+    </div>
+    <div class="col-auto">
+      <% if @current_admin.editor? || @current_admin.super_admin? %>
+        <%= link_to new_admin_integration_path, class: "btn btn-primary" do %>
+          <i class="fas fa-plus"></i> Add Integration
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Integration Stats -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card bg-secondary text-white">
+        <div class="card-body">
+          <h5 class="card-title">Total Integrations</h5>
+          <h2 class="mb-0"><%= @stats[:total] %></h2>
+          <small class="text-muted"><%= @stats[:verified] %> verified, <%= @stats[:custom] %> custom</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card bg-secondary text-white">
+        <div class="card-body">
+          <h5 class="card-title">Active Connections</h5>
+          <h2 class="mb-0"><%= @stats[:active_connections] %></h2>
+          <small class="text-muted">Across <%= @stats[:connected_entities] %> entities</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card bg-secondary text-white">
+        <div class="card-body">
+          <h5 class="card-title">API Calls (24h)</h5>
+          <h2 class="mb-0"><%= number_with_delimiter(@stats[:api_calls_24h]) %></h2>
+          <small class="text-muted"><%= @stats[:error_rate] %>% error rate</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Integrations Table -->
+  <div class="card bg-secondary">
+    <div class="card-header">
+      <h5 class="mb-0">All Integrations</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-dark table-hover">
+          <thead>
+            <tr>
+              <th>Integration</th>
+              <th>Category</th>
+              <th>Auth Type</th>
+              <th>Connections</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @integrations.each do |integration| %>
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <% if integration.icon_url.present? %>
+                      <img src="<%= integration.icon_url %>" alt="<%= integration.name %>" 
+                           class="rounded me-2" style="width: 24px; height: 24px;">
+                    <% end %>
+                    <div>
+                      <strong><%= integration.name %></strong>
+                      <% if integration.is_verified %>
+                        <i class="fas fa-check-circle text-success ms-1" title="Verified"></i>
+                      <% end %>
+                      <br>
+                      <small class="text-muted"><%= integration.slug %></small>
+                    </div>
+                  </div>
+                </td>
+                <td><%= integration.category&.humanize %></td>
+                <td>
+                  <span class="badge bg-info"><%= integration.auth_type&.humanize %></span>
+                </td>
+                <td>
+                  <%= integration.connections.count %>
+                  <% if integration.connections.active.any? %>
+                    <span class="text-success">(<%= integration.connections.active.count %> active)</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if integration.is_active %>
+                    <span class="badge bg-success">Active</span>
+                  <% else %>
+                    <span class="badge bg-secondary">Inactive</span>
+                  <% end %>
+                </td>
+                <td>
+                  <div class="btn-group btn-group-sm" role="group">
+                    <%= link_to admin_integration_path(integration), class: "btn btn-outline-primary" do %>
+                      <i class="fas fa-eye"></i> View
+                    <% end %>
+                    <% if @current_admin.editor? || @current_admin.super_admin? %>
+                      <%= link_to edit_admin_integration_path(integration), class: "btn btn-outline-secondary" do %>
+                        <i class="fas fa-edit"></i> Edit
+                      <% end %>
+                      <%= link_to admin_integration_operations_path(integration), class: "btn btn-outline-info" do %>
+                        <i class="fas fa-cogs"></i> Operations
+                      <% end %>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      
+      <% if @integrations.empty? %>
+        <p class="text-center text-muted my-4">No integrations found.</p>
+      <% end %>
+    </div>
+  </div>
+</div>
