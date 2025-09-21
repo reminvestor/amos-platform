@@ -186,20 +186,86 @@ class ScoutGenericToolsService
         required: ["token"]
       }
     },
-    {
-      name: "discover_api_schema",
-      description: "Discover available API endpoints and operations for an integration",
-      input_schema: {
-        type: "object",
-        properties: {
-          integration: {
-            type: "string",
-            description: "The integration slug to discover (e.g., 'stripe', 'shopify')"
-          }
-        },
-        required: ["integration"]
-      }
-    },
+      {
+        name: "discover_api_schema",
+        description: "Discover available API endpoints and operations for an integration",
+        input_schema: {
+          type: "object",
+          properties: {
+            integration: {
+              type: "string", 
+              description: "The integration slug to discover (e.g., 'stripe', 'shopify')"
+            }
+          },
+          required: ["integration"]
+        }
+      },
+      {
+        name: "configure_integration",
+        description: "Update integration settings, endpoints, or authentication configuration. Admin-only for global integrations, allowed for user-owned custom integrations.",
+        input_schema: {
+          type: "object",
+          properties: {
+            connection_id: {
+              type: "integer",
+              description: "The ID of the connection to configure"
+            },
+            updates: {
+              type: "object",
+              description: "Configuration updates to apply",
+              properties: {
+                api_base_url: {
+                  type: "string",
+                  description: "Update the API base URL"
+                },
+                auth_config: {
+                  type: "object",
+                  description: "Update authentication configuration (OAuth URLs, scopes, etc.)"
+                },
+                allowed_hosts: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Update allowed host patterns"
+                },
+                rate_limits: {
+                  type: "object",
+                  description: "Update rate limit configuration"
+                },
+                custom_headers: {
+                  type: "object",
+                  description: "Add or update custom headers"
+                }
+              }
+            },
+            operation_updates: {
+              type: "array",
+              description: "Updates to specific operations",
+              items: {
+                type: "object",
+                properties: {
+                  operation_id: {
+                    type: "string",
+                    description: "The operation to update"
+                  },
+                  path_template: {
+                    type: "string",
+                    description: "Update the endpoint path"
+                  },
+                  request_schema: {
+                    type: "object",
+                    description: "Update the request schema"
+                  },
+                  pagination_strategy: {
+                    type: "string",
+                    description: "Update pagination strategy"
+                  }
+                }
+              }
+            }
+          },
+          required: ["connection_id"]
+        }
+      },
     {
       name: "generate_ai_landing_page",
       description: "Generate a complete AI-powered landing page using sophisticated multi-agent system (PREFERRED for landing pages)",
@@ -1916,6 +1982,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       execute_confirm_operation(args)
     when 'discover_api_schema'
       execute_discover_api_schema(args)
+    when 'configure_integration'
+      execute_configure_integration(args)
     else
       { success: false, error: "Unknown tool: #{tool_name}" }
     end
@@ -4473,5 +4541,91 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       connection_required: connection.nil?,
       setup_instructions: integration.auth_config['setup_instructions']
     }
+  end
+  
+  def execute_configure_integration(args)
+    connection = @entity.connections.find_by(id: args['connection_id'])
+    
+    return { success: false, error: "Connection not found" } unless connection
+    
+    integration = connection.integration
+    
+    # Check permissions
+    if integration.is_verified
+      # Global integration - require admin
+      return { success: false, error: "Admin access required to modify verified integrations" } unless @user.admin?
+    else
+      # Custom integration - must be owned by user
+      return { success: false, error: "You can only modify your own custom integrations" } unless connection.entity == @entity
+    end
+    
+    updated_fields = []
+    
+    # Update integration settings
+    if args['updates'].present?
+      updates = args['updates']
+      
+      if updates['api_base_url'].present?
+        integration.api_base_url = updates['api_base_url']
+        updated_fields << "API base URL"
+      end
+      
+      if updates['auth_config'].present?
+        integration.auth_config.merge!(updates['auth_config'])
+        updated_fields << "Authentication configuration"
+      end
+      
+      if updates['allowed_hosts'].present?
+        integration.allowed_hosts = updates['allowed_hosts']
+        updated_fields << "Allowed hosts"
+      end
+      
+      if updates['rate_limits'].present?
+        integration.metadata ||= {}
+        integration.metadata['rate_limits'] = updates['rate_limits']
+        updated_fields << "Rate limits"
+      end
+      
+      if updates['custom_headers'].present?
+        integration.metadata ||= {}
+        integration.metadata['custom_headers'] = updates['custom_headers']
+        updated_fields << "Custom headers"
+      end
+      
+      integration.save!
+    end
+    
+    # Update operations
+    if args['operation_updates'].present?
+      args['operation_updates'].each do |op_update|
+        operation = integration.integration_operations.find_by(operation_id: op_update['operation_id'])
+        
+        if operation
+          operation.path_template = op_update['path_template'] if op_update['path_template'].present?
+          operation.request_schema = op_update['request_schema'] if op_update['request_schema'].present?
+          operation.pagination_strategy = op_update['pagination_strategy'] if op_update['pagination_strategy'].present?
+          operation.save!
+          updated_fields << "Operation: #{operation.name}"
+        end
+      end
+    end
+    
+    # Test the connection with new settings
+    test_result = connection.test_connection!
+    
+    {
+      success: true,
+      message: "Integration configuration updated",
+      updated_fields: updated_fields,
+      connection_test: test_result,
+      integration: {
+        id: integration.id,
+        name: integration.name,
+        api_base_url: integration.api_base_url,
+        auth_type: integration.auth_type
+      }
+    }
+  rescue => e
+    { success: false, error: "Failed to update configuration: #{e.message}" }
   end
 end 
