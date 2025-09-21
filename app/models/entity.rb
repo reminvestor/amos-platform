@@ -9,6 +9,11 @@ class Entity < ApplicationRecord
   has_many :entity_users, dependent: :destroy
   has_many :users, through: :entity_users
   
+  # Integration relationships
+  has_many :connections, dependent: :destroy
+  has_many :integrations, through: :connections
+  has_many :policy_rules, dependent: :destroy
+  
   # Direct relationships with main resources
   has_many :contacts, dependent: :destroy
   has_many :contact_groups, dependent: :destroy
