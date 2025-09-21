@@ -476,6 +476,12 @@ class ScoutController < ApplicationController
           description: 'View and manage email campaigns',
           icon: 'fas fa-envelope'
         },
+        {
+          type: 'integrations_manager',
+          name: 'Integrations',
+          description: 'Manage external application connections',
+          icon: 'fas fa-plug'
+        },
         { 
           type: 'analytics_dashboard', 
           name: 'Analytics', 
