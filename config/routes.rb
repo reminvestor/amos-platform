@@ -252,6 +252,58 @@ Rails.application.routes.draw do
   # Scout Intelligent Canvas routes
   post 'scout/load_canvas', to: 'scout#load_canvas'
   get 'scout/available_canvases', to: 'scout#available_canvases'
+  
+  # Admin routes
+  namespace :admin do
+    get 'login', to: 'sessions#new', as: :new_session
+    post 'login', to: 'sessions#create', as: :session
+    delete 'logout', to: 'sessions#destroy', as: :destroy_session
+    
+    # Dashboard
+    get '/', to: 'dashboard#index', as: :dashboard
+    
+    # Integrations management
+    resources :integrations do
+      collection do
+        get :logs
+      end
+      resources :operations, controller: 'integration_operations'
+    end
+    
+    # Connections management
+    resources :connections do
+      member do
+        post :test
+        post :refresh
+      end
+    end
+    
+    # Policy management
+    resources :policy_rules
+    
+    # User management
+    resources :users do
+      member do
+        post :make_admin
+        post :revoke_admin
+      end
+    end
+    
+    # Admin user management
+    resources :admin_users do
+      member do
+        post :unlock
+      end
+    end
+    
+    # Observability
+    namespace :observability do
+      get 'ai_usage', to: 'metrics#ai_usage'
+      get 'workflows', to: 'metrics#workflows'
+      get 'errors', to: 'metrics#errors'
+      get 'performance', to: 'metrics#performance'
+    end
+  end
 
   # Common routes (regardless of subdomain)
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

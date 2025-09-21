@@ -93,6 +93,114 @@ class ScoutGenericToolsService
       }
     },
     {
+      name: "list_connections",
+      description: "List available external integrations and their connection status",
+      input_schema: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            description: "Filter by category (payment, ecommerce, crm, etc.)"
+          }
+        },
+        required: []
+      }
+    },
+    {
+      name: "describe_connection",
+      description: "Get details about a specific integration connection including available operations",
+      input_schema: {
+        type: "object",
+        properties: {
+          connection_id: {
+            type: "integer",
+            description: "The ID of the connection to describe"
+          }
+        },
+        required: ["connection_id"]
+      }
+    },
+    {
+      name: "invoke_operation",
+      description: "Execute an operation on an external integration (e.g., fetch Stripe customers, create Shopify product)",
+      input_schema: {
+        type: "object",
+        properties: {
+          connection_id: {
+            type: "integer",
+            description: "The ID of the connection to use"
+          },
+          operation_id: {
+            type: "string",
+            description: "The operation to execute (e.g., 'stripe.list_customers.v2020-08-27')"
+          },
+          params: {
+            type: "object",
+            description: "Query parameters for the operation"
+          },
+          body: {
+            type: "object",
+            description: "Request body for POST/PUT operations"
+          }
+        },
+        required: ["connection_id", "operation_id"]
+      }
+    },
+    {
+      name: "dry_run_operation",
+      description: "Preview what an operation would do without executing it",
+      input_schema: {
+        type: "object",
+        properties: {
+          connection_id: {
+            type: "integer",
+            description: "The ID of the connection to use"
+          },
+          operation_id: {
+            type: "string",
+            description: "The operation to preview"
+          },
+          params: {
+            type: "object",
+            description: "Query parameters for the operation"
+          },
+          body: {
+            type: "object",
+            description: "Request body for POST/PUT operations"
+          }
+        },
+        required: ["connection_id", "operation_id"]
+      }
+    },
+    {
+      name: "confirm_operation",
+      description: "Execute a previously dry-run operation using its confirmation token",
+      input_schema: {
+        type: "object",
+        properties: {
+          token: {
+            type: "string",
+            description: "The confirmation token from dry_run_operation"
+          }
+        },
+        required: ["token"]
+      }
+    },
+    {
+      name: "discover_api_schema",
+      description: "Discover available API endpoints and operations for an integration",
+      input_schema: {
+        type: "object",
+        properties: {
+          integration: {
+            type: "string",
+            description: "The integration slug to discover (e.g., 'stripe', 'shopify')"
+          }
+        },
+        required: ["integration"]
+      }
+    },
+    {
       name: "generate_ai_landing_page",
       description: "Generate a complete AI-powered landing page using sophisticated multi-agent system (PREFERRED for landing pages)",
       input_schema: {
@@ -1796,6 +1904,18 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       execute_process_landing_page_images(args)
     when 'store_uploaded_images'
       execute_store_uploaded_images(args)
+    when 'list_connections'
+      execute_list_connections(args)
+    when 'describe_connection'
+      execute_describe_connection(args)
+    when 'invoke_operation'
+      execute_invoke_operation(args)
+    when 'dry_run_operation'
+      execute_dry_run_operation(args)
+    when 'confirm_operation'
+      execute_confirm_operation(args)
+    when 'discover_api_schema'
+      execute_discover_api_schema(args)
     else
       { success: false, error: "Unknown tool: #{tool_name}" }
     end
@@ -4118,5 +4238,240 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         error: "Unknown action: #{action}"
       }
     end
+  end
+  
+  # Integration tool implementations
+  def execute_list_connections(args)
+    connections = @entity.connections.includes(:integration, :integration_credentials)
+    
+    # Filter by category if provided
+    if args['category'].present?
+      connections = connections.joins(:integration)
+                               .where(integrations: { category: args['category'] })
+    end
+    
+    connections_data = connections.map do |conn|
+      {
+        id: conn.id,
+        name: conn.name,
+        integration: {
+          name: conn.integration.name,
+          slug: conn.integration.slug,
+          category: conn.integration.category,
+          icon_url: conn.integration.icon_url
+        },
+        status: conn.status,
+        has_active_credentials: conn.integration_credentials.active.any?,
+        last_used: conn.integration_logs.maximum(:created_at),
+        daily_budget_remaining: conn.daily_write_budget ? 
+          (conn.daily_write_budget - conn.integration_logs.today.writes.count) : 
+          'unlimited',
+        operations_count: conn.available_operations.count
+      }
+    end
+    
+    {
+      success: true,
+      connections: connections_data,
+      total: connections_data.length,
+      categories: Integration.distinct.pluck(:category),
+      canvas: 'integrations_manager'
+    }
+  end
+  
+  def execute_describe_connection(args)
+    connection = @entity.connections.find_by(id: args['connection_id'])
+    
+    return { success: false, error: "Connection not found" } unless connection
+    
+    operations = connection.available_operations.map do |op|
+      {
+        operation_id: op.operation_id,
+        name: op.name,
+        description: op.description,
+        method: op.http_method,
+        path: op.path_template,
+        requires_confirmation: op.requires_confirmation,
+        is_safe: op.safe?,
+        example: op.format_example_request
+      }
+    end
+    
+    {
+      success: true,
+      connection: {
+        id: connection.id,
+        name: connection.name,
+        integration: connection.integration.name,
+        status: connection.status,
+        settings: connection.settings,
+        rate_limit_tier: connection.rate_limit_tier,
+        rate_limit_remaining: connection.within_rate_limit? ? 'available' : 'exceeded',
+        daily_budget_remaining: connection.within_daily_budget? ? 
+          (connection.daily_write_budget || 'unlimited') : 'exceeded'
+      },
+      operations: operations,
+      recent_logs: connection.integration_logs.recent.limit(5).map do |log|
+        {
+          operation: log.operation_id,
+          status: log.response_status,
+          success: log.successful?,
+          duration_ms: log.duration_ms,
+          created_at: log.created_at
+        }
+      end
+    }
+  end
+  
+  def execute_invoke_operation(args)
+    connection = @entity.connections.find_by(id: args['connection_id'])
+    return { success: false, error: "Connection not found" } unless connection
+    
+    operation = connection.integration.integration_operations
+                         .find_by(operation_id: args['operation_id'])
+    return { success: false, error: "Operation not found" } unless operation
+    
+    # Policy check
+    unless connection.can_execute?(operation.operation_id, 'scout')
+      return { success: false, error: "Operation not allowed by policy" }
+    end
+    
+    # Rate limit check
+    unless connection.within_rate_limit?
+      return { 
+        success: false, 
+        error: "Rate limit exceeded",
+        retry_after: connection.integration_logs.recent.first&.created_at&.+(1.hour)
+      }
+    end
+    
+    # Build and execute request
+    begin
+      api_service = IntegrationApiService.new(connection)
+      response = api_service.execute_operation(
+        operation,
+        params: args['params'] || {},
+        body: args['body']
+      )
+      
+      {
+        success: response.success?,
+        data: response.parsed_body,
+        status: response.status,
+        headers: response.headers.to_h.slice('x-ratelimit-remaining', 'x-ratelimit-reset'),
+        next_cursor: response.headers['x-next-cursor']
+      }
+    rescue => e
+      {
+        success: false,
+        error: e.message,
+        error_class: e.class.name
+      }
+    end
+  end
+  
+  def execute_dry_run_operation(args)
+    connection = @entity.connections.find_by(id: args['connection_id'])
+    return { success: false, error: "Connection not found" } unless connection
+    
+    operation = connection.integration.integration_operations
+                         .find_by(operation_id: args['operation_id'])
+    return { success: false, error: "Operation not found" } unless operation
+    
+    # Validate request
+    validation_errors = operation.validate_request(args['params'] || {}, args['body'])
+    if validation_errors.any?
+      return {
+        success: false,
+        error: "Validation failed",
+        validation_errors: validation_errors
+      }
+    end
+    
+    # Build preview
+    api_service = IntegrationApiService.new(connection)
+    preview = api_service.build_request_preview(
+      operation,
+      params: args['params'] || {},
+      body: args['body']
+    )
+    
+    # Generate confirmation token
+    confirmation_data = {
+      connection_id: connection.id,
+      operation_id: operation.operation_id,
+      params: args['params'],
+      body: args['body'],
+      expires_at: 5.minutes.from_now
+    }
+    
+    confirmation_token = Rails.application.message_verifier('dry_run').generate(confirmation_data)
+    
+    {
+      success: true,
+      dry_run: true,
+      confirmation_token: confirmation_token,
+      preview: {
+        method: preview[:method],
+        url: preview[:url],
+        headers: preview[:headers].except('Authorization', 'X-Api-Key'),
+        body: preview[:body]
+      },
+      requires_confirmation: operation.requires_confirmation,
+      estimated_impact: {
+        is_write: operation.write_operation?,
+        is_idempotent: operation.is_idempotent,
+        affects_resources: operation.name.include?('create') || operation.name.include?('update')
+      }
+    }
+  end
+  
+  def execute_confirm_operation(args)
+    begin
+      confirmation_data = Rails.application.message_verifier('dry_run').verify(args['token'])
+    rescue ActiveSupport::MessageVerifier::InvalidSignature
+      return { success: false, error: "Invalid or expired confirmation token" }
+    end
+    
+    # Check expiration
+    if confirmation_data[:expires_at] < Time.current
+      return { success: false, error: "Confirmation token has expired" }
+    end
+    
+    # Execute the operation
+    execute_invoke_operation(confirmation_data)
+  end
+  
+  def execute_discover_api_schema(args)
+    integration = Integration.find_by(slug: args['integration'])
+    return { success: false, error: "Integration not found" } unless integration
+    
+    # Check if user has a connection to this integration
+    connection = @entity.connections.find_by(integration: integration)
+    
+    {
+      success: true,
+      integration: {
+        name: integration.name,
+        slug: integration.slug,
+        category: integration.category,
+        auth_type: integration.auth_type,
+        documentation_url: integration.documentation_url,
+        connected: connection.present?
+      },
+      operations: integration.integration_operations.active.map do |op|
+        {
+          operation_id: op.operation_id,
+          name: op.name,
+          description: op.description,
+          method: op.http_method,
+          path: op.path_template,
+          request_schema: op.request_schema,
+          pagination: op.pagination_strategy
+        }
+      end,
+      connection_required: connection.nil?,
+      setup_instructions: integration.auth_config['setup_instructions']
+    }
   end
 end 

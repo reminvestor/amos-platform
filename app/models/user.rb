@@ -27,14 +27,22 @@ class User < ApplicationRecord
   
   # Scout AI Associations
   has_many :scout_conversations, dependent: :destroy
+  has_many :scout_messages, dependent: :destroy
+  has_many :task_sessions, dependent: :destroy
+  
+  # Integration associations
+  has_many :integration_logs
+  
+  # Admin associations
+  has_one :admin_user
   
   # Methods
-  def full_name
-    "#{first_name} #{last_name}"
+  def admin?
+    admin_user.present? && admin_user.active?
   end
   
-  def admin?
-    role == 'admin'
+  def full_name
+    "#{first_name} #{last_name}"
   end
   
   def marketer?
