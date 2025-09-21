@@ -4329,7 +4329,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
           name: conn.integration.name,
           slug: conn.integration.slug,
           category: conn.integration.category,
-          icon_url: conn.integration.icon_url
+          icon_url: conn.integration.icon_url,
+          description: conn.integration.description
         },
         status: conn.status,
         has_active_credentials: conn.integration_credentials.active.any?,
@@ -4341,12 +4342,37 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       }
     end
     
+    # Get all available integrations
+    available_integrations = Integration.active.map do |integration|
+      # Check if user already has a connection for this integration
+      connected = connections.any? { |c| c.integration_id == integration.id }
+      
+      {
+        id: integration.id,
+        name: integration.name,
+        slug: integration.slug,
+        category: integration.category,
+        description: integration.description,
+        icon_url: integration.icon_url,
+        auth_type: integration.auth_type,
+        is_connected: connected,
+        is_verified: integration.is_verified,
+        operations_count: integration.integration_operations.count
+      }
+    end
+    
     {
       success: true,
       connections: connections_data,
-      total: connections_data.length,
+      available_integrations: available_integrations,
+      total_connections: connections_data.length,
+      total_available: available_integrations.length,
       categories: Integration.distinct.pluck(:category),
-      canvas: 'integrations_manager'
+      canvas: 'integrations_manager',
+      canvas_data: {
+        connections: connections_data,
+        integrations: available_integrations
+      }
     }
   end
   

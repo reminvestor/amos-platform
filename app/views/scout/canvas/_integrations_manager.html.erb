@@ -1,0 +1,151 @@
+<div class="canvas-container bg-dark text-white p-4">
+  <div class="canvas-header mb-4">
+    <h3 class="text-white mb-2">
+      <i class="fas fa-plug"></i> Integration Connections
+    </h3>
+    <p class="text-muted">Manage your external application connections</p>
+  </div>
+
+  <!-- Active Connections -->
+  <% if canvas_data[:connections].present? && canvas_data[:connections].any? %>
+    <div class="mb-4">
+      <h5 class="text-info mb-3">Your Active Connections</h5>
+      <div class="row">
+        <% canvas_data[:connections].each do |connection| %>
+          <div class="col-md-6 mb-3">
+            <div class="card bg-secondary">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                  <% if connection[:integration][:icon_url].present? %>
+                    <img src="<%= connection[:integration][:icon_url] %>" 
+                         alt="<%= connection[:integration][:name] %>" 
+                         class="rounded me-2" style="width: 32px; height: 32px;">
+                  <% else %>
+                    <i class="fas fa-cube fa-2x text-muted me-2"></i>
+                  <% end %>
+                  <div>
+                    <h6 class="mb-0 text-white"><%= connection[:integration][:name] %></h6>
+                    <small class="text-muted"><%= connection[:name] %></small>
+                  </div>
+                </div>
+                
+                <div class="mb-2">
+                  <span class="badge bg-<%= connection[:status] == 'connected' ? 'success' : 'warning' %>">
+                    <%= connection[:status].humanize %>
+                  </span>
+                  <% if connection[:has_active_credentials] %>
+                    <span class="badge bg-info">Authenticated</span>
+                  <% end %>
+                </div>
+                
+                <small class="text-muted d-block">
+                  <%= connection[:operations_count] %> operations available
+                  <% if connection[:last_used] %>
+                    • Last used <%= time_ago_in_words(connection[:last_used]) %> ago
+                  <% end %>
+                </small>
+                
+                <div class="mt-2">
+                  <button class="btn btn-sm btn-outline-primary" 
+                          onclick="window.scoutController.sendMessage('Test my <%= connection[:integration][:name] %> connection')">
+                    <i class="fas fa-check"></i> Test
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary"
+                          onclick="window.scoutController.sendMessage('Show me <%= connection[:integration][:name] %> operations')">
+                    <i class="fas fa-cogs"></i> Operations
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Available Integrations -->
+  <div>
+    <h5 class="text-info mb-3">Available Integrations</h5>
+    <% if canvas_data[:integrations].present? && canvas_data[:integrations].any? %>
+      <div class="row">
+        <% canvas_data[:integrations].group_by { |i| i[:category] }.each do |category, integrations| %>
+          <div class="col-12 mb-3">
+            <h6 class="text-warning mb-2">
+              <i class="fas fa-folder"></i> <%= category&.humanize || 'Other' %>
+            </h6>
+            <div class="row">
+              <% integrations.each do |integration| %>
+                <div class="col-md-6 col-lg-4 mb-3">
+                  <div class="card bg-secondary h-100 <%= 'border-success' if integration[:is_connected] %>">
+                    <div class="card-body">
+                      <div class="d-flex align-items-start mb-2">
+                        <% if integration[:icon_url].present? %>
+                          <img src="<%= integration[:icon_url] %>" 
+                               alt="<%= integration[:name] %>" 
+                               class="rounded me-2" style="width: 24px; height: 24px;">
+                        <% else %>
+                          <i class="fas fa-puzzle-piece text-muted me-2"></i>
+                        <% end %>
+                        <div class="flex-grow-1">
+                          <h6 class="mb-0 text-white">
+                            <%= integration[:name] %>
+                            <% if integration[:is_verified] %>
+                              <i class="fas fa-check-circle text-success small" title="Verified"></i>
+                            <% end %>
+                          </h6>
+                          <small class="text-muted"><%= integration[:auth_type]&.humanize %></small>
+                        </div>
+                      </div>
+                      
+                      <% if integration[:description].present? %>
+                        <p class="small text-muted mb-2"><%= integration[:description] %></p>
+                      <% end %>
+                      
+                      <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                          <%= integration[:operations_count] %> operations
+                        </small>
+                        
+                        <% if integration[:is_connected] %>
+                          <span class="badge bg-success">Connected</span>
+                        <% else %>
+                          <button class="btn btn-sm btn-primary"
+                                  onclick="window.scoutController.sendMessage('Connect me to <%= integration[:name] %>')">
+                            <i class="fas fa-link"></i> Connect
+                          </button>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> No integrations available. Contact your administrator to add integrations.
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="mt-4 p-3 bg-secondary rounded">
+    <h6 class="text-white mb-2">Quick Actions</h6>
+    <div class="btn-group" role="group">
+      <button class="btn btn-sm btn-outline-primary"
+              onclick="window.scoutController.sendMessage('Test all my connections')">
+        <i class="fas fa-check-double"></i> Test All
+      </button>
+      <button class="btn btn-sm btn-outline-info"
+              onclick="window.scoutController.sendMessage('Show me integration documentation')">
+        <i class="fas fa-book"></i> Documentation
+      </button>
+      <button class="btn btn-sm btn-outline-warning"
+              onclick="window.scoutController.sendMessage('Help me choose an integration')">
+        <i class="fas fa-question-circle"></i> Get Help
+      </button>
+    </div>
+  </div>
+</div>
