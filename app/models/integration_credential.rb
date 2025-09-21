@@ -10,7 +10,7 @@ class IntegrationCredential < ApplicationRecord
   validates :auth_method, inclusion: { in: %w[header query body bearer basic] }
   
   # Enums
-  enum status: {
+  enum :status, {
     active: 0,
     expired: 1,
     revoked: 2,
