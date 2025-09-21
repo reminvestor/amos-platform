@@ -1,5 +1,5 @@
 class Admin::SessionsController < ApplicationController
-  layout 'admin_login'
+  layout 'admin'
   
   def new
     redirect_to admin_dashboard_path if admin_signed_in?

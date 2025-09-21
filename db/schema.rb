@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_21_140320) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_21_185449) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -780,6 +780,34 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_21_140320) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  create_table "webhook_events", force: :cascade do |t|
+    t.bigint "webhook_subscription_id", null: false
+    t.string "event_type"
+    t.jsonb "payload"
+    t.integer "response_status"
+    t.text "response_body"
+    t.datetime "delivered_at"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["webhook_subscription_id"], name: "index_webhook_events_on_webhook_subscription_id"
+  end
+
+  create_table "webhook_subscriptions", force: :cascade do |t|
+    t.bigint "connection_id", null: false
+    t.string "endpoint_url"
+    t.string "signing_secret"
+    t.jsonb "events"
+    t.jsonb "filters"
+    t.integer "status"
+    t.integer "retry_count"
+    t.datetime "last_triggered_at"
+    t.jsonb "metadata"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["connection_id"], name: "index_webhook_subscriptions_on_connection_id"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "admin_activities", "admin_users"
@@ -849,4 +877,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_21_140320) do
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
+  add_foreign_key "webhook_events", "webhook_subscriptions"
+  add_foreign_key "webhook_subscriptions", "connections"
 end

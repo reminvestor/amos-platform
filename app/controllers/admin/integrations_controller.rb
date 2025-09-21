@@ -7,11 +7,13 @@ class Admin::IntegrationsController < Admin::BaseController
                                .page(params[:page])
     
     @stats = {
-      total_integrations: Integration.count,
-      active_integrations: Integration.active.count,
-      verified_integrations: Integration.verified.count,
-      total_connections: Connection.count,
-      active_connections: Connection.active.count
+      total: Integration.count,
+      verified: Integration.where(is_verified: true).count,
+      custom: Integration.where(is_verified: false).count,
+      active_connections: Connection.active.count,
+      connected_entities: Connection.active.distinct.count(:entity_id),
+      api_calls_24h: IntegrationLog.where(created_at: 24.hours.ago..).count,
+      error_rate: calculate_error_rate
     }
   end
   
@@ -111,5 +113,15 @@ class Admin::IntegrationsController < Admin::BaseController
   
   def authorize_editor!
     authorize_admin!(:editor)
+  end
+  
+  def calculate_error_rate
+    total = IntegrationLog.where(created_at: 24.hours.ago..).count
+    return 0 if total == 0
+    
+    errors = IntegrationLog.where(created_at: 24.hours.ago..)
+                           .where('response_status >= 400').count
+    
+    ((errors.to_f / total) * 100).round(1)
   end
 end

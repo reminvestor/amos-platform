@@ -253,6 +253,15 @@ Rails.application.routes.draw do
   post 'scout/load_canvas', to: 'scout#load_canvas'
   get 'scout/available_canvases', to: 'scout#available_canvases'
   
+  # OAuth integrations
+  namespace :integrations do
+    get ':integration_slug/auth', to: 'oauth#authorize', as: :oauth_authorize
+    get 'callback/:slug', to: 'oauth#callback', as: :oauth_callback
+  end
+  
+  # Webhook endpoints
+  post 'webhooks/:integration_slug', to: 'webhooks#receive', as: :webhook_receive
+  
   # Admin routes
   namespace :admin do
     get 'login', to: 'sessions#new', as: :new_session
