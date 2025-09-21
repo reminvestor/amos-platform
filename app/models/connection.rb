@@ -10,7 +10,7 @@ class Connection < ApplicationRecord
   validates :status, presence: true
   
   # Enums
-  enum status: {
+  enum :status, {
     disconnected: 0,
     connected: 1,
     limited: 2,    # Rate limited or degraded
@@ -92,6 +92,24 @@ class Connection < ApplicationRecord
     end
     
     update!(last_health_check: Time.current)
+  end
+  
+  def test_connection!
+    # Use the API service to test the connection
+    api_service = IntegrationApiService.new(self)
+    result = api_service.test_connection
+    
+    if result[:success]
+      connected!
+      update!(last_health_check: Time.current)
+    else
+      failing!
+    end
+    
+    result
+  rescue => e
+    failing!
+    { success: false, error: e.message }
   end
   
   private

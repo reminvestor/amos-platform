@@ -5,7 +5,7 @@ class AdminUser < ApplicationRecord
   has_many :admin_activities
   
   # Roles
-  enum role: { 
+  enum :role, { 
     viewer: 0,      # Read-only access
     editor: 1,      # Can modify settings
     super_admin: 2  # Full access

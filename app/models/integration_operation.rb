@@ -7,14 +7,14 @@ class IntegrationOperation < ApplicationRecord
   validates :http_method, inclusion: { in: %w[GET POST PUT PATCH DELETE HEAD OPTIONS] }
   
   # Enums
-  enum pagination_strategy: {
-    none: 0,
+  enum :pagination_strategy, {
+    no_pagination: 0,
     cursor: 1,
     page: 2,
     offset: 3,
     token: 4,
     link_header: 5
-  }
+  }, prefix: true
   
   # Scopes
   scope :active, -> { where('deprecated_at IS NULL OR deprecated_at > ?', Time.current) }
@@ -99,7 +99,7 @@ class IntegrationOperation < ApplicationRecord
   def set_defaults
     self.is_idempotent = false if is_idempotent.nil?
     self.requires_confirmation = false if requires_confirmation.nil?
-    self.pagination_strategy ||= :none
+    self.pagination_strategy ||= :no_pagination
     self.request_schema ||= {}
     self.response_schema ||= {}
     self.examples ||= {}

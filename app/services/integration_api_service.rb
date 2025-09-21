@@ -9,6 +9,32 @@ class IntegrationApiService
     raise "No active credentials for connection" unless @credential
   end
   
+  def test_connection
+    # Find the test connection operation
+    test_operation = @integration.integration_operations
+                                 .where("operation_id LIKE ?", "%.test_connection.%")
+                                 .first
+    
+    return { success: false, error: "No test operation defined for this integration" } unless test_operation
+    
+    begin
+      response = execute_operation(test_operation)
+      
+      {
+        success: response.success?,
+        status_code: response.code,
+        message: "Connection successful",
+        data: response.parsed_response
+      }
+    rescue => e
+      {
+        success: false,
+        error: e.message,
+        status_code: e.response&.code
+      }
+    end
+  end
+  
   def execute_operation(operation, params: {}, body: nil)
     # Build the request
     url = build_url(operation, params)

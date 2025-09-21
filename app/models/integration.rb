@@ -10,7 +10,7 @@ class Integration < ApplicationRecord
   validates :category, inclusion: { in: %w[payment ecommerce crm communication productivity marketing analytics custom] }
   
   # Enums
-  enum auth_type: {
+  enum :auth_type, {
     api_key: 0,
     bearer_token: 1,
     basic_auth: 2,
