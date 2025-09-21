@@ -264,8 +264,8 @@ class ScoutGenericToolsService
             }
           },
           required: ["connection_id"]
-        }
-      },
+      }
+    },
     {
       name: "generate_ai_landing_page",
       description: "Generate a complete AI-powered landing page using sophisticated multi-agent system (PREFERRED for landing pages)",
@@ -669,7 +669,7 @@ class ScoutGenericToolsService
               
               # Parse arguments
               args = begin
-                JSON.parse(tool_call[:arguments])
+                tool_call[:arguments].to_s.strip.empty? ? {} : JSON.parse(tool_call[:arguments])
               rescue JSON::ParserError => e
                 Rails.logger.error "Failed to parse tool arguments: #{e.message}"
                 {}
@@ -747,11 +747,14 @@ class ScoutGenericToolsService
               
               # Add the tool use blocks
               tool_calls.each do |tool_call|
+                # Handle empty arguments
+                arguments = tool_call[:arguments].to_s.strip.empty? ? {} : JSON.parse(tool_call[:arguments])
+                
                 tool_use_content << {
                   tool_use: {
                     tool_use_id: tool_call[:id],
                     name: tool_call[:name],
-                    input: JSON.parse(tool_call[:arguments])
+                    input: arguments
                   }
                 }
               end
@@ -904,7 +907,7 @@ class ScoutGenericToolsService
                     # Parse arguments if they're a string
                     parsed_args = if tool_call[:arguments].is_a?(String)
                       begin
-                        JSON.parse(tool_call[:arguments])
+                        tool_call[:arguments].to_s.strip.empty? ? {} : JSON.parse(tool_call[:arguments])
                       rescue JSON::ParserError => e
                         Rails.logger.error "Failed to parse tool arguments: #{e.message}"
                         {}
@@ -957,7 +960,7 @@ class ScoutGenericToolsService
                       tool_use: {
                         tool_use_id: tool_call[:id],
                         name: tool_call[:name],
-                        input: JSON.parse(tool_call[:arguments])
+                        input: tool_call[:arguments].to_s.strip.empty? ? {} : JSON.parse(tool_call[:arguments])
                       }
                     }
                   end
@@ -1058,7 +1061,7 @@ class ScoutGenericToolsService
                       # Parse arguments
                       parsed_args = if tool_call[:arguments].is_a?(String)
                         begin
-                          JSON.parse(tool_call[:arguments])
+                          tool_call[:arguments].to_s.strip.empty? ? {} : JSON.parse(tool_call[:arguments])
                         rescue JSON::ParserError => e
                           Rails.logger.error "Failed to parse tool arguments: #{e.message}"
                           {}
@@ -1106,7 +1109,7 @@ class ScoutGenericToolsService
                         tool_use: {
                           tool_use_id: tool_call[:id],
                           name: tool_call[:name],
-                          input: JSON.parse(tool_call[:arguments])
+                          input: tool_call[:arguments].to_s.strip.empty? ? {} : JSON.parse(tool_call[:arguments])
                         }
                       }
                     end
