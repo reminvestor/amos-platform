@@ -36,9 +36,13 @@ class User < ApplicationRecord
   # Admin associations
   has_one :admin_user
   
+  # Integration relationships (through entities)
+  has_many :connections, through: :entities
+  has_many :integrations, through: :connections
+  
   # Methods
   def admin?
-    admin_user.present? && admin_user.active?
+    admin_user.present? && !admin_user.locked?
   end
   
   def full_name
