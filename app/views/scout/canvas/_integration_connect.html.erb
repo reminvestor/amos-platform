@@ -27,6 +27,7 @@
       <div class="card bg-white text-dark">
         <div class="card-body">
           <form id="integrationConnectForm" onsubmit="submitConnection(event)">
+            <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
             
             <div class="mb-3">
               <label for="connection_name" class="form-label">Connection Name</label>
@@ -170,12 +171,17 @@ function submitConnection(event) {
   connectBtn.disabled = true;
   connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
   
+  // Get CSRF token
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                   document.querySelector('input[name="authenticity_token"]')?.value || 
+                   '<%= form_authenticity_token %>';
+  
   // Submit via fetch
   fetch(`/integrations/connect/<%= canvas_data[:integration][:slug] %>`, {
     method: 'POST',
     body: formData,
     headers: {
-      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      'X-CSRF-Token': csrfToken
     }
   })
   .then(response => response.json())
