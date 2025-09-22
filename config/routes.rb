@@ -253,6 +253,11 @@ Rails.application.routes.draw do
   post 'scout/load_canvas', to: 'scout#load_canvas'
   get 'scout/available_canvases', to: 'scout#available_canvases'
   
+  # Integration management
+  resources :integrations, only: [:index]
+  get 'integrations/connect/:slug', to: 'integrations#connect', as: :connect_integration
+  post 'integrations/connect/:slug', to: 'integrations#create_connection', as: :create_connection_integration
+
   # OAuth integrations
   namespace :integrations do
     get ':integration_slug/auth', to: 'oauth#authorize', as: :oauth_authorize
