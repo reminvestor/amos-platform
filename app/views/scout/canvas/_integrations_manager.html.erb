@@ -51,7 +51,7 @@
                     <i class="fas fa-check"></i> Test
                   </button>
                   <button class="btn btn-sm btn-outline-secondary"
-                          onclick="showOperations(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')">
+                          onclick="loadOperationsCanvas(<%= connection[:id] %>, '<%= connection[:integration][:name] %>', '<%= connection[:name] %>')">
                     <i class="fas fa-cogs"></i> Operations
                   </button>
                 </div>
@@ -190,15 +190,67 @@ function loadConnectionCanvas(slug) {
 }
 
 function testConnection(connectionId, integrationName) {
-  // Send message to AI to test the connection
-  const message = `Test my ${integrationName} connection (ID: ${connectionId})`;
-  sendMessageToAI(message);
+  // Call server endpoint directly first
+  fetch(`/connections/${connectionId}/test`, {
+    method: 'POST',
+    headers: {
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '<%= form_authenticity_token %>',
+      'Accept': 'application/json'
+    }
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        showNotification('success', `${integrationName} connection test successful`)
+        sendMessageToAI(`✅ ${integrationName} connection test passed successfully!`)
+      } else {
+        // Test failed - let AI try to diagnose and fix
+        const errorMsg = data.error || 'Unknown error'
+        showNotification('error', `${integrationName} test failed - asking AI to investigate...`)
+        
+        const aiMessage = `My ${integrationName} connection (ID: ${connectionId}) test failed with error: "${errorMsg}". Please diagnose the issue and try to fix the authentication configuration automatically. The error suggests there might be an issue with how the API key is being formatted or sent.`
+        sendMessageToAI(aiMessage)
+      }
+    })
+    .catch(err => {
+      console.error('Test connection error:', err)
+      showNotification('error', `Failed to test ${integrationName} connection`)
+      sendMessageToAI(`❌ Failed to test ${integrationName} connection (ID: ${connectionId}) - there was a network or server error. Please check the connection setup.`)
+    })
 }
 
 function showOperations(connectionId, integrationName) {
   // Send message to AI to show operations
   const message = `Show me the available operations for my ${integrationName} connection (ID: ${connectionId})`;
   sendMessageToAI(message);
+}
+function loadOperationsCanvas(connectionId, integrationName, connectionName) {
+  // Fetch operations then load canvas
+  fetch(`/connections/${connectionId}/operations`, { headers: { 'Accept': 'application/json' }})
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) {
+        showNotification('error', data.error || 'Failed to load operations');
+        return;
+      }
+      const canvasData = {
+        connection_id: connectionId,
+        integration_name: integrationName,
+        connection_name: connectionName,
+        integration: data.integration,
+        operations: data.operations
+      };
+      if (window.scoutController && window.scoutController.loadScoutCanvas) {
+        window.scoutController.loadScoutCanvas('integration_operations', canvasData);
+      } else {
+        const event = new CustomEvent('scout:load-canvas', { detail: { canvas: 'integration_operations', data: canvasData }});
+        document.dispatchEvent(event);
+      }
+    })
+    .catch(err => {
+      console.error('Load operations error:', err);
+      showNotification('error', 'Failed to load operations');
+    });
 }
 
 function sendMessageToAI(message) {
