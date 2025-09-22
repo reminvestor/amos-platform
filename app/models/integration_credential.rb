@@ -5,6 +5,35 @@ class IntegrationCredential < ApplicationRecord
   # TODO: Configure encryption keys in credentials
   # encrypts :credentials
   
+  # Parse JSON credentials
+  def credentials
+    return {} if self[:credentials].blank?
+    
+    # Handle both hash and string formats
+    if self[:credentials].is_a?(Hash)
+      self[:credentials]
+    elsif self[:credentials].is_a?(String)
+      # Try to parse as JSON first
+      begin
+        JSON.parse(self[:credentials])
+      rescue JSON::ParserError
+        # If it fails, try to evaluate as Ruby hash string (legacy format)
+        begin
+          eval(self[:credentials])
+        rescue
+          {}
+        end
+      end
+    else
+      {}
+    end
+  end
+  
+  # Store credentials as JSON
+  def credentials=(value)
+    self[:credentials] = value.is_a?(Hash) ? value.to_json : value
+  end
+  
   # Validations
   validates :name, presence: true
   validates :status, presence: true
@@ -54,7 +83,12 @@ class IntegrationCredential < ApplicationRecord
     when 'bearer'
       { 'Authorization' => "Bearer #{credentials['access_token'] || credentials['token']}" }
     when 'basic'
-      encoded = Base64.strict_encode64("#{credentials['username']}:#{credentials['password']}")
+      # For Stripe, the API key is the username, password is empty
+      username = credentials['username'] || ''
+      password = credentials['password'] || ''
+      
+      encoded = Base64.strict_encode64("#{username}:#{password}")
+      
       { 'Authorization' => "Basic #{encoded}" }
     when 'header'
       { auth_field_name => credentials['api_key'] || credentials['token'] }
@@ -92,7 +126,7 @@ class IntegrationCredential < ApplicationRecord
   def set_defaults
     self.status ||= :active
     self.metadata ||= {}
-    self.credentials ||= {}
+    self[:credentials] ||= '{}'
   end
   
   def set_rotation_schedule

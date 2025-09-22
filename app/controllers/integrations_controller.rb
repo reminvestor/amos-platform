@@ -31,10 +31,10 @@ class IntegrationsController < ApplicationController
       connection.status = :connected
       
       if connection.save
-        # Create credentials
+        # Create credentials (store as JSON)
         credential = connection.integration_credentials.build(
           name: params[:credential_name] || "API Credentials",
-          credentials: build_credentials_from_params,
+          credentials: build_credentials_from_params.to_json,
           auth_method: determine_auth_method,
           status: :active
         )

@@ -181,6 +181,14 @@ function submitConnection(event) {
   connectBtn.disabled = true;
   connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
   
+  // Convert FormData to JSON object
+  const jsonData = {};
+  for (let [key, value] of formData.entries()) {
+    jsonData[key] = value;
+  }
+  
+  console.log('Submitting connection data:', jsonData);
+  
   // Get CSRF token
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
                    document.querySelector('input[name="authenticity_token"]')?.value || 
@@ -189,8 +197,9 @@ function submitConnection(event) {
   // Submit via fetch
   fetch(`/integrations/connect/<%= canvas_data[:integration][:slug] %>`, {
     method: 'POST',
-    body: formData,
+    body: JSON.stringify(jsonData),
     headers: {
+      'Content-Type': 'application/json',
       'X-CSRF-Token': csrfToken,
       'Accept': 'application/json'
     }
