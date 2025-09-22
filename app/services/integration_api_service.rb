@@ -27,10 +27,17 @@ class IntegrationApiService
         data: response.parsed_response
       }
     rescue => e
+      status_code = nil
+      if e.respond_to?(:response) && e.response
+        status_code = e.response.code
+      elsif e.is_a?(HTTParty::ResponseError)
+        status_code = e.response.code
+      end
+      
       {
         success: false,
         error: e.message,
-        status_code: e.response&.code
+        status_code: status_code
       }
     end
   end
