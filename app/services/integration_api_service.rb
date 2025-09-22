@@ -20,12 +20,23 @@ class IntegrationApiService
     begin
       response = execute_operation(test_operation)
       
-      {
-        success: response.success?,
-        status_code: response.code,
-        message: "Connection successful",
-        data: response.parsed_response
-      }
+      if response.success?
+        {
+          success: true,
+          status_code: response.code,
+          message: "Connection successful",
+          data: response.parsed_response
+        }
+      else
+        # Extract error message from response
+        error_message = extract_error_message(response)
+        {
+          success: false,
+          status_code: response.code,
+          error: error_message || "API request failed with status #{response.code}",
+          data: response.parsed_response
+        }
+      end
     rescue => e
       status_code = nil
       if e.respond_to?(:response) && e.response
@@ -116,6 +127,25 @@ class IntegrationApiService
   end
   
   private
+  
+  def extract_error_message(response)
+    return nil unless response&.parsed_response
+    
+    data = response.parsed_response
+    
+    # Handle different API error formats
+    case @integration.slug
+    when 'stripe'
+      data.dig('error', 'message')
+    when 'shopify'
+      data['errors']&.first || data['error']
+    when 'hubspot'
+      data.dig('message') || data.dig('errors', 0, 'message')
+    else
+      # Generic error extraction
+      data['message'] || data['error'] || data.dig('error', 'message') || data.dig('errors', 0, 'message')
+    end
+  end
   
   def build_url(operation, params)
     # Start with the base URL
