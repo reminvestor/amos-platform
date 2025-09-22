@@ -121,6 +121,20 @@ class ScoutGenericToolsService
       }
     },
     {
+      name: "test_connection",
+      description: "Test an existing integration connection to verify it's working properly",
+      input_schema: {
+        type: "object",
+        properties: {
+          connection_id: {
+            type: "integer",
+            description: "The ID of the connection to test"
+          }
+        },
+        required: ["connection_id"]
+      }
+    },
+    {
       name: "invoke_operation",
       description: "Execute an operation on an external integration (e.g., fetch Stripe customers, create Shopify product)",
       input_schema: {
@@ -1985,8 +1999,10 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       execute_confirm_operation(args)
     when 'discover_api_schema'
       execute_discover_api_schema(args)
-    when 'configure_integration'
-      execute_configure_integration(args)
+      when 'configure_integration'
+        execute_configure_integration(args)
+      when 'test_connection'
+        execute_test_connection(args)
     else
       { success: false, error: "Unknown tool: #{tool_name}" }
     end
@@ -4373,6 +4389,29 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         connections: connections_data,
         integrations: available_integrations
       }
+    }
+  end
+  
+  def execute_test_connection(args)
+    connection = @entity.connections.find_by(id: args['connection_id'])
+    
+    return { success: false, error: "Connection not found" } unless connection
+    
+    # Test the connection
+    test_result = connection.test_connection!
+    
+    {
+      success: test_result[:success],
+      message: test_result[:success] ? 
+        "✅ #{connection.integration.name} connection test successful!" :
+        "❌ #{connection.integration.name} test failed: #{test_result[:error]}",
+      connection: {
+        id: connection.id,
+        name: connection.name,
+        integration: connection.integration.name,
+        status: connection.status
+      },
+      test_details: test_result
     }
   end
   
