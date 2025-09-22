@@ -5,7 +5,7 @@
 stripe = Integration.find_or_create_by!(slug: 'stripe') do |i|
   i.name = 'Stripe'
   i.category = 'payment'
-  i.auth_type = 'bearer_token'
+  i.auth_type = 'basic_auth'
   i.api_base_url = 'https://api.stripe.com'
   i.allowed_hosts = ['api.stripe.com']
   i.documentation_url = 'https://stripe.com/docs/api'
@@ -14,9 +14,12 @@ stripe = Integration.find_or_create_by!(slug: 'stripe') do |i|
   i.is_active = true
   i.is_verified = true
   i.auth_config = {
-    auth_method: 'bearer',
-    auth_field_name: 'Authorization',
-    auth_prefix: 'Bearer',
+    auth_method: 'basic',
+    username_label: 'API Key',
+    username_placeholder: 'sk_test_... or sk_live_...',
+    username_help_text: 'Enter your Stripe secret key. No password needed - Stripe uses the API key as username in Basic Auth.',
+    password_required: false,
+    password_value: '',
     test_endpoint: '/v1/customers?limit=1',
     setup_instructions: 'Get your API key from the Stripe Dashboard under Developers > API Keys'
   }
