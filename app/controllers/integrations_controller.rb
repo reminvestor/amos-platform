@@ -43,15 +43,27 @@ class IntegrationsController < ApplicationController
         test_result = connection.test_connection!
         
         if test_result[:success]
-          redirect_to integrations_path, notice: "Successfully connected to #{@integration.name}!"
+          respond_to do |format|
+            format.html { redirect_to integrations_path, notice: "Successfully connected to #{@integration.name}!" }
+            format.json { render json: { success: true, message: "Successfully connected to #{@integration.name}!" } }
+          end
         else
-          redirect_to integrations_path, alert: "Connected but test failed: #{test_result[:error]}"
+          respond_to do |format|
+            format.html { redirect_to integrations_path, alert: "Connected but test failed: #{test_result[:error]}" }
+            format.json { render json: { success: false, error: "Connected but test failed: #{test_result[:error]}" } }
+          end
         end
       else
-        redirect_to connect_integration_path(@integration.slug), alert: "Failed to save credentials"
+        respond_to do |format|
+          format.html { redirect_to connect_integration_path(@integration.slug), alert: "Failed to save credentials" }
+          format.json { render json: { success: false, error: "Failed to save credentials" } }
+        end
       end
     else
-      redirect_to connect_integration_path(@integration.slug), alert: "Failed to create connection"
+      respond_to do |format|
+        format.html { redirect_to connect_integration_path(@integration.slug), alert: "Failed to create connection" }
+        format.json { render json: { success: false, error: "Failed to create connection" } }
+      end
     end
   end
   

@@ -431,6 +431,9 @@ class ScoutController < ApplicationController
       when 'integrations_manager'
         canvas_content = render_integrations_manager(canvas_data)
         canvas_title = "Integration Connections"
+      when 'integration_connect'
+        canvas_content = render_integration_connect(canvas_data)
+        canvas_title = "Connect Integration"
       else
         canvas_content = render_default_canvas
         canvas_title = "Scout Canvas"
@@ -484,6 +487,12 @@ class ScoutController < ApplicationController
           name: 'Integrations',
           description: 'Manage external application connections',
           icon: 'fas fa-plug'
+        },
+        {
+          type: 'integration_connect',
+          name: 'Connect Integration',
+          description: 'Connect to an external service',
+          icon: 'fas fa-link'
         },
         { 
           type: 'analytics_dashboard', 
@@ -1391,6 +1400,10 @@ class ScoutController < ApplicationController
 
   def render_integrations_manager(data = {})
     render_to_string(partial: 'scout/canvas/integrations_manager', locals: { canvas_data: data })
+  end
+
+  def render_integration_connect(data = {})
+    render_to_string(partial: 'scout/canvas/integration_connect', locals: { canvas_data: data })
   end
 
   def render_campaign_editor(data = {})

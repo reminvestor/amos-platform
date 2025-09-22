@@ -1,0 +1,223 @@
+<div class="canvas-container bg-dark text-white p-4">
+  <div class="canvas-header mb-4">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <% if canvas_data[:integration][:icon_url].present? %>
+          <img src="<%= canvas_data[:integration][:icon_url] %>" 
+               alt="<%= canvas_data[:integration][:name] %>" 
+               class="rounded me-3" style="width: 48px; height: 48px;">
+        <% else %>
+          <i class="fas fa-puzzle-piece fa-3x text-muted me-3"></i>
+        <% end %>
+        <div>
+          <h3 class="text-white mb-1">Connect to <%= canvas_data[:integration][:name] %></h3>
+          <% if canvas_data[:integration][:description].present? %>
+            <p class="text-muted mb-0"><%= canvas_data[:integration][:description] %></p>
+          <% end %>
+        </div>
+      </div>
+      <button class="btn btn-outline-secondary" onclick="goBackToIntegrations()">
+        <i class="fas fa-arrow-left"></i> Back to Integrations
+      </button>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card bg-white text-dark">
+        <div class="card-body">
+          <form id="integrationConnectForm" onsubmit="submitConnection(event)">
+            
+            <div class="mb-3">
+              <label for="connection_name" class="form-label">Connection Name</label>
+              <input type="text" 
+                     class="form-control" 
+                     id="connection_name" 
+                     name="connection_name"
+                     value="<%= canvas_data[:integration][:name] %> - <%= canvas_data[:user_email] %>"
+                     required>
+              <div class="form-text">A friendly name to identify this connection</div>
+            </div>
+            
+            <% case canvas_data[:integration][:auth_type] %>
+            <% when 'api_key' %>
+              <div class="mb-3">
+                <label for="api_key" class="form-label">API Key</label>
+                <input type="password" 
+                       class="form-control" 
+                       id="api_key" 
+                       name="api_key"
+                       placeholder="Enter your <%= canvas_data[:integration][:name] %> API key"
+                       required>
+                <div class="form-text">
+                  You can find your API key in your <%= canvas_data[:integration][:name] %> account settings
+                </div>
+              </div>
+              
+            <% when 'bearer_token' %>
+              <div class="mb-3">
+                <label for="bearer_token" class="form-label">Bearer Token</label>
+                <input type="password" 
+                       class="form-control" 
+                       id="bearer_token" 
+                       name="bearer_token"
+                       placeholder="Enter your <%= canvas_data[:integration][:name] %> bearer token"
+                       required>
+                <div class="form-text">
+                  You can find your bearer token in your <%= canvas_data[:integration][:name] %> account settings
+                </div>
+              </div>
+              
+            <% when 'basic_auth' %>
+              <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" 
+                       class="form-control" 
+                       id="username" 
+                       name="username"
+                       required>
+              </div>
+              
+              <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" 
+                       class="form-control" 
+                       id="password" 
+                       name="password"
+                       required>
+              </div>
+              
+            <% when 'custom' %>
+              <% case canvas_data[:integration][:slug] %>
+              <% when 'slack' %>
+                <div class="mb-3">
+                  <label for="webhook_url" class="form-label">Webhook URL</label>
+                  <input type="url" 
+                         class="form-control" 
+                         id="webhook_url" 
+                         name="webhook_url"
+                         placeholder="https://hooks.slack.com/services/..."
+                         required>
+                  <div class="form-text">
+                    Create an incoming webhook in your Slack workspace settings
+                  </div>
+                </div>
+              <% else %>
+                <div class="alert alert-info">
+                  <i class="fas fa-info-circle"></i>
+                  Custom authentication setup for <%= canvas_data[:integration][:name] %>. 
+                  Please contact support for setup instructions.
+                </div>
+              <% end %>
+            <% end %>
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+              <button type="button" class="btn btn-secondary me-md-2" onclick="goBackToIntegrations()">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" id="connectBtn">
+                <i class="fas fa-link"></i> Connect to <%= canvas_data[:integration][:name] %>
+              </button>
+            </div>
+            
+          </form>
+        </div>
+      </div>
+      
+      <!-- Help Section -->
+      <div class="card bg-secondary mt-3">
+        <div class="card-body">
+          <h6 class="card-title text-white">
+            <i class="fas fa-question-circle text-info"></i> Need Help?
+          </h6>
+          <p class="card-text small text-muted">
+            Having trouble connecting? 
+            <% if canvas_data[:integration][:documentation_url].present? %>
+              Check the <a href="<%= canvas_data[:integration][:documentation_url] %>" target="_blank" class="text-info"><%= canvas_data[:integration][:name] %> documentation</a>
+            <% else %>
+              Check the <%= canvas_data[:integration][:name] %> documentation
+            <% end %>
+            for setup instructions, or contact our support team.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function goBackToIntegrations() {
+  // Load the integrations manager canvas
+  if (window.scoutController && window.scoutController.loadScoutCanvas) {
+    window.scoutController.loadScoutCanvas('integrations_manager', {});
+  } else {
+    const event = new CustomEvent('scout:load-canvas', {
+      detail: { canvas: 'integrations_manager', data: {} }
+    });
+    document.dispatchEvent(event);
+  }
+}
+
+function submitConnection(event) {
+  event.preventDefault();
+  
+  const form = event.target;
+  const formData = new FormData(form);
+  const connectBtn = document.getElementById('connectBtn');
+  const originalText = connectBtn.innerHTML;
+  
+  // Show loading state
+  connectBtn.disabled = true;
+  connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+  
+  // Submit via fetch
+  fetch(`/integrations/connect/<%= canvas_data[:integration][:slug] %>`, {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Show success and go back to integrations
+      showNotification('success', data.message || 'Successfully connected!');
+      setTimeout(() => {
+        goBackToIntegrations();
+      }, 1500);
+    } else {
+      // Show error
+      showNotification('error', data.error || 'Connection failed');
+      connectBtn.disabled = false;
+      connectBtn.innerHTML = originalText;
+    }
+  })
+  .catch(error => {
+    console.error('Connection error:', error);
+    showNotification('error', 'An error occurred while connecting');
+    connectBtn.disabled = false;
+    connectBtn.innerHTML = originalText;
+  });
+}
+
+function showNotification(type, message) {
+  // Create a simple notification
+  const notification = document.createElement('div');
+  notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
+  notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  notification.innerHTML = `
+    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+    ${message}
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 5000);
+}
+</script>

@@ -158,8 +158,34 @@ function connectIntegration(slug, name, authType) {
     // OAuth flow - redirect to authorization URL
     window.location.href = `/integrations/${slug}/auth`;
   } else {
-    // Direct redirect to connection setup page for API key, bearer token, etc.
-    window.location.href = `/integrations/connect/${slug}`;
+    // Load the connection canvas for API key, bearer token, etc.
+    loadConnectionCanvas(slug);
+  }
+}
+
+function loadConnectionCanvas(slug) {
+  // Find the integration data from the current canvas
+  const integrations = <%= raw canvas_data[:integrations].to_json %>;
+  const integration = integrations.find(i => i.slug === slug);
+  
+  if (!integration) {
+    console.error('Integration not found:', slug);
+    return;
+  }
+  
+  const canvasData = {
+    integration: integration,
+    user_email: '<%= current_user.email %>'
+  };
+  
+  // Load the integration connect canvas
+  if (window.scoutController && window.scoutController.loadScoutCanvas) {
+    window.scoutController.loadScoutCanvas('integration_connect', canvasData);
+  } else {
+    const event = new CustomEvent('scout:load-canvas', {
+      detail: { canvas: 'integration_connect', data: canvasData }
+    });
+    document.dispatchEvent(event);
   }
 }
 </script>
