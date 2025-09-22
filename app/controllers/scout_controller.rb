@@ -434,6 +434,9 @@ class ScoutController < ApplicationController
       when 'integration_connect'
         canvas_content = render_integration_connect(canvas_data)
         canvas_title = "Connect Integration"
+      when 'integration_operations'
+        canvas_content = render_integration_operations(canvas_data)
+        canvas_title = "Integration Operations"
       else
         canvas_content = render_default_canvas
         canvas_title = "Scout Canvas"
@@ -1404,6 +1407,10 @@ class ScoutController < ApplicationController
 
   def render_integration_connect(data = {})
     render_to_string(partial: 'scout/canvas/integration_connect', locals: { canvas_data: data })
+  end
+
+  def render_integration_operations(data = {})
+    render_to_string(partial: 'scout/canvas/integration_operations', locals: { canvas_data: data })
   end
 
   def render_campaign_editor(data = {})

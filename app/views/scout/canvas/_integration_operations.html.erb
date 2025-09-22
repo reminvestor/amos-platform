@@ -1,0 +1,225 @@
+<div class="canvas-container bg-dark text-white p-4">
+  <div class="canvas-header mb-4 d-flex justify-content-between align-items-center">
+    <div>
+      <h3 class="text-white mb-1"><i class="fas fa-cogs"></i> <%= canvas_data[:integration_name] %> Operations</h3>
+      <p class="text-muted mb-0">Connection: <%= canvas_data[:connection_name] %></p>
+    </div>
+    <button class="btn btn-outline-secondary" onclick="goBackToIntegrations()">
+      <i class="fas fa-arrow-left"></i> Back to Integrations
+    </button>
+  </div>
+
+  <!-- Authentication Section -->
+  <div class="mb-4">
+    <div class="card bg-secondary">
+      <div class="card-header">
+        <h6 class="text-white mb-0">
+          <i class="fas fa-key"></i> Authentication Settings
+          <button class="btn btn-sm btn-outline-light float-end" onclick="toggleAuthSection()">
+            <i class="fas fa-edit"></i> Update Credentials
+          </button>
+        </h6>
+      </div>
+      <div class="card-body" id="authSection" style="display: none;">
+        <div id="authForm">
+          <!-- Auth form will be loaded here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if canvas_data[:operations].blank? %>
+    <div class="alert alert-info">No operations available for this integration.</div>
+  <% else %>
+    <div class="list-group">
+      <% canvas_data[:operations].each do |op| %>
+        <div class="list-group-item bg-secondary text-white mb-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <span class="badge bg-info me-2"><%= op[:http_method] %></span>
+              <strong><%= op[:name] %></strong>
+              <div class="small text-muted"><code><%= op[:path_template] %></code></div>
+            </div>
+            <button class="btn btn-sm btn-outline-light" onclick="showOperationExample(<%= op[:id] %>)">Example</button>
+          </div>
+          <% if op[:example].present? %>
+            <pre class="mt-2 small bg-dark text-white p-2 rounded"><%= JSON.pretty_generate(op[:example]) %></pre>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<script>
+function goBackToIntegrations() {
+  if (window.scoutController && window.scoutController.loadScoutCanvas) {
+    window.scoutController.loadScoutCanvas('integrations_manager', {});
+  } else {
+    const event = new CustomEvent('scout:load-canvas', { detail: { canvas: 'integrations_manager', data: {} } });
+    document.dispatchEvent(event);
+  }
+}
+
+function toggleAuthSection() {
+  const authSection = document.getElementById('authSection');
+  const authForm = document.getElementById('authForm');
+  
+  if (authSection.style.display === 'none') {
+    // Load the auth form
+    loadAuthForm();
+    authSection.style.display = 'block';
+  } else {
+    authSection.style.display = 'none';
+  }
+}
+
+function loadAuthForm() {
+  const connectionData = <%= raw canvas_data.to_json %>;
+  const authForm = document.getElementById('authForm');
+  
+  // Build auth form based on integration type
+  let formHtml = `
+    <form id="updateCredentialsForm" onsubmit="updateCredentials(event)">
+      <div class="mb-3">
+        <label for="connection_name" class="form-label text-white">Connection Name</label>
+        <input type="text" class="form-control" id="connection_name" name="connection_name" 
+               value="${connectionData.connection_name}" required>
+      </div>
+  `;
+  
+  // Add auth fields based on integration auth type
+  const integration = connectionData.integration || {};
+  const authConfig = integration.auth_config || {};
+  
+  switch(integration.auth_type) {
+    case 'api_key':
+      formHtml += `
+        <div class="mb-3">
+          <label for="api_key" class="form-label text-white">API Key</label>
+          <input type="password" class="form-control" id="api_key" name="api_key" 
+                 placeholder="Enter your ${integration.name} API key" required>
+        </div>
+      `;
+      break;
+      
+    case 'bearer_token':
+      formHtml += `
+        <div class="mb-3">
+          <label for="bearer_token" class="form-label text-white">Bearer Token</label>
+          <input type="password" class="form-control" id="bearer_token" name="bearer_token" 
+                 placeholder="Enter your ${integration.name} bearer token" required>
+        </div>
+      `;
+      break;
+      
+    case 'basic_auth':
+      const usernameLabel = authConfig.username_label || 'Username';
+      const usernamePlaceholder = authConfig.username_placeholder || '';
+      const usernameHelpText = authConfig.username_help_text || '';
+      const passwordRequired = authConfig.password_required !== false;
+      
+      formHtml += `
+        <div class="mb-3">
+          <label for="username" class="form-label text-white">${usernameLabel}</label>
+          <input type="${usernameLabel.toLowerCase().includes('key') ? 'password' : 'text'}" 
+                 class="form-control" id="username" name="username" 
+                 placeholder="${usernamePlaceholder}" required>
+          ${usernameHelpText ? `<div class="form-text text-muted">${usernameHelpText}</div>` : ''}
+        </div>
+      `;
+      
+      if (passwordRequired) {
+        formHtml += `
+          <div class="mb-3">
+            <label for="password" class="form-label text-white">Password</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+          </div>
+        `;
+      } else {
+        formHtml += `<input type="hidden" id="password" name="password" value="">`;
+      }
+      break;
+  }
+  
+  formHtml += `
+      <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <button type="button" class="btn btn-secondary me-md-2" onclick="toggleAuthSection()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="updateCredsBtn">
+          <i class="fas fa-save"></i> Update Credentials
+        </button>
+      </div>
+    </form>
+  `;
+  
+  authForm.innerHTML = formHtml;
+}
+
+function updateCredentials(event) {
+  event.preventDefault();
+  
+  const form = event.target;
+  const formData = new FormData(form);
+  const updateBtn = document.getElementById('updateCredsBtn');
+  const originalText = updateBtn.innerHTML;
+  
+  // Show loading state
+  updateBtn.disabled = true;
+  updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+  
+  const connectionData = <%= raw canvas_data.to_json %>;
+  
+  // Submit credentials update
+  fetch(`/connections/${connectionData.connection_id}/credentials`, {
+    method: 'PATCH',
+    body: formData,
+    headers: {
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+      'Accept': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showNotification('success', data.message || 'Credentials updated successfully');
+      toggleAuthSection(); // Hide the form
+    } else {
+      showNotification('error', data.error || 'Failed to update credentials');
+    }
+    updateBtn.disabled = false;
+    updateBtn.innerHTML = originalText;
+  })
+  .catch(error => {
+    console.error('Update credentials error:', error);
+    showNotification('error', 'An error occurred while updating credentials');
+    updateBtn.disabled = false;
+    updateBtn.innerHTML = originalText;
+  });
+}
+
+function showOperationExample(id) {
+  // no-op for now; examples are inline when available
+}
+
+function showNotification(type, message) {
+  // Create a simple notification
+  const notification = document.createElement('div');
+  notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
+  notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  notification.innerHTML = `
+    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+    ${message}
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 5000);
+}
+</script>
+
+

@@ -4400,19 +4400,72 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     # Test the connection
     test_result = connection.test_connection!
     
-    {
-      success: test_result[:success],
-      message: test_result[:success] ? 
-        "✅ #{connection.integration.name} connection test successful!" :
-        "❌ #{connection.integration.name} test failed: #{test_result[:error]}",
-      connection: {
-        id: connection.id,
-        name: connection.name,
-        integration: connection.integration.name,
-        status: connection.status
-      },
-      test_details: test_result
-    }
+    if test_result[:success]
+      {
+        success: true,
+        message: "✅ #{connection.integration.name} connection test successful!",
+        connection: {
+          id: connection.id,
+          name: connection.name,
+          integration: connection.integration.name,
+          status: connection.status
+        },
+        test_details: test_result
+      }
+    else
+      # Provide diagnostic information to help fix the issue
+      {
+        success: false,
+        message: "❌ #{connection.integration.name} test failed: #{test_result[:error]}",
+        error: test_result[:error],
+        connection: {
+          id: connection.id,
+          name: connection.name,
+          integration: connection.integration.name,
+          status: connection.status
+        },
+        integration_config: {
+          auth_type: connection.integration.auth_type,
+          auth_config: connection.integration.auth_config,
+          api_base_url: connection.integration.api_base_url
+        },
+        current_credentials: connection.active_credential ? {
+          auth_method: connection.active_credential.auth_method,
+          has_credentials: connection.active_credential.credentials.present?
+        } : nil,
+        suggested_fixes: generate_auth_fix_suggestions(connection, test_result),
+        test_details: test_result
+      }
+    end
+  end
+  
+  def generate_auth_fix_suggestions(connection, test_result)
+    suggestions = []
+    integration = connection.integration
+    error_msg = test_result[:error]&.downcase || ''
+    
+    # Analyze common error patterns and suggest fixes
+    if error_msg.include?('invalid api key') || error_msg.include?('unauthorized')
+      case integration.slug
+      when 'stripe'
+        if integration.auth_type == 'bearer_token'
+          suggestions << "Change auth_type from 'bearer_token' to 'basic_auth' - Stripe uses Basic Auth with API key as username"
+        end
+        if connection.active_credential&.auth_method == 'bearer'
+          suggestions << "Update credential auth_method from 'bearer' to 'basic'"
+        end
+      end
+      
+      suggestions << "Verify the API key is correct and has proper permissions"
+      suggestions << "Check if the API key is for the correct environment (test vs live)"
+    end
+    
+    if error_msg.include?('forbidden') || error_msg.include?('access denied')
+      suggestions << "API key may lack required permissions/scopes"
+      suggestions << "Check if the integration requires specific API permissions to be enabled"
+    end
+    
+    suggestions
   end
   
   def execute_describe_connection(args)

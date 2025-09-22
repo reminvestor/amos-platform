@@ -258,6 +258,15 @@ Rails.application.routes.draw do
   get 'integrations/connect/:slug', to: 'integrations#connect', as: :connect_integration
   post 'integrations/connect/:slug', to: 'integrations#create_connection', as: :create_connection_integration
 
+  # User-facing connections actions
+  resources :connections, only: [] do
+    member do
+      post :test
+      get :operations
+      patch :credentials, to: 'connections#update_credentials'
+    end
+  end
+
   # OAuth integrations
   namespace :integrations do
     get ':integration_slug/auth', to: 'oauth#authorize', as: :oauth_authorize
