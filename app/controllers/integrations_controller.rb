@@ -3,7 +3,7 @@ class IntegrationsController < ApplicationController
   
   def index
     # Redirect to Scout with integrations canvas
-    redirect_to scout_index_path(canvas: 'integrations_manager')
+    redirect_to scout_path(canvas: 'integrations_manager')
   end
   
   def connect
