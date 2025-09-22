@@ -1352,31 +1352,13 @@ document.addEventListener('turbo:load', function() {
     return el; // Return the element for streaming updates
   }
 
-  // Show typing indicator
+  // Legacy typing indicator - replaced by unified chat
   function showTypingIndicator() {
-    const typingWrapper = document.createElement('div');
-    typingWrapper.className = 'message ai-message typing-indicator-wrapper';
-    typingWrapper.id = 'typing-indicator';
-    typingWrapper.innerHTML = `
-      <div class="message-avatar" id="typing-avatar">
-        <i class="fas fa-robot"></i>
-      </div>
-      <div class="message-content">
-        <div class="typing-dots">
-          <span></span><span></span><span></span>
-        </div>
-      </div>
-    `;
-    chatMessages.appendChild(typingWrapper);
-    scrollToBottom();
+    // No-op: typing is now shown in unified chat messages
   }
 
   function hideTypingIndicator() {
-    const typingDiv = document.getElementById('typing-indicator');
-    if (typingDiv) {
-      // Ensure the entire wrapper is removed, including the avatar
-      typingDiv.remove();
-    }
+    // No-op: typing is now shown in unified chat messages
   }
 
   // Tool call tracking
@@ -1557,41 +1539,13 @@ document.addEventListener('turbo:load', function() {
   // Show streaming status as a message in chat (simplified)
   let currentToolCallId = null;
   
+  // Legacy streaming status - replaced by unified chat
   function showStreamingStatus(message) {
-    // Parse the message to see if it's a tool-related update
-    if (message.includes('🔍 Discovering database schema')) {
-      currentToolCallId = addToolCall('get_schema', 'Discovering available data models...');
-      updateToolCall(currentToolCallId, 'running', 'Analyzing database structure...');
-    } else if (message.includes('📊 Querying your marketing data')) {
-      currentToolCallId = addToolCall('get_data', 'Fetching marketing data...');
-      updateToolCall(currentToolCallId, 'running', 'Executing query...');
-    } else if (message.includes('✨ Creating new marketing object')) {
-      currentToolCallId = addToolCall('create_object', 'Creating new object...');
-      updateToolCall(currentToolCallId, 'running', 'Processing creation request...');
-    } else if (message.includes('🎯 Generating personalized response')) {
-      if (currentToolCallId) {
-        updateToolCall(currentToolCallId, 'success', 'Completed successfully');
-      }
-    } else if (currentToolCallId && message.includes('✅')) {
-      updateToolCall(currentToolCallId, 'success', 'Completed');
-      currentToolCallId = null;
-    } else if (currentToolCallId && message.includes('❌')) {
-      updateToolCall(currentToolCallId, 'error', 'Failed');
-      currentToolCallId = null;
-    } else if (currentToolCallId) {
-      // Add as detail to current tool call
-      const toolCall = toolCalls.get(currentToolCallId);
-      if (toolCall) {
-        updateToolCall(currentToolCallId, 'running', message);
-      }
-    }
+    // No-op: status updates now shown in unified chat
   }
 
   function hideStreamingStatus() {
-    // Tool activity is hidden when response is complete
-    setTimeout(() => {
-      hideToolActivity();
-    }, 3000); // Keep visible for 3 seconds after completion
+    // No-op: status updates now shown in unified chat
   }
 
   // Handle interactive workflow chat
@@ -1717,41 +1671,24 @@ document.addEventListener('turbo:load', function() {
               const data = JSON.parse(line.slice(6));
               
               if (data.type === 'update') {
-                // Don't show streaming status for the "💬 streaming" message
-                if (data.message !== '💬 streaming') {
-                // showStreamingStatus(data.message); // Disabled - old UI
-                }
-                // Check if we're starting to stream content
+                // Route status updates to unified chat only
+                // No legacy streaming UI elements
                 if (data.message === '💬 streaming') {
-                  hideTypingIndicator();
-                  // Only create a new message if we don't have one already
+                  // Initialize streaming for unified chat
                   if (!streamingMessage) {
-                    // Create a streaming message element manually since addMessage skips empty content
-                    const el = buildMessageElement({ content: '', role: 'assistant', timestamp: Date.now() });
-                    chatMessages.appendChild(el);
-                    streamingMessage = el;
+                    streamingMessage = addMessage('', 'assistant');
                     streamingContent = '';
-                    updateMessageCount();
                   }
                 }
               } else if (data.type === 'content') {
-                console.log('📝 Content chunk received:', data.content);
-                // Append content chunk to the streaming message
+                // Route content chunks to unified chat message
                 if (streamingMessage && data.content) {
                   streamingContent += data.content;
-                  console.log('📝 Total content so far:', streamingContent.length, 'chars');
-                  // Update the message bubble directly
-                  const messageBubble = streamingMessage.querySelector('.message-bubble');
-                  if (messageBubble) {
-                    console.log('✅ Found message bubble, updating');
-                    messageBubble.innerHTML = parseSimpleMarkdown(streamingContent);
-                  } else {
-                    console.error('❌ Message bubble not found! streamingMessage:', streamingMessage);
-                    console.log('streamingMessage HTML:', streamingMessage.outerHTML);
+                  const messageContent = streamingMessage.querySelector('.message-content');
+                  if (messageContent) {
+                    messageContent.innerHTML = parseMarkdown(streamingContent);
+                    scrollToBottom();
                   }
-                  scrollToBottom();
-                } else {
-                  console.warn('⚠️ No streaming message to append to!');
                 }
               } else if (data.type === 'intermediate_message') {
                 // Add intermediate message that was saved before tool usage
@@ -2082,10 +2019,9 @@ document.addEventListener('turbo:load', function() {
     messageInput.value = '';
     messageInput.style.height = '42px'; // Reset height after sending
     
-    // Disable input and show activity
+    // Disable input while processing
     messageInput.disabled = true;
     sendButton.disabled = true;
-    showTypingIndicator();
     
     // Use intelligent routing
     try {
