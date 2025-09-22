@@ -47,11 +47,11 @@
                 
                 <div class="mt-2">
                   <button class="btn btn-sm btn-outline-primary" 
-                          onclick="window.scoutController.sendMessage('Test my <%= connection[:integration][:name] %> connection')">
+                          onclick="testConnection(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')">
                     <i class="fas fa-check"></i> Test
                   </button>
                   <button class="btn btn-sm btn-outline-secondary"
-                          onclick="window.scoutController.sendMessage('Show me <%= connection[:integration][:name] %> operations')">
+                          onclick="showOperations(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')">
                     <i class="fas fa-cogs"></i> Operations
                   </button>
                 </div>
@@ -187,5 +187,45 @@ function loadConnectionCanvas(slug) {
     });
     document.dispatchEvent(event);
   }
+}
+
+function testConnection(connectionId, integrationName) {
+  // Send message to AI to test the connection
+  const message = `Test my ${integrationName} connection (ID: ${connectionId})`;
+  sendMessageToAI(message);
+}
+
+function showOperations(connectionId, integrationName) {
+  // Send message to AI to show operations
+  const message = `Show me the available operations for my ${integrationName} connection (ID: ${connectionId})`;
+  sendMessageToAI(message);
+}
+
+function sendMessageToAI(message) {
+  // Use the custom event to send message to avoid the sendMessage error
+  const event = new CustomEvent('scout:send-message', {
+    detail: { message: message }
+  });
+  document.dispatchEvent(event);
+}
+
+function showNotification(type, message) {
+  // Create a simple notification
+  const notification = document.createElement('div');
+  notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
+  notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  notification.innerHTML = `
+    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+    ${message}
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 5000);
 }
 </script>
