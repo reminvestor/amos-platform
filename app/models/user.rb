@@ -40,6 +40,7 @@ class User < ApplicationRecord
   # Methods
   def admin?
     # Check if there's an admin user with the same email
+    return false if email.blank?
     AdminUser.active.exists?(email: email.downcase)
   end
   
