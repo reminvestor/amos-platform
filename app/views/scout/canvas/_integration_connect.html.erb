@@ -165,14 +165,21 @@
 
 <script>
 function goBackToIntegrations() {
-  // Load the integrations manager canvas
-  if (window.scoutController && window.scoutController.loadScoutCanvas) {
-    window.scoutController.loadScoutCanvas('integrations_manager', {});
+  // Send message to AI to reload integrations list with data
+  if (window.scoutSendMessage) {
+    window.scoutSendMessage('Show me my integration connections');
+  } else if (window.scoutController && window.scoutController.sendScoutMessage) {
+    window.scoutController.sendScoutMessage('Show me my integration connections');
   } else {
-    const event = new CustomEvent('scout:load-canvas', {
-      detail: { canvas: 'integrations_manager', data: {} }
-    });
-    document.dispatchEvent(event);
+    // Fallback: try to load empty canvas
+    if (window.scoutController && window.scoutController.loadScoutCanvas) {
+      window.scoutController.loadScoutCanvas('integrations_manager', {});
+    } else {
+      const event = new CustomEvent('scout:load-canvas', {
+        detail: { canvas: 'integrations_manager', data: {} }
+      });
+      document.dispatchEvent(event);
+    }
   }
 }
 

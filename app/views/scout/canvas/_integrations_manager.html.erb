@@ -229,6 +229,8 @@ function loadOperationsCanvas(connectionId, integrationName, connectionName) {
   fetch(`/connections/${connectionId}/operations`, { headers: { 'Accept': 'application/json' }})
     .then(r => r.json())
     .then(data => {
+      console.log('Operations API response:', data);
+      
       if (!data.success) {
         showNotification('error', data.error || 'Failed to load operations');
         return;
@@ -240,6 +242,8 @@ function loadOperationsCanvas(connectionId, integrationName, connectionName) {
         integration: data.integration,
         operations: data.operations
       };
+      
+      console.log('Canvas data being passed:', canvasData);
       if (window.scoutController && window.scoutController.loadScoutCanvas) {
         window.scoutController.loadScoutCanvas('integration_operations', canvasData);
       } else {
