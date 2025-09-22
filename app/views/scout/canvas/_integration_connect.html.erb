@@ -165,8 +165,35 @@
 
 <script>
 function goBackToIntegrations() {
-  // Simple approach: just reload the page to get back to Scout interface
-  window.location.href = '/scout';
+  // Directly call the list_connections endpoint and load canvas
+  fetch('/scout/load_canvas', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+      'Accept': 'application/json'
+    },
+    body: 'canvas_type=integrations_manager&reload_data=true'
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Replace the current canvas content
+      const canvasContainer = document.querySelector('.canvas-container').parentElement;
+      canvasContainer.innerHTML = data.content;
+      
+      // Update the canvas title if needed
+      const titleElement = document.querySelector('[data-canvas-title]');
+      if (titleElement) {
+        titleElement.textContent = data.title || 'Integration Connections';
+      }
+    }
+  })
+  .catch(error => {
+    console.error('Failed to load integrations:', error);
+    // Fallback: reload page
+    window.location.href = '/scout';
+  });
 }
 
 function submitConnection(event) {
