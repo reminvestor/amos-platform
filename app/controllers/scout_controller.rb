@@ -429,6 +429,12 @@ class ScoutController < ApplicationController
         canvas_content = render_campaign_editor(canvas_data)
         canvas_title = "Campaign Editor"
       when 'integrations_manager'
+        # If reload_data is requested, fetch fresh integrations data
+        if params[:reload_data]
+          service = ScoutGenericToolsService.new(current_user, current_entity)
+          fresh_data = service.execute_list_connections({})
+          canvas_data = fresh_data[:canvas_data] || {}
+        end
         canvas_content = render_integrations_manager(canvas_data)
         canvas_title = "Integration Connections"
       when 'integration_connect'
