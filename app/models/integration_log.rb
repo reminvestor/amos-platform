@@ -84,8 +84,9 @@ class IntegrationLog < ApplicationRecord
     ]
     
     headers.transform_keys(&:downcase).transform_values do |value|
-      key = headers.keys.find { |k| k.downcase == value }
-      if sensitive_headers.include?(key.downcase)
+      # Find the original key for this value
+      original_key = headers.find { |k, v| v == value }&.first
+      if original_key && sensitive_headers.include?(original_key.to_s.downcase)
         mask_value(value)
       else
         value
