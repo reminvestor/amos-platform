@@ -33,16 +33,14 @@ class User < ApplicationRecord
   # Integration associations
   has_many :integration_logs
   
-  # Admin associations
-  has_one :admin_user
-  
   # Integration relationships (through entities)
   has_many :connections, through: :entities
   has_many :integrations, through: :connections
   
   # Methods
   def admin?
-    admin_user.present? && !admin_user.locked?
+    # Check if there's an admin user with the same email
+    AdminUser.active.exists?(email: email.downcase)
   end
   
   def full_name
