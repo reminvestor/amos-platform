@@ -20,6 +20,9 @@ class ScoutController < ApplicationController
     # Business context for display
     @business_profile = current_user.business_profile
     @entity = current_entity
+    
+    # Handle auto-load parameters
+    @auto_load_canvas = params[:load]
   end
   
   def chat
