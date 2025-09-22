@@ -428,6 +428,9 @@ class ScoutController < ApplicationController
       when 'campaign_editor'
         canvas_content = render_campaign_editor(canvas_data)
         canvas_title = "Campaign Editor"
+      when 'integrations_manager'
+        canvas_content = render_integrations_manager(canvas_data)
+        canvas_title = "Integration Connections"
       else
         canvas_content = render_default_canvas
         canvas_title = "Scout Canvas"
@@ -1384,6 +1387,10 @@ class ScoutController < ApplicationController
         task_list: data
       }
     )
+  end
+
+  def render_integrations_manager(data = {})
+    render partial: 'scout/canvas/integrations_manager', locals: { canvas_data: data }
   end
 
   def render_campaign_editor(data = {})
