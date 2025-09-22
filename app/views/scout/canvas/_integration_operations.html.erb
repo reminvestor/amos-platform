@@ -1,24 +1,28 @@
-<div class="canvas-container bg-dark text-white p-4">
-  <div class="canvas-header mb-4 d-flex justify-content-between align-items-center">
-    <div>
-      <h3 class="text-white mb-1"><i class="fas fa-cogs"></i> <%= canvas_data[:integration_name] %> Operations</h3>
-      <p class="text-muted mb-0">Connection: <%= canvas_data[:connection_name] %></p>
+<div class="canvas-container bg-dark text-white p-4" style="overflow-x: hidden; word-wrap: break-word;">
+  <div class="canvas-header mb-4">
+    <div class="d-flex justify-content-between align-items-start flex-wrap">
+      <div class="flex-grow-1 me-3">
+        <h3 class="text-white mb-1"><i class="fas fa-cogs"></i> <%= canvas_data[:integration_name] %> Operations</h3>
+        <p class="text-light mb-0">Connection: <%= canvas_data[:connection_name] %></p>
+      </div>
+      <button class="btn btn-outline-secondary flex-shrink-0" onclick="goBackToIntegrations()">
+        <i class="fas fa-arrow-left"></i> Back to Integrations
+      </button>
     </div>
-    <button class="btn btn-outline-secondary" onclick="goBackToIntegrations()">
-      <i class="fas fa-arrow-left"></i> Back to Integrations
-    </button>
   </div>
 
   <!-- Authentication Section -->
   <div class="mb-4">
     <div class="card bg-secondary">
       <div class="card-header">
-        <h6 class="text-white mb-0">
-          <i class="fas fa-key"></i> Authentication Settings
-          <button class="btn btn-sm btn-outline-light float-end" onclick="toggleAuthSection()">
+        <div class="d-flex justify-content-between align-items-center flex-wrap">
+          <h6 class="text-white mb-0 me-2">
+            <i class="fas fa-key"></i> Authentication Settings
+          </h6>
+          <button class="btn btn-sm btn-outline-light flex-shrink-0" onclick="toggleAuthSection()">
             <i class="fas fa-edit"></i> Update Credentials
           </button>
-        </h6>
+        </div>
       </div>
       <div class="card-body" id="authSection" style="display: none;">
         <div id="authForm">
@@ -31,19 +35,25 @@
   <% if canvas_data[:operations].blank? %>
     <div class="alert alert-info">No operations available for this integration.</div>
   <% else %>
-    <div class="list-group">
+    <div class="list-group" style="max-width: 100%; overflow: hidden;">
       <% canvas_data[:operations].each do |op| %>
-        <div class="list-group-item bg-secondary text-white mb-2">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <span class="badge bg-info me-2"><%= op[:http_method] %></span>
-              <strong><%= op[:name] %></strong>
-              <div class="small text-muted"><code><%= op[:path_template] %></code></div>
+        <div class="list-group-item bg-secondary text-white mb-2" style="overflow: hidden;">
+          <div class="d-flex justify-content-between align-items-start flex-wrap">
+            <div class="flex-grow-1 me-2">
+              <div class="mb-1">
+                <span class="badge bg-info me-2"><%= op[:http_method] %></span>
+                <strong><%= op[:name] %></strong>
+              </div>
+              <div class="small text-muted">
+                <code class="text-break"><%= op[:path_template] %></code>
+              </div>
             </div>
-            <button class="btn btn-sm btn-outline-light" onclick="showOperationExample(<%= op[:id] %>)">Example</button>
+            <button class="btn btn-sm btn-outline-light flex-shrink-0" onclick="showOperationExample(<%= op[:id] %>)">
+              Example
+            </button>
           </div>
           <% if op[:example].present? %>
-            <pre class="mt-2 small bg-dark text-white p-2 rounded"><%= JSON.pretty_generate(op[:example]) %></pre>
+            <pre class="mt-2 small bg-dark text-white p-2 rounded" style="overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-width: 100%;"><%= JSON.pretty_generate(op[:example]) %></pre>
           <% end %>
         </div>
       <% end %>
@@ -78,6 +88,8 @@ function loadAuthForm() {
   const connectionData = <%= raw canvas_data.to_json %>;
   const authForm = document.getElementById('authForm');
   
+  console.log('Full connectionData:', connectionData);
+  
   // Build auth form based on integration type
   let formHtml = `
     <form id="updateCredentialsForm" onsubmit="updateCredentials(event)">
@@ -91,6 +103,10 @@ function loadAuthForm() {
   // Add auth fields based on integration auth type
   const integration = connectionData.integration || {};
   const authConfig = integration.auth_config || {};
+  
+  console.log('Integration data:', integration);
+  console.log('Auth config:', authConfig);
+  console.log('Auth type:', integration.auth_type);
   
   switch(integration.auth_type) {
     case 'api_key':
@@ -139,6 +155,15 @@ function loadAuthForm() {
       } else {
         formHtml += `<input type="hidden" id="password" name="password" value="">`;
       }
+      break;
+      
+    default:
+      formHtml += `
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle"></i>
+          Unsupported auth type: ${integration.auth_type || 'unknown'}. Please contact support.
+        </div>
+      `;
       break;
   }
   

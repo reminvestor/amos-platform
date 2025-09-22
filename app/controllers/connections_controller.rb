@@ -34,7 +34,13 @@ class ConnectionsController < ApplicationController
     render json: {
       success: true,
       connection: { id: connection.id, name: connection.name },
-      integration: { id: connection.integration.id, name: connection.integration.name, slug: connection.integration.slug },
+      integration: { 
+        id: connection.integration.id, 
+        name: connection.integration.name, 
+        slug: connection.integration.slug,
+        auth_type: connection.integration.auth_type,
+        auth_config: connection.integration.auth_config
+      },
       operations: ops
     }
   end
