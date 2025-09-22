@@ -135,15 +135,15 @@
     <h6 class="text-white mb-2">Quick Actions</h6>
     <div class="btn-group" role="group">
       <button class="btn btn-sm btn-outline-primary"
-              onclick="window.scoutController.sendMessage('Test all my connections')">
+              onclick="sendMessageToAI('Test all my connections')">
         <i class="fas fa-check-double"></i> Test All
       </button>
       <button class="btn btn-sm btn-outline-info"
-              onclick="window.scoutController.sendMessage('Show me integration documentation')">
+              onclick="sendMessageToAI('Show me integration documentation')">
         <i class="fas fa-book"></i> Documentation
       </button>
       <button class="btn btn-sm btn-outline-warning"
-              onclick="window.scoutController.sendMessage('Help me choose an integration')">
+              onclick="sendMessageToAI('Help me choose an integration')">
         <i class="fas fa-question-circle"></i> Get Help
       </button>
     </div>
@@ -202,11 +202,14 @@ function showOperations(connectionId, integrationName) {
 }
 
 function sendMessageToAI(message) {
-  // Use the custom event to send message to avoid the sendMessage error
-  const event = new CustomEvent('scout:send-message', {
-    detail: { message: message }
-  });
-  document.dispatchEvent(event);
+  // Use the global sendScoutMessage function
+  if (window.scoutSendMessage) {
+    window.scoutSendMessage(message);
+  } else if (window.scoutController && window.scoutController.sendScoutMessage) {
+    window.scoutController.sendScoutMessage(message);
+  } else {
+    console.error('Scout message sending not available');
+  }
 }
 
 function showNotification(type, message) {
