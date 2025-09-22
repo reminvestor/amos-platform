@@ -92,21 +92,21 @@ class IntegrationsController < ApplicationController
   def build_credentials_from_params
     case @integration.auth_type
     when 'api_key'
-      { api_key: params[:api_key] }
+      { 'api_key' => params[:api_key] }
     when 'bearer_token'
-      { token: params[:bearer_token] }
+      { 'token' => params[:bearer_token] }
     when 'basic_auth'
       { 
-        username: params[:username],
-        password: params[:password]
+        'username' => params[:username],
+        'password' => params[:password]
       }
     when 'custom'
       # Handle custom auth based on integration
       case @integration.slug
       when 'slack'
-        { webhook_url: params[:webhook_url] }
+        { 'webhook_url' => params[:webhook_url] }
       else
-        params.permit(:api_key, :token, :username, :password).to_h
+        params.permit(:api_key, :token, :username, :password).to_h.stringify_keys
       end
     else
       {}

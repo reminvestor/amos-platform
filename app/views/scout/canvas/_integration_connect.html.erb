@@ -70,23 +70,40 @@
               </div>
               
             <% when 'basic_auth' %>
+              <% 
+                auth_config = canvas_data[:integration][:auth_config] || {}
+                username_label = auth_config['username_label'] || 'Username'
+                username_placeholder = auth_config['username_placeholder'] || ''
+                username_help_text = auth_config['username_help_text'] || ''
+                password_required = auth_config['password_required'] != false
+                password_value = auth_config['password_value'] || ''
+              %>
+              
               <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" 
+                <label for="username" class="form-label"><%= username_label %></label>
+                <input type="<%= username_label.downcase.include?('key') ? 'password' : 'text' %>" 
                        class="form-control" 
                        id="username" 
                        name="username"
+                       <% if username_placeholder.present? %>placeholder="<%= username_placeholder %>"<% end %>
                        required>
+                <% if username_help_text.present? %>
+                  <div class="form-text"><%= username_help_text %></div>
+                <% end %>
               </div>
               
-              <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" 
-                       class="form-control" 
-                       id="password" 
-                       name="password"
-                       required>
-              </div>
+              <% if password_required %>
+                <div class="mb-3">
+                  <label for="password" class="form-label">Password</label>
+                  <input type="password" 
+                         class="form-control" 
+                         id="password" 
+                         name="password"
+                         required>
+                </div>
+              <% else %>
+                <input type="hidden" id="password" name="password" value="<%= password_value %>">
+              <% end %>
               
             <% when 'custom' %>
               <% case canvas_data[:integration][:slug] %>
