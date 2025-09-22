@@ -158,13 +158,8 @@ function connectIntegration(slug, name, authType) {
     // OAuth flow - redirect to authorization URL
     window.location.href = `/integrations/${slug}/auth`;
   } else {
-    // Show credentials form for API key, bearer token, etc.
-    if (window.scoutController && window.scoutController.sendMessage) {
-      window.scoutController.sendMessage(`Help me connect to ${name} - I need to set up my credentials`);
-    } else {
-      // Fallback: redirect to a connection setup page
-      window.location.href = `/integrations/connect/${slug}`;
-    }
+    // Direct redirect to connection setup page for API key, bearer token, etc.
+    window.location.href = `/integrations/connect/${slug}`;
   }
 }
 </script>
