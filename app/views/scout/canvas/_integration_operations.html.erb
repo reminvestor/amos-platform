@@ -190,11 +190,20 @@ function updateCredentials(event) {
   
   const connectionData = <%= raw canvas_data.to_json %>;
   
+  // Convert FormData to JSON object
+  const jsonData = {};
+  for (let [key, value] of formData.entries()) {
+    jsonData[key] = value;
+  }
+  
+  console.log('Submitting credentials:', jsonData);
+  
   // Submit credentials update
   fetch(`/connections/${connectionData.connection_id}/credentials`, {
     method: 'PATCH',
-    body: formData,
+    body: JSON.stringify(jsonData),
     headers: {
+      'Content-Type': 'application/json',
       'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
       'Accept': 'application/json'
     }

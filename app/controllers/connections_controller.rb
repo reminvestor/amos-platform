@@ -51,7 +51,13 @@ class ConnectionsController < ApplicationController
     return render json: { success: false, error: 'Connection not found' }, status: :not_found unless connection
 
     integration = connection.integration
-    credential = connection.active_credential || connection.integration_credentials.build(name: 'API Credentials')
+    
+    # Find existing active credential or create new one
+    # First, deactivate any existing active credentials
+    connection.integration_credentials.active.update_all(status: :expired)
+    
+    # Create a new credential (always create new for security)
+    credential = connection.integration_credentials.build(name: 'API Credentials')
 
     # Build credentials based on integration auth type
     creds = case integration.auth_type
@@ -65,18 +71,8 @@ class ConnectionsController < ApplicationController
               params.permit(:api_key, :token, :username, :password, :webhook_url).to_h.stringify_keys
             end
 
-    # Ensure credentials is a hash, not a string
-    existing_creds = credential.credentials
-    if existing_creds.is_a?(String)
-      begin
-        existing_creds = JSON.parse(existing_creds)
-      rescue JSON::ParserError
-        existing_creds = {}
-      end
-    end
-    existing_creds ||= {}
-    
-    credential.credentials = existing_creds.merge(creds.compact)
+    # Store credentials as proper JSON string
+    credential.credentials = creds.compact.to_json
     credential.auth_method = determine_auth_method(integration)
     credential.status = :active
     credential.save!
