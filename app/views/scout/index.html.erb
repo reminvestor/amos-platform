@@ -2178,6 +2178,17 @@ document.addEventListener('turbo:load', function() {
     const modal = bootstrap.Modal.getInstance(dialog);
     modal.hide();
   });
+
+  // Handle auto-load parameters
+  <% if @auto_load_canvas == 'integrations' %>
+    // Auto-load integrations on page load
+    setTimeout(() => {
+      console.log('Auto-loading integrations canvas...');
+      if (window.scoutSendMessage) {
+        window.scoutSendMessage('Show me my integration connections');
+      }
+    }, 1000); // Small delay to ensure Scout is fully loaded
+  <% end %>
 });
 </script> 
 
