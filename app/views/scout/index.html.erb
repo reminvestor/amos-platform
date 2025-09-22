@@ -1719,7 +1719,7 @@ document.addEventListener('turbo:load', function() {
               if (data.type === 'update') {
                 // Don't show streaming status for the "💬 streaming" message
                 if (data.message !== '💬 streaming') {
-                showStreamingStatus(data.message);
+                // showStreamingStatus(data.message); // Disabled - old UI
                 }
                 // Check if we're starting to stream content
                 if (data.message === '💬 streaming') {
