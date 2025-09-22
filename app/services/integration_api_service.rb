@@ -160,6 +160,7 @@ class IntegrationApiService
     IntegrationLog.create!(
       connection: @connection,
       user: @connection.entity.users.first, # TODO: Track actual user
+      scout_message: nil, # Optional for connection testing
       integration_operation: operation,
       correlation_id: correlation_id,
       operation_id: operation.operation_id,
@@ -169,7 +170,7 @@ class IntegrationApiService
       request_body: request_body,
       response_status: response&.code,
       response_headers: response&.headers&.to_h,
-      response_body: response&.parsed_response,
+      response_body_encrypted: response&.parsed_response&.to_json,
       error_message: error&.message,
       duration_ms: duration_ms,
       rate_limit_remaining: response&.headers&.[]('x-ratelimit-remaining')&.to_i,

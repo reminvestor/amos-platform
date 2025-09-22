@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_21_185449) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_22_172151) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -359,7 +359,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_21_185449) do
   create_table "integration_logs", force: :cascade do |t|
     t.bigint "connection_id", null: false
     t.bigint "user_id", null: false
-    t.bigint "scout_message_id", null: false
+    t.bigint "scout_message_id"
     t.bigint "integration_operation_id", null: false
     t.string "correlation_id"
     t.string "operation_id"
