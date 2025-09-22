@@ -1390,7 +1390,7 @@ class ScoutController < ApplicationController
   end
 
   def render_integrations_manager(data = {})
-    render partial: 'scout/canvas/integrations_manager', locals: { canvas_data: data }
+    render_to_string(partial: 'scout/canvas/integrations_manager', locals: { canvas_data: data })
   end
 
   def render_campaign_editor(data = {})
