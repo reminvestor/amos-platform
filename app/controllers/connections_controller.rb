@@ -65,7 +65,18 @@ class ConnectionsController < ApplicationController
               params.permit(:api_key, :token, :username, :password, :webhook_url).to_h.stringify_keys
             end
 
-    credential.credentials = (credential.credentials || {}).merge(creds.compact)
+    # Ensure credentials is a hash, not a string
+    existing_creds = credential.credentials
+    if existing_creds.is_a?(String)
+      begin
+        existing_creds = JSON.parse(existing_creds)
+      rescue JSON::ParserError
+        existing_creds = {}
+      end
+    end
+    existing_creds ||= {}
+    
+    credential.credentials = existing_creds.merge(creds.compact)
     credential.auth_method = determine_auth_method(integration)
     credential.status = :active
     credential.save!
