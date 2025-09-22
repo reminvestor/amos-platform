@@ -333,8 +333,7 @@ export default class extends Controller {
     try {
       console.log("🔄 Processing message:", message)
       
-      // Ensure streaming window is visible and show initial status
-      this.showStreamingProgress("🤖 Connecting to Scout...")
+      // Legacy streaming window removed - handled in main chat UI
       
       // Use streaming endpoint for better timeout handling
       const response = await fetch("/scout/chat_stream", {
@@ -1384,8 +1383,8 @@ export default class extends Controller {
   // Utility methods
   // Loading methods for different use cases
   showLoading() {
-    // For streaming responses - use streaming window
-    this.showStreamingWindow("🤖 Scout is thinking...")
+    // No-op: streaming is handled in the main chat UI
+    // Legacy streaming window removed
   }
 
   hideLoading() {
@@ -1412,62 +1411,20 @@ export default class extends Controller {
   }
 
   showStreamingProgress(message) {
-    console.log("🔄 showStreamingProgress called with:", message)
-    
-    // Create or show streaming window instead of overlay
-    this.showStreamingWindow(message)
+    // No-op: streaming is handled in the main chat UI
+    // Legacy streaming window removed
+    console.log('Legacy showStreamingProgress called (disabled):', message)
   }
 
   showStreamingWindow(message) {
-    let streamingWindow = document.getElementById('streaming-progress-window')
-    
-    if (!streamingWindow) {
-      // Create the streaming window
-      streamingWindow = document.createElement('div')
-      streamingWindow.id = 'streaming-progress-window'
-      streamingWindow.className = 'streaming-progress-window'
-      streamingWindow.innerHTML = `
-        <div class="streaming-header">
-          <div class="streaming-icon">
-            <i class="fas fa-robot"></i>
-          </div>
-          <div class="streaming-title">Scout is working...</div>
-        </div>
-        <div class="streaming-content">
-          <div class="streaming-message"></div>
-          <div class="streaming-dots">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-        </div>
-      `
-      
-      // Add to chat messages area
-      if (this.hasChatMessagesTarget) {
-        this.chatMessagesTarget.appendChild(streamingWindow)
-        this.scrollChatToBottom()
-      }
-    }
-    
-    // Update the message
-    const messageElement = streamingWindow.querySelector('.streaming-message')
-    if (messageElement) {
-      messageElement.textContent = message
-    }
-    
-    // Show the window
-    streamingWindow.classList.add('active')
+    // No-op: streaming is handled in the main chat UI
+    // Legacy streaming window removed
+    console.log('Legacy showStreamingWindow called (disabled):', message)
   }
 
   hideStreamingWindow() {
-    const streamingWindow = document.getElementById('streaming-progress-window')
-    if (streamingWindow) {
-      streamingWindow.classList.add('fade-out')
-      setTimeout(() => {
-        streamingWindow.remove()
-      }, 300)
-    }
+    // No-op: streaming is handled in the main chat UI
+    // Legacy streaming window removed
   }
 
   scrollChatToBottom() {

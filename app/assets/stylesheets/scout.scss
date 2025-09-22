@@ -752,30 +752,14 @@
   transition-timing-function: ease;
 } 
 
-/* Streaming Progress Window */
+/* Streaming Progress Window - DISABLED */
 .streaming-progress-window {
-  background: var(--scout-bg);
-  border: 1px solid var(--scout-border);
-  border-radius: 12px;
-  margin: 1rem 0;
-  padding: 0;
-  max-width: 400px;
-  height: 80px; /* Fixed height */
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  
-  &.active {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  
-  &.fade-out {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
+  display: none !important; /* Hide legacy streaming window */
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  left: -9999px !important;
 }
 
 .streaming-header {
