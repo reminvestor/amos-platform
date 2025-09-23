@@ -396,6 +396,128 @@ class ToolRegistry
       },
       timeout: 10,
       retryable: false
+    },
+    
+    'aggregate_artifact_data' => {
+      version: '1.0',
+      description: 'Perform aggregation operations on artifact data (group_by, count, sum, avg)',
+      input_schema: {
+        type: 'object',
+        required: ['artifact_id', 'operation'],
+        properties: {
+          artifact_id: { type: 'integer', minimum: 1 },
+          operation: { 
+            type: 'string', 
+            enum: ['group_by_field', 'group_by_time', 'top_k', 'simple_stats'] 
+          },
+          field: { type: 'string' },
+          time_field: { type: 'string' },
+          time_bucket: { 
+            type: 'string', 
+            enum: ['hour', 'day', 'week', 'month', 'quarter', 'year'] 
+          },
+          aggregations: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['function', 'field'],
+              properties: {
+                function: { 
+                  type: 'string', 
+                  enum: ['count', 'sum', 'avg', 'min', 'max', 'distinct'] 
+                },
+                field: { type: 'string' },
+                alias: { type: 'string' }
+              }
+            }
+          },
+          filters: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['field', 'operator', 'value'],
+              properties: {
+                field: { type: 'string' },
+                operator: { 
+                  type: 'string', 
+                  enum: ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'contains', 'in'] 
+                },
+                value: {}
+              }
+            }
+          },
+          k: { type: 'integer', minimum: 1, maximum: 1000 },
+          order_by: { type: 'string' },
+          order_direction: { 
+            type: 'string', 
+            enum: ['asc', 'desc'],
+            default: 'desc'
+          }
+        }
+      },
+      output_schema: {
+        type: 'object',
+        required: ['success'],
+        properties: {
+          success: { type: 'boolean' },
+          data: {
+            type: 'object',
+            properties: {
+              results: { type: 'array' },
+              row_count: { type: 'integer' },
+              aggregation_type: { type: 'string' },
+              artifact_id: { type: 'integer' },
+              visualizations: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    type: { type: 'string' },
+                    config: { type: 'object' }
+                  }
+                }
+              }
+            }
+          },
+          error: { type: 'string' }
+        }
+      },
+      timeout: 30,
+      retryable: true
+    },
+    
+    'fetch_next_page' => {
+      version: '1.0',
+      description: 'Fetch the next page of data for a paginated artifact',
+      input_schema: {
+        type: 'object',
+        required: ['artifact_id'],
+        properties: {
+          artifact_id: { type: 'integer', minimum: 1 },
+          cursor: { type: 'string' },
+          limit: { type: 'integer', minimum: 1, maximum: 100 }
+        }
+      },
+      output_schema: {
+        type: 'object',
+        required: ['success'],
+        properties: {
+          success: { type: 'boolean' },
+          data: {
+            type: 'object',
+            properties: {
+              artifact_id: { type: 'integer' },
+              rows: { type: 'array' },
+              row_count: { type: 'integer' },
+              next_cursor: { type: 'string' },
+              has_more: { type: 'boolean' }
+            }
+          },
+          error: { type: 'string' }
+        }
+      },
+      timeout: 20,
+      retryable: true
     }
   }.freeze
   

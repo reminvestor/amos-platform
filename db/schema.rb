@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_22_232313) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_23_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -90,6 +90,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_22_232313) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["conversation_id"], name: "index_agent_activities_on_conversation_id"
+  end
+
+  create_table "artifacts", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.string "source", default: "integration", null: false
+    t.bigint "connection_id"
+    t.string "operation_id"
+    t.jsonb "schema", default: {}, null: false
+    t.jsonb "sample", default: [], null: false
+    t.integer "row_count"
+    t.string "storage_ref"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["connection_id"], name: "index_artifacts_on_connection_id"
+    t.index ["entity_id"], name: "index_artifacts_on_entity_id"
+    t.index ["operation_id"], name: "index_artifacts_on_operation_id"
+    t.index ["storage_ref"], name: "index_artifacts_on_storage_ref"
+    t.index ["user_id"], name: "index_artifacts_on_user_id"
   end
 
   create_table "business_insights", force: :cascade do |t|
@@ -812,6 +833,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_22_232313) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "admin_activities", "admin_users"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
+  add_foreign_key "artifacts", "entities"
+  add_foreign_key "artifacts", "users"
   add_foreign_key "business_insights", "entities"
   add_foreign_key "business_insights", "scout_conversations", column: "source_conversation_id"
   add_foreign_key "business_profiles", "entities"

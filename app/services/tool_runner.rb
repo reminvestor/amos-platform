@@ -487,14 +487,33 @@ class ToolRunner
   def execute_legacy_tool(tool, inputs)
     # Bridge to existing tool system
     begin
-      service = ScoutGenericToolsService.new
-      result = service.execute_single_tool(tool, inputs)
-      
-      {
-        status: 'success',
-        data: result,
-        message: "Legacy tool #{tool} executed successfully"
-      }
+      # Try to resolve user/entity from inputs for services that require context
+      user_param = inputs[:user] || inputs['user']
+      entity_param = inputs[:entity] || inputs['entity']
+      user_obj = user_param.is_a?(Hash) ? User.find(user_param['id'] || user_param[:id]) : user_param
+      entity_obj = entity_param.is_a?(Hash) ? Entity.find(entity_param['id'] || entity_param[:id]) : entity_param
+
+      # Fallback to explicit IDs if provided
+      user_obj ||= (User.find(inputs[:user_id] || inputs['user_id']) rescue nil)
+      entity_obj ||= (Entity.find(inputs[:entity_id] || inputs['entity_id']) rescue nil)
+
+      service = ScoutGenericToolsService.new(user_obj, entity_obj)
+
+      # Use the generic executor in the legacy service
+      legacy_result = service.execute_tool_by_name(tool, inputs)
+
+      if legacy_result[:success]
+        {
+          status: 'success',
+          data: legacy_result[:data] || {},
+          message: legacy_result[:message]
+        }
+      else
+        {
+          status: 'failed',
+          error: legacy_result[:error] || 'Legacy tool failed'
+        }
+      end
     rescue => e
       {
         status: 'failed',

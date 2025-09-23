@@ -469,6 +469,79 @@ class ScoutGenericToolsService
         },
         required: ["action"]
       }
+    },
+    {
+      name: "aggregate_artifact_data",
+      description: "Perform aggregation operations on artifact data (group_by, count, sum, avg). Use this for analytics on previously fetched data.",
+      input_schema: {
+        type: "object",
+        properties: {
+          artifact_id: {
+            type: "integer",
+            description: "The ID of the artifact containing the data to aggregate"
+          },
+          operation: {
+            type: "string",
+            enum: ["group_by_field", "group_by_time", "top_k", "simple_stats"],
+            description: "The type of aggregation to perform"
+          },
+          field: {
+            type: "string",
+            description: "Field to group by (for group_by_field) or analyze (for top_k)"
+          },
+          time_field: {
+            type: "string",
+            description: "Time field for group_by_time operations"
+          },
+          time_bucket: {
+            type: "string",
+            enum: ["hour", "day", "week", "month", "quarter", "year"],
+            description: "Time bucket size for group_by_time"
+          },
+          aggregations: {
+            type: "array",
+            description: "List of aggregation functions to apply",
+            items: {
+              type: "object",
+              properties: {
+                function: {
+                  type: "string",
+                  enum: ["count", "sum", "avg", "min", "max", "distinct"]
+                },
+                field: { type: "string" },
+                alias: { type: "string" }
+              }
+            }
+          },
+          k: {
+            type: "integer",
+            description: "Number of top results to return (for top_k)"
+          }
+        },
+        required: ["artifact_id", "operation"]
+      }
+    },
+    {
+      name: "fetch_next_page",
+      description: "Fetch the next page of data for a paginated artifact. Use when an artifact has more data available.",
+      input_schema: {
+        type: "object",
+        properties: {
+          artifact_id: {
+            type: "integer",
+            description: "The artifact ID to fetch more data for"
+          },
+          cursor: {
+            type: "string",
+            description: "Pagination cursor (if available)"
+          },
+          limit: {
+            type: "integer",
+            description: "Number of records to fetch (max 100)"
+          }
+        },
+        required: ["artifact_id"]
+      }
     }
   ]
 
@@ -1652,6 +1725,43 @@ class ScoutGenericToolsService
       - "I don't like the changes, go back" → revert_landing_page_to_version(page_id)
       - "Undo the last update to my landing page" → revert_landing_page_to_version(page_id)
       
+      **INTEGRATION & DATA ANALYTICS SYSTEM:**
+      
+      FETCHING EXTERNAL DATA:
+      - Use list_connections to show available integrations (Stripe, Shopify, HubSpot, etc.)
+      - Use invoke_operation to fetch data from connected services
+      - Data is automatically saved as Artifacts with schema, sample, and row count
+      - Results are streamed to dynamic_canvas for immediate visualization
+      
+      ANALYZING DATA WITH ARTIFACTS:
+      - When data is fetched via invoke_operation, it creates an Artifact (stored dataset)
+      - Use aggregate_artifact_data to perform analytics on Artifacts:
+        * group_by_field: Group by any field and apply count/sum/avg/min/max
+        * group_by_time: Create time-series aggregations (hour/day/week/month/year)
+        * top_k: Find the most common values in a field
+        * simple_stats: Calculate statistics across all numeric fields
+      - Aggregation results are automatically visualized in dynamic_canvas
+      - Use fetch_next_page when an artifact has more data available (check has_more flag)
+      
+      EXAMPLE ANALYTICS WORKFLOWS:
+      1. "Show me my Stripe customers by plan":
+         - invoke_operation to fetch customers → creates Artifact
+         - aggregate_artifact_data with group_by_field on 'plan' field
+      
+      2. "Analyze customer signups over time":
+         - invoke_operation to fetch customers → creates Artifact  
+         - aggregate_artifact_data with group_by_time on 'created' field
+      
+      3. "Top 10 products by revenue":
+         - invoke_operation to fetch orders → creates Artifact
+         - aggregate_artifact_data with top_k on 'product' field, with sum aggregation on 'amount'
+      
+      ARTIFACT-FIRST APPROACH:
+      - Never include raw data arrays in responses
+      - Reference data by artifact_id
+      - Use aggregation tools for analysis
+      - Dynamic canvas handles visualization automatically
+      
       CONTACT CREATION EXAMPLES:
       - "create contact John Doe john@doe.com" → create_object("contacts", {email: "john@doe.com", first_name: "John", last_name: "Doe"})
       - "add contact for Jane Smith jane@smith.com" → create_object("contacts", {email: "jane@smith.com", first_name: "Jane", last_name: "Smith"})
@@ -2003,6 +2113,10 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         execute_configure_integration(args)
       when 'test_connection'
         execute_test_connection(args)
+    when 'aggregate_artifact_data'
+      execute_aggregate_artifact_data(args)
+    when 'fetch_next_page'
+      execute_fetch_next_page(args)
     else
       { success: false, error: "Unknown tool: #{tool_name}" }
     end
@@ -4554,11 +4668,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
   end
   
   def execute_invoke_operation(args)
+    # Normalize common alias keys from LLM/tooling
+    op_id = args['operation_id'] || args['operation']
+    params_hash = args['params'] || args['parameters'] || {}
+    body_hash = args['body'] || args['data']
+
     connection = @entity.connections.find_by(id: args['connection_id'])
     return { success: false, error: "Connection not found" } unless connection
     
     operation = connection.integration.integration_operations
-                         .find_by(operation_id: args['operation_id'])
+                         .find_by(operation_id: op_id)
     return { success: false, error: "Operation not found" } unless operation
     
     # Policy check
@@ -4580,17 +4699,99 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       api_service = IntegrationApiService.new(connection)
       response = api_service.execute_operation(
         operation,
-        params: args['params'] || {},
-        body: args['body']
+        params: params_hash,
+        body: body_hash
       )
-      
-      {
-        success: response.success?,
-        data: response.parsed_body,
-        status: response.status,
-        headers: response.headers.to_h.slice('x-ratelimit-remaining', 'x-ratelimit-reset'),
-        next_cursor: response.headers['x-next-cursor']
+
+      # HTTParty::Response exposes .parsed_response and .code
+      headers_hash = (response.headers || {}).to_h
+      result = {
+        success: response.respond_to?(:success?) ? response.success? : (200..299).cover?(response.code.to_i),
+        data: response.parsed_response,
+        status: response.code,
+        headers: headers_hash.slice('x-ratelimit-remaining', 'x-ratelimit-reset'),
+        next_cursor: headers_hash['x-next-cursor']
       }
+
+      # Stream a brief summary to chat and load a dynamic canvas for visualization for GET/list responses
+      if result[:success]
+        # Best-effort infer records for list endpoints
+        body = response.parsed_response
+        records = if body.is_a?(Hash) && body['data'].is_a?(Array)
+                    body['data']
+                  elsif body.is_a?(Array)
+                    body
+                  else
+                    []
+                  end
+
+        # Persist as an Artifact for downstream analysis/visualization
+        begin
+          if records.any?
+            schema = Artifact.infer_schema(records)
+            artifact = Artifact.create!(
+              entity: @entity,
+              user: @user,
+              name: "#{connection.integration.name} • #{operation.name}",
+              source: 'integration',
+              connection_id: connection.id,
+              operation_id: operation.operation_id,
+              schema: schema,
+              sample: records.first(25),
+              row_count: (body['total_count'] || records.length),
+              metadata: { headers: headers_hash.slice('x-ratelimit-remaining', 'x-ratelimit-reset') }
+            )
+            result[:artifact_id] = artifact.id
+          end
+        rescue => e
+          Rails.logger.warn("Artifact persistence failed: #{e.message}")
+        end
+
+        if @progress_callback
+          count = records.length
+          sample = records.first(3)
+          @progress_callback.call({ type: 'intermediate_message', content: "✅ Retrieved #{count} record#{count == 1 ? '' : 's'} from #{connection.integration.name}. Rendering a quick view...", role: 'assistant' })
+
+          # Build a simple HTML table for the dynamic canvas as a default visualization
+          table_headers = []
+          if sample.first.is_a?(Hash)
+            keys = sample.first.keys
+            denylist = %w[object metadata livemode sources subscriptions discount tax_ids invoice_settings shipping address preferred_locales]
+            scorer = lambda do |k|
+              next -100 if denylist.include?(k.to_s)
+              key = k.to_s
+              score = 0
+              score += 120 if key == 'id' || key.end_with?('_id')
+              score += 110 if key == 'email'
+              score += 100 if key == 'name' || key == 'description'
+              score += 90  if key == 'created' || key.end_with?('_at')
+              score += 80  if key.include?('status')
+              score += 70  if key.include?('amount') || key.include?('balance') || key.include?('total')
+              score += 60  if key == 'currency'
+              score += 40  if key.include?('plan') || key.include?('subscription')
+              # Prefer short scalar-like keys
+              score += 10 if key.length <= 16
+              score
+            end
+            table_headers = keys.sort_by { |k| -scorer.call(k) }.first(8)
+          end
+          rows_html = records.first(25).map do |row|
+            if row.is_a?(Hash)
+              "<tr>" + table_headers.map { |k| "<td>#{ERB::Util.html_escape(row[k].to_s)[0,120]}</td>" }.join + "</tr>"
+            else
+              "<tr><td>#{ERB::Util.html_escape(row.to_s)[0,120]}</td></tr>"
+            end
+          end.join
+          header_html = table_headers.any? ? ("<thead><tr>" + table_headers.map { |k| "<th>#{ERB::Util.html_escape(k)}</th>" }.join + "</tr></thead>") : ""
+          html = "<div class=\"table-responsive\"><table class=\"table table-dark table-striped table-sm\">#{header_html}<tbody>#{rows_html}</tbody></table></div>"
+
+          @suggested_canvas = 'dynamic_canvas'
+          @canvas_data = { 'title' => "#{connection.integration.name} • #{operation.name}", 'subtitle' => operation.operation_id, 'html_content' => html, 'artifact_id' => result[:artifact_id], 'row_count' => result[:row_count] || records.length }
+          @progress_callback.call({ type: 'load_canvas', canvas: 'dynamic_canvas', canvas_data: @canvas_data })
+        end
+      end
+
+      result
     rescue => e
       {
         success: false,
@@ -4601,15 +4802,20 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
   end
   
   def execute_dry_run_operation(args)
+    # Normalize keys similar to invoke
+    op_id = args['operation_id'] || args['operation']
+    params_hash = args['params'] || args['parameters'] || {}
+    body_hash = args['body'] || args['data']
+
     connection = @entity.connections.find_by(id: args['connection_id'])
     return { success: false, error: "Connection not found" } unless connection
     
     operation = connection.integration.integration_operations
-                         .find_by(operation_id: args['operation_id'])
+                         .find_by(operation_id: op_id)
     return { success: false, error: "Operation not found" } unless operation
     
     # Validate request
-    validation_errors = operation.validate_request(args['params'] || {}, args['body'])
+    validation_errors = operation.validate_request(params_hash, body_hash)
     if validation_errors.any?
       return {
         success: false,
@@ -4622,16 +4828,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     api_service = IntegrationApiService.new(connection)
     preview = api_service.build_request_preview(
       operation,
-      params: args['params'] || {},
-      body: args['body']
+      params: params_hash,
+      body: body_hash
     )
     
     # Generate confirmation token
     confirmation_data = {
       connection_id: connection.id,
       operation_id: operation.operation_id,
-      params: args['params'],
-      body: args['body'],
+      params: params_hash,
+      body: body_hash,
       expires_at: 5.minutes.from_now
     }
     
@@ -4789,5 +4995,324 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     }
   rescue => e
     { success: false, error: "Failed to update configuration: #{e.message}" }
+  end
+
+  def execute_aggregate_artifact_data(args)
+    artifact = Artifact.find_by(id: args['artifact_id'], entity: @entity)
+    return { success: false, error: "Artifact not found or access denied" } unless artifact
+
+    operation = args['operation']
+    
+    # For now, work with the sample data stored in the artifact
+    # In a production system, this would query the actual stored data
+    data = artifact.sample || []
+    
+    begin
+      case operation
+      when 'group_by_field'
+        field = args['field']
+        return { success: false, error: "Field required for group_by_field" } unless field
+        
+        # Group data by field and apply aggregations
+        grouped = data.group_by { |row| row[field] }
+        results = grouped.map do |key, rows|
+          result = { field => key }
+          
+          if args['aggregations'].present?
+            args['aggregations'].each do |agg|
+              func = agg['function']
+              agg_field = agg['field'] || field
+              alias_name = agg['alias'] || "#{func}_#{agg_field}"
+              
+              case func
+              when 'count'
+                result[alias_name] = rows.length
+              when 'sum'
+                result[alias_name] = rows.sum { |r| r[agg_field].to_f }
+              when 'avg'
+                sum = rows.sum { |r| r[agg_field].to_f }
+                result[alias_name] = rows.empty? ? 0 : (sum / rows.length).round(2)
+              when 'min'
+                result[alias_name] = rows.map { |r| r[agg_field] }.compact.min
+              when 'max'
+                result[alias_name] = rows.map { |r| r[agg_field] }.compact.max
+              when 'distinct'
+                result[alias_name] = rows.map { |r| r[agg_field] }.uniq.length
+              end
+            end
+          else
+            result['count'] = rows.length
+          end
+          
+          result
+        end
+        
+        # Sort results if requested
+        if args['order_by']
+          results.sort_by! { |r| r[args['order_by']] || 0 }
+          results.reverse! if args['order_direction'] == 'desc'
+        end
+        
+      when 'group_by_time'
+        time_field = args['time_field']
+        time_bucket = args['time_bucket'] || 'day'
+        return { success: false, error: "Time field required for group_by_time" } unless time_field
+        
+        # Group by time buckets
+        grouped = data.group_by do |row|
+          begin
+            time = Time.parse(row[time_field].to_s)
+            case time_bucket
+            when 'hour'
+              time.strftime('%Y-%m-%d %H:00')
+            when 'day'
+              time.strftime('%Y-%m-%d')
+            when 'week'
+              time.beginning_of_week.strftime('%Y-%m-%d')
+            when 'month'
+              time.strftime('%Y-%m')
+            when 'quarter'
+              "#{time.year} Q#{(time.month - 1) / 3 + 1}"
+            when 'year'
+              time.year.to_s
+            else
+              time.strftime('%Y-%m-%d')
+            end
+          rescue
+            'invalid_date'
+          end
+        end
+        
+        results = grouped.map do |bucket, rows|
+          { 
+            time_bucket => bucket, 
+            'count' => rows.length,
+            'records' => rows.length 
+          }
+        end.sort_by { |r| r[time_bucket] }
+        
+      when 'top_k'
+        field = args['field']
+        k = args['k'] || 10
+        return { success: false, error: "Field required for top_k" } unless field
+        
+        # Count occurrences and get top k
+        counts = data.group_by { |row| row[field] }
+                     .map { |value, rows| { field => value, 'count' => rows.length } }
+                     .sort_by { |r| -r['count'] }
+                     .first(k)
+        
+        results = counts
+        
+      when 'simple_stats'
+        # Calculate basic statistics across numeric fields
+        numeric_fields = artifact.schema.select { |k, v| %w[integer float number].include?(v) }.keys
+        
+        results = numeric_fields.map do |field|
+          values = data.map { |r| r[field].to_f }.compact
+          next if values.empty?
+          
+          {
+            'field' => field,
+            'count' => values.length,
+            'sum' => values.sum.round(2),
+            'avg' => (values.sum / values.length).round(2),
+            'min' => values.min,
+            'max' => values.max
+          }
+        end.compact
+        
+      else
+        return { success: false, error: "Unknown operation: #{operation}" }
+      end
+      
+      # Stream results to dynamic canvas if we have a progress callback
+      if @progress_callback && results.any?
+        @progress_callback.call({ 
+          type: 'intermediate_message', 
+          content: "✅ Completed #{operation} aggregation on #{data.length} records", 
+          role: 'assistant' 
+        })
+        
+        # Generate appropriate visualization
+        viz_html = generate_aggregation_html(operation, results, args)
+        
+        @suggested_canvas = 'dynamic_canvas'
+        @canvas_data = { 
+          'title' => "#{artifact.name} • #{operation.humanize}",
+          'subtitle' => "Aggregation of #{data.length} records",
+          'html_content' => viz_html,
+          'artifact_id' => artifact.id,
+          'aggregation_type' => operation
+        }
+        
+        @progress_callback.call({ 
+          type: 'load_canvas', 
+          canvas: 'dynamic_canvas', 
+          canvas_data: @canvas_data 
+        })
+      end
+      
+      {
+        success: true,
+        data: {
+          results: results,
+          row_count: results.length,
+          aggregation_type: operation,
+          artifact_id: artifact.id,
+          source_row_count: data.length
+        }
+      }
+      
+    rescue => e
+      { success: false, error: "Aggregation failed: #{e.message}" }
+    end
+  end
+
+  def execute_fetch_next_page(args)
+    artifact = Artifact.find_by(id: args['artifact_id'], entity: @entity)
+    return { success: false, error: "Artifact not found or access denied" } unless artifact
+    
+    # Check if this artifact supports pagination
+    connection = Connection.find_by(id: artifact.connection_id)
+    return { success: false, error: "No connection associated with this artifact" } unless connection
+    
+    operation = IntegrationOperation.find_by(
+      integration_id: connection.integration_id,
+      operation_id: artifact.operation_id
+    )
+    return { success: false, error: "Operation not found" } unless operation
+    
+    # Get pagination info from artifact metadata
+    cursor = args['cursor'] || artifact.metadata['next_cursor']
+    limit = [args['limit'] || 25, 100].min
+    
+    return { success: false, error: "No more pages available" } unless cursor
+    
+    # Execute the operation with pagination parameters
+    api_service = IntegrationApiService.new(connection)
+    
+    begin
+      # Add cursor to the original parameters
+      params = artifact.metadata['original_params'] || {}
+      params['cursor'] = cursor
+      params['limit'] = limit
+      
+      response = api_service.execute_operation(operation, params: params)
+      
+      if response.code.between?(200, 299)
+        body = response.parsed_response
+        records = if body.is_a?(Hash) && body['data'].is_a?(Array)
+                    body['data']
+                  elsif body.is_a?(Array)
+                    body
+                  else
+                    []
+                  end
+        
+        # Create a new artifact for this page
+        new_artifact = Artifact.create!(
+          entity: @entity,
+          user: @user,
+          name: "#{artifact.name} (Page)",
+          source: 'integration',
+          connection_id: connection.id,
+          operation_id: operation.operation_id,
+          schema: artifact.schema,
+          sample: records.first(25),
+          row_count: records.length,
+          metadata: {
+            parent_artifact_id: artifact.id,
+            next_cursor: response.headers['x-next-cursor'] || body['next_cursor'],
+            has_more: body['has_more'] || false,
+            original_params: params
+          }
+        )
+        
+        {
+          success: true,
+          data: {
+            artifact_id: new_artifact.id,
+            rows: records,
+            row_count: records.length,
+            next_cursor: new_artifact.metadata['next_cursor'],
+            has_more: new_artifact.metadata['has_more']
+          }
+        }
+      else
+        { success: false, error: "API request failed: #{response.code}" }
+      end
+      
+    rescue => e
+      { success: false, error: "Failed to fetch next page: #{e.message}" }
+    end
+  end
+  
+  private
+  
+  def generate_aggregation_html(operation, results, args)
+    case operation
+    when 'group_by_field', 'top_k'
+      # Generate a table for grouped data
+      return "<p>No results to display</p>" if results.empty?
+      
+      headers = results.first.keys
+      rows_html = results.map do |row|
+        "<tr>" + headers.map { |h| "<td>#{ERB::Util.html_escape(row[h].to_s)}</td>" }.join + "</tr>"
+      end.join
+      
+      "<div class=\"table-responsive\">
+        <table class=\"table table-dark table-striped table-sm\">
+          <thead>
+            <tr>#{headers.map { |h| "<th>#{ERB::Util.html_escape(h)}</th>" }.join}</tr>
+          </thead>
+          <tbody>#{rows_html}</tbody>
+        </table>
+      </div>"
+      
+    when 'group_by_time'
+      # Generate a time series visualization (table for now, could be a chart)
+      return "<p>No time series data</p>" if results.empty?
+      
+      rows_html = results.map do |row|
+        "<tr><td>#{ERB::Util.html_escape(row[args['time_bucket'] || 'time_bucket'])}</td><td>#{row['count']}</td></tr>"
+      end.join
+      
+      "<div class=\"table-responsive\">
+        <table class=\"table table-dark table-striped table-sm\">
+          <thead>
+            <tr><th>Time Period</th><th>Count</th></tr>
+          </thead>
+          <tbody>#{rows_html}</tbody>
+        </table>
+      </div>"
+      
+    when 'simple_stats'
+      # Generate a stats summary table
+      return "<p>No numeric fields to analyze</p>" if results.empty?
+      
+      rows_html = results.map do |stat|
+        "<tr>
+          <td>#{ERB::Util.html_escape(stat['field'])}</td>
+          <td>#{stat['count']}</td>
+          <td>#{stat['sum']}</td>
+          <td>#{stat['avg']}</td>
+          <td>#{stat['min']}</td>
+          <td>#{stat['max']}</td>
+        </tr>"
+      end.join
+      
+      "<div class=\"table-responsive\">
+        <table class=\"table table-dark table-striped table-sm\">
+          <thead>
+            <tr><th>Field</th><th>Count</th><th>Sum</th><th>Average</th><th>Min</th><th>Max</th></tr>
+          </thead>
+          <tbody>#{rows_html}</tbody>
+        </table>
+      </div>"
+      
+    else
+      "<p>Visualization not available for #{operation}</p>"
+    end
   end
 end 

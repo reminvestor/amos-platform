@@ -171,6 +171,14 @@ export default class extends Controller {
     `
     
     this.chatMessagesTarget.appendChild(messageDiv)
+    
+    // If we are currently streaming another AI message, keep that bubble at the bottom
+    if (this.currentStreamingContent !== undefined && this.streamingMessageElement) {
+      const streamingContainer = this.streamingMessageElement.closest('.message')
+      if (streamingContainer && streamingContainer !== messageDiv) {
+        this.chatMessagesTarget.appendChild(streamingContainer)
+      }
+    }
     this.scrollChatToBottom()
   }
   
