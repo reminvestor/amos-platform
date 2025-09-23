@@ -157,11 +157,13 @@ export default class extends Controller {
     const formattedContent = role === "ai" ? this.parseSimpleMarkdown(content) : this.escapeHtml(content)
     
     messageDiv.innerHTML = `
-      <div class="message-avatar">
-        <i class="${avatar}"></i>
-      </div>
       <div class="message-content">
-        ${formattedContent}
+        <div class="message-avatar">
+          <i class="${avatar}"></i>
+        </div>
+        <div class="message-bubble">
+          ${formattedContent}
+        </div>
       </div>
     `
     
@@ -422,14 +424,20 @@ export default class extends Controller {
                     
                     const lastMessage = messages[messages.length - 1]
                     if (lastMessage && lastMessage.classList.contains('ai-message')) {
-                      const messageContent = lastMessage.querySelector('.message-content')
-                      if (messageContent) {
-                        // During streaming, use textContent to avoid HTML parsing issues
-                        messageContent.textContent = this.currentStreamingContent
-                        console.log("✅ Updated message content")
+                      const messageBubble = lastMessage.querySelector('.message-bubble')
+                      if (messageBubble) {
+                        // Parse markdown during streaming for better UX
+                        // But use a simpler version that won't break with partial content
+                        const partiallyParsed = this.currentStreamingContent
+                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                          .replace(/`([^`]+)`/g, '<code>$1</code>')
+                        
+                        messageBubble.innerHTML = partiallyParsed
+                        console.log("✅ Updated message bubble with partial parsing")
                         console.log("📝 Streaming text:", this.currentStreamingContent.substring(0, 100) + "...")
                         // Store reference for later use
-                        this.streamingMessageElement = messageContent
+                        this.streamingMessageElement = messageBubble
                       } else {
                         console.error("❌ No .message-content found in last message")
                       }
@@ -487,16 +495,11 @@ export default class extends Controller {
           const messages = this.chatMessagesTarget.querySelectorAll('.message')
           const lastMessage = messages[messages.length - 1]
           if (lastMessage && lastMessage.classList.contains('ai-message')) {
-            const messageContent = lastMessage.querySelector('.message-content')
-            if (messageContent && this.currentStreamingContent) {
-              // Create a new div with the parsed content
-              const newContent = document.createElement('div')
-              newContent.className = 'message-content'
-              newContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
-              
-              // Replace the old content div with the new one
-              messageContent.parentNode.replaceChild(newContent, messageContent)
-              console.log("✅ Applied final markdown formatting with fresh element")
+            const messageBubble = lastMessage.querySelector('.message-bubble')
+            if (messageBubble && this.currentStreamingContent) {
+              // Apply final markdown parsing
+              messageBubble.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
+              console.log("✅ Applied final markdown formatting")
             }
           }
         }
@@ -1553,6 +1556,12 @@ export default class extends Controller {
     
     const result = processedParagraphs.join('<br><br>')
     console.log("🔍 parseSimpleMarkdown output:", result.substring(0, 500) + "...")
+    
+    // Extra debug for list detection
+    if (result.includes('<ul>') || result.includes('<li>')) {
+      console.log("🎯 List detected in output!")
+      console.log("📋 Full parsed result:", result)
+    }
     
     return result
   }
