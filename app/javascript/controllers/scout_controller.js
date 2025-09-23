@@ -486,6 +486,9 @@ export default class extends Controller {
           // Handle data changes that might require canvas refresh
           this.handleDataChanges(finalResponseData)
         }
+        
+        // Re-enable input after successful response
+        this.enableChatInput()
       } else {
         // Hide streaming window even if no final response
         this.hideStreamingWindow()
@@ -497,6 +500,24 @@ export default class extends Controller {
       console.error("❌ Error sending message:", error)
       this.hideStreamingWindow()
       this.addMessage("Sorry, something went wrong. Please try again.", "ai")
+    } finally {
+      // Re-enable the chat input
+      this.enableChatInput()
+    }
+  }
+  
+  // Helper to re-enable chat input
+  enableChatInput() {
+    // Re-enable via DOM elements
+    const messageInput = document.getElementById('message-input')
+    const sendButton = document.getElementById('send-button')
+    
+    if (messageInput) {
+      messageInput.disabled = false
+      messageInput.focus()
+    }
+    if (sendButton) {
+      sendButton.disabled = false
     }
   }
 

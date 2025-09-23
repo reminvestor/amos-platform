@@ -2042,7 +2042,13 @@ document.addEventListener('turbo:load', function() {
         await handleInteractiveChat(message, currentCanvas);
       } else {
         console.log('⚡ Using streaming mode for:', message);
-        await handleStreamingChat(message, currentCanvas);
+        // Route through scout controller instead of handleStreamingChat
+        if (window.scoutController && window.scoutController.processMessage) {
+          await window.scoutController.processMessage(message);
+        } else {
+          // Fallback to direct streaming
+          await handleStreamingChat(message, currentCanvas);
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
