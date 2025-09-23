@@ -463,10 +463,11 @@ export default class extends Controller {
                     console.log("Manual extraction also failed:", manualError.message)
                   }
                 }
-              }
-            }
-          }
-        }
+              } // end catch
+            } // end if line.startsWith
+          } // end for line
+        } // end for event
+        } // End of while loop
       } finally {
         reader.releaseLock()
       }
@@ -531,7 +532,7 @@ export default class extends Controller {
         console.log("❌ No message in response data")
         this.addMessage("Sorry, I couldn't process that request. Please try again.", "ai")
       }
-      
+    
     } catch (error) {
       console.error("❌ Error sending message:", error)
       this.hideStreamingWindow()
