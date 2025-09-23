@@ -380,16 +380,24 @@ export default class extends Controller {
                   console.log("🔄 Progress:", data.message)
                   this.showStreamingProgress(data.message)
                   
-                  // Check if we're starting to stream content
+                  // Initialize streaming when we see the streaming message
                   if (data.message === '💬 streaming') {
-                    // Create a new message element for streaming
-                    this.addMessage('', 'assistant')
+                    console.log('📝 Streaming started - initializing message')
+                    // Find the last AI message or create a new one
+                    const messages = this.chatMessagesTarget.querySelectorAll('.message-wrapper')
+                    const lastMessage = messages[messages.length - 1]
+                    
+                    // Only create new message if last one isn't already an empty AI message
+                    if (!lastMessage || !lastMessage.classList.contains('assistant-message') || 
+                        lastMessage.querySelector('.message-content')?.textContent.trim()) {
+                      this.addMessage('', 'ai')
+                    }
                     this.currentStreamingContent = ''
                   }
                 } else if (data.type === 'content') {
                   // Handle content chunks for streaming
-                  if (data.content) {
-                    this.currentStreamingContent = (this.currentStreamingContent || '') + data.content
+                  if (data.content && this.currentStreamingContent !== undefined) {
+                    this.currentStreamingContent += data.content
                     // Update the last message with the accumulated content
                     const messages = this.chatMessagesTarget.querySelectorAll('.message-wrapper')
                     const lastMessage = messages[messages.length - 1]
@@ -443,6 +451,8 @@ export default class extends Controller {
         // Only add a new message if we weren't streaming
         if (!this.currentStreamingContent) {
           this.addMessage(finalResponseData.message, "ai")
+        } else {
+          console.log("✅ Message was streamed, not adding duplicate")
         }
         // Clear streaming content
         this.currentStreamingContent = null
