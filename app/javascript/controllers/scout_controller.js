@@ -428,6 +428,8 @@ export default class extends Controller {
                         messageContent.textContent = this.currentStreamingContent
                         console.log("✅ Updated message content")
                         console.log("📝 Streaming text:", this.currentStreamingContent.substring(0, 100) + "...")
+                        // Store reference for later use
+                        this.streamingMessageElement = messageContent
                       } else {
                         console.error("❌ No .message-content found in last message")
                       }
@@ -487,9 +489,14 @@ export default class extends Controller {
           if (lastMessage && lastMessage.classList.contains('ai-message')) {
             const messageContent = lastMessage.querySelector('.message-content')
             if (messageContent && this.currentStreamingContent) {
-              // Apply simple markdown parsing to match how DB messages are displayed
-              messageContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
-              console.log("✅ Applied final markdown formatting")
+              // Create a new div with the parsed content
+              const newContent = document.createElement('div')
+              newContent.className = 'message-content'
+              newContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
+              
+              // Replace the old content div with the new one
+              messageContent.parentNode.replaceChild(newContent, messageContent)
+              console.log("✅ Applied final markdown formatting with fresh element")
             }
           }
         }
