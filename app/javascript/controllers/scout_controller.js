@@ -357,6 +357,7 @@ export default class extends Controller {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let finalResponseData = null
+      let buffer = '' // Buffer for incomplete SSE events
       
       try {
         while (true) {
@@ -364,13 +365,21 @@ export default class extends Controller {
           if (done) break
           
           const chunk = decoder.decode(value)
-          const lines = chunk.split('\n')
+          buffer += chunk
           
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const jsonStr = line.slice(6)
-                console.log("Parsing JSON:", jsonStr.length > 200 ? jsonStr.substring(0, 200) + "..." : jsonStr)
+          // Split by double newline (SSE event boundary)
+          const events = buffer.split('\n\n')
+          
+          // Keep the last part in buffer (might be incomplete)
+          buffer = events.pop() || ''
+          
+          for (const event of events) {
+            const lines = event.split('\n')
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const jsonStr = line.slice(6)
+                  console.log("Parsing JSON:", jsonStr.length > 200 ? jsonStr.substring(0, 200) + "..." : jsonStr)
                 
                 const data = JSON.parse(jsonStr)
                 console.log("📊 Streaming data:", data.type, data.type === 'response' ? '(Final Response)' : (data.message || data.content))
@@ -400,6 +409,12 @@ export default class extends Controller {
                     this.currentStreamingContent += data.content
                     console.log("📝 Accumulated content:", this.currentStreamingContent.length, "chars")
                     console.log("🔍 Content preview:", JSON.stringify(this.currentStreamingContent.substring(this.currentStreamingContent.length - 50)))
+                    
+                    // Debug: Check for excessive newlines in accumulated content
+                    const newlineMatches = this.currentStreamingContent.match(/\n/g)
+                    if (newlineMatches && newlineMatches.length > 10) {
+                      console.warn(`⚠️ Accumulated content has ${newlineMatches.length} newlines!`)
+                    }
                     
                     // Update the last message with the accumulated content
                     const messages = this.chatMessagesTarget.querySelectorAll('.message')
@@ -1493,28 +1508,55 @@ export default class extends Controller {
     tempDiv.innerHTML = text
     let decodedText = tempDiv.textContent || tempDiv.innerText || text
     
-    // Debug: Check if content has excessive newlines
-    const newlineCount = (decodedText.match(/\n/g) || []).length
-    if (newlineCount > 10) {
-      console.warn(`⚠️ Text has ${newlineCount} newlines - may be chunked incorrectly`)
-    }
-    
-    // Apply inline markdown parsing
+    // Apply inline markdown parsing first
     let parsed = decodedText
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
     
-    // Check if this looks like it has newlines between every few words
-    const words = parsed.split(/\s+/).length
-    const lines = parsed.split('\n').length
-    if (lines > 1 && words / lines < 5) {
-      // Likely has newlines between chunks - replace them with spaces
-      console.log(`🔧 Fixing chunked text: ${words} words, ${lines} lines`)
-      parsed = parsed.replace(/\n/g, ' ')
+    // Handle list items specially to preserve their structure
+    const hasListItems = parsed.includes('\n- ') || /\n\d+\. /.test(parsed)
+    
+    if (hasListItems) {
+      // This is a structured message with lists
+      // Preserve double newlines for paragraph breaks
+      // Convert list items to proper HTML
+      parsed = parsed
+        .split('\n\n')
+        .map(paragraph => {
+          // Check if this paragraph is a list
+          if (paragraph.includes('\n- ') || /\n\d+\. /.test(paragraph)) {
+            const items = paragraph.split('\n').filter(line => line.trim())
+            const listItems = items.map(item => {
+              if (item.startsWith('- ')) {
+                return `<li>${item.substring(2)}</li>`
+              } else if (/^\d+\. /.test(item)) {
+                return `<li>${item.replace(/^\d+\. /, '')}</li>`
+              }
+              return item
+            }).filter(item => item.startsWith('<li>'))
+            
+            if (listItems.length > 0) {
+              return `<ul>${listItems.join('')}</ul>`
+            }
+          }
+          return paragraph.replace(/\n/g, ' ')
+        })
+        .join('<br><br>')
     } else {
-      // Normal text - preserve intentional line breaks
-      parsed = parsed.replace(/\n\n+/g, '<br><br>').replace(/\n/g, '<br>')
+      // Regular text without lists
+      // Check for excessive single newlines (streaming artifact)
+      const lines = parsed.split('\n')
+      const avgWordsPerLine = lines.reduce((sum, line) => sum + line.split(/\s+/).filter(w => w).length, 0) / lines.length
+      
+      if (lines.length > 3 && avgWordsPerLine < 5) {
+        // Likely streaming artifacts - remove single newlines
+        console.log(`🔧 Fixing streaming artifacts: ${lines.length} lines, ${avgWordsPerLine.toFixed(1)} words/line`)
+        parsed = parsed.replace(/\n+/g, ' ')
+      } else {
+        // Normal text - convert newlines to breaks
+        parsed = parsed.replace(/\n\n+/g, '<br><br>').replace(/\n/g, '<br>')
+      }
     }
     
     return parsed
