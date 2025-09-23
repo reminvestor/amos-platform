@@ -2042,12 +2042,13 @@ document.addEventListener('turbo:load', function() {
         await handleInteractiveChat(message, currentCanvas);
       } else {
         console.log('⚡ Using streaming mode for:', message);
-        // Route through scout controller instead of handleStreamingChat
+        // Route through scout controller ONLY
         if (window.scoutController && window.scoutController.processMessage) {
           await window.scoutController.processMessage(message);
         } else {
-          // Fallback to direct streaming
-          await handleStreamingChat(message, currentCanvas);
+          console.error('❌ Scout controller not available! Cannot process message.');
+          addMessage('Sorry, the chat system is not ready. Please refresh the page.', 'assistant');
+          throw new Error('Scout controller not available');
         }
       }
     } catch (error) {
