@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import MarkdownIt from "markdown-it"
 
 export default class extends Controller {
   static targets = [
@@ -20,6 +21,8 @@ export default class extends Controller {
     this.currentMode = "conversation"
     this.currentCanvas = null
     this.isResizing = false
+    // Initialize markdown parser (safe: HTML disabled, emojis preserved)
+    this.md = new MarkdownIt({ html: false, linkify: true, breaks: false, typographer: false })
     
     // Make controller globally accessible
     window.scoutController = this
@@ -440,32 +443,10 @@ export default class extends Controller {
                     if (lastMessage && lastMessage.classList.contains('ai-message')) {
                       const messageBubble = lastMessage.querySelector('.message-bubble')
                       if (messageBubble) {
-                        // Parse markdown during streaming for better UX
-                        // But use a simpler version that won't break with partial content
-                        console.log("🔍 Raw streaming content length:", this.currentStreamingContent.length)
-                        console.log("🔍 Raw content sample:", this.currentStreamingContent.substring(0, 200))
-                        
-                        // First escape HTML entities for security
-                        let safe = this.currentStreamingContent
-                          .replace(/</g, '&lt;')
-                          .replace(/>/g, '&gt;')
-                        
-                        // Then apply markdown parsing
-                        const partiallyParsed = safe
-                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                          .replace(/`([^`]+)`/g, '<code>$1</code>')
-                        
-                        console.log("🔍 Parsed content:", partiallyParsed.substring(0, 100))
-                        console.log("🔍 Message bubble exists:", !!messageBubble)
-                        console.log("🔍 Setting innerHTML to:", partiallyParsed.length, "chars")
-                        
-                        messageBubble.innerHTML = partiallyParsed
-                        console.log("✅ Updated message bubble with partial parsing")
-                        console.log("🔍 Actual bubble innerHTML length:", messageBubble.innerHTML.length)
-                        console.log("🔍 Actual bubble textContent:", messageBubble.textContent.substring(0, 200))
-                        
-                        // Store reference for later use
+                        // Render markdown safely during streaming
+                        // Use the accumulated content so lists/headings form as content grows
+                        const html = this.md.render(this.currentStreamingContent)
+                        messageBubble.innerHTML = html
                         this.streamingMessageElement = messageBubble
                       } else {
                         console.error("❌ No .message-bubble found in last message")
@@ -526,8 +507,8 @@ export default class extends Controller {
           if (lastMessage && lastMessage.classList.contains('ai-message')) {
             const messageBubble = lastMessage.querySelector('.message-bubble')
             if (messageBubble && this.currentStreamingContent) {
-              // Apply final markdown parsing
-              messageBubble.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
+              // Apply final markdown parsing with markdown-it (consistent with streaming)
+              messageBubble.innerHTML = this.md.render(this.currentStreamingContent)
               console.log("✅ Applied final markdown formatting")
             }
           }
