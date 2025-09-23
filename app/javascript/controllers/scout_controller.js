@@ -1506,16 +1506,48 @@ export default class extends Controller {
   parseSimpleMarkdown(text) {
     if (!text) return ''
     
-    // Simple markdown parsing - display exactly what the LLM sends
-    let parsed = text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Split into paragraphs by double newlines
+    const paragraphs = text.split('\n\n')
+    const processedParagraphs = []
     
-    // Convert newlines to breaks exactly as sent by LLM
-    parsed = parsed.replace(/\n/g, '<br>')
+    for (const paragraph of paragraphs) {
+      // Check if this paragraph is a list
+      if (paragraph.includes('\n- ') || paragraph.startsWith('- ')) {
+        // Process as a list
+        const lines = paragraph.split('\n')
+        const listItems = []
+        
+        for (const line of lines) {
+          if (line.startsWith('- ')) {
+            const content = line.substring(2)
+              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+              .replace(/`([^`]+)`/g, '<code>$1</code>')
+            listItems.push(`<li>${content}</li>`)
+          }
+        }
+        
+        if (listItems.length > 0) {
+          processedParagraphs.push(`<ul>${listItems.join('')}</ul>`)
+        }
+      } else {
+        // Process as regular text
+        const escaped = paragraph
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          .replace(/\n/g, '<br>')
+        
+        processedParagraphs.push(escaped)
+      }
+    }
     
-    return parsed
+    const result = processedParagraphs.join('<br><br>')
+    console.log("🔍 parseSimpleMarkdown output:", result.substring(0, 500) + "...")
+    
+    return result
   }
 
   getCSRFToken() {
