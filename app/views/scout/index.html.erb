@@ -1675,20 +1675,28 @@ document.addEventListener('turbo:load', function() {
                 // No legacy streaming UI elements
                 if (data.message === '💬 streaming') {
                   // Initialize streaming for unified chat
+                  console.log('💬 Initializing streaming message');
                   if (!streamingMessage) {
                     streamingMessage = addMessage('', 'assistant');
                     streamingContent = '';
+                    console.log('✅ Created streaming message element:', streamingMessage);
                   }
                 }
               } else if (data.type === 'content') {
                 // Route content chunks to unified chat message
+                console.log('📝 Content chunk received:', data.content?.substring(0, 50) + '...');
                 if (streamingMessage && data.content) {
                   streamingContent += data.content;
                   const messageContent = streamingMessage.querySelector('.message-content');
                   if (messageContent) {
                     messageContent.innerHTML = parseMarkdown(streamingContent);
                     scrollToBottom();
+                    console.log('✅ Updated streaming message with', streamingContent.length, 'chars');
+                  } else {
+                    console.error('❌ No message-content element found in streaming message');
                   }
+                } else {
+                  console.warn('⚠️ No streaming message element or no content:', { streamingMessage: !!streamingMessage, content: !!data.content });
                 }
               } else if (data.type === 'intermediate_message') {
                 // Add intermediate message that was saved before tool usage
