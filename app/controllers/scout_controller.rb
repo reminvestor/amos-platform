@@ -640,7 +640,8 @@ class ScoutController < ApplicationController
 
   def stream_content_chunk(content)
     # Stream individual content chunks for real-time display
-    puts "🚨 PRODUCTION DEBUG: Streaming content chunk: #{content}"
+    puts "🚨 PRODUCTION DEBUG: Streaming content chunk: #{content.inspect}"
+    puts "🔍 Content length: #{content.length}, newlines: #{content.count("\n")}"
     STDOUT.flush
     
     data = JSON.generate({ type: 'content', content: content })
