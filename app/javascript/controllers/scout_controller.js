@@ -1548,38 +1548,22 @@ export default class extends Controller {
         if (listItems.length > 0) {
           processedParagraphs.push(`<ul>${listItems.join('')}</ul>`)
         }
-      } else {
-        // Process as regular text
+      } else if (paragraph.trim()) {
+        // Process as regular text, but don't wrap in <p> tags
         const escaped = paragraph
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
           .replace(/\*(.*?)\*/g, '<em>$1</em>')
           .replace(/`([^`]+)`/g, '<code>$1</code>')
-          // Only convert single newlines to <br>, not newlines after closing tags
-          .replace(/(?<!>)\n(?!<)/g, '<br>')
+          .replace(/\n/g, '<br>')
         
         processedParagraphs.push(escaped)
       }
     }
     
-    // Join paragraphs with appropriate spacing
-    let result = ''
-    for (let i = 0; i < processedParagraphs.length; i++) {
-      result += processedParagraphs[i]
-      
-      // Add spacing between paragraphs, but not if current ends with list or next starts with list
-      if (i < processedParagraphs.length - 1) {
-        const currentEndsWithList = processedParagraphs[i].includes('</ul>')
-        const nextStartsWithList = processedParagraphs[i + 1].includes('<ul>')
-        
-        if (!currentEndsWithList && !nextStartsWithList) {
-          result += '<br><br>'
-        } else {
-          result += '<br>'
-        }
-      }
-    }
+    // Join paragraphs with single break between them
+    const result = processedParagraphs.join('<br>')
     console.log("🔍 parseSimpleMarkdown output:", result.substring(0, 500) + "...")
     
     // Extra debug for list detection
