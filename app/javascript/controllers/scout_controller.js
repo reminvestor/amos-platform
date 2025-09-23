@@ -153,8 +153,8 @@ export default class extends Controller {
     
     const avatar = role === "ai" ? "fas fa-robot" : "fas fa-user"
     
-    // Parse markdown for AI messages
-    const formattedContent = role === "ai" ? this.parseMarkdown(content) : this.escapeHtml(content)
+    // Parse markdown for AI messages - use simple parser to match DB messages
+    const formattedContent = role === "ai" ? this.parseSimpleMarkdown(content) : this.escapeHtml(content)
     
     messageDiv.innerHTML = `
       <div class="message-avatar">
@@ -487,8 +487,8 @@ export default class extends Controller {
           if (lastMessage && lastMessage.classList.contains('ai-message')) {
             const messageContent = lastMessage.querySelector('.message-content')
             if (messageContent && this.currentStreamingContent) {
-              // Apply full markdown parsing now that streaming is complete
-              messageContent.innerHTML = this.parseMarkdown(this.currentStreamingContent)
+              // Apply simple markdown parsing to match how DB messages are displayed
+              messageContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
               console.log("✅ Applied final markdown formatting")
             }
           }
