@@ -708,20 +708,27 @@
 
 /* Tool message overrides - must come after general styles */
 #workspace .tool-message .message-bubble {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
-  border: none !important;
-  color: white !important;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
-  padding: 10px 16px !important;
-  border-radius: 20px !important;
-  display: inline-block !important;
-  max-width: fit-content !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  padding: 8px 14px !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  max-width: 80% !important;
 }
 
 #workspace .tool-message .tool-bubble {
-  display: block !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
   padding: 0 !important;
   margin: 0 !important;
+  width: 100% !important;
 }
 
 #workspace .tool-message .tool-name {
@@ -1214,13 +1221,27 @@ document.addEventListener('turbo:load', function() {
     
     const toolName = metadata.tool_name || content.replace('tool:', '');
     const displayName = getToolDisplayName(toolName);
+    const hasDetails = metadata && (metadata.tool_id || metadata.arguments || metadata.result);
+    const collapseId = `tool-details-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
     
     toolMessage.innerHTML = `
       <div class="message-content">
         <div class="message-bubble">
-          <div class="tool-bubble">
+          <div class="tool-bubble d-flex align-items-center">
             <span class="tool-name">Utilizing ${displayName} tool</span>
+            ${hasDetails ? `
+              <button class="btn btn-link btn-sm p-0 ms-2 align-baseline text-white-50" type="button" 
+                      data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}"
+                      title="Show details">
+                <i class="bi bi-chevron-down"></i>
+              </button>
+            ` : ''}
           </div>
+          ${hasDetails ? `
+            <div id="${collapseId}" class="collapse mt-2">
+              <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-word;">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -1287,6 +1308,11 @@ document.addEventListener('turbo:load', function() {
       </div>
     `;
     return wrapper;
+  }
+
+  // Local escape helper for history rendering
+  function escapeForPre(text) {
+    return (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   function appendMessage(content, role, timestamp = null, id = null, metadata = null) {
@@ -1393,7 +1419,7 @@ document.addEventListener('turbo:load', function() {
         <div class="tool-call-info">
           <div class="tool-call-icon ${toolCall.status}" id="${toolCallId}-icon">
             <i class="fas fa-clock"></i>
-          </div>
+        </div>
           <div>
             <div class="tool-call-name">${getToolDisplayName(toolName)}</div>
             <div class="tool-call-status" id="${toolCallId}-status">${message}</div>
@@ -1512,15 +1538,29 @@ document.addEventListener('turbo:load', function() {
               // Create tool message element with consistent structure
               const toolMessage = document.createElement('div');
               toolMessage.className = 'message ai-message tool-message';
-              toolMessage.innerHTML = `
-                <div class="message-content">
-                  <div class="message-bubble">
-                    <div class="tool-bubble">
-                      <span class="tool-name">Utilizing ${displayName} tool</span>
-                    </div>
-                  </div>
-                </div>
-              `;
+    const hasDetails = !!metadata;
+    const collapseId = `tool-details-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+    toolMessage.innerHTML = `
+      <div class="message-content">
+        <div class="message-bubble">
+          <div class="tool-bubble d-flex align-items-center justify-content-between">
+            <span class="tool-name">Utilizing ${displayName} tool</span>
+            ${hasDetails ? `
+              <button class="btn btn-link btn-sm p-0 ms-2 align-baseline text-white-50" type="button" 
+                      data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}"
+                      title="Show details">
+                <i class="bi bi-chevron-down"></i>
+              </button>
+            ` : ''}
+          </div>
+          ${hasDetails ? `
+            <div id="${collapseId}" class="collapse mt-2">
+              <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-word;">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
 
               // Add to chat
               messagesContainer.appendChild(toolMessage);

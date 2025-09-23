@@ -2028,22 +2028,22 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       when 'update_landing_page_status'
         progress_callback&.call("📝 Updating landing page status...")
       when 'update_landing_page_content'
-        progress_callback&.call("✨ Updating landing page content...")
+        progress_callback&.call({ type: 'intermediate_message', content: "✨ Updating landing page content...", role: 'assistant' })
       when 'revert_landing_page_to_version'
-        progress_callback&.call("⏪ Reverting landing page to previous version...")
+        progress_callback&.call({ type: 'intermediate_message', content: "⏪ Reverting landing page to previous version...", role: 'assistant' })
       when 'link_template_to_campaign'
-        progress_callback&.call("🔗 Linking email template to campaign...")
+        progress_callback&.call({ type: 'intermediate_message', content: "🔗 Linking email template to campaign...", role: 'assistant' })
       when 'create_dynamic_visualization'
-        progress_callback&.call("📊 Creating custom visualization...")
+        progress_callback&.call({ type: 'intermediate_message', content: "📊 Creating custom visualization...", role: 'assistant' })
       when 'manage_task_list'
         action = tool_call[:arguments]['action']
         case action
         when 'create'
-          progress_callback&.call("📋 Creating task list...")
+          progress_callback&.call({ type: 'intermediate_message', content: "📋 Creating task list...", role: 'assistant' })
         when 'complete_task'
-          progress_callback&.call("✅ Completing task...")
+          progress_callback&.call({ type: 'intermediate_message', content: "✅ Completing task...", role: 'assistant' })
         else
-          progress_callback&.call("📝 Updating task list...")
+          progress_callback&.call({ type: 'intermediate_message', content: "📝 Updating task list...", role: 'assistant' })
         end
       end
       
@@ -2083,25 +2083,25 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       if result[:success]
         case tool_call[:name]
         when 'get_schema'
-          progress_callback&.call("✅ Schema discovered for #{tool_call[:arguments]['object_type']}")
+          progress_callback&.call({ type: 'intermediate_message', content: "✅ Schema discovered for #{tool_call[:arguments]['object_type']}", role: 'assistant' })
         when 'get_data'
           count = result.dig(:data, :count) || 0
-          progress_callback&.call("✅ Found #{count} records")
+          progress_callback&.call({ type: 'intermediate_message', content: "✅ Found #{count} records", role: 'assistant' })
         when 'create_object'
-          progress_callback&.call("✅ Successfully created #{tool_call[:arguments]['object_type']}")
+          progress_callback&.call({ type: 'intermediate_message', content: "✅ Successfully created #{tool_call[:arguments]['object_type']}", role: 'assistant' })
         when 'manage_task_list'
           action = tool_call[:arguments]['action']
           case action
           when 'create'
-            progress_callback&.call("✅ Task list created")
+            progress_callback&.call({ type: 'intermediate_message', content: "✅ Task list created", role: 'assistant' })
           when 'complete_task'
-            progress_callback&.call("✅ Task completed")
+            progress_callback&.call({ type: 'intermediate_message', content: "✅ Task completed", role: 'assistant' })
           else
-            progress_callback&.call("✅ Task list updated")
+            progress_callback&.call({ type: 'intermediate_message', content: "✅ Task list updated", role: 'assistant' })
           end
         end
       else
-        progress_callback&.call("❌ Tool execution failed: #{result[:error]}")
+        progress_callback&.call({ type: 'intermediate_message', content: "❌ Tool execution failed: #{result[:error]}", role: 'assistant' })
       end
     end
     
@@ -3736,6 +3736,13 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       - Respond naturally in conversational language using markdown formatting
       - Use tools when needed to fetch data or perform actions
       - When asked to load a canvas view, use the load_canvas tool
+      - Prefer prebuilt canvases over custom views. ONLY create a dynamic visualization when the user explicitly asks for a bespoke analysis/report/visualization
+        - Map requests to canvases (MUST):
+          - "show my campaigns" / "open campaigns" -> load_canvas(canvas_name: "campaign_viewer")
+          - "analytics" / "dashboard" / "performance" -> load_canvas(canvas_name: "analytics_dashboard")
+          - "email templates" / "templates" -> load_canvas(canvas_name: "email_template_viewer")
+          - "contacts" / "people" -> load_canvas(canvas_name: "contact_viewer")
+        - After loading a canvas, you may fetch data or propose next actions as needed
       - Focus on analysis, insights, and recommendations
       
       **AVAILABLE TOOLS:**
@@ -3775,6 +3782,13 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       - Respond naturally in conversational language using markdown formatting
       - Take immediate action using tools when appropriate
       - When asked to load a canvas view, use the load_canvas tool
+      - Prefer prebuilt canvases over custom views. ONLY create a dynamic visualization when the user explicitly asks for a bespoke analysis/report/visualization
+        - Map requests to canvases (MUST):
+          - "show my campaigns" / "open campaigns" -> load_canvas(canvas_name: "campaign_viewer")
+          - "analytics" / "dashboard" / "performance" -> load_canvas(canvas_name: "analytics_dashboard")
+          - "email templates" / "templates" -> load_canvas(canvas_name: "email_template_viewer")
+          - "contacts" / "people" -> load_canvas(canvas_name: "contact_viewer")
+        - After loading a canvas, you may fetch data or propose next actions as needed
       - Confirm actions taken and suggest next steps
       
       **AVAILABLE TOOLS:**
@@ -4031,6 +4045,15 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         'html_content' => html_content
       }
       
+      # If we're in streaming mode, proactively load the canvas immediately
+      if @progress_callback
+        @progress_callback.call({
+          type: 'load_canvas',
+          canvas: 'dynamic_canvas',
+          canvas_data: @canvas_data
+        })
+      end
+      
       {
         success: true,
         message: "📊 Created custom visualization: #{title}",
@@ -4260,6 +4283,15 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
           total_tasks = existing_list[:tasks].size
           completed_tasks = existing_list[:tasks].count { |t| (t['status'] || t[:status]) == 'completed' }
           progress_percentage = (completed_tasks.to_f / total_tasks * 100).round
+
+            # Stream canvas update immediately so the UI shows progress between steps
+            if @progress_callback
+              @progress_callback.call({
+                type: 'load_canvas',
+                canvas: 'task_progress',
+                canvas_data: existing_list
+              })
+            end
           
           {
             success: true,
@@ -4298,7 +4330,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
           
           @suggested_canvas = 'task_progress'
           @canvas_data = existing_list
-
+            
+            # Stream canvas update so the failure status appears immediately
+            if @progress_callback
+              @progress_callback.call({
+                type: 'load_canvas',
+                canvas: 'task_progress',
+                canvas_data: existing_list
+              })
+            end
+            
           {
             success: true,
             message: "❌ Task failed: #{task['description'] || task[:description]}",

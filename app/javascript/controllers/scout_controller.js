@@ -156,8 +156,8 @@ export default class extends Controller {
     
     const avatar = role === "ai" ? "fas fa-robot" : "fas fa-user"
     
-    // Parse markdown for AI messages - use simple parser to match DB messages
-    const formattedContent = role === "ai" ? this.parseSimpleMarkdown(content) : this.escapeHtml(content)
+    // Parse markdown for AI messages using markdown-it
+    const formattedContent = role === "ai" ? this.md.render(content || '') : this.escapeHtml(content)
     
     messageDiv.innerHTML = `
       <div class="message-content">
@@ -415,12 +415,55 @@ export default class extends Controller {
                           const newLastMessage = newMessages[newMessages.length - 1]
                           const bubble = newLastMessage?.querySelector('.message-bubble')
                           console.log("🔍 Found bubble:", !!bubble)
+                          if (bubble) {
+                            this.streamingMessageElement = bubble
+                          }
                         }, 10)
                       }
                       this.currentStreamingContent = ''
                     } else {
                       console.log("📝 Already streaming, not resetting content")
                     }
+                  }
+                } else if (data.type === 'add_tool_message' || data.type === 'tool_detected') {
+                  // Lightweight indicator when a tool is referenced/detected
+                  const toolName = data.tool_name || data.name || 'tool'
+                  const toolId = data.tool_id
+                  this.addToolMessage(toolName, 'detected', { tool_id: toolId })
+                } else if (data.type === 'tool_start') {
+                  // Start of a tool call with arguments
+                  const toolName = data.name || 'tool'
+                  const args = data.arguments || {}
+                  this.addToolMessage(toolName, 'start', { arguments: args })
+                } else if (data.type === 'tool_result' || data.type === 'tool_end') {
+                  // Optional: completion indicator
+                  const toolName = data.name || data.tool_name || 'tool'
+                  const result = data.result || {}
+                  this.addToolMessage(toolName, 'end', { result })
+                } else if (data.type === 'intermediate_message') {
+                  // Explanatory assistant messages between tool calls
+                  if (data.content) {
+                    // Finalize any current streaming bubble so this renders as a separate message
+                    if (this.currentStreamingContent !== undefined && this.streamingMessageElement) {
+                      try {
+                        this.streamingMessageElement.innerHTML = this.md.render(this.currentStreamingContent)
+                      } catch (e) {
+                        console.warn('⚠️ Failed to finalize streaming bubble before intermediate message', e)
+                      }
+                      this.currentStreamingContent = undefined
+                      this.streamingMessageElement = null
+                    }
+                    this.addMessage(data.content, 'ai')
+                  }
+                } else if (data.type === 'load_canvas') {
+                  // Streamed instruction to load a canvas immediately
+                  try {
+                    console.log('📋 Streaming: load_canvas received:', data.canvas)
+                    this.loadScoutCanvas(data.canvas, data.canvas_data || {})
+                  } catch (e) {
+                    console.warn('⚠️ Failed direct load_canvas during streaming, dispatching event', e)
+                    const evt = new CustomEvent('scout:load-canvas', { detail: { canvas: data.canvas, data: data.canvas_data || {} } })
+                    document.dispatchEvent(evt)
                   }
                 } else if (data.type === 'content') {
                   // Handle content chunks for streaming
@@ -435,24 +478,22 @@ export default class extends Controller {
                       console.warn(`⚠️ Accumulated content has ${newlineMatches.length} newlines!`)
                     }
                     
-                    // Update the last message with the accumulated content
-                    const messages = this.chatMessagesTarget.querySelectorAll('.message')
-                    console.log("🔍 Found", messages.length, "total messages")
-                    
-                    const lastMessage = messages[messages.length - 1]
-                    if (lastMessage && lastMessage.classList.contains('ai-message')) {
-                      const messageBubble = lastMessage.querySelector('.message-bubble')
-                      if (messageBubble) {
-                        // Render markdown safely during streaming
-                        // Use the accumulated content so lists/headings form as content grows
-                        const html = this.md.render(this.currentStreamingContent)
-                        messageBubble.innerHTML = html
-                        this.streamingMessageElement = messageBubble
-                      } else {
-                        console.error("❌ No .message-bubble found in last message")
+                    // Update the current streaming message bubble even if other messages were appended later
+                    let targetBubble = this.streamingMessageElement
+                    if (!targetBubble) {
+                      const messages = this.chatMessagesTarget.querySelectorAll('.message')
+                      console.log("🔍 Found", messages.length, "total messages")
+                      const lastMessage = messages[messages.length - 1]
+                      if (lastMessage && lastMessage.classList.contains('ai-message')) {
+                        targetBubble = lastMessage.querySelector('.message-bubble')
                       }
+                    }
+                    if (targetBubble) {
+                      // Render markdown safely during streaming; lists/headings form progressively
+                      targetBubble.innerHTML = this.md.render(this.currentStreamingContent)
+                      this.streamingMessageElement = targetBubble
                     } else {
-                      console.error("❌ Last message is not an AI message or no messages found")
+                      console.error("❌ No streaming target bubble found for AI content update")
                     }
                     this.scrollChatToBottom()
                   }
@@ -516,6 +557,7 @@ export default class extends Controller {
         
         // Clear streaming content for next message
         this.currentStreamingContent = undefined
+        this.streamingMessageElement = null
         
         // Check if Scout suggested a canvas to load
         if (finalResponseData.canvas) {
@@ -1464,6 +1506,65 @@ export default class extends Controller {
     }
   }
 
+  // Render a tool call message inline in chat (no avatar, subtle style)
+  addToolMessage(toolName, phase, data = {}) {
+    try {
+      const toolText = phase === 'start' ? `Utilizing ${toolName} tool` : (phase === 'end' ? `${toolName} completed` : `${toolName} detected`)
+      const hasDetails = data && Object.keys(data).length > 0
+      const collapseId = `tool-details-${Date.now()}-${Math.random().toString(36).slice(2,7)}`
+      const detailsToggle = hasDetails ? `
+          <button class="btn btn-link btn-sm p-0 ms-2 align-baseline text-white-50" type="button" 
+                  data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}"
+                  title="Show details">
+            <i class="bi bi-chevron-down"></i>
+          </button>
+        ` : ''
+      const details = hasDetails ? `
+          <div id="${collapseId}" class="collapse mt-2">
+            <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-word;">${this.escapeForPre(JSON.stringify(data, null, 2))}</pre>
+          </div>
+        ` : ''
+      const wrapper = document.createElement('div')
+      wrapper.className = 'message tool-message'
+      wrapper.innerHTML = `
+        <div class="message-content">
+          <div class="message-bubble" style="font-style: italic; color: #fff; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);">
+            <div class="tool-bubble d-flex align-items-center justify-content-between" style="width:100%">
+              <span>${this.escapeHtmlInline(toolText)}</span>${detailsToggle}
+            </div>
+            ${details}
+          </div>
+        </div>
+      `
+      this.chatMessagesTarget.appendChild(wrapper)
+      
+      // If we are in the middle of streaming an AI message, keep that bubble at the bottom
+      if (this.currentStreamingContent !== undefined && this.streamingMessageElement) {
+        const streamingContainer = this.streamingMessageElement.closest('.message')
+        if (streamingContainer) {
+          // Move the streaming message to the end so narrative order stays correct
+          this.chatMessagesTarget.appendChild(streamingContainer)
+        }
+      }
+      
+      this.scrollChatToBottom()
+    } catch (e) {
+      console.warn('Failed to render tool message', e)
+    }
+  }
+
+  // Escape inline text (no wrapping tags)
+  escapeHtmlInline(text) {
+    const div = document.createElement('div')
+    div.textContent = text || ''
+    return div.innerHTML
+  }
+
+  // Escape for <pre>
+  escapeForPre(text) {
+    return (text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  }
+
   // Update template content
   updateTemplateContent(content) {
     if (this.hasTemplateContentTarget) {
@@ -1524,59 +1625,7 @@ export default class extends Controller {
     }
   }
 
-  parseSimpleMarkdown(text) {
-    if (!text) return ''
-    
-    // Split into paragraphs by double newlines
-    const paragraphs = text.split('\n\n')
-    const processedParagraphs = []
-    
-    for (const paragraph of paragraphs) {
-      // Check if this paragraph is a list
-      if (paragraph.includes('\n- ') || paragraph.startsWith('- ')) {
-        // Process as a list
-        const lines = paragraph.split('\n')
-        const listItems = []
-        
-        for (const line of lines) {
-          if (line.startsWith('- ')) {
-            const content = line.substring(2)
-              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-              .replace(/\*(.*?)\*/g, '<em>$1</em>')
-              .replace(/`([^`]+)`/g, '<code>$1</code>')
-            listItems.push(`<li>${content}</li>`)
-          }
-        }
-        
-        if (listItems.length > 0) {
-          processedParagraphs.push(`<ul>${listItems.join('')}</ul>`)
-        }
-      } else if (paragraph.trim()) {
-        // Process as regular text, but don't wrap in <p> tags
-        const escaped = paragraph
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          .replace(/`([^`]+)`/g, '<code>$1</code>')
-          .replace(/\n/g, '<br>')
-        
-        processedParagraphs.push(escaped)
-      }
-    }
-    
-    // Join paragraphs with single break between them
-    const result = processedParagraphs.join('<br>')
-    console.log("🔍 parseSimpleMarkdown output:", result.substring(0, 500) + "...")
-    
-    // Extra debug for list detection
-    if (result.includes('<ul>') || result.includes('<li>')) {
-      console.log("🎯 List detected in output!")
-      console.log("📋 Full parsed result:", result)
-    }
-    
-    return result
-  }
+  
 
   getCSRFToken() {
     // Check for CSRF token in multiple possible locations
@@ -1715,80 +1764,7 @@ export default class extends Controller {
     })
   }
 
-  // Simple markdown parser for Scout messages
-  parseMarkdown(text) {
-    // Split into lines for better processing
-    let lines = text.split('\n')
-    let html = []
-    let inList = false
-    
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i]
-      
-      // Skip empty lines
-      if (line.trim() === '') {
-        if (inList) {
-          html.push('</ul>')
-          inList = false
-        }
-        html.push('<br>')
-        continue
-      }
-      
-      // Headers
-      if (line.startsWith('### ')) {
-        if (inList) { html.push('</ul>'); inList = false }
-        html.push(`<h3>${line.substr(4)}</h3>`)
-      } else if (line.startsWith('## ')) {
-        if (inList) { html.push('</ul>'); inList = false }
-        html.push(`<h2>${line.substr(3)}</h2>`)
-      } else if (line.startsWith('# ')) {
-        if (inList) { html.push('</ul>'); inList = false }
-        html.push(`<h1>${line.substr(2)}</h1>`)
-      }
-      // Blockquotes
-      else if (line.startsWith('> ')) {
-        if (inList) { html.push('</ul>'); inList = false }
-        html.push(`<blockquote>${line.substr(2)}</blockquote>`)
-      }
-      // Lists
-      else if (line.startsWith('- ') || /^\d+\. /.test(line)) {
-        if (!inList) {
-          html.push('<ul>')
-          inList = true
-        }
-        const content = line.startsWith('- ') ? line.substr(2) : line.replace(/^\d+\. /, '')
-        html.push(`<li>${this.parseInlineMarkdown(content)}</li>`)
-      }
-      // Regular paragraphs
-      else {
-        if (inList) {
-          html.push('</ul>')
-          inList = false
-        }
-        html.push(`<p>${this.parseInlineMarkdown(line)}</p>`)
-      }
-    }
-    
-    // Close any open lists
-    if (inList) {
-      html.push('</ul>')
-    }
-    
-    return html.join('')
-  }
-
-  // Parse inline markdown (bold, code, etc.)
-  parseInlineMarkdown(text) {
-    return text
-      // Bold
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      // Code
-      .replace(/`(.*?)`/g, '<code>$1</code>')
-      // Escape remaining HTML
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-  }
+  
 
   // Escape HTML for user messages
   escapeHtml(text) {
