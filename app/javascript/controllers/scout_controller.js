@@ -394,24 +394,30 @@ export default class extends Controller {
                   // Initialize streaming when we see the streaming message
                   if (data.message === '💬 streaming') {
                     console.log('📝 Streaming started - initializing message')
-                    // Find the last AI message or create a new one
-                    const messages = this.chatMessagesTarget.querySelectorAll('.message')
-                    const lastMessage = messages[messages.length - 1]
                     
-                    // Only create new message if last one isn't already an empty AI message
-                    if (!lastMessage || !lastMessage.classList.contains('ai-message') || 
-                        lastMessage.querySelector('.message-bubble')?.textContent.trim()) {
-                      this.addMessage('', 'ai')
-                      // Small delay to ensure DOM is ready
-                      setTimeout(() => {
-                        console.log("🔍 Checking for message-bubble after creation")
-                        const newMessages = this.chatMessagesTarget.querySelectorAll('.message')
-                        const newLastMessage = newMessages[newMessages.length - 1]
-                        const bubble = newLastMessage?.querySelector('.message-bubble')
-                        console.log("🔍 Found bubble:", !!bubble)
-                      }, 10)
+                    // Only initialize if we haven't already started streaming
+                    if (this.currentStreamingContent === undefined || this.currentStreamingContent === null) {
+                      // Find the last AI message or create a new one
+                      const messages = this.chatMessagesTarget.querySelectorAll('.message')
+                      const lastMessage = messages[messages.length - 1]
+                      
+                      // Only create new message if last one isn't already an empty AI message
+                      if (!lastMessage || !lastMessage.classList.contains('ai-message') || 
+                          lastMessage.querySelector('.message-bubble')?.textContent.trim()) {
+                        this.addMessage('', 'ai')
+                        // Small delay to ensure DOM is ready
+                        setTimeout(() => {
+                          console.log("🔍 Checking for message-bubble after creation")
+                          const newMessages = this.chatMessagesTarget.querySelectorAll('.message')
+                          const newLastMessage = newMessages[newMessages.length - 1]
+                          const bubble = newLastMessage?.querySelector('.message-bubble')
+                          console.log("🔍 Found bubble:", !!bubble)
+                        }, 10)
+                      }
+                      this.currentStreamingContent = ''
+                    } else {
+                      console.log("📝 Already streaming, not resetting content")
                     }
-                    this.currentStreamingContent = ''
                   }
                 } else if (data.type === 'content') {
                   // Handle content chunks for streaming
@@ -436,7 +442,8 @@ export default class extends Controller {
                       if (messageBubble) {
                         // Parse markdown during streaming for better UX
                         // But use a simpler version that won't break with partial content
-                        console.log("🔍 Raw streaming content:", this.currentStreamingContent.substring(0, 100))
+                        console.log("🔍 Raw streaming content length:", this.currentStreamingContent.length)
+                        console.log("🔍 Raw content sample:", this.currentStreamingContent.substring(0, 200))
                         
                         // First escape HTML entities for security
                         let safe = this.currentStreamingContent
@@ -455,7 +462,8 @@ export default class extends Controller {
                         
                         messageBubble.innerHTML = partiallyParsed
                         console.log("✅ Updated message bubble with partial parsing")
-                        console.log("🔍 Actual bubble content now:", messageBubble.innerHTML.substring(0, 100))
+                        console.log("🔍 Actual bubble innerHTML length:", messageBubble.innerHTML.length)
+                        console.log("🔍 Actual bubble textContent:", messageBubble.textContent.substring(0, 200))
                         
                         // Store reference for later use
                         this.streamingMessageElement = messageBubble
@@ -524,8 +532,9 @@ export default class extends Controller {
             }
           }
         }
-        // Clear streaming content
-        this.currentStreamingContent = null
+        
+        // Clear streaming content for next message
+        this.currentStreamingContent = undefined
         
         // Check if Scout suggested a canvas to load
         if (finalResponseData.canvas) {
