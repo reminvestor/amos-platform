@@ -400,8 +400,16 @@ export default class extends Controller {
                     
                     // Only create new message if last one isn't already an empty AI message
                     if (!lastMessage || !lastMessage.classList.contains('ai-message') || 
-                        lastMessage.querySelector('.message-content')?.textContent.trim()) {
+                        lastMessage.querySelector('.message-bubble')?.textContent.trim()) {
                       this.addMessage('', 'ai')
+                      // Small delay to ensure DOM is ready
+                      setTimeout(() => {
+                        console.log("🔍 Checking for message-bubble after creation")
+                        const newMessages = this.chatMessagesTarget.querySelectorAll('.message')
+                        const newLastMessage = newMessages[newMessages.length - 1]
+                        const bubble = newLastMessage?.querySelector('.message-bubble')
+                        console.log("🔍 Found bubble:", !!bubble)
+                      }, 10)
                     }
                     this.currentStreamingContent = ''
                   }
@@ -439,7 +447,7 @@ export default class extends Controller {
                         // Store reference for later use
                         this.streamingMessageElement = messageBubble
                       } else {
-                        console.error("❌ No .message-content found in last message")
+                        console.error("❌ No .message-bubble found in last message")
                       }
                     } else {
                       console.error("❌ Last message is not an AI message or no messages found")
@@ -1548,13 +1556,30 @@ export default class extends Controller {
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
           .replace(/\*(.*?)\*/g, '<em>$1</em>')
           .replace(/`([^`]+)`/g, '<code>$1</code>')
-          .replace(/\n/g, '<br>')
+          // Only convert single newlines to <br>, not newlines after closing tags
+          .replace(/(?<!>)\n(?!<)/g, '<br>')
         
         processedParagraphs.push(escaped)
       }
     }
     
-    const result = processedParagraphs.join('<br><br>')
+    // Join paragraphs with appropriate spacing
+    let result = ''
+    for (let i = 0; i < processedParagraphs.length; i++) {
+      result += processedParagraphs[i]
+      
+      // Add spacing between paragraphs, but not if current ends with list or next starts with list
+      if (i < processedParagraphs.length - 1) {
+        const currentEndsWithList = processedParagraphs[i].includes('</ul>')
+        const nextStartsWithList = processedParagraphs[i + 1].includes('<ul>')
+        
+        if (!currentEndsWithList && !nextStartsWithList) {
+          result += '<br><br>'
+        } else {
+          result += '<br>'
+        }
+      }
+    }
     console.log("🔍 parseSimpleMarkdown output:", result.substring(0, 500) + "...")
     
     // Extra debug for list detection
