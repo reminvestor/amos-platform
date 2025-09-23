@@ -409,9 +409,8 @@ export default class extends Controller {
                     if (lastMessage && lastMessage.classList.contains('ai-message')) {
                       const messageContent = lastMessage.querySelector('.message-content')
                       if (messageContent) {
-                        // For streaming, just update the text content without heavy parsing
-                        // We'll parse markdown properly when the message is complete
-                        messageContent.textContent = this.currentStreamingContent
+                        // Use parseSimpleMarkdown for streaming - it handles inline formatting
+                        messageContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
                         console.log("✅ Updated message content")
                       } else {
                         console.error("❌ No .message-content found in last message")
@@ -471,8 +470,8 @@ export default class extends Controller {
           if (lastMessage && lastMessage.classList.contains('ai-message')) {
             const messageContent = lastMessage.querySelector('.message-content')
             if (messageContent && this.currentStreamingContent) {
-              // Now apply proper markdown parsing
-              messageContent.innerHTML = this.parseMarkdown(this.currentStreamingContent)
+              // Use the same parser as streaming for consistency
+              messageContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
             }
           }
         }
@@ -1494,25 +1493,31 @@ export default class extends Controller {
     tempDiv.innerHTML = text
     let decodedText = tempDiv.textContent || tempDiv.innerText || text
     
-    // Apply markdown parsing
-    return decodedText
+    // Debug: Check if content has excessive newlines
+    const newlineCount = (decodedText.match(/\n/g) || []).length
+    if (newlineCount > 10) {
+      console.warn(`⚠️ Text has ${newlineCount} newlines - may be chunked incorrectly`)
+    }
+    
+    // Apply inline markdown parsing
+    let parsed = decodedText
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/### (.*?)$/gm, '<h4>$1</h4>')
-      .replace(/## (.*?)$/gm, '<h3>$1</h3>')
-      .replace(/# (.*?)$/gm, '<h2>$1</h2>')
-      .replace(/- (.*?)$/gm, '<li>$1</li>')
-      .replace(/(\d+)\. (.*?)$/gm, '<li>$1. $2</li>')
-      .replace(/\n\n/g, '</p><p>') // Double newlines become paragraphs
-      .replace(/\n/g, ' ') // Single newlines become spaces
-      .replace(/(<li>.*<\/li>)\s*/g, '<ul>$1</ul>')
-      .replace(/^(.+)$/gm, (match) => {
-        // Wrap non-list items in paragraphs if not already wrapped
-        if (!match.includes('<h') && !match.includes('<ul') && !match.includes('<li')) {
-          return `<p>${match}</p>`
-        }
-        return match
-      })
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+    
+    // Check if this looks like it has newlines between every few words
+    const words = parsed.split(/\s+/).length
+    const lines = parsed.split('\n').length
+    if (lines > 1 && words / lines < 5) {
+      // Likely has newlines between chunks - replace them with spaces
+      console.log(`🔧 Fixing chunked text: ${words} words, ${lines} lines`)
+      parsed = parsed.replace(/\n/g, ' ')
+    } else {
+      // Normal text - preserve intentional line breaks
+      parsed = parsed.replace(/\n\n+/g, '<br><br>').replace(/\n/g, '<br>')
+    }
+    
+    return parsed
   }
 
   getCSRFToken() {
