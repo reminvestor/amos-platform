@@ -436,14 +436,27 @@ export default class extends Controller {
                       if (messageBubble) {
                         // Parse markdown during streaming for better UX
                         // But use a simpler version that won't break with partial content
-                        const partiallyParsed = this.currentStreamingContent
+                        console.log("🔍 Raw streaming content:", this.currentStreamingContent.substring(0, 100))
+                        
+                        // First escape HTML entities for security
+                        let safe = this.currentStreamingContent
+                          .replace(/</g, '&lt;')
+                          .replace(/>/g, '&gt;')
+                        
+                        // Then apply markdown parsing
+                        const partiallyParsed = safe
                           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                           .replace(/\*(.*?)\*/g, '<em>$1</em>')
                           .replace(/`([^`]+)`/g, '<code>$1</code>')
                         
+                        console.log("🔍 Parsed content:", partiallyParsed.substring(0, 100))
+                        console.log("🔍 Message bubble exists:", !!messageBubble)
+                        console.log("🔍 Setting innerHTML to:", partiallyParsed.length, "chars")
+                        
                         messageBubble.innerHTML = partiallyParsed
                         console.log("✅ Updated message bubble with partial parsing")
-                        console.log("📝 Streaming text:", this.currentStreamingContent.substring(0, 100) + "...")
+                        console.log("🔍 Actual bubble content now:", messageBubble.innerHTML.substring(0, 100))
+                        
                         // Store reference for later use
                         this.streamingMessageElement = messageBubble
                       } else {
