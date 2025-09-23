@@ -384,11 +384,11 @@ export default class extends Controller {
                   if (data.message === '💬 streaming') {
                     console.log('📝 Streaming started - initializing message')
                     // Find the last AI message or create a new one
-                    const messages = this.chatMessagesTarget.querySelectorAll('.message-wrapper')
+                    const messages = this.chatMessagesTarget.querySelectorAll('.message')
                     const lastMessage = messages[messages.length - 1]
                     
                     // Only create new message if last one isn't already an empty AI message
-                    if (!lastMessage || !lastMessage.classList.contains('assistant-message') || 
+                    if (!lastMessage || !lastMessage.classList.contains('ai-message') || 
                         lastMessage.querySelector('.message-content')?.textContent.trim()) {
                       this.addMessage('', 'ai')
                     }
@@ -398,14 +398,23 @@ export default class extends Controller {
                   // Handle content chunks for streaming
                   if (data.content && this.currentStreamingContent !== undefined) {
                     this.currentStreamingContent += data.content
+                    console.log("📝 Accumulated content:", this.currentStreamingContent.length, "chars")
+                    
                     // Update the last message with the accumulated content
-                    const messages = this.chatMessagesTarget.querySelectorAll('.message-wrapper')
+                    const messages = this.chatMessagesTarget.querySelectorAll('.message')
+                    console.log("🔍 Found", messages.length, "total messages")
+                    
                     const lastMessage = messages[messages.length - 1]
-                    if (lastMessage && lastMessage.classList.contains('assistant-message')) {
+                    if (lastMessage && lastMessage.classList.contains('ai-message')) {
                       const messageContent = lastMessage.querySelector('.message-content')
                       if (messageContent) {
                         messageContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
+                        console.log("✅ Updated message content")
+                      } else {
+                        console.error("❌ No .message-content found in last message")
                       }
+                    } else {
+                      console.error("❌ Last message is not an AI message or no messages found")
                     }
                     this.scrollChatToBottom()
                   }
