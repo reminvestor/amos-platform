@@ -424,9 +424,10 @@ export default class extends Controller {
                     if (lastMessage && lastMessage.classList.contains('ai-message')) {
                       const messageContent = lastMessage.querySelector('.message-content')
                       if (messageContent) {
-                        // Use parseSimpleMarkdown for streaming - it handles inline formatting
-                        messageContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
+                        // During streaming, use textContent to avoid HTML parsing issues
+                        messageContent.textContent = this.currentStreamingContent
                         console.log("✅ Updated message content")
+                        console.log("📝 Streaming text:", this.currentStreamingContent.substring(0, 100) + "...")
                       } else {
                         console.error("❌ No .message-content found in last message")
                       }
@@ -486,8 +487,9 @@ export default class extends Controller {
           if (lastMessage && lastMessage.classList.contains('ai-message')) {
             const messageContent = lastMessage.querySelector('.message-content')
             if (messageContent && this.currentStreamingContent) {
-              // Use the same parser as streaming for consistency
-              messageContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
+              // Apply full markdown parsing now that streaming is complete
+              messageContent.innerHTML = this.parseMarkdown(this.currentStreamingContent)
+              console.log("✅ Applied final markdown formatting")
             }
           }
         }
