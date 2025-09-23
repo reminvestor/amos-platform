@@ -409,7 +409,9 @@ export default class extends Controller {
                     if (lastMessage && lastMessage.classList.contains('ai-message')) {
                       const messageContent = lastMessage.querySelector('.message-content')
                       if (messageContent) {
-                        messageContent.innerHTML = this.parseSimpleMarkdown(this.currentStreamingContent)
+                        // For streaming, just update the text content without heavy parsing
+                        // We'll parse markdown properly when the message is complete
+                        messageContent.textContent = this.currentStreamingContent
                         console.log("✅ Updated message content")
                       } else {
                         console.error("❌ No .message-content found in last message")
@@ -463,6 +465,16 @@ export default class extends Controller {
           this.addMessage(finalResponseData.message, "ai")
         } else {
           console.log("✅ Message was streamed, not adding duplicate")
+          // Apply markdown formatting to the completed message
+          const messages = this.chatMessagesTarget.querySelectorAll('.message')
+          const lastMessage = messages[messages.length - 1]
+          if (lastMessage && lastMessage.classList.contains('ai-message')) {
+            const messageContent = lastMessage.querySelector('.message-content')
+            if (messageContent && this.currentStreamingContent) {
+              // Now apply proper markdown parsing
+              messageContent.innerHTML = this.parseMarkdown(this.currentStreamingContent)
+            }
+          }
         }
         // Clear streaming content
         this.currentStreamingContent = null
