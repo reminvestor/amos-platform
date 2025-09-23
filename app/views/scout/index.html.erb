@@ -1055,15 +1055,15 @@ document.addEventListener('turbo:load', function() {
       .then(response => response.json())
       .then(data => {
         console.log('New session started:', data.session_id);
-        // Reload the page to get fresh session context
-        window.location.reload();
+        // Navigate to base /scout to clear any auto-load query params
+        window.location.href = '/scout';
       })
       .catch(error => {
         console.error('Failed to start new session:', error);
         // Clear canvas state even on error
         localStorage.removeItem('scout_canvas_state');
-        // Fallback: just reload anyway
-        window.location.reload();
+        // Fallback: navigate to base /scout (clears params)
+        window.location.href = '/scout';
       });
   });
   

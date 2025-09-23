@@ -31,10 +31,27 @@
   .dynamic-canvas {
     height: 100%;
     overflow-y: auto;
+    overflow-x: auto; /* allow horizontal scroll when many columns */
   }
   
   #dynamicCanvasContent {
     padding: 20px;
+  }
+  
+  /* Ensure wide tables are scrollable and not cut off */
+  .dynamic-canvas .table-responsive {
+    overflow-x: auto;
+  }
+  .dynamic-canvas table.table {
+    width: 100%;            /* fill container */
+    table-layout: fixed;    /* enable responsive column shrinking */
+  }
+  .dynamic-canvas table.table th,
+  .dynamic-canvas table.table td {
+    overflow: hidden;
+    text-overflow: ellipsis; /* truncate long text */
+    white-space: nowrap;     /* keep single line for compact view */
+    max-width: 320px;        /* reasonable per-column cap */
   }
   
   /* Default styles for AI-generated content */
