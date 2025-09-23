@@ -399,6 +399,7 @@ export default class extends Controller {
                   if (data.content && this.currentStreamingContent !== undefined) {
                     this.currentStreamingContent += data.content
                     console.log("📝 Accumulated content:", this.currentStreamingContent.length, "chars")
+                    console.log("🔍 Content preview:", JSON.stringify(this.currentStreamingContent.substring(this.currentStreamingContent.length - 50)))
                     
                     // Update the last message with the accumulated content
                     const messages = this.chatMessagesTarget.querySelectorAll('.message')
@@ -1490,8 +1491,16 @@ export default class extends Controller {
       .replace(/# (.*?)$/gm, '<h2>$1</h2>')
       .replace(/- (.*?)$/gm, '<li>$1</li>')
       .replace(/(\d+)\. (.*?)$/gm, '<li>$1. $2</li>')
-      .replace(/\n/g, '<br>')
-      .replace(/(<li>.*<\/li>)\s*(<br>)?/g, '<ul>$1</ul>')
+      .replace(/\n\n/g, '</p><p>') // Double newlines become paragraphs
+      .replace(/\n/g, ' ') // Single newlines become spaces
+      .replace(/(<li>.*<\/li>)\s*/g, '<ul>$1</ul>')
+      .replace(/^(.+)$/gm, (match) => {
+        // Wrap non-list items in paragraphs if not already wrapped
+        if (!match.includes('<h') && !match.includes('<ul') && !match.includes('<li')) {
+          return `<p>${match}</p>`
+        }
+        return match
+      })
   }
 
   getCSRFToken() {
