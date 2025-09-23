@@ -1,5 +1,7 @@
 class Step
   attr_reader :id, :type, :config, :status, :started_at, :completed_at, :error, :result
+  attr_accessor :agent_role, :name, :description, :dependencies, :tool_allowlist, 
+                :canvas_allowlist, :data_scopes, :budgets, :confirmations, :prompts
   
   # Step statuses
   STATUSES = %w[pending in_progress completed failed skipped].freeze
@@ -18,6 +20,18 @@ class Step
     @completed_at = nil
     @error = nil
     @result = nil
+    
+    # Agent loadout properties
+    @agent_role = spec[:agent_role] || 'executor'
+    @name = spec[:name] || "Step #{@id}"
+    @description = spec[:description]
+    @dependencies = spec[:dependencies] || []
+    @tool_allowlist = spec[:tool_allowlist] || []
+    @canvas_allowlist = spec[:canvas_allowlist] || []
+    @data_scopes = spec[:data_scopes] || {}
+    @budgets = spec[:budgets] || {}
+    @confirmations = spec[:confirmations] || {}
+    @prompts = spec[:prompts] || {}
     
     # Validate step type
     unless TYPES.include?(@type)
@@ -97,8 +111,26 @@ class Step
       completed_at: @completed_at,
       error: @error,
       result: @result,
-      requires_input: requires_input?
+      requires_input: requires_input?,
+      agent_role: @agent_role,
+      name: @name,
+      description: @description,
+      dependencies: @dependencies
     }
+  end
+  
+  # Get agent loadout for this step
+  def agent_loadout
+    @agent_loadout ||= AgentLoadout.new(
+      step_id: @id,
+      agent_role: @agent_role,
+      tool_allowlist: @tool_allowlist,
+      canvas_allowlist: @canvas_allowlist,
+      data_scopes: @data_scopes,
+      budgets: @budgets,
+      confirmations: @confirmations,
+      prompts: @prompts
+    )
   end
   
   # Get human-readable description
