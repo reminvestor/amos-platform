@@ -1503,61 +1503,14 @@ export default class extends Controller {
   parseSimpleMarkdown(text) {
     if (!text) return ''
     
-    // First decode HTML entities if they exist
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = text
-    let decodedText = tempDiv.textContent || tempDiv.innerText || text
-    
-    // Apply inline markdown parsing first
-    let parsed = decodedText
+    // Simple markdown parsing - display exactly what the LLM sends
+    let parsed = text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
     
-    // Handle list items specially to preserve their structure
-    const hasListItems = parsed.includes('\n- ') || /\n\d+\. /.test(parsed)
-    
-    if (hasListItems) {
-      // This is a structured message with lists
-      // Preserve double newlines for paragraph breaks
-      // Convert list items to proper HTML
-      parsed = parsed
-        .split('\n\n')
-        .map(paragraph => {
-          // Check if this paragraph is a list
-          if (paragraph.includes('\n- ') || /\n\d+\. /.test(paragraph)) {
-            const items = paragraph.split('\n').filter(line => line.trim())
-            const listItems = items.map(item => {
-              if (item.startsWith('- ')) {
-                return `<li>${item.substring(2)}</li>`
-              } else if (/^\d+\. /.test(item)) {
-                return `<li>${item.replace(/^\d+\. /, '')}</li>`
-              }
-              return item
-            }).filter(item => item.startsWith('<li>'))
-            
-            if (listItems.length > 0) {
-              return `<ul>${listItems.join('')}</ul>`
-            }
-          }
-          return paragraph.replace(/\n/g, ' ')
-        })
-        .join('<br><br>')
-    } else {
-      // Regular text without lists
-      // Check for excessive single newlines (streaming artifact)
-      const lines = parsed.split('\n')
-      const avgWordsPerLine = lines.reduce((sum, line) => sum + line.split(/\s+/).filter(w => w).length, 0) / lines.length
-      
-      if (lines.length > 3 && avgWordsPerLine < 5) {
-        // Likely streaming artifacts - remove single newlines
-        console.log(`🔧 Fixing streaming artifacts: ${lines.length} lines, ${avgWordsPerLine.toFixed(1)} words/line`)
-        parsed = parsed.replace(/\n+/g, ' ')
-      } else {
-        // Normal text - convert newlines to breaks
-        parsed = parsed.replace(/\n\n+/g, '<br><br>').replace(/\n/g, '<br>')
-      }
-    }
+    // Convert newlines to breaks exactly as sent by LLM
+    parsed = parsed.replace(/\n/g, '<br>')
     
     return parsed
   }
