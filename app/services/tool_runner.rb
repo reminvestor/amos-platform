@@ -9,9 +9,33 @@ class ToolRunner
   end
   
   # Execute a tool with contract validation and idempotency
-  def call(tool:, inputs: {}, idempotency_key: nil, retries: 3)
+  def call(tool:, inputs: {}, idempotency_key: nil, retries: 3, agent_loadout: nil, step_id: nil)
     # Generate idempotency key if not provided
     idempotency_key ||= SecureRandom.uuid
+    
+    # Check agent loadout permissions if provided
+    if agent_loadout
+      unless agent_loadout.tool_allowed?(tool)
+        return {
+          status: 'failed',
+          error: "Tool '#{tool}' not allowed for agent role '#{agent_loadout.agent_role}'",
+          tool: tool,
+          denied: true,
+          agent_role: agent_loadout.agent_role
+        }
+      end
+      
+      # Check budget constraints
+      current_usage = get_current_usage(step_id) if step_id
+      unless agent_loadout.within_budget?(current_usage || {})
+        return {
+          status: 'failed',
+          error: "Budget exceeded for agent role '#{agent_loadout.agent_role}'",
+          tool: tool,
+          budget_exceeded: true
+        }
+      end
+    end
     
     # Check for cached result first
     cached_result = check_idempotency_cache(tool, idempotency_key)
@@ -64,8 +88,11 @@ class ToolRunner
     
     # Validate outputs
     if result[:status] == 'success' && result[:data]
-      # For output validation, we need to validate the structure that includes the data wrapper
-      output_to_validate = { data: result[:data] }
+      # For output validation, we need to validate the structure that includes the success flag
+      output_to_validate = { 
+        success: true,  # If we got here, it was successful
+        data: result[:data] 
+      }
       if result[:message]
         output_to_validate[:message] = result[:message]
       end
@@ -90,11 +117,19 @@ class ToolRunner
       cache_result(tool, idempotency_key, result)
     end
     
+    # Track usage if step_id provided
+    if step_id
+      result[:duration_ms] = duration_ms
+      track_usage(step_id, tool, result)
+    end
+    
     # Add metadata
     result.merge(
       tool: tool,
       idempotency_key: idempotency_key,
-      executed_at: Time.current
+      executed_at: Time.current,
+      step_id: step_id,
+      agent_role: agent_loadout&.agent_role
     )
   end
   
@@ -191,6 +226,12 @@ class ToolRunner
     when 'process_landing_page_images'
       Rails.logger.info "ToolRunner: Matched process_landing_page_images case"
       execute_process_landing_page_images(inputs)
+    when 'aggregate_artifact_data'
+      Rails.logger.info "ToolRunner: Matched aggregate_artifact_data case"
+      execute_legacy_tool(tool, inputs)
+    when 'fetch_next_page'
+      Rails.logger.info "ToolRunner: Matched fetch_next_page case"
+      execute_legacy_tool(tool, inputs)
     else
       Rails.logger.info "ToolRunner: No direct implementation for '#{tool}', checking legacy system"
       # Fallback to existing tool system if available
@@ -496,25 +537,32 @@ class ToolRunner
       # Fallback to explicit IDs if provided
       user_obj ||= (User.find(inputs[:user_id] || inputs['user_id']) rescue nil)
       entity_obj ||= (Entity.find(inputs[:entity_id] || inputs['entity_id']) rescue nil)
+      
+      # Log what we found
+      Rails.logger.info "Legacy tool '#{tool}' - User: #{user_obj&.id}, Entity: #{entity_obj&.id}"
 
       service = ScoutGenericToolsService.new(user_obj, entity_obj)
 
       # Use the generic executor in the legacy service
       legacy_result = service.execute_tool_by_name(tool, inputs)
 
-      if legacy_result[:success]
+      # Map legacy result format to ToolRunner format
+      if legacy_result[:success] == true || legacy_result['success'] == true
         {
           status: 'success',
-          data: legacy_result[:data] || {},
-          message: legacy_result[:message]
+          data: legacy_result[:data] || legacy_result['data'] || {},
+          message: legacy_result[:message] || legacy_result['message'],
+          recommendation: legacy_result[:recommendation] || legacy_result['recommendation']
         }
       else
         {
           status: 'failed',
-          error: legacy_result[:error] || 'Legacy tool failed'
+          error: legacy_result[:error] || legacy_result['error'] || 'Legacy tool failed'
         }
       end
     rescue => e
+      Rails.logger.error "Legacy tool error: #{e.message}"
+      Rails.logger.error e.backtrace.first(5).join("\n")
       {
         status: 'failed',
         error: "Legacy tool execution failed: #{e.message}"
@@ -685,5 +733,42 @@ class ToolRunner
       @memory_cache ||= {}
       @memory_cache[cache_key] = result
     end
+  end
+  
+  def get_current_usage(step_id)
+    # Get current usage metrics for the step
+    # In production, this would query from TaskEvent or metrics store
+    {
+      tool_calls: TaskEvent.where(
+        task_session_id: TaskSession.active.where("metadata->>'step_id' = ?", step_id).pluck(:id),
+        event_type: 'tool_call'
+      ).count,
+      tokens: 0 # Would integrate with actual token counting
+    }
+  rescue
+    { tool_calls: 0, tokens: 0 }
+  end
+  
+  def track_usage(step_id, tool, result)
+    # Track tool usage for budget enforcement
+    return unless step_id
+    
+    # Find active task session for this step
+    task_session = TaskSession.active.find_by("metadata->>'step_id' = ?", step_id)
+    return unless task_session
+    
+    # Log tool call event
+    TaskEvent.create!(
+      task_session: task_session,
+      event_type: 'tool_call',
+      event_data: {
+        tool: tool,
+        success: result[:status] == 'success',
+        duration_ms: result[:duration_ms],
+        error: result[:error]
+      }
+    )
+  rescue => e
+    Rails.logger.error "Failed to track tool usage: #{e.message}"
   end
 end

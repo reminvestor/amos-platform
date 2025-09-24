@@ -461,11 +461,25 @@ class WorkflowEngine
   end
   
   def sanitize_inputs(inputs)
+    # Convert ActionController::Parameters to hash if needed
+    safe_inputs = if inputs.is_a?(ActionController::Parameters)
+      inputs.to_unsafe_h
+    elsif inputs.is_a?(Hash)
+      inputs
+    else
+      {}
+    end
+    
     # Remove sensitive data from inputs before logging
-    inputs.except(:password, :api_key, :secret, :token)
+    safe_inputs.except(:password, :api_key, :secret, :token)
   end
   
   def resolve_variable_substitutions(inputs)
+    # Convert ActionController::Parameters to hash if needed
+    if inputs.is_a?(ActionController::Parameters)
+      inputs = inputs.to_unsafe_h
+    end
+    
     return inputs unless inputs.is_a?(Hash)
     
     resolved = inputs.deep_dup

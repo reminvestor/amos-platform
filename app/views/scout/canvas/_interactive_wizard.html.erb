@@ -198,16 +198,30 @@
         } else {
           // Workflow is processing - show task progress
           console.log('🔄 Workflow processing, loading task progress canvas');
+          console.log('Response data:', data);
           const canvasType = data.canvas || 'task_progress';
           const canvasData = data.canvas_data || {};
           
-          if (window.scoutController && window.scoutController.loadScoutCanvas) {
-            window.scoutController.loadScoutCanvas(canvasType, canvasData);
+          // Force task_progress canvas for tool_call steps
+          if (data.step_completed && !data.awaiting_input) {
+            console.log('Step completed, forcing task_progress canvas');
+            if (window.scoutController && window.scoutController.loadScoutCanvas) {
+              window.scoutController.loadScoutCanvas('task_progress', canvasData);
+            } else {
+              const event = new CustomEvent('scout:load-canvas', {
+                detail: { canvas: 'task_progress', data: canvasData }
+              });
+              document.dispatchEvent(event);
+            }
           } else {
-            const event = new CustomEvent('scout:load-canvas', {
-              detail: { canvas: canvasType, data: canvasData }
-            });
-            document.dispatchEvent(event);
+            if (window.scoutController && window.scoutController.loadScoutCanvas) {
+              window.scoutController.loadScoutCanvas(canvasType, canvasData);
+            } else {
+              const event = new CustomEvent('scout:load-canvas', {
+                detail: { canvas: canvasType, data: canvasData }
+              });
+              document.dispatchEvent(event);
+            }
           }
         }
       } else {

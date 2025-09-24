@@ -4,8 +4,12 @@ class ImageAsset < ApplicationRecord
 
   has_one_attached :file
 
-  validates :file, presence: true
-  validates :source, inclusion: { in: %w[upload ai] }
+  validates :file, presence: true, unless: :placeholder?
+  validates :source, inclusion: { in: %w[upload ai placeholder] }
+  
+  def placeholder?
+    source == 'placeholder'
+  end
 
   scope :by_entity, ->(entity_id) { where(entity_id: entity_id) }
   scope :recent, -> { order(created_at: :desc) }
@@ -15,8 +19,18 @@ class ImageAsset < ApplicationRecord
   end
 
   def url
-    return nil unless file.attached?
-    Rails.application.routes.url_helpers.rails_blob_url(file, only_path: false)
+    if file.attached?
+      Rails.application.routes.url_helpers.rails_blob_url(file, only_path: false)
+    elsif placeholder?
+      placeholder_url
+    else
+      nil
+    end
+  end
+  
+  def placeholder_url
+    slot = metadata&.dig('slot') || 1
+    "/assets/placeholder-#{slot}.jpg"
   end
 end
 

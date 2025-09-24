@@ -10,7 +10,7 @@ class Step
   TYPES = %w[tool_call user_input form_input data_collection validation conditional].freeze
   
   def initialize(spec)
-    spec = spec.with_indifferent_access
+    spec = spec.is_a?(Hash) ? spec.with_indifferent_access : spec.to_h.with_indifferent_access
     
     @id = spec[:id] || SecureRandom.uuid
     @type = spec[:type] || 'tool_call'
@@ -38,6 +38,7 @@ class Step
       raise ArgumentError, "Invalid step type: #{@type}. Must be one of: #{TYPES.join(', ')}"
     end
     
+    # Validate config after all properties are set
     validate_config!
   end
   
@@ -154,8 +155,9 @@ class Step
   def validate_config!
     case @type
     when 'tool_call'
-      unless @config[:tool].present?
-        raise ArgumentError, "tool_call step requires 'tool' in config"
+      # Tool can be specified in config or inferred from tool_allowlist
+      unless @config[:tool].present? || @tool_allowlist&.any?
+        raise ArgumentError, "tool_call step requires 'tool' in config or tool_allowlist"
       end
     when 'user_input', 'form_input'
       unless @config[:fields].present?
