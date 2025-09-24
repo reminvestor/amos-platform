@@ -188,6 +188,21 @@ class InteractiveTaskService
           step_completed: true,
           next_step: result[:next_step]
         }
+      elsif result[:next_step] && result[:next_step][:type] == 'user_input'
+        Rails.logger.info "Step completed, next is user_input - showing interactive_wizard"
+        {
+          success: true,
+          message: result[:message],
+          canvas: 'interactive_wizard',
+          canvas_data: {
+            step: result[:next_step],
+            progress: @workflow_engine.progress
+          },
+          mode: 'interactive',
+          step_completed: true,
+          next_step: result[:next_step],
+          awaiting_input: true
+        }
       else
         {
           success: true,

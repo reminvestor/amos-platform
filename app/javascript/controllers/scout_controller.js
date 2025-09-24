@@ -467,6 +467,16 @@ export default class extends Controller {
                   // Streamed instruction to load a canvas immediately
                   try {
                     console.log('📋 Streaming: load_canvas received:', data.canvas)
+                    // Clean up any wizard blocking overlay that may interfere with modals
+                    try {
+                      const overlay = document.getElementById('wizard-blocking-overlay')
+                      if (overlay) overlay.remove()
+                    } catch (e) {}
+                    // Clean up any stale bootstrap backdrops before loading
+                    try {
+                      document.body.classList.remove('modal-open')
+                      document.querySelectorAll('.modal-backdrop').forEach(b => b.remove())
+                    } catch (e) {}
                     this.loadScoutCanvas(data.canvas, data.canvas_data || {})
                   } catch (e) {
                     console.warn('⚠️ Failed direct load_canvas during streaming, dispatching event', e)

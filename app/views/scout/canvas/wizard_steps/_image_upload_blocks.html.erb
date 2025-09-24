@@ -20,6 +20,9 @@
             <button type="button" class="btn btn-outline-primary btn-sm" onclick="console.log('🔘 Upload button 1 clicked'); document.getElementById('image-file-1').click()">
               <i class="fas fa-upload me-1"></i> Upload Image
             </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="openMediaLibrary(1)">
+              <i class="fas fa-photo-video me-1"></i> Choose from Library
+            </button>
             <input type="text" 
                    id="image-prompt-1" 
                    name="image_prompt_1" 
@@ -46,6 +49,9 @@
             <button type="button" class="btn btn-outline-primary btn-sm" onclick="console.log('🔘 Upload button 2 clicked'); document.getElementById('image-file-2').click()">
               <i class="fas fa-upload me-1"></i> Upload Image
             </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="openMediaLibrary(2)">
+              <i class="fas fa-photo-video me-1"></i> Choose from Library
+            </button>
             <input type="text" 
                    id="image-prompt-2" 
                    name="image_prompt_2" 
@@ -71,6 +77,9 @@
             <input type="file" id="image-file-3" name="image_file_3" accept="image/*" class="d-none">
             <button type="button" class="btn btn-outline-primary btn-sm" onclick="console.log('🔘 Upload button 3 clicked'); document.getElementById('image-file-3').click()">
               <i class="fas fa-upload me-1"></i> Upload Image
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="openMediaLibrary(3)">
+              <i class="fas fa-photo-video me-1"></i> Choose from Library
             </button>
             <input type="text" 
                    id="image-prompt-3" 
@@ -119,6 +128,9 @@
   
   <!-- Hidden fields to store image data for form submission -->
   <input type="hidden" id="images-data" name="images_data" value="">
+  <div class="d-flex justify-content-end mt-2">
+    <a href="/image_assets/new" target="_blank" class="small text-decoration-underline"><i class="fas fa-plus me-1"></i>Add images to library</a>
+  </div>
 </div>
 
 <style>
@@ -334,7 +346,7 @@ if (!window.imageUploadBlocksInitialized) {
     });
     
     if (fileInput && preview) {
-      fileInput.addEventListener('change', function(e) {
+      fileInput.addEventListener('change', async function(e) {
         console.log(`📸 Image ${i} file selected:`, e.target.files[0]);
         const file = e.target.files[0];
         if (file) {
@@ -352,6 +364,32 @@ if (!window.imageUploadBlocksInitialized) {
             console.error(`❌ Error reading file for image ${i}:`, e);
           };
           reader.readAsDataURL(file);
+
+          // Immediately upload to media library so this upload is reusable and has a real URL
+          try {
+            const formData = new FormData();
+            formData.append('image_asset[file]', file);
+            formData.append('image_asset[title]', file.name);
+            formData.append('image_asset[source]', 'upload');
+
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+            const res = await fetch('/image_assets.json', {
+              method: 'POST',
+              headers: csrf ? { 'X-CSRF-Token': csrf } : {},
+              body: formData
+            });
+            const data = await res.json();
+            if (data && data.image && data.image.id) {
+              console.log(`📥 Uploaded image ${file.name} -> asset ${data.image.id}`);
+              // Save as library selection for this slot so downstream uses real asset
+              librarySelections[i] = { id: data.image.id, url: data.image.url, title: data.image.title };
+              updateImagesData();
+            } else {
+              console.warn('⚠️ Upload returned unexpected payload', data);
+            }
+          } catch (err) {
+            console.error('❌ Failed to upload image to library', err);
+          }
         }
       });
     } else {
@@ -402,6 +440,12 @@ if (!window.imageUploadBlocksInitialized) {
         imageData.type = 'ai_generate';
         imageData.prompt = promptInput.value.trim();
       }
+      if (librarySelections[i]) {
+        imageData.type = 'library';
+        imageData.asset_id = librarySelections[i].id;
+        imageData.url = librarySelections[i].url;
+        imageData.filename = librarySelections[i].title || imageData.filename;
+      }
       
       if (imageData.type !== 'none') {
         data.images.push(imageData);
@@ -425,6 +469,92 @@ if (!window.imageUploadBlocksInitialized) {
     console.log('📸 Updated complete data:', data);
   }
   
+  // Track library selections per slot
+  const librarySelections = {};
+
+  // Media Library Modal logic
+  window.openMediaLibrary = function(slot) {
+    ensureMediaLibraryModal();
+    const modalEl = document.getElementById('mediaLibraryModal');
+    const listEl = modalEl.querySelector('.media-library-grid');
+    listEl.innerHTML = '<div class="text-center p-3"><div class="spinner-border text-primary" role="status"></div></div>';
+    fetch('/image_assets.json')
+      .then(r => r.json())
+      .then(json => {
+        const images = json.images || [];
+        if (images.length === 0) {
+          listEl.innerHTML = '<div class="text-center p-3 text-muted">No images in your library yet.</div>';
+          return;
+        }
+        listEl.innerHTML = images.map(img => (
+          `<div class="media-card" data-id="${img.id}" data-url="${img.url}" data-title="${img.title}">
+            <img src="${img.url}" alt="${img.title}" />
+            <div class="media-title">${img.title || ''}</div>
+          </div>`
+        )).join('');
+        listEl.querySelectorAll('.media-card').forEach(card => {
+          card.addEventListener('click', () => {
+            const id = parseInt(card.getAttribute('data-id'));
+            const url = card.getAttribute('data-url');
+            const title = card.getAttribute('data-title');
+            librarySelections[slot] = { id, url, title };
+            const preview = document.getElementById(`image-preview-${slot}`);
+            const block = preview?.closest('.image-upload-block');
+            if (preview) {
+              preview.innerHTML = `<img src="${url}" alt="Selected image ${slot}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 0.375rem;">`;
+              preview.classList.add('has-image');
+            }
+            block?.classList.add('has-upload');
+            updateImagesData();
+            closeMediaLibrary();
+          });
+        });
+      })
+      .catch(() => {
+        listEl.innerHTML = '<div class="text-danger p-3">Failed to load media library.</div>';
+      });
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+  }
+
+  function ensureMediaLibraryModal() {
+    if (document.getElementById('mediaLibraryModal')) return;
+    const modalHtml = `
+    <div class="modal fade" id="mediaLibraryModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-photo-video me-2"></i>Media Library</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="media-library-grid"></div>
+          </div>
+          <div class="modal-footer">
+            <a href="/image_assets/new" target="_blank" class="btn btn-outline-secondary">Add Images</a>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const style = document.createElement('style');
+    style.textContent = `
+      .media-library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+      .media-card { cursor: pointer; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #fff; }
+      .media-card img { width: 100%; height: 100px; object-fit: cover; display: block; }
+      .media-card .media-title { font-size: 12px; padding: 6px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function closeMediaLibrary() {
+    const modalEl = document.getElementById('mediaLibraryModal');
+    if (!modalEl) return;
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal?.hide();
+  }
+
   } // End initializeImageUploadBlocks function
   
   // Initialize when DOM is ready or immediately if already ready

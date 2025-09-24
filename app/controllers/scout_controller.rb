@@ -712,6 +712,15 @@ class ScoutController < ApplicationController
     Rails.logger.info "📝 Message length: #{response_data[:message]&.length} characters"
     Rails.logger.info "📝 Message preview: #{response_data[:message]&.first(100)}..."
     
+    # Persist final assistant message as a safety net if not already saved
+    if response_data[:message].present?
+      begin
+        save_scout_message('assistant', response_data[:message])
+      rescue => e
+        Rails.logger.warn "Final message save skipped/failed: #{e.message}"
+      end
+    end
+
     # Create the final SSE response
     data = JSON.generate({ type: 'response', data: response_data })
     chunk = "data: #{data}\n\n"

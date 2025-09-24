@@ -14,7 +14,11 @@ class ToolRegistry
             properties: {
               business_name: { type: 'string', minLength: 2, maxLength: 100 },
               industry: { type: 'string', maxLength: 50 },
-              target_audience: { type: 'string', maxLength: 500 }
+              target_audience: { type: 'string', maxLength: 500 },
+              key_message: { type: 'string', maxLength: 500 },
+              page_purpose: { type: 'string' },
+              specific_details: { type: 'string' },
+              call_to_action: { type: 'string' }
             }
           },
           design_preferences: {
@@ -30,7 +34,20 @@ class ToolRegistry
               },
               style_notes: { type: 'string', maxLength: 500 }
             }
-          }
+          },
+          stored_images: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'integer' },
+                url: { type: 'string' },
+                title: { type: 'string' },
+                description: { type: 'string' }
+              }
+            }
+          },
+          image_preferences: { type: 'object' }
         }
       },
       output_schema: {

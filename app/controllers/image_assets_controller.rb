@@ -104,14 +104,19 @@ class ImageAssetsController < ApplicationController
   end
 
   def serialize_asset(asset)
-    blob = asset.file if asset.file.attached?
+    # Prefer the real blob URL when attached; otherwise use the model-level URL
+    url = if asset.file.attached?
+      rails_blob_url(asset.file, only_path: false)
+    else
+      asset.url # may be placeholder URL for 'placeholder' source
+    end
+
     {
       id: asset.id,
       title: asset.display_title,
       source: asset.source,
-      url: (blob ? rails_blob_url(blob) : nil),
-      # Avoid eager variant processing on dev macOS to prevent fork-related crashes
-      thumb_url: (blob ? rails_blob_url(blob) : nil),
+      url: url,
+      thumb_url: url,
       created_at: asset.created_at.iso8601
     }
   end
