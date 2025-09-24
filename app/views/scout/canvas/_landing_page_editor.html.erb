@@ -102,6 +102,10 @@
     border-color: #0d6efd;
     box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.25);
   }
+  
+  /* Ensure modal is above any canvas stacking contexts */
+  #scoutImagePickerModal { z-index: 1060; }
+  .modal-backdrop { z-index: 1050; }
 </style>
 
 <script>
@@ -238,9 +242,18 @@
       resizeObserver.observe(editor.iframeDoc.body);
     };
     
+    // Also set up editing after a short delay as fallback
+    setTimeout(() => {
+      if (editor.iframeDoc && editor.iframeDoc.body) {
+        makeContentEditable(editor.iframeDoc);
+        iframe.style.height = editor.iframeDoc.body.scrollHeight + 'px';
+      }
+    }, 500);
+    
     // Set up image picker modal events
     document.getElementById('loadMoreImages').addEventListener('click', function() {
-      loadImageLibrary(++editor.imageLibraryPage, true);
+      editor.imageLibraryPage = editor.imageLibraryPage + 1;
+      editorLoadImageLibrary(editor.imageLibraryPage, true);
     });
     
     document.getElementById('selectImageBtn').addEventListener('click', function() {
@@ -265,6 +278,30 @@
         bootstrap.Modal.getInstance(document.getElementById('scoutImagePickerModal')).hide();
       }
     });
+
+    // Expose minimal API for LLM-driven adjustments via chat
+    window.scoutAdjustImage = function(selector, opts = {}) {
+      // opts: { width, height, crop: { x, y, scale } }
+      try {
+        const el = editor.iframeDoc.querySelector(selector);
+        if (!el) return false;
+        const container = el.closest('.editable-image-container') || el.parentElement;
+        if (opts.width) container.style.width = String(opts.width).endsWith('px') ? opts.width : opts.width + 'px';
+        if (opts.height) el.style.height = String(opts.height).endsWith('px') ? opts.height : opts.height + 'px';
+        if (opts.crop) {
+          // Simple CSS crop via object-position and scale
+          const s = opts.crop.scale || 1;
+          el.style.objectFit = 'cover';
+          el.style.transformOrigin = 'center center';
+          el.style.transform = `scale(${s})`;
+          if (opts.crop.x || opts.crop.y) {
+            el.style.objectPosition = `${opts.crop.x || 50}% ${opts.crop.y || 50}%`;
+          }
+        }
+        updateSaveButton();
+        return true;
+      } catch (e) { return false; }
+    }
   }
   
   function makeContentEditable(doc) {
@@ -318,6 +355,17 @@
       .image-edit-btn:hover {
         background: rgba(0, 123, 255, 0.8);
       }
+
+  /* Resize handles */
+  .resize-handle {
+    position: absolute;
+    width: 12px; height: 12px;
+    background: #0d6efd; border: 2px solid #fff; border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    cursor: nwse-resize; z-index: 11; display: none;
+  }
+  .editable-image-container:hover .resize-handle { display: block; }
+  .resize-handle.br { right: -6px; bottom: -6px; }
     `;
     doc.head.appendChild(style);
     
@@ -367,6 +415,13 @@
         openImagePicker(img);
       };
       container.appendChild(editBtn);
+
+      // Add resize handle (bottom-right)
+      const handle = doc.createElement('div');
+      handle.className = 'resize-handle br';
+      container.appendChild(handle);
+
+      attachResizeBehavior(doc, container, img, handle);
     });
   }
   
@@ -433,26 +488,53 @@
     // Reset and load
     document.getElementById('scoutImageLibraryGrid').innerHTML = '';
     editor.imageLibraryPage = 1;
-    loadImageLibrary(1);
+    editorLoadImageLibrary(1);
     
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('scoutImagePickerModal'));
+    // Show modal (ensure backdrop and scroll not locked by previous overlays)
+    const modalEl = document.getElementById('scoutImagePickerModal');
+    // Ensure modal is attached directly to <body> to avoid stacking-context issues
+    if (modalEl && modalEl.parentElement !== document.body) {
+      document.body.appendChild(modalEl);
+    }
+    document.body.classList.remove('modal-open');
+    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+    const bs = window.bootstrap || bootstrap;
+    const modal = bs.Modal.getOrCreateInstance(modalEl, { backdrop: true, focus: true, keyboard: true });
     modal.show();
   }
+
+  // Provide a global shim so other canvases or shared JS can open the library
+  // This avoids the "Image library not available yet" alert when a generic
+  // loadImageLibrary() call is used from the editor context.
+  window.openImageLibraryModal = function(_targetId) {
+    try {
+      const grid = document.getElementById('scoutImageLibraryGrid');
+      if (grid) { grid.innerHTML = ''; }
+      window.scoutInlineEditor.imageLibraryPage = 1;
+      editorLoadImageLibrary(1);
+      const modal = new bootstrap.Modal(document.getElementById('scoutImagePickerModal'));
+      modal.show();
+    } catch (e) {
+      console.warn('Failed to open image library modal from editor:', e);
+    }
+  }
   
-  function loadImageLibrary(page = 1, append = false) {
+  function editorLoadImageLibrary(page = 1, append = false) {
     fetch(`/image_assets.json?page=${page}`)
       .then(response => response.json())
       .then(data => {
         const grid = document.getElementById('scoutImageLibraryGrid');
         if (!append) grid.innerHTML = '';
+        // Make modal body scrollable if many images
+        document.querySelector('#scoutImagePickerModal .modal-body').style.maxHeight = '70vh';
+        document.querySelector('#scoutImagePickerModal .modal-body').style.overflowY = 'auto';
         
         data.images.forEach(image => {
           const col = document.createElement('div');
           col.className = 'col-md-4';
           col.innerHTML = `
-            <div class="image-picker-item card" data-url="${image.url}">
-              <img src="${image.thumb_url || image.url}" class="card-img-top" alt="${image.title}" style="height: 150px; object-fit: cover;">
+            <div class=\"image-picker-item card\" data-url=\"${image.url}\" data-id=\"${image.id}\">
+              <img src=\"${image.thumb_url || image.url}\" class=\"card-img-top\" alt=\"${image.title}\" style=\"height: 150px; object-fit: cover;\">
               <div class="card-body p-2">
                 <small class="text-muted text-truncate d-block">${image.title}</small>
               </div>
@@ -468,6 +550,7 @@
             // Select this image
             this.classList.add('selected');
             window.scoutInlineEditor.selectedImageUrl = this.dataset.url;
+            window.scoutInlineEditor.selectedImageId = this.dataset.id;
             document.getElementById('selectImageBtn').disabled = false;
           });
           
@@ -513,6 +596,51 @@
       element = element.parentNode;
     }
     return path.join(' > ');
+  }
+
+  // Simple drag-to-resize behavior preserving aspect ratio
+  function attachResizeBehavior(doc, container, img, handle) {
+    let startX, startY, startW, startH, ratio;
+    const minW = 80, minH = 60;
+    const onMouseMove = (e) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      // Choose the dominant delta to maintain aspect ratio
+      const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+      let newW = Math.max(minW, startW + delta);
+      let newH = Math.max(minH, Math.round(newW / ratio));
+      container.style.width = newW + 'px';
+      img.style.width = '100%';
+      img.style.height = newH + 'px';
+      img.style.objectFit = 'cover';
+      // Mark as change for Save button
+      const editor = window.scoutInlineEditor;
+      if (!editor.changes.images) editor.changes.images = [];
+      const existing = editor.changes.images.find(c => c.element === img);
+      if (!existing) {
+        editor.changes.images.push({ element: img, oldSize: { w: startW, h: startH }, newSize: { w: newW, h: newH } });
+      } else {
+        existing.newSize = { w: newW, h: newH };
+      }
+      updateSaveButton();
+    };
+    const onMouseUp = () => {
+      doc.removeEventListener('mousemove', onMouseMove);
+      doc.removeEventListener('mouseup', onMouseUp);
+    };
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      try { if (doc.activeElement) doc.activeElement.blur(); } catch(_) {}
+      try { if (window.document.activeElement) window.document.activeElement.blur(); } catch(_) {}
+      const rect = container.getBoundingClientRect();
+      // If container has no explicit width yet, set from current rect
+      if (!container.style.width) container.style.width = rect.width + 'px';
+      startX = e.clientX; startY = e.clientY;
+      startW = rect.width; startH = rect.height;
+      ratio = rect.width / rect.height || (img.naturalWidth / img.naturalHeight) || 16/9;
+      doc.addEventListener('mousemove', onMouseMove);
+      doc.addEventListener('mouseup', onMouseUp);
+    });
   }
   
   function updateSaveButton() {

@@ -3239,8 +3239,23 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       design_ref_data = parsed_data['design_reference']
       
       # Process uploaded images
-      images.each do |img_data|
-        if img_data['type'] == 'upload'
+        images.each do |img_data|
+          if img_data['type'] == 'library' && img_data['asset_id']
+            # Reference existing library image
+            begin
+              lib_asset = ImageAsset.by_entity(entity.id).find(img_data['asset_id'])
+              stored_images << {
+                id: lib_asset.id,
+                url: lib_asset.url,
+                title: lib_asset.display_title,
+                description: lib_asset.description.to_s,
+                slot: img_data['slot'],
+                source: 'library'
+              }
+            rescue => e
+              Rails.logger.warn "Library image not found: #{img_data['asset_id']} (#{e.message})"
+            end
+          elsif img_data['type'] == 'upload'
           # For now, we'll create a placeholder ImageAsset record
           # The actual file upload handling will be enhanced later
           image_asset = ImageAsset.create!(
@@ -3256,7 +3271,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
             }
           )
           
-          stored_images << {
+            stored_images << {
             id: image_asset.id,
             url: image_asset.url || "/placeholder-image-#{img_data['slot']}.jpg",
             title: image_asset.title,

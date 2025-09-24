@@ -251,8 +251,28 @@ class ToolRunner
       # Use AI to generate landing page DSL
       business_info = inputs[:business_info] || {}
       design_prefs = inputs[:design_preferences] || {}
+      stored_images = Array(inputs[:stored_images]).map do |img|
+        # normalize from either symbol or string keys
+        {
+          id: img[:id] || img['id'],
+          url: img[:url] || img['url'],
+          title: img[:title] || img['title'],
+          description: img[:description] || img['description']
+        }.compact
+      end
+      image_prefs = inputs[:image_preferences] || {}
       
+      # Derive a key message from collected details if not supplied
+      key_message = business_info[:key_message]
+      if key_message.blank?
+        purpose = business_info[:page_purpose]
+        details = business_info[:specific_details]
+        cta = business_info[:call_to_action]
+        key_message = [purpose, details, cta].compact.join(' — ')
+      end
+
       Rails.logger.info "ToolRunner: Generating landing page DSL for business: #{business_info[:business_name]}"
+      Rails.logger.info "ToolRunner: Prompt context summary => theme=#{design_prefs[:theme] || 'n/a'}, color=#{design_prefs[:primary_color] || 'n/a'}, images=#{stored_images.length}, first_url=#{stored_images.first&.dig(:url)&.to_s&.first(80)}"
       
       # Create the AI agent for DSL generation
       dsl_agent = AiAgents::LandingPageDslAgent.new
@@ -262,10 +282,16 @@ class ToolRunner
         business_name: business_info[:business_name],
         industry: business_info[:industry],
         target_audience: business_info[:target_audience],
-        key_message: business_info[:key_message],
+        key_message: key_message,
         theme: design_prefs[:theme] || 'professional',
         primary_color: design_prefs[:primary_color],
-        style_notes: design_prefs[:style_notes]
+        style_notes: design_prefs[:style_notes],
+        images: stored_images,
+        image_preferences: image_prefs,
+        raw_context: {
+          business_info: business_info,
+          design_preferences: design_prefs
+        }
       )
       
       # Validate the generated DSL

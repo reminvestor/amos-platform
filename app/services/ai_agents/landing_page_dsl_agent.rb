@@ -7,7 +7,7 @@ module AiAgents
       @ai_service = AiServiceHelper.get_service
     end
     
-    def generate_dsl(business_name:, industry:, target_audience:, key_message:, theme: 'professional', primary_color: nil, style_notes: nil)
+    def generate_dsl(business_name:, industry:, target_audience:, key_message:, theme: 'professional', primary_color: nil, style_notes: nil, images: [], image_preferences: {}, raw_context: {})
       Rails.logger.info "LandingPageDslAgent: Generating DSL for #{business_name} (#{industry})"
       
       system_prompt = build_dsl_system_prompt
@@ -18,10 +18,14 @@ module AiAgents
         key_message: key_message,
         theme: theme,
         primary_color: primary_color,
-        style_notes: style_notes
+        style_notes: style_notes,
+        images: images,
+        image_preferences: image_preferences
       )
       
       # Generate DSL using AI
+      Rails.logger.info "LandingPageDslAgent: SYSTEM PROMPT (first 200): #{system_prompt.first(200)}..."
+      Rails.logger.info "LandingPageDslAgent: USER PROMPT (first 400): #{user_prompt.first(400)}..."
       response = @ai_service.send_message(
         system_prompt, 
         user_prompt, 
@@ -185,7 +189,7 @@ module AiAgents
       PROMPT
     end
     
-    def build_dsl_user_prompt(business_name:, industry:, target_audience:, key_message:, theme:, primary_color:, style_notes:)
+    def build_dsl_user_prompt(business_name:, industry:, target_audience:, key_message:, theme:, primary_color:, style_notes:, images:, image_preferences: {})
       prompt = <<~PROMPT
         Create a landing page DSL for the following business:
         
@@ -207,6 +211,21 @@ module AiAgents
         prompt += "- Style Notes: #{style_notes}\n"
       end
       
+      # Include any uploaded/library images as preferred assets
+      if images.present?
+        prompt += "\nPREFERRED IMAGES (use these URLs if they make sense; do NOT ignore them):\n"
+        images.first(6).each_with_index do |img, idx|
+          url = img[:url] || img['url']
+          title = img[:title] || img['title']
+          desc = img[:description] || img['description']
+          prompt += "- Image #{idx+1}: #{url} (#{title}) #{desc}\n"
+        end
+      end
+      
+      if image_preferences.present?
+        prompt += "\nIMAGE PREFERENCES: #{image_preferences.to_json}\n"
+      end
+      
       prompt += <<~PROMPT
         
         REQUIREMENTS:
@@ -216,7 +235,8 @@ module AiAgents
         4. Include a contact form section with appropriate fields for the industry
         5. Use the specified theme consistently
         6. Write copy that resonates with the target audience
-        7. Include appropriate Unsplash images for the industry
+        7. If PREFERRED IMAGES are provided above, use them for hero/features instead of stock images.
+           Only fall back to Unsplash if not enough preferred images are available.
         8. Use Bootstrap icons that match the business type
         
         INDUSTRY-SPECIFIC GUIDANCE:

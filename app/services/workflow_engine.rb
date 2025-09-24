@@ -10,6 +10,13 @@ class WorkflowEngine
   
   # Create and start a new workflow
   def start_workflow(workflow_spec, initial_inputs = {})
+    # Reset transient state to avoid stale context from prior runs in this session
+    @task_session.update_state(
+      wizard_data: {},
+      artifacts: [],
+      current_step: nil
+    )
+
     # Store workflow spec in task session
     @task_session.update_state(workflow_spec: workflow_spec)
     @task_session.add_event('workflow_started', { 
@@ -124,9 +131,6 @@ class WorkflowEngine
       
       if completed_step_id != current_step_id
         case current_step_type
-        when 'user_input'
-          Rails.logger.info "Auto-continuing to next user input step: #{current_step_id} (completed: #{completed_step_id})"
-          return execute_next_step({})
         when 'tool_call'
           # For tool calls, continue immediately (task progress will be shown via progress callback)
           Rails.logger.info "Auto-continuing to next tool call step: #{current_step_id} (completed: #{completed_step_id})"
@@ -710,6 +714,17 @@ class WorkflowEngine
   end
   
   def find_step_data(step_id, execution_history)
+    # Always check task events first since that's where the real data is stored
+    step_events = @task_session.task_events.where("payload ->> 'step_id' = ?", step_id)
+    completed_event = step_events.find { |e| e.event_type == 'step_completed' }
+    
+    if completed_event
+      event_data = completed_event.payload.dig('result', 'data')
+      Rails.logger.info "🔍 Found step data in events for #{step_id}: #{event_data&.keys&.inspect}"
+      return event_data
+    end
+    
+    # Fallback to execution history (though this usually has placeholder data)
     step_result = execution_history.find { |step| step[:id] == step_id }
     
     # Try multiple paths to find the actual data
@@ -718,21 +733,7 @@ class WorkflowEngine
            step_result&.dig('result', 'data') ||
            step_result&.dig('result')
     
-    # If we got a result but it's just status info, try to find it in task events
-    if data.is_a?(Hash) && data.keys.sort == ['message', 'status'] && data['status'] == 'success'
-      Rails.logger.info "🔍 Step data appears to be status info, checking task events for #{step_id}"
-      
-      # Look in task session events for the actual data
-      step_events = @task_session.task_events.where("payload ->> 'step_id' = ?", step_id)
-      completed_event = step_events.find { |e| e.event_type == 'step_completed' }
-      
-      if completed_event
-        event_data = completed_event.payload.dig('result', 'data')
-        Rails.logger.info "🔍 Found step data in events: #{event_data.inspect}"
-        return event_data
-      end
-    end
-    
+    Rails.logger.info "🔍 Fallback to execution history for #{step_id}: #{data&.keys&.inspect if data.is_a?(Hash)}"
     data
   end
 

@@ -157,6 +157,11 @@
       submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
     }
     
+    // Fallback overlay if canvas doesn't switch quickly
+    let overlayTimeout = setTimeout(() => {
+      showBlockingOverlay('Continuing to next step...');
+    }, 600);
+    
     // Send request
     fetch('/scout/continue_workflow', {
       method: 'POST',
@@ -171,6 +176,8 @@
     })
     .then(response => response.json())
     .then(data => {
+      clearTimeout(overlayTimeout);
+      hideBlockingOverlay();
       if (data.success) {
         // Handle successful workflow continuation
         if (data.workflow_completed) {
@@ -202,23 +209,26 @@
           const canvasType = data.canvas || 'task_progress';
           const canvasData = data.canvas_data || {};
           
-          // Force task_progress canvas for tool_call steps
-          if (data.step_completed && !data.awaiting_input) {
-            console.log('Step completed, forcing task_progress canvas');
+          // Check what type of canvas the server wants us to load
+          console.log('Server wants canvas:', data.canvas, 'awaiting_input:', data.awaiting_input);
+          
+          if (data.canvas === 'interactive_wizard' || data.awaiting_input) {
+            console.log('Loading interactive wizard for next form');
+            if (window.scoutController && window.scoutController.loadScoutCanvas) {
+              window.scoutController.loadScoutCanvas('interactive_wizard', canvasData);
+            } else {
+              const event = new CustomEvent('scout:load-canvas', {
+                detail: { canvas: 'interactive_wizard', data: canvasData }
+              });
+              document.dispatchEvent(event);
+            }
+          } else {
+            console.log('Loading task progress for tool execution');
             if (window.scoutController && window.scoutController.loadScoutCanvas) {
               window.scoutController.loadScoutCanvas('task_progress', canvasData);
             } else {
               const event = new CustomEvent('scout:load-canvas', {
                 detail: { canvas: 'task_progress', data: canvasData }
-              });
-              document.dispatchEvent(event);
-            }
-          } else {
-            if (window.scoutController && window.scoutController.loadScoutCanvas) {
-              window.scoutController.loadScoutCanvas(canvasType, canvasData);
-            } else {
-              const event = new CustomEvent('scout:load-canvas', {
-                detail: { canvas: canvasType, data: canvasData }
               });
               document.dispatchEvent(event);
             }
@@ -243,6 +253,8 @@
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;
       }
+      clearTimeout(overlayTimeout);
+      hideBlockingOverlay();
     });
   }
   
@@ -275,6 +287,30 @@
   // Also initialize on turbo:load for full page navigations
   document.addEventListener('turbo:load', initializeWizard);
 })();
+
+// Simple blocking overlay helpers (Bootstrap-friendly)
+function showBlockingOverlay(message) {
+  if (document.getElementById('wizard-blocking-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'wizard-blocking-overlay';
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.background = 'rgba(0,0,0,0.35)';
+  overlay.style.zIndex = '1055';
+  overlay.innerHTML = `
+    <div class="d-flex align-items-center justify-content-center h-100">
+      <div class="bg-white border rounded shadow p-3 d-flex align-items-center">
+        <div class="spinner-border text-primary me-2" role="status"></div>
+        <div>${message || 'Processing...'}</div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function hideBlockingOverlay() {
+  const overlay = document.getElementById('wizard-blocking-overlay');
+  if (overlay) overlay.remove();
+}
 </script>
 
 <style>
