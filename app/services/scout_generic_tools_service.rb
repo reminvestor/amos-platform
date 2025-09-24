@@ -14,12 +14,13 @@ class ScoutGenericToolsService
   # AI Provider Configuration - Easy to switch between providers
   AI_PROVIDER = ENV['AI_PROVIDER'] || 'grok' # Options: 'grok', 'claude', 'openai'
   
-  def initialize(user, entity, session_id = nil)
+  def initialize(user, entity, session_id = nil, agent_loadout = nil)
     @user = user
     @entity = entity
     @session_id = session_id
     @saved_message_content = Set.new  # Track saved messages to prevent duplicates
     @context = nil  # Current canvas/page context
+    @agent_loadout = agent_loadout  # Optional agent loadout for governance
     
     # Use the centralized AI service configuration
     @ai_service = AiServiceHelper.get_service
@@ -2068,59 +2069,6 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     results
   end
 
-  def execute_tool_by_name(tool_name, args, progress_callback = nil)
-    # Map tool name to execution method
-    case tool_name
-    when 'get_data'
-      execute_get_data(args)
-    when 'create_object'
-      execute_create_object(args)
-    when 'get_schema'
-      execute_get_schema(args)
-    when 'generate_ai_landing_page'
-      execute_generate_ai_landing_page(args)
-    when 'update_landing_page_status'
-      execute_update_landing_page_status(args)
-    when 'update_landing_page_content'
-      execute_update_landing_page_content(args)
-    when 'revert_landing_page_to_version'
-      execute_revert_landing_page_to_version(args)
-    when 'link_template_to_campaign'
-      execute_link_template_to_campaign(args)
-    when 'create_dynamic_visualization'
-      execute_create_dynamic_visualization(args)
-    when 'manage_task_list'
-      execute_manage_task_list(args)
-    when 'analyze_landing_page_request'
-      execute_analyze_landing_page_request_internal(args)
-    when 'process_landing_page_images'
-      execute_process_landing_page_images(args)
-    when 'store_uploaded_images'
-      execute_store_uploaded_images(args)
-    when 'list_connections'
-      execute_list_connections(args)
-    when 'describe_connection'
-      execute_describe_connection(args)
-    when 'invoke_operation'
-      execute_invoke_operation(args)
-    when 'dry_run_operation'
-      execute_dry_run_operation(args)
-    when 'confirm_operation'
-      execute_confirm_operation(args)
-    when 'discover_api_schema'
-      execute_discover_api_schema(args)
-      when 'configure_integration'
-        execute_configure_integration(args)
-      when 'test_connection'
-        execute_test_connection(args)
-    when 'aggregate_artifact_data'
-      execute_aggregate_artifact_data(args)
-    when 'fetch_next_page'
-      execute_fetch_next_page(args)
-    else
-      { success: false, error: "Unknown tool: #{tool_name}" }
-    end
-  end
 
   def execute_tools_with_progress(tool_calls, progress_callback = nil)
     results = []
@@ -3300,8 +3248,12 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
             entity: entity,
             title: "Landing Page Image #{img_data['slot']}",
             description: "Uploaded image for landing page (#{img_data['filename']})",
-            source: 'upload',
-            tags: ['landing_page', 'user_upload']
+            source: 'placeholder',  # Changed from 'upload' to 'placeholder'
+            tags: ['landing_page', 'user_upload'],
+            metadata: { 
+              original_filename: img_data['filename'],
+              slot: img_data['slot']
+            }
           )
           
           stored_images << {
@@ -3320,7 +3272,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
               entity: entity,
               title: "AI Generated - Slot #{img_data['slot']}",
               description: img_data['prompt'],
-              size: img_data['slot'] == 1 ? '1200x600' : '800x600',
+              size: img_data['slot'] == 1 ? '1792x1024' : '1024x1024',  # Use DALL-E 3 supported sizes
               quality: 'standard',
               tags: ['landing_page', 'ai_generated']
             )
@@ -3354,7 +3306,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         success: true,
         data: {
           stored_images: stored_images,
-          design_reference: design_reference
+          design_reference: design_reference || {}  # Ensure it's always an object
         },
         message: "Processed #{stored_images.length} image(s) and stored them for your landing page"
       }
@@ -3365,7 +3317,7 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         success: true,
         data: {
           stored_images: [],
-          design_reference: nil
+          design_reference: {}  # Ensure it's always an object
         },
         message: "No images to process"
       }
@@ -4785,9 +4737,13 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
           header_html = table_headers.any? ? ("<thead><tr>" + table_headers.map { |k| "<th>#{ERB::Util.html_escape(k)}</th>" }.join + "</tr></thead>") : ""
           html = "<div class=\"table-responsive\"><table class=\"table table-dark table-striped table-sm\">#{header_html}<tbody>#{rows_html}</tbody></table></div>"
 
-          @suggested_canvas = 'dynamic_canvas'
-          @canvas_data = { 'title' => "#{connection.integration.name} • #{operation.name}", 'subtitle' => operation.operation_id, 'html_content' => html, 'artifact_id' => result[:artifact_id], 'row_count' => result[:row_count] || records.length }
-          @progress_callback.call({ type: 'load_canvas', canvas: 'dynamic_canvas', canvas_data: @canvas_data })
+          safe_load_canvas('dynamic_canvas', { 
+            'title' => "#{connection.integration.name} • #{operation.name}", 
+            'subtitle' => operation.operation_id, 
+            'html_content' => html, 
+            'artifact_id' => result[:artifact_id], 
+            'row_count' => result[:row_count] || records.length 
+          })
         end
       end
 
@@ -4997,8 +4953,24 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     { success: false, error: "Failed to update configuration: #{e.message}" }
   end
 
+  public # Make aggregation methods public
+  
   def execute_aggregate_artifact_data(args)
-    artifact = Artifact.find_by(id: args['artifact_id'], entity: @entity)
+    # Normalize args to handle both string and symbol keys
+    args = args.with_indifferent_access if args.respond_to?(:with_indifferent_access)
+    
+    artifact_id = args['artifact_id']
+    Rails.logger.info "execute_aggregate_artifact_data called with artifact_id: #{artifact_id} (class: #{artifact_id.class})"
+    Rails.logger.info "@entity: #{@entity&.id}, @user: #{@user&.id}"
+    
+    # Find artifact - try with entity first, then without
+    artifact = if @entity
+      Artifact.find_by(id: artifact_id, entity: @entity)
+    else
+      Artifact.find_by(id: artifact_id)
+    end
+    
+    Rails.logger.info "Found artifact: #{artifact&.id}"
     return { success: false, error: "Artifact not found or access denied" } unless artifact
 
     operation = args['operation']
@@ -5009,9 +4981,9 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     
     begin
       case operation
-      when 'group_by_field'
-        field = args['field']
-        return { success: false, error: "Field required for group_by_field" } unless field
+        when 'group_by_field'
+          field = args['field']
+          return { success: false, error: "Field required for group_by_field" } unless field
         
         # Group data by field and apply aggregations
         grouped = data.group_by { |row| row[field] }
@@ -5137,22 +5109,16 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         # Generate appropriate visualization
         viz_html = generate_aggregation_html(operation, results, args)
         
-        @suggested_canvas = 'dynamic_canvas'
-        @canvas_data = { 
+        safe_load_canvas('dynamic_canvas', {
           'title' => "#{artifact.name} • #{operation.humanize}",
           'subtitle' => "Aggregation of #{data.length} records",
           'html_content' => viz_html,
           'artifact_id' => artifact.id,
           'aggregation_type' => operation
-        }
-        
-        @progress_callback.call({ 
-          type: 'load_canvas', 
-          canvas: 'dynamic_canvas', 
-          canvas_data: @canvas_data 
         })
       end
       
+      # Return success result
       {
         success: true,
         data: {
@@ -5169,6 +5135,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     end
   end
 
+  public
+  
   def execute_fetch_next_page(args)
     artifact = Artifact.find_by(id: args['artifact_id'], entity: @entity)
     return { success: false, error: "Artifact not found or access denied" } unless artifact
@@ -5247,8 +5215,92 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
       { success: false, error: "Failed to fetch next page: #{e.message}" }
     end
   end
+
+  public
   
+  def execute_tool_by_name(tool_name, args, progress_callback = nil)
+    # Map tool name to execution method
+    case tool_name
+    when 'get_data'
+      execute_get_data(args)
+    when 'create_object'
+      execute_create_object(args)
+    when 'get_schema'
+      execute_get_schema(args)
+    when 'generate_ai_landing_page'
+      execute_generate_ai_landing_page(args)
+    when 'update_landing_page_status'
+      execute_update_landing_page_status(args)
+    when 'update_landing_page_content'
+      execute_update_landing_page_content(args)
+    when 'revert_landing_page_to_version'
+      execute_revert_landing_page_to_version(args)
+    when 'link_template_to_campaign'
+      execute_link_template_to_campaign(args)
+    when 'create_dynamic_visualization'
+      execute_create_dynamic_visualization(args)
+    when 'manage_task_list'
+      execute_manage_task_list(args)
+    when 'analyze_landing_page_request'
+      execute_analyze_landing_page_request_internal(args)
+    when 'process_landing_page_images'
+      execute_process_landing_page_images(args)
+    when 'store_uploaded_images'
+      execute_store_uploaded_images(args)
+    when 'list_connections'
+      execute_list_connections(args)
+    when 'describe_connection'
+      execute_describe_connection(args)
+    when 'invoke_operation'
+      execute_invoke_operation(args)
+    when 'dry_run_operation'
+      execute_dry_run_operation(args)
+    when 'confirm_operation'
+      execute_confirm_operation(args)
+    when 'discover_api_schema'
+      execute_discover_api_schema(args)
+    when 'configure_integration'
+      execute_configure_integration(args)
+    when 'test_connection'
+      execute_test_connection(args)
+    when 'aggregate_artifact_data'
+      execute_aggregate_artifact_data(args)
+    when 'fetch_next_page'
+      execute_fetch_next_page(args)
+    else
+      { success: false, error: "Unknown tool: #{tool_name}" }
+    end
+  end
+
   private
+  
+  def canvas_allowed?(canvas_name)
+    # Check if canvas is allowed by agent loadout
+    return true unless @agent_loadout # No restrictions if no loadout
+    @agent_loadout.canvas_allowed?(canvas_name)
+  end
+  
+  def safe_load_canvas(canvas_name, canvas_data = {})
+    # Load canvas only if allowed
+    if canvas_allowed?(canvas_name)
+      @suggested_canvas = canvas_name
+      @canvas_data = canvas_data
+      
+      # Stream canvas load if we have a callback
+      if @progress_callback
+        @progress_callback.call({ 
+          type: 'load_canvas', 
+          canvas: canvas_name, 
+          canvas_data: canvas_data 
+        })
+      end
+      
+      true
+    else
+      Rails.logger.warn "Canvas '#{canvas_name}' not allowed for agent role '#{@agent_loadout.agent_role}'"
+      false
+    end
+  end
   
   def generate_aggregation_html(operation, results, args)
     case operation

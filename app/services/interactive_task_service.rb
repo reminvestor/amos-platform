@@ -171,15 +171,34 @@ class InteractiveTaskService
       }
       
     when 'step_completed'
-      {
-        success: true,
-        message: result[:message],
-        canvas: determine_canvas_for_result(result),
-        canvas_data: extract_canvas_data(result),
-        mode: 'interactive',
-        step_completed: true,
-        next_step: result[:next_step]
-      }
+      # Check if we just completed a user_input step and the next is a tool_call
+      if result[:next_step] && result[:next_step][:type] == 'tool_call'
+        Rails.logger.info "Step completed, next is tool_call - showing task_progress"
+        {
+          success: true,
+          message: result[:message],
+          canvas: 'task_progress',
+          canvas_data: {
+            progress: @workflow_engine.progress,
+            current_step: result[:next_step],
+            workflow_status: @workflow_engine.workflow&.status,
+            task_session_id: @task_session.id
+          },
+          mode: 'interactive',
+          step_completed: true,
+          next_step: result[:next_step]
+        }
+      else
+        {
+          success: true,
+          message: result[:message],
+          canvas: determine_canvas_for_result(result),
+          canvas_data: extract_canvas_data(result),
+          mode: 'interactive',
+          step_completed: true,
+          next_step: result[:next_step]
+        }
+      end
       
     when 'completed'
       {

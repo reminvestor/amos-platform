@@ -150,7 +150,13 @@ class ScoutController < ApplicationController
   
   def continue_workflow
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
-    user_inputs = params[:inputs] || {}
+    
+    # Convert ActionController::Parameters to regular hash
+    user_inputs = if params[:inputs].is_a?(ActionController::Parameters)
+      params[:inputs].to_unsafe_h
+    else
+      params[:inputs] || {}
+    end
     
     Rails.logger.info "Scout continue workflow - Session: #{@session_id}, Inputs: #{user_inputs.keys}"
     
@@ -1353,6 +1359,35 @@ class ScoutController < ApplicationController
   def render_task_progress(data = {})
     # Handle both symbol and string keys
     data = data.with_indifferent_access if data.is_a?(Hash)
+    
+    # If we have progress data from workflow, use it
+    if data[:progress] && !data[:tasks]
+      Rails.logger.info "📋 Converting workflow progress to task list format"
+      # Use the task_session_id if provided
+      if data[:task_session_id]
+        task_session = TaskSession.find_by(id: data[:task_session_id])
+        if task_session
+          workflow_engine = WorkflowEngine.new(task_session)
+          workflow_progress = workflow_engine.progress
+          workflow = workflow_engine.instance_variable_get(:@workflow)
+          
+          data = {
+            tasks: workflow.steps.map do |step|
+              {
+                id: step.id,
+                description: step.config[:description] || step.id.to_s.humanize,
+                status: step.status,
+                details: step.error,
+                completed_at: step.completed_at,
+                failed_at: step.status == 'failed' ? step.completed_at : nil
+              }
+            end,
+            title: task_session.workflow_name || "Workflow Progress",
+            created_at: task_session.created_at
+          }
+        end
+      end
+    end
     
     # If no data provided, try to load from TaskSession
     if data.empty? || data.nil? || data[:tasks].nil?
