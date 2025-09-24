@@ -1,4 +1,4 @@
-module ScoutAI
+module AmosAI
   class BusinessExtractor
     attr_reader :user, :entity
     

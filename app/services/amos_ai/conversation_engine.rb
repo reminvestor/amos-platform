@@ -1,4 +1,4 @@
-module ScoutAI
+module AmosAI
   class ConversationEngine
     attr_reader :user, :entity
     

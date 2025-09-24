@@ -1,4 +1,4 @@
-module ScoutAI
+module AmosAI
   class ConversationService
     attr_reader :user, :entity, :session_id
     

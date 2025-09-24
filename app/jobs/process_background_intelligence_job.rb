@@ -1,5 +1,5 @@
 class ProcessBackgroundIntelligenceJob < ApplicationJob
-  queue_as :scout_ai
+  queue_as :amos_ai
   
   def perform(conversation_id:, ai_response:)
     conversation = ScoutConversation.find(conversation_id)

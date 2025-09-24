@@ -1,4 +1,4 @@
-module ScoutAI
+module AmosAI
   class IntentAnalyzer
     attr_reader :user, :entity
     
