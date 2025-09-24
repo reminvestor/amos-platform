@@ -280,7 +280,9 @@ resource "aws_acm_certificate" "main" {
   validation_method = "DNS"
 
   subject_alternative_names = [
-    "*.${var.domain_name}"
+    "*.${var.domain_name}",
+    "www.${var.domain_name}",
+    "app.${var.domain_name}"
   ]
 
   lifecycle {
@@ -361,7 +363,7 @@ resource "aws_ecs_task_definition" "app" {
         },
         {
           name  = "APPLICATION_HOST"
-          value = aws_lb.main.dns_name
+          value = var.domain_name != "" ? "app.${var.domain_name}" : aws_lb.main.dns_name
         },
         {
           name  = "AWS_REGION"
