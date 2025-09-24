@@ -1,4 +1,5 @@
-module AmosAI
-  # Base module for Amos AI services
-  # This module contains all AI-powered conversation and intelligence services
-end 
+# Legacy compatibility - redirect to new AmosAI module
+require_relative 'amos_ai'
+
+# Alias for backward compatibility during deployment
+ScoutAI = AmosAI
