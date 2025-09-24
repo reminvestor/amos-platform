@@ -883,14 +883,14 @@ class ScoutController < ApplicationController
     profile = current_user.business_profile
     
     welcome_message = if profile&.industry.present?
-      "Welcome back! I'm Scout, your AI marketing assistant for #{business_name}. " \
-      "I can help you analyze your #{profile.industry.downcase} marketing performance, " \
-      "optimize campaigns, manage contacts, and create new marketing materials. " \
+      "Welcome back! I'm Amos, your AI business automation assistant for #{business_name}. " \
+      "I can help you analyze your #{profile.industry.downcase} business performance, " \
+      "manage operations, automate workflows, handle integrations, and create marketing materials. " \
       "What would you like to explore today? 🎯"
     else
-      "Welcome to Scout! I'm your AI marketing assistant for #{business_name}. " \
-      "I can help analyze your marketing performance, optimize campaigns, manage contacts, " \
-      "and create new materials. What can I help you with today? 🚀"
+      "Welcome to Amos! I'm your AI business automation assistant for #{business_name}. " \
+      "I can help analyze your business performance, automate operations, manage data integrations, " \
+      "and create marketing materials. What can I help you with today? 🚀"
     end
     
     save_scout_message('assistant', welcome_message)

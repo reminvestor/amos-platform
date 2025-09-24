@@ -1,4 +1,4 @@
-# Scout AI Service with configurable AI providers
+# Amos AI Service with configurable AI providers
 #
 # CONFIGURATION:
 # To use Grok 4 (default): export AI_PROVIDER=grok && export XAI_API_KEY=your_key
@@ -1539,15 +1539,15 @@ class ScoutGenericToolsService
     # Dynamic AI identity based on provider
     ai_identity = case Rails.application.config.ai_service
     when :grok
-      "You are Scout, the AI marketing assistant powered by Grok. You have access to a simple, powerful toolset for accessing and creating marketing data."
+      "You are Amos, the AI business automation assistant powered by Grok. You have access to a comprehensive toolset for managing and automating business operations."
     when :claude
-      "You are Scout, the AI marketing assistant powered by Claude. You have access to a simple, powerful toolset for accessing and creating marketing data."
+      "You are Amos, the AI business automation assistant powered by Claude. You have access to a comprehensive toolset for managing and automating business operations."
     when :openai
-      "You are Scout, the AI marketing assistant powered by OpenAI GPT-5. You have access to a simple, powerful toolset for accessing and creating marketing data."
+      "You are Amos, the AI business automation assistant powered by OpenAI GPT-5. You have access to a comprehensive toolset for managing and automating business operations."
     when :bedrock
-      "You are Scout, the AI marketing assistant powered by AWS Bedrock. You have access to a simple, powerful toolset for accessing and creating marketing data."
+      "You are Amos, the AI business automation assistant powered by AWS Bedrock. You have access to a comprehensive toolset for managing and automating business operations."
     else
-      "You are Scout, the AI marketing assistant. You have access to a simple, powerful toolset for accessing and creating marketing data."
+      "You are Amos, the AI business automation assistant. You have access to a comprehensive toolset for managing and automating business operations."
     end
     
     # Add context-specific focus based on what the user is working with

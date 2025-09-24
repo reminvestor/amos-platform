@@ -22,7 +22,7 @@ Bundler.require(*Rails.groups)
 # Require propshaft railtie after gems are loaded
 require "propshaft/railtie"
 
-module AgentMarketing
+module AmosLabs
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 7.1
@@ -47,7 +47,7 @@ module AgentMarketing
     config.generators.system_tests = nil
     
     # Configure session store
-    config.session_store :cookie_store, key: '_agent_marketing_session', domain: {
+    config.session_store :cookie_store, key: '_amos_labs_session', domain: {
       production: :all, 
       development: :all,
       test: :all
@@ -57,8 +57,8 @@ module AgentMarketing
     config.autoload_paths << Rails.root.join('lib')
     config.eager_load_paths << Rails.root.join('lib')
     
-    # Configure Zeitwerk inflections for Scout AI acronym
-    Rails.autoloaders.main.inflector.inflect("scout_ai" => "ScoutAI")
+    # Configure Zeitwerk inflections for Amos AI acronym
+    Rails.autoloaders.main.inflector.inflect("amos_ai" => "AmosAI")
     
     # Set Solid::Queue as the queue adapter
     config.active_job.queue_adapter = :solid_queue

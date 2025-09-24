@@ -170,7 +170,7 @@ class IntegrationApiService
     headers = {
       'Content-Type' => 'application/json',
       'Accept' => 'application/json',
-      'User-Agent' => "AgentMarketing/1.0"
+      'User-Agent' => "AmosLabs/1.0"
     }
     
     # Add authentication headers
