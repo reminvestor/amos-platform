@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "Crux Marketing - AI Marketing Agent That Actually Grows Your Business" %></title>
+    <title><%= content_for(:title) || "AMOS Labs - AI Business Automation Platform" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="description" content="<%= content_for(:description) || "Scout, your AI marketing agent, learns your business and creates campaigns that convert. Skip the $1000 tools - get results in minutes, not months." %>">
+    <meta name="description" content="<%= content_for(:description) || "Amos, your AI business automation assistant, streamlines operations and automates workflows. Comprehensive business management in one intelligent platform." %>">
     
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
@@ -246,7 +246,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
       <div class="container">
         <a class="navbar-brand d-flex align-items-center" href="<%= marketing_root_path %>">
-          <%= image_tag "crux_logo_white_long.png", alt: "Crux Marketing", style: "height: 40px;" %>
+          <span class="text-white fw-bold fs-4">AMOS Labs</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
@@ -282,9 +282,9 @@
         <div class="row">
           <div class="col-md-4 mb-4">
             <h5 class="text-white d-flex align-items-center">
-              <%= image_tag "crux_logo_white_long.png", alt: "Crux Marketing", style: "height: 30px;" %>
+              <span class="text-white fw-bold fs-5">AMOS Labs</span>
             </h5>
-            <p class="mb-3">AI-powered marketing that actually grows your business. Scout learns, adapts, and delivers results while you focus on what matters.</p>
+            <p class="mb-3">AI-powered business automation that streamlines your operations. Amos learns, adapts, and delivers results while you focus on what matters.</p>
             <div class="d-flex gap-3">
               <a href="https://x.com/CruxMktgAI" target="_blank" rel="noopener" class="text-white"><i class="fab fa-x-twitter"></i></a>
               <a href="#" class="text-white"><i class="fab fa-linkedin"></i></a>
@@ -314,7 +314,7 @@
           </div>
         </div>
         <div class="border-top pt-3 mt-3">
-          <p class="text-center text-white-50 mb-0">&copy; <%= Date.today.year %> Crux Marketing. All rights reserved.</p>
+          <p class="text-center text-white-50 mb-0">&copy; <%= Date.today.year %> AMOS Labs. All rights reserved.</p>
         </div>
       </div>
     </footer>

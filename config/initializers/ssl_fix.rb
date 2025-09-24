@@ -3,7 +3,7 @@ Rails.application.config.after_initialize do
   # Add special handling for GoDaddy DNS with Heroku
   unless Rails.env.development?
     # Explicitly set the host for URL generation
-    Rails.application.routes.default_url_options[:host] = ENV['APPLICATION_HOST'] || 'everloom.ai'
+    Rails.application.routes.default_url_options[:host] = ENV['APPLICATION_HOST'] || 'app.amoslabs.com'
     Rails.application.routes.default_url_options[:protocol] = 'https'
 
     # Force all requests to be treated as secure
