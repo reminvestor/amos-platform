@@ -23,16 +23,16 @@ phases:
       - echo Initializing Terraform...
       - terraform init -backend-config=backend.conf -reconfigure
       - echo Pulling latest state...
-      - terraform refresh -var="domain_name=cruxmarketing.ai"
+      - terraform refresh -var="domain_name=amoslabs.com"
       - echo Validating Terraform configuration...
       - terraform validate
 
   build:
     commands:
       - echo Planning Terraform changes...
-      - terraform plan -out=tfplan -var="domain_name=cruxmarketing.ai"
+      - terraform plan -out=tfplan -var="domain_name=amoslabs.com"
       - echo Applying Terraform changes...
-      - terraform apply -auto-approve -var="domain_name=cruxmarketing.ai"
+      - terraform apply -auto-approve -var="domain_name=amoslabs.com"
 
   post_build:
     commands:
