@@ -150,6 +150,7 @@ class InteractiveTaskService
       {
         success: true,
         message: response[:final_response][:message],
+        message_already_saved: response[:final_response][:message_already_saved] || false,
         canvas: response[:canvas_type] || 'conversation',
         canvas_data: response[:canvas_data],
         tools_used: response[:tools_used],
@@ -160,6 +161,7 @@ class InteractiveTaskService
       {
         success: true,
         message: response[:message],
+        message_already_saved: response[:message_already_saved] || false,
         canvas: response[:canvas_type] || 'conversation',
         canvas_data: response[:canvas_data],
         tools_used: response[:tools_used],

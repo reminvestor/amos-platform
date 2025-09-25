@@ -157,7 +157,12 @@ export default class extends Controller {
     const avatar = role === "ai" ? "fas fa-robot" : "fas fa-user"
     
     // Parse markdown for AI messages using markdown-it
-    const formattedContent = role === "ai" ? this.md.render(content || '') : this.escapeHtml(content)
+    let formattedContent = role === "ai" ? this.md.render(content || '') : this.escapeHtml(content)
+    
+    // Add loading indicator for empty AI messages
+    if (role === "ai" && !content) {
+      formattedContent = '<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>'
+    }
     
     messageDiv.innerHTML = `
       <div class="message-content">
@@ -434,20 +439,14 @@ export default class extends Controller {
                     }
                   }
                 } else if (data.type === 'add_tool_message' || data.type === 'tool_detected') {
-                  // Lightweight indicator when a tool is referenced/detected
-                  const toolName = data.tool_name || data.name || 'tool'
-                  const toolId = data.tool_id
-                  this.addToolMessage(toolName, 'detected', { tool_id: toolId })
+                  // Tool messages are now saved server-side and will appear via intermediate_message
+                  console.log('🔧 Tool detected:', data.tool_name || data.name)
                 } else if (data.type === 'tool_start') {
-                  // Start of a tool call with arguments
-                  const toolName = data.name || 'tool'
-                  const args = data.arguments || {}
-                  this.addToolMessage(toolName, 'start', { arguments: args })
+                  // Tool messages are now saved server-side and will appear via intermediate_message
+                  console.log('🔧 Tool started:', data.name)
                 } else if (data.type === 'tool_result' || data.type === 'tool_end') {
-                  // Optional: completion indicator
-                  const toolName = data.name || data.tool_name || 'tool'
-                  const result = data.result || {}
-                  this.addToolMessage(toolName, 'end', { result })
+                  // Tool messages are now saved server-side and will appear via intermediate_message
+                  console.log('✅ Tool completed:', data.name || data.tool_name)
                 } else if (data.type === 'intermediate_message') {
                   // Explanatory assistant messages between tool calls
                   if (data.content) {
@@ -508,6 +507,11 @@ export default class extends Controller {
                     }
                     if (targetBubble) {
                       // Render markdown safely during streaming; lists/headings form progressively
+                      // Remove loading dots if they exist
+                      const loadingDots = targetBubble.querySelector('.loading-dots')
+                      if (loadingDots) {
+                        loadingDots.remove()
+                      }
                       targetBubble.innerHTML = this.md.render(this.currentStreamingContent)
                       this.streamingMessageElement = targetBubble
                     } else {
