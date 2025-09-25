@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#764ba2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="100%" height="100%" fill="url(#grad)"/>
+  
+  <!-- Background pattern -->
+  <circle cx="100" cy="100" r="40" fill="rgba(255,255,255,0.1)"/>
+  <circle cx="1100" cy="530" r="60" fill="rgba(255,255,255,0.1)"/>
+  <circle cx="1000" cy="150" r="30" fill="rgba(255,255,255,0.1)"/>
+  
+  <!-- Main content -->
+  <text x="600" y="280" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="84" font-weight="800">AMOS Labs</text>
+  
+  <text x="600" y="340" text-anchor="middle" fill="rgba(255,255,255,0.95)" font-family="Arial, sans-serif" font-size="36" font-weight="600">Your AI Business Assistant</text>
+  
+  <text x="600" y="420" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="Arial, sans-serif" font-size="28" font-weight="400">Like Jarvis for your company. Automate workflows,</text>
+  <text x="600" y="460" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="Arial, sans-serif" font-size="28" font-weight="400">analyze data, and scale operations.</text>
+  
+  <!-- Accent -->
+  <text x="410" y="420" text-anchor="middle" fill="#fbbf24" font-family="Arial, sans-serif" font-size="28" font-weight="600">Jarvis</text>
+</svg>
