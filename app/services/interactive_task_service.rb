@@ -129,19 +129,54 @@ class InteractiveTaskService
   def handle_autonomous_mode(message, conversation_history, current_canvas)
     Rails.logger.info "InteractiveTaskService: Delegating to autonomous mode"
     
-    # Delegate to existing autonomous system
+    # Delegate to existing autonomous system with streaming
     generic_tools_service = ScoutGenericToolsService.new(@user, @entity, @session_id)
-    response = generic_tools_service.process_message_with_tools(message, conversation_history, current_canvas)
     
-    # Convert response to our format
-    {
-      success: true,
-      message: response[:final_response][:message],
-      canvas: response[:canvas_type] || 'conversation',
-      canvas_data: response[:canvas_data],
-      tools_used: response[:tools_used],
-      mode: 'autonomous'
-    }
+    # Set up streaming callback if we have one
+    if @progress_callback
+      response = generic_tools_service.process_message_with_tools_streaming(
+        message, 
+        @progress_callback, 
+        conversation_history, 
+        current_canvas
+      )
+    else
+      response = generic_tools_service.process_message_with_tools(message, conversation_history, current_canvas)
+    end
+    
+    # Handle response safely
+    if response && response[:final_response] && response[:final_response][:message]
+      # Convert response to our format
+      {
+        success: true,
+        message: response[:final_response][:message],
+        canvas: response[:canvas_type] || 'conversation',
+        canvas_data: response[:canvas_data],
+        tools_used: response[:tools_used],
+        mode: 'autonomous'
+      }
+    elsif response && response[:message]
+      # Handle direct message format
+      {
+        success: true,
+        message: response[:message],
+        canvas: response[:canvas_type] || 'conversation',
+        canvas_data: response[:canvas_data],
+        tools_used: response[:tools_used],
+        mode: 'autonomous'
+      }
+    else
+      # Handle error case
+      {
+        success: false,
+        error: "Failed to process message in autonomous mode",
+        message: "I'm having trouble processing that right now. Could you try rephrasing your request?",
+        canvas: 'conversation',
+        canvas_data: {},
+        tools_used: [],
+        mode: 'autonomous'
+      }
+    end
   end
   
   def handle_hybrid_mode(message, mode_info)
