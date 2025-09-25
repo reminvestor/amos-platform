@@ -417,11 +417,25 @@ class BedrockService
       [{ role: 'user', content: messages.to_s }]
     end
 
-    # Claude on Bedrock expects specific format
+    # Claude on Bedrock expects specific format with content as array containing type
     messages_array.map do |msg|
+      content = msg[:content]
+      
+      # Format content for Bedrock API
+      formatted_content = if content.is_a?(Array)
+        # Already formatted as array
+        content
+      elsif content.is_a?(String)
+        # Convert string to required format
+        [{ type: 'text', text: content }]
+      else
+        # Convert other types to string first
+        [{ type: 'text', text: content.to_s }]
+      end
+      
       {
         role: msg[:role] || 'user',
-        content: msg[:content]
+        content: formatted_content
       }
     end
   end

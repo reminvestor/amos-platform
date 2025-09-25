@@ -153,9 +153,9 @@ class TaskModeDetector
   end
   
   def determine_mode_and_confidence(interactive, autonomous, hybrid, message)
-    # Handle edge cases
+    # Handle edge cases - short messages are usually greetings/conversation
     if message.length < 10
-      return ['interactive', 0.3] # Too vague, need more info
+      return ['autonomous', 0.6] # Simple conversation
     end
     
     # Check hybrid first as it's most specific
@@ -171,8 +171,13 @@ class TaskModeDetector
       confidence = autonomous > 0.5 ? autonomous : autonomous * 0.9
       ['autonomous', confidence]
     else
-      # Tie or unclear - default to interactive for safety
-      ['interactive', 0.5]
+      # Tie or unclear - check if it's a conversational message
+      if message.match?(/\b(hello|hi|hey|thanks|thank you|ok|okay|yes|no)\b/i)
+        ['autonomous', 0.7] # Conversational
+      else
+        # Default to autonomous for unclear requests rather than starting workflows
+        ['autonomous', 0.4]
+      end
     end
   end
   
