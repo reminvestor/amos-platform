@@ -745,6 +745,8 @@ class ScoutGenericToolsService
                 @saved_message_content.add(content_hash)
                 # Mark that we've saved messages during streaming
                 @messages_saved_during_streaming = true
+                # Reset accumulated content after saving to prevent duplication
+                accumulated_content = ""
               else
                 Rails.logger.info "⚠️ Skipping duplicate intermediate message: #{accumulated_content.strip.first(50)}..."
               end
@@ -782,6 +784,13 @@ class ScoutGenericToolsService
                 # Execute our existing tools
                 result = execute_tool_by_name(tool_call[:name], args, progress_callback)
                 results << result
+                
+                # Notify tool completion
+                progress_callback&.call({
+                  type: 'tool_complete',
+                  name: tool_call[:name],
+                  success: result[:success] || false
+                })
                 
                 # Check if the tool result includes a canvas to load
                 if result[:canvas] && progress_callback
@@ -978,6 +987,8 @@ class ScoutGenericToolsService
                     @saved_message_content.add(content_hash)
                     # Mark that we've saved messages during streaming
                     @messages_saved_during_streaming = true
+                    # Reset continuation message after saving to prevent duplication
+                    continuation_message = ""
                   else
                     Rails.logger.info "⚠️ Skipping duplicate continuation message: #{continuation_message.strip.first(50)}..."
                   end
@@ -1006,6 +1017,13 @@ class ScoutGenericToolsService
                     
                     result = execute_tool_by_name(tool_call[:name], parsed_args)
                     continuation_results << result
+                    
+                    # Notify tool completion
+                    progress_callback&.call({
+                      type: 'tool_complete',
+                      name: tool_call[:name],
+                      success: result[:success] || false
+                    })
                     
                     # Check if the tool result includes a canvas to load
                     if result[:canvas] && progress_callback
@@ -1160,6 +1178,13 @@ class ScoutGenericToolsService
                       
                       result = execute_tool_by_name(tool_call[:name], parsed_args)
                       more_results << result
+                      
+                      # Notify tool completion
+                      progress_callback&.call({
+                        type: 'tool_complete',
+                        name: tool_call[:name],
+                        success: result[:success] || false
+                      })
                       
                       # Check if the tool result includes a canvas to load
                       if result[:canvas] && progress_callback

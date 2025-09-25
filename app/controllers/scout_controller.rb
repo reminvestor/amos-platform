@@ -253,15 +253,30 @@ class ScoutController < ApplicationController
           when 'content_chunk'
             # Stream content chunks directly
             stream_content_chunk(progress_data[:content])
-          when 'intermediate_message'
-            # Stream intermediate messages
-            stream_update(progress_data)
+          when 'intermediate_message', 'save_message'
+            # Save and stream intermediate messages
+            if progress_data[:content]
+              save_scout_message(progress_data[:role] || 'assistant', progress_data[:content])
+              stream_content_chunk(progress_data[:content])
+            end
           when 'load_canvas'
             # Stream canvas loading
             stream_update(progress_data)
           when 'tool_start', 'tool_complete'
-            # Stream tool updates
-            stream_update(progress_data)
+            # Save and stream tool updates as content
+            tool_name = progress_data[:tool_name] || progress_data[:name]
+            tool_message = if progress_data[:type] == 'tool_start'
+              "🔧 Using tool: #{tool_name}"
+            else
+              "✅ Tool completed: #{tool_name}"
+            end
+            save_scout_message('assistant', tool_message)
+            # Stream as intermediate message so it appears in chat
+            stream_update({
+              type: 'intermediate_message',
+              content: tool_message,
+              role: 'assistant'
+            })
           else
             # Default progress message
             stream_update("🔄 #{progress_data[:message] || progress_data.to_s}")
@@ -301,6 +316,7 @@ class ScoutController < ApplicationController
         # Return the response
         final_response = {
           message: result[:message],
+          message_already_saved: result[:message_already_saved] || false,
           canvas_type: result[:canvas],
           canvas_data: result[:canvas_data],
           tools_used: result[:tools_used] || [],
@@ -687,9 +703,10 @@ class ScoutController < ApplicationController
     Rails.logger.info "🌊 stream_final_response called with data keys: #{response_data.keys}"
     Rails.logger.info "📝 Message length: #{response_data[:message]&.length} characters"
     Rails.logger.info "📝 Message preview: #{response_data[:message]&.first(100)}..."
+    Rails.logger.info "📝 Message already saved: #{response_data[:message_already_saved]}"
     
     # Persist final assistant message as a safety net if not already saved
-    if response_data[:message].present?
+    if response_data[:message].present? && !response_data[:message_already_saved]
       begin
         save_scout_message('assistant', response_data[:message])
       rescue => e

@@ -690,31 +690,93 @@
     color: inherit;
   }
   
-  /* Ensure action cards and other canvas elements are visible */
-  .scout-canvas {
-    color: var(--scout-text);
-    
-    /* Make sure action cards have proper contrast */
-    .action-card {
-      color: #333 !important; /* Dark text for white cards */
-      
-      h6 {
-        color: #333 !important; /* Dark headings */
+      /* Ensure action cards and other canvas elements are visible */
+      .scout-canvas {
+        color: var(--scout-text);
+        
+        /* Make sure action cards have proper contrast */
+        .action-card {
+          color: #333 !important; /* Dark text for white cards */
+          
+          h6 {
+            color: #333 !important; /* Dark headings */
+          }
+          
+          p, .text-muted {
+            color: #6c757d !important; /* Readable muted text */
+          }
+        }
+        
+        .example-prompt {
+          color: #6c757d; /* Ensure example prompts are readable */
+        }
+        
+        .example-prompt:hover {
+          color: #495057;
+        }
       }
       
-      p, .text-muted {
-        color: #6c757d !important; /* Readable muted text */
+      /* Task manager specific styles */
+      .task-card, .task-item {
+        background: white;
+        color: #333 !important; /* Dark text for task cards */
+        
+        .task-name, .task-title {
+          color: #212529 !important; /* Very dark text for titles */
+        }
+        
+        .task-status {
+          color: #495057 !important; /* Medium dark for status */
+        }
+        
+        .badge {
+          /* Badges should keep their colors */
+        }
       }
-    }
-    
-    .example-prompt {
-      color: #6c757d; /* Ensure example prompts are readable */
-    }
-    
-    .example-prompt:hover {
-      color: #495057;
-    }
-  }
+      
+      /* Task progress header and stats */
+      .task-progress-header, .progress-header, .progress-stats {
+        color: #333 !important; /* Dark text for progress headers */
+        
+        h5, h6, .h5, .h6 {
+          color: #212529 !important; /* Very dark for headings */
+        }
+        
+        span {
+          color: #333 !important; /* Dark text for progress stats */
+        }
+      }
+      
+      /* Task progress container specific overrides */
+      .task-progress-container {
+        .progress-stats {
+          color: #333 !important;
+          
+          span {
+            color: #333 !important;
+          }
+        }
+        
+        .task-header h5 {
+          color: #212529 !important;
+        }
+      }
+      
+      /* Progress bars and other white background elements */
+      .progress {
+        .progress-bar {
+          color: #fff !important; /* White text on colored progress bars */
+        }
+      }
+      
+      /* List items in white boxes */
+      .list-group-item {
+        color: #333 !important; /* Dark text for list items */
+        
+        &.active {
+          /* Active items can keep their styling */
+        }
+      }
 }
 
 .template-placeholder {
@@ -978,5 +1040,39 @@
   
   blockquote {
     background: rgba(255,255,255,0.05);
+  }
+}
+
+/* Loading dots animation for streaming messages */
+.loading-dots {
+  display: inline-block;
+  
+  span {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--scout-primary);
+    margin: 0 3px;
+    animation: loading-dots-animation 1.4s infinite ease-in-out both;
+    
+    &:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+    
+    &:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+  }
+}
+
+@keyframes loading-dots-animation {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
   }
 } 
