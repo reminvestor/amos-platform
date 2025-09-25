@@ -158,6 +158,25 @@ class TaskModeDetector
       return ['autonomous', 0.6] # Simple conversation
     end
     
+    # Check for conversational patterns first
+    conversational_patterns = [
+      /\b(hello|hi|hey|thanks|thank you|ok|okay|yes|no|bye|goodbye)\b/i,
+      /\b(what|who|when|where|why|how)\s+(is|are|was|were|does|do|did)\s+(your|the|a|an)\b/i,
+      /\b(tell me about|explain|describe|help me understand)\b/i,
+      /\b(can you|could you|would you|will you)\b/i,
+      /^(what|who|when|where|why|how|is|are|can|could|would|does|do)\b/i
+    ]
+    
+    if conversational_patterns.any? { |pattern| message.match?(pattern) }
+      # Check if it's ALSO asking for a specific task
+      if interactive > 0.7 || autonomous > 0.7 || hybrid > 0.5
+        # It's both conversational AND task-oriented, let the scores decide
+      else
+        # Pure conversational query
+        return ['autonomous', 0.7]
+      end
+    end
+    
     # Check hybrid first as it's most specific
     if hybrid > 0.5
       return ['hybrid', hybrid]
@@ -171,13 +190,8 @@ class TaskModeDetector
       confidence = autonomous > 0.5 ? autonomous : autonomous * 0.9
       ['autonomous', confidence]
     else
-      # Tie or unclear - check if it's a conversational message
-      if message.match?(/\b(hello|hi|hey|thanks|thank you|ok|okay|yes|no)\b/i)
-        ['autonomous', 0.7] # Conversational
-      else
-        # Default to autonomous for unclear requests rather than starting workflows
-        ['autonomous', 0.4]
-      end
+      # Default to autonomous for unclear requests
+      ['autonomous', 0.4]
     end
   end
   

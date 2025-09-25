@@ -223,11 +223,8 @@ function scoutEditLandingPageInline(pageId) {
 }
 
 function scoutOpenInteractiveWizard(pageId) {
-  // Open interactive wizard for landing page generation
-  window.scoutLoadCanvas?.('interactive_wizard', { 
-    workflow_type: 'landing_page',
-    landing_page_id: pageId 
-  });
+  // Use the working chat workflow instead of direct canvas loading
+  window.scoutController?.sendScoutMessage(`Continue creating landing page ID ${pageId}`);
 }
 
 function scoutPreviewLandingPageInTab(pageId) {

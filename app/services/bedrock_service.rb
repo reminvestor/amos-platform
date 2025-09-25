@@ -49,6 +49,9 @@ class BedrockService
     # Format messages for Claude
     formatted_messages = format_messages_for_claude(messages)
     
+    # Debug the formatted messages
+    Rails.logger.info "🔍 Bedrock formatted messages: #{formatted_messages.inspect}"
+    
     # Modify system prompt for JSON mode if requested
     final_system_prompt = if json_mode && system_prompt.present?
       Rails.logger.info "🔧 Bedrock JSON mode enabled - enforcing structured output"
@@ -423,8 +426,18 @@ class BedrockService
       
       # Format content for Bedrock API
       formatted_content = if content.is_a?(Array)
-        # Already formatted as array
-        content
+        # Check if array items already have 'type' field, if not fix them
+        content.map do |item|
+          if item.is_a?(Hash) && item[:type]
+            item  # Already correctly formatted
+          elsif item.is_a?(Hash) && item[:text]
+            { type: 'text', text: item[:text] }  # Fix missing type field
+          elsif item.is_a?(String)
+            { type: 'text', text: item }
+          else
+            { type: 'text', text: item.to_s }
+          end
+        end
       elsif content.is_a?(String)
         # Convert string to required format
         [{ type: 'text', text: content }]

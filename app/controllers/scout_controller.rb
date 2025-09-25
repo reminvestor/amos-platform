@@ -243,7 +243,23 @@ class ScoutController < ApplicationController
       
       # Set up progress callback for streaming updates
       interactive_service.on_progress do |progress_data|
-        stream_update("🔄 #{progress_data[:message]}")
+        case progress_data[:type]
+        when 'content_chunk'
+          # Stream content chunks directly
+          stream_content_chunk(progress_data[:content])
+        when 'intermediate_message'
+          # Stream intermediate messages
+          stream_update(progress_data)
+        when 'load_canvas'
+          # Stream canvas loading
+          stream_update(progress_data)
+        when 'tool_start', 'tool_complete'
+          # Stream tool updates
+          stream_update(progress_data)
+        else
+          # Default progress message
+          stream_update("🔄 #{progress_data[:message] || progress_data.to_s}")
+        end
       end
       
       # Check if we should use context (keeping legacy support for now)
@@ -257,15 +273,14 @@ class ScoutController < ApplicationController
       
       # Handle the response from InteractiveTaskService
       if result[:success]
-        # Save assistant response
-        save_scout_message('assistant', result[:message]) if result[:message]
+        # Save assistant response (only if not already streamed)
+        if result[:mode] != 'autonomous' && result[:message]
+          save_scout_message('assistant', result[:message])
+          stream_content_chunk(result[:message])
+        end
         
-        # Stream the final response
-        stream_update("✨ Task completed successfully")
-        stream_content_chunk(result[:message]) if result[:message]
-        
-        # Handle canvas loading
-        if result[:canvas] && result[:canvas] != 'conversation'
+        # Handle canvas loading (if not already done during streaming)
+        if result[:canvas] && result[:canvas] != 'conversation' && result[:mode] != 'autonomous'
           stream_update({
             type: 'load_canvas',
             canvas: result[:canvas],
@@ -279,7 +294,7 @@ class ScoutController < ApplicationController
           canvas_type: result[:canvas],
           canvas_data: result[:canvas_data],
           tools_used: result[:tools_used] || [],
-          success_count: result[:tools_used]&.count || 0,
+          success_count: (result[:tools_used].is_a?(Array) ? result[:tools_used].count : 0),
           error_count: 0
         }
       else
