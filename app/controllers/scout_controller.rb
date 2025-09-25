@@ -243,22 +243,32 @@ class ScoutController < ApplicationController
       
       # Set up progress callback for streaming updates
       interactive_service.on_progress do |progress_data|
-        case progress_data[:type]
-        when 'content_chunk'
-          # Stream content chunks directly
-          stream_content_chunk(progress_data[:content])
-        when 'intermediate_message'
-          # Stream intermediate messages
+        # Handle both string and hash formats
+        if progress_data.is_a?(String)
+          # Simple string message
           stream_update(progress_data)
-        when 'load_canvas'
-          # Stream canvas loading
-          stream_update(progress_data)
-        when 'tool_start', 'tool_complete'
-          # Stream tool updates
-          stream_update(progress_data)
+        elsif progress_data.is_a?(Hash)
+          # Structured progress data
+          case progress_data[:type]
+          when 'content_chunk'
+            # Stream content chunks directly
+            stream_content_chunk(progress_data[:content])
+          when 'intermediate_message'
+            # Stream intermediate messages
+            stream_update(progress_data)
+          when 'load_canvas'
+            # Stream canvas loading
+            stream_update(progress_data)
+          when 'tool_start', 'tool_complete'
+            # Stream tool updates
+            stream_update(progress_data)
+          else
+            # Default progress message
+            stream_update("🔄 #{progress_data[:message] || progress_data.to_s}")
+          end
         else
-          # Default progress message
-          stream_update("🔄 #{progress_data[:message] || progress_data.to_s}")
+          # Fallback for other types
+          stream_update("🔄 #{progress_data.to_s}")
         end
       end
       
