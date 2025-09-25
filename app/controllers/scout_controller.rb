@@ -11,10 +11,11 @@ class ScoutController < ApplicationController
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     @conversation_history = persisted_history_last_k(10)
     
-    # If this is a fresh start, add Scout's welcome message
+    # If this is a fresh start, add Scout's welcome message and load default canvas
     if @conversation_history.empty?
       create_welcome_message
       @conversation_history = persisted_history_last_k(10)
+      @auto_load_canvas = 'default' unless params[:load].present?
     end
     
     # Business context for display
@@ -22,7 +23,7 @@ class ScoutController < ApplicationController
     @entity = current_entity
     
     # Handle auto-load parameters
-    @auto_load_canvas = params[:load]
+    @auto_load_canvas = params[:load] if params[:load].present?
   end
   
   def chat

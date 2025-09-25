@@ -2179,6 +2179,14 @@ document.addEventListener('turbo:load', function() {
         window.scoutSendMessage('Show me my integration connections');
       }
     }, 1000); // Small delay to ensure Scout is fully loaded
+  <% elsif @auto_load_canvas == 'default' %>
+    // Auto-load default canvas for new conversations
+    setTimeout(() => {
+      console.log('Auto-loading default canvas for new conversation...');
+      if (window.scoutController && window.scoutController.loadScoutCanvas) {
+        window.scoutController.loadScoutCanvas('default');
+      }
+    }, 500); // Shorter delay for default canvas since it's local content
   <% end %>
 });
 </script> 
