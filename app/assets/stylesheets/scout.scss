@@ -664,6 +664,57 @@
   overflow-x: auto; /* allow horizontal scroll for wide canvases */
   padding: 1.5rem;
   min-width: 0; /* critical for flex overflow-x to work */
+  
+  /* Universal canvas text color fixes */
+  color: var(--scout-text);
+  
+  /* Override Bootstrap text classes to work with Scout dark theme */
+  .text-muted {
+    color: var(--scout-text-muted) !important;
+  }
+  
+  .text-primary {
+    color: var(--scout-primary) !important;
+  }
+  
+  .text-secondary {
+    color: var(--scout-text-muted) !important;
+  }
+  
+  /* Ensure all text elements in canvas use Scout colors */
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--scout-text);
+  }
+  
+  p, span, div {
+    color: inherit;
+  }
+  
+  /* Ensure action cards and other canvas elements are visible */
+  .scout-canvas {
+    color: var(--scout-text);
+    
+    /* Make sure action cards have proper contrast */
+    .action-card {
+      color: #333 !important; /* Dark text for white cards */
+      
+      h6 {
+        color: #333 !important; /* Dark headings */
+      }
+      
+      p, .text-muted {
+        color: #6c757d !important; /* Readable muted text */
+      }
+    }
+    
+    .example-prompt {
+      color: #6c757d; /* Ensure example prompts are readable */
+    }
+    
+    .example-prompt:hover {
+      color: #495057;
+    }
+  }
 }
 
 .template-placeholder {

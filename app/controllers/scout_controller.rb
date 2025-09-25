@@ -236,133 +236,83 @@ class ScoutController < ApplicationController
       conversation_history = persisted_history_last_k(12)
       stream_update("📚 Loading conversation history (#{conversation_history.length} messages)")
       
-      # Use generic tools service with streaming updates
+      # Use InteractiveTaskService with streaming updates
       stream_update("🧠 Analyzing your request...")
-      stream_update("📋 Preparing context and tools...")
-      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity, session[:scout_session_id])
+      stream_update("📋 Detecting task mode and preparing workflow...")
+      interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id])
       
-      # Pass context to the service if available, or load from cache
-      if context.present?
-        generic_tools_service.set_context(context)
+      # Set up progress callback for streaming updates
+      interactive_service.on_progress do |progress_data|
+        stream_update("🔄 #{progress_data[:message]}")
+      end
+      
+      # Check if we should use context (keeping legacy support for now)
+      if false  # Disabled context setting for now
+        # No context loading needed for InteractiveTaskService
+      end
+      
+      # Process message using InteractiveTaskService
+      stream_update("🎯 Processing your request...")
+      result = interactive_service.process_message(user_message, conversation_history, current_canvas)
+      
+      # Handle the response from InteractiveTaskService
+      if result[:success]
+        # Save assistant response
+        save_scout_message('assistant', result[:message]) if result[:message]
+        
+        # Stream the final response
+        stream_update("✨ Task completed successfully")
+        stream_content_chunk(result[:message]) if result[:message]
+        
+        # Handle canvas loading
+        if result[:canvas] && result[:canvas] != 'conversation'
+          stream_update({
+            type: 'load_canvas',
+            canvas: result[:canvas],
+            canvas_data: result[:canvas_data] || {}
+          })
+        end
+        
+        # Return the response
+        final_response = {
+          message: result[:message],
+          canvas_type: result[:canvas],
+          canvas_data: result[:canvas_data],
+          tools_used: result[:tools_used] || [],
+          success_count: result[:tools_used]&.count || 0,
+          error_count: 0
+        }
       else
-        # Try to load existing context
-        generic_tools_service.get_context
+        # Handle error case
+        error_message = result[:error] || "An error occurred while processing your request."
+        stream_update("❌ Error: #{error_message}")
+        stream_content_chunk(error_message)
+        
+        final_response = {
+          message: error_message,
+          canvas_type: 'conversation',
+          canvas_data: {},
+          tools_used: [],
+          success_count: 0,
+          error_count: 1
+        }
       end
       
-      # Track if we've started streaming content
-      content_streaming = false
-      
-      # Process message with streaming progress updates
-      final_response = generic_tools_service.process_message_with_tools_streaming(
-        user_message, 
-        ->(update) { 
-          Rails.logger.info "🔄 Streaming callback received: #{update.inspect.first(100)}..."
-          if update.is_a?(Hash)
-            case update[:type]
-            when 'content_chunk'
-              # Stream content chunks directly to the user
-              if !content_streaming
-                content_streaming = true
-                stream_update("💬 streaming")  # Signal start of content streaming
-              end
-              stream_content_chunk(update[:content])
-            when 'save_message'
-              # Save intermediate messages that occur before tool usage
-              save_scout_message(update[:role] || 'assistant', update[:content], metadata: update[:metadata] || {})
-              Rails.logger.info "💾 Saved intermediate message: #{update[:content]}"
-              
-              # Also stream the message to the UI immediately
-              stream_update({
-                type: 'intermediate_message',
-                content: update[:content],
-                role: update[:role] || 'assistant'
-              })
-            when 'load_canvas'
-              # Immediately load a canvas (e.g., task progress)
-              stream_update({
-                type: 'load_canvas',
-                canvas: update[:canvas],
-                canvas_data: update[:canvas_data]
-              })
-              Rails.logger.info "🎨 Streaming canvas load: #{update[:canvas]}"
-            when 'tool_detected', 'tool_start'
-              # Save tool call as a message
-              if update[:type] == 'tool_detected'
-                save_scout_message('assistant', "tool:#{update[:name]}", metadata: {
-                  type: 'tool_call',
-                  tool_name: update[:name],
-                  tool_id: update[:tool_id]
-                })
-                # Stream a message event to add the tool message to the UI
-                stream_update({
-                  type: 'add_tool_message',
-                  tool_name: update[:name],
-                  tool_id: update[:tool_id]
-                })
-              end
-              # Stream tool events
-              stream_update(update)
-            else
-              # Other hash updates
-              stream_update(update) if update[:message]
-            end
-          elsif update.is_a?(String)
-            stream_update(update)
-          end
-        },
-        conversation_history,  # Pass conversation history
-        current_canvas  # Pass current canvas context
-      )
-      
-      # Save Scout's response only if it wasn't already saved during streaming
-      if final_response[:message].present? && !final_response[:message_already_saved]
-        Rails.logger.info "📨 Final response type: #{final_response[:message].class}"
-        Rails.logger.info "📨 Final response content: #{final_response[:message].to_s.first(200)}..."
-        save_scout_message('assistant', final_response[:message])
-      else
-        Rails.logger.info "📨 Final message already saved during streaming, skipping duplicate save"
-      end
-      
-      # Send completion indicator
-      stream_update("✅ Complete")
-      
-      # Load suggested canvas if available - but only if it hasn't been loaded during streaming
-      # The task_progress canvas is loaded dynamically during task updates, so skip it here
-      if final_response[:canvas] && final_response[:canvas] != 'conversation' && final_response[:canvas] != 'task_progress'
-        Rails.logger.info "📋 Loading suggested canvas at end: #{final_response[:canvas]}"
-        stream_update({
-          type: 'load_canvas',
-          canvas: final_response[:canvas],
-          canvas_data: final_response[:canvas_data] || {}
-        })
-      elsif final_response[:canvas] == 'task_progress'
-        Rails.logger.info "📋 Skipping task_progress canvas load at end - already loaded during streaming"
-      end
-      
-      # Send job started status if there's an active job
-      send_job_started_status_if_exists(final_response)
-      
-      # Don't stream the message as an update - it will be in the final response
-      # This prevents duplicate messages
-      # if final_response[:message].present?
-      #   stream_update("💬 #{final_response[:message]}")
-      # end
-      
-      # Always send final response immediately - let job run in background
+      # Stream final response and close
       stream_final_response(final_response)
-      
-      # Optional: Log that background job is running
-      if final_response[:canvas_data]&.dig(:landing_page_id)
-        Rails.logger.info "🚀 Background job processing, user can refresh to see updates"
-      end
       
     rescue StandardError => e
       Rails.logger.error "Scout streaming chat error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
       
-      # Fallback response
-      fallback_message = "I apologize, but I'm experiencing some technical difficulties. Please try again, or contact support if the issue persists."
-      save_scout_message('assistant', fallback_message)
+      fallback_message = case e.message
+      when /timeout/i
+        "I'm taking longer than expected to respond. Please try again in a moment."
+      when /network/i, /connection/i
+        "I'm having trouble connecting right now. Please try again."
+      else
+        "I encountered an unexpected error. Please try rephrasing your request."
+      end
       
       stream_update("❌ Error occurred")
       stream_final_response({
@@ -455,7 +405,7 @@ class ScoutController < ApplicationController
         canvas_title = "Integration Operations"
       else
         canvas_content = render_default_canvas
-        canvas_title = "Scout Canvas"
+        canvas_title = ""
       end
       
       render json: {
