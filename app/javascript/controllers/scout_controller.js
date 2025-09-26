@@ -151,6 +151,12 @@ export default class extends Controller {
 
   // Add message to chat
   addMessage(content, role) {
+    // Don't create empty messages unless it's for loading
+    if (!content && role !== "ai") {
+      console.log("Skipping empty message for role:", role)
+      return
+    }
+    
     const messageDiv = document.createElement("div")
     messageDiv.className = `message ${role}-message`
     
@@ -453,7 +459,16 @@ export default class extends Controller {
                     // Finalize any current streaming bubble so this renders as a separate message
                     if (this.currentStreamingContent !== undefined && this.streamingMessageElement) {
                       try {
-                        this.streamingMessageElement.innerHTML = this.md.render(this.currentStreamingContent)
+                        // Only finalize if there's actual content
+                        if (this.currentStreamingContent && this.currentStreamingContent.trim()) {
+                          this.streamingMessageElement.innerHTML = this.md.render(this.currentStreamingContent)
+                        } else {
+                          // Remove empty streaming bubble
+                          const messageContainer = this.streamingMessageElement.closest('.message')
+                          if (messageContainer) {
+                            messageContainer.remove()
+                          }
+                        }
                       } catch (e) {
                         console.warn('⚠️ Failed to finalize streaming bubble before intermediate message', e)
                       }
@@ -512,8 +527,18 @@ export default class extends Controller {
                       if (loadingDots) {
                         loadingDots.remove()
                       }
-                      targetBubble.innerHTML = this.md.render(this.currentStreamingContent)
-                      this.streamingMessageElement = targetBubble
+                      
+                      // Only update if we have actual content
+                      if (this.currentStreamingContent && this.currentStreamingContent.trim()) {
+                        targetBubble.innerHTML = this.md.render(this.currentStreamingContent)
+                        this.streamingMessageElement = targetBubble
+                      } else {
+                        // Remove empty message bubble if no content
+                        const messageContainer = targetBubble.closest('.message')
+                        if (messageContainer && !targetBubble.textContent.trim()) {
+                          messageContainer.remove()
+                        }
+                      }
                     } else {
                       console.error("❌ No streaming target bubble found for AI content update")
                     }
