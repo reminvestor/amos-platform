@@ -130,7 +130,7 @@ class InteractiveTaskService
     Rails.logger.info "InteractiveTaskService: Delegating to autonomous mode"
     
     # Delegate to existing autonomous system with streaming
-    generic_tools_service = ScoutGenericToolsService.new(@user, @entity, @session_id)
+    generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id)
     
     # Set up streaming callback if we have one
     if @progress_callback

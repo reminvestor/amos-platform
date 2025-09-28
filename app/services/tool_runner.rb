@@ -567,9 +567,11 @@ class ToolRunner
       # Log what we found
       Rails.logger.info "Legacy tool '#{tool}' - User: #{user_obj&.id}, Entity: #{entity_obj&.id}"
 
-      service = ScoutGenericToolsService.new(user_obj, entity_obj)
+      # Use V2 service with a session ID
+      session_id = inputs[:session_id] || inputs['session_id'] || SecureRandom.uuid
+      service = ScoutGenericToolsServiceV2.new(user_obj, entity_obj, session_id)
 
-      # Use the generic executor in the legacy service
+      # Use the V2 executor
       legacy_result = service.execute_tool_by_name(tool, inputs)
 
       # Map legacy result format to ToolRunner format
@@ -607,11 +609,12 @@ class ToolRunner
         user = inputs['user_id'].is_a?(Integer) ? User.find(inputs['user_id']) : inputs['user_id']
         entity = inputs['entity_id'].is_a?(Integer) ? Entity.find(inputs['entity_id']) : inputs['entity_id']
         
-        # Create service instance
-        service = ScoutGenericToolsService.new(user, entity)
+        # Create V2 service instance
+        session_id = inputs[:session_id] || inputs['session_id'] || SecureRandom.uuid
+        service = ScoutGenericToolsServiceV2.new(user, entity, session_id)
         
-        # Call the service method
-        result = service.execute_process_landing_page_images(inputs)
+        # Call the V2 tool
+        result = service.execute_tool_by_name('process_landing_page_images', inputs)
         
         Rails.logger.info "🖼️ ScoutGenericToolsService result: #{result.inspect}"
         
@@ -671,9 +674,11 @@ class ToolRunner
         user_obj = user.is_a?(Hash) ? User.find(user['id'] || user[:id]) : user
         entity_obj = entity.is_a?(Hash) ? Entity.find(entity['id'] || entity[:id]) : entity
         
-        Rails.logger.info "ToolRunner: Creating service with user #{user_obj.id} and entity #{entity_obj.id}"
-        service = ScoutGenericToolsService.new(user_obj, entity_obj)
-        result = service.execute_analyze_landing_page_request(inputs)
+        Rails.logger.info "ToolRunner: Creating V2 service with user #{user_obj.id} and entity #{entity_obj.id}"
+        session_id = inputs[:session_id] || inputs['session_id'] || SecureRandom.uuid
+        service = ScoutGenericToolsServiceV2.new(user_obj, entity_obj, session_id)
+        # Call the V2 tool
+        result = service.execute_tool_by_name('analyze_landing_page_request', inputs)
         
         Rails.logger.info "ToolRunner: Scout service returned: #{result.inspect}"
         

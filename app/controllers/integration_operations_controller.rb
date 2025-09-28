@@ -106,9 +106,10 @@ class IntegrationOperationsController < ApplicationController
       return
     end
     
-    # Use the dry run tool
-    service = ScoutGenericToolsService.new(current_user, current_entity)
-    result = service.execute_dry_run_operation(
+    # Use the invoke operation tool
+    service = ScoutGenericToolsServiceV2.new(current_user, current_entity, session[:scout_session_id] || SecureRandom.uuid)
+    result = service.execute_tool_by_name(
+      'invoke_operation',
       'connection_id' => connection.id,
       'operation_id' => @operation.operation_id,
       'params' => params[:test_params] || {}
