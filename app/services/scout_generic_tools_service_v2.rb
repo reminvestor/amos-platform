@@ -336,17 +336,32 @@ class ScoutGenericToolsServiceV2
   end
   
   def format_conversation_for_ai(history, current_message)
+    Rails.logger.info "🔍 format_conversation_for_ai called with history: #{history.inspect}"
+    Rails.logger.info "🔍 Current message: #{current_message}"
+    
     messages = []
     
     # Add recent history, filtering out messages with nil content
     history.last(10).each do |msg|
       content = msg['content'] || msg[:content]
+      role = msg['role'] || msg[:role]
+      
+      # Skip messages with nil or empty content
       next if content.nil? || content.to_s.strip.empty?
       
-      messages << {
-        role: msg['role'] == 'user' ? 'user' : 'assistant',
+      # Log suspicious messages for debugging
+      if role == 'assistant' && content.to_s.downcase == 'hello'
+        Rails.logger.warn "🚨 Found suspicious assistant message saying 'hello' - this might be incorrectly saved"
+      end
+      
+      formatted_message = {
+        role: role == 'user' ? 'user' : 'assistant',
         content: [{ type: 'text', text: content.to_s }]
       }
+      
+      Rails.logger.info "🔍 Adding history message: role=#{role}, formatted_role=#{formatted_message[:role]}, content=#{content.to_s.first(50)}"
+      
+      messages << formatted_message
     end
     
     # Add current message
@@ -354,6 +369,8 @@ class ScoutGenericToolsServiceV2
       role: 'user',
       content: [{ type: 'text', text: current_message }]
     }
+    
+    Rails.logger.info "🔍 Final messages array: #{messages.map { |m| "#{m[:role]}: #{m[:content].first[:text].to_s.first(30)}..." }}"
     
     messages
   end

@@ -423,6 +423,16 @@ class BedrockService
     # Claude on Bedrock expects specific format with content as array containing type
     Rails.logger.debug "🔍 format_messages_for_claude input: #{messages_array.inspect}" if Rails.env.development?
     
+    # Check if messages are already properly formatted
+    if messages_array.all? { |msg| 
+      msg.is_a?(Hash) && 
+      msg[:content].is_a?(Array) && 
+      msg[:content].all? { |item| item.is_a?(Hash) && item[:type] }
+    }
+      Rails.logger.debug "🔍 Messages already properly formatted, returning as-is" if Rails.env.development?
+      return messages_array
+    end
+    
     formatted = messages_array.map do |msg|
       content = msg[:content] || msg['content']
       
