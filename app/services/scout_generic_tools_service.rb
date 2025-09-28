@@ -3359,22 +3359,48 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     Rails.logger.info "🔍 Performing web search for: #{query}"
 
     begin
-      # For now, we'll implement a mock search that returns structured results
-      # In production, this would call a real search API like Serper, Bing, or Google
-      
-      # Mock results for API documentation searches
-      results = if query.match?(/API|documentation|auth/i)
-        generate_api_doc_search_results(query)
+      # Use real Serper API if available, otherwise fall back to mock
+      if ENV['SERPER_API_KEY'].present?
+        serper = SerperApiService.new
+        result = serper.search(query, num_results: num_results)
+        
+        if result[:success]
+          {
+            success: true,
+            query: query,
+            results: result[:results],
+            count: result[:results].length,
+            source: 'serper'
+          }
+        else
+          # Fall back to mock on error
+          Rails.logger.warn "Serper API failed, using mock results: #{result[:error]}"
+          mock_results = query.match?(/API|documentation|auth/i) ? 
+            generate_api_doc_search_results(query) : 
+            generate_general_search_results(query)
+          
+          {
+            success: true,
+            query: query,
+            results: mock_results.first(num_results),
+            count: mock_results.length,
+            source: 'mock'
+          }
+        end
       else
-        generate_general_search_results(query)
-      end
+        # Use mock results when Serper is not configured
+        results = query.match?(/API|documentation|auth/i) ? 
+          generate_api_doc_search_results(query) : 
+          generate_general_search_results(query)
 
-      {
-        success: true,
-        query: query,
-        results: results.first(num_results),
-        count: results.length
-      }
+        {
+          success: true,
+          query: query,
+          results: results.first(num_results),
+          count: results.length,
+          source: 'mock'
+        }
+      end
     rescue => e
       Rails.logger.error "Web search failed: #{e.message}"
       { success: false, error: e.message }
@@ -3446,30 +3472,80 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     app_name = args['app_name'] || args[:app_name]
     documentation = args['documentation'] || args[:documentation] || []
     user_uploads = args['user_uploads'] || args[:user_uploads] || []
+    search_results = args['search_results'] || args[:search_results] || []
     
     return { success: false, error: 'App name is required' } if app_name.blank?
     
     Rails.logger.info "📚 Creating RAG store for #{app_name}"
     
     begin
-      # Placeholder implementation - in production this would:
-      # 1. Process uploaded files (PDFs, etc.)
-      # 2. Parse API documentation
-      # 3. Create embeddings
-      # 4. Store in vector database
+      # Process all documentation sources
+      documents_to_process = []
       
-      rag_store_id = SecureRandom.uuid
+      # Add search results as URLs
+      search_results.each do |result|
+        documents_to_process << {
+          type: 'url',
+          content: result[:url] || result['url'],
+          metadata: { title: result[:title] || result['title'] }
+        }
+      end
       
-      {
-        success: true,
-        rag_store_id: rag_store_id,
-        app_name: app_name,
-        documents_indexed: documentation.length + user_uploads.length,
-        status: 'ready',
-        message: "Successfully created knowledge base for #{app_name} with #{documentation.length + user_uploads.length} documents"
-      }
+      # Add user-provided documentation
+      documentation.each do |doc|
+        if doc.start_with?('http')
+          documents_to_process << { type: 'url', content: doc }
+        else
+          documents_to_process << { type: 'text', content: doc }
+        end
+      end
+      
+      # Add uploaded files
+      user_uploads.each do |upload|
+        documents_to_process << {
+          type: 'file',
+          content: upload[:path] || upload['path'],
+          filename: upload[:filename] || upload['filename']
+        }
+      end
+      
+      # Process documents to extract chunks
+      processor = DocumentProcessorService.new
+      processing_result = processor.process_documents(documents_to_process)
+      
+      if !processing_result[:success]
+        return { success: false, error: "Document processing failed: #{processing_result[:error]}" }
+      end
+      
+      # Create RAG store with Pinecone
+      rag_service = RagStoreService.new
+      rag_result = rag_service.create_rag_store(
+        app_name,
+        processing_result[:chunks],
+        {
+          user: @user,
+          entity: @entity,
+          total_sources: documents_to_process.length,
+          processing_metadata: processing_result[:metadata]
+        }
+      )
+      
+      if rag_result[:success]
+        {
+          success: true,
+          rag_store_id: rag_result[:rag_store_id],
+          app_name: app_name,
+          documents_indexed: documents_to_process.length,
+          chunks_created: rag_result[:chunks_stored],
+          status: 'ready',
+          message: "Successfully created knowledge base for #{app_name} with #{processing_result[:chunks].length} content chunks from #{documents_to_process.length} sources"
+        }
+      else
+        { success: false, error: rag_result[:error] }
+      end
     rescue => e
       Rails.logger.error "RAG store creation failed: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
       { success: false, error: e.message }
     end
   end
@@ -3484,44 +3560,24 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     Rails.logger.info "🔧 Generating integration config for #{app_name}"
     
     begin
-      # Placeholder implementation - in production this would:
-      # 1. Query the RAG store for API patterns
-      # 2. Generate auth configuration
-      # 3. Create initial endpoint based on use case
-      # 4. Save as a new Integration record
+      # Use real IntegrationBuilder service
+      builder = IntegrationBuilderService.new(@user, @entity)
+      result = builder.generate_integration_config(app_name, use_case, rag_store_id)
       
-      # Mock integration config
-      integration_config = {
-        name: "#{app_name} Integration",
-        slug: app_name.downcase.gsub(/\s+/, '_'),
-        auth_type: 'api_key', # Could be oauth2, basic, etc.
-        auth_config: {
-          header_name: 'Authorization',
-          header_prefix: 'Bearer'
-        },
-        base_url: "https://api.#{app_name.downcase}.com/v1",
-        rate_limit: {
-          requests_per_minute: 60
-        },
-        initial_endpoint: {
-          name: 'list_items',
-          method: 'GET',
-          path: '/items',
-          description: "List items based on use case: #{use_case}"
+      if result[:success]
+        {
+          success: true,
+          integration_id: result[:integration_id],
+          config: result[:config],
+          endpoints_created: result[:endpoints_created],
+          message: result[:message]
         }
-      }
-      
-      # Would normally create Integration and IntegrationOperation records here
-      integration_id = SecureRandom.random_number(1000)
-      
-      {
-        success: true,
-        integration_id: integration_id,
-        config: integration_config,
-        message: "Generated initial configuration for #{app_name}. Ready for testing."
-      }
+      else
+        { success: false, error: result[:error] }
+      end
     rescue => e
       Rails.logger.error "Integration config generation failed: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
       { success: false, error: e.message }
     end
   end
@@ -3536,32 +3592,38 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     Rails.logger.info "🧪 Testing integration endpoint #{integration_id}"
     
     begin
-      # Placeholder implementation - in production this would:
-      # 1. Load the integration config
-      # 2. Make actual API call with provided credentials
-      # 3. Return response or error details
+      # Use real IntegrationTester service
+      tester = IntegrationTesterService.new(@user, @entity)
+      result = tester.test_endpoint(integration_id, credentials, test_params)
       
-      # Mock successful test
-      {
-        success: true,
-        status_code: 200,
-        response_time_ms: 234,
-        sample_data: {
-          items: [
-            { id: 1, name: "Sample Item 1", created_at: "2024-01-01" },
-            { id: 2, name: "Sample Item 2", created_at: "2024-01-02" }
-          ],
-          total: 2
-        },
-        message: "Successfully connected to API. Authentication working correctly."
-      }
+      # Return in expected format
+      if result[:success]
+        {
+          success: true,
+          status_code: result[:status_code],
+          response_time_ms: result[:response_time_ms],
+          sample_data: result[:sample_data],
+          message: result[:message],
+          auth_working: result[:auth_working]
+        }
+      else
+        {
+          success: false,
+          error: result[:error],
+          status_code: result[:status_code] || 0,
+          message: result[:message],
+          auth_working: result[:auth_working] || false,
+          details: result[:details]
+        }
+      end
     rescue => e
       Rails.logger.error "Integration test failed: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
       { 
         success: false, 
         error: e.message,
-        status_code: 401,
-        message: "Failed to authenticate. Please check your credentials."
+        status_code: 0,
+        message: "Test execution failed: #{e.message}"
       }
     end
   end
@@ -3576,30 +3638,24 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
     Rails.logger.info "🏗️ Building full integration endpoints for #{integration_id}"
     
     begin
-      # Placeholder implementation - in production this would:
-      # 1. Use the successful test pattern
-      # 2. Query RAG store for all relevant endpoints
-      # 3. Generate IntegrationOperation records for each
-      # 4. Test each endpoint as it's created
+      # Use real IntegrationBuilder service
+      builder = IntegrationBuilderService.new(@user, @entity)
+      result = builder.build_full_integration(integration_id, rag_store_id)
       
-      endpoints_created = [
-        { name: 'list_items', method: 'GET', path: '/items' },
-        { name: 'get_item', method: 'GET', path: '/items/:id' },
-        { name: 'create_item', method: 'POST', path: '/items' },
-        { name: 'update_item', method: 'PUT', path: '/items/:id' },
-        { name: 'delete_item', method: 'DELETE', path: '/items/:id' },
-        { name: 'search_items', method: 'GET', path: '/items/search' }
-      ]
-      
-      {
-        success: true,
-        integration_id: integration_id,
-        endpoints_created: endpoints_created.length,
-        endpoints: endpoints_created,
-        message: "Successfully created #{endpoints_created.length} endpoints. Integration is ready to use!"
-      }
+      if result[:success]
+        {
+          success: true,
+          integration_id: result[:integration_id],
+          endpoints_created: result[:operations_created],
+          resources: result[:resources],
+          message: result[:message]
+        }
+      else
+        { success: false, error: result[:error] }
+      end
     rescue => e
       Rails.logger.error "Integration build failed: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
       { success: false, error: e.message }
     end
   end
