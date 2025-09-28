@@ -69,6 +69,16 @@ gem "image_processing", "~> 1.2"
 gem "aws-sdk-bedrockruntime", "~> 1.0"
 gem "aws-sdk-s3", "~> 1.0"
 
+# Vector storage and RAG
+gem 'pinecone', '~> 0.1.0'
+
+# HTTP client for API calls (Serper, etc)
+gem 'httparty', '~> 0.21.0'
+
+# Document parsing
+gem 'pdf-reader', '~> 2.12'
+gem 'kramdown', '~> 2.4'
+
 # Pagination
 gem "kaminari", "~> 1.2"
 

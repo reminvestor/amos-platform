@@ -52,20 +52,51 @@ module Workflows
           }
         ),
 
-        # Step 2: Web search for API documentation
+        # Step 2: Generate search suggestions
+        Step.new(
+          id: 'generate_search_suggestions',
+          name: 'Generate Documentation Sources',
+          type: 'llm_call',
+          dependencies: ['gather_requirements'],
+          config: {
+            prompt_template: <<~PROMPT
+              Based on the app name "<%= inputs['app_name'] %>" and use case "<%= inputs['use_case'] %>", 
+              generate a list of potential documentation sources to search for.
+              
+              Consider:
+              - Official API documentation sites
+              - Developer portals
+              - GitHub repositories
+              - Common documentation patterns (docs.appname.com, api.appname.com, etc.)
+              
+              Also incorporate any user-provided links: <%= inputs['existing_docs'] %>
+              
+              Return a JSON array of suggested searches, e.g.:
+              [
+                "Slack API documentation official",
+                "Slack authentication OAuth",
+                "Slack REST API reference",
+                "site:api.slack.com getting started"
+              ]
+            PROMPT
+          }
+        ),
+        
+        # Step 3: Execute web searches
         Step.new(
           id: 'search_api_docs',
           name: 'Search for API Documentation',
           type: 'tool_call',
-          dependencies: ['gather_requirements'],
+          dependencies: ['generate_search_suggestions'],
           tool_allowlist: ['web_search'],
           config: {
             tool: 'web_search',
-            prompt_template: "Search for official API documentation for <%= inputs['app_name'] %>. Focus on: authentication methods, REST API endpoints, rate limits, and getting started guides."
+            iterate_over: 'search_suggestions',
+            prompt_template: "Search for: <%= item %>"
           }
         ),
 
-        # Step 3: Present findings and gather feedback
+        # Step 4: Present findings and gather feedback
         Step.new(
           id: 'review_findings',
           name: 'Review API Documentation Findings',
@@ -75,10 +106,11 @@ module Workflows
             display_context: true,
             form_fields: [
               {
-                name: 'feedback',
-                label: 'Does this look correct? Any additional information to add?',
-                type: 'textarea',
-                required: false
+                name: 'selected_sources',
+                label: 'Select which documentation sources to use',
+                type: 'checkbox_list',
+                required: true,
+                options: 'dynamic' # Populated from search results
               },
               {
                 name: 'additional_docs',
@@ -99,7 +131,7 @@ module Workflows
           }
         ),
 
-        # Step 4: Create RAG store from documentation
+        # Step 5: Create RAG store from documentation
         Step.new(
           id: 'create_rag_store',
           name: 'Build Knowledge Base',
@@ -108,11 +140,16 @@ module Workflows
           tool_allowlist: ['create_rag_store'],
           config: {
             tool: 'create_rag_store',
-            prompt_template: "Create a RAG store for <%= inputs['app_name'] %> API using the gathered documentation and user uploads."
+            inputs_mapping: {
+              app_name: "inputs['app_name']",
+              search_results: "inputs['selected_sources']",
+              user_uploads: "inputs['additional_docs']",
+              documentation: "inputs['existing_docs']"
+            }
           }
         ),
 
-        # Step 5: Generate initial integration code
+        # Step 6: Generate initial integration code
         Step.new(
           id: 'generate_integration',
           name: 'Generate Integration Configuration',
@@ -121,11 +158,15 @@ module Workflows
           tool_allowlist: ['generate_integration_config'],
           config: {
             tool: 'generate_integration_config',
-            prompt_template: "Generate the initial integration configuration for <%= inputs['app_name'] %> including authentication setup and one test endpoint based on the use case: <%= inputs['use_case'] %>"
+            inputs_mapping: {
+              app_name: "inputs['app_name']",
+              use_case: "inputs['use_case']",
+              rag_store_id: "outputs['create_rag_store']['rag_store_id']"
+            }
           }
         ),
 
-        # Step 6: Test the initial endpoint
+        # Step 7: Test the initial endpoint
         Step.new(
           id: 'test_endpoint',
           name: 'Test Initial Endpoint',
@@ -159,7 +200,7 @@ module Workflows
           }
         ),
 
-        # Step 7: Review test results and iterate
+        # Step 8: Review test results and iterate
         Step.new(
           id: 'review_test_results',
           name: 'Review Test Results',
@@ -189,7 +230,7 @@ module Workflows
           }
         ),
 
-        # Step 8: Build remaining endpoints
+        # Step 9: Build remaining endpoints
         Step.new(
           id: 'build_full_integration',
           name: 'Build Complete Integration',
@@ -199,11 +240,15 @@ module Workflows
           tool_allowlist: ['build_integration_endpoints'],
           config: {
             tool: 'build_integration_endpoints',
-            prompt_template: "Build out all remaining endpoints for <%= inputs['app_name'] %> based on the use case and successful test pattern."
+            inputs_mapping: {
+              integration_id: "outputs['generate_integration']['integration_id']",
+              use_case: "inputs['use_case']",
+              rag_store_id: "outputs['create_rag_store']['rag_store_id']"
+            }
           }
         ),
 
-        # Step 9: Final review and activation
+        # Step 10: Final review and activation
         Step.new(
           id: 'final_review',
           name: 'Final Review and Activation',
