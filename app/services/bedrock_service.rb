@@ -303,10 +303,34 @@ class BedrockService
       # where each block is directly the content type (text, image, etc)
       converse_messages = formatted_messages.map do |msg|
         content_blocks = msg[:content].map do |block|
-          if block[:type] == 'text'
+          case block[:type]
+          when 'text'
             { text: block[:text] }
+          when 'tool_use'
+            # Convert tool_use format
+            tool_data = block[:tool_use]
+            {
+              tool_use: {
+                tool_use_id: tool_data[:id],
+                name: tool_data[:name],
+                input: tool_data[:input]
+              }
+            }
+          when 'tool_result'
+            # Convert tool_result format
+            result_data = block[:tool_result]
+            {
+              tool_result: {
+                tool_use_id: result_data[:tool_use_id],
+                content: result_data[:content].is_a?(Array) ? 
+                  result_data[:content].map { |c| 
+                    c[:type] == 'text' ? { text: c[:text] } : c 
+                  } : 
+                  [{ text: result_data[:content].to_s }]
+              }
+            }
           else
-            # Handle other content types if needed
+            # Handle other content types
             block
           end
         end

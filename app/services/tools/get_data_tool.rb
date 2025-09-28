@@ -39,8 +39,8 @@ module Tools
       end
       
       # Validate object type exists
-      unless ScoutDataRegistry.object_exists?(object_type)
-        available_types = ScoutDataRegistry.available_object_types
+      available_types = ScoutDataRegistry.available_object_types
+      unless available_types.include?(object_type)
         return error_response(
           "Unknown object type: #{object_type}",
           available_types: available_types,
