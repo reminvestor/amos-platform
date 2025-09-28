@@ -44,19 +44,47 @@ class ScoutController < ApplicationController
       save_scout_message('user', user_message)
       Rails.logger.info "Scout: Saved user message"
       
-      # Use the new generic tools service
-      generic_tools_service = ScoutGenericToolsService.new(current_user, current_entity, session[:scout_session_id])
-      
-      # Pass context to the service if available, or load from cache
-      if context.present?
-        generic_tools_service.set_context(context)
-      else
-        # Try to load existing context
-        generic_tools_service.get_context
-      end
+      # Use the new V2 tools service
+      generic_tools_service = ScoutGenericToolsServiceV2.new(current_user, current_entity, session[:scout_session_id])
       
       conversation_history = persisted_history_last_k(12)
-      response = generic_tools_service.process_message_with_tools(user_message, conversation_history, current_canvas)
+      
+      # Note: V2 uses streaming by default, but this endpoint returns JSON
+      # We'll need to update this to use process_message_with_tools_streaming properly
+      # For now, let's create a simple wrapper
+      result = nil
+      generic_tools_service.process_message_with_tools_streaming(
+        user_message, 
+        ->(update) { 
+          # Collect the final response
+          if update.is_a?(Hash) && update[:final_response]
+            result = update
+          end
+        },
+        conversation_history, 
+        current_canvas
+      )
+      
+      # Extract response from result
+      response = if result
+        {
+          message: result[:final_response][:message],
+          tools_used: result[:tools_used] || [],
+          success_count: result[:tools_used]&.length || 0,
+          error_count: 0,
+          canvas_type: result[:canvas_type] || 'conversation',
+          canvas_data: result[:canvas_data] || {}
+        }
+      else
+        {
+          message: "I couldn't process that request.",
+          tools_used: [],
+          success_count: 0,
+          error_count: 1,
+          canvas_type: 'conversation',
+          canvas_data: {}
+        }
+      end
       
       Rails.logger.info "Scout: Got response - tools_used: #{response[:tools_used]}, success_count: #{response[:success_count]}"
       
@@ -432,8 +460,8 @@ class ScoutController < ApplicationController
       when 'integrations_manager'
         # If reload_data is requested, fetch fresh integrations data
         if params[:reload_data]
-          service = ScoutGenericToolsService.new(current_user, current_entity)
-          fresh_data = service.execute_list_connections({})
+          service = ScoutGenericToolsServiceV2.new(current_user, current_entity, session[:scout_session_id])
+          fresh_data = service.execute_tool_by_name('list_connections', {})
           canvas_data = fresh_data[:canvas_data] || {}
         end
         canvas_content = render_integrations_manager(canvas_data)
