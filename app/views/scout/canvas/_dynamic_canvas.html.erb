@@ -66,14 +66,28 @@
   .ai-metric-value {
     font-size: 2.5rem;
     font-weight: bold;
-    color: #0d6efd;
+    color: #212529 !important;
   }
   
   .ai-metric-label {
-    color: #6c757d;
+    color: #6c757d !important;
     font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+  }
+  
+  /* Force dark text on all metric elements */
+  #dynamicCanvasContent .metric-card,
+  #dynamicCanvasContent .metric-card * {
+    color: #212529 !important;
+  }
+  
+  #dynamicCanvasContent .metric-label {
+    color: #6c757d !important;
+  }
+  
+  #dynamicCanvasContent .metric-value {
+    color: #212529 !important;
   }
   
   .ai-chart-container {
