@@ -364,11 +364,18 @@ class ScoutGenericToolsServiceV2
       messages << formatted_message
     end
     
-    # Add current message
-    messages << {
-      role: 'user',
-      content: [{ type: 'text', text: current_message }]
-    }
+    # Add current message only if it's not already in the history
+    # (This can happen when the controller adds the message to history before calling this service)
+    last_user_message = messages.reverse.find { |m| m[:role] == 'user' }
+    if !last_user_message || last_user_message[:content].first[:text] != current_message
+      Rails.logger.info "🔍 Adding current message as it's not in history"
+      messages << {
+        role: 'user',
+        content: [{ type: 'text', text: current_message }]
+      }
+    else
+      Rails.logger.info "🔍 Current message already in history, not adding again"
+    end
     
     Rails.logger.info "🔍 Final messages array: #{messages.map { |m| "#{m[:role]}: #{m[:content].first[:text].to_s.first(30)}..." }}"
     
