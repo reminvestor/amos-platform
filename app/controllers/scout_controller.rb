@@ -345,8 +345,8 @@ class ScoutController < ApplicationController
         final_response = {
           message: result[:message],
           message_already_saved: result[:message_already_saved] || false,
-          canvas_type: result[:canvas],
-          canvas_data: result[:canvas_data],
+          canvas_type: result[:canvas_type] || result[:canvas] || 'conversation',
+          canvas_data: result[:canvas_data] || {},
           tools_used: result[:tools_used] || [],
           success_count: (result[:tools_used].is_a?(Array) ? result[:tools_used].count : 0),
           error_count: 0
