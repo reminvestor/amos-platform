@@ -338,11 +338,14 @@ class ScoutGenericToolsServiceV2
   def format_conversation_for_ai(history, current_message)
     messages = []
     
-    # Add recent history
+    # Add recent history, filtering out messages with nil content
     history.last(10).each do |msg|
+      content = msg['content'] || msg[:content]
+      next if content.nil? || content.to_s.strip.empty?
+      
       messages << {
         role: msg['role'] == 'user' ? 'user' : 'assistant',
-        content: [{ type: 'text', text: msg['content'] }]
+        content: [{ type: 'text', text: content.to_s }]
       }
     end
     

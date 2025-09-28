@@ -421,22 +421,24 @@ class BedrockService
     end
 
     # Claude on Bedrock expects specific format with content as array containing type
-    Rails.logger.debug "🔍 format_messages_for_claude input: #{messages_array.inspect}"
+    Rails.logger.debug "🔍 format_messages_for_claude input: #{messages_array.inspect}" if Rails.env.development?
     
     formatted = messages_array.map do |msg|
       content = msg[:content] || msg['content']
       
-      Rails.logger.debug "🔍 Processing message content: #{content.inspect}"
+      Rails.logger.debug "🔍 Processing message content: #{content.inspect}" if Rails.env.development?
       
       # Format content for Bedrock API
       formatted_content = if content.is_a?(Array)
         # Check if array items already have 'type' field, if not fix them
         content.map do |item|
           if item.is_a?(Hash) && (item[:type] || item['type'])
-            # Already correctly formatted - ensure keys are symbols
-            { type: (item[:type] || item['type']).to_s, text: (item[:text] || item['text']) }
+            # Already correctly formatted - ensure keys are symbols and text is not nil
+            text_content = (item[:text] || item['text'])
+            { type: (item[:type] || item['type']).to_s, text: text_content || '' }
           elsif item.is_a?(Hash) && (item[:text] || item['text'])
-            { type: 'text', text: (item[:text] || item['text']) }  # Fix missing type field
+            text_value = (item[:text] || item['text'])
+            { type: 'text', text: text_value || '' }  # Fix missing type field
           elsif item.is_a?(String)
             { type: 'text', text: item }
           else
@@ -456,11 +458,11 @@ class BedrockService
         content: formatted_content
       }
       
-      Rails.logger.debug "🔍 Formatted message: #{result.inspect}"
+      Rails.logger.debug "🔍 Formatted message: #{result.inspect}" if Rails.env.development?
       result
     end
     
-    Rails.logger.debug "🔍 Final formatted messages: #{formatted.inspect}"
+    Rails.logger.debug "🔍 Final formatted messages: #{formatted.inspect}" if Rails.env.development?
     formatted
   end
 end
