@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_23_210000) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -540,6 +540,25 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_210000) do
     t.index ["entity_id"], name: "index_policy_rules_on_entity_id"
   end
 
+  create_table "rag_stores", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "app_name", null: false
+    t.string "pinecone_index", null: false
+    t.string "pinecone_namespace", null: false
+    t.integer "chunk_count", default: 0
+    t.jsonb "metadata", default: {}
+    t.string "status", default: "active"
+    t.bigint "user_id"
+    t.bigint "entity_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_name"], name: "index_rag_stores_on_app_name"
+    t.index ["entity_id"], name: "index_rag_stores_on_entity_id"
+    t.index ["pinecone_index", "pinecone_namespace"], name: "index_rag_stores_on_pinecone_index_and_pinecone_namespace", unique: true
+    t.index ["status"], name: "index_rag_stores_on_status"
+    t.index ["user_id"], name: "index_rag_stores_on_user_id"
+  end
+
   create_table "rich_text_sections", force: :cascade do |t|
     t.string "title"
     t.string "section_type"
@@ -898,6 +917,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_23_210000) do
   add_foreign_key "landing_pages", "entities"
   add_foreign_key "landing_pages", "users"
   add_foreign_key "policy_rules", "entities"
+  add_foreign_key "rag_stores", "entities"
+  add_foreign_key "rag_stores", "users"
   add_foreign_key "rich_text_sections", "landing_pages"
   add_foreign_key "scout_conversations", "entities"
   add_foreign_key "scout_conversations", "users"
