@@ -318,9 +318,9 @@ module Tools
               css_class = value > 0 ? 'metric-positive' : value < 0 ? 'metric-negative' : ''
               
               <<~METRIC
-                <div class="metric">
-                  <span class="metric-label">#{metric.to_s.humanize}:</span>
-                  <span class="metric-value #{css_class}">#{format_metric_value(value)}</span>
+                <div class="dynamic-metric">
+                  <span class="dynamic-metric-label">#{metric.to_s.humanize}:</span>
+                  <span class="dynamic-metric-value #{css_class}">#{format_metric_value(value)}</span>
                 </div>
               METRIC
             }.join}
@@ -550,8 +550,14 @@ module Tools
         </div>
         
         <style>
+          /* Reset any inherited styles */
+          .dynamic-content * {
+            color: inherit;
+          }
+          
           .dynamic-content {
             padding: 20px;
+            color: #212529 !important;
           }
           
           .metric-cards {
@@ -561,33 +567,70 @@ module Tools
             margin-bottom: 30px;
           }
           
-          .metric-card {
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+          .dynamic-metric-card {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            border: 1px solid #e0e0e0 !important;
+            border-radius: 8px !important;
+            padding: 20px !important;
+            text-align: center !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
             transition: transform 0.2s, box-shadow 0.2s;
+            color: #212529 !important;
           }
           
-          .metric-card:hover {
+          .dynamic-metric-card * {
+            color: inherit !important;
+          }
+          
+          .dynamic-metric-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
           }
           
-          .metric-value {
-            font-size: 32px;
-            font-weight: bold;
-            color: #212529;
-            margin: 10px 0;
+          .dynamic-metric-value {
+            font-size: 36px !important;
+            font-weight: 700 !important;
+            color: #212529 !important;
+            margin: 10px 0 !important;
+            line-height: 1.2 !important;
+            display: block !important;
           }
           
-          .metric-label {
-            font-size: 14px;
-            color: #495057;
-            text-transform: capitalize;
-            font-weight: 500;
+          .dynamic-metric-label {
+            font-size: 14px !important;
+            color: #495057 !important;
+            text-transform: capitalize !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.5px !important;
+            display: block !important;
+          }
+          
+          /* Override any bootstrap text color classes */
+          .dynamic-content .text-white {
+            color: #212529 !important;
+          }
+          
+          .dynamic-content .text-light {
+            color: #212529 !important;
+          }
+          
+          /* Override AI template default styles */
+          .dynamic-content .ai-metric-value {
+            color: #212529 !important;
+          }
+          
+          .dynamic-content .ai-metric-label {
+            color: #495057 !important;
+          }
+          
+          .dynamic-content .ai-metric-card {
+            background: #ffffff !important;
+            color: #212529 !important;
+          }
+          
+          .dynamic-content .ai-metric-card * {
+            color: inherit !important;
           }
           
           .data-section {
@@ -728,9 +771,9 @@ module Tools
       
       cards = metrics.map do |key, value|
         <<~HTML
-          <div class="metric-card">
-            <div class="metric-label">#{key.to_s.humanize}</div>
-            <div class="metric-value">#{format_metric_value(value)}</div>
+          <div class="dynamic-metric-card">
+            <div class="dynamic-metric-label">#{key.to_s.humanize}</div>
+            <div class="dynamic-metric-value">#{format_metric_value(value)}</div>
           </div>
         HTML
       end
