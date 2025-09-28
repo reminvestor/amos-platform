@@ -408,6 +408,11 @@ export default class extends Controller {
                 const data = JSON.parse(jsonStr)
                 console.log("📊 Streaming data:", data.type, data.type === 'response' ? '(Final Response)' : (data.message || data.content))
                 
+                // Add detailed logging for content chunks
+                if (data.type === 'content') {
+                  console.log("🔥 CONTENT CHUNK RECEIVED:", data.content, "Current streaming content:", this.currentStreamingContent)
+                }
+                
                 if (data.type === 'update') {
                   // Show progress update in the streaming window
                   console.log("🔄 Progress:", data.message)
@@ -498,6 +503,7 @@ export default class extends Controller {
                     document.dispatchEvent(evt)
                   }
                 } else if (data.type === 'content') {
+                  console.log("🎯 ENTERING CONTENT HANDLER - data.content:", data.content, "currentStreamingContent defined?", this.currentStreamingContent !== undefined)
                   // Handle content chunks for streaming
                   if (data.content && this.currentStreamingContent !== undefined) {
                     this.currentStreamingContent += data.content
