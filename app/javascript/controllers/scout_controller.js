@@ -639,27 +639,27 @@ export default class extends Controller {
         this.streamingMessageElement = null
         
         // Check if Scout suggested a canvas to load
-        if (finalResponseData.canvas) {
-          console.log(`🎨 Scout suggested canvas: ${finalResponseData.canvas}`)
+        if (finalResponseData.canvas_type && finalResponseData.canvas_type !== 'conversation') {
+          console.log(`🎨 Scout suggested canvas: ${finalResponseData.canvas_type}`)
           if (finalResponseData.canvas_data) {
             console.log("📊 Canvas data:", finalResponseData.canvas_data)
           }
           
           // Check if suggested canvas is the same as current (stay and refresh vs navigate)
           const isSameCanvas = this.currentCanvas && 
-                              this.currentCanvas.type === finalResponseData.canvas &&
+                              this.currentCanvas.type === finalResponseData.canvas_type &&
                               this.currentCanvas.data?.landing_page_id === finalResponseData.canvas_data?.landing_page_id
           
           if (isSameCanvas) {
             console.log("🔄 Staying on same canvas - refreshing immediately since job is complete")
             // Job is already done by the time final response arrives, refresh now!
             setTimeout(() => {
-              this.loadScoutCanvas(finalResponseData.canvas, finalResponseData.canvas_data || {})
+              this.loadScoutCanvas(finalResponseData.canvas_type, finalResponseData.canvas_data || {})
             }, 500)
           } else {
             console.log("🎯 Loading different canvas...")
             setTimeout(() => {
-              this.loadScoutCanvas(finalResponseData.canvas, finalResponseData.canvas_data || {})
+              this.loadScoutCanvas(finalResponseData.canvas_type, finalResponseData.canvas_data || {})
             }, 1000)
           }
         } else {
