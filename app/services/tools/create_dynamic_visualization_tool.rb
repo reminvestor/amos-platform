@@ -633,6 +633,26 @@ module Tools
             color: inherit !important;
           }
           
+          /* Handle AI-generated metric-card classes (without dynamic- prefix) */
+          .dynamic-content .metric-card {
+            background: #ffffff !important;
+            color: #212529 !important;
+          }
+          
+          .dynamic-content .metric-card * {
+            color: #212529 !important;
+          }
+          
+          .dynamic-content .metric-label {
+            color: #495057 !important;
+            font-weight: 600 !important;
+          }
+          
+          .dynamic-content .metric-value {
+            color: #212529 !important;
+            font-weight: 700 !important;
+          }
+          
           .data-section {
             margin: 30px 0;
           }
