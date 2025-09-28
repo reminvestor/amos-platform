@@ -298,13 +298,15 @@ class BedrockService
     Rails.logger.info "Sending streaming request to Bedrock Claude (#{model_id}) using converse_stream"
 
     begin
-      # Format messages for converse API (different format than invoke_model)
-      converse_messages = messages.map do |msg|
+      # Use the already formatted messages for converse API
+      converse_messages = formatted_messages.map do |msg|
         {
           role: msg[:role] == 'system' ? 'user' : msg[:role],
-          content: msg[:content].is_a?(Array) ? msg[:content] : [{ text: msg[:content] }]
+          content: msg[:content] # Already formatted by format_messages_for_claude
         }
       end
+      
+      Rails.logger.info "🔍 Converse messages structure: #{converse_messages.to_json}"
       
       # Build payload for converse_stream
       payload = {
