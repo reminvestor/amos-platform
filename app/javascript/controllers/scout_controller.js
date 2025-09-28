@@ -645,17 +645,13 @@ export default class extends Controller {
             console.log("📊 Canvas data:", finalResponseData.canvas_data)
           }
           
-          // Check if suggested canvas is the same as current (stay and refresh vs navigate)
-          const isSameCanvas = this.currentCanvas && 
-                              this.currentCanvas.type === finalResponseData.canvas_type &&
-                              this.currentCanvas.data?.landing_page_id === finalResponseData.canvas_data?.landing_page_id
+          // Check if we're already on this exact canvas
+          const isAlreadyOnCanvas = this.currentCanvas && 
+                                   this.currentCanvas.type === finalResponseData.canvas_type &&
+                                   JSON.stringify(this.currentCanvas.data || {}) === JSON.stringify(finalResponseData.canvas_data || {})
           
-          if (isSameCanvas) {
-            console.log("🔄 Staying on same canvas - refreshing immediately since job is complete")
-            // Job is already done by the time final response arrives, refresh now!
-            setTimeout(() => {
-              this.loadScoutCanvas(finalResponseData.canvas_type, finalResponseData.canvas_data || {})
-            }, 500)
+          if (isAlreadyOnCanvas) {
+            console.log("✅ Already on the requested canvas, no need to reload")
           } else {
             console.log("🎯 Loading different canvas...")
             setTimeout(() => {
@@ -664,8 +660,18 @@ export default class extends Controller {
           }
         } else {
           console.log("ℹ️ No canvas suggested in response")
-          // Handle data changes that might require canvas refresh
-          this.handleDataChanges(finalResponseData)
+          // Only handle data changes if we have tools that modified data
+          if (finalResponseData.tools_used && finalResponseData.tools_used.length > 0) {
+            // Check if any tools actually modified data (not just queries)
+            const dataModifyingTools = ['create_object', 'update_object', 'delete_object', 'update_landing_page_content']
+            const hasDataChanges = finalResponseData.tools_used.some(tool => 
+              dataModifyingTools.includes(tool)
+            )
+            
+            if (hasDataChanges) {
+              this.handleDataChanges(finalResponseData)
+            }
+          }
         }
         
         // Re-enable input after successful response
@@ -835,6 +841,14 @@ export default class extends Controller {
     try {
       console.log(`🎨 Loading Scout canvas: ${canvasType}`)
       console.log(`📦 Canvas data:`, canvasData)
+      
+      // Check if we're already on this exact canvas
+      if (this.currentCanvas && 
+          this.currentCanvas.type === canvasType && 
+          JSON.stringify(this.currentCanvas.data || {}) === JSON.stringify(canvasData || {})) {
+        console.log("✅ Already on this canvas, skipping reload")
+        return
+      }
       
       // Check if wizard is waiting for completion
       if (window.landingPageWizard?.waitingForCompletion && canvasType === 'landing_page_viewer') {
