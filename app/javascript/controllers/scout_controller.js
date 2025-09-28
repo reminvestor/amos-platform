@@ -504,6 +504,32 @@ export default class extends Controller {
                   }
                 } else if (data.type === 'content') {
                   console.log("🎯 ENTERING CONTENT HANDLER - data.content:", data.content, "currentStreamingContent defined?", this.currentStreamingContent !== undefined)
+                  
+                  // Initialize streaming if not already started
+                  if (this.currentStreamingContent === undefined) {
+                    console.log('📝 First content chunk received - initializing streaming')
+                    
+                    // Find the last AI message or create a new one
+                    const messages = this.chatMessagesTarget.querySelectorAll('.message')
+                    const lastMessage = messages[messages.length - 1]
+                    
+                    // Only create new message if last one isn't already an empty AI message
+                    if (!lastMessage || !lastMessage.classList.contains('ai-message') || 
+                        lastMessage.querySelector('.message-bubble')?.textContent.trim()) {
+                      this.addMessage('', 'ai')
+                      // Small delay to ensure DOM is ready
+                      setTimeout(() => {
+                        const newMessages = this.chatMessagesTarget.querySelectorAll('.message')
+                        const newLastMessage = newMessages[newMessages.length - 1]
+                        const bubble = newLastMessage?.querySelector('.message-bubble')
+                        if (bubble) {
+                          this.streamingMessageElement = bubble
+                        }
+                      }, 10)
+                    }
+                    this.currentStreamingContent = ''
+                  }
+                  
                   // Handle content chunks for streaming
                   if (data.content && this.currentStreamingContent !== undefined) {
                     this.currentStreamingContent += data.content
