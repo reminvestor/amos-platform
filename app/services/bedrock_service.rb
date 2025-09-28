@@ -421,17 +421,22 @@ class BedrockService
     end
 
     # Claude on Bedrock expects specific format with content as array containing type
-    messages_array.map do |msg|
-      content = msg[:content]
+    Rails.logger.debug "🔍 format_messages_for_claude input: #{messages_array.inspect}"
+    
+    formatted = messages_array.map do |msg|
+      content = msg[:content] || msg['content']
+      
+      Rails.logger.debug "🔍 Processing message content: #{content.inspect}"
       
       # Format content for Bedrock API
       formatted_content = if content.is_a?(Array)
         # Check if array items already have 'type' field, if not fix them
         content.map do |item|
-          if item.is_a?(Hash) && item[:type]
-            item  # Already correctly formatted
-          elsif item.is_a?(Hash) && item[:text]
-            { type: 'text', text: item[:text] }  # Fix missing type field
+          if item.is_a?(Hash) && (item[:type] || item['type'])
+            # Already correctly formatted - ensure keys are symbols
+            { type: (item[:type] || item['type']).to_s, text: (item[:text] || item['text']) }
+          elsif item.is_a?(Hash) && (item[:text] || item['text'])
+            { type: 'text', text: (item[:text] || item['text']) }  # Fix missing type field
           elsif item.is_a?(String)
             { type: 'text', text: item }
           else
@@ -446,10 +451,16 @@ class BedrockService
         [{ type: 'text', text: content.to_s }]
       end
       
-      {
-        role: msg[:role] || 'user',
+      result = {
+        role: (msg[:role] || msg['role'] || 'user').to_s,
         content: formatted_content
       }
+      
+      Rails.logger.debug "🔍 Formatted message: #{result.inspect}"
+      result
     end
+    
+    Rails.logger.debug "🔍 Final formatted messages: #{formatted.inspect}"
+    formatted
   end
 end
