@@ -162,6 +162,11 @@ class ScoutGenericToolsServiceV2
       You can load data viewers and interactive canvases to display information visually.
       
       CRITICAL: Be concise and helpful. Use tools when needed to accomplish tasks.
+      
+      For multi-step operations:
+      1. Use manage_task_list to create and track your plan
+      2. Use get_schema to discover available fields before creating objects
+      3. Complete all requested steps - don't stop after gathering data
     PROMPT
     
     # Add agent-specific instructions if using loadout
@@ -275,6 +280,7 @@ class ScoutGenericToolsServiceV2
     
     # Get continuation
     continuation_message = ""
+    continuation_tool_calls = []
     tools = get_filtered_tools
     
     @ai_service.send_message_streaming(
@@ -285,13 +291,76 @@ class ScoutGenericToolsServiceV2
       json_mode: false,
       tools: tools
     ) do |chunk|
-      if chunk[:type] == :content
+      case chunk[:type]
+      when :content
         continuation_message << chunk[:content]
         progress_callback&.call({
           type: 'content_chunk',
           content: chunk[:content]
         })
+      when :tool_use_start
+        # Handle additional tool calls in continuation
+        Rails.logger.info "🔧 Additional tool detected in continuation: #{chunk[:tool_name]}"
+        continuation_tool_calls << {
+          id: chunk[:tool_id],
+          name: chunk[:tool_name],
+          arguments: ""
+        }
+        progress_callback&.call({
+          type: 'tool_start',
+          name: chunk[:tool_name]
+        })
+      when :tool_use
+        if continuation_tool_calls.any?
+          continuation_tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+        end
       end
+    end
+    
+    # If there are more tool calls, execute them recursively
+    if continuation_tool_calls.any?
+      Rails.logger.info "Executing #{continuation_tool_calls.length} additional tools in continuation"
+      additional_results = execute_tool_calls(continuation_tool_calls, progress_callback)
+      
+      # Recursively get the next continuation
+      return get_continuation_after_tools(
+        system_prompt,
+        conversation_messages + [
+          {
+            role: 'assistant',
+            content: continuation_tool_calls.map do |tc|
+              {
+                type: 'tool_use',
+                tool_use: {
+                  id: tc[:id],
+                  name: tc[:name],
+                  input: JSON.parse(tc[:arguments])
+                }
+              }
+            end
+          },
+          {
+            role: 'user',
+            content: continuation_tool_calls.map.with_index do |tc, idx|
+              {
+                type: 'tool_result',
+                tool_result: {
+                  tool_use_id: tc[:id],
+                  content: [
+                    {
+                      type: 'text',
+                      text: additional_results[idx].to_json
+                    }
+                  ]
+                }
+              }
+            end
+          }
+        ],
+        [],  # No more tool calls to add
+        [],  # No more results to add
+        progress_callback
+      )
     end
     
     {
