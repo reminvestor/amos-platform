@@ -138,9 +138,7 @@ module Tools
     end
     
     def generate_dashboard_visualization(title, data, options)
-      # Generate a dashboard with multiple widgets
-      widgets = data['widgets'] || data[:widgets] || []
-      
+      # Dynamically generate dashboard based on data structure
       <<~HTML
         <div class="dashboard-visualization">
           <div class="dashboard-header">
@@ -148,9 +146,7 @@ module Tools
             <p class="text-muted">#{options['subtitle'] || "Generated on #{Time.current.strftime('%B %d, %Y')}"}</p>
           </div>
           
-          <div class="dashboard-grid">
-            #{generate_dashboard_widgets(widgets)}
-          </div>
+          #{generate_dynamic_content(data, options)}
         </div>
         
         <style>
@@ -503,11 +499,330 @@ module Tools
       end
     end
     
+    def generate_dynamic_content(data, options = {})
+      # Intelligently render any data structure
+      content_parts = []
+      
+      # If data has a summary or metrics, show them as cards
+      if data['summary'] || data[:summary]
+        summary = data['summary'] || data[:summary]
+        content_parts << generate_metric_cards(summary)
+      end
+      
+      # Look for any array data to display
+      data.each do |key, value|
+        next if key.to_s == 'summary' # Already handled
+        
+        if value.is_a?(Array) && !value.empty?
+          content_parts << "<div class='data-section'>"
+          content_parts << "<h3>#{key.to_s.humanize}</h3>"
+          
+          if value.first.is_a?(Hash)
+            # Array of objects - create cards or table based on size
+            if value.length <= 10
+              content_parts << generate_object_cards(value)
+            else
+              content_parts << generate_responsive_table(value)
+            end
+          else
+            # Simple array
+            content_parts << generate_list(value)
+          end
+          
+          content_parts << "</div>"
+        elsif value.is_a?(Hash) && !value.empty?
+          # Nested object - show as details
+          content_parts << "<div class='data-section'>"
+          content_parts << "<h3>#{key.to_s.humanize}</h3>"
+          content_parts << generate_key_value_display(value)
+          content_parts << "</div>"
+        end
+      end
+      
+      # If no structured content was generated, fall back to generic display
+      if content_parts.empty?
+        content_parts << format_data_as_html(data)
+      end
+      
+      <<~HTML
+        <div class="dynamic-content">
+          #{content_parts.join("\n")}
+        </div>
+        
+        <style>
+          .dynamic-content {
+            padding: 20px;
+          }
+          
+          .metric-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+          }
+          
+          .metric-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+          }
+          
+          .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #0d6efd;
+            margin: 10px 0;
+          }
+          
+          .metric-label {
+            font-size: 14px;
+            color: #6c757d;
+            text-transform: capitalize;
+          }
+          
+          .data-section {
+            margin: 30px 0;
+          }
+          
+          .data-section h3 {
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+          }
+          
+          .object-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+          }
+          
+          .object-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+          }
+          
+          .object-card .card-title {
+            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #333;
+          }
+          
+          .object-card .card-field {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          
+          .object-card .field-label {
+            font-size: 14px;
+            color: #6c757d;
+            text-transform: capitalize;
+          }
+          
+          .object-card .field-value {
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+            text-align: right;
+          }
+          
+          .responsive-table {
+            overflow-x: auto;
+            margin: 20px 0;
+          }
+          
+          .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+          }
+          
+          .data-table th,
+          .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+          }
+          
+          .data-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+            text-transform: capitalize;
+            position: sticky;
+            top: 0;
+          }
+          
+          .data-table tr:hover {
+            background-color: #f8f9fa;
+          }
+          
+          .data-list {
+            list-style: none;
+            padding: 0;
+          }
+          
+          .data-list li {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+          }
+          
+          .data-list li:last-child {
+            border-bottom: none;
+          }
+          
+          .key-value-display {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+          }
+          
+          .key-value-item {
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          
+          .key-value-key {
+            font-weight: 500;
+            color: #6c757d;
+            text-transform: capitalize;
+          }
+          
+          .key-value-value {
+            color: #333;
+          }
+          
+          @media (max-width: 768px) {
+            .object-cards {
+              grid-template-columns: 1fr;
+            }
+            
+            .metric-cards {
+              grid-template-columns: 1fr;
+            }
+          }
+        </style>
+      HTML
+    end
+    
+    def generate_metric_cards(metrics)
+      return "" if metrics.empty?
+      
+      cards = metrics.map do |key, value|
+        <<~HTML
+          <div class="metric-card">
+            <div class="metric-label">#{key.to_s.humanize}</div>
+            <div class="metric-value">#{format_metric_value(value)}</div>
+          </div>
+        HTML
+      end
+      
+      "<div class='metric-cards'>#{cards.join}</div>"
+    end
+    
+    def generate_object_cards(objects)
+      return "" if objects.empty?
+      
+      cards = objects.map do |obj|
+        # Try to find a title field
+        title = obj['name'] || obj[:name] || 
+                obj['title'] || obj[:title] || 
+                obj['email'] || obj[:email] ||
+                obj['id'] || obj[:id] || 
+                "Item"
+        
+        # Generate fields, excluding the title field
+        fields = obj.map do |key, value|
+          next if key.to_s == 'name' || key.to_s == 'title' || value.nil?
+          
+          <<~HTML
+            <div class="card-field">
+              <span class="field-label">#{key.to_s.humanize}</span>
+              <span class="field-value">#{format_value(value)}</span>
+            </div>
+          HTML
+        end.compact
+        
+        <<~HTML
+          <div class="object-card">
+            <div class="card-title">#{title}</div>
+            #{fields.join}
+          </div>
+        HTML
+      end
+      
+      "<div class='object-cards'>#{cards.join}</div>"
+    end
+    
+    def generate_responsive_table(objects)
+      return "" if objects.empty?
+      
+      # Get all unique keys across all objects
+      all_keys = objects.flat_map(&:keys).uniq
+      
+      # Prioritize certain columns to appear first
+      priority_keys = ['name', 'title', 'email', 'id', 'created_at']
+      ordered_keys = priority_keys.select { |k| all_keys.include?(k) } + 
+                     (all_keys - priority_keys)
+      
+      <<~HTML
+        <div class="responsive-table">
+          <table class="data-table">
+            <thead>
+              <tr>
+                #{ordered_keys.map { |key| "<th>#{key.to_s.humanize}</th>" }.join}
+              </tr>
+            </thead>
+            <tbody>
+              #{objects.map { |obj|
+                "<tr>#{ordered_keys.map { |key| 
+                  "<td>#{format_value(obj[key])}</td>" 
+                }.join}</tr>"
+              }.join}
+            </tbody>
+          </table>
+        </div>
+      HTML
+    end
+    
+    def generate_list(items)
+      <<~HTML
+        <ul class="data-list">
+          #{items.map { |item| "<li>#{format_value(item)}</li>" }.join}
+        </ul>
+      HTML
+    end
+    
+    def generate_key_value_display(hash)
+      items = hash.map do |key, value|
+        <<~HTML
+          <div class="key-value-item">
+            <span class="key-value-key">#{key.to_s.humanize}</span>
+            <span class="key-value-value">#{format_value(value)}</span>
+          </div>
+        HTML
+      end
+      
+      "<div class='key-value-display'>#{items.join}</div>"
+    end
+    
+    
     def load_visualization_canvas(title, html_content)
       @context[:canvas_suggestion] = 'dynamic_canvas'
       @context[:canvas_data] = {
         title: title,
-        content: html_content,
+        html_content: html_content,
         artifact_type: 'visualization'
       }
     end
