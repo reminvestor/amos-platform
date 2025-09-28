@@ -568,19 +568,26 @@ module Tools
             padding: 20px;
             text-align: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+          }
+          
+          .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
           }
           
           .metric-value {
             font-size: 32px;
             font-weight: bold;
-            color: #0d6efd;
+            color: #212529;
             margin: 10px 0;
           }
           
           .metric-label {
             font-size: 14px;
-            color: #6c757d;
+            color: #495057;
             text-transform: capitalize;
+            font-weight: 500;
           }
           
           .data-section {
@@ -612,7 +619,7 @@ module Tools
             font-weight: 600;
             font-size: 18px;
             margin-bottom: 10px;
-            color: #333;
+            color: #212529;
           }
           
           .object-card .card-field {
@@ -630,7 +637,7 @@ module Tools
           
           .object-card .field-value {
             font-size: 14px;
-            color: #333;
+            color: #212529;
             font-weight: 500;
             text-align: right;
           }
