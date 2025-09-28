@@ -106,18 +106,25 @@ class ScoutGenericToolsServiceV2
       return execute_load_canvas(args)
     end
     
+    # Create context that will be shared with the tool
+    tool_context = { 
+      session_id: @session_id,
+      canvas_suggestion: nil,
+      canvas_data: {}
+    }
+    
     # Execute through tool catalog
     result = @tool_catalog.execute_tool(
       tool_name, 
       args,
       user: @user,
       entity: @entity,
-      context: { session_id: @session_id }
+      context: tool_context
     )
     
     # Handle any canvas suggestions from tools
-    if result[:canvas_suggestion]
-      safe_load_canvas(result[:canvas_suggestion], result[:canvas_data] || {})
+    if tool_context[:canvas_suggestion]
+      safe_load_canvas(tool_context[:canvas_suggestion], tool_context[:canvas_data] || {})
     end
     
     result
