@@ -29,7 +29,7 @@ module Tools
     def execute(args)
       log_execution(args)
       
-      object_type = get_arg(args, :object_type)
+      object_type = normalize_object_type(get_arg(args, :object_type))
       filters = get_arg(args, :filters, {})
       options = get_arg(args, :options, {})
       
@@ -51,23 +51,43 @@ module Tools
       # Process date range filters
       filters = process_date_filters(filters)
       
-      # Query the data
-      result = ScoutDataRegistry.query_data(
-        object_type: object_type,
-        filters: filters,
-        options: options,
-        entity: entity
-      )
+      # Fix field names to match database schema
+      fixed_filters = fix_field_names(filters, object_type)
+      fixed_order_by = fix_field_names_in_order_by(options['order_by'], object_type)
       
-      success_response(
-        object_type: object_type,
-        count: result[:count],
-        records: result[:records],
-        total_count: result[:total_count],
-        has_more: result[:has_more],
-        filters_applied: filters,
-        options_applied: options
-      )
+      # Use UniversalQueryEngine to query the data
+      query_engine = UniversalQueryEngine.new(user, entity)
+      
+      # Convert to format expected by query engine
+      query_params = {
+        objects: [object_type],
+        filters: fixed_filters,
+        limit: options['limit'] || 20,
+        order_by: fixed_order_by,
+        include_metrics: options['include_metrics'] != false,
+        include_relationships: options['include_relationships']
+      }
+      
+      result = query_engine.execute_get_data(query_params)
+      
+      if result[:success]
+        # Extract data for the requested object type
+        data = result[:data][object_type] || {}
+        records = data[:records] || []
+        
+        success_response(
+          object_type: object_type,
+          count: records.length,
+          records: records,
+          total_count: data[:total_count] || records.length,
+          has_more: data[:has_more] || false,
+          filters_applied: filters,
+          options_applied: options,
+          metadata: result[:metadata]
+        )
+      else
+        error_response(result[:error] || "Query failed")
+      end
     rescue => e
       Rails.logger.error "GetDataTool error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
@@ -133,6 +153,77 @@ module Tools
       end
       
       d[m][n]
+    end
+    
+    def normalize_object_type(object_type)
+      # Convert singular to plural forms expected by the query engine
+      case object_type.to_s.downcase
+      when 'campaign'
+        'campaigns'
+      when 'contact'
+        'contacts'
+      when 'contact_group'
+        'contact_groups'
+      when 'landing_page'
+        'landing_pages'
+      when 'email_template'
+        'email_templates'
+      when 'email_delivery'
+        'email_deliveries'
+      else
+        object_type.to_s
+      end
+    end
+    
+    def fix_field_names(filters, object_type)
+      return filters unless filters.is_a?(Hash)
+      
+      fixed_filters = {}
+      
+      filters.each do |key, value|
+        fixed_key = map_field_name(key.to_s, object_type)
+        fixed_filters[fixed_key] = value
+      end
+      
+      fixed_filters
+    end
+    
+    def fix_field_names_in_order_by(order_by, object_type)
+      return order_by unless order_by.is_a?(String)
+      
+      # Split field and direction
+      parts = order_by.split(' ')
+      field = parts[0]
+      direction = parts[1] || 'desc'
+      
+      fixed_field = map_field_name(field, object_type)
+      "#{fixed_field} #{direction}"
+    end
+    
+    def map_field_name(field, object_type)
+      # Common field mappings
+      case object_type.to_s.downcase
+      when 'campaign', 'campaigns'
+        case field.downcase
+        when 'date', 'created', 'date_created'
+          'created_at'
+        when 'sent', 'date_sent', 'sent_date'
+          'sent_at'
+        else
+          field
+        end
+      when 'contact', 'contacts'
+        case field.downcase
+        when 'date', 'created', 'date_created', 'signup_date'
+          'created_at'
+        when 'name'
+          'first_name' # Most likely they want first_name when they say name
+        else
+          field
+        end
+      else
+        field
+      end
     end
   end
 end
