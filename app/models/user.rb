@@ -11,9 +11,8 @@ class User < ApplicationRecord
   validates :first_name, :last_name, presence: true
   validates :role, presence: true, inclusion: { in: ROLES }
   
-  # Entity Associations
-  has_many :entity_users, dependent: :destroy
-  has_many :entities, through: :entity_users
+  # Entity Association - Single entity per user
+  belongs_to :entity
   
   # Resource Associations
   has_many :contacts, dependent: :destroy
@@ -33,8 +32,8 @@ class User < ApplicationRecord
   # Integration associations
   has_many :integration_logs
   
-  # Integration relationships (through entities)
-  has_many :connections, through: :entities
+  # Integration relationships (through entity)
+  has_many :connections, through: :entity
   has_many :integrations, through: :connections
   
   # Methods
@@ -57,17 +56,16 @@ class User < ApplicationRecord
   end
   
   # Entity role methods
-  def entity_role(entity)
-    entity_users.find_by(entity: entity)&.role
+  def entity_role
+    role # User's role is now their entity role
   end
-  
-  def entity_owner?(entity)
-    entity_users.find_by(entity: entity, role: 'owner').present?
+
+  def entity_owner?
+    role == 'owner'
   end
-  
-  def entity_admin?(entity)
-    eu = entity_users.find_by(entity: entity)
-    eu.present? && (eu.role == 'admin' || eu.role == 'owner')
+
+  def entity_admin?
+    ['owner', 'admin'].include?(role)
   end
   
   # Ensure user has a business profile
@@ -96,13 +94,13 @@ class User < ApplicationRecord
     social_media_accounts.connected.by_platform(platform).first
   end
   
-  # Get entities where the user has specific roles
-  def owned_entities
-    entities.includes(:entity_users).where(entity_users: { role: 'owner' })
+  # User now belongs to a single entity
+  def owned_entity
+    entity_owner? ? entity : nil
   end
-  
-  def administered_entities
-    entities.includes(:entity_users).where(entity_users: { role: ['owner', 'admin'] })
+
+  def administered_entity
+    entity_admin? ? entity : nil
   end
   
   before_create :generate_api_key

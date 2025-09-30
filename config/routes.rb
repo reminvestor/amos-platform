@@ -126,7 +126,42 @@ Rails.application.routes.draw do
     end
     
     # Landing pages
-    resources :landing_pages do
+    # Agent system routes
+  namespace :agents do
+    resources :monitoring do
+      collection do
+        get :performance_metrics
+        get :decision_traces
+        get :collaboration_network
+        get :learning_insights
+        get :resource_usage
+        get :alerts
+        get :export_report
+      end
+      member do
+        get :agent_details
+      end
+    end
+    
+    # Test routes (development only)
+    if Rails.env.development?
+      resources :test, only: [:index] do
+        collection do
+          post :create_agent
+          post :plan_workflow
+          post :execute_workflow
+          post :test_parallel
+          post :test_resilience
+          post :test_learning
+          post :agent_communication
+          post :resource_usage
+          post :performance_metrics
+        end
+      end
+    end
+  end
+  
+  resources :landing_pages do
       member do
         post :publish
         post :unpublish
@@ -242,6 +277,8 @@ Rails.application.routes.draw do
   post 'scout/chat_stream', to: 'scout#chat_stream'
   post 'scout/chat_interactive', to: 'scout#chat_interactive'
   post 'scout/continue_workflow', to: 'scout#continue_workflow'
+  post 'scout/approve_workflow', to: 'scout#approve_workflow'
+  post 'scout/upload_files', to: 'scout#upload_files'
   get 'scout/history', to: 'scout#history' # paginated history
   delete 'scout/conversation', to: 'scout#clear_conversation'
   get 'scout/export', to: 'scout#conversation_export'

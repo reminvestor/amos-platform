@@ -4,7 +4,9 @@ require 'json'
 class BedrockService
   class BedrockError < StandardError; end
   
-  def initialize
+  attr_reader :model_registry
+  
+  def initialize(custom_model_id: nil, user: nil, entity: nil)
     @client = Aws::BedrockRuntime::Client.new(
       region: ENV['AWS_REGION'] || 'us-east-1',
       # Let AWS SDK use the default credential chain
@@ -18,15 +20,43 @@ class BedrockService
       http_read_timeout: 600, # 10 minutes
       http_open_timeout: 30   # 30 seconds to establish connection
     )
+    
+    # Platform integration
+    @model_registry = Agents::Platform::ModelRegistry.instance if defined?(Agents::Platform::ModelRegistry)
+    @custom_model_id = custom_model_id
+    @user = user
+    @entity = entity
+    @resource_manager = ResourceManager.new(entity) if entity
   end
 
   # Main method to send messages to Claude via Bedrock
   def send_message(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false, stream: false, &block)
+    # Use custom model if specified
+    if @custom_model_id && @model_registry
+      return send_via_platform(system_prompt, messages, model: @custom_model_id, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, stream: stream, &block)
+    end
+    
     if stream && block_given?
       send_message_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, &block)
     else
       send_message_non_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode)
     end
+  end
+  
+  # Complete method for simple API
+  def complete(messages:, temperature: 0.7, max_tokens: 1000, model: nil)
+    model_to_use = @custom_model_id || model || 'claude-3-sonnet'
+    
+    # Extract system prompt if present
+    system_prompt = nil
+    user_messages = messages
+    
+    if messages.first && messages.first[:role] == 'system'
+      system_prompt = messages.first[:content]
+      user_messages = messages[1..]
+    end
+    
+    send_message(system_prompt, user_messages, model: model_to_use, max_tokens: max_tokens, temperature: temperature, stream: false)
   end
 
   private
@@ -84,6 +114,24 @@ class BedrockService
       # Parse the response
       response_body = JSON.parse(response.body.read)
       content = response_body.dig('content', 0, 'text')
+      
+      # Track token usage if available in response
+      if response_body['usage']
+        tokens = {
+          input: response_body['usage']['input_tokens'] || 0,
+          output: response_body['usage']['output_tokens'] || 0
+        }
+        
+        if @user && @entity && @resource_manager
+          @resource_manager.track_tokens(@user, model_id, tokens, {
+            stream: false,
+            method: 'invoke_model',
+            timestamp: Time.current
+          })
+        end
+        
+        Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
+      end
       
       Rails.logger.info "Bedrock response received: #{content&.length || 0} characters"
       
@@ -256,6 +304,24 @@ class BedrockService
         content_block.text if content_block.respond_to?(:text)
       end.compact.join('')
       
+      # Track token usage if available
+      if response.respond_to?(:usage) && response.usage
+        tokens = {
+          input: response.usage.input_tokens || 0,
+          output: response.usage.output_tokens || 0
+        }
+        
+        if @user && @entity && @resource_manager
+          @resource_manager.track_tokens(@user, model_id, tokens, {
+            stream: false,
+            method: 'converse',
+            timestamp: Time.current
+          })
+        end
+        
+        Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
+      end
+      
       Rails.logger.info "Bedrock converse response received: #{content.length} characters"
       
       content
@@ -285,6 +351,15 @@ class BedrockService
     # Format messages for Claude
     formatted_messages = format_messages_for_claude(messages)
     
+    # Filter out messages with empty content arrays
+    formatted_messages = formatted_messages.reject do |msg|
+      msg[:content].nil? || msg[:content].empty? || 
+      (msg[:content].is_a?(Array) && msg[:content].all? { |c| 
+        # Check if this is a text block with empty text
+        c[:type] == 'text' && c[:text].to_s.strip.empty?
+      })
+    end
+    
     # Build the request body
     request_body = {
       anthropic_version: "bedrock-2023-05-31",
@@ -301,7 +376,13 @@ class BedrockService
       # Convert messages to converse API format
       # The converse API expects content to be an array of content blocks
       # where each block is directly the content type (text, image, etc)
-      converse_messages = formatted_messages.map do |msg|
+      converse_messages = formatted_messages.reject { |msg| 
+        msg[:content].nil? || msg[:content].empty? || 
+        (msg[:content].is_a?(Array) && msg[:content].all? { |c| 
+          # Check if this is a text block with empty text
+          c[:type] == 'text' && c[:text].to_s.strip.empty?
+        })
+      }.map do |msg|
         content_blocks = msg[:content].map do |block|
           case block[:type]
           when 'text'
@@ -341,6 +422,8 @@ class BedrockService
         }
       end
       
+      Rails.logger.info "🔍 Original formatted messages count: #{formatted_messages.length}"
+      Rails.logger.info "🔍 Converse messages count after conversion: #{converse_messages.length}"
       Rails.logger.info "🔍 Converse messages structure: #{converse_messages.to_json}"
       
       # Build payload for converse_stream
@@ -409,7 +492,28 @@ class BedrockService
             Rails.logger.info "Bedrock streaming complete: #{chunk_count} chunks in #{total_elapsed}s"
             yield(type: :complete, content: buffer)
           when :metadata
-            # Can log metadata if needed
+            # Extract and track token usage if available
+            if event.respond_to?(:usage) && event.usage
+              usage = event.usage
+              tokens = {
+                input: usage.input_tokens || 0,
+                output: usage.output_tokens || 0
+              }
+              
+              # Track tokens if we have user and entity
+              if @user && @entity && @resource_manager
+                @resource_manager.track_tokens(@user, model_id, tokens, {
+                  stream: true,
+                  timestamp: Time.current
+                })
+              end
+              
+              # Yield usage info
+              yield(type: :usage, tokens: tokens) if block_given?
+              
+              Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
+            end
+            
             Rails.logger.debug "Bedrock metadata: #{event.inspect}"
           end
         end
@@ -510,6 +614,62 @@ class BedrockService
     end
     
     Rails.logger.debug "🔍 Final formatted messages: #{formatted.inspect}" if Rails.env.development?
+    formatted
+  end
+  
+  # Send via platform model registry
+  def send_via_platform(system_prompt, messages, model:, max_tokens:, temperature:, json_mode:, stream:, &block)
+    prompt_config = {
+      system_prompt: system_prompt,
+      messages: format_platform_messages(system_prompt, messages),
+      max_tokens: max_tokens,
+      temperature: temperature,
+      json_mode: json_mode
+    }
+    
+    if stream && block_given?
+      @model_registry.invoke_model_stream(model, prompt_config, user: @user, entity: @entity) do |chunk|
+        yield chunk[:content] if chunk[:content]
+      end
+    else
+      result = @model_registry.invoke_model(model, prompt_config, user: @user, entity: @entity)
+      
+      # Format response to match expected format
+      {
+        'id' => "platform-#{SecureRandom.hex(16)}",
+        'model' => model,
+        'choices' => [{
+          'message' => {
+            'role' => 'assistant',
+            'content' => result[:content]
+          },
+          'finish_reason' => result[:stop_reason] || 'stop'
+        }],
+        'usage' => result[:usage]
+      }
+    end
+  rescue => e
+    Rails.logger.error "Platform model invocation failed: #{e.message}"
+    raise BedrockError, "Platform model error: #{e.message}"
+  end
+  
+  # Format messages for platform models
+  def format_platform_messages(system_prompt, messages)
+    formatted = []
+    
+    # Add system prompt as first message if present
+    if system_prompt.present?
+      formatted << { role: 'system', content: system_prompt }
+    end
+    
+    # Add user messages
+    messages.each do |msg|
+      formatted << {
+        role: msg[:role] || 'user',
+        content: msg[:content] || msg[:text] || msg.to_s
+      }
+    end
+    
     formatted
   end
 end

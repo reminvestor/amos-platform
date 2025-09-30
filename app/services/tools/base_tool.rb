@@ -28,6 +28,12 @@ module Tools
       metadata[:input_schema]
     end
     
+    # Whether this tool is read-only (doesn't modify state)
+    # Tools should override this if they are read-only
+    def self.read_only?
+      false
+    end
+    
     # Each tool must implement execute
     def execute(args)
       raise NotImplementedError, "Tool must implement execute method"

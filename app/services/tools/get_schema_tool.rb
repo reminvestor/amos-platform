@@ -1,5 +1,9 @@
 module Tools
   class GetSchemaTool < BaseTool
+    def self.read_only?
+      true  # This tool only provides schema information
+    end
+    
     def self.metadata
       {
         name: 'get_schema',
@@ -29,20 +33,24 @@ module Tools
       end
       
       # Use ScoutSchemaService for comprehensive schema
-      schema_service = ScoutSchemaService.new
-      result = schema_service.get_schema(object_type)
+      schema_data = ScoutSchemaService.get_model_schema(object_type)
       
-      if result[:success]
+      if schema_data
         success_response(
           object_type: object_type,
-          schema: result[:schema],
-          relationships: result[:relationships],
-          available_types: result[:available_types]
+          schema: schema_data,
+          table_name: schema_data[:table_name],
+          fields: schema_data[:fields],
+          required_fields: schema_data[:required_fields],
+          relationships: schema_data[:relationships],
+          example_data: schema_data[:example_data],
+          creation_notes: schema_data[:creation_notes]
         )
       else
+        available_types = ScoutSchemaService.get_all_available_models.map { |m| m[:model_name] }
         error_response(
-          result[:error],
-          available_types: result[:available_types]
+          "Schema not found for object type: #{object_type}",
+          available_types: available_types
         )
       end
     rescue => e

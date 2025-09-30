@@ -14,6 +14,11 @@ class ScoutGenericToolsServiceV2
     @canvas_data = {}
     @saved_message_content = Set.new
     @messages_saved_during_streaming = false
+    @context = {}
+  end
+  
+  def set_context(context = {})
+    @context = @context.merge(context)
   end
   
   def process_message_with_tools_streaming(user_message, progress_callback, conversation_history = [], current_canvas = nil)
@@ -54,6 +59,24 @@ class ScoutGenericToolsServiceV2
       # Execute any tool calls
       if tool_calls.any?
         tool_results = execute_tool_calls(tool_calls, progress_callback)
+        
+        # Add the assistant's response with tool calls to conversation
+        conversation_messages << {
+          role: 'assistant',
+          content: [
+            { type: 'text', text: accumulated_content.strip.presence || "I'll help you with that." },
+            *tool_calls.map do |tool_call|
+              {
+                type: 'tool_use',
+                tool_use: {
+                  id: tool_call[:id],
+                  name: tool_call[:name],
+                  input: JSON.parse(tool_call[:arguments])
+                }
+              }
+            end
+          ].compact
+        }
         
         # Get final response after tools
         final_response = get_continuation_after_tools(
@@ -103,14 +126,15 @@ class ScoutGenericToolsServiceV2
     
     # Special handling for canvas loading
     if tool_name == 'load_canvas'
-      return execute_load_canvas(args)
+      return execute_load_canvas(args, progress_callback)
     end
     
     # Create context that will be shared with the tool
     tool_context = { 
       session_id: @session_id,
       canvas_suggestion: nil,
-      canvas_data: {}
+      canvas_data: {},
+      **@context  # Include any additional context (like task_session)
     }
     
     # Execute through tool catalog
@@ -140,7 +164,7 @@ class ScoutGenericToolsServiceV2
   def build_system_prompt(current_canvas = nil)
     ai_identity = case Rails.application.config.ai_service
     when :bedrock
-      "You are Amos, the AI business automation assistant powered by AWS Bedrock."
+      "You are Amos, the AI business automation assistant powered by AMOS Labs."
     else
       "You are Amos, the AI business automation assistant."
     end
@@ -159,14 +183,50 @@ class ScoutGenericToolsServiceV2
       AVAILABLE DATA MODELS: #{available_models.join(', ')}
       
       INTELLIGENT CANVAS:
-      You can load data viewers and interactive canvases to display information visually.
+      IMPORTANT: When users ask to see/view/show campaigns, landing pages, contacts, or any data:
+      1. IMMEDIATELY use the load_canvas tool to display the appropriate viewer
+      2. Then provide additional insights or help with the data shown
       
-      CRITICAL: Be concise and helpful. Use tools when needed to accomplish tasks.
+      Canvas mappings:
+      - "show campaigns" or "campaigns" → load_canvas with canvas_name: "campaign_viewer"
+      - "show landing pages" or "landing pages" → load_canvas with canvas_name: "landing_page_viewer"
+      - "show contacts" or "contacts" → load_canvas with canvas_name: "contact_viewer"
+      - "show integrations" or "integrations" or "connections" → load_canvas with canvas_name: "integrations_manager"
+      - "analytics" or "data" → load_canvas with canvas_name: "analytics_dashboard"
       
-      For multi-step operations:
-      1. Use manage_task_list to create and track your plan
-      2. Use get_schema to discover available fields before creating objects
-      3. Complete all requested steps - don't stop after gathering data
+      CRITICAL: Always load the canvas FIRST using the load_canvas tool, then explain what's shown.
+      
+      INTELLIGENT REQUEST HANDLING:
+      Analyze each request to determine the best approach:
+      
+      1. SIMPLE REQUESTS (execute directly):
+         - Single tool calls (show data, list items, simple queries)
+         - Direct actions with clear parameters
+         - Information lookups
+         
+      2. COMPLEX REQUESTS (delegate to planner):
+         - Multi-step operations (create X then Y then Z)
+         - Requests requiring user input or preferences
+         - Creative tasks (landing pages, campaigns with custom content)
+         - Operations with dependencies between steps
+         - Anything requiring careful sequencing or conditional logic
+         
+      When you identify a complex request:
+      1. Use delegate_to_planner tool
+      2. Provide clear analysis of why it needs planning
+      3. Suggest high-level steps you think might be needed
+      4. Let the planner create the detailed workflow
+      
+      For simple requests:
+      1. Execute the necessary tools directly
+      2. Chain tool calls as needed for complete results
+      3. Use get_schema to discover available fields before creating objects
+      
+      When working with external integrations (Stripe, Mailgun, etc):
+      1. Use list_connections to find available connections for the service
+      2. Use list_operations with the connection_id to see what operations are available
+      3. Use invoke_operation with the correct connection_id and operation_id
+      4. If an operation fails with "Operation not found", always check available operations first
     PROMPT
     
     # Add agent-specific instructions if using loadout
@@ -219,10 +279,22 @@ class ScoutGenericToolsServiceV2
     
     tool_calls.each do |tool_call|
       begin
-        args = JSON.parse(tool_call[:arguments])
+        args = if tool_call[:arguments].present?
+          JSON.parse(tool_call[:arguments])
+        else
+          {}
+        end
         Rails.logger.info "Executing #{tool_call[:name]} with args: #{args.inspect}"
         
         result = execute_tool_by_name(tool_call[:name], args, progress_callback)
+        
+        # Special handling for delegate_to_planner
+        if tool_call[:name] == 'delegate_to_planner' && result[:success] && result[:approval_required]
+          # Store flag to indicate workflow delegation happened
+          @workflow_delegated = true
+          @delegated_task_session_id = result[:task_session_id]
+          @delegated_workflow_spec = result[:workflow_spec]
+        end
         
         progress_callback&.call({
           type: 'tool_complete',
@@ -230,34 +302,25 @@ class ScoutGenericToolsServiceV2
           success: result[:success] || false
         })
         
+        Rails.logger.info "Tool #{tool_call[:name]} result: #{result.inspect}"
         results << result
+      rescue JSON::ParserError => e
+        Rails.logger.error "Tool execution failed - Invalid JSON: #{e.message}, arguments: #{tool_call[:arguments]}"
+        results << { success: false, error: "Invalid tool arguments: #{e.message}" }
       rescue => e
         Rails.logger.error "Tool execution failed: #{e.message}"
         results << { success: false, error: e.message }
       end
     end
     
+    Rails.logger.info "All tool results: #{results.inspect}"
     results
   end
   
   def get_continuation_after_tools(system_prompt, conversation_messages, tool_calls, tool_results, progress_callback)
-    # Add tool results to conversation
-    conversation_messages << {
-      role: 'assistant',
-      content: [
-        { type: 'text', text: "I'll help you with that." },
-        *tool_calls.map.with_index do |tool_call, idx|
-          {
-            type: 'tool_use',
-            tool_use: {
-              id: tool_call[:id],
-              name: tool_call[:name],
-              input: JSON.parse(tool_call[:arguments])
-            }
-          }
-        end
-      ]
-    }
+    # The tool_use message should already be in conversation_messages
+    # Just add the tool results
+    Rails.logger.info "Adding tool results for #{tool_calls.length} tool calls"
     
     # Add tool results
     conversation_messages << {
@@ -311,8 +374,8 @@ class ScoutGenericToolsServiceV2
           name: chunk[:tool_name]
         })
       when :tool_use
-        if continuation_tool_calls.any?
-          continuation_tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+        if continuation_tool_calls.any? && chunk[:tool_use]
+          continuation_tool_calls.last[:arguments] += chunk[:tool_use][:input] || ""
         end
       end
     end
@@ -328,13 +391,20 @@ class ScoutGenericToolsServiceV2
         conversation_messages + [
           {
             role: 'assistant',
-            content: continuation_tool_calls.map do |tc|
+            content: [
+              { type: 'text', text: continuation_message.present? ? continuation_message : "Continuing with the next step..." }
+            ] + continuation_tool_calls.map do |tc|
               {
                 type: 'tool_use',
                 tool_use: {
                   id: tc[:id],
                   name: tc[:name],
-                  input: JSON.parse(tc[:arguments])
+                  input: begin
+                    tc[:arguments].present? ? JSON.parse(tc[:arguments]) : {}
+                  rescue JSON::ParserError => e
+                    Rails.logger.error "Failed to parse tool arguments: #{tc[:arguments]}"
+                    {}
+                  end
                 }
               }
             end
@@ -363,7 +433,7 @@ class ScoutGenericToolsServiceV2
       )
     end
     
-    {
+    response = {
       final_response: {
         message: continuation_message,
         message_already_saved: false
@@ -372,12 +442,40 @@ class ScoutGenericToolsServiceV2
       canvas_data: @canvas_data,
       tools_used: tool_calls.map { |tc| tc[:name] }
     }
+    
+    # Add workflow approval data if delegation happened
+    if @workflow_delegated
+      response[:workflow_approval_needed] = true
+      response[:task_session_id] = @delegated_task_session_id
+      response[:workflow_spec] = @delegated_workflow_spec
+    end
+    
+    response
   end
   
-  def execute_load_canvas(args)
+  def execute_load_canvas(args, progress_callback = nil)
     canvas_name = args['canvas_name'] || args[:canvas_name]
-    safe_load_canvas(canvas_name)
-    { success: true, message: "Loading #{canvas_name}" }
+    canvas_data = args['canvas_data'] || args[:canvas_data] || {}
+    
+    # Load canvas immediately via progress callback
+    if progress_callback
+      # First notify that we're loading the canvas
+      progress_callback.call({
+        type: 'intermediate_message',
+        content: "Loading #{canvas_name.gsub('_', ' ')}...",
+        role: 'assistant'
+      })
+      
+      # Then send the canvas update
+      progress_callback.call({
+        type: 'canvas_update',
+        canvas_type: canvas_name,
+        canvas_data: canvas_data
+      })
+    end
+    
+    safe_load_canvas(canvas_name, canvas_data)
+    { success: true, message: nil } # No additional message needed
   end
   
   def safe_load_canvas(canvas_name, data = {})

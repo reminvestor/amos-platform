@@ -2,3 +2,4 @@ web: env RUBY_DEBUG_OPEN=true bin/rails server -p 5001
 js: yarn build --watch
 css: yarn watch:css
 worker: SOLID_QUEUE_LOG_LEVEL=debug bin/solid_queue
+redis: redis-server --daemonize no

@@ -75,8 +75,21 @@ module Tools
     def create_campaign(data)
       # Ensure required fields
       data[:status] ||= 'draft'
-      data[:from_email] ||= entity.email_settings&.default_from_email || user.email
-      data[:from_name] ||= entity.name
+      
+      # Remove fields that don't exist on Campaign model
+      data.delete(:from_email)
+      data.delete(:from_name)
+      
+      # Handle unresolved variables - if email_template_id contains {{, it's unresolved
+      if data[:email_template_id].is_a?(String) && data[:email_template_id].include?('{{')
+        Rails.logger.warn "Unresolved variable in email_template_id: #{data[:email_template_id]}"
+        data[:email_template_id] = nil
+      end
+      
+      # Convert empty string or "0" to nil for foreign keys
+      if data[:email_template_id].to_s == "0" || data[:email_template_id].to_s.empty?
+        data[:email_template_id] = nil
+      end
       
       campaign = Campaign.new(data)
       campaign.user = user
@@ -121,9 +134,9 @@ module Tools
         {
           id: record.id,
           name: record.name,
-          subject: record.subject,
+          description: record.description,
           status: record.status,
-          from_email: record.from_email,
+          email_template_id: record.email_template_id,
           scheduled_at: record.scheduled_at,
           created_at: record.created_at
         }

@@ -348,8 +348,20 @@
       <!-- Tool activity panel removed - now part of task progress canvas -->
       
       <div class="chat-input-area">
-        <form id="message-form" data-scout-target="chatForm">
+        <form id="message-form" data-scout-target="chatForm" enctype="multipart/form-data">
+          <div class="attached-files" id="attached-files" style="display: none;">
+            <!-- Attached files will be shown here -->
+          </div>
           <div class="input-group">
+            <input type="file" 
+              id="file-input" 
+              multiple 
+              accept="image/*,.pdf,.doc,.docx,.txt,.csv"
+              style="display: none;"
+              data-scout-target="fileInput">
+            <button type="button" class="attach-btn" id="attach-button" title="Attach files">
+              <i class="fas fa-paperclip"></i>
+            </button>
             <textarea 
               class="chat-input" 
               id="message-input"
@@ -1588,9 +1600,44 @@ document.addEventListener('turbo:load', function() {
     // No-op: status updates now shown in unified chat
   }
 
+  // Upload files helper function
+  async function uploadFiles(files) {
+    const formData = new FormData();
+    files.forEach((file, index) => {
+      formData.append(`files[${index}]`, file);
+    });
+    
+    try {
+      const response = await fetch('/scout/upload_files', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error('File upload failed');
+      }
+      
+      const result = await response.json();
+      return result.urls || [];
+    } catch (error) {
+      console.error('File upload error:', error);
+      addMessage('Failed to upload files. Please try again.', 'assistant');
+      return [];
+    }
+  }
+  
   // Handle interactive workflow chat
-  async function handleInteractiveChat(message, context = null) {
+  async function handleInteractiveChat(message, context = null, files = []) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    
+    // Upload files first if any
+    let fileUrls = [];
+    if (files && files.length > 0) {
+      fileUrls = await uploadFiles(files);
+    }
     
     try {
       const response = await fetch('/scout/chat_interactive', {
@@ -1601,7 +1648,8 @@ document.addEventListener('turbo:load', function() {
         },
         body: JSON.stringify({
           message: message,
-          context: context
+          context: context,
+          file_urls: fileUrls
         })
       });
       
@@ -2055,6 +2103,68 @@ document.addEventListener('turbo:load', function() {
     }
   });
 
+  // File attachment handling
+  const attachButton = document.getElementById('attach-button');
+  const fileInput = document.getElementById('file-input');
+  const attachedFilesContainer = document.getElementById('attached-files');
+  let attachedFiles = [];
+  
+  attachButton.addEventListener('click', function() {
+    fileInput.click();
+  });
+  
+  fileInput.addEventListener('change', function(e) {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+      if (!attachedFiles.find(f => f.name === file.name)) {
+        attachedFiles.push(file);
+        displayAttachedFile(file);
+      }
+    });
+    fileInput.value = ''; // Reset input
+  });
+  
+  function displayAttachedFile(file) {
+    if (attachedFiles.length > 0 && attachedFilesContainer.style.display === 'none') {
+      attachedFilesContainer.style.display = 'block';
+    }
+    
+    const fileDiv = document.createElement('div');
+    fileDiv.className = 'attached-file';
+    
+    const icon = document.createElement('i');
+    icon.className = getFileIcon(file.type);
+    icon.classList.add('file-icon');
+    
+    const name = document.createElement('span');
+    name.textContent = file.name;
+    
+    const remove = document.createElement('span');
+    remove.className = 'remove';
+    remove.innerHTML = '&times;';
+    remove.onclick = () => removeFile(file, fileDiv);
+    
+    fileDiv.appendChild(icon);
+    fileDiv.appendChild(name);
+    fileDiv.appendChild(remove);
+    attachedFilesContainer.appendChild(fileDiv);
+  }
+  
+  function getFileIcon(fileType) {
+    if (fileType.startsWith('image/')) return 'fas fa-image';
+    if (fileType === 'application/pdf') return 'fas fa-file-pdf';
+    if (fileType.includes('word') || fileType.includes('document')) return 'fas fa-file-word';
+    return 'fas fa-file';
+  }
+  
+  function removeFile(file, fileDiv) {
+    attachedFiles = attachedFiles.filter(f => f.name !== file.name);
+    fileDiv.remove();
+    if (attachedFiles.length === 0) {
+      attachedFilesContainer.style.display = 'none';
+    }
+  }
+  
   // Handle form submission
   messageForm.addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -2079,12 +2189,20 @@ document.addEventListener('turbo:load', function() {
       // Check if message suggests interactive workflow
       if (shouldUseInteractiveMode(message)) {
         console.log('🎯 Using interactive mode for:', message);
-        await handleInteractiveChat(message, currentCanvas);
+        await handleInteractiveChat(message, currentCanvas, attachedFiles);
+        // Clear attached files after sending
+        attachedFiles = [];
+        attachedFilesContainer.innerHTML = '';
+        attachedFilesContainer.style.display = 'none';
       } else {
         console.log('⚡ Using streaming mode for:', message);
         // Route through scout controller ONLY
         if (window.scoutController && window.scoutController.processMessage) {
-          await window.scoutController.processMessage(message);
+          await window.scoutController.processMessage(message, attachedFiles);
+          // Clear attached files after sending
+          attachedFiles = [];
+          attachedFilesContainer.innerHTML = '';
+          attachedFilesContainer.style.display = 'none';
         } else {
           console.error('❌ Scout controller not available! Cannot process message.');
           addMessage('Sorry, the chat system is not ready. Please refresh the page.', 'assistant');

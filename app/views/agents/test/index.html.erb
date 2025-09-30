@@ -1,0 +1,476 @@
+<div class="container py-4">
+  <h1>🤖 Agent System Test Interface</h1>
+  
+  <div class="alert alert-warning">
+    <strong>Test Mode:</strong> This interface is for local testing only. Do not use in production.
+  </div>
+  
+  <!-- Test Navigation -->
+  <ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+      <a class="nav-link active" data-bs-toggle="tab" href="#agents">Agents</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#workflows">Workflows</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#parallel">Parallel Execution</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#resilience">Resilience</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#learning">Learning</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#resources">Resources</a>
+    </li>
+  </ul>
+  
+  <div class="tab-content">
+    <!-- Agents Tab -->
+    <div class="tab-pane fade show active" id="agents">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <h5>Create Agent</h5>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label>Agent Role</label>
+                <select id="agentRole" class="form-control">
+                  <option value="planner">Planner</option>
+                  <option value="executor">Executor</option>
+                  <option value="monitor">Monitor</option>
+                  <option value="analyst">Analyst</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="createAgent()">Create Agent</button>
+            </div>
+          </div>
+          
+          <div class="card mt-3">
+            <div class="card-header">
+              <h5>Test Communication</h5>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label>From Agent</label>
+                <select id="fromAgent" class="form-control">
+                  <% @agents.each do |agent| %>
+                    <option value="<%= agent.id %>"><%= agent.role %> (<%= agent.id[0..7] %>...)</option>
+                  <% end %>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label>To Agent</label>
+                <select id="toAgent" class="form-control">
+                  <% @agents.each do |agent| %>
+                    <option value="<%= agent.id %>"><%= agent.role %> (<%= agent.id[0..7] %>...)</option>
+                  <% end %>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label>Message</label>
+                <input type="text" id="message" class="form-control" value="Test collaboration message">
+              </div>
+              <button class="btn btn-primary" onclick="testCommunication()">Send Message</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <h5>Active Agents</h5>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+              <div id="agentsList">
+                <% @agents.each do |agent| %>
+                  <div class="mb-2 p-2 border rounded">
+                    <strong><%= agent.role %></strong><br>
+                    <small>ID: <%= agent.id %></small><br>
+                    <small>State: <span class="badge bg-<%= agent.state == :active ? 'success' : 'secondary' %>"><%= agent.state %></span></small><br>
+                    <small>Capabilities: <%= agent.capabilities.join(', ') %></small>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Workflows Tab -->
+    <div class="tab-pane fade" id="workflows">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <h5>Plan Workflow</h5>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label>Request</label>
+                <textarea id="workflowRequest" class="form-control" rows="3">Create a landing page with contact form and analytics</textarea>
+              </div>
+              <button class="btn btn-primary" onclick="planWorkflow()">Plan Workflow</button>
+              
+              <div id="plannedWorkflow" class="mt-3"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <h5>Available Templates</h5>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+              <% @workflows.each do |template| %>
+                <div class="mb-3 p-2 border rounded">
+                  <strong><%= template.name %></strong><br>
+                  <small><%= template.description %></small><br>
+                  <small class="text-muted">Steps: <%= template.steps.size %></small>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Parallel Execution Tab -->
+    <div class="tab-pane fade" id="parallel">
+      <div class="card">
+        <div class="card-header">
+          <h5>Test Parallel Execution</h5>
+        </div>
+        <div class="card-body">
+          <p>This test will run multiple data fetching operations in parallel and measure the performance improvement.</p>
+          
+          <button class="btn btn-primary" onclick="testParallel()">Run Parallel Test</button>
+          
+          <div id="parallelResults" class="mt-4"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Resilience Tab -->
+    <div class="tab-pane fade" id="resilience">
+      <div class="card">
+        <div class="card-header">
+          <h5>Test Circuit Breaker & Retry</h5>
+        </div>
+        <div class="card-body">
+          <p>This test simulates failures to demonstrate circuit breaker and retry mechanisms.</p>
+          
+          <button class="btn btn-primary" onclick="testResilience()">Run Resilience Test</button>
+          
+          <div id="resilienceResults" class="mt-4"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Learning Tab -->
+    <div class="tab-pane fade" id="learning">
+      <div class="card">
+        <div class="card-header">
+          <h5>Test Learning Engine</h5>
+        </div>
+        <div class="card-body">
+          <p>Test the learning engine's ability to analyze executions and provide recommendations.</p>
+          
+          <button class="btn btn-primary" onclick="testLearning()">Run Learning Test</button>
+          
+          <div id="learningResults" class="mt-4"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Resources Tab -->
+    <div class="tab-pane fade" id="resources">
+      <div class="card">
+        <div class="card-header">
+          <h5>Resource Usage & Performance</h5>
+        </div>
+        <div class="card-body">
+          <button class="btn btn-primary" onclick="getResourceUsage()">Get Current Usage</button>
+          <button class="btn btn-secondary ms-2" onclick="getPerformanceMetrics()">Get Performance Metrics</button>
+          
+          <div id="resourceResults" class="mt-4"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Results Console -->
+  <div class="card mt-4">
+    <div class="card-header">
+      <h5>Test Console</h5>
+      <button class="btn btn-sm btn-secondary float-end" onclick="clearConsole()">Clear</button>
+    </div>
+    <div class="card-body">
+      <pre id="console" style="max-height: 300px; overflow-y: auto; background: #f8f9fa; padding: 10px;"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+const testConsole = document.getElementById('console');
+
+function log(message, type = 'info') {
+  const timestamp = new Date().toLocaleTimeString();
+  const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+  testConsole.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+  testConsole.scrollTop = testConsole.scrollHeight;
+}
+
+function clearConsole() {
+  testConsole.innerHTML = '';
+}
+
+async function makeRequest(url, data = {}) {
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return await response.json();
+  } catch (error) {
+    log(`Request failed: ${error.message}`, 'error');
+    return { success: false, error: error.message };
+  }
+}
+
+async function createAgent() {
+  const role = document.getElementById('agentRole').value;
+  log(`Creating ${role} agent...`);
+  
+  const result = await makeRequest('/agents/test/create_agent', { role });
+  
+  if (result.success) {
+    log(`✓ Agent created: ${result.agent.id} (${result.agent.role})`, 'success');
+    // Refresh page to update agent list
+    setTimeout(() => location.reload(), 1000);
+  } else {
+    log(`✗ Failed to create agent: ${result.error}`, 'error');
+  }
+}
+
+async function planWorkflow() {
+  const text = document.getElementById('workflowRequest').value;
+  log(`Planning workflow: "${text}"`);
+  
+  const result = await makeRequest('/agents/test/plan_workflow', { text });
+  
+  if (result.success) {
+    log(`✓ Workflow planned with ${result.workflow.steps.length} steps`, 'success');
+    
+    const workflowDiv = document.getElementById('plannedWorkflow');
+    workflowDiv.innerHTML = `
+      <h6>${result.workflow.name}</h6>
+      <ol>
+        ${result.workflow.steps.map(step => `
+          <li>
+            <strong>${step.name}</strong> (${step.type})
+            ${step.dependencies.length > 0 ? `<br><small>Depends on: ${step.dependencies.join(', ')}</small>` : ''}
+          </li>
+        `).join('')}
+      </ol>
+      <button class="btn btn-success btn-sm" onclick='executeWorkflow(${JSON.stringify(result.workflow)})'>Execute Workflow</button>
+    `;
+  } else {
+    log(`✗ Failed to plan workflow: ${result.error}`, 'error');
+  }
+}
+
+async function executeWorkflow(workflow) {
+  log(`Executing workflow with ${workflow.steps.length} steps...`);
+  
+  const result = await makeRequest('/agents/test/execute_workflow', { workflow });
+  
+  if (result.success) {
+    log(`✓ Workflow executed successfully in ${result.duration}s`, 'success');
+    log(`Result: ${JSON.stringify(result.result, null, 2)}`);
+  } else {
+    log(`✗ Workflow execution failed: ${result.error}`, 'error');
+  }
+}
+
+async function testCommunication() {
+  const fromAgent = document.getElementById('fromAgent').value;
+  const toAgent = document.getElementById('toAgent').value;
+  const message = document.getElementById('message').value;
+  
+  log(`Sending message from ${fromAgent} to ${toAgent}...`);
+  
+  const result = await makeRequest('/agents/test/agent_communication', {
+    from_agent_id: fromAgent,
+    to_agent_id: toAgent,
+    message: message
+  });
+  
+  if (result.success) {
+    log(`✓ Message sent successfully`, 'success');
+    log(`Received messages: ${result.received_messages.length}`);
+  } else {
+    log(`✗ Communication failed: ${result.error}`, 'error');
+  }
+}
+
+async function testParallel() {
+  log('Running parallel execution test...');
+  
+  const result = await makeRequest('/agents/test/test_parallel');
+  
+  if (result.success) {
+    log(`✓ Parallel test completed in ${result.duration.toFixed(3)}s`, 'success');
+    log(`Speedup: ${result.parallel_speedup.toFixed(2)}x`);
+    
+    document.getElementById('parallelResults').innerHTML = `
+      <div class="alert alert-success">
+        <h5>Results</h5>
+        <p>Execution time: ${result.duration.toFixed(3)}s</p>
+        <p>Estimated speedup: ${result.parallel_speedup.toFixed(2)}x</p>
+        <p>Status: ${result.result.status}</p>
+      </div>
+    `;
+  } else {
+    log(`✗ Parallel test failed: ${result.error}`, 'error');
+  }
+}
+
+async function testResilience() {
+  log('Running resilience test...');
+  
+  const result = await makeRequest('/agents/test/test_resilience');
+  
+  if (result.success) {
+    log(`✓ Resilience test completed`, 'success');
+    
+    const html = result.circuit_breaker_test.map(attempt => `
+      <tr>
+        <td>${attempt.attempt}</td>
+        <td>${attempt.error || attempt.result}</td>
+        <td><span class="badge bg-${attempt.state === 'open' ? 'danger' : 'success'}">${attempt.state}</span></td>
+      </tr>
+    `).join('');
+    
+    document.getElementById('resilienceResults').innerHTML = `
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Attempt</th>
+            <th>Result</th>
+            <th>Circuit State</th>
+          </tr>
+        </thead>
+        <tbody>${html}</tbody>
+      </table>
+      <div class="alert alert-info">
+        Final state: ${result.final_status.state}<br>
+        Failure count: ${result.final_status.failure_count}
+      </div>
+    `;
+  } else {
+    log(`✗ Resilience test failed: ${result.error}`, 'error');
+  }
+}
+
+async function testLearning() {
+  log('Running learning engine test...');
+  
+  const result = await makeRequest('/agents/test/test_learning');
+  
+  if (result.success) {
+    log(`✓ Learning test completed`, 'success');
+    log(`Generated ${result.insights.length} insights`);
+    log(`Found ${result.recommendations.length} recommendations`);
+    
+    document.getElementById('learningResults').innerHTML = `
+      <div class="row">
+        <div class="col-md-6">
+          <h6>Insights</h6>
+          <ul>
+            ${result.insights.map(i => `<li>${i.type}: ${i.message}</li>`).join('')}
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <h6>Recommendations</h6>
+          <ul>
+            ${result.recommendations.map(r => `<li>${r.type}: ${r.expected_improvement}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+    `;
+  } else {
+    log(`✗ Learning test failed: ${result.error}`, 'error');
+  }
+}
+
+async function getResourceUsage() {
+  log('Fetching resource usage...');
+  
+  const result = await makeRequest('/agents/test/resource_usage');
+  
+  if (result.success) {
+    log(`✓ Resource data fetched`, 'success');
+    
+    document.getElementById('resourceResults').innerHTML = `
+      <div class="row">
+        <div class="col-md-6">
+          <h6>Token Usage</h6>
+          <p>Total: ${result.tokens.total_tokens} tokens</p>
+          <p>Input: ${result.tokens.input_tokens}</p>
+          <p>Output: ${result.tokens.output_tokens}</p>
+          <p>Requests: ${result.tokens.request_count}</p>
+        </div>
+        <div class="col-md-6">
+          <h6>Cost Estimate</h6>
+          <p>Daily: $${result.cost_estimate.estimated_cost.toFixed(4)}</p>
+          <p>Monthly projection: $${result.cost_estimate.monthly_projection.toFixed(2)}</p>
+        </div>
+      </div>
+    `;
+  } else {
+    log(`✗ Failed to fetch resources: ${result.error}`, 'error');
+  }
+}
+
+async function getPerformanceMetrics() {
+  log('Fetching performance metrics...');
+  
+  const result = await makeRequest('/agents/test/performance_metrics');
+  
+  if (result.success) {
+    log(`✓ Performance metrics fetched`, 'success');
+    
+    const metrics = result.system_metrics;
+    document.getElementById('resourceResults').innerHTML = `
+      <div class="alert alert-info">
+        <h6>System Metrics</h6>
+        <p>Total agents: ${metrics.total_agents}</p>
+        <p>Active agents: ${metrics.active_agents}</p>
+        <p>Total actions: ${metrics.total_actions}</p>
+        <p>Success rate: ${(metrics.success_rate * 100).toFixed(1)}%</p>
+      </div>
+    `;
+  } else {
+    log(`✗ Failed to fetch metrics: ${result.error}`, 'error');
+  }
+}
+
+// Auto-refresh agent list every 10 seconds
+setInterval(() => {
+  if (document.querySelector('#agents.active')) {
+    location.reload();
+  }
+}, 10000);
+</script>
+
+
+
+

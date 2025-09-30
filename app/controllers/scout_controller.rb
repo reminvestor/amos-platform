@@ -122,9 +122,11 @@ class ScoutController < ApplicationController
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
     context = params[:context]
+    file_urls = params[:file_urls] || []
     
     Rails.logger.info "Scout interactive chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
     Rails.logger.info "Chat context: #{context.inspect}" if context
+    Rails.logger.info "File URLs: #{file_urls.inspect}" if file_urls.any?
     
     if user_message.blank?
       render json: { error: 'Message cannot be empty' }, status: 400
@@ -132,11 +134,26 @@ class ScoutController < ApplicationController
     end
     
     begin
-      # Save user message
-      save_scout_message('user', user_message)
+      # Build enhanced message if files are attached
+      enhanced_message = user_message
+      metadata = {}
+      
+      if file_urls.any?
+        file_info = file_urls.map { |f| "📎 #{f['filename']}" }.join(", ")
+        enhanced_message = "#{user_message}\n\n[Attached: #{file_info}]"
+        metadata[:file_urls] = file_urls
+      end
+      
+      # Save user message with file info
+      save_scout_message('user', enhanced_message, metadata: metadata)
       
       # Initialize interactive task service
       interactive_service = InteractiveTaskService.new(current_user, current_entity, @session_id)
+      
+      # Add file URLs to context if present
+      if file_urls.any?
+        interactive_service.set_context(attached_files: file_urls)
+      end
       
       # Set up progress callback for real-time updates
       interactive_service.on_progress do |progress_data|
@@ -175,6 +192,73 @@ class ScoutController < ApplicationController
         canvas: 'conversation'
       }, status: 500
     end
+  end
+  
+  # Approve or reject a workflow
+  def approve_workflow
+    task_session_id = params[:task_session_id]
+    approved = params[:approved]
+    
+    begin
+      task_session = TaskSession.find(task_session_id)
+      
+      if approved
+        # Start the workflow
+        interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id])
+        result = interactive_service.handle_plan_approval(
+          task_session.state['workflow_spec'],
+          approved: true
+        )
+        
+        render json: { success: true, message: "Workflow approved and started" }
+      else
+        # Cancel the workflow
+        task_session.update!(
+          status: 'cancelled',
+          state: task_session.state.merge('cancelled_at' => Time.current)
+        )
+        
+        render json: { success: true, message: "Workflow cancelled" }
+      end
+    rescue ActiveRecord::RecordNotFound
+      render json: { success: false, error: "Task session not found" }, status: 404
+    rescue => e
+      Rails.logger.error "Workflow approval error: #{e.message}"
+      render json: { success: false, error: e.message }, status: 500
+    end
+  end
+  
+  # Handle file uploads from chat
+  def upload_files
+    uploaded_urls = []
+    
+    if params[:files].present?
+      params[:files].each do |index, file|
+        if file.is_a?(ActionDispatch::Http::UploadedFile)
+          # Create ImageAsset for each uploaded file
+          image_asset = ImageAsset.create!(
+            entity: current_entity,
+            user: current_user,
+            name: file.original_filename,
+            file: file,
+            source: 'chat_upload'
+          )
+          
+          uploaded_urls << {
+            url: rails_blob_url(image_asset.file),
+            filename: file.original_filename,
+            content_type: file.content_type,
+            size: file.size,
+            asset_id: image_asset.id
+          }
+        end
+      end
+    end
+    
+    render json: { success: true, urls: uploaded_urls }
+  rescue => e
+    Rails.logger.error "File upload error: #{e.message}"
+    render json: { success: false, error: e.message }, status: 500
   end
   
   def continue_workflow
@@ -228,12 +312,14 @@ class ScoutController < ApplicationController
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
     context = params[:context]
+    file_urls = params[:file_urls] || []
     
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
     puts "🚨 PRODUCTION DEBUG: Scout chat request received - #{Time.current}"
     STDOUT.flush
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
     Rails.logger.info "Chat context: #{context.inspect}" if context
+    Rails.logger.info "File URLs: #{file_urls.inspect}" if file_urls.any?
     
     if user_message.blank?
       render json: { error: 'Message cannot be empty' }, status: 400
@@ -256,8 +342,18 @@ class ScoutController < ApplicationController
       # Send immediate response to establish streaming
       stream_update("💬 Message received")
       
-      # Save user message
-      save_scout_message('user', user_message)
+      # Build enhanced message if files are attached
+      enhanced_message = user_message
+      metadata = {}
+      
+      if file_urls.any?
+        file_info = file_urls.map { |f| "📎 #{f['filename']}" }.join(", ")
+        enhanced_message = "#{user_message}\n\n[Attached: #{file_info}]"
+        metadata[:file_urls] = file_urls
+      end
+      
+      # Save user message with file info
+      save_scout_message('user', enhanced_message, metadata)
       stream_update("📚 Loading conversation history...")
       
       # Get conversation history
@@ -290,6 +386,60 @@ class ScoutController < ApplicationController
           when 'load_canvas'
             # Stream canvas loading
             stream_update(progress_data)
+          when 'canvas_update'
+            # Stream canvas update
+            stream_update(progress_data)
+          when 'workflow_approval_needed'
+            # Handle workflow approval request
+            task_session_id = progress_data[:task_session_id]
+            workflow_spec = progress_data[:workflow_spec]
+            
+            # Stream the message and approval UI
+            stream_content_chunk(progress_data[:message] || "I've created a workflow plan for your request. Please review:")
+            
+            # Load the approval canvas
+            stream_update({
+              type: 'load_canvas',
+              canvas: 'task_progress',
+              canvas_data: {
+                task_session_id: task_session_id,
+                awaiting_approval: true,
+                workflow_spec: workflow_spec
+              }
+            })
+          when :step_completed, 'step_completed'
+            # Stream step completion and trigger canvas refresh
+            stream_update({
+              type: 'step_completed',
+              step_id: progress_data[:step_id],
+              step_name: progress_data[:step_name],
+              message: "✅ Completed: #{progress_data[:step_name] || progress_data[:step_id]}"
+            })
+            # Also send a canvas update to refresh the task list
+            stream_update({
+              type: 'canvas_update',
+              canvas_type: 'task_progress',
+              canvas_data: {
+                task_session_id: interactive_service.instance_variable_get(:@task_session)&.id
+              }
+            })
+          when :step_failed, 'step_failed'
+            # Stream step failure and trigger canvas refresh
+            stream_update({
+              type: 'step_failed',
+              step_id: progress_data[:step_id],
+              step_name: progress_data[:step_name],
+              error: progress_data[:error],
+              message: "❌ Failed: #{progress_data[:step_name] || progress_data[:step_id]}"
+            })
+            # Also send a canvas update to refresh the task list
+            stream_update({
+              type: 'canvas_update',
+              canvas_type: 'task_progress',
+              canvas_data: {
+                task_session_id: interactive_service.instance_variable_get(:@task_session)&.id
+              }
+            })
           when 'tool_start', 'tool_complete'
             # Save and stream tool updates as content
             tool_name = progress_data[:tool_name] || progress_data[:name]
@@ -320,14 +470,27 @@ class ScoutController < ApplicationController
         # No context loading needed for InteractiveTaskService
       end
       
-      # Process message using InteractiveTaskService
-      stream_update("🎯 Processing your request...")
-      result = interactive_service.process_message(user_message, conversation_history, current_canvas)
+      # Check if this is a plan approval response
+      if current_canvas.dig('data', 'awaiting_approval') && is_approval_response?(user_message)
+        stream_update("📋 Processing your plan feedback...")
+        approval_action = extract_approval_action(user_message)
+        result = interactive_service.handle_plan_approval(approval_action, user_message)
+      else
+        # Process message using InteractiveTaskService
+        stream_update("🎯 Processing your request...")
+        
+        # Add file URLs to context if present
+        if file_urls.any?
+          interactive_service.set_context(attached_files: file_urls)
+        end
+        
+        result = interactive_service.process_message(user_message, conversation_history, current_canvas)
+      end
       
       # Handle the response from InteractiveTaskService
       if result[:success]
         # Save assistant response (only if not already streamed)
-        if result[:mode] != 'autonomous' && result[:message]
+        if result[:mode] != 'autonomous' && result[:message] && !result[:message_already_saved]
           save_scout_message('assistant', result[:message])
           stream_content_chunk(result[:message])
         end
@@ -351,6 +514,14 @@ class ScoutController < ApplicationController
           success_count: (result[:tools_used].is_a?(Array) ? result[:tools_used].count : 0),
           error_count: 0
         }
+        
+        # Check if workflow approval is needed
+        if result[:workflow_approval_needed]
+          final_response[:workflow_approval] = {
+            task_session_id: result[:task_session_id],
+            workflow_spec: result[:workflow_spec]
+          }
+        end
       else
         # Handle error case
         error_message = result[:error] || "An error occurred while processing your request."
@@ -458,12 +629,41 @@ class ScoutController < ApplicationController
         canvas_content = render_campaign_editor(canvas_data)
         canvas_title = "Campaign Editor"
       when 'integrations_manager'
-        # If reload_data is requested, fetch fresh integrations data
-        if params[:reload_data]
-          service = ScoutGenericToolsServiceV2.new(current_user, current_entity, session[:scout_session_id])
-          fresh_data = service.execute_tool_by_name('list_connections', {})
-          canvas_data = fresh_data[:canvas_data] || {}
+        # Always fetch integrations data for this canvas
+        integrations = Integration.where(is_active: true).order(:name)
+        connections = current_user.connections.includes(:integration)
+        
+        canvas_data[:integrations] = integrations.map do |integration|
+          {
+            id: integration.id,
+            name: integration.name,
+            slug: integration.slug,
+            description: integration.description,
+            category: integration.category,
+            auth_type: integration.auth_type,
+            icon_url: integration.icon_url,
+            is_verified: integration.is_verified,
+            operations_count: integration.integration_operations.count,
+            is_connected: connections.any? { |c| c.integration_id == integration.id && c.status == 'connected' }
+          }
         end
+        
+        canvas_data[:connections] = connections.map do |connection|
+          {
+            id: connection.id,
+            name: connection.name,
+            status: connection.status,
+            has_active_credentials: connection.integration_credentials.present?,
+            last_used: connection.integration_logs.maximum(:created_at),
+            operations_count: connection.integration.integration_operations.count,
+            integration: {
+              id: connection.integration.id,
+              name: connection.integration.name,
+              icon_url: connection.integration.icon_url
+            }
+          }
+        end
+        
         canvas_content = render_integrations_manager(canvas_data)
         canvas_title = "Integration Connections"
       when 'integration_connect'
@@ -578,7 +778,7 @@ class ScoutController < ApplicationController
       format.html # Will render conversation_export.html.erb if you create one
     end
   end
-  
+
   # GET /scout/history?before_id=<id>&limit=20
   def history
     session_id = session[:scout_session_id]
@@ -663,6 +863,30 @@ class ScoutController < ApplicationController
   end
   
   private
+  
+  def is_approval_response?(message)
+    approval_patterns = [
+      /\b(approve|yes|go ahead|proceed|execute|looks good|lgtm)\b/i,
+      /\b(modify|change|update|edit|adjust)\b/i,
+      /\b(cancel|stop|no|abort|reject)\b/i
+    ]
+    
+    approval_patterns.any? { |pattern| message.match?(pattern) }
+  end
+  
+  def extract_approval_action(message)
+    case message.downcase
+    when /approve|yes|go ahead|proceed|execute|looks good|lgtm/
+      'approve'
+    when /modify|change|update|edit|adjust/
+      'modify'
+    when /cancel|stop|no|abort|reject/
+      'cancel'
+    else
+      # Default to modify if unclear
+      'modify'
+    end
+  end
 
   def stream_content_chunk(content)
     # Stream individual content chunks for real-time display
@@ -741,7 +965,7 @@ class ScoutController < ApplicationController
         Rails.logger.warn "Final message save skipped/failed: #{e.message}"
       end
     end
-
+    
     # Create the final SSE response
     data = JSON.generate({ type: 'response', data: response_data })
     chunk = "data: #{data}\n\n"
@@ -822,23 +1046,7 @@ class ScoutController < ApplicationController
   end
 
   def current_entity
-    @current_entity ||= begin
-      # First check if entity is set in session
-      if session[:entity_id]
-        current_user.entities.find_by(id: session[:entity_id])
-      else
-        # If no entity in session but user has exactly one entity, auto-set it
-        if current_user.entities.count == 1
-          entity = current_user.entities.first
-          session[:entity_id] = entity.id
-          Rails.logger.info "🔧 Auto-set entity for user #{current_user.id}: #{entity.name} (ID: #{entity.id})"
-          entity
-        else
-          # User has no entities or multiple entities - let them choose
-          current_user.entity_users.first&.entity
-        end
-      end
-    end
+    @current_entity ||= current_user.entity
   end
   
   def ensure_entity_exists
@@ -1420,14 +1628,21 @@ class ScoutController < ApplicationController
     end
     
     # If no data provided, try to load from TaskSession
-    if data.empty? || data.nil? || data[:tasks].nil?
+    # Skip loading if we have workflow approval data
+    if (data.empty? || data.nil? || data[:tasks].nil?) && !data[:awaiting_approval] && !data['awaiting_approval']
       session_id = session[:scout_session_id]
       
-      # Try to find active task session
-      task_session = TaskSession.active
-                               .where(user: current_user)
-                               .where("metadata->>'session_id' = ?", session_id)
-                               .first
+      # If we have a specific task_session_id, load that regardless of status
+      if data[:task_session_id] || data['task_session_id']
+        task_session_id = data[:task_session_id] || data['task_session_id']
+        task_session = TaskSession.where(user: current_user, id: task_session_id).first
+      else
+        # Try to find active task session
+        task_session = TaskSession.active
+                                 .where(user: current_user)
+                                 .where("metadata->>'session_id' = ?", session_id)
+                                 .first
+      end
       
       if task_session
         # Check if we have a task list in state
@@ -1442,12 +1657,35 @@ class ScoutController < ApplicationController
           # Get workflow instance to access steps
           workflow = workflow_engine.instance_variable_get(:@workflow)
           
+          # Try to get workflow execution for accurate step statuses
+          workflow_execution = task_session.workflow_execution
+          
           data = {
             tasks: workflow.steps.map do |step|
+              step_name = step.name || step.config[:name] || step.description
+              step_details = step.config[:description] || step.description
+              
+              # Get status from workflow execution if available
+              step_status = step.status
+              completed_at = step.completed_at
+              
+              if workflow_execution
+                step_exec = workflow_execution.workflow_step_executions.find_by(step_id: step.id)
+                if step_exec
+                  step_status = step_exec.status
+                  completed_at = step_exec.completed_at
+                end
+              end
+              
+              Rails.logger.info "📋 Step mapping: id=#{step.id}, name=#{step_name}, details=#{step_details}, status=#{step_status}"
+              
               {
                 id: step.id,
-                description: step.description,
-                status: step.status
+                description: step_name,
+                details: step_details,
+                status: step_status,
+                completed_at: completed_at,
+                failed_at: step_status == 'failed' ? completed_at : nil
               }
             end,
             workflow_status: workflow_progress[:status],
@@ -1466,14 +1704,26 @@ class ScoutController < ApplicationController
       Rails.logger.info "📋 Using provided task data: #{data[:tasks]&.size} tasks"
     end
     
-    render_to_string(
-      partial: 'scout/canvas/task_progress',
-      locals: {
-        entity: current_entity,
-        user: current_user,
-        task_list: data
-      }
-    )
+    # Check if this is a workflow approval
+    if data[:awaiting_approval] || data['awaiting_approval']
+      render_to_string(
+        partial: 'scout/canvas/workflow_approval',
+        locals: {
+          entity: current_entity,
+          user: current_user,
+          data: data
+        }
+      )
+    else
+      render_to_string(
+        partial: 'scout/canvas/task_progress',
+        locals: {
+          entity: current_entity,
+          user: current_user,
+          task_list: data
+        }
+      )
+    end
   end
 
   def render_integrations_manager(data = {})

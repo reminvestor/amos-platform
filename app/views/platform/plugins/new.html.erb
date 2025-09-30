@@ -1,0 +1,140 @@
+<div class="container mt-4">
+  <h1>Create Custom <%= @plugin.plugin_type.titleize %></h1>
+  
+  <% if @plugin.plugin_type == 'agent' %>
+    <div class="alert alert-info">
+      <h5>Custom Agent Template</h5>
+      <p>Your agent should define these methods:</p>
+      <ul>
+        <li><code>initialize</code> - Set up your agent</li>
+        <li><code>execute</code> - Main execution logic</li>
+        <li><code>capabilities</code> - Array of capabilities</li>
+      </ul>
+    </div>
+    
+    <%= form_with url: upload_agent_platform_plugins_path, local: true do |f| %>
+      <div class="mb-3">
+        <%= f.label :code, "Agent Code (Ruby)", class: "form-label" %>
+        <%= f.text_area :code, rows: 20, class: "form-control font-monospace", 
+            placeholder: "# @name My Custom Agent\n# @capabilities data_analysis, reporting\n# @version 1.0.0\n\nclass MyCustomAgent\n  def initialize(context)\n    @context = context\n  end\n  \n  def execute\n    # Your agent logic here\n    result = analyze_data(@context[:data])\n    \n    { success: true, result: result }\n  end\n  \n  def capabilities\n    ['data_analysis', 'reporting']\n  end\n  \n  private\n  \n  def analyze_data(data)\n    # Custom analysis logic\n    data.map { |item| process_item(item) }\n  end\nend" %>
+      </div>
+      
+      <div class="mb-3">
+        <%= f.submit "Upload Agent", class: "btn btn-primary" %>
+        <%= link_to "Cancel", platform_plugins_path, class: "btn btn-secondary" %>
+      </div>
+    <% end %>
+    
+  <% elsif @plugin.plugin_type == 'tool' %>
+    <div class="alert alert-info">
+      <h5>Custom Tool Template</h5>
+      <p>Your tool should define these methods:</p>
+      <ul>
+        <li><code>execute(args)</code> - Main tool logic</li>
+        <li><code>metadata</code> - Tool description and parameters</li>
+      </ul>
+    </div>
+    
+    <%= form_with url: upload_tool_platform_plugins_path, local: true do |f| %>
+      <div class="mb-3">
+        <%= f.label :code, "Tool Code (Ruby)", class: "form-label" %>
+        <%= f.text_area :code, rows: 20, class: "form-control font-monospace",
+            placeholder: "# @name My Custom Tool\n# @description Performs custom data processing\n# @version 1.0.0\n\nclass MyCustomTool\n  def execute(args)\n    # Validate inputs\n    return { success: false, error: 'Data required' } unless args[:data]\n    \n    # Process data\n    result = process_data(args[:data])\n    \n    { success: true, result: result }\n  end\n  \n  def metadata\n    {\n      name: 'my_custom_tool',\n      description: 'Performs custom data processing',\n      parameters: {\n        type: 'object',\n        properties: {\n          data: {\n            type: 'array',\n            description: 'Data to process'\n          }\n        },\n        required: ['data']\n      }\n    }\n  end\n  \n  private\n  \n  def process_data(data)\n    # Your processing logic\n    data.map(&:to_s).join(', ')\n  end\nend" %>
+      </div>
+      
+      <div class="mb-3">
+        <%= f.submit "Upload Tool", class: "btn btn-primary" %>
+        <%= link_to "Cancel", platform_plugins_path, class: "btn btn-secondary" %>
+      </div>
+    <% end %>
+    
+  <% elsif @plugin.plugin_type == 'model' %>
+    <div class="alert alert-info">
+      <h5>Custom Model Configuration</h5>
+      <p>Configure a custom model through Bedrock or external endpoint.</p>
+    </div>
+    
+    <%= form_with url: configure_model_platform_plugins_path, local: true do |f| %>
+      <div class="mb-3">
+        <%= f.label :name, "Model Name", class: "form-label" %>
+        <%= f.text_field :name, class: "form-control", placeholder: "My Custom Model" %>
+      </div>
+      
+      <div class="mb-3">
+        <%= f.label :model_type, "Model Type", class: "form-label" %>
+        <%= f.select :model_type, 
+            options_for_select([
+              ['Bedrock Fine-tuned', 'bedrock_fine_tuned'],
+              ['Bedrock Custom Import', 'bedrock_custom'],
+              ['External Endpoint', 'external_endpoint']
+            ]), 
+            { prompt: 'Select model type' }, 
+            class: "form-select" %>
+      </div>
+      
+      <div class="mb-3" id="base-model-field" style="display: none;">
+        <%= f.label :base_model, "Base Model (for fine-tuning)", class: "form-label" %>
+        <%= f.select :base_model,
+            options_for_select([
+              ['Claude 3 Haiku', 'anthropic.claude-3-haiku-20240307'],
+              ['Llama 3 70B', 'meta.llama3-70b-instruct-v1'],
+              ['Mistral 7B', 'mistral.mistral-7b-instruct-v0:2']
+            ]),
+            { prompt: 'Select base model' },
+            class: "form-select" %>
+      </div>
+      
+      <div class="mb-3" id="endpoint-field" style="display: none;">
+        <%= f.label :endpoint, "Model Endpoint URL", class: "form-label" %>
+        <%= f.text_field :endpoint, class: "form-control", 
+            placeholder: "https://api.example.com/v1/completions" %>
+      </div>
+      
+      <div class="mb-3" id="api-key-field" style="display: none;">
+        <%= f.label :api_key, "API Key", class: "form-label" %>
+        <%= f.password_field :api_key, class: "form-control" %>
+      </div>
+      
+      <div class="mb-3">
+        <%= f.label :parameters, "Model Parameters (JSON)", class: "form-label" %>
+        <%= f.text_area :parameters, rows: 5, class: "form-control font-monospace",
+            placeholder: '{\n  "temperature": 0.7,\n  "max_tokens": 2000,\n  "top_p": 0.9\n}' %>
+      </div>
+      
+      <div class="mb-3">
+        <%= f.submit "Configure Model", class: "btn btn-primary" %>
+        <%= link_to "Cancel", platform_plugins_path, class: "btn btn-secondary" %>
+      </div>
+    <% end %>
+    
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const modelTypeSelect = document.getElementById('model_type');
+        const baseModelField = document.getElementById('base-model-field');
+        const endpointField = document.getElementById('endpoint-field');
+        const apiKeyField = document.getElementById('api-key-field');
+        
+        modelTypeSelect.addEventListener('change', function() {
+          const selectedType = this.value;
+          
+          // Hide all conditional fields
+          baseModelField.style.display = 'none';
+          endpointField.style.display = 'none';
+          apiKeyField.style.display = 'none';
+          
+          // Show relevant fields
+          if (selectedType === 'bedrock_fine_tuned') {
+            baseModelField.style.display = 'block';
+          } else if (selectedType === 'external_endpoint') {
+            endpointField.style.display = 'block';
+            apiKeyField.style.display = 'block';
+          }
+        });
+      });
+    </script>
+  <% end %>
+</div>
+
+
+
+

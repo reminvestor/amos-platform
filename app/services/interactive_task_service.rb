@@ -14,37 +14,37 @@ class InteractiveTaskService
     
     # Set up progress callback for real-time updates
     @progress_callback = nil
+    @additional_context = {}
+  end
+  
+  # Set additional context for the service
+  def set_context(context = {})
+    @additional_context.merge!(context)
   end
   
   # Process a message and determine if it should use interactive workflow
   def process_message(message, conversation_history = [], current_canvas = nil)
-    # Detect task mode
-    mode_detector = TaskModeDetector.new
-    mode_info = mode_detector.detect(message)
+    # Check if we have an active workflow awaiting input
+    if @task_session.workflow_spec && workflow_awaiting_input?
+      Rails.logger.info "InteractiveTaskService: Active workflow awaiting input, continuing with user message"
+      return continue_workflow_with_message(message)
+    end
     
-    Rails.logger.info "InteractiveTaskService: Detected mode '#{mode_info[:mode]}' with confidence #{mode_info[:confidence]}"
+    # Always default to autonomous mode - let the AI decide if it needs planning
+    Rails.logger.info "InteractiveTaskService: Processing message in autonomous mode (AI-driven)"
     
     # Store mode detection in task session
     @task_session.update!(
-      session_type: mode_info[:mode],
+      session_type: 'autonomous',
       metadata: @task_session.metadata.merge(
-        mode_confidence: mode_info[:confidence],
-        detected_intent: mode_info[:rationale],
-        suggested_workflow: mode_info[:suggested_workflow]
+        mode_confidence: 1.0,
+        detected_intent: "AI will analyze and determine best approach",
+        ai_driven: true
       )
     )
     
-    case mode_info[:mode]
-    when 'interactive'
-      handle_interactive_mode(message, mode_info)
-    when 'autonomous'
-      handle_autonomous_mode(message, conversation_history, current_canvas)
-    when 'hybrid'
-      handle_hybrid_mode(message, mode_info)
-    else
-      # Fallback to interactive
-      handle_interactive_mode(message, mode_info)
-    end
+    # Let the AI handle everything - it will delegate to planner if needed
+    handle_autonomous_mode(message, conversation_history, current_canvas)
   end
   
   # Set progress callback for real-time updates
@@ -78,6 +78,344 @@ class InteractiveTaskService
   end
   
   private
+  
+  def workflow_awaiting_input?
+    state = @task_session.state || {}
+    workflow_state = state['workflow_state'] || {}
+    current_step = workflow_state['current_step']
+    
+    return false unless current_step
+    
+    # Check if the current step result indicates awaiting input
+    last_result = workflow_state['last_step_result'] || {}
+    last_result['status'] == 'awaiting_input'
+  end
+  
+  def continue_workflow_with_message(message)
+    Rails.logger.info "InteractiveTaskService: Continuing workflow with conversational input"
+    
+    # Pass the message as user input
+    result = @workflow_engine.resume_workflow(user_message: message)
+    
+    # Handle workflow result
+    handle_workflow_result(result)
+  end
+  
+  def handle_plan_approval(approval_action, feedback = nil)
+    Rails.logger.info "InteractiveTaskService: Handling plan approval - action: #{approval_action}"
+    
+    case approval_action
+    when 'approve'
+      # Execute the approved workflow
+      Rails.logger.info "InteractiveTaskService: User approved the plan, starting execution"
+      
+      # Update task session to remove awaiting_approval flag
+      @task_session.update!(
+        metadata: @task_session.metadata.merge(
+          awaiting_approval: false,
+          approved_at: Time.current
+        ),
+        status: 'active'
+      )
+      
+      # Start workflow execution with streaming updates
+      workflow_engine = WorkflowEngineV2.new(@task_session)
+      workflow_spec = @task_session.metadata['workflow_plan']
+      
+      # Set up progress callback for real-time updates
+      progress_callback = lambda do |update|
+        # Stream progress updates to the user
+        case update[:type]
+        when :step_started
+          @progress_callback&.call("🔧 Starting: #{update[:step_name]}")
+        when :step_completed
+          @progress_callback&.call("✅ Completed: #{update[:step_name]}")
+        when :step_failed
+          @progress_callback&.call("❌ Failed: #{update[:step_name]} - #{update[:error]}")
+        when :tool_call
+          @progress_callback&.call("🔧 Using tool: #{update[:tool_name]}")
+        when :tool_result
+          if update[:success]
+            @progress_callback&.call("✅ Tool completed: #{update[:tool_name]}")
+          else
+            @progress_callback&.call("❌ Tool failed: #{update[:tool_name]} - #{update[:error]}")
+          end
+        when :workflow_completed
+          @progress_callback&.call("🎉 Workflow completed successfully!")
+        when :workflow_failed
+          @progress_callback&.call("❌ Workflow failed: #{update[:error]}")
+        end
+      end
+      
+      # Start workflow with progress callback
+      begin
+        # Send initial message
+        @progress_callback&.call({
+          type: 'intermediate_message',
+          content: "✅ Plan approved! Starting execution...",
+          role: 'assistant'
+        })
+        
+        # Immediately switch to task progress canvas
+        @progress_callback&.call({
+          type: 'canvas_update',
+          canvas_type: 'task_progress',
+          canvas_data: {
+            task_session_id: @task_session.id
+          }
+        })
+        
+        # Execute workflow (this is synchronous and will call progress_callback during execution)
+        workflow_result = workflow_engine.start_workflow(workflow_spec, {}, progress_callback)
+        
+        # Generate AI-powered summary of what was accomplished
+        final_message = if workflow_result[:status] == 'completed'
+          generate_workflow_summary(workflow_spec, workflow_engine)
+        elsif workflow_result[:status] == 'failed'
+          "❌ Workflow failed: #{workflow_result[:error] || 'Unknown error'}"
+        else
+          "⏸️ Workflow paused: #{workflow_result[:message] || 'Awaiting input'}"
+        end
+        
+        @progress_callback&.call({
+          type: 'intermediate_message',
+          content: final_message,
+          role: 'assistant'
+        })
+        
+        # Force canvas update to task_progress
+        @progress_callback&.call({
+          type: 'canvas_update',
+          canvas_type: 'task_progress',
+          canvas_data: {
+            task_session_id: @task_session.id
+          }
+        })
+        
+        {
+          success: true,
+          message: final_message, # Include the final message
+          message_already_saved: true, # Mark that message was already saved via progress_callback
+          mode: 'autonomous', # Mark as autonomous to prevent duplicate saving
+          canvas_type: 'task_progress',
+          canvas_data: {
+            task_session_id: @task_session.id
+          },
+          streaming: false # Workflow is complete, no more streaming
+        }
+      rescue => e
+        Rails.logger.error "Workflow execution failed: #{e.message}"
+        Rails.logger.error e.backtrace.join("\n")
+        
+        @progress_callback&.call({
+          type: 'intermediate_message',
+          content: "❌ Workflow execution failed: #{e.message}",
+          role: 'assistant'
+        })
+        
+        {
+          success: false,
+          message: nil,
+          error: e.message
+        }
+      end
+      
+    when 'modify'
+      # User wants to modify the plan
+      Rails.logger.info "InteractiveTaskService: User requested plan modification"
+      
+      {
+        success: true,
+        message: "Please tell me what changes you'd like to make to the plan.",
+        awaiting_modification: true
+      }
+      
+    when 'cancel'
+      # Cancel the planning session
+      Rails.logger.info "InteractiveTaskService: User cancelled the plan"
+      
+      @task_session.update!(status: 'cancelled')
+      
+      {
+        success: true,
+        message: "Plan cancelled. How else can I help you?"
+      }
+      
+    else
+      {
+        success: false,
+        message: "Invalid approval action: #{approval_action}"
+      }
+    end
+  end
+  
+  private
+  
+  def generate_workflow_summary(workflow_spec, workflow_engine)
+    # Gather workflow execution details
+    workflow_execution = workflow_engine.instance_variable_get(:@workflow_execution)
+    completed_steps = []
+    
+    if workflow_execution
+      # Get steps from workflow_spec or workflow_execution
+      steps_array = workflow_spec[:steps] || 
+                   workflow_spec['steps'] || 
+                   workflow_execution.workflow_spec&.dig('steps') ||
+                   workflow_execution.workflow_spec&.dig(:steps) ||
+                   []
+      
+      workflow_execution.workflow_step_executions.status_completed.each do |step_exec|
+        step_def = steps_array.find { |s| (s[:id] || s['id']) == step_exec.step_id }
+        
+        # Extract key results from step output
+        key_results = extract_key_results(step_exec)
+        
+        completed_steps << {
+          name: step_def&.dig(:name) || step_def&.dig('name') || step_exec.step_name || step_exec.step_id,
+          description: step_def&.dig(:description) || step_def&.dig('description') || '',
+          tool: step_def&.dig(:tool) || step_def&.dig('tool') || step_exec.step_type,
+          results: key_results
+        }
+      end
+    end
+    
+    # Get any created entities
+    created_entities = extract_created_entities(workflow_execution)
+    
+    # Build AI prompt for summary
+    summary_prompt = build_summary_prompt(workflow_spec, completed_steps, created_entities)
+    
+    # Get AI summary
+    begin
+      ai_service = BedrockService.new
+      response = ai_service.complete(
+        messages: [
+          { role: 'user', content: summary_prompt }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      )
+      
+      # Ensure we have a good summary
+      if response.present? && response.length > 20
+        response
+      else
+        # Fallback to basic summary
+        generate_basic_summary(workflow_spec, completed_steps, created_entities)
+      end
+    rescue => e
+      Rails.logger.error "Failed to generate AI summary: #{e.message}"
+      # Fallback to basic summary
+      generate_basic_summary(workflow_spec, completed_steps, created_entities)
+    end
+  end
+  
+  def extract_key_results(step_execution)
+    return {} unless step_execution.output_data.present?
+    
+    output = step_execution.output_data.with_indifferent_access
+    results = {}
+    
+    # Extract common patterns
+    if records = output.dig(:data, :records) || output.dig(:result, :records)
+      if records.is_a?(Array) && records.first
+        results[:record_count] = records.length
+        results[:first_record] = records.first.slice('id', 'name', 'subject', 'status')
+      end
+    end
+    
+    if record = output.dig(:data, :result, :record) || output.dig(:result, :record)
+      results[:created] = record.slice('id', 'name', 'status', 'email_template_id')
+    end
+    
+    results
+  end
+  
+  def extract_created_entities(workflow_execution)
+    entities = []
+    
+    return entities unless workflow_execution
+    
+    # Look for campaigns
+    if campaign_var = workflow_execution.workflow_variables.find_by(name: 'campaign_id')
+      entities << { type: 'Campaign', id: campaign_var.value }
+    end
+    
+    # Look for other common entities
+    %w[contact_id landing_page_id email_template_id].each do |var_name|
+      if var = workflow_execution.workflow_variables.find_by(name: var_name)
+        type = var_name.gsub('_id', '').humanize
+        entities << { type: type, id: var.value }
+      end
+    end
+    
+    entities
+  end
+  
+  def build_summary_prompt(workflow_spec, completed_steps, created_entities)
+    <<~PROMPT
+      You are a helpful AI assistant having a conversation with a user. You just completed a workflow for them.
+      Create a friendly, conversational response that summarizes what was done AND asks what they'd like to do next.
+      
+      Workflow: #{workflow_spec[:name]}
+      Description: #{workflow_spec[:description]}
+      
+      Completed Steps:
+      #{completed_steps.map { |step| "- #{step[:name]}: #{step[:description]}" }.join("\n")}
+      
+      Created/Modified Entities:
+      #{created_entities.map { |e| "- #{e[:type]} (ID: #{e[:id]})" }.join("\n")}
+      
+      Step Results:
+      #{completed_steps.map { |step| 
+        results = step[:results]
+        result_summary = []
+        result_summary << "#{results[:record_count]} records found" if results[:record_count]
+        result_summary << "Created: #{results[:created][:name]}" if results.dig(:created, :name)
+        "- #{step[:name]}: #{result_summary.join(', ')}"
+      }.join("\n")}
+      
+      Your response should:
+      1. Start with a success emoji and enthusiasm
+      2. Clearly state what was accomplished in user-friendly terms (1-2 sentences)
+      3. Mention specific entities created with IDs for reference
+      4. Confirm any linkages or relationships established
+      5. Ask an engaging follow-up question about what they'd like to do next
+      6. Suggest 2-3 specific next actions they might want to take
+      
+      Example suggestions could include:
+      - Viewing or editing what was created
+      - Creating more similar items
+      - Moving to the next logical step in their workflow
+      - Running a test or preview
+      
+      Be conversational and helpful, like a colleague who just helped them complete a task.
+    PROMPT
+  end
+  
+  def generate_basic_summary(workflow_spec, completed_steps, created_entities)
+    summary = "🎉 #{workflow_spec[:name]} completed successfully! "
+    
+    # Add specific accomplishments
+    if campaign = created_entities.find { |e| e[:type] == 'Campaign' }
+      summary += "Your new email campaign (ID: #{campaign[:id]}) has been created "
+      if completed_steps.any? { |s| s[:name]&.include?('Link') || s[:name]&.include?('Verify') }
+        summary += "and linked to your email template. "
+      end
+    elsif landing_page = created_entities.find { |e| e[:type] == 'Landing page' }
+      summary += "Your landing page (ID: #{landing_page[:id]}) has been created. "
+    else
+      summary += "All #{completed_steps.length} steps were executed successfully. "
+    end
+    
+    summary += "\n\nWhat would you like to do next? You could:\n"
+    summary += "• Preview or edit what was just created\n"
+    summary += "• Create another campaign with different settings\n"
+    summary += "• Add contacts to your campaign\n"
+    summary += "• Schedule the campaign for sending"
+    
+    summary
+  end
   
   def find_or_create_task_session
     # Try to find existing active session for this user
@@ -127,10 +465,24 @@ class InteractiveTaskService
   end
   
   def handle_autonomous_mode(message, conversation_history, current_canvas)
-    Rails.logger.info "InteractiveTaskService: Delegating to autonomous mode"
+    Rails.logger.info "InteractiveTaskService: Processing autonomous mode"
     
-    # Delegate to existing autonomous system with streaming
+    # Store any attached files in task session metadata for now
+    # They'll be moved to workflow context when workflow is created
+    if @additional_context[:attached_files]&.any?
+      current_files = @task_session.metadata['attached_files'] || []
+      current_files += @additional_context[:attached_files]
+      @task_session.update!(
+        metadata: @task_session.metadata.merge('attached_files' => current_files)
+      )
+      Rails.logger.info "Stored #{@additional_context[:attached_files].length} files in task session"
+    end
+    
+    # Let the AI decide if it needs planning - no more keyword checking
     generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id)
+    
+    # Pass task session context and any additional context (like files) so AI can delegate if needed
+    generic_tools_service.set_context(task_session: @task_session, **@additional_context)
     
     # Set up streaming callback if we have one
     if @progress_callback
@@ -302,9 +654,11 @@ class InteractiveTaskService
             tool: 'analyze_landing_page_request',
             description: 'Analyze existing business information and landing page request',
             inputs: {
-              user_message: message,
-              user: @user.as_json(only: [:id, :email, :first_name, :last_name]),
-              entity: @entity.as_json(only: [:id, :name, :subdomain])
+              user_input: message,
+              context: {
+                user: @user.as_json(only: [:id, :email, :first_name, :last_name]),
+                entity: @entity.as_json(only: [:id, :name, :subdomain])
+              }
             }
           }
         },
@@ -729,4 +1083,164 @@ class InteractiveTaskService
       timestamp: Time.current
     })
   end
+  
+  def requires_planning?(message)
+    # Detect patterns that indicate multi-step operations
+    multi_step_patterns = [
+      /create.*and.*link/i,
+      /create.*then.*link/i,
+      /create.*then.*find.*link/i,  # Add this specific pattern
+      /build.*and.*send/i,
+      /setup.*and.*configure/i,
+      /import.*and.*analyze/i,
+      /fetch.*and.*create/i,
+      /generate.*and.*publish/i
+    ]
+    
+    # Check for explicit multi-step indicators
+    multi_step_words = ['and then', 'followed by', 'after that', 'next', 'finally']
+    
+    # Check if message matches multi-step patterns
+    has_multi_step_pattern = multi_step_patterns.any? { |pattern| message.match?(pattern) }
+    has_multi_step_words = multi_step_words.any? { |phrase| message.downcase.include?(phrase) }
+    
+    # Check for compound operations (e.g., "create X and Y")
+    has_multiple_actions = message.scan(/\b(create|build|setup|configure|link|send|publish|analyze|import|export)\b/i).length > 1
+    
+    result = has_multi_step_pattern || has_multi_step_words || has_multiple_actions
+    
+    Rails.logger.info "InteractiveTaskService: requires_planning? for '#{message}' = #{result}"
+    Rails.logger.info "  has_multi_step_pattern: #{has_multi_step_pattern}"
+    Rails.logger.info "  has_multi_step_words: #{has_multi_step_words}"
+    Rails.logger.info "  has_multiple_actions: #{has_multiple_actions}"
+    
+    result
+  end
+  
+  def trigger_planning_phase(message, conversation_history, current_canvas)
+    Rails.logger.info "InteractiveTaskService: Triggering planning phase"
+    
+    # Send planning in progress message
+    @progress_callback&.call({
+      type: 'intermediate_message',
+      content: "🤔 I'm analyzing your request and creating a detailed plan...\n\nThis may take a moment as I determine the best approach. The plan will appear on the intelligent canvas for your approval.",
+      role: 'assistant'
+    })
+    
+    # Create planner service
+    planner = PlannerAgentService.new(
+      user: @user,
+      entity: @entity,
+      session_id: @session_id
+    )
+    
+    # Generate workflow plan
+    plan_result = planner.plan_workflow(message, {
+      conversation_history: conversation_history,
+      current_canvas: current_canvas
+    })
+    
+    if plan_result[:success]
+      workflow = plan_result[:workflow]
+      
+      # Store the plan in task session for approval
+      @task_session.update!(
+        session_type: 'autonomous',
+        metadata: @task_session.metadata.merge(
+          workflow_plan: workflow.to_h,
+          awaiting_approval: true,
+          plan_created_at: Time.current
+        )
+      )
+      
+      # Send plan ready message
+      @progress_callback&.call({
+        type: 'intermediate_message',
+        content: "✅ I've created a plan for your request. Please review it below:",
+        role: 'assistant'
+      })
+      
+      # Format the plan for user approval
+      plan_message = format_plan_for_approval(workflow)
+      
+      {
+        success: true,
+        message: plan_message,
+        canvas_type: 'task_progress',
+        canvas_data: {
+          workflow: workflow.to_h,
+          awaiting_approval: true,
+          approval_actions: [
+            { id: 'approve', label: 'Approve & Execute', style: 'primary' },
+            { id: 'modify', label: 'Modify Plan', style: 'secondary' },
+            { id: 'cancel', label: 'Cancel', style: 'danger' }
+          ]
+        },
+        mode: 'planning',
+        awaiting_approval: true
+      }
+    else
+      # Planning failed, fall back to direct autonomous execution
+      Rails.logger.error "Planning failed: #{plan_result[:error]}"
+      
+      # Delegate to autonomous system
+      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id)
+      
+      if @progress_callback
+        generic_tools_service.process_message_with_tools_streaming(
+          message, 
+          @progress_callback, 
+          conversation_history, 
+          current_canvas
+        )
+      else
+        generic_tools_service.process_message_with_tools(message, conversation_history, current_canvas)
+      end
+    end
+  end
+  
+  def format_plan_for_approval(workflow)
+    message = "## 📋 Workflow Plan: #{workflow.name}\n\n"
+    message += "I've created a plan to complete your request. Here's what I'll do:\n\n"
+    
+    workflow.steps.each_with_index do |step, index|
+      message += "### Step #{index + 1}: #{step.name}\n"
+      message += "- **Agent**: #{step.agent_role.capitalize}\n"
+      message += "- **Action**: #{step.description}\n"
+      
+      if step.dependencies.any?
+        message += "- **Depends on**: #{step.dependencies.join(', ')}\n"
+      end
+      
+      if step.tool_allowlist.any?
+        message += "- **Tools**: #{step.tool_allowlist.join(', ')}\n"
+      end
+      
+      message += "\n"
+    end
+    
+    message += "---\n\n"
+    message += "**Would you like me to proceed with this plan?**\n\n"
+    message += "You can:\n"
+    message += "- ✅ **Approve** - Execute the plan as shown\n"
+    message += "- ✏️ **Modify** - Request changes to the plan\n"
+    message += "- ❌ **Cancel** - Stop and try a different approach\n"
+    
+    message
+  end
+  
+  def store_files_in_context(file_urls)
+    return unless @task_session.workflow_execution
+    
+    file_urls.each_with_index do |file_info, index|
+      key = "uploaded_file_#{index + 1}"
+      WorkflowContext.store_file(
+        @task_session.workflow_execution,
+        key,
+        file_info
+      )
+      Rails.logger.info "Stored file #{file_info['filename']} as #{key} in workflow context"
+    end
+  end
+  
 end

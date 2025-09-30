@@ -22,7 +22,12 @@ export default class extends Controller {
     this.currentCanvas = null
     this.isResizing = false
     // Initialize markdown parser (safe: HTML disabled, emojis preserved)
-    this.md = new MarkdownIt({ html: false, linkify: true, breaks: false, typographer: false })
+    this.md = new MarkdownIt({ 
+      html: false, 
+      linkify: true, 
+      breaks: true,  // Changed to true to handle line breaks better
+      typographer: false 
+    })
     
     // Make controller globally accessible
     window.scoutController = this
@@ -352,12 +357,17 @@ export default class extends Controller {
     }
   }
 
-  // Enhanced processMessage to handle canvas actions
-  async processMessage(message) {
+  // Enhanced processMessage to handle canvas actions and file uploads
+  async processMessage(message, files = []) {
     try {
       console.log("🔄 Processing message:", message)
       
-      // Legacy streaming window removed - handled in main chat UI
+      // If there are files, we need to upload them first
+      let fileUrls = [];
+      if (files && files.length > 0) {
+        console.log("📎 Uploading files:", files.map(f => f.name))
+        fileUrls = await this.uploadFiles(files);
+      }
       
       // Use streaming endpoint for better timeout handling
       const response = await fetch("/scout/chat_stream", {
@@ -368,7 +378,8 @@ export default class extends Controller {
         },
         body: JSON.stringify({ 
           message: message,
-          current_canvas: this.currentCanvas
+          current_canvas: this.currentCanvas,
+          file_urls: fileUrls
         })
       })
 
@@ -502,6 +513,25 @@ export default class extends Controller {
                     const evt = new CustomEvent('scout:load-canvas', { detail: { canvas: data.canvas, data: data.canvas_data || {} } })
                     document.dispatchEvent(evt)
                   }
+                } else if (data.type === 'canvas_update') {
+                  // Handle canvas update events - always force refresh for updates
+                  try {
+                    console.log('🎨 Streaming: canvas_update received:', data.canvas_type)
+                    this.loadScoutCanvas(data.canvas_type, data.canvas_data || {}, true) // Force refresh
+                  } catch (e) {
+                    console.warn('⚠️ Failed canvas_update during streaming', e)
+                  }
+                } else if (data.type === 'step_completed') {
+                  // Handle step completion events
+                  try {
+                    console.log('✅ Step completed:', data.step_name || data.step_id)
+                    // The canvas update will be sent separately, so we just log here
+                    if (data.message) {
+                      console.log(data.message)
+                    }
+                  } catch (e) {
+                    console.warn('⚠️ Failed to handle step_completed', e)
+                  }
                 } else if (data.type === 'content') {
                   console.log("🎯 ENTERING CONTENT HANDLER - data.content:", data.content, "currentStreamingContent defined?", this.currentStreamingContent !== undefined)
                   
@@ -562,6 +592,10 @@ export default class extends Controller {
                       
                       // Only update if we have actual content
                       if (this.currentStreamingContent && this.currentStreamingContent.trim()) {
+                        // Debug: Log what we're trying to render
+                        if (this.currentStreamingContent.includes('*') || this.currentStreamingContent.includes('-')) {
+                          console.log('📝 Rendering markdown with lists:', this.currentStreamingContent.slice(-200))
+                        }
                         targetBubble.innerHTML = this.md.render(this.currentStreamingContent)
                         this.streamingMessageElement = targetBubble
                       } else {
@@ -674,6 +708,12 @@ export default class extends Controller {
           }
         }
         
+        // Check if workflow approval is needed
+        if (finalResponseData.workflow_approval) {
+          console.log("🔧 Workflow approval needed")
+          this.showWorkflowApproval(finalResponseData.workflow_approval)
+        }
+        
         // Re-enable input after successful response
         this.enableChatInput()
       } else {
@@ -717,6 +757,130 @@ export default class extends Controller {
           this.loadScoutCanvas(this.currentCanvas.type, this.currentCanvas.data)
         }
       }, 2000)
+    }
+  }
+
+  // Show workflow approval buttons in chat
+  showWorkflowApproval(approvalData) {
+    const { task_session_id, workflow_spec } = approvalData
+    const steps = workflow_spec.steps || []
+    
+    // Create approval card
+    const approvalCard = document.createElement('div')
+    approvalCard.className = 'workflow-approval-card bg-white rounded-lg shadow-md p-4 mb-4 border border-gray-200'
+    
+    // Add workflow summary
+    const summaryHtml = `
+      <div class="mb-4">
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Workflow Plan</h3>
+        <p class="text-sm text-gray-600 mb-3">I'll execute the following ${steps.length} steps:</p>
+        <ol class="space-y-2">
+          ${steps.map((step, index) => `
+            <li class="text-sm text-gray-700">
+              <span class="font-medium">${index + 1}.</span> ${step.config?.description || step.id}
+            </li>
+          `).join('')}
+        </ol>
+      </div>
+      
+      <div class="flex gap-3">
+        <button class="approve-workflow-btn px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors" 
+                data-task-session-id="${task_session_id}">
+          <i class="fas fa-check mr-2"></i>Approve & Start
+        </button>
+        <button class="reject-workflow-btn px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                data-task-session-id="${task_session_id}">
+          <i class="fas fa-times mr-2"></i>Cancel
+        </button>
+      </div>
+    `
+    
+    approvalCard.innerHTML = summaryHtml
+    
+    // Add to chat as a special message
+    const messageDiv = document.createElement('div')
+    messageDiv.className = 'message ai-message mb-4 animate-fade-in'
+    messageDiv.appendChild(approvalCard)
+    
+    this.chatMessagesTarget.appendChild(messageDiv)
+    this.scrollToBottom()
+    
+    // Add event listeners
+    approvalCard.querySelector('.approve-workflow-btn').addEventListener('click', (e) => {
+      this.approveWorkflow(task_session_id)
+      approvalCard.classList.add('opacity-50', 'pointer-events-none')
+    })
+    
+    approvalCard.querySelector('.reject-workflow-btn').addEventListener('click', (e) => {
+      this.rejectWorkflow(task_session_id)
+      approvalCard.classList.add('opacity-50', 'pointer-events-none')
+    })
+  }
+  
+  // Approve workflow
+  async approveWorkflow(taskSessionId) {
+    try {
+      console.log("✅ Approving workflow for task session:", taskSessionId)
+      
+      // Send approval to backend
+      const response = await fetch('/scout/approve_workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+          task_session_id: taskSessionId,
+          approved: true
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to approve workflow')
+      }
+      
+      // Add confirmation message
+      this.addMessage("Great! I'm starting the workflow now. I'll keep you updated on the progress.", "ai")
+      
+      // Load task progress canvas
+      setTimeout(() => {
+        this.loadScoutCanvas('task_progress', { task_session_id: taskSessionId })
+      }, 500)
+      
+    } catch (error) {
+      console.error("Error approving workflow:", error)
+      this.addMessage("Sorry, there was an error approving the workflow. Please try again.", "ai")
+    }
+  }
+  
+  // Reject workflow
+  async rejectWorkflow(taskSessionId) {
+    try {
+      console.log("❌ Rejecting workflow for task session:", taskSessionId)
+      
+      // Send rejection to backend
+      const response = await fetch('/scout/approve_workflow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+          task_session_id: taskSessionId,
+          approved: false
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to reject workflow')
+      }
+      
+      // Add confirmation message
+      this.addMessage("No problem! Let me know if you'd like me to try a different approach.", "ai")
+      
+    } catch (error) {
+      console.error("Error rejecting workflow:", error)
+      this.addMessage("Sorry, there was an error canceling the workflow.", "ai")
     }
   }
 
@@ -837,13 +1001,14 @@ export default class extends Controller {
   // ========== SCOUT CANVAS FUNCTIONALITY ==========
 
   // Load a Scout canvas
-  async loadScoutCanvas(canvasType, canvasData = {}) {
+  async loadScoutCanvas(canvasType, canvasData = {}, forceRefresh = false) {
     try {
       console.log(`🎨 Loading Scout canvas: ${canvasType}`)
       console.log(`📦 Canvas data:`, canvasData)
+      console.log(`🔄 Force refresh:`, forceRefresh)
       
-      // Check if we're already on this exact canvas
-      if (this.currentCanvas && 
+      // Check if we're already on this exact canvas (skip check if forceRefresh is true)
+      if (!forceRefresh && this.currentCanvas && 
           this.currentCanvas.type === canvasType && 
           JSON.stringify(this.currentCanvas.data || {}) === JSON.stringify(canvasData || {})) {
         console.log("✅ Already on this canvas, skipping reload")
@@ -918,10 +1083,7 @@ export default class extends Controller {
 
         console.log(`✅ Canvas loaded successfully: ${data.canvas.title}`)
         
-        // Add confirmation message to chat (skip for task progress canvas)
-        if (canvasType !== 'task_progress') {
-          this.addMessage(`Loaded ${data.canvas.title}. You can interact with the data on the right while we continue our conversation here.`, "ai")
-        }
+        // No need for confirmation message - canvas loading is visually obvious
         
       } else {
         console.error("❌ Failed to load canvas:", data.error)
@@ -1736,6 +1898,35 @@ export default class extends Controller {
       
       console.warn("⚠️ CSRF token not found! Request may fail.")
       return ""
+    }
+  }
+  
+  // Upload files to the server
+  async uploadFiles(files) {
+    const formData = new FormData()
+    files.forEach((file, index) => {
+      formData.append(`files[${index}]`, file)
+    })
+    
+    try {
+      const response = await fetch('/scout/upload_files', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-Token': this.getCSRFToken()
+        },
+        body: formData
+      })
+      
+      if (!response.ok) {
+        throw new Error('File upload failed')
+      }
+      
+      const result = await response.json()
+      return result.urls || []
+    } catch (error) {
+      console.error('File upload error:', error)
+      this.addMessage('Failed to upload files. Please try again.', 'ai')
+      return []
     }
   }
 
