@@ -1,5 +1,9 @@
 module Tools
   class AnalyzeLandingPageRequestTool < BaseTool
+    def self.read_only?
+      true  # This tool only analyzes and extracts information
+    end
+    
     def self.metadata
       {
         name: 'analyze_landing_page_request',
@@ -68,7 +72,7 @@ module Tools
           { role: 'system', content: 'You are a landing page expert analyzing user requirements.' },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 1000,
+        max_tokens: 4000,
         temperature: 0.7
       )
       

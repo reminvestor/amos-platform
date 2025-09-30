@@ -1,5 +1,6 @@
 class Campaign < ApplicationRecord
   belongs_to :user
+  belongs_to :entity, optional: true
   
   # Associations
   has_many :campaign_groups, dependent: :destroy

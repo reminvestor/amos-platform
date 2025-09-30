@@ -1,0 +1,425 @@
+<div class="container-fluid py-4">
+  <h1 class="mb-4">Agent Monitoring Dashboard</h1>
+  
+  <!-- System Overview -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card text-white bg-primary">
+        <div class="card-body">
+          <h5 class="card-title">Total Agents</h5>
+          <h2 class="mb-0"><%= @system_metrics[:total_agents] %></h2>
+          <small>Active: <%= @system_metrics[:active_agents] %></small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-3">
+      <div class="card text-white bg-success">
+        <div class="card-body">
+          <h5 class="card-title">Success Rate</h5>
+          <h2 class="mb-0"><%= number_to_percentage(@system_metrics[:success_rate] * 100, precision: 1) %></h2>
+          <small><%= @system_metrics[:total_actions] %> total actions</small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-3">
+      <div class="card text-white bg-warning">
+        <div class="card-body">
+          <h5 class="card-title">Resource Usage</h5>
+          <h2 class="mb-0"><%= @system_metrics[:resource_usage][:api_calls] || 0 %></h2>
+          <small>API calls today</small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-3">
+      <div class="card text-white bg-danger">
+        <div class="card-body">
+          <h5 class="card-title">Active Alerts</h5>
+          <h2 class="mb-0"><%= @system_metrics[:alerts]&.count || 0 %></h2>
+          <small>Requires attention</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Navigation Tabs -->
+  <ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link active" data-bs-toggle="tab" href="#agents">Agents</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#performance">Performance</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#decisions">Decisions</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#collaboration">Collaboration</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#resources">Resources</a>
+    </li>
+  </ul>
+  
+  <div class="tab-content">
+    <!-- Agents Tab -->
+    <div class="tab-pane fade show active" id="agents">
+      <div class="card">
+        <div class="card-header">
+          <h5>Active Agents</h5>
+        </div>
+        <div class="card-body">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Agent ID</th>
+                <th>Role</th>
+                <th>State</th>
+                <th>Actions</th>
+                <th>Success Rate</th>
+                <th>Performance Score</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @agents.each do |agent| %>
+                <% metrics = @system_metrics[:agents]&.find { |a| a[:id] == agent.id }&.dig(:metrics) || {} %>
+                <tr>
+                  <td><code><%= agent.id[0..7] %>...</code></td>
+                  <td><span class="badge bg-info"><%= agent.role %></span></td>
+                  <td>
+                    <span class="badge bg-<%= agent.state == :active ? 'success' : 'secondary' %>">
+                      <%= agent.state %>
+                    </span>
+                  </td>
+                  <td><%= metrics[:action_count] || 0 %></td>
+                  <td><%= number_to_percentage((metrics[:success_rate] || 0) * 100, precision: 0) %></td>
+                  <td>
+                    <div class="progress" style="height: 20px;">
+                      <div class="progress-bar" role="progressbar" 
+                           style="width: <%= metrics[:performance_score] || 0 %>%">
+                        <%= metrics[:performance_score]&.round || 0 %>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <%= link_to "Details", agent_details_agents_monitoring_path(agent.id), 
+                        class: "btn btn-sm btn-primary" %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Performance Tab -->
+    <div class="tab-pane fade" id="performance">
+      <div class="row">
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-header">
+              <h5>Performance Metrics</h5>
+            </div>
+            <div class="card-body">
+              <canvas id="performanceChart" height="100"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-4">
+          <div class="card">
+            <div class="card-header">
+              <h5>Top Performers</h5>
+            </div>
+            <div class="card-body">
+              <% (@system_metrics[:top_performers] || []).each do |performer| %>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span><%= performer[:agent_id][0..7] %>...</span>
+                  <span class="badge bg-success"><%= performer[:score].round %></span>
+                </div>
+              <% end %>
+            </div>
+          </div>
+          
+          <div class="card mt-3">
+            <div class="card-header">
+              <h5>Bottlenecks</h5>
+            </div>
+            <div class="card-body">
+              <% (@system_metrics[:bottlenecks] || []).each do |bottleneck| %>
+                <div class="alert alert-warning mb-2">
+                  <strong><%= bottleneck[:type].to_s.humanize %></strong><br>
+                  <%= bottleneck[:agents].size %> agents affected
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Decisions Tab -->
+    <div class="tab-pane fade" id="decisions">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5>Active Decision Traces</h5>
+          <%= link_to "View All Traces", decision_traces_agents_monitoring_path, 
+              class: "btn btn-sm btn-outline-primary" %>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Agent</th>
+                <th>Decision Type</th>
+                <th>Started</th>
+                <th>Duration</th>
+                <th>Confidence</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @active_traces.each do |trace| %>
+                <tr>
+                  <td><code><%= trace[:agent_id][0..7] %>...</code></td>
+                  <td><%= trace[:decision_type] %></td>
+                  <td><%= time_ago_in_words(trace[:started_at]) %> ago</td>
+                  <td>
+                    <%= (Time.current - trace[:started_at]).round(1) %>s
+                  </td>
+                  <td>
+                    <% confidence = trace[:confidence_scores][:overall]&.dig(:score) %>
+                    <% if confidence %>
+                      <div class="progress" style="height: 15px;">
+                        <div class="progress-bar bg-<%= confidence > 0.7 ? 'success' : 'warning' %>" 
+                             style="width: <%= confidence * 100 %>%">
+                          <%= (confidence * 100).round %>%
+                        </div>
+                      </div>
+                    <% else %>
+                      -
+                    <% end %>
+                  </td>
+                  <td>
+                    <span class="badge bg-info">In Progress</span>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Collaboration Tab -->
+    <div class="tab-pane fade" id="collaboration">
+      <div class="card">
+        <div class="card-header">
+          <h5>Agent Collaboration Network</h5>
+        </div>
+        <div class="card-body">
+          <div id="collaborationNetwork" style="height: 500px;"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Resources Tab -->
+    <div class="tab-pane fade" id="resources">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <h5>Resource Usage</h5>
+            </div>
+            <div class="card-body">
+              <canvas id="resourceChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <h5>Circuit Breakers</h5>
+            </div>
+            <div class="card-body">
+              <% (@system_metrics[:circuit_breakers] || {}).each do |name, breaker| %>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between">
+                    <strong><%= name %></strong>
+                    <span class="badge bg-<%= breaker[:state] == :open ? 'danger' : 'success' %>">
+                      <%= breaker[:state] %>
+                    </span>
+                  </div>
+                  <small class="text-muted">
+                    Failures: <%= breaker[:failure_count] %> |
+                    Success rate: <%= number_to_percentage(breaker[:metrics][:success_rate] * 100, precision: 0) %>
+                  </small>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize performance chart
+  const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+  const performanceChart = new Chart(performanceCtx, {
+    type: 'line',
+    data: {
+      labels: [], // Will be populated via AJAX
+      datasets: [{
+        label: 'Success Rate',
+        data: [],
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.1
+      }, {
+        label: 'Response Time (s)',
+        data: [],
+        borderColor: 'rgb(255, 99, 132)',
+        tension: 0.1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+  
+  // Initialize resource chart
+  const resourceCtx = document.getElementById('resourceChart').getContext('2d');
+  const resourceChart = new Chart(resourceCtx, {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(<%= @system_metrics[:resource_usage].to_json %>),
+      datasets: [{
+        data: Object.values(<%= @system_metrics[:resource_usage].to_json %>),
+        backgroundColor: [
+          'rgb(255, 99, 132)',
+          'rgb(54, 162, 235)',
+          'rgb(255, 205, 86)',
+          'rgb(75, 192, 192)'
+        ]
+      }]
+    }
+  });
+  
+  // Initialize collaboration network
+  initializeCollaborationNetwork();
+  
+  // Auto-refresh data
+  setInterval(refreshDashboard, 5000);
+});
+
+function initializeCollaborationNetwork() {
+  fetch('<%= collaboration_network_agents_monitoring_path(format: :json) %>')
+    .then(response => response.json())
+    .then(data => {
+      // D3.js network visualization
+      const width = document.getElementById('collaborationNetwork').offsetWidth;
+      const height = 500;
+      
+      const svg = d3.select('#collaborationNetwork')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+      
+      const simulation = d3.forceSimulation(data.nodes)
+        .force('link', d3.forceLink(data.links).id(d => d.id))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(width / 2, height / 2));
+      
+      const link = svg.append('g')
+        .selectAll('line')
+        .data(data.links)
+        .enter().append('line')
+        .style('stroke', '#999')
+        .style('stroke-opacity', 0.6)
+        .style('stroke-width', d => Math.sqrt(d.value));
+      
+      const node = svg.append('g')
+        .selectAll('circle')
+        .data(data.nodes)
+        .enter().append('circle')
+        .attr('r', 10)
+        .style('fill', d => d3.schemeCategory10[d.group])
+        .call(d3.drag()
+          .on('start', dragstarted)
+          .on('drag', dragged)
+          .on('end', dragended));
+      
+      node.append('title')
+        .text(d => d.id);
+      
+      simulation.on('tick', () => {
+        link
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y);
+        
+        node
+          .attr('cx', d => d.x)
+          .attr('cy', d => d.y);
+      });
+      
+      function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      }
+      
+      function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+      }
+      
+      function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      }
+    });
+}
+
+function refreshDashboard() {
+  fetch('<%= performance_metrics_agents_monitoring_path(format: :json) %>')
+    .then(response => response.json())
+    .then(data => {
+      // Update metrics
+      updateSystemMetrics(data.system);
+      
+      // Update charts
+      updatePerformanceChart(data.agents);
+    });
+}
+
+function updateSystemMetrics(metrics) {
+  // Update card values
+  document.querySelector('.bg-primary h2').textContent = metrics.total_agents;
+  document.querySelector('.bg-success h2').textContent = (metrics.success_rate * 100).toFixed(1) + '%';
+  document.querySelector('.bg-warning h2').textContent = metrics.resource_usage.api_calls || 0;
+  document.querySelector('.bg-danger h2').textContent = metrics.alerts.length;
+}
+
+function updatePerformanceChart(agentData) {
+  // Implementation for updating chart data
+}
+</script>
+
+
+
+

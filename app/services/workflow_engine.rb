@@ -6,6 +6,12 @@ class WorkflowEngine
     @workflow = nil
     @progress_callback = nil
     @observability = ObservabilityService.instance
+    @workflow_execution = nil
+  end
+  
+  # Set progress callback for streaming updates
+  def set_progress_callback(callback)
+    @progress_callback = callback
   end
   
   # Create and start a new workflow
@@ -19,13 +25,64 @@ class WorkflowEngine
 
     # Store workflow spec in task session
     @task_session.update_state(workflow_spec: workflow_spec)
+    
+    # Create WorkflowExecution record
+    @workflow_execution = WorkflowExecution.create!(
+      task_session: @task_session,
+      user: @task_session.user,
+      entity: @task_session.user.entity,
+      workflow_template_id: workflow_spec[:template_id] || workflow_spec.dig(:metadata, :template_used),
+      workflow_spec: workflow_spec,
+      status: 'running',
+      metadata: {
+        initial_inputs: initial_inputs,
+        started_from: 'workflow_engine'
+      }
+    )
+    
+    # Move any attached files from task session to workflow context
+    if @task_session.metadata['attached_files']&.any?
+      @task_session.metadata['attached_files'].each_with_index do |file_info, index|
+        key = "uploaded_file_#{index + 1}"
+        WorkflowContext.store_file(@workflow_execution, key, file_info)
+        Rails.logger.info "Moved file #{file_info['filename']} to workflow context as #{key}"
+      end
+      
+      # Clear files from task session metadata
+      @task_session.update!(
+        metadata: @task_session.metadata.except('attached_files')
+      )
+    end
+    
+    # Create WorkflowStepExecution records for each step
+    steps = workflow_spec[:steps] || workflow_spec['steps'] || []
+    
+    # Log for debugging
+    Rails.logger.info "WorkflowEngine: Creating step executions for #{steps.length} steps"
+    
+    steps.each do |step_spec|
+      step_spec = step_spec.with_indifferent_access if step_spec.is_a?(Hash)
+      @workflow_execution.workflow_step_executions.create!(
+        step_id: step_spec[:id] || step_spec['id'],
+        step_name: step_spec[:name] || step_spec['name'],
+        step_type: step_spec[:type] || step_spec['type'] || 'tool_call',
+        status: 'pending'
+      )
+    end
+    
     @task_session.add_event('workflow_started', { 
       workflow_type: workflow_spec[:type] || 'generic',
       initial_inputs: initial_inputs 
     })
     
-    # Create workflow instance
-    @workflow = Workflow.new(workflow_spec)
+    # Create workflow instance with execution context
+    execution_context = {
+      user: @task_session.user,
+      entity: @task_session.user.entity,
+      task_session: @task_session,
+      workflow_execution: @workflow_execution
+    }
+    @workflow = Workflow.new(workflow_spec, execution_context)
     
     # Track workflow start
     @observability.track_workflow_event(:workflow_started, @task_session, {
@@ -49,7 +106,12 @@ class WorkflowEngine
     end
     
     # Recreate workflow from spec and restore state
-    @workflow = Workflow.new(workflow_spec)
+    execution_context = {
+      user: @task_session.user,
+      entity: @task_session.user.entity,
+      task_session: @task_session
+    }
+    @workflow = Workflow.new(workflow_spec, execution_context)
     restore_workflow_state
     
     # Execute next step
@@ -65,14 +127,30 @@ class WorkflowEngine
       }
     end
     
-    # Log step execution
+    # Log step execution and notify progress
     current_step = @workflow.current_step
     if current_step
+      # Find the WorkflowStepExecution record
+      step_execution = @workflow_execution&.workflow_step_executions&.find_by(step_id: current_step.id)
+      
+      # Start the step execution
+      step_execution&.start!(inputs)
+      
       @task_session.add_event('step_started', {
         step_id: current_step.id,
         step_type: current_step.type,
         inputs: sanitize_inputs(inputs)
       })
+      
+      # Notify progress callback if available
+      if @progress_callback
+        @progress_callback.call({
+          type: :step_started,
+          step_id: current_step.id,
+          step_name: current_step.name || current_step.id,
+          agent_role: current_step.agent_role || 'executor'
+        })
+      end
     end
     
     # For user_input steps, check if we have actual form data or just initial workflow inputs
@@ -180,7 +258,12 @@ class WorkflowEngine
       workflow_spec = @task_session.workflow_spec
       return { status: 'no_workflow' } unless workflow_spec
       
-      @workflow = Workflow.new(workflow_spec)
+      execution_context = {
+        user: @task_session.user,
+        entity: @task_session.user.entity,
+        task_session: @task_session
+      }
+      @workflow = Workflow.new(workflow_spec, execution_context)
       restore_workflow_state
     end
     
@@ -379,17 +462,61 @@ class WorkflowEngine
   def handle_step_result(result)
     case result[:status]
     when 'step_completed'
+      step_id = result[:executing_step_id] || result[:result][:step_id] || result[:step_id]
+      
+      # Update WorkflowStepExecution
+      if @workflow_execution
+        step_execution = @workflow_execution.workflow_step_executions.find_by(step_id: step_id)
+        if step_execution
+          step_execution.complete!(result[:result])
+          # Explicitly extract variables in case the callback doesn't fire
+          @workflow_execution.extract_variables_from_step(step_execution)
+        end
+      end
+      
       @task_session.add_event('step_completed', {
-        step_id: result[:executing_step_id] || result[:result][:step_id] || result[:step_id],
+        step_id: step_id,
         result: sanitize_result(result[:result])
       })
       
+      # Notify progress callback
+      if @progress_callback
+        step = @workflow.steps.find { |s| s.id == step_id }
+        @progress_callback.call({
+          type: :step_completed,
+          step_id: step_id,
+          step_name: step&.name || step_id
+        })
+      end
+      
+      # Check if this was the last step and workflow is complete
+      if result[:workflow_complete]
+        # Handle workflow completion
+        handle_step_result({ 
+          status: 'completed',
+          completed_steps: result[:completed_steps],
+          result: result[:result]
+        })
+      end
+      
     when 'completed'
+      # Mark WorkflowExecution as completed
+      @workflow_execution&.mark_completed!
+      
       @task_session.add_event('workflow_completed', {
         completed_steps: result[:completed_steps],
         final_result: sanitize_result(result[:result])
       })
       @task_session.update!(status: 'completed')
+      
+      # Notify progress callback
+      if @progress_callback
+        @progress_callback.call({
+          type: :workflow_completed,
+          total_steps: @workflow.steps.length,
+          completed_steps: result[:completed_steps]
+        })
+      end
       
       # Track workflow completion
       @observability.track_workflow_event(:workflow_completed, @task_session, {
@@ -398,11 +525,29 @@ class WorkflowEngine
       })
       
     when 'failed'
+      # Mark step as failed
+      if @workflow_execution
+        step_execution = @workflow_execution.workflow_step_executions.find_by(step_id: result[:failed_step])
+        step_execution&.fail!(result[:error])
+        @workflow_execution.mark_failed!(result[:error])
+      end
+      
       @task_session.add_event('workflow_failed', {
         failed_step: result[:failed_step],
         error: result[:error]
       })
       @task_session.update!(status: 'failed')
+      
+      # Notify progress callback
+      if @progress_callback
+        step = @workflow.steps.find { |s| s.id == result[:failed_step] }
+        @progress_callback.call({
+          type: :step_failed,
+          step_id: result[:failed_step],
+          step_name: step&.name || result[:failed_step],
+          error: result[:error]
+        })
+      end
       
       # Track workflow failure
       @observability.track_workflow_event(:workflow_failed, @task_session, {
@@ -414,8 +559,16 @@ class WorkflowEngine
     when 'awaiting_input'
       @task_session.add_event('step_awaiting_input', {
         step_id: result[:step][:id],
-        form: result[:form]
+        form: result[:form],
+        conversational: result[:conversational],
+        message: result[:message]
       })
+      
+      # Store in workflow state for easy access
+      state = @task_session.state || {}
+      state['workflow_state'] ||= {}
+      state['workflow_state']['last_step_result'] = result
+      @task_session.update!(state: state)
     end
     
     # Always update workflow state
@@ -458,9 +611,40 @@ class WorkflowEngine
     return unless @progress_callback
     
     begin
-      @progress_callback.call(progress, result)
+      # Convert workflow result to progress callback format
+      update_type = case result[:status]
+      when 'step_started'
+        :step_started
+      when 'step_completed'
+        :step_completed
+      when 'step_failed'
+        :step_failed
+      when 'workflow_completed'
+        :workflow_completed
+      when 'workflow_failed'
+        :workflow_failed
+      else
+        :progress_update
+      end
+      
+      # Extract step information
+      step_name = result.dig(:step_name) || 
+                  result.dig(:result, :step_name) || 
+                  result.dig(:step, :name) ||
+                  "Step #{result[:step_id]}"
+      
+      # Stream the update through the callback
+      @progress_callback.call({
+        type: update_type,
+        step_name: step_name,
+        step_id: result[:step_id],
+        error: result[:error],
+        progress: progress,
+        result: result
+      })
     rescue => e
       Rails.logger.error "Workflow progress callback failed: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
     end
   end
   

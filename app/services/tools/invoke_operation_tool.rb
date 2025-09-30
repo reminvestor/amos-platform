@@ -65,7 +65,7 @@ module Tools
         
         # Execute the operation
         api_service = IntegrationApiService.new(connection)
-        result = api_service.execute_operation(operation, parameters)
+        result = api_service.execute_operation(operation, params: parameters)
         
         Rails.logger.info "API Response: #{result.code} - #{result.message}"
         

@@ -1,0 +1,314 @@
+<div class="workflow-approval-container p-4">
+  <style>
+    .workflow-approval-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    /* Force dark text throughout the workflow approval */
+    .workflow-approval-container * {
+      color: #1f2937 !important;
+    }
+    
+    .workflow-approval-container .step-details * {
+      color: #4b5563 !important;
+    }
+    
+    .workflow-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white !important;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .workflow-header * {
+      color: white !important;
+    }
+    
+    .workflow-header h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: white !important;
+    }
+    
+    .workflow-header .description {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-top: 8px;
+      color: white !important;
+    }
+    
+    .workflow-steps {
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    
+    .step-item {
+      padding: 16px 20px;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    
+    .step-item:last-child {
+      border-bottom: none;
+    }
+    
+    .step-number {
+      width: 32px;
+      height: 32px;
+      background-color: #667eea;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    
+    .step-content {
+      flex: 1;
+    }
+    
+    .step-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2937 !important;
+      margin-bottom: 4px;
+    }
+    
+    .step-description {
+      font-size: 14px;
+      color: #374151 !important;
+      margin-bottom: 8px;
+    }
+    
+    .step-details {
+      font-size: 13px;
+      color: #4b5563 !important;
+    }
+    
+    .step-details span {
+      color: #4b5563 !important;
+    }
+    
+    .step-details span {
+      margin-right: 16px;
+    }
+    
+    .approval-section {
+      background-color: #f9fafb;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+      margin-bottom: 20px;
+      border: 2px solid #e5e7eb;
+    }
+    
+    .approval-prompt {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    
+    .approval-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .approval-btn {
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    
+    .approval-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .approval-btn.primary {
+      background-color: #667eea;
+      color: white;
+    }
+    
+    .approval-btn.primary:hover {
+      background-color: #5a5bc6;
+    }
+    
+    .approval-btn.secondary {
+      background-color: #e5e7eb;
+      color: #4b5563;
+    }
+    
+    .approval-btn.secondary:hover {
+      background-color: #d1d5db;
+    }
+    
+    .approval-btn.danger {
+      background-color: #fee2e2;
+      color: #dc2626;
+    }
+    
+    .approval-btn.danger:hover {
+      background-color: #fecaca;
+    }
+  </style>
+  
+  <% 
+    workflow = data[:workflow] || data['workflow'] || {}
+    steps = workflow[:steps] || workflow['steps'] || []
+    awaiting = data[:awaiting_approval] || data['awaiting_approval']
+    actions = data[:approval_actions] || data['approval_actions'] || []
+    
+    # Debug logging
+    Rails.logger.info "🔍 Workflow Approval Debug:"
+    Rails.logger.info "  Data class: #{data.class}"
+    Rails.logger.info "  Data keys: #{data.keys}"
+    Rails.logger.info "  Workflow: #{workflow.inspect[0..200]}..."
+    Rails.logger.info "  Steps count: #{steps.length}"
+    Rails.logger.info "  Awaiting: #{awaiting}"
+    Rails.logger.info "  Actions: #{actions.inspect}"
+    Rails.logger.info "  Actions count: #{actions.length}"
+  %>
+  
+  <div class="workflow-header">
+    <h2>
+      <i class="fas fa-route"></i>
+      <%= workflow[:name] || workflow['name'] || 'Workflow Plan' %>
+    </h2>
+    <% if workflow[:description] || workflow['description'] %>
+      <div class="description">
+        <%= workflow[:description] || workflow['description'] %>
+      </div>
+    <% end %>
+  </div>
+  
+  <% if steps.any? %>
+    <div class="workflow-steps">
+      <% steps.each_with_index do |step, index| %>
+        <div class="step-item">
+          <div class="step-number"><%= index + 1 %></div>
+          <div class="step-content">
+            <div class="step-name">
+              <%= step[:name] || step['name'] || step[:id] || step['id'] %>
+            </div>
+            <% if step[:description] || step['description'] %>
+              <div class="step-description">
+                <%= step[:description] || step['description'] %>
+              </div>
+            <% end %>
+            <div class="step-details">
+              <span>
+                <i class="fas fa-user"></i>
+                <%= (step[:agent_role] || step['agent_role'] || 'executor').capitalize %>
+              </span>
+              <span>
+                <i class="fas fa-wrench"></i>
+                <%= (step[:type] || step['type'] || 'tool_call').humanize %>
+              </span>
+              <% if step[:config] && (step[:config][:tool] || step[:config]['tool']) %>
+                <span>
+                  <i class="fas fa-toolbox"></i>
+                  <%= step[:config][:tool] || step[:config]['tool'] %>
+                </span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+  
+  <% if awaiting && actions.any? %>
+    <div class="approval-section">
+      <div class="approval-prompt">
+        Would you like me to proceed with this plan?
+      </div>
+      <div class="approval-actions">
+        <% actions.each do |action| %>
+          <button class="approval-btn <%= action[:style] || action['style'] || 'secondary' %>" 
+                  onclick="handleWorkflowApproval('<%= action[:id] || action['id'] %>')">
+            <% case action[:id] || action['id'] %>
+            <% when 'approve' %>
+              <i class="fas fa-check"></i>
+            <% when 'modify' %>
+              <i class="fas fa-edit"></i>
+            <% when 'cancel' %>
+              <i class="fas fa-times"></i>
+            <% end %>
+            <%= action[:label] || action['label'] %>
+          </button>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<script>
+function handleWorkflowApproval(action) {
+  console.log('🎯 Handling workflow approval:', action);
+  
+  // Send the approval action back to the chat
+  const message = action === 'approve' ? 'Approve' : 
+                  action === 'modify' ? 'Modify the plan' : 
+                  'Cancel';
+  
+  // Try multiple methods to send the message
+  // Method 1: Using the global scout send message function
+  if (window.scoutSendMessage) {
+    console.log('✅ Using window.scoutSendMessage');
+    window.scoutSendMessage(message);
+    return;
+  }
+  
+  // Method 2: Get the Scout controller instance
+  const scoutElement = document.querySelector('[data-controller="scout"]');
+  if (scoutElement) {
+    // Try to get the Stimulus controller instance
+    const application = window.Stimulus || window.Application;
+    if (application) {
+      const controller = application.getControllerForElementAndIdentifier(scoutElement, 'scout');
+      if (controller && controller.sendScoutMessage) {
+        console.log('✅ Using Stimulus controller');
+        controller.sendScoutMessage(message);
+        return;
+      }
+    }
+  }
+  
+  // Method 3: Direct input manipulation
+  const chatInput = document.querySelector('[data-scout-target="chatInput"]');
+  const sendButton = document.querySelector('[data-action="click->scout#sendMessage"]');
+  if (chatInput && sendButton) {
+    console.log('✅ Using direct input manipulation');
+    chatInput.value = message;
+    sendButton.click();
+    return;
+  }
+  
+  console.error('❌ Could not send approval message');
+}
+</script>

@@ -18,7 +18,8 @@ module Tools
       
       @tools[name] = {
         class: tool_class,
-        metadata: metadata
+        metadata: metadata,
+        read_only: tool_class.read_only?
       }
       
       @categories[category] ||= []
@@ -127,6 +128,65 @@ module Tools
     # Get all categories
     def categories
       @categories.keys
+    end
+    
+    # Get read-only tools (safe to use for planning/analysis)
+    def read_only_tools
+      @tools.select { |_, info| info[:read_only] }.map do |name, info|
+        {
+          name: name,
+          description: info[:metadata][:description],
+          category: info[:metadata][:category]
+        }
+      end
+    end
+    
+    # Get runnable tools (modify state)
+    def runnable_tools
+      @tools.reject { |_, info| info[:read_only] }.map do |name, info|
+        {
+          name: name,
+          description: info[:metadata][:description],
+          category: info[:metadata][:category]
+        }
+      end
+    end
+    
+    # Get tools available for a specific agent role
+    def get_tools_for_role(role)
+      case role
+      when 'planner'
+        # Planner needs to know about ALL tools to create workflows
+        # They don't execute them directly, but need to plan with them
+        @tools.map do |name, info|
+          {
+            name: name,
+            description: info[:metadata][:description]
+          }
+        end
+      when 'executor'
+        # Executor can use most tools
+        @tools.reject do |name, info|
+          info[:metadata][:category] == 'system'
+        end.map do |name, info|
+          {
+            name: name,
+            description: info[:metadata][:description]
+          }
+        end
+      when 'analyst'
+        # Analyst uses data analysis tools
+        @tools.select do |name, info|
+          %w[analytics data].include?(info[:metadata][:category])
+        end.map do |name, info|
+          {
+            name: name,
+            description: info[:metadata][:description]
+          }
+        end
+      else
+        []
+      end
     end
     
     private

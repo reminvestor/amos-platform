@@ -1,0 +1,80 @@
+class WorkflowTemplateLoader
+  class << self
+    def load_all
+      template_files = Dir[Rails.root.join('app/workflow_templates/*.yml')]
+      
+      template_files.map do |file|
+        load_template_file(file)
+      end.compact
+    end
+    
+    def load_template(slug)
+      file_path = Rails.root.join("app/workflow_templates/#{slug}.yml")
+      return nil unless File.exist?(file_path)
+      
+      load_template_file(file_path)
+    end
+    
+    private
+    
+    def load_template_file(file_path)
+      yaml_content = YAML.load_file(file_path)
+      
+      # Convert YAML to WorkflowTemplate format
+      {
+        name: yaml_content['name'],
+        slug: yaml_content['slug'],
+        description: yaml_content['description'],
+        category: yaml_content['category'],
+        metadata: {
+          keywords: yaml_content['keywords'] || [],
+          validation: yaml_content['validation'] || {}
+        },
+        template_spec: {
+          steps: yaml_content['steps'].map { |step| convert_step(step) }
+        },
+        is_active: true,
+        is_system: true
+      }
+    rescue => e
+      Rails.logger.error "Failed to load workflow template #{file_path}: #{e.message}"
+      nil
+    end
+    
+    def convert_step(step_yaml)
+      {
+        id: step_yaml['id'],
+        name: step_yaml['name'],
+        description: step_yaml['description'],
+        agent_role: step_yaml['agent_role'],
+        type: step_yaml['type'],
+        config: build_step_config(step_yaml),
+        dependencies: step_yaml['dependencies'] || [],
+        tool_allowlist: step_yaml['required_tools'] || [],
+        canvas_allowlist: step_yaml['canvas_allowlist'] || [],
+        budgets: step_yaml['budgets'] || {}
+      }
+    end
+    
+    def build_step_config(step_yaml)
+      config = {}
+      
+      case step_yaml['type']
+      when 'tool_call'
+        config[:tool] = step_yaml['tool']
+        config[:tool_args] = step_yaml['tool_args'] || {}
+      when 'user_input'
+        config[:form] = step_yaml['form']
+      when 'decision'
+        config[:options] = step_yaml['options']
+      end
+      
+      # Merge any additional config from the YAML
+      if step_yaml['config'].is_a?(Hash)
+        config.merge!(step_yaml['config'].symbolize_keys)
+      end
+      
+      config
+    end
+  end
+end

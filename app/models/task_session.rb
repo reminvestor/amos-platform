@@ -1,6 +1,7 @@
 class TaskSession < ApplicationRecord
   belongs_to :user
   has_many :task_events, dependent: :destroy
+  has_one :workflow_execution, dependent: :destroy
   
   # Status enums
   enum :status, {

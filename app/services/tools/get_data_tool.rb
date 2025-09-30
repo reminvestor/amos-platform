@@ -1,5 +1,9 @@
 module Tools
   class GetDataTool < BaseTool
+    def self.read_only?
+      true  # This tool only queries data
+    end
+    
     def self.metadata
       {
         name: 'get_data',

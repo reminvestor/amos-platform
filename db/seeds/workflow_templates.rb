@@ -343,19 +343,7 @@ WorkflowTemplate.find_or_create_by!(slug: 'integration_data_sync') do |template|
   }
 end
 
-# Add the App Connection Creation template if the workflow class exists
-begin
-  if defined?(Workflows::AppConnectionWorkflow)
-    WorkflowTemplate.find_or_create_by!(slug: 'create-app-connection') do |template|
-      template.name = "Create App Connection"
-      template.description = "Interactively create a new integration with AI assistance"
-      template.category = "integration"
-      template.template_spec = Workflows::AppConnectionWorkflow.new.to_h
-      template.is_active = true
-    end
-  end
-rescue => e
-  puts "Warning: Could not create app connection workflow template: #{e.message}"
-end
+# App Connection workflow is now handled by the YAML template system
+# Template is located at: app/workflow_templates/app_connection.yml
 
 puts "Created #{WorkflowTemplate.count} workflow templates"

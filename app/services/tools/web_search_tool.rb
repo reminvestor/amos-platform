@@ -1,5 +1,9 @@
 module Tools
   class WebSearchTool < BaseTool
+    def self.read_only?
+      true  # This tool only searches for information
+    end
+    
     def self.metadata
       {
         name: 'web_search',

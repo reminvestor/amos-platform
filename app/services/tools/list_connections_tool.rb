@@ -1,5 +1,9 @@
 module Tools
   class ListConnectionsTool < BaseTool
+    def self.read_only?
+      true  # This tool only lists existing connections
+    end
+    
     def self.metadata
       {
         name: 'list_connections',
@@ -35,7 +39,21 @@ module Tools
         
         # Apply status filter
         unless status_filter == 'all'
-          connections = connections.where(status: status_filter)
+          # Map common status terms to Connection enum values
+          mapped_status = case status_filter.to_s.downcase
+          when 'active', 'connected'
+            'connected'
+          when 'inactive', 'disconnected'
+            'disconnected'
+          when 'limited'
+            'limited'
+          when 'failing', 'failed'
+            'failing'
+          else
+            status_filter
+          end
+          
+          connections = connections.where(status: mapped_status)
         end
         
         # Apply type filter if provided
@@ -52,7 +70,6 @@ module Tools
             integration: {
               id: connection.integration.id,
               name: connection.integration.name,
-              provider: connection.integration.provider,
               category: connection.integration.category,
               auth_type: connection.integration.auth_type
             },

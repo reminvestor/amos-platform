@@ -8,6 +8,32 @@ class WorkflowTemplate < ApplicationRecord
   scope :system, -> { where(is_system: true) }
   scope :by_category, ->(category) { where(category: category) }
   
+  # Class method to get all templates (DB + file-based)
+  def self.all_templates
+    # Get templates from database
+    db_templates = all.to_a
+    
+    # Get templates from files
+    file_templates = WorkflowTemplateLoader.load_all.map do |template_data|
+      # Create in-memory WorkflowTemplate objects
+      new(template_data)
+    end
+    
+    # Combine and return
+    db_templates + file_templates
+  end
+  
+  # Override active scope to include file templates
+  def self.active_with_files
+    db_templates = active.to_a
+    
+    file_templates = WorkflowTemplateLoader.load_all.map do |template_data|
+      new(template_data) if template_data[:is_active]
+    end.compact
+    
+    db_templates + file_templates
+  end
+  
   # Categories of workflow templates
   CATEGORIES = {
     analytics: 'Data Analytics & Reporting',

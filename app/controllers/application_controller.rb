@@ -49,15 +49,11 @@ class ApplicationController < ActionController::Base
       end
       
       # User is onboarded, proceed with entity logic
-      if resource.entities.count == 1
-        # Set the entity in session and go to dashboard
-        session[:entity_id] = resource.entities.first.id
+      if resource.entity
+        # User has an entity, go to dashboard
         root_path
-      elsif resource.entities.any?
-        # User has multiple entities, let them choose
-        entities_path
       else
-        # User has no entities, create one
+        # User has no entity, redirect to entity creation
         new_entity_path
       end
     else
@@ -92,7 +88,7 @@ class ApplicationController < ActionController::Base
       user_id: current_user&.id,
       user_email: current_user&.email,
       onboarded: current_user&.onboarded?,
-      entities_count: current_user&.entities&.count || 0,
+      has_entity: current_user&.entity&.present? || false,
       current_entity_id: session[:entity_id],
       has_business_profile: current_user&.business_profile&.present?,
       subdomain: request.subdomain,

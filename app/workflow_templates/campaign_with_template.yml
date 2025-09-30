@@ -1,0 +1,125 @@
+name: "Email Campaign with Template"
+slug: "campaign_with_template"
+description: "Create an email campaign and link it to an existing email template"
+category: "campaign_creation"
+keywords:
+  - campaign
+  - email
+  - template
+  - link
+  - create campaign
+
+steps:
+  - id: "discover_schema"
+    name: "Discover Campaign Schema"
+    description: "Get available fields for campaign creation"
+    agent_role: "planner"
+    type: "tool_call"
+    tool: "get_schema"
+    tool_args:
+      object_type: "campaign"
+    required_tools:
+      - get_schema
+    canvas_allowlist:
+      - task_progress
+
+  - id: "find_template"
+    name: "Find Email Template"
+    description: "Retrieve the most recent email template to link"
+    agent_role: "executor"
+    type: "tool_call"
+    tool: "get_data"
+    tool_args:
+      object_type: "email_templates"
+      options:
+        limit: 5
+        order_by: "created_at desc"
+    dependencies:
+      - discover_schema
+    required_tools:
+      - get_data
+    canvas_allowlist:
+      - task_progress
+
+  - id: "get_campaign_details"
+    name: "Campaign Details"
+    description: "Gather campaign information from user"
+    agent_role: "executor"
+    type: "user_input"
+    form:
+      title: "Campaign Information"
+      fields:
+        - name: "campaign_name"
+          label: "Campaign Name"
+          type: "text"
+          required: true
+          placeholder: "Enter a descriptive campaign name"
+        - name: "subject_line"
+          label: "Email Subject Line"
+          type: "text"
+          required: true
+          placeholder: "Enter the email subject"
+        - name: "from_name"
+          label: "From Name"
+          type: "text"
+          required: true
+          placeholder: "Sender name"
+        - name: "schedule_type"
+          label: "Schedule Type"
+          type: "select"
+          options:
+            - value: "immediate"
+              label: "Send Immediately"
+            - value: "scheduled"
+              label: "Schedule for Later"
+          required: true
+    dependencies:
+      - find_template
+    canvas_allowlist:
+      - interactive_wizard
+
+  - id: "create_campaign"
+    name: "Create Campaign"
+    description: "Create the campaign with linked template"
+    agent_role: "executor"
+    type: "tool_call"
+    tool: "create_object"
+    tool_args:
+      object_type: "campaigns"
+      data:
+        name: "{{campaign_name}}"
+        subject: "{{subject_line}}"
+        from_name: "{{from_name}}"
+        email_template_id: "{{selected_template_id}}"
+        status: "draft"
+    dependencies:
+      - get_campaign_details
+    required_tools:
+      - create_object
+    canvas_allowlist:
+      - campaign_viewer
+
+  - id: "show_result"
+    name: "Display Campaign"
+    description: "Show the created campaign"
+    agent_role: "executor"
+    type: "tool_call"
+    tool: "load_canvas"
+    tool_args:
+      canvas_name: "campaign_viewer"
+    dependencies:
+      - create_campaign
+    required_tools:
+      - load_canvas
+    canvas_allowlist:
+      - campaign_viewer
+
+validation:
+  required_inputs:
+    - campaign_name
+    - email_template_id
+  required_tools:
+    - get_schema
+    - get_data
+    - create_object
+    - load_canvas

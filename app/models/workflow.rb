@@ -1,11 +1,15 @@
 class Workflow
-  attr_reader :steps, :current_step, :spec, :status
+  attr_reader :steps, :current_step, :spec, :status, :name
   
   # Workflow statuses
   STATUSES = %w[pending in_progress completed failed cancelled].freeze
   
-  def initialize(spec)
+  def initialize(spec, execution_context = {})
     @spec = spec.with_indifferent_access
+    @name = @spec[:name] || @spec[:type] || 'Workflow'
+    @execution_context = execution_context
+    # Add workflow reference to execution context so steps can access it
+    @execution_context[:workflow] = self
     @steps = build_steps(@spec[:steps] || [])
     @current_step = find_next_step
     @status = 'pending'
@@ -40,59 +44,82 @@ class Workflow
       result = step.execute(inputs)
       
       # Handle step result
-      case result[:status]
-      when 'success', 'completed'
+      # Check both status and success fields for compatibility
+      # Need to check nested result structure: result.result.result.success
+      # If any level explicitly says success: false, it's a failure
+      has_explicit_failure = result.dig(:result, :success) == false ||
+                            result.dig(:result, :result, :success) == false ||
+                            result.dig(:data, :result, :success) == false
+      
+      is_successful = !has_explicit_failure && (
+                      result[:status] == 'success' || 
+                      result[:status] == 'completed' || 
+                      result[:status] == 'step_completed' ||
+                      (result[:result] && result[:result][:success] == true) ||
+                      (result.dig(:result, :result, :success) == true)
+                    )
+      
+      if is_successful
         @completed_steps << step.id
         step.mark_completed(result)
+        
+        # Always return step_completed first, even for the last step
+        step_result = {
+          status: 'step_completed',
+          message: "Step '#{step.id}' completed",
+          result: result,
+          step_id: step.id,
+          executing_step_id: step.id
+        }
         
         # Move to next step
         @current_step = find_next_step
         
-        # Check if workflow is complete
+        # Add workflow completion info if this was the last step
         if @current_step.nil?
           @status = 'completed'
-          return {
-            status: 'completed',
-            message: 'Workflow completed successfully',
-            result: result,
-            completed_steps: @completed_steps
-          }
+          step_result[:workflow_complete] = true
+          step_result[:completed_steps] = @completed_steps
         else
-          return {
-            status: 'step_completed',
-            message: "Step '#{step.id}' completed",
-            result: result,
-            next_step: @current_step.to_hash
-          }
+          step_result[:next_step] = @current_step.to_hash
         end
         
-      when 'failed', 'error'
+        return step_result
+      else
+        # Step failed (when is_successful is false)
+        error_message = result[:error] || 
+                       result.dig(:result, :error) || 
+                       result.dig(:result, :result, :error) || 
+                       'Unknown error'
+                       
         @failed_steps << step.id
-        step.mark_failed(result[:error] || 'Unknown error')
+        step.mark_failed(error_message)
         @status = 'failed'
         
         return {
           status: 'failed',
-          message: "Step '#{step.id}' failed: #{result[:error]}",
+          message: "Step '#{step.id}' failed: #{error_message}",
           failed_step: step.id,
-          error: result[:error]
+          error: error_message
         }
-        
-      when 'awaiting_input'
+      end
+      
+      # Handle awaiting_input separately if needed
+      if result[:status] == 'awaiting_input'
         return {
           status: 'awaiting_input',
           step: step.to_hash,
           message: "Step '#{step.id}' is awaiting user input",
           form: result[:form]
         }
-        
-      else
-        return {
-          status: 'in_progress',
-          message: "Step '#{step.id}' is processing",
-          result: result
-        }
       end
+      
+      # Default case - shouldn't normally reach here
+      return {
+        status: 'in_progress',
+        message: "Step '#{step.id}' is processing",
+        result: result
+      }
       
     rescue => e
       @failed_steps << step.id
@@ -142,6 +169,11 @@ class Workflow
     @status == 'failed'
   end
   
+  # Get completed steps with their results
+  def completed_steps_data
+    @steps.select { |s| s.status == 'completed' }.map(&:to_hash)
+  end
+  
   # Get all steps as hash
   def to_hash
     {
@@ -153,6 +185,9 @@ class Workflow
       failed_steps: @failed_steps
     }
   end
+  
+  # Alias for compatibility
+  alias_method :to_h, :to_hash
   
   # Find a step by ID
   def find_step(step_id)
@@ -182,11 +217,18 @@ class Workflow
       step_spec = step_spec.with_indifferent_access
       step_spec[:id] ||= "step_#{index + 1}"
       
-      Step.new(step_spec)
+      step = Step.new(step_spec)
+      step.instance_variable_set(:@execution_context, @execution_context)
+      step
     end
   end
   
   def find_next_step
-    @steps.find { |step| step.status == 'pending' }
+    # Find the next step that:
+    # 1. Is pending
+    # 2. Has all its dependencies completed
+    @steps.find do |step|
+      step.status == 'pending' && step.dependencies_met?(@completed_steps)
+    end
   end
 end

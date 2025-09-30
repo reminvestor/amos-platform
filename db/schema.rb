@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_30_151650) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
 
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
@@ -90,6 +91,25 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["conversation_id"], name: "index_agent_activities_on_conversation_id"
+  end
+
+  create_table "agent_messages", force: :cascade do |t|
+    t.string "sender_id", null: false
+    t.string "recipient_id", null: false
+    t.string "message_type", null: false
+    t.jsonb "content", null: false
+    t.bigint "task_session_id"
+    t.string "priority", default: "normal"
+    t.string "parent_message_id"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_type"], name: "index_agent_messages_on_message_type"
+    t.index ["parent_message_id"], name: "index_agent_messages_on_parent_message_id"
+    t.index ["recipient_id"], name: "index_agent_messages_on_recipient_id"
+    t.index ["sender_id"], name: "index_agent_messages_on_sender_id"
+    t.index ["task_session_id", "created_at"], name: "index_agent_messages_on_task_session_id_and_created_at"
+    t.index ["task_session_id"], name: "index_agent_messages_on_task_session_id"
   end
 
   create_table "artifacts", force: :cascade do |t|
@@ -270,6 +290,41 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
     t.index ["user_id"], name: "index_crawler_jobs_on_user_id"
   end
 
+  create_table "custom_models", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "model_id", null: false
+    t.string "bedrock_model_id"
+    t.jsonb "config", default: {}, null: false
+    t.string "status", default: "pending"
+    t.jsonb "training_metrics", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["bedrock_model_id"], name: "index_custom_models_on_bedrock_model_id"
+    t.index ["entity_id", "model_id"], name: "index_custom_models_on_entity_id_and_model_id", unique: true
+    t.index ["entity_id"], name: "index_custom_models_on_entity_id"
+    t.index ["status"], name: "index_custom_models_on_status"
+    t.index ["user_id"], name: "index_custom_models_on_user_id"
+  end
+
+  create_table "custom_plugins", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "plugin_type", null: false
+    t.string "plugin_id", null: false
+    t.jsonb "spec", default: {}, null: false
+    t.text "code"
+    t.string "status", default: "pending"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "plugin_type", "plugin_id"], name: "idx_custom_plugins_unique", unique: true
+    t.index ["entity_id"], name: "index_custom_plugins_on_entity_id"
+    t.index ["plugin_type"], name: "index_custom_plugins_on_plugin_type"
+    t.index ["status"], name: "index_custom_plugins_on_status"
+    t.index ["user_id"], name: "index_custom_plugins_on_user_id"
+  end
+
   create_table "dripped_campaigns", force: :cascade do |t|
     t.bigint "original_campaign_id", null: false
     t.bigint "follow_up_campaign_id", null: false
@@ -328,6 +383,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
     t.jsonb "settings", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "platform_tier", default: "standard"
+    t.integer "custom_plugin_limit", default: 5
+    t.integer "custom_model_limit", default: 1
+    t.boolean "marketplace_vendor", default: false
     t.index ["slug"], name: "index_entities_on_slug", unique: true
     t.index ["subdomain"], name: "index_entities_on_subdomain", unique: true
   end
@@ -523,6 +582,87 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
     t.index ["user_id"], name: "index_landing_pages_on_user_id"
   end
 
+  create_table "model_permissions", force: :cascade do |t|
+    t.bigint "custom_model_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "permission_type", null: false
+    t.integer "usage_limit"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["custom_model_id", "entity_id", "permission_type"], name: "idx_model_perms", unique: true
+    t.index ["custom_model_id"], name: "index_model_permissions_on_custom_model_id"
+    t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
+  end
+
+  create_table "plugin_permissions", force: :cascade do |t|
+    t.bigint "custom_plugin_id", null: false
+    t.bigint "user_id"
+    t.bigint "entity_id"
+    t.string "permission_type", null: false
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["custom_plugin_id", "entity_id", "permission_type"], name: "idx_plugin_perms_entity", unique: true
+    t.index ["custom_plugin_id", "user_id", "permission_type"], name: "idx_plugin_perms_user", unique: true
+    t.index ["custom_plugin_id"], name: "index_plugin_permissions_on_custom_plugin_id"
+    t.index ["entity_id"], name: "index_plugin_permissions_on_entity_id"
+    t.index ["user_id"], name: "index_plugin_permissions_on_user_id"
+  end
+
+  create_table "plugin_reviews", force: :cascade do |t|
+    t.bigint "shared_plugin_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "rating", null: false
+    t.text "review"
+    t.boolean "verified_purchase", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["rating"], name: "index_plugin_reviews_on_rating"
+    t.index ["shared_plugin_id", "user_id"], name: "index_plugin_reviews_on_shared_plugin_id_and_user_id", unique: true
+    t.index ["shared_plugin_id"], name: "index_plugin_reviews_on_shared_plugin_id"
+    t.index ["user_id"], name: "index_plugin_reviews_on_user_id"
+  end
+
+  create_table "plugin_transactions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "shared_plugin_id"
+    t.bigint "shared_model_id"
+    t.string "transaction_type"
+    t.decimal "amount", precision: 10, scale: 2
+    t.string "currency", default: "USD"
+    t.string "status"
+    t.jsonb "payment_details", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "created_at"], name: "index_plugin_transactions_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_plugin_transactions_on_entity_id"
+    t.index ["shared_model_id"], name: "index_plugin_transactions_on_shared_model_id"
+    t.index ["shared_plugin_id"], name: "index_plugin_transactions_on_shared_plugin_id"
+    t.index ["status"], name: "index_plugin_transactions_on_status"
+    t.index ["user_id"], name: "index_plugin_transactions_on_user_id"
+  end
+
+  create_table "plugin_usages", force: :cascade do |t|
+    t.string "plugin_id", null: false
+    t.bigint "user_id"
+    t.bigint "entity_id"
+    t.integer "execution_count", default: 1
+    t.float "memory_mb"
+    t.float "cpu_seconds"
+    t.integer "api_calls"
+    t.integer "tokens_used"
+    t.float "duration_ms"
+    t.jsonb "metrics", default: {}
+    t.datetime "created_at", null: false
+    t.index ["created_at"], name: "index_plugin_usages_on_created_at"
+    t.index ["entity_id", "plugin_id", "created_at"], name: "idx_plugin_usage_analytics"
+    t.index ["entity_id"], name: "index_plugin_usages_on_entity_id"
+    t.index ["plugin_id", "created_at"], name: "index_plugin_usages_on_plugin_id_and_created_at"
+    t.index ["plugin_id"], name: "index_plugin_usages_on_plugin_id"
+    t.index ["user_id"], name: "index_plugin_usages_on_user_id"
+  end
+
   create_table "policy_rules", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "name"
@@ -595,6 +735,51 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
     t.index ["entity_id"], name: "index_scout_messages_on_entity_id"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_id_and_created_at"
     t.index ["user_id"], name: "index_scout_messages_on_user_id"
+  end
+
+  create_table "shared_models", force: :cascade do |t|
+    t.bigint "custom_model_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "base_model"
+    t.jsonb "capabilities", default: []
+    t.jsonb "benchmark_scores", default: {}
+    t.decimal "cost_per_1k_tokens", precision: 10, scale: 6
+    t.integer "usage_count", default: 0
+    t.float "average_rating"
+    t.boolean "active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_shared_models_on_active"
+    t.index ["base_model"], name: "index_shared_models_on_base_model"
+    t.index ["cost_per_1k_tokens"], name: "index_shared_models_on_cost_per_1k_tokens"
+    t.index ["custom_model_id"], name: "index_shared_models_on_custom_model_id"
+    t.index ["entity_id"], name: "index_shared_models_on_entity_id"
+  end
+
+  create_table "shared_plugins", force: :cascade do |t|
+    t.bigint "custom_plugin_id", null: false
+    t.bigint "user_id", null: false
+    t.string "listing_status", default: "pending"
+    t.string "title", null: false
+    t.text "description"
+    t.string "category"
+    t.jsonb "tags", default: []
+    t.decimal "price", precision: 10, scale: 2, default: "0.0"
+    t.string "pricing_model"
+    t.integer "install_count", default: 0
+    t.float "average_rating"
+    t.jsonb "screenshots", default: []
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_shared_plugins_on_category"
+    t.index ["custom_plugin_id"], name: "index_shared_plugins_on_custom_plugin_id"
+    t.index ["listing_status", "average_rating"], name: "idx_marketplace_ranking"
+    t.index ["listing_status"], name: "index_shared_plugins_on_listing_status"
+    t.index ["price"], name: "index_shared_plugins_on_price"
+    t.index ["tags"], name: "index_shared_plugins_on_tags", using: :gin
+    t.index ["user_id"], name: "index_shared_plugins_on_user_id"
   end
 
   create_table "social_media_accounts", force: :cascade do |t|
@@ -815,8 +1000,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
     t.datetime "updated_at", null: false
     t.string "api_key"
     t.boolean "onboarded", default: false, null: false
+    t.boolean "developer_mode", default: false
+    t.string "api_key_encrypted"
+    t.boolean "plugin_development_enabled", default: false
+    t.bigint "entity_id", null: false
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["entity_id"], name: "index_users_on_entity_id"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
@@ -848,6 +1038,66 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
     t.index ["connection_id"], name: "index_webhook_subscriptions_on_connection_id"
   end
 
+  create_table "workflow_contexts", force: :cascade do |t|
+    t.bigint "workflow_execution_id", null: false
+    t.bigint "task_session_id", null: false
+    t.string "key", null: false
+    t.jsonb "value", default: {}
+    t.string "data_type", null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["data_type"], name: "index_workflow_contexts_on_data_type"
+    t.index ["key"], name: "index_workflow_contexts_on_key"
+    t.index ["task_session_id"], name: "index_workflow_contexts_on_task_session_id"
+    t.index ["workflow_execution_id", "key"], name: "index_workflow_contexts_on_workflow_execution_id_and_key"
+    t.index ["workflow_execution_id"], name: "index_workflow_contexts_on_workflow_execution_id"
+  end
+
+  create_table "workflow_executions", force: :cascade do |t|
+    t.bigint "task_session_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "workflow_template_id"
+    t.jsonb "workflow_spec", default: {}
+    t.string "status", default: "pending", null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.text "error_message"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_workflow_executions_on_created_at"
+    t.index ["entity_id", "status"], name: "index_workflow_executions_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_workflow_executions_on_entity_id"
+    t.index ["status"], name: "index_workflow_executions_on_status"
+    t.index ["task_session_id"], name: "index_workflow_executions_on_task_session_id"
+    t.index ["user_id"], name: "index_workflow_executions_on_user_id"
+    t.index ["workflow_template_id"], name: "index_workflow_executions_on_workflow_template_id"
+  end
+
+  create_table "workflow_step_executions", force: :cascade do |t|
+    t.bigint "workflow_execution_id", null: false
+    t.string "step_id", null: false
+    t.string "step_name"
+    t.string "step_type"
+    t.string "status", default: "pending", null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.jsonb "input_data", default: {}
+    t.jsonb "output_data", default: {}
+    t.text "error_message"
+    t.integer "retry_count", default: 0
+    t.string "agent_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status"], name: "index_workflow_step_executions_on_status"
+    t.index ["step_id"], name: "index_workflow_step_executions_on_step_id"
+    t.index ["workflow_execution_id", "status"], name: "idx_workflow_step_status"
+    t.index ["workflow_execution_id", "step_id"], name: "idx_workflow_step_unique", unique: true
+    t.index ["workflow_execution_id"], name: "index_workflow_step_executions_on_workflow_execution_id"
+  end
+
   create_table "workflow_templates", force: :cascade do |t|
     t.string "name", null: false
     t.string "slug", null: false
@@ -864,10 +1114,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
     t.index ["slug"], name: "index_workflow_templates_on_slug", unique: true
   end
 
+  create_table "workflow_variables", force: :cascade do |t|
+    t.bigint "workflow_execution_id", null: false
+    t.string "source_type"
+    t.bigint "source_id"
+    t.string "name", null: false
+    t.jsonb "value"
+    t.string "data_type"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_workflow_variables_on_name"
+    t.index ["source_type", "source_id"], name: "index_workflow_variables_on_source"
+    t.index ["source_type", "source_id"], name: "index_workflow_variables_on_source_type_and_source_id"
+    t.index ["workflow_execution_id", "name"], name: "idx_workflow_var_unique", unique: true
+    t.index ["workflow_execution_id"], name: "index_workflow_variables_on_workflow_execution_id"
+  end
+
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "admin_activities", "admin_users"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
+  add_foreign_key "agent_messages", "task_sessions"
   add_foreign_key "artifacts", "entities"
   add_foreign_key "artifacts", "users"
   add_foreign_key "business_insights", "entities"
@@ -891,6 +1159,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
   add_foreign_key "crawler_job_logs", "crawler_jobs"
   add_foreign_key "crawler_jobs", "entities"
   add_foreign_key "crawler_jobs", "users"
+  add_foreign_key "custom_models", "entities"
+  add_foreign_key "custom_models", "users"
+  add_foreign_key "custom_plugins", "entities"
+  add_foreign_key "custom_plugins", "users"
   add_foreign_key "dripped_campaigns", "campaigns", column: "follow_up_campaign_id"
   add_foreign_key "dripped_campaigns", "campaigns", column: "original_campaign_id"
   add_foreign_key "email_deliveries", "campaigns"
@@ -916,6 +1188,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
   add_foreign_key "landing_pages", "campaigns"
   add_foreign_key "landing_pages", "entities"
   add_foreign_key "landing_pages", "users"
+  add_foreign_key "model_permissions", "custom_models"
+  add_foreign_key "model_permissions", "entities"
+  add_foreign_key "plugin_permissions", "custom_plugins"
+  add_foreign_key "plugin_permissions", "entities"
+  add_foreign_key "plugin_permissions", "users"
+  add_foreign_key "plugin_reviews", "shared_plugins"
+  add_foreign_key "plugin_reviews", "users"
+  add_foreign_key "plugin_transactions", "entities"
+  add_foreign_key "plugin_transactions", "shared_models"
+  add_foreign_key "plugin_transactions", "shared_plugins"
+  add_foreign_key "plugin_transactions", "users"
+  add_foreign_key "plugin_usages", "entities"
+  add_foreign_key "plugin_usages", "users"
   add_foreign_key "policy_rules", "entities"
   add_foreign_key "rag_stores", "entities"
   add_foreign_key "rag_stores", "users"
@@ -924,6 +1209,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
   add_foreign_key "scout_conversations", "users"
   add_foreign_key "scout_messages", "entities"
   add_foreign_key "scout_messages", "users"
+  add_foreign_key "shared_models", "custom_models"
+  add_foreign_key "shared_models", "entities"
+  add_foreign_key "shared_plugins", "custom_plugins"
+  add_foreign_key "shared_plugins", "users"
   add_foreign_key "social_media_accounts", "entities"
   add_foreign_key "social_media_accounts", "users"
   add_foreign_key "social_post_analytics", "social_posts"
@@ -937,6 +1226,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
+  add_foreign_key "users", "entities"
   add_foreign_key "webhook_events", "webhook_subscriptions"
   add_foreign_key "webhook_subscriptions", "connections"
+  add_foreign_key "workflow_contexts", "task_sessions"
+  add_foreign_key "workflow_contexts", "workflow_executions"
+  add_foreign_key "workflow_executions", "entities"
+  add_foreign_key "workflow_executions", "task_sessions"
+  add_foreign_key "workflow_executions", "users"
+  add_foreign_key "workflow_step_executions", "workflow_executions"
+  add_foreign_key "workflow_variables", "workflow_executions"
 end

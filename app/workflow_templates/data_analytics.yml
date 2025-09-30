@@ -1,0 +1,154 @@
+name: "Data Analytics Workflow"
+slug: "data_analytics"
+description: "Analyze data from integrations and generate insights"
+category: "analytics"
+keywords:
+  - analyze
+  - analytics
+  - data
+  - insights
+  - report
+  - metrics
+
+steps:
+  - id: "select_data_source"
+    name: "Select Data Source"
+    description: "Choose integration to analyze"
+    agent_role: "planner"
+    type: "tool_call"
+    tool: "list_connections"
+    tool_args: {}
+    required_tools:
+      - list_connections
+    canvas_allowlist:
+      - integrations_manager
+
+  - id: "define_analysis"
+    name: "Define Analysis Parameters"
+    description: "Specify what to analyze"
+    agent_role: "analyst"
+    type: "user_input"
+    form:
+      title: "Analysis Configuration"
+      fields:
+        - name: "analysis_type"
+          label: "Type of Analysis"
+          type: "select"
+          options:
+            - value: "performance_metrics"
+              label: "Performance Metrics"
+            - value: "trend_analysis"
+              label: "Trend Analysis"
+            - value: "cohort_analysis"
+              label: "Cohort Analysis"
+            - value: "custom"
+              label: "Custom Analysis"
+          required: true
+        - name: "time_period"
+          label: "Time Period"
+          type: "select"
+          options:
+            - value: "last_7_days"
+              label: "Last 7 Days"
+            - value: "last_30_days"
+              label: "Last 30 Days"
+            - value: "last_quarter"
+              label: "Last Quarter"
+            - value: "custom_range"
+              label: "Custom Date Range"
+          required: true
+        - name: "metrics_focus"
+          label: "Key Metrics to Focus On"
+          type: "textarea"
+          placeholder: "e.g., conversion rate, revenue, customer retention"
+          required: false
+    dependencies:
+      - select_data_source
+    canvas_allowlist:
+      - interactive_wizard
+
+  - id: "fetch_data"
+    name: "Fetch Data"
+    description: "Retrieve data from selected source"
+    agent_role: "executor"
+    type: "tool_call"
+    tool: "invoke_operation"
+    tool_args:
+      connection_id: "{{selected_connection_id}}"
+      operation: "fetch_analytics_data"
+      parameters:
+        time_period: "{{time_period}}"
+        metrics: "{{metrics_focus}}"
+    dependencies:
+      - define_analysis
+    required_tools:
+      - invoke_operation
+      - fetch_next_page
+    canvas_allowlist:
+      - task_progress
+
+  - id: "aggregate_data"
+    name: "Process & Aggregate Data"
+    description: "Aggregate and prepare data for analysis"
+    agent_role: "analyst"
+    type: "tool_call"
+    tool: "aggregate_artifact_data"
+    tool_args:
+      artifacts: "{{fetched_artifacts}}"
+      aggregation_type: "{{analysis_type}}"
+      grouping_fields: ["date", "category"]
+    dependencies:
+      - fetch_data
+    required_tools:
+      - aggregate_artifact_data
+    canvas_allowlist:
+      - task_progress
+
+  - id: "generate_insights"
+    name: "Generate Insights"
+    description: "Analyze patterns and generate insights"
+    agent_role: "analyst"
+    type: "tool_call"
+    tool: "create_dynamic_visualization"
+    tool_args:
+      title: "{{analysis_type}} Analysis"
+      data: "{{aggregated_data}}"
+      visualization_type: "dashboard"
+      options:
+        include_insights: true
+        include_recommendations: true
+    dependencies:
+      - aggregate_data
+    required_tools:
+      - create_dynamic_visualization
+    canvas_allowlist:
+      - dynamic_canvas
+
+  - id: "review_results"
+    name: "Review Results"
+    description: "Display analysis results and insights"
+    agent_role: "verifier"
+    type: "decision"
+    options:
+      - label: "Export Report"
+        action: "export_report"
+      - label: "Refine Analysis"
+        action: "refine_analysis"
+      - label: "Complete"
+        action: "complete"
+    dependencies:
+      - generate_insights
+    canvas_allowlist:
+      - dynamic_canvas
+
+validation:
+  required_inputs:
+    - analysis_type
+    - time_period
+    - connection_id
+  required_tools:
+    - list_connections
+    - invoke_operation
+    - aggregate_artifact_data
+    - create_dynamic_visualization
+
