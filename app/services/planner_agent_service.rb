@@ -87,26 +87,61 @@ class PlannerAgentService
       
       IMPORTANT: Return ONLY the JSON object below, with no additional text before or after:
       
-      Return a JSON object with:
+      Return a V2 PHASE-BASED JSON object with:
       {
         "workflow_name": "descriptive name",
         "description": "what this workflow does",
         "template_to_use": "template_slug if applicable, null otherwise",
+        "template_version": 2,
         "rationale": "explanation of the plan",
-        "steps": [
+        "phases": [
           {
-            "id": "unique_id",
-            "name": "Step Name",
-            "description": "what this step does",
-            "agent_role": "planner|executor|analyst|verifier",
-            "type": "tool_call|user_input|decision",
-            "tool": "tool_name if tool_call",
-            "tool_args": {},
-            "dependencies": ["previous_step_ids"],
-            "required_tools": ["tool1", "tool2"]
+            "id": "gather_context",
+            "type": "gather_context",
+            "name": "Gather Information",
+            "goal": "Collect all required information",
+            "required_fields": [
+              {
+                "key": "field_name",
+                "prompt": "Question to ask user",
+                "required": true,
+                "validation": "text|email|url|number"
+              }
+            ],
+            "context_sources": ["workflow_context", "conversation_history", "entity_profile", "direct_conversation"]
+          },
+          {
+            "id": "execute_goal",
+            "type": "execute_goal", 
+            "name": "Execute Task",
+            "goal": "Clear description of what to accomplish",
+            "execution_strategy": {
+              "approach": "adaptive",
+              "allowed_tools": ["tool1", "tool2"],
+              "constraints": {}
+            },
+            "requires_from_previous": ["field_name"],
+            "ai_instructions": "How to accomplish the goal"
+          },
+          {
+            "id": "validate_result",
+            "type": "validate_result",
+            "name": "Verify Success",
+            "validation_criteria": {
+              "required_outputs": ["output1"],
+              "quality_checks": []
+            },
+            "success_message": "Success message"
           }
         ]
       }
+      
+      CRITICAL V2 RULES:
+      - Use "phases" NOT "steps" (V2 is phase-based!)
+      - Phase 1: gather_context (collect info intelligently)
+      - Phase 2: execute_goal (do the work adaptively)
+      - Phase 3: validate_result (verify success)
+      - Each phase is conversational and adaptive
     PROMPT
     
     begin
@@ -440,13 +475,13 @@ class PlannerAgentService
   end
   
   def build_workflow_from_plan(plan_data)
-    # If a template is specified, load and use it instead of the AI-generated steps
+    # If a template is specified, load and use it instead of the AI-generated workflow
     if plan_data['template_to_use'].present?
       template = WorkflowTemplate.active_with_files.find { |t| t.slug == plan_data['template_to_use'] }
       
       if template
         Rails.logger.info "Using workflow template: #{template.slug}"
-        # Load the template's actual steps
+        # Load the template's actual workflow structure
         template_data = if template.persisted?
           # Template from database - use template_spec
           template.template_spec
@@ -457,61 +492,90 @@ class PlannerAgentService
         
         Rails.logger.info "Template data keys: #{template_data.keys}" if template_data
         
-        # Build workflow from template, not from AI-generated steps
-        # Handle both direct steps array and nested template_spec structure
-        steps_data = template_data['steps'] || template_data[:steps] || 
-                     template_data.dig('template_spec', 'steps') || 
-                     template_data.dig(:template_spec, :steps) || []
-        
-        Rails.logger.info "Found #{steps_data.length} steps in template"
-        Rails.logger.info "First step keys: #{steps_data.first.keys}" if steps_data.any?
-        
-        built_steps = build_steps_from_template(steps_data)
-        Rails.logger.info "Built #{built_steps.length} Step objects"
-        
-        return SimpleWorkflow.new(
-          name: plan_data['workflow_name'] || template_data['name'] || template_data[:name],
-          description: plan_data['description'] || template_data['description'] || template_data[:description],
-          steps: built_steps,
-          metadata: {
-            llm_generated: false,
-            template_used: plan_data['template_to_use'],
-            rationale: plan_data['rationale']
-          }
-        )
+        # Check if template is V2 (phases) or V1 (steps)
+        if template_data['phases'] || template_data[:phases] || template_data['template_version'] == 2
+          # V2 Template - return phases as-is
+          Rails.logger.info "Using V2 template with phases"
+          return SimpleWorkflow.new(
+            name: plan_data['workflow_name'] || template_data['name'] || template_data[:name],
+            description: plan_data['description'] || template_data['description'] || template_data[:description],
+            template_version: 2,
+            phases: template_data['phases'] || template_data[:phases],
+            metadata: {
+              llm_generated: false,
+              template_used: plan_data['template_to_use'],
+              rationale: plan_data['rationale']
+            }
+          )
+        else
+          # V1 Template - build steps (legacy)
+          Rails.logger.info "Using V1 template with steps"
+          steps_data = template_data['steps'] || template_data[:steps] || []
+          built_steps = build_steps_from_template(steps_data)
+          
+          return SimpleWorkflow.new(
+            name: plan_data['workflow_name'] || template_data['name'] || template_data[:name],
+            description: plan_data['description'] || template_data['description'] || template_data[:description],
+            steps: built_steps,
+            metadata: {
+              llm_generated: false,
+              template_used: plan_data['template_to_use'],
+              rationale: plan_data['rationale']
+            }
+          )
+        end
       else
-        Rails.logger.warn "Template '#{plan_data['template_to_use']}' not found, using AI-generated steps"
+        Rails.logger.warn "Template '#{plan_data['template_to_use']}' not found, using AI-generated workflow"
       end
     end
     
-    # Fall back to AI-generated steps if no template or template not found
-    steps = plan_data['steps'].map do |step_data|
-      Step.new(
-        id: step_data['id'],
-        name: step_data['name'],
-        description: step_data['description'],
-        agent_role: step_data['agent_role'] || 'executor',
-        type: step_data['type'] || 'tool_call',
-        config: {
-          tool: step_data['tool'],
-          tool_args: step_data['tool_args'] || {}
-        },
-        dependencies: step_data['dependencies'] || [],
-        tool_allowlist: step_data['required_tools'] || [],
-        canvas_allowlist: ['task_progress']
+    # Fall back to AI-generated workflow if no template or template not found
+    # Check if AI generated V2 (phases) or V1 (steps)
+    if plan_data['phases'].present? || plan_data['template_version'] == 2
+      # V2 AI-generated workflow
+      Rails.logger.info "Building V2 workflow from AI-generated phases"
+      SimpleWorkflow.new(
+        name: plan_data['workflow_name'],
+        description: plan_data['description'],
+        template_version: 2,
+        phases: plan_data['phases'],
+        metadata: {
+          llm_generated: true,
+          template_used: plan_data['template_to_use'],
+          rationale: plan_data['rationale']
+        }
+      )
+    else
+      # V1 AI-generated workflow (legacy)
+      Rails.logger.info "Building V1 workflow from AI-generated steps"
+      steps = plan_data['steps'].map do |step_data|
+        Step.new(
+          id: step_data['id'],
+          name: step_data['name'],
+          description: step_data['description'],
+          agent_role: step_data['agent_role'] || 'executor',
+          type: step_data['type'] || 'tool_call',
+          config: {
+            tool: step_data['tool'],
+            tool_args: step_data['tool_args'] || {}
+          },
+          dependencies: step_data['dependencies'] || [],
+          tool_allowlist: step_data['required_tools'] || [],
+          canvas_allowlist: ['task_progress']
+        )
+      end
+      
+      SimpleWorkflow.new(
+        name: plan_data['workflow_name'],
+        description: plan_data['description'],
+        steps: steps,
+        metadata: {
+          llm_generated: true,
+          template_used: plan_data['template_to_use'],
+          rationale: plan_data['rationale']
+        }
       )
     end
-    
-    SimpleWorkflow.new(
-      name: plan_data['workflow_name'],
-      description: plan_data['description'],
-      steps: steps,
-      metadata: {
-        llm_generated: true,
-        template_used: plan_data['template_to_use'],
-        rationale: plan_data['rationale']
-      }
-    )
   end
   
   def build_steps_from_template(template_steps)
@@ -566,13 +630,73 @@ class PlannerAgentService
   end
   
   def find_matching_template(request_text)
-    # Use AI to match request to available templates
-    templates = WorkflowTemplate.active
+    # Use AI to intelligently match request to available templates
     
-    # Simple keyword matching for now (can be enhanced with AI)
-    templates.find do |template|
-      keywords = template.metadata['keywords'] || []
-      keywords.any? { |keyword| request_text.downcase.include?(keyword.downcase) }
+    # Get list of all available templates
+    available_templates = WorkflowTemplateLoader.list_all_templates
+    
+    return nil if available_templates.empty?
+    
+    # Use AI to select the best template
+    template_selection_prompt = <<~PROMPT
+      User Request: #{request_text}
+      
+      Available Workflow Templates:
+      #{JSON.pretty_generate(available_templates)}
+      
+      Analyze the user's request and determine which template (if any) best matches their intent.
+      
+      Consider:
+      - What is the user trying to accomplish?
+      - Which template's purpose aligns with this goal?
+      - Does the description match the user's needs?
+      
+      Respond with JSON:
+      {
+        "template_slug": "template_slug_here",
+        "confidence": "high|medium|low",
+        "reasoning": "why this template matches"
+      }
+      
+      If NO template matches well, respond with:
+      {
+        "template_slug": null,
+        "confidence": "none",
+        "reasoning": "why no template matches - AI will create custom plan"
+      }
+    PROMPT
+    
+    begin
+      response = @ai_service.complete(
+        prompt: template_selection_prompt,
+        max_tokens: 500,
+        temperature: 0.3
+      )
+      
+      # Parse AI response
+      result = JSON.parse(extract_json(response))
+      
+      if result['template_slug'] && result['confidence'] != 'none'
+        Rails.logger.info "AI selected template: #{result['template_slug']} (#{result['confidence']} confidence)"
+        Rails.logger.info "Reasoning: #{result['reasoning']}"
+        
+        # Load and return the selected template
+        template_data = WorkflowTemplateLoader.load_template_by_slug(result['template_slug'])
+        
+        if template_data
+          # Create in-memory template object
+          WorkflowTemplate.new(template_data)
+        else
+          Rails.logger.warn "Template #{result['template_slug']} not found"
+          nil
+        end
+      else
+        Rails.logger.info "AI decided no template matches: #{result['reasoning']}"
+        nil
+      end
+    rescue => e
+      Rails.logger.error "AI template selection failed: #{e.message}"
+      nil
     end
   end
   
@@ -880,30 +1004,44 @@ class PlannerAgentService
   end
   
   def validate_workflow!(workflow)
-    # Ensure workflow has required properties
-    raise "Workflow must have steps" if workflow.steps.empty?
-    
-    # Validate step dependencies
-    step_ids = workflow.steps.map(&:id)
-    workflow.steps.each do |step|
-      step.dependencies.each do |dep|
-        unless step_ids.include?(dep)
-          raise "Step #{step.id} has invalid dependency: #{dep}"
+    # V2 workflows have phases, V1 workflows have steps
+    if workflow.respond_to?(:v2?) && workflow.v2?
+      # V2 workflow validation
+      raise "V2 Workflow must have phases" if workflow.phases.nil? || workflow.phases.empty?
+      Rails.logger.info "✅ V2 workflow validated with #{workflow.phases.length} phases"
+    else
+      # V1 workflow validation (legacy)
+      raise "V1 Workflow must have steps" if workflow.steps.nil? || workflow.steps.empty?
+      
+      # Validate step dependencies
+      step_ids = workflow.steps.map(&:id)
+      workflow.steps.each do |step|
+        step.dependencies.each do |dep|
+          unless step_ids.include?(dep)
+            raise "Step #{step.id} has invalid dependency: #{dep}"
+          end
         end
       end
-    end
-    
-    # Validate agent roles
-    workflow.steps.each do |step|
-      unless AgentLoadout::AGENT_ROLES.include?(step.agent_role)
-        raise "Step #{step.id} has invalid agent role: #{step.agent_role}"
+      Rails.logger.info "✅ V1 workflow validated with #{workflow.steps.length} steps"
+      
+      # Validate agent roles (V1 only)
+      workflow.steps.each do |step|
+        unless AgentLoadout::AGENT_ROLES.include?(step.agent_role)
+          raise "Step #{step.id} has invalid agent role: #{step.agent_role}"
+        end
       end
     end
   end
   
   def optimize_workflow!(workflow)
-    # Optimize step order based on dependencies
-    # This is a simple topological sort
+    # V2 workflows are already optimized by design - phases flow naturally
+    if workflow.respond_to?(:v2?) && workflow.v2?
+      Rails.logger.info "✅ V2 workflow - no optimization needed (phases are pre-optimized)"
+      return
+    end
+    
+    # V1 workflow optimization (legacy)
+    # Optimize step order based on dependencies (topological sort)
     sorted_steps = []
     remaining_steps = workflow.steps.dup
     

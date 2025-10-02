@@ -1,308 +1,230 @@
+template_version: 2
 name: "AI-Powered Landing Page Creation"
 slug: "landing_page_creation"
-description: "Create a professional landing page using AI with customization options"
+description: "Create professional landing pages conversationally with AI"
 category: "content_generation"
+
+config:
+  execution_mode: "adaptive"
+  context_aware: true
+  conversational: true
+  self_healing: true
+
 keywords:
   - landing page
-  - website
-  - page
-  - create
-  - design
-  - build
+  - create page
+  - build website
+  - web page
+  - site
+  - design page
 
-steps:
-  - id: "analyze_context"
-    name: "Analyze Context"
-    description: "Analyze existing business information and landing page request"
-    agent_role: "planner"
-    type: "tool_call"
-    tool: "analyze_landing_page_request"
-    tool_args:
-      user_message: "{{original_message}}"
-      user:
-        id: "{{user_id}}"
-        email: "{{user_email}}"
-        first_name: "{{user_first_name}}"
-        last_name: "{{user_last_name}}"
-      entity:
-        id: "{{entity_id}}"
-        name: "{{entity_name}}"
-        subdomain: "{{entity_subdomain}}"
-    required_tools:
-      - analyze_landing_page_request
-    canvas_allowlist:
-      - task_progress
-
-  - id: "collect_specific_info"
-    name: "Landing Page Details"
-    description: "Gather specific information for your landing page"
-    agent_role: "executor"
-    type: "user_input"
-    form:
-      title: "Landing Page Details"
-      description: "Let's gather some specific information for your landing page"
-      fields:
-        - name: "business_name"
-          label: "Business Name"
-          type: "text"
-          required: true
-          default: "{{analyzed_business_name}}"
-        - name: "industry"
-          label: "Industry/Niche"
-          type: "text"
-          required: true
-          placeholder: "e.g., SaaS, E-commerce, Consulting"
-        - name: "target_audience"
-          label: "Target Audience"
-          type: "textarea"
-          required: true
-          placeholder: "Describe your ideal customers"
-        - name: "main_value_proposition"
-          label: "Main Value Proposition"
-          type: "textarea"
-          required: true
-          placeholder: "What unique value do you offer?"
-        - name: "primary_goal"
-          label: "Primary Goal"
-          type: "select"
-          options:
-            - value: "lead_generation"
-              label: "Generate Leads (Contact Form)"
-            - value: "product_showcase"
-              label: "Showcase Product/Service"
-            - value: "event_registration"
-              label: "Event Registration"
-            - value: "newsletter_signup"
-              label: "Newsletter Signup"
-            - value: "sales"
-              label: "Direct Sales/Purchase"
-          required: true
-        - name: "cta_text"
-          label: "Call-to-Action Text"
-          type: "text"
-          required: true
-          placeholder: "e.g., Get Started Free, Book a Demo"
-        - name: "key_features"
-          label: "Key Features/Benefits (3-5 items)"
-          type: "textarea"
-          required: false
-          placeholder: "List your main features or benefits, one per line"
-    dependencies:
-      - analyze_context
-    canvas_allowlist:
-      - interactive_wizard
-
-  - id: "collect_design_preferences"
-    name: "Design & Images"
-    description: "Choose design style and provide images"
-    agent_role: "executor"
-    type: "user_input"
-    form:
-      title: "Design Preferences & Images"
-      description: "Let's design your landing page and handle images"
-      fields:
-        - name: "theme"
-          label: "Design Theme"
-          type: "select"
-          options:
-            - value: "clean"
-              label: "Clean & Minimal"
-            - value: "modern"
-              label: "Modern & Bold"
-            - value: "professional"
-              label: "Professional & Corporate"
-            - value: "creative"
-              label: "Creative & Artistic"
-            - value: "friendly"
-              label: "Friendly & Approachable"
-          required: true
-        - name: "color_scheme"
-          label: "Color Preference"
-          type: "select"
-          options:
-            - value: "vibrant"
-              label: "Vibrant & Energetic"
-            - value: "muted"
-              label: "Muted & Sophisticated"
-            - value: "monochrome"
-              label: "Monochrome"
-            - value: "earth_tones"
-              label: "Earth Tones"
-            - value: "custom"
-              label: "Custom (specify below)"
-          required: true
-        - name: "custom_colors"
-          label: "Custom Colors (if selected)"
-          type: "text"
-          required: false
-          placeholder: "e.g., blue and gold, #1E88E5"
-        - name: "hero_image_choice"
-          label: "Hero Section Image (Main Banner)"
-          type: "radio"
-          options:
-            - value: "ai_generate"
-              label: "Generate with AI"
-            - value: "upload"
-              label: "Upload my own"
-            - value: "none"
-              label: "No hero image"
-          required: true
-        - name: "hero_image_prompt"
-          label: "Describe the hero image you want"
-          type: "textarea"
-          required: false
-          show_if: "hero_image_choice == 'ai_generate'"
-          placeholder: "e.g., Modern office with people collaborating"
-        - name: "hero_image_upload"
-          label: "Upload Hero Image"
-          type: "file_upload"
-          required: false
-          show_if: "hero_image_choice == 'upload'"
-          accept: "image/*"
-        - name: "feature_images"
-          label: "Feature Section Images"
-          type: "radio"
-          options:
-            - value: "ai_generate"
-              label: "Generate all with AI"
-            - value: "upload"
-              label: "Upload my own"
-            - value: "mixed"
-              label: "Mix of both"
-            - value: "none"
-              label: "No feature images"
-          required: true
-        - name: "feature_image_prompts"
-          label: "Describe feature images (one per line)"
-          type: "textarea"
-          required: false
-          show_if: "feature_images == 'ai_generate' || feature_images == 'mixed'"
-          placeholder: "e.g., Data analytics dashboard\nTeam collaboration\nMobile app interface"
-        - name: "feature_image_uploads"
-          label: "Upload Feature Images"
-          type: "file_upload"
-          required: false
-          show_if: "feature_images == 'upload' || feature_images == 'mixed'"
-          accept: "image/*"
-          multiple: true
-          max_files: 5
-        - name: "design_reference"
-          label: "Design Reference (optional)"
-          type: "file_upload"
-          required: false
-          accept: "image/*,.pdf"
-          help_text: "Upload a design you like as reference"
-    dependencies:
-      - collect_specific_info
-    canvas_allowlist:
-      - interactive_wizard
-
-  - id: "process_uploaded_images"
-    name: "Process Images"
-    description: "Store and prepare uploaded images for AI"
-    agent_role: "executor"
-    type: "tool_call"
-    tool: "process_landing_page_images"
-    tool_args:
-      hero_image:
-        choice: "{{hero_image_choice}}"
-        prompt: "{{hero_image_prompt}}"
-        upload: "{{hero_image_upload}}"
-      feature_images:
-        choice: "{{feature_images}}"
-        prompts: "{{feature_image_prompts}}"
-        uploads: "{{feature_image_uploads}}"
-      design_reference: "{{design_reference}}"
-      user_id: "{{user_id}}"
-      entity_id: "{{entity_id}}"
-    dependencies:
-      - collect_design_preferences
-    required_tools:
-      - process_landing_page_images
-    canvas_allowlist:
-      - task_progress
-
-  - id: "generate_landing_page"
-    name: "Generate Landing Page"
-    description: "Create your landing page using AI"
-    agent_role: "executor"
-    type: "tool_call"
-    tool: "generate_ai_landing_page"
-    tool_args:
-      title: "{{main_value_proposition}}"
-      description: "{{target_audience}}"
-      page_type: "{{primary_goal}}"
-      business_profile:
-        name: "{{business_name}}"
-        industry: "{{industry}}"
-        value_proposition: "{{main_value_proposition}}"
-        target_audience: "{{target_audience}}"
+phases:
+  # Phase 1: Intelligently gather all requirements
+  - id: "discovery"
+    type: "gather_context"
+    name: "Understand Requirements"
+    goal: "Gather all information needed to create a compelling landing page"
+    
+    required_knowledge:
+      business_context:
+        - business_name
+        - industry
+        - value_proposition
+        - target_audience
       design_preferences:
-        theme: "{{theme}}"
-        color_scheme: "{{color_scheme}}"
-        custom_colors: "{{custom_colors}}"
-      content:
-        cta_text: "{{cta_text}}"
-        features: "{{key_features}}"
-      images:
-        hero_image: "{{processed_hero_image}}"
-        feature_images: "{{processed_feature_images}}"
-        design_reference: "{{processed_design_reference}}"
-    dependencies:
-      - process_uploaded_images
-    required_tools:
-      - generate_ai_landing_page
-    canvas_allowlist:
-      - task_progress
+        - style_preference
+        - color_scheme
+        - brand_colors
+      content_requirements:
+        - main_headline
+        - key_features
+        - call_to_action
+    
+    context_sources:
+      priority:
+        - workflow_context      # Check uploaded files first
+        - conversation_history  # Review what user said
+        - entity_profile        # Use known entity data
+        - direct_conversation   # Ask user (last resort)
+    
+    extraction_strategies:
+      workflow_context:
+        file_types:
+          pdf: "Extract brand guidelines, business info, value propositions, target audience, colors, fonts"
+          image: "Analyze for brand colors, visual style, design preferences"
+          docx: "Extract content, messaging, key features, value propositions"
+      conversation_history:
+        look_for:
+          - business_description
+          - goals_and_objectives
+          - audience_mentions
+          - design_preferences
+      entity_profile:
+        use_fields:
+          - entity.name
+          - entity.industry
+          - entity.subdomain
+    
+    ai_instructions: |
+      You are gathering information for a landing page creation.
+      
+      PRIORITY 1: Check workflow_context for uploaded files
+      - If there's a brand guide PDF, extract business name, industry, colors, fonts, messaging
+      - If there are images, analyze them for brand style and aesthetics
+      - If there's a competitor site screenshot, note the design approach
+      - Look for any documents with value propositions, features, or audience info
+      
+      PRIORITY 2: Review conversation history
+      - User may have already described their business
+      - Look for mentions of target audience, goals, value proposition
+      - Note any design preferences mentioned
+      
+      PRIORITY 3: Check entity profile
+      - Use known business name if available
+      - Use industry classification if set
+      
+      PRIORITY 4: Conversational gathering (ONLY FOR MISSING INFO)
+      - Ask naturally in chat, don't show forms
+      - Group related questions together
+      - If you have partial info, acknowledge it and ask for gaps
+      - Example: "I can see from your brand guide that you're targeting small businesses 
+        with accounting software. What's the main problem you solve for them?"
+      
+      Be intelligent:
+      - Don't ask for what you already have
+      - Infer reasonable defaults when appropriate
+      - Confirm assumptions rather than asking from scratch
+      - Be warm and conversational
+    
+    allowed_tools:
+      - get_workflow_context
+      - web_search
+      - get_data
+    
+    completion_criteria:
+      all_required_knowledge_gathered: true
+      or:
+        user_approved_partial_data: true
+        max_conversation_turns: 3
 
-  - id: "compile_and_save"
-    name: "Compile and Save"
-    description: "Compile the landing page and save it"
-    agent_role: "executor"
-    type: "tool_call"
-    tool: "update_landing_page_content"
-    tool_args:
-      landing_page_id: "{{generated_landing_page_id}}"
-      instruction: "finalize"
-    dependencies:
-      - generate_landing_page
-    required_tools:
-      - update_landing_page_content
-    canvas_allowlist:
-      - landing_page_viewer
+  # Phase 2: Build the landing page
+  - id: "creation"
+    type: "execute_goal"
+    name: "Build Landing Page"
+    goal: "Create a professional, conversion-optimized landing page with the gathered requirements"
+    
+    requires_from_previous:
+      - business_context
+      - design_preferences
+      - content_requirements
+    
+    execution_strategy:
+      approach: "adaptive"
+      
+      allowed_tools:
+        - generate_ai_landing_page
+        - update_landing_page_content
+        - create_object
+        - get_workflow_context
+        - web_search
+      
+      constraints:
+        must_use_uploaded_images: true
+        must_include_cta: true
+        max_ai_calls: 5
+        budget:
+          max_tokens: 10000
+      
+      success_when:
+        landing_page_id_exists: true
+        html_generated: true
+        responsive_design: true
+    
+    ai_instructions: |
+      Create the landing page using all gathered context intelligently.
+      
+      INTELLIGENT CREATION PROCESS:
+      1. Get uploaded images from workflow_context
+      2. Use extracted brand colors for the design
+      3. Create page structure with generate_ai_landing_page tool
+      4. Include all required sections:
+         - Hero section with compelling headline and CTA
+         - Value proposition section
+         - Features/Benefits (use gathered key features)
+         - Social proof section (if applicable)
+         - Final CTA section
+      
+      5. Ensure responsive design (mobile-first)
+      6. Optimize for conversion:
+         - Clear value proposition above the fold
+         - Multiple CTAs placed strategically
+         - Social proof elements
+         - Fast loading (optimize images)
+      
+      7. Use brand guidelines:
+         - Apply brand colors from uploaded assets
+         - Use appropriate fonts
+         - Match brand voice and tone
+      
+      You have flexibility to:
+      - Chain multiple tools if needed
+      - Self-heal if generation fails
+      - Try different approaches to achieve the goal
+      - Make intelligent decisions about content placement
+      
+      Be creative and adaptive to create the best possible page.
+    
+    adaptive:
+      enabled: true
+      max_attempts: 3
+      self_healing: true
+      allow_tool_chaining: true
 
-  - id: "preview_page"
-    name: "Preview Landing Page"
-    description: "Show the generated landing page for review"
-    agent_role: "executor"
-    type: "tool_call"
-    tool: "load_canvas"
-    tool_args:
-      canvas_name: "landing_page_viewer"
-      data:
-        landing_page_id: "{{landing_page_id}}"
-        mode: "preview"
-    dependencies:
-      - compile_and_save
-    required_tools:
-      - load_canvas
-    canvas_allowlist:
-      - landing_page_viewer
+  # Phase 3: Validate quality
+  - id: "validation"
+    type: "validate_result"
+    name: "Quality Check"
+    goal: "Ensure the landing page meets quality and brand standards"
+    
+    validation_rules:
+      - rule: "responsive_design"
+        check: "Page works on mobile, tablet, and desktop"
+        
+      - rule: "has_cta"
+        check: "Clear call-to-action buttons are present"
+        
+      - rule: "images_valid"
+        check: "All images have valid URLs and load properly"
+        
+      - rule: "html_validity"
+        check: "HTML structure is valid and well-formed"
+        
+      - rule: "brand_consistent"
+        check: "Uses uploaded brand colors and follows brand guidelines"
+        requires_context: ["uploaded_brand_guide", "brand_colors"]
+    
+    on_failure:
+      action: "attempt_fix"
+      max_fix_attempts: 2
+      use_fixer_agent: true
+      allowed_fixes:
+        - add_missing_cta
+        - fix_responsive_issues
+        - optimize_images
+        - adjust_colors_to_brand
+        - fix_html_structure
+
+success_criteria:
+  - landing_page_created: true
+  - quality_validated: true
+  - responsive: true
+  - has_cta: true
 
 validation:
-  required_inputs:
-    - business_name
-    - industry
-    - target_audience
-    - main_value_proposition
-    - primary_goal
-    - cta_text
-    - theme
-    - color_scheme
-    - hero_image_choice
-  required_tools:
-    - analyze_landing_page_request
-    - process_landing_page_images
-    - generate_ai_landing_page
-    - update_landing_page_content
-    - load_canvas
+  required_context:
+    - business_context
+    - content_requirements
+  quality_checks:
+    - check_html_validity
+    - check_responsive_design
+    - verify_cta_presence
