@@ -51,7 +51,16 @@ module Agents
           4. Identify dependencies and optimal execution order
           5. Consider parallel execution opportunities
           6. Learn from past successes and failures
-          7. Collaborate with other agents for complex planning
+          7. Assign appropriate agent roles to each step
+          
+          IMPORTANT: You are the PLANNER, not the EXECUTOR.
+          - You CREATE plans but DO NOT execute them
+          - Other specialized agents (executor, analyst, verifier) will execute the steps you plan
+          - Assign agent_role to steps based on what they do:
+            * "executor" for action steps (create, update, invoke tools)
+            * "analyst" for thinking/analysis steps (analyze data, make decisions)
+            * "verifier" for validation steps (check results, verify requirements)
+          - NEVER assign "planner" as an agent_role for execution steps!
           
           Available workflow templates:
           #{@workflow_templates.any? ? @workflow_templates.map { |t| "- #{t.name}: #{t.description}" }.join("\n") : "No templates available"}
@@ -369,8 +378,15 @@ module Agents
         plan['name'] = "#{template.name} - Customized"
         plan['context'] = analysis
         
-        # Adapt steps based on specific requirements
-        if plan['steps']
+        # V2 templates have phases, V1 templates have steps
+        if plan['phases']
+          # V2 template - preserve phases structure
+          Rails.logger.info "Adapting V2 template with #{plan['phases'].length} phases"
+          # For V2, we generally don't need to adapt phases - they're already flexible
+          # The phase executors will handle context intelligently
+        elsif plan['steps']
+          # V1 template - adapt steps (legacy support)
+          Rails.logger.info "Adapting V1 template with #{plan['steps'].length} steps"
           plan['steps'] = plan['steps'].map do |step|
             adapt_step_to_context(step, analysis)
           end
@@ -443,28 +459,61 @@ module Agents
           
           #{analysis.to_json}
           
-          The plan should be in this JSON format:
+          The plan should be in this V2 PHASE-BASED JSON format:
           {
             "name": "Workflow name",
             "description": "What this workflow does",
-            "steps": [
+            "template_version": 2,
+            "phases": [
               {
-                "id": "unique_step_id",
-                "name": "Step name",
-                "type": "tool_call|user_input|conditional|parallel",
-                "description": "What this step does",
-                "agent_role": "planner|executor|analyst|monitor",
-                "tool": "tool_name (if type is tool_call)",
-                "tool_args": {},
-                "dependencies": ["previous_step_id"],
-                "required_capabilities": ["capability1", "capability2"],
-                "estimated_duration": 30,
-                "estimated_cost": 5
+                "id": "gather_context",
+                "type": "gather_context",
+                "name": "Gather Information",
+                "required_fields": [
+                  {
+                    "key": "field_name",
+                    "prompt": "What should I ask the user?",
+                    "required": true,
+                    "validation": "email|url|text|number"
+                  }
+                ],
+                "context_sources": ["user_input", "uploaded_files", "existing_data"]
+              },
+              {
+                "id": "execute_goal",
+                "type": "execute_goal",
+                "name": "Execute the Task",
+                "goal": "Clear description of what to accomplish",
+                "execution_strategy": {
+                  "approach": "adaptive",
+                  "allowed_tools": ["tool1", "tool2"],
+                  "constraints": {
+                    "max_cost": 100,
+                    "timeout_seconds": 300
+                  }
+                },
+                "requires_from_previous": ["field_name"],
+                "ai_instructions": "Instructions for AI on how to accomplish the goal"
+              },
+              {
+                "id": "validate_result",
+                "type": "validate_result",
+                "name": "Verify Success",
+                "validation_criteria": {
+                  "required_outputs": ["output1"],
+                  "quality_checks": ["check1"]
+                },
+                "success_message": "Message to show user on success"
               }
-            ],
-            "estimated_total_duration": 300,
-            "estimated_total_cost": 25
+            ]
           }
+          
+          CRITICAL V2 PHASE RULES:
+          - Use "phases" NOT "steps" (this is V2!)
+          - Phase 1 is ALWAYS "gather_context" type (collect any needed info)
+          - Phase 2 is ALWAYS "execute_goal" type (do the work)
+          - Phase 3 is ALWAYS "validate_result" type (verify success)
+          - Each phase is conversational and can interact with the user naturally
           
           Include error handling and parallel execution where appropriate.
           
@@ -955,17 +1004,37 @@ module Agents
       end
       
       def build_workflow_from_plan(plan)
-        workflow_spec = {
-          name: plan['name'],
-          description: plan['description'],
-          type: plan['type'] || 'custom',
-          metadata: {
-            estimated_duration: plan['estimated_total_duration'],
-            estimated_cost: plan['estimated_total_cost'],
-            optimization_mode: plan['execution_mode']
-          },
-          steps: build_workflow_steps(plan['steps'])
-        }
+        # Check if this is a V2 phase-based plan or V1 step-based plan
+        is_v2 = plan['template_version'] == 2 || plan['phases'].present?
+        
+        if is_v2
+          # Build V2 phase-based workflow
+          workflow_spec = {
+            name: plan['name'],
+            description: plan['description'],
+            template_version: 2,
+            type: plan['type'] || 'custom',
+            metadata: {
+              estimated_duration: plan['estimated_total_duration'],
+              estimated_cost: plan['estimated_total_cost'],
+              optimization_mode: plan['execution_mode']
+            },
+            phases: plan['phases']  # Use phases as-is from the plan
+          }
+        else
+          # Fall back to V1 step-based workflow (legacy)
+          workflow_spec = {
+            name: plan['name'],
+            description: plan['description'],
+            type: plan['type'] || 'custom',
+            metadata: {
+              estimated_duration: plan['estimated_total_duration'],
+              estimated_cost: plan['estimated_total_cost'],
+              optimization_mode: plan['execution_mode']
+            },
+            steps: build_workflow_steps(plan['steps'])
+          }
+        end
         
         # Create the workflow
         if @task_session

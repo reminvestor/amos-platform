@@ -496,6 +496,92 @@ class InteractiveTaskService
       response = generic_tools_service.process_message_with_tools(message, conversation_history, current_canvas)
     end
     
+    # Check if a workflow was delegated and needs execution
+    if response && response[:workflow_approval_needed]
+      Rails.logger.info "Workflow delegated to planner, auto-executing workflow"
+      
+      # Load the workflow from task session
+      task_session = TaskSession.find(response[:task_session_id])
+      workflow_spec = task_session.state['workflow_spec']
+      
+      # Check if workflow creation was successful
+      if workflow_spec.is_a?(Hash) && workflow_spec['success'] == false
+        Rails.logger.error "Workflow creation failed: #{workflow_spec['error']}"
+        return {
+          success: false,
+          message: "I encountered an issue creating the workflow: #{workflow_spec['error']}. Let me try a different approach.",
+          canvas: 'conversation',
+          canvas_data: {},
+          tools_used: response[:tools_used] || [],
+          mode: 'autonomous'
+        }
+      end
+      
+      # Auto-approve and execute the workflow
+      workflow_name = workflow_spec.is_a?(Hash) ? (workflow_spec['workflow']&.dig('name') || workflow_spec['name']) : 'workflow'
+      @progress_callback&.call({
+        type: 'intermediate_message',
+        content: "🚀 Executing workflow: #{workflow_name}...",
+        role: 'assistant'
+      })
+      
+      # Execute the workflow using WorkflowEngine
+      begin
+        workflow_engine = WorkflowEngine.new(task_session)
+        workflow_engine.set_progress_callback(@progress_callback)
+        
+        # Check if this is a V2 phase-based workflow
+        workflow = workflow_spec['workflow']
+        is_v2 = workflow['template_version'] == 2 || workflow['phases'].present?
+        
+        if is_v2
+          Rails.logger.info "🚀 Starting V2 phase-based workflow"
+          # Use V2 execution path
+          workflow_result = workflow_engine.execute_v2_workflow(workflow, {})
+        else
+          Rails.logger.info "🚀 Starting V1 step-based workflow"
+          # Fall back to V1 execution for legacy workflows
+          workflow_result = workflow_engine.start_workflow(workflow, {})
+        end
+        
+        if workflow_result[:success]
+          return {
+            success: true,
+            message: response[:final_response][:message],
+            message_already_saved: response[:final_response][:message_already_saved] || false,
+            canvas: response[:canvas_type] || 'conversation',
+            canvas_data: response[:canvas_data],
+            tools_used: response[:tools_used],
+            mode: 'autonomous',
+            workflow_executed: true,
+            workflow_result: workflow_result
+          }
+        else
+          # Workflow execution failed
+          return {
+            success: false,
+            message: "Workflow execution failed: #{workflow_result[:error]}",
+            canvas: 'conversation',
+            canvas_data: {},
+            tools_used: response[:tools_used],
+            mode: 'autonomous'
+          }
+        end
+      rescue => e
+        Rails.logger.error "Workflow execution error: #{e.message}"
+        Rails.logger.error e.backtrace.join("\n")
+        
+        return {
+          success: false,
+          message: "Workflow execution encountered an error: #{e.message}",
+          canvas: 'conversation',
+          canvas_data: {},
+          tools_used: response[:tools_used],
+          mode: 'autonomous'
+        }
+      end
+    end
+    
     # Handle response safely
     if response && response[:final_response] && response[:final_response][:message]
       # Convert response to our format

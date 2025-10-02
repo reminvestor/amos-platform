@@ -70,6 +70,9 @@ module Agents
         nil
       end
       
+      # Alias for read to maintain consistency
+      alias_method :get, :read
+      
       # Read all context
       def read_all
         # Get all keys from Redis if we have a task session

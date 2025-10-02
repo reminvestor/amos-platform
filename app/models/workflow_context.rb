@@ -3,7 +3,7 @@ class WorkflowContext < ApplicationRecord
   belongs_to :task_session
   
   # Store different types of context data
-  enum data_type: {
+  enum :data_type, {
     user_input: 'user_input',
     file_reference: 'file_reference',
     extracted_data: 'extracted_data',

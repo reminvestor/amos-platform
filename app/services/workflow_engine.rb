@@ -14,17 +14,18 @@ class WorkflowEngine
     @progress_callback = callback
   end
   
-  # Create and start a new workflow
+  # Create and start a new workflow (V2 - phase-based)
   def start_workflow(workflow_spec, initial_inputs = {})
-    # Reset transient state to avoid stale context from prior runs in this session
+    # All workflows are now V2 (phase-based)
+    Rails.logger.info "🚀 Starting V2 (phase-based) workflow"
+    
+    # Reset and store workflow spec
     @task_session.update_state(
       wizard_data: {},
       artifacts: [],
-      current_step: nil
+      current_phase: nil,
+      workflow_spec: workflow_spec
     )
-
-    # Store workflow spec in task session
-    @task_session.update_state(workflow_spec: workflow_spec)
     
     # Create WorkflowExecution record
     @workflow_execution = WorkflowExecution.create!(
@@ -926,5 +927,314 @@ class WorkflowEngine
     
     # Remove sensitive data from results before logging
     result.except(:password, :api_key, :secret, :token)
+  end
+  
+  # ==================== V2 WORKFLOW EXECUTION ====================
+  
+  def start_v2_workflow(workflow_spec, initial_inputs = {})
+    Rails.logger.info "🚀 Starting V2 (phase-based) workflow"
+    
+    # Reset and store workflow spec
+    @task_session.update_state(
+      wizard_data: {},
+      artifacts: [],
+      current_phase: nil,
+      workflow_spec: workflow_spec
+    )
+    
+    # Create WorkflowExecution record
+    @workflow_execution = WorkflowExecution.create!(
+      task_session: @task_session,
+      user: @task_session.user,
+      entity: @task_session.user.entity,
+      workflow_template_id: workflow_spec[:template_id] || workflow_spec[:slug],
+      workflow_spec: workflow_spec,
+      status: 'running',
+      metadata: {
+        initial_inputs: initial_inputs,
+        template_version: 2,
+        started_from: 'workflow_engine_v2'
+      }
+    )
+    
+    # Move any attached files from task session to workflow context
+    if @task_session.metadata['attached_files']&.any?
+      @task_session.metadata['attached_files'].each_with_index do |file_info, index|
+        key = "uploaded_file_#{index + 1}"
+        WorkflowContext.store_file(@workflow_execution, key, file_info)
+        Rails.logger.info "📎 Moved file #{file_info['filename']} to workflow context as #{key}"
+      end
+      
+      @task_session.update!(
+        metadata: @task_session.metadata.except('attached_files')
+      )
+    end
+    
+    @task_session.add_event('workflow_v2_started', {
+      workflow_name: workflow_spec[:name] || workflow_spec['name'],
+      initial_inputs: initial_inputs
+    })
+    
+    # Execute phases
+    execute_v2_workflow(workflow_spec, initial_inputs)
+  end
+  
+  def execute_v2_workflow(workflow_spec, initial_inputs = {})
+    phases = workflow_spec[:phases] || workflow_spec['phases'] || []
+    
+    Rails.logger.info "📋 Executing #{phases.length} phases"
+    
+    phases.each_with_index do |phase, index|
+      phase_id = phase[:id] || phase['id']
+      Rails.logger.info "🔄 Starting phase #{index + 1}/#{phases.length}: #{phase_id}"
+      
+      # Update task session with current phase
+      @task_session.update_state(current_phase: phase_id)
+      
+      # Build execution context
+      context = {
+        user: @task_session.user,
+        entity: @task_session.user.entity,
+        task_session: @task_session,
+        workflow_execution: @workflow_execution,
+        progress_callback: @progress_callback,
+        initial_inputs: initial_inputs
+      }
+      
+      # Select and execute appropriate phase executor
+      result = execute_phase(phase, context)
+      
+      # Handle phase result
+      case result[:status]
+      when 'awaiting_input'
+        # Phase needs user input - pause workflow
+        Rails.logger.info "⏸️ Phase #{phase_id} awaiting user input"
+        
+        @task_session.update_state(
+          workflow_state: 'awaiting_input',
+          current_phase: phase_id,
+          last_phase_result: result
+        )
+        
+        @workflow_execution.update!(
+          status: 'awaiting_input',
+          metadata: @workflow_execution.metadata.merge(
+            current_phase: phase_id,
+            awaiting_input_for: result[:fields_needed]
+          )
+        )
+        
+        return {
+          success: true,
+          status: 'awaiting_input',
+          message: result[:message],
+          conversational: result[:conversational],
+          fields_needed: result[:fields_needed],
+          workflow_execution_id: @workflow_execution.id
+        }
+        
+      when 'completed'
+        # Phase completed successfully
+        Rails.logger.info "✅ Phase #{phase_id} completed"
+        
+        @task_session.add_event('phase_completed', {
+          phase_id: phase_id,
+          phase_index: index,
+          result: sanitize_result(result[:data] || {})
+        })
+        
+        # Continue to next phase
+        next
+        
+      when 'failed'
+        # Phase failed
+        Rails.logger.error "❌ Phase #{phase_id} failed: #{result[:error]}"
+        
+        @task_session.add_event('phase_failed', {
+          phase_id: phase_id,
+          error: result[:error]
+        })
+        
+        @workflow_execution.update!(
+          status: 'failed',
+          error_message: result[:error]
+        )
+        
+        return {
+          success: false,
+          status: 'failed',
+          error: "Phase #{phase_id} failed: #{result[:error]}",
+          workflow_execution_id: @workflow_execution.id
+        }
+      end
+    end
+    
+    # All phases completed
+    complete_v2_workflow(workflow_spec)
+  end
+  
+  def execute_phase(phase, context)
+    phase_type = phase[:type] || phase['type']
+    
+    executor = case phase_type.to_s
+    when 'gather_context'
+      Agents::GatherContextExecutor.new(phase, context)
+    when 'execute_goal'
+      Agents::GoalExecutor.new(phase, context)
+    when 'validate_result'
+      Agents::ValidationExecutor.new(phase, context)
+    else
+      Rails.logger.error "Unknown phase type: #{phase_type}"
+      return {
+        success: false,
+        status: 'failed',
+        error: "Unknown phase type: #{phase_type}"
+      }
+    end
+    
+    # Execute the phase
+    executor.execute
+  rescue => e
+    Rails.logger.error "Phase execution error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+    
+    {
+      success: false,
+      status: 'failed',
+      error: e.message
+    }
+  end
+  
+  def resume_v2_workflow(user_message)
+    Rails.logger.info "▶️ Resuming V2 workflow with user input"
+    
+    workflow_spec = @task_session.workflow_spec
+    current_phase_id = @task_session.state['current_phase']
+    
+    # Find the current phase
+    phases = workflow_spec[:phases] || workflow_spec['phases'] || []
+    current_phase = phases.find { |p| (p[:id] || p['id']) == current_phase_id }
+    
+    unless current_phase
+      return {
+        success: false,
+        error: "Could not find current phase: #{current_phase_id}"
+      }
+    end
+    
+    # Build context with user message
+    context = {
+      user: @task_session.user,
+      entity: @task_session.user.entity,
+      task_session: @task_session,
+      workflow_execution: @workflow_execution,
+      progress_callback: @progress_callback,
+      user_message: user_message
+    }
+    
+    # Re-execute the phase with user input
+    executor = case (current_phase[:type] || current_phase['type']).to_s
+    when 'gather_context'
+      Agents::GatherContextExecutor.new(current_phase, context)
+    when 'execute_goal'
+      Agents::GoalExecutor.new(current_phase, context)
+    else
+      return { success: false, error: "Cannot resume this phase type" }
+    end
+    
+    # For gather_context phases, we need to process the user's message
+    if executor.is_a?(Agents::GatherContextExecutor)
+      # Extract data from user message using AI
+      result = executor.execute
+      
+      if result[:status] == 'awaiting_input'
+        # Still need more input
+        return {
+          success: true,
+          status: 'awaiting_input',
+          message: result[:message],
+          conversational: result[:conversational]
+        }
+      elsif result[:status] == 'completed'
+        # Got everything, continue workflow
+        @workflow_execution.update!(status: 'running')
+        
+        # Find next phase index
+        current_index = phases.index(current_phase)
+        remaining_phases = phases[(current_index + 1)..-1]
+        
+        # Continue with remaining phases
+        remaining_phases.each_with_index do |phase, index|
+          phase_result = execute_phase(phase, context)
+          
+          if phase_result[:status] == 'awaiting_input'
+            return phase_result
+          elsif phase_result[:status] == 'failed'
+            return phase_result
+          end
+        end
+        
+        # All phases completed
+        complete_v2_workflow(workflow_spec)
+      end
+    end
+  end
+  
+  def complete_v2_workflow(workflow_spec)
+    Rails.logger.info "🎉 V2 Workflow completed successfully"
+    
+    @workflow_execution.update!(
+      status: 'completed',
+      completed_at: Time.current
+    )
+    
+    @task_session.add_event('workflow_completed', {
+      workflow_name: workflow_spec[:name] || workflow_spec['name'],
+      template_version: 2
+    })
+    
+    # Generate final summary using AI
+    final_summary = generate_workflow_summary
+    
+    {
+      success: true,
+      status: 'completed',
+      message: final_summary,
+      workflow_execution_id: @workflow_execution.id
+    }
+  end
+  
+  def generate_workflow_summary
+    # Get workflow context data
+    context_data = @workflow_execution.workflow_contexts.map do |ctx|
+      { key: ctx.key, value: ctx.value, type: ctx.data_type }
+    end
+    
+    ai_service = BedrockService.new
+    
+    prompt = <<~PROMPT
+      Summarize what was accomplished in this workflow.
+      
+      Workflow Data:
+      #{JSON.pretty_generate(context_data.first(20))}
+      
+      Create a friendly, conversational summary of:
+      1. What was created/accomplished
+      2. Key details (IDs, names, etc.)
+      3. What the user can do next
+      
+      Be warm and helpful. Ask what they'd like to do next.
+      
+      Keep it concise (2-3 paragraphs max).
+    PROMPT
+    
+    ai_service.complete(
+      prompt: prompt,
+      max_tokens: 500,
+      temperature: 0.7
+    )
+  rescue => e
+    Rails.logger.error "Failed to generate summary: #{e.message}"
+    "Workflow completed successfully! What would you like to do next?"
   end
 end

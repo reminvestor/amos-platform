@@ -66,12 +66,22 @@ class ScoutGenericToolsServiceV2
           content: [
             { type: 'text', text: accumulated_content.strip.presence || "I'll help you with that." },
             *tool_calls.map do |tool_call|
+              # Parse arguments - handle string, hash, or empty
+              input = case tool_call[:arguments]
+                      when Hash
+                        tool_call[:arguments]
+                      when String
+                        tool_call[:arguments].present? ? JSON.parse(tool_call[:arguments]) : {}
+                      else
+                        {}
+                      end
+              
               {
                 type: 'tool_use',
                 tool_use: {
                   id: tool_call[:id],
                   name: tool_call[:name],
-                  input: JSON.parse(tool_call[:arguments])
+                  input: input
                 }
               }
             end
@@ -171,6 +181,9 @@ class ScoutGenericToolsServiceV2
     
     available_models = ScoutDataRegistry.available_object_types
     
+    # Get available workflow templates
+    available_templates = WorkflowTemplateLoader.list_all_templates
+    
     prompt = <<~PROMPT
       #{ai_identity}
       
@@ -181,6 +194,19 @@ class ScoutGenericToolsServiceV2
       - Entity: #{@entity.name}
       
       AVAILABLE DATA MODELS: #{available_models.join(', ')}
+      
+      AVAILABLE WORKFLOW TEMPLATES:
+      You have access to pre-built intelligent workflow templates. When a user request matches 
+      one of these templates, the system can handle it with advanced capabilities like:
+      - Analyzing uploaded files to extract requirements
+      - Conversational data gathering (no forms)
+      - Adaptive execution with self-healing
+      
+      Templates Available:
+      #{format_templates_for_prompt(available_templates)}
+      
+      To learn more about a template, use the get_template_details tool with the template slug.
+      The planner will intelligently select the best template when you delegate complex requests.
       
       INTELLIGENT CANVAS:
       IMPORTANT: When users ask to see/view/show campaigns, landing pages, contacts, or any data:
@@ -237,6 +263,14 @@ class ScoutGenericToolsServiceV2
     prompt
   end
   
+  def format_templates_for_prompt(templates)
+    return "None available" if templates.empty?
+    
+    templates.map do |t|
+      "- #{t[:name]} (#{t[:slug]}): #{t[:description]}"
+    end.join("\n      ")
+  end
+  
   def handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
     case chunk[:type]
     when :content
@@ -247,6 +281,18 @@ class ScoutGenericToolsServiceV2
       })
     when :tool_use_start
       Rails.logger.info "🔧 Tool detected: #{chunk[:tool_name]}"
+      
+      # If this is the first tool and no content has been streamed yet, 
+      # stream some initial feedback so the user knows we're working
+      if tool_calls.empty? && accumulated_content.blank?
+        initial_message = "I'll help you with that. "
+        accumulated_content << initial_message
+        progress_callback&.call({
+          type: 'content_chunk',
+          content: initial_message
+        })
+      end
+      
       tool_calls << {
         id: chunk[:tool_id],
         name: chunk[:tool_name],
@@ -258,7 +304,13 @@ class ScoutGenericToolsServiceV2
       })
     when :tool_use
       if tool_calls.any?
-        tool_calls.last[:arguments] += chunk[:tool_use].input || ""
+        input = chunk[:tool_use].input
+        # Handle both Hash and String inputs from streaming
+        if input.is_a?(Hash)
+          tool_calls.last[:arguments] = input
+        elsif input.is_a?(String)
+          tool_calls.last[:arguments] += input
+        end
       end
     when :message_stop
       # Message complete
@@ -279,11 +331,14 @@ class ScoutGenericToolsServiceV2
     
     tool_calls.each do |tool_call|
       begin
-        args = if tool_call[:arguments].present?
-          JSON.parse(tool_call[:arguments])
-        else
-          {}
-        end
+        args = case tool_call[:arguments]
+               when Hash
+                 tool_call[:arguments]
+               when String
+                 tool_call[:arguments].present? ? JSON.parse(tool_call[:arguments]) : {}
+               else
+                 {}
+               end
         Rails.logger.info "Executing #{tool_call[:name]} with args: #{args.inspect}"
         
         result = execute_tool_by_name(tool_call[:name], args, progress_callback)

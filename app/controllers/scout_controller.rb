@@ -239,9 +239,9 @@ class ScoutController < ApplicationController
           image_asset = ImageAsset.create!(
             entity: current_entity,
             user: current_user,
-            name: file.original_filename,
+            title: file.original_filename,
             file: file,
-            source: 'chat_upload'
+            source: 'upload'
           )
           
           uploaded_urls << {
@@ -353,7 +353,7 @@ class ScoutController < ApplicationController
       end
       
       # Save user message with file info
-      save_scout_message('user', enhanced_message, metadata)
+      save_scout_message('user', enhanced_message, metadata: metadata)
       stream_update("📚 Loading conversation history...")
       
       # Get conversation history

@@ -12,7 +12,9 @@ module Agents
             'insight_generation',
             'report_creation',
             'trend_analysis',
-            'performance_metrics'
+            'performance_metrics',
+            'workflow_analysis',
+            'adaptive_planning'
           ],
           context: initial_context,
           task_session: initial_context[:task_session]

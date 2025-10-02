@@ -30,7 +30,7 @@ class BedrockService
   end
 
   # Main method to send messages to Claude via Bedrock
-  def send_message(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false, stream: false, &block)
+  def send_message(system_prompt, messages, model: 'claude-sonnet-4-5', max_tokens: 10000, temperature: 0.7, json_mode: false, stream: false, &block)
     # Use custom model if specified
     if @custom_model_id && @model_registry
       return send_via_platform(system_prompt, messages, model: @custom_model_id, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, stream: stream, &block)
@@ -61,10 +61,12 @@ class BedrockService
 
   private
 
-  def send_message_non_streaming(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false)
+  def send_message_non_streaming(system_prompt, messages, model: 'claude-sonnet-4-5', max_tokens: 10000, temperature: 0.7, json_mode: false)
     # Map model names to Bedrock model IDs
-    # Using cross-region inference profiles (us. prefix) for better availability
+    # Using global inference profiles for Claude Sonnet 4.5
     model_id = case model
+    when 'claude-sonnet-4-5', 'claude-sonnet-4.5'
+      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
     when 'claude-opus-4-1', 'claude-opus-4-1-20250805'
       'us.anthropic.claude-opus-4-1-20250805-v1:0'
     when 'claude-3-5-sonnet', 'claude-3.5-sonnet'
@@ -72,8 +74,8 @@ class BedrockService
     when 'claude-3-haiku'
       'us.anthropic.claude-3-5-haiku-20241022-v1:0'
     else
-      # Default to Claude 3.5 Sonnet v2
-      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
+      # Default to Claude Sonnet 4.5 (latest)
+      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
     end
 
     # Format messages for Claude
@@ -249,9 +251,11 @@ class BedrockService
   public
   
   # Non-streaming version using converse API (for tool continuation)
-  def send_message_converse(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, tools: [])
+  def send_message_converse(system_prompt, messages, model: 'claude-sonnet-4-5', max_tokens: 10000, temperature: 0.7, tools: [])
     # Map model names to Bedrock model IDs
     model_id = case model
+    when 'claude-sonnet-4-5', 'claude-sonnet-4.5'
+      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
     when 'claude-opus-4-1', 'claude-opus-4-1-20250805'
       'us.anthropic.claude-opus-4-1-20250805-v1:0'
     when 'claude-3-5-sonnet', 'claude-3.5-sonnet'
@@ -259,7 +263,7 @@ class BedrockService
     when 'claude-3-haiku'
       'us.anthropic.claude-3-5-haiku-20241022-v1:0'
     else
-      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
+      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
     end
     
     # Messages are already in converse format from our formatting
@@ -335,9 +339,11 @@ class BedrockService
     end
   end
 
-  def send_message_streaming(system_prompt, messages, model: 'claude-opus-4-1', max_tokens: 4000, temperature: 0.7, json_mode: false, tools: [], &block)
+  def send_message_streaming(system_prompt, messages, model: 'claude-sonnet-4-5', max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], &block)
     # Map model names to Bedrock model IDs
     model_id = case model
+    when 'claude-sonnet-4-5', 'claude-sonnet-4.5'
+      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
     when 'claude-opus-4-1', 'claude-opus-4-1-20250805'
       'us.anthropic.claude-opus-4-1-20250805-v1:0'
     when 'claude-3-5-sonnet', 'claude-3.5-sonnet'
@@ -345,7 +351,7 @@ class BedrockService
     when 'claude-3-haiku'
       'us.anthropic.claude-3-5-haiku-20241022-v1:0'
     else
-      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
+      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
     end
 
     # Format messages for Claude
