@@ -111,7 +111,7 @@ class OnboardingController < ApplicationController
     render json: {
       user_id: current_user.id,
       onboarded: current_user.onboarded?,
-      entities_count: current_user.entities.count,
+      entities_count: current_user.entity ? 1 : 0,
       entity_users_count: current_user.entity_users.count,
       domain: request.domain,
       subdomain: request.subdomain,
@@ -146,7 +146,8 @@ class OnboardingController < ApplicationController
   end
   
   def create_welcome_message
-    entity = current_user.entities.first
+    # User has 1:1 relationship with entity
+    entity = current_user.entity
     business_name = entity&.name || "your business"
     
     welcome_message = "👋 Hi #{current_user.first_name}! I'm Scout, your AI marketing agent. 

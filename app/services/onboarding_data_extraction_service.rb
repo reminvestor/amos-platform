@@ -147,7 +147,8 @@ class OnboardingDataExtractionService
     
     # Get business name from entity if profile doesn't have one
     if profile.name.blank?
-      entity = @user.entities.first
+      # User has 1:1 relationship with entity
+      entity = @user.entity
       profile.name = entity&.name if entity
     end
     

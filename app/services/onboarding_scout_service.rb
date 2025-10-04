@@ -50,7 +50,8 @@ class OnboardingScoutService
     current_profile = extraction_result[:current_profile]
     missing_fields = extraction_result[:missing_fields]
     completeness = extraction_result[:completeness_percentage]
-    business_name = current_profile[:name] || @user.entities.first&.name || "your business"
+    # User has 1:1 relationship with entity
+    business_name = current_profile[:name] || @user.entity&.name || "your business"
     
     completion_status = if missing_fields.empty?
       "COMPLETE - All required information collected!"

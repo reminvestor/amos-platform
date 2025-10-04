@@ -4,7 +4,8 @@ class EntitiesController < ApplicationController
   before_action :require_entity_admin, only: [:edit, :update, :destroy]
   
   def index
-    @entities = current_user.entities
+    # User has 1:1 relationship with entity
+    @entities = current_user.entity ? [current_user.entity] : []
   end
 
   def show
@@ -58,7 +59,9 @@ class EntitiesController < ApplicationController
   private
   
   def set_entity
-    @entity = current_user.entities.find(params[:id])
+    # User has 1:1 relationship with entity
+    @entity = current_user.entity if current_user.entity&.id == params[:id].to_i
+    @entity ||= Entity.find(params[:id]) if current_user.admin?
   end
   
   def entity_params
