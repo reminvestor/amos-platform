@@ -1,0 +1,137 @@
+template_version: 2
+name: "Email Campaign Builder"
+slug: "email_campaign_v2"
+description: "Create email campaigns conversationally with AI assistance"
+category: "campaign_creation"
+
+config:
+  execution_mode: "adaptive"
+  context_aware: true
+  conversational: true
+  self_healing: true
+
+keywords:
+  - campaign
+  - email
+  - email campaign
+  - create campaign
+  - send email
+
+phases:
+  # Phase 1: Gather campaign details
+  - id: "gather_campaign_details"
+    type: "gather_context"
+    name: "Campaign Details"
+    goal: "Understand what kind of email campaign to create"
+    
+    required_knowledge:
+      campaign_basics:
+        - campaign_name
+        - campaign_goal
+        - campaign_type
+      targeting:
+        - target_audience
+        - contact_groups
+      content:
+        - message_theme
+        - email_template
+    
+    context_sources:
+      priority:
+        - workflow_context
+        - conversation_history
+        - direct_conversation
+    
+    ai_instructions: |
+      Gather email campaign requirements conversationally.
+      
+      CHECK FIRST:
+      - Has user mentioned campaign purpose in conversation?
+      - Did they specify target audience?
+      - Do they want to use an existing template?
+      
+      THEN ASK NATURALLY:
+      - "What's the main goal of this email campaign?"
+      - "Who should receive this campaign?"
+      - "Would you like to use an existing template or create a new one?"
+      
+      Be conversational and helpful. Group related questions together.
+    
+    allowed_tools:
+      - get_workflow_context
+      - get_data  # To fetch available templates and contact groups
+    
+    completion_criteria:
+      all_required_knowledge_gathered: true
+
+  # Phase 2: Set up the campaign
+  - id: "setup_campaign"
+    type: "execute_goal"
+    name: "Create Campaign"
+    goal: "Set up the email campaign with all required components"
+    
+    requires_from_previous:
+      - campaign_basics
+      - targeting
+      - content
+    
+    execution_strategy:
+      approach: "adaptive"
+      
+      allowed_tools:
+        - create_object
+        - update_object
+        - get_data
+        - get_schema
+      
+      success_when:
+        campaign_created: true
+        template_linked: true
+        contacts_added: true
+    
+    ai_instructions: |
+      Create the email campaign intelligently:
+      
+      STEPS:
+      1. Get campaign schema to ensure correct fields
+      2. Create campaign object with gathered details
+      3. Link email template (if specified)
+      4. Add contact groups to campaign
+      5. Set scheduling if specified
+      
+      Handle errors gracefully:
+      - If template linking fails, try different approach
+      - If contact groups fail, suggest alternatives
+      - Self-heal any issues encountered
+    
+    adaptive:
+      enabled: true
+      max_attempts: 3
+      self_healing: true
+
+  # Phase 3: Verify setup
+  - id: "verification"
+    type: "validate_result"
+    name: "Verify Campaign"
+    goal: "Ensure campaign is properly configured"
+    
+    validation_rules:
+      - rule: "tool_check"
+        tool: "get_data"
+        tool_args:
+          object_type: "campaigns"
+          filters:
+            id: "{{campaign_id}}"
+        check: "Campaign was created successfully"
+        
+      - rule: "ai_check"
+        check: "Campaign has required fields: name, status, email_template_id"
+    
+    on_failure:
+      action: "attempt_fix"
+      max_fix_attempts: 2
+      use_fixer_agent: true
+
+success_criteria:
+  - campaign_created: true
+  - campaign_validated: true
