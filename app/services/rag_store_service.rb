@@ -237,6 +237,6 @@ unless defined?(RagStore)
     validates :pinecone_index, presence: true
     validates :pinecone_namespace, presence: true
     
-    enum status: { active: 'active', archived: 'archived' }
+    enum :status, { active: 'active', archived: 'archived' }
   end
 end
