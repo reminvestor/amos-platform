@@ -4,7 +4,10 @@ class SocialMediaAccountsController < ApplicationController
   
   # GET /social_media_accounts
   def index
-    @accounts = current_user.social_media_accounts.order(:platform)
+    # Load integrations data similar to canvas
+    @integrations = Integration.where(is_active: true).order(:category, :name)
+    @connections = current_user.connections.includes(:integration).order(created_at: :desc)
+    @social_accounts = current_user.social_media_accounts.order(:platform)
   end
 
   # GET /social_media_accounts/auth/:platform

@@ -12,7 +12,7 @@ class User < ApplicationRecord
   validates :role, presence: true, inclusion: { in: ROLES }
   
   # Entity Association - Single entity per user
-  belongs_to :entity
+  belongs_to :entity, optional: true
   
   # Resource Associations
   has_many :contacts, dependent: :destroy
@@ -56,15 +56,36 @@ class User < ApplicationRecord
   end
   
   # Entity role methods
-  def entity_role
-    role # User's role is now their entity role
+  def entity_role(entity = nil)
+    # If entity is provided, check EntityUser role for that specific entity
+    if entity
+      entity_user = EntityUser.find_by(user: self, entity: entity)
+      return entity_user&.role || 'viewer'
+    end
+    
+    # Otherwise return user's primary role
+    role
   end
 
-  def entity_owner?
+  def entity_owner?(entity = nil)
+    # If entity is provided, check EntityUser role
+    if entity
+      entity_user = EntityUser.find_by(user: self, entity: entity)
+      return entity_user&.role == 'owner'
+    end
+    
+    # Otherwise check user's primary role
     role == 'owner'
   end
 
-  def entity_admin?
+  def entity_admin?(entity = nil)
+    # If entity is provided, check EntityUser role
+    if entity
+      entity_user = EntityUser.find_by(user: self, entity: entity)
+      return ['owner', 'admin'].include?(entity_user&.role)
+    end
+    
+    # Otherwise check user's primary role
     ['owner', 'admin'].include?(role)
   end
   

@@ -60,7 +60,7 @@ class ScoutConversationWithToolsService
     data_objects_info = ScoutUniversalTools.available_data_objects
     
     <<~PROMPT
-      You are Scout, the AI marketing agent for Crux Marketing. You have access to powerful tools that let you autonomously query, analyze, and create marketing data.
+      You are Scout, the AI business automation agent for Amos. You have access to powerful tools that let you autonomously query, analyze, and create business data.
 
       IMPORTANT: You can now ACCESS REAL DATA from the user's account instead of asking them to provide information manually.
 

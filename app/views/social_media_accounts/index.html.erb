@@ -1,99 +1,136 @@
 <div class="container-fluid">
   <div class="row mb-4">
     <div class="col-12">
-      <div class="d-sm-flex align-items-center justify-content-between">
-        <h1 class="h3 mb-0 text-gray-800">Connected Social Media Accounts</h1>
-        <div class="dropdown">
-          <button class="btn btn-primary dropdown-toggle" type="button" id="connectDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fas fa-plus me-1"></i> Connect Account
-          </button>
-          <ul class="dropdown-menu" aria-labelledby="connectDropdown">
-            <% SocialMediaAccount::PLATFORMS.each do |platform| %>
-              <% if current_user.connected_to?(platform) %>
-                <li><span class="dropdown-item text-muted"><i class="fas fa-check me-1"></i> <%= platform.titleize %> (Connected)</span></li>
-              <% else %>
-                <li><a class="dropdown-item" href="<%= auth_social_media_accounts_path(platform: platform) %>"><i class="fab fa-<%= platform.downcase %> me-1"></i> Connect <%= platform.titleize %></a></li>
-              <% end %>
-            <% end %>
-          </ul>
-        </div>
-      </div>
+      <h1><i class="fas fa-plug"></i> Connected Accounts & Integrations</h1>
+      <p class="text-muted">Manage your external application connections - Stripe, Mailgun, social media, and more</p>
     </div>
   </div>
 
+  <!-- Active Connections -->
+  <% if @connections.any? %>
+    <div class="row mb-4">
+      <div class="col-12">
+        <h5 class="text-primary mb-3">Your Active Connections</h5>
+      </div>
+      <% @connections.each do |connection| %>
+        <div class="col-md-6 mb-3">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex align-items-center mb-2">
+                <% if connection.integration.icon_url.present? %>
+                  <img src="<%= connection.integration.icon_url %>" 
+                       alt="<%= connection.integration.name %>" 
+                       class="rounded me-2" style="width: 32px; height: 32px;">
+                <% else %>
+                  <i class="fas fa-cube fa-2x text-muted me-2"></i>
+                <% end %>
+                <div>
+                  <h6 class="mb-0"><%= connection.integration.name %></h6>
+                  <small class="text-muted"><%= connection.name %></small>
+                </div>
+              </div>
+              
+              <div class="mb-2">
+                <span class="badge bg-<%= connection.status == 'connected' ? 'success' : 'warning' %>">
+                  <%= connection.status.humanize %>
+                </span>
+                <% if connection.integration_credentials.present? %>
+                  <span class="badge bg-info">Authenticated</span>
+                <% end %>
+              </div>
+              
+              <small class="text-muted d-block mb-2">
+                <i class="fas fa-calendar-plus"></i>
+                Connected <%= time_ago_in_words(connection.created_at) %> ago
+                <% last_log = connection.integration_logs.maximum(:created_at) %>
+                <% if last_log %>
+                  <br><i class="fas fa-clock"></i> Last used <%= time_ago_in_words(last_log) %> ago
+                <% end %>
+              </small>
+              
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-primary" onclick="testConnection(<%= connection.id %>, '<%= connection.integration.name %>')">
+                  <i class="fas fa-check"></i> Test
+                </button>
+                <%= link_to "#", class: "btn btn-outline-danger", 
+                    data: { turbo_method: :delete, turbo_confirm: "Disconnect from #{connection.integration.name}?" } do %>
+                  <i class="fas fa-unlink"></i> Disconnect
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <!-- Available Integrations -->
   <div class="row">
     <div class="col-12">
-      <div class="card">
-        <div class="card-body">
-          <% if @accounts.any? %>
-            <div class="table-responsive">
-              <table class="table table-hover">
-                <thead>
-                  <tr>
-                    <th>Platform</th>
-                    <th>Username</th>
-                    <th>Status</th>
-                    <th>Connected Since</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @accounts.each do |account| %>
-                    <tr>
-                      <td>
-                        <i class="fab fa-<%= account.platform.downcase %> me-2"></i>
-                        <%= account.platform.titleize %>
-                      </td>
-                      <td>
-                        <% if account.profile_url.present? %>
-                          <a href="<%= account.profile_url %>" target="_blank"><%= account.username %></a>
-                        <% else %>
-                          <%= account.username %>
+      <h5 class="text-primary mb-3">Available Integrations</h5>
+    </div>
+    <% @integrations.group_by(&:category).each do |category, integrations| %>
+      <div class="col-12 mb-3">
+        <h6 class="text-warning mb-2">
+          <i class="fas fa-folder"></i> <%= category&.humanize || 'Other' %>
+        </h6>
+        <div class="row">
+          <% integrations.each do |integration| %>
+            <% is_connected = @connections.any? { |c| c.integration_id == integration.id && c.status == 'connected' } %>
+            <div class="col-md-6 col-lg-4 mb-3">
+              <div class="card h-100 <%= 'border-success' if is_connected %>">
+                <div class="card-body">
+                  <div class="d-flex align-items-start mb-2">
+                    <% if integration.icon_url.present? %>
+                      <img src="<%= integration.icon_url %>" 
+                           alt="<%= integration.name %>" 
+                           class="rounded me-2" style="width: 24px; height: 24px;">
+                    <% else %>
+                      <i class="fas fa-puzzle-piece text-muted me-2"></i>
+                    <% end %>
+                    <div class="flex-grow-1">
+                      <h6 class="mb-0">
+                        <%= integration.name %>
+                        <% if integration.is_verified %>
+                          <i class="fas fa-check-circle text-success small" title="Verified"></i>
                         <% end %>
-                      </td>
-                      <td>
-                        <% if account.status == 'connected' %>
-                          <span class="badge bg-success">Connected</span>
-                        <% elsif account.status == 'expired' %>
-                          <span class="badge bg-warning">Expired</span>
-                        <% else %>
-                          <span class="badge bg-secondary">Disconnected</span>
-                        <% end %>
-                      </td>
-                      <td><%= account.created_at.strftime("%B %-d, %Y") %></td>
-                      <td>
-                        <div class="btn-group btn-group-sm">
-                          <% if account.status == 'expired' %>
-                            <a href="<%= auth_social_media_accounts_path(platform: account.platform) %>" class="btn btn-outline-warning">
-                              <i class="fas fa-sync-alt"></i> Reconnect
-                            </a>
-                          <% end %>
-                          <%= button_to disconnect_social_media_accounts_path(id: account.id), method: :delete, class: "btn btn-outline-danger", data: { confirm: "Are you sure you want to disconnect #{account.platform.titleize}?" } do %>
-                            <i class="fas fa-unlink"></i> Disconnect
-                          <% end %>
-                        </div>
-                      </td>
-                    </tr>
+                      </h6>
+                      <small class="text-muted"><%= integration.auth_type&.humanize %></small>
+                    </div>
+                  </div>
+                  
+                  <% if integration.description.present? %>
+                    <p class="card-text small text-muted mb-2">
+                      <%= truncate(integration.description, length: 100) %>
+                    </p>
                   <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <div class="text-center py-5">
-              <i class="fas fa-share-alt fa-4x text-muted mb-3"></i>
-              <h4>No Connected Accounts</h4>
-              <p class="mb-4">Connect your social media accounts to post content directly from this platform.</p>
-              <div class="d-flex justify-content-center">
-                <% SocialMediaAccount::PLATFORMS.each do |platform| %>
-                  <a href="<%= auth_social_media_accounts_path(platform: platform) %>" class="btn btn-outline-primary mx-2">
-                    <i class="fab fa-<%= platform.downcase %> me-1"></i> Connect <%= platform.titleize %>
-                  </a>
-                <% end %>
+                  
+                  <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                      <%= pluralize(integration.integration_operations.count, 'operation') %>
+                    </small>
+                    <% if is_connected %>
+                      <span class="badge bg-success">Connected</span>
+                    <% else %>
+                      <a href="/integrations/<%= integration.slug %>/auth" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plug"></i> Connect
+                      </a>
+                    <% end %>
+                  </div>
+                </div>
               </div>
             </div>
           <% end %>
         </div>
       </div>
-    </div>
+    <% end %>
   </div>
 </div>
+
+<script>
+function testConnection(connectionId, integrationName) {
+  console.log('Testing connection:', connectionId, integrationName);
+  alert('Testing connection to ' + integrationName + '...');
+  // TODO: Implement actual connection test
+}
+</script>
