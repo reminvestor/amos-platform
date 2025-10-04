@@ -13,7 +13,7 @@
             </h5>
           </div>
           <div>
-            <% if @landing_page.published? %>
+            <% if @landing_page.status == 'published' %>
               <%= button_to unpublish_landing_page_path(@landing_page), method: :post, class: "btn btn-outline-warning btn-sm" do %>
                 Unpublish
               <% end %>

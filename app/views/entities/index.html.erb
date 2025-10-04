@@ -1,48 +1,76 @@
 <div class="container-fluid">
   <div class="row mb-4">
     <div class="col">
-      <h1>Your Entities</h1>
-      <p class="text-muted">Select an entity to manage or create a new one</p>
-    </div>
-    <div class="col-auto">
-      <%= link_to 'Create New Entity', new_entity_path, class: 'btn btn-primary' %>
+      <h1>Your Business Entity</h1>
+      <p class="text-muted">Manage your business information and settings</p>
     </div>
   </div>
 
   <div class="row">
-    <% @entities.each do |entity| %>
-      <div class="col-md-4 mb-4">
-        <div class="card h-100">
+    <% if current_user.entity %>
+      <% entity = current_user.entity %>
+      <div class="col-lg-6">
+        <div class="card">
           <div class="card-body">
             <h5 class="card-title"><%= entity.name %></h5>
             <p class="card-text text-muted">
               <%= "#{pluralize(entity.users.count, 'user')}" %> •
-              <%= "Role: #{current_user.entity_role(entity)}" %>
+              <%= "Your Role: #{current_user.entity_role(entity).titleize}" %>
             </p>
             <p class="card-text">
+              <strong>Status:</strong> 
               <span class="badge bg-<%= entity.status == 'active' ? 'success' : 'secondary' %>">
                 <%= entity.status.capitalize %>
               </span>
             </p>
+            <% if entity.subdomain.present? %>
+              <p class="card-text">
+                <strong>Subdomain:</strong> <%= entity.subdomain %>
+              </p>
+            <% end %>
           </div>
-          <div class="card-footer bg-transparent d-flex justify-content-between">
-            <%= link_to 'Select', switch_entity_path(entity), class: 'btn btn-sm btn-outline-primary' %>
-            <%= link_to 'View', entity_path(entity), class: 'btn btn-sm btn-outline-secondary' %>
+          <div class="card-footer bg-transparent d-flex gap-2">
             <% if current_user.entity_admin?(entity) %>
-              <%= link_to 'Edit', edit_entity_path(entity), class: 'btn btn-sm btn-outline-secondary' %>
+              <%= link_to 'Edit Settings', edit_entity_path(entity), class: 'btn btn-primary' %>
             <% end %>
           </div>
         </div>
       </div>
-    <% end %>
-    
-    <% if @entities.empty? %>
+      
+      <!-- Quick Stats -->
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Quick Stats</h5>
+            <div class="list-group list-group-flush">
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                Campaigns
+                <span class="badge bg-primary rounded-pill"><%= entity.campaigns.count %></span>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                Contacts
+                <span class="badge bg-primary rounded-pill"><%= entity.contacts.count %></span>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                Landing Pages
+                <span class="badge bg-primary rounded-pill"><%= entity.landing_pages.count %></span>
+              </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                Email Templates
+                <span class="badge bg-primary rounded-pill"><%= entity.email_templates.count %></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% else %>
       <div class="col-12">
         <div class="card">
           <div class="card-body text-center p-5">
-            <h3>You don't have any entities yet</h3>
-            <p class="text-muted">Create your first entity to get started</p>
-            <%= link_to 'Create New Entity', new_entity_path, class: 'btn btn-primary' %>
+            <i class="fas fa-building fa-3x text-muted mb-3"></i>
+            <h3>Set Up Your Business Entity</h3>
+            <p class="text-muted">Create your business entity to get started with the platform</p>
+            <%= link_to 'Create Entity', new_entity_path, class: 'btn btn-primary btn-lg' %>
           </div>
         </div>
       </div>

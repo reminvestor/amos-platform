@@ -1,2 +1,71 @@
-<h1>Entities#edit</h1>
-<p>Find me in app/views/entities/edit.html.erb</p>
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1>Edit Business Entity</h1>
+      <p class="text-muted">Update your business information and settings</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body">
+          <%= form_with(model: @entity, local: true) do |form| %>
+            <% if @entity.errors.any? %>
+              <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading">Errors prevented this entity from being saved:</h4>
+                <ul class="mb-0">
+                  <% @entity.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <div class="mb-3">
+              <%= form.label :name, "Business Name", class: "form-label" %>
+              <%= form.text_field :name, class: "form-control", placeholder: "e.g., Acme Corporation" %>
+            </div>
+
+            <div class="mb-3">
+              <%= form.label :subdomain, "Subdomain", class: "form-label" %>
+              <div class="input-group">
+                <%= form.text_field :subdomain, class: "form-control", placeholder: "your-business" %>
+                <span class="input-group-text">.amoslabs.com</span>
+              </div>
+              <small class="form-text text-muted">Choose a unique subdomain for your business</small>
+            </div>
+
+            <div class="mb-3">
+              <%= form.label :status, "Status", class: "form-label" %>
+              <%= form.select :status, 
+                  options_for_select([['Active', 'active'], ['Inactive', 'inactive'], ['Archived', 'archived']], @entity.status),
+                  {}, 
+                  class: "form-select" %>
+            </div>
+
+            <div class="mb-3">
+              <%= form.label :timezone, "Timezone", class: "form-label" %>
+              <%= form.select :timezone,
+                  options_for_select(ActiveSupport::TimeZone.all.map { |tz| [tz.to_s, tz.name] }, @entity.settings&.dig('timezone')),
+                  { include_blank: "Select timezone" },
+                  class: "form-select" %>
+            </div>
+
+            <div class="mb-3">
+              <%= form.label :primary_color, "Primary Brand Color", class: "form-label" %>
+              <%= form.color_field :primary_color, 
+                  value: @entity.settings&.dig('primary_color') || '#0066cc',
+                  class: "form-control form-control-color" %>
+            </div>
+
+            <div class="d-flex gap-2">
+              <%= form.submit "Save Changes", class: "btn btn-primary" %>
+              <%= link_to "Cancel", entities_path, class: "btn btn-outline-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

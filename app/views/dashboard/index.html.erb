@@ -1,0 +1,227 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1><i class="fas fa-chart-line"></i> Dashboard</h1>
+      <p class="text-muted">Welcome back, <%= current_user.first_name %>! Here's your business overview.</p>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+              <i class="fas fa-envelope text-primary fa-lg"></i>
+            </div>
+            <div>
+              <div class="h3 mb-0"><%= @campaigns_count %></div>
+              <div class="text-muted small">Campaigns</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer bg-transparent border-0">
+          <%= link_to "View All", campaigns_path, class: "small text-decoration-none" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
+              <i class="fas fa-users text-success fa-lg"></i>
+            </div>
+            <div>
+              <div class="h3 mb-0"><%= @contacts_count %></div>
+              <div class="text-muted small">Contacts</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer bg-transparent border-0">
+          <%= link_to "View All", contacts_path, class: "small text-decoration-none" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
+              <i class="fas fa-globe text-info fa-lg"></i>
+            </div>
+            <div>
+              <div class="h3 mb-0"><%= @landing_pages_count %></div>
+              <div class="text-muted small">Landing Pages</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer bg-transparent border-0">
+          <%= link_to "View All", landing_pages_path, class: "small text-decoration-none" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
+              <i class="fas fa-file-alt text-warning fa-lg"></i>
+            </div>
+            <div>
+              <div class="h3 mb-0"><%= @email_templates_count %></div>
+              <div class="text-muted small">Email Templates</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer bg-transparent border-0">
+          <%= link_to "View All", email_templates_path, class: "small text-decoration-none" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Connections -->
+  <% if @active_connections.any? %>
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-plug text-success"></i> Active Integrations</h5>
+            <%= link_to "Manage", social_media_accounts_path, class: "btn btn-sm btn-outline-primary" %>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <% @active_connections.each do |connection| %>
+                <div class="col-md-4 col-lg-3 mb-2">
+                  <div class="d-flex align-items-center">
+                    <% if connection.integration.icon_url.present? %>
+                      <img src="<%= connection.integration.icon_url %>" 
+                           alt="<%= connection.integration.name %>" 
+                           class="rounded me-2" style="width: 24px; height: 24px;">
+                    <% else %>
+                      <i class="fas fa-cube text-muted me-2"></i>
+                    <% end %>
+                    <div>
+                      <div class="small fw-bold"><%= connection.integration.name %></div>
+                      <div class="text-muted" style="font-size: 0.75rem;"><%= connection.name %></div>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Recent Activity -->
+  <div class="row">
+    <!-- Recent Campaigns -->
+    <div class="col-lg-6 mb-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="fas fa-envelope text-primary"></i> Recent Campaigns</h5>
+          <%= link_to "View All", campaigns_path, class: "small text-decoration-none" %>
+        </div>
+        <div class="card-body">
+          <% if @recent_campaigns.any? %>
+            <div class="list-group list-group-flush">
+              <% @recent_campaigns.each do |campaign| %>
+                <div class="list-group-item border-0 px-0">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <%= link_to campaign.name, campaign_path(campaign), class: "text-decoration-none" %>
+                      <div class="small text-muted">
+                        <%= campaign.status.titleize %> • Created <%= time_ago_in_words(campaign.created_at) %> ago
+                      </div>
+                    </div>
+                    <span class="badge bg-<%= campaign.status == 'sent' ? 'success' : 'secondary' %>">
+                      <%= campaign.status.titleize %>
+                    </span>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted text-center py-3">No campaigns yet</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Landing Pages -->
+    <div class="col-lg-6 mb-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="fas fa-globe text-info"></i> Recent Landing Pages</h5>
+          <%= link_to "View All", landing_pages_path, class: "small text-decoration-none" %>
+        </div>
+        <div class="card-body">
+          <% if @recent_landing_pages.any? %>
+            <div class="list-group list-group-flush">
+              <% @recent_landing_pages.each do |page| %>
+                <div class="list-group-item border-0 px-0">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <%= link_to page.title, preview_landing_page_path(page), target: "_blank", class: "text-decoration-none" %>
+                      <div class="small text-muted">
+                        <%= page.slug %> • Created <%= time_ago_in_words(page.created_at) %> ago
+                      </div>
+                    </div>
+                    <span class="badge bg-<%= page.status == 'published' ? 'success' : 'warning' %>">
+                      <%= page.status.titleize %>
+                    </span>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted text-center py-3">No landing pages yet</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0"><i class="fas fa-bolt text-warning"></i> Quick Actions</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3 mb-2">
+              <%= link_to new_campaign_path, class: "btn btn-outline-primary w-100" do %>
+                <i class="fas fa-envelope me-2"></i> New Campaign
+              <% end %>
+            </div>
+            <div class="col-md-3 mb-2">
+              <%= link_to new_landing_page_path, class: "btn btn-outline-info w-100" do %>
+                <i class="fas fa-globe me-2"></i> New Landing Page
+              <% end %>
+            </div>
+            <div class="col-md-3 mb-2">
+              <%= link_to new_contact_path, class: "btn btn-outline-success w-100" do %>
+                <i class="fas fa-user-plus me-2"></i> Add Contact
+              <% end %>
+            </div>
+            <div class="col-md-3 mb-2">
+              <%= link_to scout_path, class: "btn btn-outline-secondary w-100" do %>
+                <i class="fas fa-comments me-2"></i> Chat with AMOS
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

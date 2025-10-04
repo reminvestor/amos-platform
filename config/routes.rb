@@ -240,8 +240,11 @@ Rails.application.routes.draw do
     end
     
     # Workspace routes (AI Chat Interface)
-    # Application root for authenticated subdomain - Scout with intelligent canvas!
-    root "scout#index", as: :application_root
+    # Application root for authenticated subdomain - Dashboard (Advanced Mode)
+    root "dashboard#index", as: :application_root
+    
+    # Resources
+    resources :dashboard, only: [:index]
   end
   
   # Routes for marketing site (no subdomain or www subdomain)

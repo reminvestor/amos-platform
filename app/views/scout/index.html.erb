@@ -252,7 +252,7 @@
     <div class="side-nav-header">
       <div class="brand">
         <i class="fas fa-cube text-primary"></i>
-        <span class="brand-text">Crux</span>
+        <span class="brand-text">Amos</span>
       </div>
       <button class="nav-toggle" data-action="click->scout#toggleSideNav" data-scout-target="navToggle">
         <i class="fas fa-bars"></i>
@@ -296,6 +296,17 @@
     </div>
     
     <div class="nav-footer">
+      <!-- Mode Toggle -->
+      <div class="nav-item" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; margin-top: 8px;">
+        <%= link_to root_path, class: "d-block text-decoration-none", style: "color: inherit;" do %>
+          <div class="d-flex align-items-center">
+            <i class="fas fa-th-large"></i>
+            <span class="nav-text">Advanced Mode</span>
+          </div>
+          <small class="text-muted ms-4" style="font-size: 0.7rem;">Switch to dashboard view</small>
+        <% end %>
+      </div>
+      
       <div class="nav-item" data-action="click->scout#openSettings">
         <i class="fas fa-cog"></i>
         <span class="nav-text">Settings</span>
