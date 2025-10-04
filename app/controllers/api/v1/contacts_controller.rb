@@ -447,9 +447,9 @@ module Api
           return current_user.primary_entity.id
         end
         
-        # Or use the first entity if one exists
-        if current_user.entities.any?
-          return current_user.entities.first.id
+        # Or use the user's entity if one exists (1:1 relationship)
+        if current_user.entity
+          return current_user.entity.id
         end
         
         # Return nil if no entity is available (global contact)

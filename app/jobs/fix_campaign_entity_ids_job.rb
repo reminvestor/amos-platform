@@ -20,8 +20,8 @@ class FixCampaignEntityIdsJob < ApplicationJob
       owner = campaign.user
       next unless owner
       
-      # Find the owner's primary entity (first entity or first admin entity)
-      primary_entity = owner.entities.first
+      # Find the owner's entity (1:1 relationship)
+      primary_entity = owner.entity
       
       if primary_entity
         # Update the campaign's entity ID
