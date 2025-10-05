@@ -85,6 +85,46 @@
     </div>
   </div>
 
+  <!-- AI Usage Stats -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="fas fa-robot text-info"></i> Your AI Usage (Last 30 Days)</h5>
+          <small class="text-muted">Track your AMOS AI consumption</small>
+        </div>
+        <div class="card-body">
+          <div class="row text-center">
+            <div class="col-md-2">
+              <div class="h4 mb-0 text-primary"><%= @ai_usage[:conversations_this_month] %></div>
+              <div class="text-muted small">Conversations</div>
+            </div>
+            <div class="col-md-2">
+              <div class="h4 mb-0 text-info"><%= @ai_usage[:messages_this_month] %></div>
+              <div class="text-muted small">Messages</div>
+            </div>
+            <div class="col-md-2">
+              <div class="h4 mb-0 text-success"><%= @ai_usage[:workflows_this_month] %></div>
+              <div class="text-muted small">Workflows</div>
+            </div>
+            <div class="col-md-2">
+              <div class="h4 mb-0 text-warning"><%= number_with_delimiter(@ai_usage[:estimated_tokens]) %></div>
+              <div class="text-muted small">Est. Tokens</div>
+            </div>
+            <div class="col-md-2">
+              <div class="h4 mb-0 text-success">$<%= @ai_usage[:estimated_cost] %></div>
+              <div class="text-muted small">Est. Cost</div>
+            </div>
+            <div class="col-md-2">
+              <div class="h4 mb-0 text-primary"><%= @ai_usage[:workflows_completed] %></div>
+              <div class="text-muted small">Completed</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Active Connections -->
   <% if @active_connections.any? %>
     <div class="row mb-4">

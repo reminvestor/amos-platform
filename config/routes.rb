@@ -252,6 +252,16 @@ Rails.application.routes.draw do
     # Advanced Mode (Traditional Dashboard with Sidebar)
     get '/advanced', to: 'dashboard#index', as: :advanced_mode
     
+    # Entity-level management (for entity owners/admins)
+    namespace :entity do
+      resources :users do
+        member do
+          post :change_role
+        end
+      end
+      get 'observability', to: 'observability#index'
+    end
+    
     # Admin Portal (Platform Administration)
     # Note: /admin routes are defined below in the admin namespace
   end

@@ -56,22 +56,49 @@
         background-color: rgba(0,0,0,.05);
       }
       
-      .sidebar .nav-link {
+      .sidebar .sidebar-link {
+        display: flex;
+        align-items: center;
         padding: 0.75rem 1rem;
-        color: #6c757d;
+        color: #495057;
         font-weight: 500;
         border-left: 3px solid transparent;
+        text-decoration: none;
+        transition: all 0.2s;
       }
       
-      .sidebar .nav-link.active {
+      .sidebar .sidebar-link.active {
         color: #0d6efd;
         border-left: 3px solid #0d6efd;
-        background-color: rgba(13, 110, 253, 0.05);
+        background-color: rgba(13, 110, 253, 0.1);
+        font-weight: 600;
       }
       
-      .sidebar .nav-link:hover {
-        color: #0d6efd;
-        background-color: rgba(13, 110, 253, 0.05);
+      .sidebar .sidebar-link:hover {
+        color: #212529;
+        background-color: #e9ecef;
+      }
+      
+      .sidebar .sidebar-link.small {
+        padding: 0.5rem 1rem;
+        color: #6c757d;
+        font-weight: 400;
+      }
+      
+      .sidebar .sidebar-toggle {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        color: #495057;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s;
+      }
+      
+      .sidebar .sidebar-toggle:hover {
+        color: #212529;
+        background-color: #f8f9fa;
       }
       
       .sidebar-collapsed .nav-link-text,
@@ -123,7 +150,7 @@
     <!-- Top navigation -->
     <nav class="navbar navbar-expand navbar-dark bg-primary fixed-top">
       <div class="container-fluid">
-        <a class="navbar-brand d-flex align-items-center" href="<%= root_path %>">
+        <a class="navbar-brand d-flex align-items-center" href="<%= advanced_mode_path %>">
           <i class="fas fa-envelope-open-text me-2"></i>
           AMOS Labs
         </a>
@@ -131,7 +158,12 @@
           <i class="fas fa-bars"></i>
         </button>
         
-        <div class="ms-auto d-flex align-items-center">
+        <div class="ms-auto d-flex align-items-center gap-2">
+          <!-- Mode Toggle Button -->
+          <%= link_to chat_mode_path, class: "btn btn-sm btn-light" do %>
+            <i class="fas fa-comments me-1"></i> Chat Mode
+          <% end %>
+          
           <% if user_signed_in? %>
             <div class="dropdown">
               <a class="nav-link dropdown-toggle text-white" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -144,12 +176,8 @@
                 
                 <% if current_user.admin? %>
                   <li><hr class="dropdown-divider"></li>
-                  <li><h6 class="dropdown-header text-danger">Admin Tools</h6></li>
-                  <li><a class="dropdown-item" href="/admin"><i class="fas fa-shield-alt me-2 text-danger"></i>Admin Dashboard</a></li>
-                  <li><a class="dropdown-item" href="/agents/monitoring"><i class="fas fa-robot me-2 text-info"></i>Agent Monitoring</a></li>
-                  <li><a class="dropdown-item" href="/admin/observability/ai_usage"><i class="fas fa-chart-line me-2 text-success"></i>Observability</a></li>
-                  <li><a class="dropdown-item" href="<%= admin_imports_path %>"><i class="fas fa-file-import me-2"></i>Data Imports</a></li>
-                  <li><a class="dropdown-item" href="<%= admin_maintenance_index_path %>"><i class="fas fa-tools me-2"></i>Maintenance Tasks</a></li>
+                  <li><h6 class="dropdown-header text-danger">Platform Admin</h6></li>
+                  <li><a class="dropdown-item" href="/admin"><i class="fas fa-shield-alt me-2 text-danger"></i>Admin Portal</a></li>
                 <% end %>
                 
                 <% if current_user.entity %>
@@ -180,79 +208,124 @@
     <!-- Sidebar navigation -->
     <div class="sidebar" id="sidebar">
       <ul class="nav flex-column">
-        <li class="nav-item">
-          <a class="nav-link <%= current_page?(root_path) ? 'active' : '' %>" href="<%= root_path %>">
+        <!-- Dashboard -->
+        <li class="nav-item2">
+          <a class="sidebar-link <%= current_page?(advanced_mode_path) ? 'active' : '' %>" href="<%= advanced_mode_path %>">
             <i class="fas fa-tachometer-alt fa-fw me-2"></i>
             <span class="nav-link-text">Dashboard</span>
           </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link <%= current_page?(campaigns_path) ? 'active' : '' %>" href="<%= campaigns_path %>">
+        
+        <!-- Marketing Dropdown -->
+        <li class="nav-item2">
+          <a class="sidebar-toggle" data-bs-toggle="collapse" href="#marketingMenu" role="button" aria-expanded="false">
             <i class="fas fa-bullhorn fa-fw me-2"></i>
-            <span class="nav-link-text">Campaigns</span>
+            <span class="nav-link-text">Marketing</span>
+            <i class="fas fa-chevron-down ms-auto small"></i>
           </a>
+          <div class="collapse" id="marketingMenu">
+            <ul class="nav flex-column ms-3">
+              <li class="nav-item2">
+                <a class="sidebar-link small <%= current_page?(campaigns_path) ? 'active' : '' %>" href="<%= campaigns_path %>">
+                  <i class="fas fa-envelope fa-fw me-2"></i>
+                  <span class="nav-link-text">Campaigns</span>
+                </a>
+              </li>
+              <li class="nav-item2">
+                <a class="sidebar-link small <%= current_page?(landing_pages_path) ? 'active' : '' %>" href="<%= landing_pages_path %>">
+                  <i class="fas fa-globe fa-fw me-2"></i>
+                  <span class="nav-link-text">Landing Pages</span>
+                </a>
+              </li>
+              <li class="nav-item2">
+                <a class="sidebar-link small <%= current_page?(contacts_path) ? 'active' : '' %>" href="<%= contacts_path %>">
+                  <i class="fas fa-address-book fa-fw me-2"></i>
+                  <span class="nav-link-text">Contacts</span>
+                </a>
+              </li>
+              <li class="nav-item2">
+                <a class="sidebar-link small <%= current_page?(contact_groups_path) ? 'active' : '' %>" href="<%= contact_groups_path %>">
+                  <i class="fas fa-folder fa-fw me-2"></i>
+                  <span class="nav-link-text">Groups</span>
+                </a>
+              </li>
+              <li class="nav-item2">
+                <a class="sidebar-link small <%= current_page?(email_templates_path) ? 'active' : '' %>" href="<%= email_templates_path %>">
+                  <i class="fas fa-file-alt fa-fw me-2"></i>
+                  <span class="nav-link-text">Templates</span>
+                </a>
+              </li>
+            </ul>
+          </div>
         </li>
-        <li class="nav-item">
-          <a class="nav-link <%= current_page?(landing_pages_path) ? 'active' : '' %>" href="<%= landing_pages_path %>">
-            <i class="fas fa-globe fa-fw me-2"></i>
-            <span class="nav-link-text">Landing Pages</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link <%= current_page?(contacts_path) ? 'active' : '' %>" href="<%= contacts_path %>">
-            <i class="fas fa-address-book fa-fw me-2"></i>
-            <span class="nav-link-text">Contacts</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link <%= current_page?(contact_groups_path) ? 'active' : '' %>" href="<%= contact_groups_path %>">
-            <i class="fas fa-users fa-fw me-2"></i>
-            <span class="nav-link-text">Groups</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link <%= current_page?(email_templates_path) ? 'active' : '' %>" href="<%= email_templates_path %>">
-            <i class="fas fa-envelope-open-text fa-fw me-2"></i>
-            <span class="nav-link-text">Templates</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link <%= current_page?(image_assets_path) ? 'active' : '' %>" href="<%= image_assets_path %>">
-            <i class="fas fa-image fa-fw me-2"></i>
+        
+        <!-- Content -->
+        <li class="nav-item2">
+          <a class="sidebar-link <%= current_page?(image_assets_path) ? 'active' : '' %>" href="<%= image_assets_path %>">
+            <i class="fas fa-images fa-fw me-2"></i>
             <span class="nav-link-text">Images</span>
           </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link <%= current_page?(social_posts_path) ? 'active' : '' %>" href="<%= social_posts_path %>">
+        
+        <li class="nav-item2">
+          <a class="sidebar-link <%= current_page?(social_posts_path) ? 'active' : '' %>" href="<%= social_posts_path %>">
             <i class="fas fa-share-alt fa-fw me-2"></i>
             <span class="nav-link-text">Social Media</span>
           </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link <%= current_page?(social_media_accounts_path) ? 'active' : '' %>" href="<%= social_media_accounts_path %>">
-            <i class="fas fa-plug fa-fw me-2"></i>
-            <span class="nav-link-text">Integrations</span>
+        
+        <!-- Settings Dropdown -->
+        <li class="nav-item2">
+          <a class="sidebar-toggle" data-bs-toggle="collapse" href="#settingsMenu" role="button" aria-expanded="false">
+            <i class="fas fa-cog fa-fw me-2"></i>
+            <span class="nav-link-text">Settings</span>
+            <i class="fas fa-chevron-down ms-auto small"></i>
           </a>
+          <div class="collapse" id="settingsMenu">
+            <ul class="nav flex-column ms-3">
+              <li class="nav-item2">
+                <a class="sidebar-link small <%= current_page?(social_media_accounts_path) ? 'active' : '' %>" href="<%= social_media_accounts_path %>">
+                  <i class="fas fa-plug fa-fw me-2"></i>
+                  <span class="nav-link-text">Integrations</span>
+                </a>
+              </li>
+              <li class="nav-item2">
+                <a class="sidebar-link small <%= current_page?(edit_business_profile_path) ? 'active' : '' %>" href="<%= edit_business_profile_path %>">
+                  <i class="fas fa-building fa-fw me-2"></i>
+                  <span class="nav-link-text">Business Profile</span>
+                </a>
+              </li>
+              <li class="nav-item2">
+                <a class="sidebar-link small <%= current_page?(entities_path) ? 'active' : '' %>" href="<%= entities_path %>">
+                  <i class="fas fa-briefcase fa-fw me-2"></i>
+                  <span class="nav-link-text">Entity Info</span>
+                </a>
+              </li>
+            </ul>
+          </div>
         </li>
-        <li class="nav-item">
-          <a class="nav-link <%= current_page?(edit_business_profile_path) ? 'active' : '' %>" href="<%= edit_business_profile_path %>">
-            <i class="fas fa-building fa-fw me-2"></i>
-            <span class="nav-link-text">Business Profile</span>
-          </a>
-        </li>
+        
+        <% if current_user.entity_admin? %>
+          <li class="nav-item2 mt-3">
+            <div class="px-3 py-2">
+              <small class="text-muted text-uppercase fw-bold">Management</small>
+            </div>
+          </li>
+          <li class="nav-item2">
+            <a class="sidebar-link <%= request.path.start_with?('/entity/users') ? 'active' : '' %>" href="<%= entity_users_path %>">
+              <i class="fas fa-user-friends fa-fw me-2"></i>
+              <span class="nav-link-text">Team Members</span>
+            </a>
+          </li>
+          <li class="nav-item2">
+            <a class="sidebar-link <%= request.path.start_with?('/entity/observability') ? 'active' : '' %>" href="<%= entity_observability_path %>">
+              <i class="fas fa-chart-bar fa-fw me-2"></i>
+              <span class="nav-link-text">Analytics</span>
+            </a>
+          </li>
+        <% end %>
+        
       </ul>
-      
-      <!-- Mode Toggle -->
-      <div class="mt-auto p-3 border-top">
-        <div class="d-grid gap-2">
-          <%= link_to chat_mode_path, class: "btn btn-outline-primary btn-sm" do %>
-            <i class="fas fa-comments me-2"></i> Switch to Chat Mode
-          <% end %>
-          <small class="text-muted text-center mt-1">
-            Currently in <strong>Advanced Mode</strong>
-          </small>
-        </div>
-      </div>
     </div>
 
     <!-- Flash messages - outside main-content to avoid layout issues -->

@@ -17,6 +17,26 @@ class DashboardController < ApplicationController
     
     # Connections
     @active_connections = current_user.connections.where(status: 'connected').includes(:integration)
+    
+    # AI Usage Stats (for the current user/entity)
+    @ai_usage = calculate_user_ai_usage
+  end
+  
+  private
+  
+  def calculate_user_ai_usage
+    # Get AI usage from task sessions and scout messages
+    timeframe = 30.days.ago
+    
+    {
+      conversations_this_month: current_user.scout_conversations.where(created_at: timeframe..).count,
+      messages_this_month: current_user.scout_messages.where(created_at: timeframe..).count,
+      workflows_this_month: current_user.task_sessions.where(created_at: timeframe..).count,
+      workflows_completed: current_user.task_sessions.where(status: 'completed', created_at: timeframe..).count,
+      # Placeholder for actual token tracking - will be real when implemented
+      estimated_tokens: current_user.scout_messages.where(created_at: timeframe..).count * 500,
+      estimated_cost: (current_user.scout_messages.where(created_at: timeframe..).count * 500 * 0.00002).round(2)
+    }
   end
 end
 

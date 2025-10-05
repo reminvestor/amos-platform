@@ -1,0 +1,154 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1><i class="fas fa-chart-line text-success"></i> Observability & Analytics</h1>
+      <p class="text-muted">Track your entity's AI usage, workflows, and performance</p>
+    </div>
+    <div class="col-auto">
+      <div class="btn-group">
+        <%= link_to entity_observability_path(timeframe: 'today'), class: "btn btn-sm #{'btn-primary' if @timeframe == 'today'} #{'btn-outline-primary' if @timeframe != 'today'}" do %>
+          Today
+        <% end %>
+        <%= link_to entity_observability_path(timeframe: '7d'), class: "btn btn-sm #{'btn-primary' if @timeframe == '7d'} #{'btn-outline-primary' if @timeframe != '7d'}" do %>
+          7 Days
+        <% end %>
+        <%= link_to entity_observability_path(timeframe: '30d'), class: "btn btn-sm #{'btn-primary' if @timeframe == '30d'} #{'btn-outline-primary' if @timeframe != '30d'}" do %>
+          30 Days
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Usage Stats -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h5 class="mb-3"><i class="fas fa-robot text-info"></i> AI Usage</h5>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-primary"><%= @ai_stats[:conversations] %></div>
+          <div class="text-muted small">Conversations</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-info"><%= @ai_stats[:messages] %></div>
+          <div class="text-muted small">Messages</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-warning"><%= number_with_delimiter(@ai_stats[:estimated_tokens]) %></div>
+          <div class="text-muted small">Est. Tokens</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-success">$<%= @ai_stats[:estimated_cost] %></div>
+          <div class="text-muted small">Est. Cost</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workflow Stats -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h5 class="mb-3"><i class="fas fa-project-diagram text-primary"></i> Workflows</h5>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0"><%= @ai_stats[:workflows_started] %></div>
+          <div class="text-muted small">Started</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-success"><%= @ai_stats[:workflows_completed] %></div>
+          <div class="text-muted small">Completed</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-danger"><%= @ai_stats[:workflows_failed] %></div>
+          <div class="text-muted small">Failed</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Integration Stats -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h5 class="mb-3"><i class="fas fa-plug text-warning"></i> Integrations</h5>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0"><%= @integration_stats[:active_connections] %></div>
+          <div class="text-muted small">Active Connections</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-success"><%= @integration_stats[:api_calls] %></div>
+          <div class="text-muted small">API Calls</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-danger"><%= @integration_stats[:failed_calls] %></div>
+          <div class="text-muted small">Failed Calls</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Campaign Stats -->
+  <div class="row">
+    <div class="col-12">
+      <h5 class="mb-3"><i class="fas fa-envelope text-info"></i> Campaigns</h5>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0"><%= @campaign_stats[:total] %></div>
+          <div class="text-muted small">Total</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-success"><%= @campaign_stats[:sent] %></div>
+          <div class="text-muted small">Sent</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-warning"><%= @campaign_stats[:draft] %></div>
+          <div class="text-muted small">Drafts</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

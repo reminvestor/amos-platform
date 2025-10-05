@@ -296,17 +296,6 @@
     </div>
     
     <div class="nav-footer">
-      <!-- Mode Toggle -->
-      <div class="nav-item" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; margin-top: 8px;">
-        <%= link_to advanced_mode_path, class: "d-block text-decoration-none", style: "color: inherit;" do %>
-          <div class="d-flex align-items-center">
-            <i class="fas fa-th-large"></i>
-            <span class="nav-text">Advanced Mode</span>
-          </div>
-          <small class="text-muted ms-4" style="font-size: 0.7rem;">Switch to dashboard view</small>
-        <% end %>
-      </div>
-      
       <div class="nav-item" data-action="click->scout#openSettings">
         <i class="fas fa-cog"></i>
         <span class="nav-text">Settings</span>
@@ -345,6 +334,9 @@
           </div>
               </div>
             </div>
+            <%= link_to advanced_mode_path, class: "icon-btn", title: "Switch to Advanced Mode", style: "text-decoration: none; color: inherit;" do %>
+              <i class="fas fa-th-large"></i>
+            <% end %>
             <button class="icon-btn" id="new-conversation-btn" title="New conversation">
               <i class="fas fa-plus"></i>
               </button>
