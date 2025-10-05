@@ -60,6 +60,12 @@
                   <i class="fas fa-users"></i> Users
                 <% end %>
               </li>
+              
+              <li class="nav-item">
+                <%= link_to "/agents/monitoring", class: "nav-link #{'active' if request.path.start_with?('/agents')}" do %>
+                  <i class="fas fa-robot"></i> Agent Monitoring
+                <% end %>
+              </li>
             </ul>
 
             <ul class="navbar-nav">
