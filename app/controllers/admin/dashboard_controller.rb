@@ -20,18 +20,22 @@ class Admin::DashboardController < Admin::BaseController
       ai_cost_today: calculate_ai_cost_today,
       
       # Campaign stats
-      campaigns_sent_today: Campaign.where(sent_at: 24.hours.ago..).count,
+      campaigns_sent_today: Campaign.where(status: 'sent').where(created_at: 24.hours.ago..).count,
+      total_campaigns: Campaign.count,
       total_contacts: Contact.count
     }
     
     # Recent activity
-    @recent_api_calls = IntegrationLog.includes(:connection, :user)
+    @recent_api_calls = IntegrationLog.includes(:connection)
                                       .order(created_at: :desc)
                                       .limit(10)
     
     @recent_admin_activity = AdminActivity.includes(:admin_user)
                                           .order(created_at: :desc)
-                                          .limit(10)
+                                          .limit(10) rescue []
+    
+    # Failing connections
+    @failing_connections = Connection.where.not(status: 'connected').includes(:integration).limit(10)
     
     # Chart data
     @api_usage_chart_data = generate_api_usage_chart_data

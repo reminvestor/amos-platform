@@ -141,7 +141,13 @@
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                 <li><a class="dropdown-item" href="<%= user_path(current_user) %>"><i class="fas fa-id-card me-2"></i>My Profile</a></li>
                 <li><a class="dropdown-item" href="<%= edit_user_registration_path %>"><i class="fas fa-cog me-2"></i>Account Settings</a></li>
+                
                 <% if current_user.admin? %>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><h6 class="dropdown-header text-danger">Admin Tools</h6></li>
+                  <li><a class="dropdown-item" href="/admin"><i class="fas fa-shield-alt me-2 text-danger"></i>Admin Dashboard</a></li>
+                  <li><a class="dropdown-item" href="/agents/monitoring"><i class="fas fa-robot me-2 text-info"></i>Agent Monitoring</a></li>
+                  <li><a class="dropdown-item" href="/admin/observability/ai_usage"><i class="fas fa-chart-line me-2 text-success"></i>Observability</a></li>
                   <li><a class="dropdown-item" href="<%= admin_imports_path %>"><i class="fas fa-file-import me-2"></i>Data Imports</a></li>
                   <li><a class="dropdown-item" href="<%= admin_maintenance_index_path %>"><i class="fas fa-tools me-2"></i>Maintenance Tasks</a></li>
                 <% end %>
@@ -239,7 +245,7 @@
       <!-- Mode Toggle -->
       <div class="mt-auto p-3 border-top">
         <div class="d-grid gap-2">
-          <%= link_to scout_path, class: "btn btn-outline-primary btn-sm" do %>
+          <%= link_to chat_mode_path, class: "btn btn-outline-primary btn-sm" do %>
             <i class="fas fa-comments me-2"></i> Switch to Chat Mode
           <% end %>
           <small class="text-muted text-center mt-1">

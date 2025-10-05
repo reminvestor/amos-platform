@@ -55,19 +55,20 @@
                 </ul>
               </li>
               
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+              <li class="nav-item">
+                <%= link_to admin_users_path, class: "nav-link #{'active' if controller_name == 'users'}" do %>
                   <i class="fas fa-users"></i> Users
-                </a>
-                <ul class="dropdown-menu dropdown-menu-dark">
-                  <li><%= link_to "All Users", admin_users_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Admin Users", admin_admin_users_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Policy Rules", admin_policy_rules_path, class: "dropdown-item" %></li>
-                </ul>
+                <% end %>
               </li>
             </ul>
 
             <ul class="navbar-nav">
+              <li class="nav-item">
+                <%= link_to chat_mode_path, class: "nav-link" do %>
+                  <i class="fas fa-home me-1"></i> Return to App
+                <% end %>
+              </li>
+              
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                   <i class="fas fa-user-circle"></i> <%= @current_admin.full_name %>

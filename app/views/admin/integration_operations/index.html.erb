@@ -1,0 +1,69 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1><i class="fas fa-tasks"></i> <%= @integration.name %> Operations</h1>
+      <p class="text-muted">Manage available operations for this integration</p>
+    </div>
+    <div class="col-auto">
+      <%= link_to "Back to Integration", admin_integration_path(@integration), class: "btn btn-outline-secondary" %>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <% if @operations.any? %>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Method</th>
+                    <th>Endpoint</th>
+                    <th>Idempotent</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @operations.each do |operation| %>
+                    <tr>
+                      <td>
+                        <strong><%= operation.name %></strong>
+                        <% if operation.description.present? %>
+                          <br><small class="text-muted"><%= truncate(operation.description, length: 50) %></small>
+                        <% end %>
+                      </td>
+                      <td><span class="badge bg-primary"><%= operation.http_method&.upcase %></span></td>
+                      <td><code class="small"><%= operation.path_template %></code></td>
+                      <td>
+                        <% if operation.is_idempotent %>
+                          <i class="fas fa-check text-success"></i> Yes
+                        <% else %>
+                          <i class="fas fa-times text-muted"></i> No
+                        <% end %>
+                      </td>
+                      <td>
+                        <div class="btn-group btn-group-sm">
+                          <%= link_to "View", admin_integration_operation_path(@integration, operation), class: "btn btn-outline-primary btn-sm" %>
+                          <%= link_to "Edit", edit_admin_integration_operation_path(@integration, operation), class: "btn btn-outline-secondary btn-sm" %>
+                        </div>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <div class="text-center py-5">
+              <i class="fas fa-tasks fa-4x text-muted mb-3"></i>
+              <h4>No Operations Defined</h4>
+              <p class="text-muted">This integration doesn't have any operations configured yet</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

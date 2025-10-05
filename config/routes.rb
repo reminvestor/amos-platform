@@ -239,12 +239,21 @@ Rails.application.routes.draw do
       end
     end
     
-    # Workspace routes (AI Chat Interface)
-    # Application root for authenticated subdomain - Dashboard (Advanced Mode)
-    root "dashboard#index", as: :application_root
+    # ========================================
+    # Three Main Modes Under App Subdomain
+    # ========================================
     
-    # Resources
-    resources :dashboard, only: [:index]
+    # Root redirects to chat (default mode)
+    root to: redirect('/chat'), as: :application_root
+    
+    # Chat Mode (AMOS AI Conversational Interface)
+    get '/chat', to: 'scout#index', as: :chat_mode
+    
+    # Advanced Mode (Traditional Dashboard with Sidebar)
+    get '/advanced', to: 'dashboard#index', as: :advanced_mode
+    
+    # Admin Portal (Platform Administration)
+    # Note: /admin routes are defined below in the admin namespace
   end
   
   # Routes for marketing site (no subdomain or www subdomain)

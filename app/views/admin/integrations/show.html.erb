@@ -1,0 +1,171 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1>
+        <% if @integration.icon_url.present? %>
+          <img src="<%= @integration.icon_url %>" alt="<%= @integration.name %>" 
+               class="rounded me-2" style="width: 40px; height: 40px;">
+        <% else %>
+          <i class="fas fa-puzzle-piece text-primary"></i>
+        <% end %>
+        <%= @integration.name %>
+      </h1>
+      <p class="text-muted"><%= @integration.description %></p>
+    </div>
+    <div class="col-auto">
+      <%= link_to admin_integrations_path, class: "btn btn-outline-secondary" do %>
+        <i class="fas fa-arrow-left me-1"></i> Back to Integrations
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Info Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="small text-muted mb-1">Category</div>
+          <div class="h5 mb-0">
+            <span class="badge bg-primary"><%= @integration.category.humanize %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="small text-muted mb-1">Authentication</div>
+          <div class="h5 mb-0">
+            <span class="badge bg-info"><%= @integration.auth_type.humanize %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="small text-muted mb-1">Total Connections</div>
+          <div class="h5 mb-0"><%= @integration.connections.count %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="small text-muted mb-1">Operations</div>
+          <div class="h5 mb-0"><%= @integration.integration_operations.count %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Details -->
+  <div class="row">
+    <div class="col-lg-8">
+      <!-- Configuration -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white">
+          <h5 class="mb-0"><i class="fas fa-cog"></i> Configuration</h5>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-3">Slug</dt>
+            <dd class="col-sm-9"><code><%= @integration.slug %></code></dd>
+            
+            <dt class="col-sm-3">Status</dt>
+            <dd class="col-sm-9">
+              <span class="badge bg-<%= @integration.is_active ? 'success' : 'secondary' %>">
+                <%= @integration.is_active ? 'Active' : 'Inactive' %>
+              </span>
+            </dd>
+            
+            <dt class="col-sm-3">Verified</dt>
+            <dd class="col-sm-9">
+              <% if @integration.is_verified %>
+                <i class="fas fa-check-circle text-success"></i> Verified
+              <% else %>
+                <i class="fas fa-times-circle text-muted"></i> Not verified
+              <% end %>
+            </dd>
+            
+            <dt class="col-sm-3">Created</dt>
+            <dd class="col-sm-9"><%= @integration.created_at.strftime("%B %d, %Y") %></dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Operations -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0"><i class="fas fa-tasks"></i> Available Operations</h5>
+        </div>
+        <div class="card-body">
+          <% if @integration.integration_operations.any? %>
+            <div class="list-group">
+              <% @integration.integration_operations.each do |operation| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h6 class="mb-1"><%= operation.name %></h6>
+                      <small class="text-muted"><%= operation.description %></small>
+                    </div>
+                    <span class="badge bg-secondary"><%= operation.http_method.upcase %></span>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted mb-0">No operations defined yet</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <!-- Active Connections -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white">
+          <h5 class="mb-0"><i class="fas fa-link"></i> Active Connections</h5>
+        </div>
+        <div class="card-body">
+          <% active_connections = @integration.connections.where(status: 'connected') %>
+          <% if active_connections.any? %>
+            <ul class="list-unstyled mb-0">
+              <% active_connections.limit(5).each do |connection| %>
+                <li class="mb-2">
+                  <%= link_to connection.name, admin_connection_path(connection), class: "text-decoration-none" %>
+                  <br><small class="text-muted"><%= connection.entity&.name || 'No entity' %></small>
+                </li>
+              <% end %>
+            </ul>
+            <% if active_connections.count > 5 %>
+              <small class="text-muted">+ <%= active_connections.count - 5 %> more</small>
+            <% end %>
+          <% else %>
+            <p class="text-muted mb-0">No active connections</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0"><i class="fas fa-bolt"></i> Actions</h5>
+        </div>
+        <div class="card-body d-grid gap-2">
+          <%= link_to edit_admin_integration_path(@integration), class: "btn btn-primary" do %>
+            <i class="fas fa-edit me-2"></i> Edit Integration
+          <% end %>
+          
+          <%= link_to admin_integration_path(@integration, format: :json), 
+              class: "btn btn-outline-info", 
+              target: "_blank" do %>
+            <i class="fas fa-code me-2"></i> View JSON
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

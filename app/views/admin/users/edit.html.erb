@@ -1,0 +1,64 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1><i class="fas fa-user-edit"></i> Edit User</h1>
+      <p class="text-muted">Update user account details</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <%= form_with(model: [:admin, @user], local: true) do |f| %>
+            <% if @user.errors.any? %>
+              <div class="alert alert-danger">
+                <h5>Errors:</h5>
+                <ul class="mb-0">
+                  <% @user.errors.full_messages.each do |msg| %>
+                    <li><%= msg %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <div class="mb-3">
+              <%= f.label :first_name, class: "form-label" %>
+              <%= f.text_field :first_name, class: "form-control" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :last_name, class: "form-label" %>
+              <%= f.text_field :last_name, class: "form-control" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :email, class: "form-label" %>
+              <%= f.email_field :email, class: "form-control" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :role, class: "form-label" %>
+              <%= f.select :role,
+                  options_for_select(User::ROLES.map { |r| [r.titleize, r] }, @user.role),
+                  {}, class: "form-select" %>
+            </div>
+
+            <div class="mb-3">
+              <div class="form-check">
+                <%= f.check_box :onboarded, class: "form-check-input" %>
+                <%= f.label :onboarded, "Mark as Onboarded", class: "form-check-label" %>
+              </div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <%= f.submit "Save Changes", class: "btn btn-primary" %>
+              <%= link_to "Cancel", admin_user_path(@user), class: "btn btn-outline-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
