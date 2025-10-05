@@ -1,125 +1,98 @@
 <div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1><i class="fas fa-user text-primary"></i> My Profile</h1>
+      <p class="text-muted">View your account information</p>
+    </div>
+    <div class="col-auto">
+      <%= link_to edit_user_registration_path, class: "btn btn-primary" do %>
+        <i class="fas fa-edit me-1"></i> Edit Profile
+      <% end %>
+    </div>
+  </div>
+
   <div class="row">
-    <div class="col-md-8 mx-auto">
-      <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <h4 class="mb-0"><i class="fas fa-user-circle me-2"></i>User Profile</h4>
-          <%= link_to edit_user_path(@user), class: "btn btn-light btn-sm" do %>
-            <i class="fas fa-edit me-1"></i>Edit Profile
-          <% end %>
+    <div class="col-lg-8">
+      <!-- Profile Information -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Profile Information</h5>
         </div>
         <div class="card-body">
-          <div class="row mb-4">
-            <div class="col-md-6">
-              <div class="mb-3">
-                <h5 class="text-muted mb-1">Full Name</h5>
-                <p class="lead">
-                  <% if @user.first_name.present? && @user.last_name.present? %>
-                    <%= @user.first_name %> <%= @user.last_name %>
-                  <% else %>
-                    <span class="text-muted fst-italic">Not provided</span>
-                  <% end %>
-                </p>
-              </div>
-              <div class="mb-3">
-                <h5 class="text-muted mb-1">Email Address</h5>
-                <p class="lead"><%= @user.email %></p>
-              </div>
-              <div class="mb-3">
-                <h5 class="text-muted mb-1">Account Created</h5>
-                <p class="lead"><%= @user.created_at.strftime('%B %d, %Y') %></p>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="mb-3">
-                <h5 class="text-muted mb-1">Account Status</h5>
-                <p class="lead">
-                  <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Active</span>
-                </p>
-              </div>
-              <% if @user.last_sign_in_at.present? %>
-                <div class="mb-3">
-                  <h5 class="text-muted mb-1">Last Login</h5>
-                  <p class="lead"><%= @user.last_sign_in_at.strftime('%B %d, %Y at %I:%M %p') %></p>
-                </div>
-              <% end %>
-            </div>
-          </div>
+          <dl class="row mb-0">
+            <dt class="col-sm-3">Name</dt>
+            <dd class="col-sm-9"><%= current_user.full_name %></dd>
+            
+            <dt class="col-sm-3">Email</dt>
+            <dd class="col-sm-9"><%= current_user.email %></dd>
+            
+            <dt class="col-sm-3">Role</dt>
+            <dd class="col-sm-9">
+              <span class="badge bg-primary"><%= current_user.role.titleize %></span>
+            </dd>
+            
+            <dt class="col-sm-3">Member Since</dt>
+            <dd class="col-sm-9"><%= current_user.created_at.strftime("%B %d, %Y") %></dd>
+            
+            <% if current_user.entity %>
+              <dt class="col-sm-3">Entity</dt>
+              <dd class="col-sm-9">
+                <%= link_to current_user.entity.name, entities_path %>
+              </dd>
+            <% end %>
+          </dl>
         </div>
       </div>
 
-      <div class="card shadow-sm">
-        <div class="card-header bg-info text-white">
-          <h4 class="mb-0"><i class="fas fa-key me-2"></i>API Access</h4>
+      <!-- Activity Stats -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Your Activity</h5>
         </div>
         <div class="card-body">
-          <div class="row">
-            <div class="col-12">
-              <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>Use your API key to authenticate requests to the Agent Marketing API.
-              </div>
-              
-              <h5 class="text-muted mb-2">Your API Key</h5>
-              <div class="input-group mb-3">
-                <input type="text" class="form-control font-monospace" value="<%= @user.api_key %>" id="apiKeyInput" readonly>
-                <button class="btn btn-outline-primary" type="button" id="copyApiKey" onclick="copyApiKey()">
-                  <i class="fas fa-copy me-1"></i>Copy
-                </button>
-              </div>
-              
-              <div class="mb-4">
-                <h5 class="text-muted mb-2">Example Usage</h5>
-                <div class="bg-light p-3 rounded">
-                  <pre class="mb-0"><code>curl -X POST \
-  https://app.agentmarketing.com/api/v1/contacts \
-  -H 'Authorization: Bearer <%= @user.api_key %>' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "contacts": [
-      {
-        "email": "john@example.com",
-        "first_name": "John",
-        "last_name": "Doe",
-        "corporation_id": "123",
-        "corporation_name": "ACME Corp"
-      }
-    ]
-  }'</code></pre>
-                </div>
-              </div>
-              
-              <div class="d-grid gap-2 col-md-6 mx-auto">
-                <a href="#" class="btn btn-primary">
-                  <i class="fas fa-book me-1"></i>View API Documentation
-                </a>
-              </div>
+          <div class="row text-center">
+            <div class="col-md-3">
+              <div class="h4 mb-0"><%= current_user.campaigns.count %></div>
+              <div class="text-muted small">Campaigns</div>
+            </div>
+            <div class="col-md-3">
+              <div class="h4 mb-0"><%= current_user.contacts.count %></div>
+              <div class="text-muted small">Contacts</div>
+            </div>
+            <div class="col-md-3">
+              <div class="h4 mb-0"><%= current_user.landing_pages.count %></div>
+              <div class="text-muted small">Landing Pages</div>
+            </div>
+            <div class="col-md-3">
+              <div class="h4 mb-0"><%= current_user.email_templates.count %></div>
+              <div class="text-muted small">Email Templates</div>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0"><i class="fas fa-key text-warning"></i> Account Security</h5>
+        </div>
+        <div class="card-body">
+          <p class="mb-3">
+            <strong>Last sign in:</strong><br>
+            <%= current_user.current_sign_in_at ? current_user.current_sign_in_at.strftime("%B %d, %Y at %I:%M %p") : 'Never' %>
+          </p>
+          <p class="mb-3">
+            <strong>Sign in count:</strong><br>
+            <%= current_user.sign_in_count || 0 %> times
+          </p>
+          
+          <%= link_to edit_user_registration_path, class: "btn btn-outline-primary w-100" do %>
+            <i class="fas fa-lock me-2"></i> Change Password
+          <% end %>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
-
-<script>
-function copyApiKey() {
-  var apiKeyInput = document.getElementById('apiKeyInput');
-  apiKeyInput.select();
-  apiKeyInput.setSelectionRange(0, 99999); // For mobile devices
-  
-  navigator.clipboard.writeText(apiKeyInput.value);
-  
-  var copyButton = document.getElementById('copyApiKey');
-  var originalContent = copyButton.innerHTML;
-  
-  copyButton.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
-  copyButton.classList.remove('btn-outline-primary');
-  copyButton.classList.add('btn-success');
-  
-  setTimeout(function() {
-    copyButton.innerHTML = originalContent;
-    copyButton.classList.remove('btn-success');
-    copyButton.classList.add('btn-outline-primary');
-  }, 2000);
-}
-</script> 

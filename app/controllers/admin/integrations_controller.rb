@@ -25,6 +25,11 @@ class Admin::IntegrationsController < Admin::BaseController
     
     @operations = @integration.integration_operations
                               .order(:operation_id)
+    
+    respond_to do |format|
+      format.html
+      format.json { render json: @integration.as_json(include: [:integration_operations, :connections]) }
+    end
   end
   
   def new

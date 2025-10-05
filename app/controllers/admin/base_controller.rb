@@ -27,13 +27,26 @@ class Admin::BaseController < ApplicationController
   helper_method :current_admin
   
   def sign_in_admin_from_user
-    admin = current_user.admin_user
-    if admin&.active?
+    # Find or create AdminUser record based on user email
+    admin = AdminUser.find_by(email: current_user.email)
+    
+    if admin.nil?
+      # Create admin user record if it doesn't exist
+      admin = AdminUser.create!(
+        email: current_user.email,
+        first_name: current_user.first_name,
+        last_name: current_user.last_name,
+        password: SecureRandom.hex(32), # Random password, they'll use their user login
+        role: 'super_admin'
+      )
+    end
+    
+    if admin.locked?
+      redirect_to root_path, alert: 'Your admin account is locked.'
+    else
       session[:admin_user_id] = admin.id
       admin.record_login!
       @current_admin = admin
-    else
-      redirect_to root_path, alert: 'Your admin account is not active.'
     end
   end
   

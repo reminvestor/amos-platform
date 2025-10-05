@@ -1,0 +1,64 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1><i class="fas fa-tachometer-alt text-success"></i> Performance Metrics</h1>
+      <p class="text-muted">Monitor API and system performance</p>
+    </div>
+  </div>
+
+  <!-- Performance Stats -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="small text-muted mb-1">Avg Response Time</div>
+          <div class="h3 mb-0"><%= @stats[:avg_response_time] %>ms</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="small text-muted mb-1">P95 Response Time</div>
+          <div class="h3 mb-0"><%= @stats[:p95_response_time] %>ms</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slowest Operations -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Slowest Operations</h5>
+        </div>
+        <div class="card-body">
+          <% if @stats[:slowest_operations].any? %>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Operation</th>
+                    <th>Avg Response Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @stats[:slowest_operations].each do |operation_id, avg_time| %>
+                    <tr>
+                      <td><%= operation_id %></td>
+                      <td><%= avg_time.round(0) %>ms</td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <p class="text-center text-muted py-5">No performance data available</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

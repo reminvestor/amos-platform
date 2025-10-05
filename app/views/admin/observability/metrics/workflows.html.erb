@@ -1,0 +1,84 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1><i class="fas fa-project-diagram text-info"></i> Workflow Metrics</h1>
+      <p class="text-muted">Monitor workflow execution and success rates</p>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="small text-muted mb-1">Total Workflows</div>
+          <div class="h3 mb-0"><%= @stats[:total_workflows] %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="small text-muted mb-1">Completed</div>
+          <div class="h3 mb-0 text-success"><%= @stats[:completed] %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="small text-muted mb-1">Failed</div>
+          <div class="h3 mb-0 text-danger"><%= @stats[:failed] %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="small text-muted mb-1">Active Now</div>
+          <div class="h3 mb-0 text-primary"><%= @stats[:active] %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Workflows -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Recent Workflows</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @recent_workflows.each do |workflow| %>
+                  <tr>
+                    <td><%= workflow.id %></td>
+                    <td><%= workflow.session_type || 'N/A' %></td>
+                    <td>
+                      <span class="badge bg-<%= workflow.status == 'completed' ? 'success' : workflow.status == 'failed' ? 'danger' : 'primary' %>">
+                        <%= workflow.status %>
+                      </span>
+                    </td>
+                    <td><%= time_ago_in_words(workflow.created_at) %> ago</td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

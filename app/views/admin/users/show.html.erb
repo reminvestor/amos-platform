@@ -1,0 +1,137 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1><i class="fas fa-user"></i> <%= @user.full_name %></h1>
+      <p class="text-muted"><%= @user.email %></p>
+    </div>
+    <div class="col-auto">
+      <%= link_to admin_users_path, class: "btn btn-outline-secondary" do %>
+        <i class="fas fa-arrow-left me-1"></i> Back to Users
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <!-- User Details -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">User Information</h5>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-3">User ID</dt>
+            <dd class="col-sm-9"><%= @user.id %></dd>
+            
+            <dt class="col-sm-3">Name</dt>
+            <dd class="col-sm-9"><%= @user.full_name %></dd>
+            
+            <dt class="col-sm-3">Email</dt>
+            <dd class="col-sm-9"><%= @user.email %></dd>
+            
+            <dt class="col-sm-3">Role</dt>
+            <dd class="col-sm-9">
+              <span class="badge bg-<%= @user.role == 'admin' ? 'danger' : 'secondary' %>">
+                <%= @user.role.titleize %>
+              </span>
+            </dd>
+            
+            <dt class="col-sm-3">Entity</dt>
+            <dd class="col-sm-9">
+              <% if @user.entity %>
+                <%= link_to @user.entity.name, admin_integrations_path %> (ID: <%= @user.entity.id %>)
+              <% else %>
+                <span class="text-muted">No entity assigned</span>
+              <% end %>
+            </dd>
+            
+            <dt class="col-sm-3">Onboarded</dt>
+            <dd class="col-sm-9">
+              <% if @user.onboarded? %>
+                <i class="fas fa-check text-success"></i> Yes
+              <% else %>
+                <i class="fas fa-times text-danger"></i> No
+              <% end %>
+            </dd>
+            
+            <dt class="col-sm-3">Created</dt>
+            <dd class="col-sm-9"><%= @user.created_at.strftime("%B %d, %Y") %></dd>
+            
+            <dt class="col-sm-3">Last Sign In</dt>
+            <dd class="col-sm-9">
+              <%= @user.current_sign_in_at ? @user.current_sign_in_at.strftime("%B %d, %Y at %I:%M %p") : 'Never' %>
+            </dd>
+            
+            <dt class="col-sm-3">Sign In Count</dt>
+            <dd class="col-sm-9"><%= @user.sign_in_count || 0 %></dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- User Activity -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Activity Stats</h5>
+        </div>
+        <div class="card-body">
+          <div class="row text-center">
+            <div class="col-md-3">
+              <div class="h4 mb-0"><%= @user.campaigns.count %></div>
+              <div class="text-muted small">Campaigns</div>
+            </div>
+            <div class="col-md-3">
+              <div class="h4 mb-0"><%= @user.contacts.count %></div>
+              <div class="text-muted small">Contacts</div>
+            </div>
+            <div class="col-md-3">
+              <div class="h4 mb-0"><%= @user.landing_pages.count %></div>
+              <div class="text-muted small">Landing Pages</div>
+            </div>
+            <div class="col-md-3">
+              <div class="h4 mb-0"><%= @user.email_templates.count %></div>
+              <div class="text-muted small">Email Templates</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar Actions -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white">
+          <h5 class="mb-0"><i class="fas fa-tools"></i> Admin Actions</h5>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-warning small">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Note:</strong> Changes to user accounts should be made carefully and only when necessary for platform administration.
+          </div>
+          
+          <div class="d-grid gap-2">
+            <%= link_to edit_admin_user_path(@user), class: "btn btn-outline-primary" do %>
+              <i class="fas fa-edit me-2"></i> Edit User Details
+            <% end %>
+            
+            <% unless @user.role == 'admin' %>
+              <%= button_to make_admin_admin_user_path(@user), 
+                  method: :post,
+                  class: "btn btn-outline-warning",
+                  form: { data: { turbo_confirm: "Make #{@user.full_name} an admin?" } } do %>
+                <i class="fas fa-user-shield me-2"></i> Make Admin
+              <% end %>
+            <% end %>
+            
+            <%= button_to admin_user_path(@user), 
+                method: :delete,
+                class: "btn btn-outline-danger",
+                form: { data: { turbo_confirm: "Delete #{@user.full_name}? This cannot be undone." } } do %>
+              <i class="fas fa-trash me-2"></i> Delete User
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

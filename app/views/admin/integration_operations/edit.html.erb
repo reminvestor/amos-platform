@@ -1,0 +1,92 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1><i class="fas fa-edit"></i> Edit Operation</h1>
+      <p class="text-muted">Update <%= @operation.name %> for <%= @integration.name %></p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <%= form_with(model: @operation, url: admin_integration_operation_path(@integration, @operation), method: :patch, local: true) do |f| %>
+            <% if @operation.errors.any? %>
+              <div class="alert alert-danger">
+                <h5>Errors:</h5>
+                <ul class="mb-0">
+                  <% @operation.errors.full_messages.each do |msg| %>
+                    <li><%= msg %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <div class="mb-3">
+              <%= f.label :name, class: "form-label" %>
+              <%= f.text_field :name, class: "form-control" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :operation_id, class: "form-label" %>
+              <%= f.text_field :operation_id, class: "form-control" %>
+              <small class="form-text text-muted">Unique identifier for this operation</small>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :description, class: "form-label" %>
+              <%= f.text_area :description, class: "form-control", rows: 3 %>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <%= f.label :http_method, class: "form-label" %>
+                <%= f.select :http_method,
+                    options_for_select(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], @operation.http_method),
+                    { include_blank: "Select method" },
+                    class: "form-select" %>
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <%= f.label :path_template, class: "form-label" %>
+                <%= f.text_field :path_template, class: "form-control", placeholder: "/api/v1/resource" %>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <div class="form-check">
+                  <%= f.check_box :is_idempotent, class: "form-check-input" %>
+                  <%= f.label :is_idempotent, "Idempotent", class: "form-check-label" %>
+                </div>
+              </div>
+              
+              <div class="col-md-4 mb-3">
+                <div class="form-check">
+                  <%= f.check_box :requires_confirmation, class: "form-check-input" %>
+                  <%= f.label :requires_confirmation, "Requires Confirmation", class: "form-check-label" %>
+                </div>
+              </div>
+              
+              <div class="col-md-4 mb-3">
+                <%= f.label :max_limit, class: "form-label" %>
+                <%= f.number_field :max_limit, class: "form-control", placeholder: "e.g., 100" %>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :documentation, class: "form-label" %>
+              <%= f.text_area :documentation, class: "form-control", rows: 4 %>
+            </div>
+
+            <div class="d-flex gap-2">
+              <%= f.submit "Save Changes", class: "btn btn-primary" %>
+              <%= link_to "Cancel", admin_integration_path(@integration), class: "btn btn-outline-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
