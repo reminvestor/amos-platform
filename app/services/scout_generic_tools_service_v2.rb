@@ -168,7 +168,12 @@ class ScoutGenericToolsServiceV2
   
   def get_filtered_tools
     # Get tools filtered by agent loadout
-    @tool_catalog.get_bedrock_tools(agent_loadout: @agent_loadout)
+    tools = @tool_catalog.get_bedrock_tools(agent_loadout: @agent_loadout)
+    
+    # Exclude tools that should only be used within workflows (not by main chat agent)
+    workflow_only_tools = ['generate_ai_landing_page']
+    
+    tools.reject { |tool| workflow_only_tools.include?(tool['name'] || tool[:name]) }
   end
   
   def build_system_prompt(current_canvas = nil)
@@ -208,6 +213,26 @@ class ScoutGenericToolsServiceV2
       To learn more about a template, use the get_template_details tool with the template slug.
       The planner will intelligently select the best template when you delegate complex requests.
       
+      CRITICAL DELEGATION RULE:
+      When you call delegate_to_planner, your response should ONLY:
+      1. Briefly acknowledge the request (1 sentence max)
+      2. Call the tool
+      3. STOP - do not say anything else
+      
+      DO NOT:
+      ❌ Ask questions about requirements
+      ❌ List what information you need
+      ❌ Explain what the workflow will do
+      ❌ Ask for design preferences or details
+      
+      The workflow itself will ask for everything needed conversationally.
+      
+      Good example:
+      "I'll create that landing page for you." [calls delegate_to_planner] [STOPS]
+      
+      Bad example:
+      "I'll create a landing page! Let me gather some information. What is your value proposition? Who is your target audience?" [This is wrong - the workflow will ask this!]
+      
       INTELLIGENT CANVAS:
       IMPORTANT: When users ask to see/view/show campaigns, landing pages, contacts, or any data:
       1. IMMEDIATELY use the load_canvas tool to display the appropriate viewer
@@ -217,6 +242,11 @@ class ScoutGenericToolsServiceV2
       - "show campaigns" or "campaigns" → load_canvas with canvas_name: "campaign_viewer"
       - "show landing pages" or "landing pages" → load_canvas with canvas_name: "landing_page_viewer"
       - "show contacts" or "contacts" → load_canvas with canvas_name: "contact_viewer"
+      
+      LANDING PAGE EDITING:
+      - If user is editing a landing page (you'll see the ID in context), use update_landing_page_content
+      - Do NOT use generate_ai_landing_page when updating an existing page
+      - generate_ai_landing_page is ONLY for creating new pages
       - "show integrations" or "integrations" or "connections" → load_canvas with canvas_name: "integrations_manager"
       - "analytics" or "data" → load_canvas with canvas_name: "analytics_dashboard"
       
@@ -544,17 +574,57 @@ class ScoutGenericToolsServiceV2
     true
   end
   
-  def enhance_message_with_canvas_context(message, canvas_type)
-    return message unless canvas_type.present?
+  def enhance_message_with_canvas_context(message, canvas)
+    return message unless canvas.present?
+    
+    # Convert ActionController::Parameters to hash if needed
+    if canvas.respond_to?(:to_unsafe_h)
+      canvas = canvas.to_unsafe_h
+    elsif canvas.respond_to?(:to_h) && !canvas.is_a?(String) && !canvas.is_a?(Hash)
+      canvas = canvas.to_h
+    end
+    
+    # Handle both old format (string) and new format (hash with type and data)
+    if canvas.is_a?(Hash)
+      canvas_type = canvas['type'] || canvas[:type]
+      canvas_data = canvas['data'] || canvas[:data] || {}
+      
+      # Also convert canvas_data if it's ActionController::Parameters
+      if canvas_data.respond_to?(:to_unsafe_h)
+        canvas_data = canvas_data.to_unsafe_h
+      elsif canvas_data.respond_to?(:to_h) && !canvas_data.is_a?(Hash)
+        canvas_data = canvas_data.to_h
+      end
+    else
+      canvas_type = canvas
+      canvas_data = {}
+    end
+    
+    Rails.logger.info "🎨 Canvas context - Type: #{canvas_type}, Data: #{canvas_data.inspect}"
     
     context_hints = {
       'landing_page_viewer' => "\n[Context: User is viewing landing pages]",
+      'landing_page_editor' => lambda { |data|
+        landing_page_id = data['landing_page_id'] || data[:landing_page_id]
+        Rails.logger.info "📄 Landing page editor - ID: #{landing_page_id}"
+        if landing_page_id
+          "\n[Context: User is editing landing page ID #{landing_page_id}. Use update_landing_page_content tool to modify this page, not generate_ai_landing_page.]"
+        else
+          "\n[Context: User is in landing page editor]"
+        end
+      },
       'campaign_viewer' => "\n[Context: User is viewing email campaigns]",
       'contact_viewer' => "\n[Context: User is viewing contacts]",
       'analytics_dashboard' => "\n[Context: User is viewing analytics]"
     }
     
-    message + (context_hints[canvas_type] || "")
+    hint = context_hints[canvas_type]
+    hint_text = hint.is_a?(Proc) ? hint.call(canvas_data) : hint
+    
+    enhanced = message + (hint_text || "")
+    Rails.logger.info "✅ Enhanced message: #{enhanced}"
+    
+    enhanced
   end
   
   def format_conversation_for_ai(history, current_message)

@@ -4,7 +4,12 @@ module Agents
       MAX_FIX_ATTEMPTS = 5
       
       def initialize(task_session, initial_context = {})
-        super(task_session, initial_context: initial_context.merge(role: 'fixer'))
+        super(
+          role: :fixer,
+          capabilities: ['error_diagnosis', 'auto_repair', 'retry_logic'],
+          context: initial_context,
+          task_session: task_session
+        )
         @ai_service = BedrockService.new
         @tool_catalog = ::Tools::ToolCatalog.instance
       end
@@ -270,7 +275,7 @@ module Agents
           
           Step details: #{step.to_json}
           Error: #{analysis[:root_cause]}
-          Available tools: #{@tool_catalog.list_tools.map(&:name).join(', ')}
+          Available tools: #{@tool_catalog.all_tools.keys.join(', ')}
           
           You can use multiple tools to fix this. What sequence of tool calls would resolve this issue?
           

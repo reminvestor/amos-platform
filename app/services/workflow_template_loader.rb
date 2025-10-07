@@ -32,7 +32,14 @@ class WorkflowTemplateLoader
     
     def load_template_by_slug(slug)
       # Try loading as V2 template (our only version now)
-      file_path = Rails.root.join("app/workflow_templates/#{slug}.yml")
+      # First try with _v2 suffix
+      file_path = Rails.root.join("app/workflow_templates/#{slug}_v2.yml")
+      
+      # If not found, try without suffix (for backward compatibility)
+      unless File.exist?(file_path)
+        file_path = Rails.root.join("app/workflow_templates/#{slug}.yml")
+      end
+      
       return nil unless File.exist?(file_path)
       
       load_v2_template_file(file_path)
@@ -40,7 +47,7 @@ class WorkflowTemplateLoader
     
     def list_all_templates
       # Get all V2 templates with basic info for LLM
-      template_files = Dir[Rails.root.join('app/workflow_templates/*.yml')]
+      template_files = Dir[Rails.root.join('app/workflow_templates/*_v2.yml')]
       
       template_files.map do |file|
         yaml_content = YAML.load_file(file)
@@ -48,7 +55,8 @@ class WorkflowTemplateLoader
           slug: yaml_content['slug'],
           name: yaml_content['name'],
           description: yaml_content['description'],
-          category: yaml_content['category']
+          category: yaml_content['category'],
+          version: yaml_content['template_version'] || 2
         }
       end.compact
     rescue => e

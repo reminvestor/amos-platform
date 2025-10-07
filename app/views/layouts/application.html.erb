@@ -323,6 +323,18 @@
               <span class="nav-link-text">Analytics</span>
             </a>
           </li>
+          <li class="nav-item2">
+            <a class="sidebar-link <%= request.path.start_with?('/entity/policies') ? 'active' : '' %>" href="<%= entity_policies_path %>">
+              <i class="fas fa-shield-alt fa-fw me-2"></i>
+              <span class="nav-link-text">AI Policies</span>
+            </a>
+          </li>
+          <li class="nav-item2">
+            <a class="sidebar-link <%= request.path.start_with?('/entity/privacy') ? 'active' : '' %>" href="<%= entity_privacy_path %>">
+              <i class="fas fa-user-shield fa-fw me-2"></i>
+              <span class="nav-link-text">Privacy Controls</span>
+            </a>
+          </li>
         <% end %>
         
       </ul>

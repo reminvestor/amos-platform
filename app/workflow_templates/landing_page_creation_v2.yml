@@ -20,165 +20,82 @@ keywords:
 
 phases:
   # Phase 1: Intelligently gather all requirements
-  - id: "discovery"
+  - id: "gather_context"
     type: "gather_context"
     name: "Understand Requirements"
     goal: "Gather all information needed to create a compelling landing page"
     
-    required_knowledge:
-      business_context:
-        - business_name
-        - industry
-        - value_proposition
-        - target_audience
-      design_preferences:
-        - style_preference
-        - color_scheme
-        - brand_colors
-      content_requirements:
-        - main_headline
-        - key_features
-        - call_to_action
+    required_fields:
+      - key: "company_name"
+        prompt: "What is your company or business name?"
+        required: true
+        validation: "text"
+      - key: "value_proposition"
+        prompt: "What is your main value proposition or key message?"
+        required: true
+        validation: "text"
+      - key: "target_audience"
+        prompt: "Who is your target audience?"
+        required: true
+        validation: "text"
+      - key: "call_to_action"
+        prompt: "What action do you want visitors to take?"
+        required: true
+        validation: "text"
+      - key: "design_style"
+        prompt: "What design style do you prefer? (Modern, Classic, Bold, etc.)"
+        required: false
+        validation: "text"
     
     context_sources:
-      priority:
-        - workflow_context      # Check uploaded files first
-        - conversation_history  # Review what user said
-        - entity_profile        # Use known entity data
-        - direct_conversation   # Ask user (last resort)
-    
-    extraction_strategies:
-      workflow_context:
-        file_types:
-          pdf: "Extract brand guidelines, business info, value propositions, target audience, colors, fonts"
-          image: "Analyze for brand colors, visual style, design preferences"
-          docx: "Extract content, messaging, key features, value propositions"
-      conversation_history:
-        look_for:
-          - business_description
-          - goals_and_objectives
-          - audience_mentions
-          - design_preferences
-      entity_profile:
-        use_fields:
-          - entity.name
-          - entity.industry
-          - entity.subdomain
+      - "direct_conversation"
+      - "conversation_history"
+      - "entity_profile"
     
     ai_instructions: |
-      You are gathering information for a landing page creation.
-      
-      PRIORITY 1: Check workflow_context for uploaded files
-      - If there's a brand guide PDF, extract business name, industry, colors, fonts, messaging
-      - If there are images, analyze them for brand style and aesthetics
-      - If there's a competitor site screenshot, note the design approach
-      - Look for any documents with value propositions, features, or audience info
-      
-      PRIORITY 2: Review conversation history
-      - User may have already described their business
-      - Look for mentions of target audience, goals, value proposition
-      - Note any design preferences mentioned
-      
-      PRIORITY 3: Check entity profile
-      - Use known business name if available
-      - Use industry classification if set
-      
-      PRIORITY 4: Conversational gathering (ONLY FOR MISSING INFO)
-      - Ask naturally in chat, don't show forms
-      - Group related questions together
-      - If you have partial info, acknowledge it and ask for gaps
-      - Example: "I can see from your brand guide that you're targeting small businesses 
-        with accounting software. What's the main problem you solve for them?"
-      
-      Be intelligent:
-      - Don't ask for what you already have
-      - Infer reasonable defaults when appropriate
-      - Confirm assumptions rather than asking from scratch
-      - Be warm and conversational
-    
-    allowed_tools:
-      - get_workflow_context
-      - web_search
-      - get_data
-    
-    completion_criteria:
-      all_required_knowledge_gathered: true
-      or:
-        user_approved_partial_data: true
-        max_conversation_turns: 3
+      Gather landing page information conversationally.
+      Ask for company name, value proposition, target audience, and call to action.
 
   # Phase 2: Build the landing page
-  - id: "creation"
+  - id: "execute_goal"
     type: "execute_goal"
     name: "Build Landing Page"
     goal: "Create a professional, conversion-optimized landing page with the gathered requirements"
     
-    requires_from_previous:
-      - business_context
-      - design_preferences
-      - content_requirements
+    # Define how gathered data maps to tool arguments
+    data_mapping:
+      tool: "generate_ai_landing_page"
+      args:
+        title: "{{company_name}}"
+        description: "{{value_proposition}}"
+        business_name: "{{company_name}}"
+        key_details:
+          company_name: "{{company_name}}"
+          value_proposition: "{{value_proposition}}"
+          target_audience: "{{target_audience}}"
+          call_to_action: "{{call_to_action}}"
+          design_style: "{{design_style}}"
+        business_info:
+          offer: "{{value_proposition}}"
+          target_audience: "{{target_audience}}"
+          value_proposition: "{{value_proposition}}"
+        design_preferences:
+          cta: "{{call_to_action}}"
+          style: "{{design_style}}"
     
     execution_strategy:
-      approach: "adaptive"
+      approach: "structured"  # Use structured mapping instead of adaptive
       
       allowed_tools:
         - generate_ai_landing_page
-        - update_landing_page_content
-        - create_object
-        - get_workflow_context
-        - web_search
-      
-      constraints:
-        must_use_uploaded_images: true
-        must_include_cta: true
-        max_ai_calls: 5
-        budget:
-          max_tokens: 10000
       
       success_when:
         landing_page_id_exists: true
         html_generated: true
-        responsive_design: true
     
     ai_instructions: |
-      Create the landing page using all gathered context intelligently.
+      Execute the data_mapping defined above using actual context values.
       
-      INTELLIGENT CREATION PROCESS:
-      1. Get uploaded images from workflow_context
-      2. Use extracted brand colors for the design
-      3. Create page structure with generate_ai_landing_page tool
-      4. Include all required sections:
-         - Hero section with compelling headline and CTA
-         - Value proposition section
-         - Features/Benefits (use gathered key features)
-         - Social proof section (if applicable)
-         - Final CTA section
-      
-      5. Ensure responsive design (mobile-first)
-      6. Optimize for conversion:
-         - Clear value proposition above the fold
-         - Multiple CTAs placed strategically
-         - Social proof elements
-         - Fast loading (optimize images)
-      
-      7. Use brand guidelines:
-         - Apply brand colors from uploaded assets
-         - Use appropriate fonts
-         - Match brand voice and tone
-      
-      You have flexibility to:
-      - Chain multiple tools if needed
-      - Self-heal if generation fails
-      - Try different approaches to achieve the goal
-      - Make intelligent decisions about content placement
-      
-      Be creative and adaptive to create the best possible page.
-    
-    adaptive:
-      enabled: true
-      max_attempts: 3
-      self_healing: true
-      allow_tool_chaining: true
 
   # Phase 3: Validate quality
   - id: "validation"

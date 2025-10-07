@@ -27,8 +27,9 @@ class WorkflowTemplate < ApplicationRecord
   def self.active_with_files
     db_templates = active.to_a
     
-    file_templates = WorkflowTemplateLoader.load_all.map do |template_data|
-      new(template_data) if template_data[:is_active]
+    # Load V2 templates from files
+    file_templates = WorkflowTemplateLoader.load_all_v2.map do |template_data|
+      new(template_data) if template_data[:is_active] != false
     end.compact
     
     db_templates + file_templates

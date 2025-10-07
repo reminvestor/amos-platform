@@ -87,11 +87,22 @@ class PlannerAgentService
       
       IMPORTANT: Return ONLY the JSON object below, with no additional text before or after:
       
-      Return a V2 PHASE-BASED JSON object with:
+      CRITICAL: Check if a template matches this request. If it does, ONLY specify the template - DO NOT generate phases.
+      
+      Option 1 - Using a template (preferred):
       {
         "workflow_name": "descriptive name",
         "description": "what this workflow does",
-        "template_to_use": "template_slug if applicable, null otherwise",
+        "template_to_use": "template_slug_here",
+        "template_version": 2,
+        "rationale": "explanation of why this template fits"
+      }
+      
+      Option 2 - Custom workflow (only if no template matches):
+      {
+        "workflow_name": "descriptive name",
+        "description": "what this workflow does",
+        "template_to_use": null,
         "template_version": 2,
         "rationale": "explanation of the plan",
         "phases": [
@@ -108,7 +119,7 @@ class PlannerAgentService
                 "validation": "text|email|url|number"
               }
             ],
-            "context_sources": ["workflow_context", "conversation_history", "entity_profile", "direct_conversation"]
+            "context_sources": ["direct_conversation", "conversation_history", "entity_profile"]
           },
           {
             "id": "execute_goal",
@@ -291,8 +302,8 @@ class PlannerAgentService
       {
         "workflow_name": "Create Landing Page",
         "description": "Interactive process to create a customized landing page with user preferences",
-        "template_to_use": "landing_page_creation",
-        "rationale": "Using the landing_page_creation template as it handles all the required user input steps",
+        "template_to_use": "landing_page_creation_v2",
+        "rationale": "Using the landing_page_creation_v2 template as it handles all the required user input steps",
         "steps": [
           {
             "id": "analyze_request",
@@ -481,26 +492,73 @@ class PlannerAgentService
       
       if template
         Rails.logger.info "Using workflow template: #{template.slug}"
-        # Load the template's actual workflow structure
-        template_data = if template.persisted?
-          # Template from database - use template_spec
-          template.template_spec
+        Rails.logger.info "Template object: #{template.inspect[0..200]}"
+        Rails.logger.info "Template attributes: #{template.attributes.keys}" if template.respond_to?(:attributes)
+        
+        # Get the template's actual workflow structure
+        # The structure can vary based on how the template was loaded
+        raw_spec = template.template_spec
+        
+        # For file-loaded templates, template_spec might be the outer wrapper
+        # Check if we need to drill down to the actual spec
+        template_data = if raw_spec.is_a?(Hash) && raw_spec[:template_spec]
+          Rails.logger.info "Found nested template_spec, using inner spec"
+          raw_spec[:template_spec]
         else
-          # Template from file (in-memory object)
-          WorkflowTemplateLoader.load_template(template.slug)
+          raw_spec
         end
         
-        Rails.logger.info "Template data keys: #{template_data.keys}" if template_data
+        Rails.logger.info "Template data class: #{template_data.class}"
+        Rails.logger.info "Template data keys: #{template_data.keys}" if template_data.is_a?(Hash)
+        Rails.logger.info "Looking for phases at: phases=#{template_data[:phases].present?}, 'phases'=#{template_data['phases'].present?}" if template_data.is_a?(Hash)
+        Rails.logger.info "Template version at root: #{template_data[:template_version] || template_data['template_version']}" if template_data.is_a?(Hash)
         
-        # Check if template is V2 (phases) or V1 (steps)
-        if template_data['phases'] || template_data[:phases] || template_data['template_version'] == 2
+        # V2 detection - be thorough in checking
+        is_v2 = false
+        if template_data.is_a?(Hash)
+          # Check for V2 indicators
+          has_version_2 = template_data[:template_version] == 2 || template_data['template_version'] == 2
+          has_phases = template_data[:phases].present? || template_data['phases'].present?
+          
+          is_v2 = has_version_2 || has_phases
+          Rails.logger.info "V2 detection: version_2=#{has_version_2}, has_phases=#{has_phases}, is_v2=#{is_v2}"
+        end
+        
+        # Fallback: if template slug ends with _v2, it's definitely V2
+        if !is_v2 && template.slug.end_with?('_v2')
+          Rails.logger.warn "Template #{template.slug} ends with _v2 but V2 markers not found, forcing V2"
+          is_v2 = true
+          # If we're forcing V2 but no phases found, we need to reload properly
+          if template_data.is_a?(Hash) && !template_data[:phases] && !template_data['phases']
+            Rails.logger.error "V2 template missing phases! Keys available: #{template_data.keys}"
+          end
+        end
+        
+        if is_v2
           # V2 Template - return phases as-is
           Rails.logger.info "Using V2 template with phases"
+          
+          # Get phases, with extensive fallback checking
+          phases = template_data[:phases] || template_data['phases']
+          
+          if phases.nil? || phases.empty?
+            Rails.logger.error "V2 template has no phases! Template data: #{template_data.inspect}"
+            # Last resort: try to reload the template directly
+            Rails.logger.info "Attempting direct reload of template #{template.slug}"
+            reloaded = WorkflowTemplateLoader.load_template_by_slug(template.slug)
+            if reloaded && (reloaded[:phases] || reloaded['phases'])
+              phases = reloaded[:phases] || reloaded['phases']
+              Rails.logger.info "Successfully reloaded phases from template file"
+            else
+              raise "V2 template #{template.slug} is missing phases definition"
+            end
+          end
+          
           return SimpleWorkflow.new(
             name: plan_data['workflow_name'] || template_data['name'] || template_data[:name],
             description: plan_data['description'] || template_data['description'] || template_data[:description],
             template_version: 2,
-            phases: template_data['phases'] || template_data[:phases],
+            phases: phases,
             metadata: {
               llm_generated: false,
               template_used: plan_data['template_to_use'],

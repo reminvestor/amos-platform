@@ -37,7 +37,7 @@ module Tools
         landing_page = LandingPage.find_by!(id: landing_page_id, entity: entity)
         
         # Create automatic backup before updating
-        landing_page.create_version!("Automatic backup before AI update")
+        landing_page.create_version_backup("Automatic backup before AI update")
         
         # Generate updated content using AI
         ai_service = BedrockService.new
@@ -63,8 +63,8 @@ module Tools
         # Update the landing page
         landing_page.update!(
           html_content: updated_html,
-          last_ai_update: Time.current,
           metadata: landing_page.metadata.merge(
+            last_ai_update: Time.current.iso8601,
             last_update_instruction: instruction,
             updated_by_ai: true
           )

@@ -42,11 +42,15 @@ module Agents
       return unless @workflow_execution && data.present?
       
       phase_id = @phase[:id] || @phase['id']
+      task_session = @context[:task_session]
+      
+      return unless task_session
       
       data.each do |key, value|
         context_key = "#{phase_id}_#{key}"
         WorkflowContext.create!(
           workflow_execution: @workflow_execution,
+          task_session: task_session,
           key: context_key,
           value: value,
           data_type: data_type,
@@ -60,13 +64,12 @@ module Agents
     end
     
     # Send progress update to UI
-    def notify_progress(message, type: 'phase_progress', data: {})
+    def notify_progress(message, type: 'phase_progress', **extra_data)
       @progress_callback&.call({
         type: type,
         phase_id: @phase[:id] || @phase['id'],
-        message: message,
-        **data
-      })
+        message: message
+      }.merge(extra_data))
     end
     
     # Get workflow context data
@@ -89,22 +92,31 @@ module Agents
     def execute_tool(tool_name, tool_args = {})
       Rails.logger.info "🔧 Phase executing tool: #{tool_name}"
       
-      Tools::ToolCatalog.execute_tool(
-        tool_name,
-        tool_args,
-        @context[:user],
-        @context[:entity],
-        @context
-      )
+      # ToolCatalog is a singleton - get instance and execute
+      catalog = ::Tools::ToolCatalog.instance
+      
+      # Build execution context (only keys that tools expect)
+      execution_context = {
+        user: @context[:user],
+        entity: @context[:entity],
+        context: @context  # Full context available but not passed to constructor
+      }
+      
+      catalog.execute_tool(tool_name, tool_args, execution_context)
     end
     
     # Use AI to make a decision
     def ai_decide(prompt, options = {})
       system_prompt = options[:system_prompt] || default_system_prompt
       
+      # Format messages for Bedrock
+      messages = [
+        { role: 'system', content: system_prompt },
+        { role: 'user', content: prompt }
+      ]
+      
       response = @ai_service.complete(
-        prompt: prompt,
-        system_prompt: system_prompt,
+        messages: messages,
         max_tokens: options[:max_tokens] || 2000,
         temperature: options[:temperature] || 0.3
       )
@@ -133,15 +145,37 @@ module Agents
     end
     
     def parse_json_response(response)
-      # Try to extract JSON from response
-      json_match = response.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/m)
-      if json_match
-        JSON.parse(json_match[0])
-      else
-        JSON.parse(response.strip)
+      # Remove markdown code fences if present
+      cleaned = response.gsub(/```json\s*|\s*```/, '').strip
+      
+      # Try to find JSON object - use a more robust approach
+      # Look for the outermost { } pair
+      start_idx = cleaned.index('{')
+      return { error: "No JSON found", raw: response } unless start_idx
+      
+      # Find matching closing brace
+      depth = 0
+      end_idx = nil
+      
+      cleaned[start_idx..-1].each_char.with_index(start_idx) do |char, idx|
+        depth += 1 if char == '{'
+        depth -= 1 if char == '}'
+        if depth == 0
+          end_idx = idx
+          break
+        end
       end
+      
+      return { error: "Unmatched braces", raw: response } unless end_idx
+      
+      json_str = cleaned[start_idx..end_idx]
+      parsed = JSON.parse(json_str)
+      
+      Rails.logger.info "✅ Successfully parsed JSON with #{parsed.keys.join(', ')}"
+      parsed
     rescue JSON::ParserError => e
       Rails.logger.error "Failed to parse AI JSON response: #{e.message}"
+      Rails.logger.error "Response preview: #{response[0..200]}"
       { error: "Invalid JSON response", raw: response }
     end
     

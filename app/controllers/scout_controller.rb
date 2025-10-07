@@ -155,14 +155,30 @@ class ScoutController < ApplicationController
         interactive_service.set_context(attached_files: file_urls)
       end
       
+      # Capture workflow messages during progress
+      workflow_message = nil
+      
       # Set up progress callback for real-time updates
       interactive_service.on_progress do |progress_data|
-        # This could be used for WebSocket updates in the future
         Rails.logger.info "Workflow progress: #{progress_data.inspect}"
+        
+        # Capture workflow questions/messages for awaiting_input state
+        if progress_data.is_a?(Hash)
+          if progress_data[:type] == 'content_chunk' && progress_data[:awaiting_input]
+            workflow_message = progress_data[:message]
+          elsif progress_data[:type] == 'phase_progress' && progress_data[:message]
+            workflow_message ||= progress_data[:message]
+          end
+        end
       end
       
       # Process the message
       result = interactive_service.process_message(user_message, persisted_history_last_k(12), current_canvas)
+      
+      # If workflow is awaiting input and we captured a message, use that
+      if result[:awaiting_input] && workflow_message
+        result[:message] = workflow_message
+      end
       
       # Save assistant response if present
       if result[:message]
@@ -383,6 +399,20 @@ class ScoutController < ApplicationController
               save_scout_message(progress_data[:role] || 'assistant', progress_data[:content])
               stream_content_chunk(progress_data[:content])
             end
+          when 'phase_progress', 'phase_start'
+            # Workflow phase progress - just log it, don't stream to chat
+            Rails.logger.info "Phase progress: #{progress_data[:message]}"
+            # Don't stream these as they clutter the chat
+          when 'phase_complete'
+            # Phase completed - just log it, don't stream to chat
+            Rails.logger.info "Phase complete: #{progress_data[:message]}"
+            # Don't stream these as they clutter the chat
+          when 'tool_start'
+            # Tool starting - just log it
+            Rails.logger.info "Tool start: #{progress_data[:tool_name] || progress_data[:name]}"
+          when 'tool_complete'
+            # Tool completed - just log it
+            Rails.logger.info "Tool complete: #{progress_data[:tool_name] || progress_data[:name]}"
           when 'load_canvas'
             # Stream canvas loading
             stream_update(progress_data)
@@ -496,10 +526,11 @@ class ScoutController < ApplicationController
         end
         
         # Handle canvas loading (if not already done during streaming)
-        if result[:canvas] && result[:canvas] != 'conversation' && result[:mode] != 'autonomous'
+        canvas = result[:canvas_type] || result[:canvas]
+        if canvas && canvas != 'conversation' && result[:mode] != 'autonomous'
           stream_update({
             type: 'load_canvas',
-            canvas: result[:canvas],
+            canvas: canvas,
             canvas_data: result[:canvas_data] || {}
           })
         end

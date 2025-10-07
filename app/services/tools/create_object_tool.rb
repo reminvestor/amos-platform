@@ -34,7 +34,7 @@ module Tools
       end
       
       # Validate object type
-      valid_types = ['campaigns', 'contacts', 'contact_groups']
+      valid_types = ['campaigns', 'contacts', 'contact_groups', 'email_templates']
       unless valid_types.include?(object_type)
         return error_response(
           "Cannot create objects of type: #{object_type}",
@@ -51,6 +51,8 @@ module Tools
           create_contact(data)
         when 'contact_groups'
           create_contact_group(data)
+        when 'email_templates'
+          create_email_template(data)
         end
         
         success_response(
@@ -73,6 +75,9 @@ module Tools
     private
     
     def create_campaign(data)
+      # Symbolize keys for consistent access
+      data = data.symbolize_keys
+      
       # Ensure required fields
       data[:status] ||= 'draft'
       
@@ -91,12 +96,19 @@ module Tools
         data[:email_template_id] = nil
       end
       
+      # Convert string IDs to integers for foreign keys
+      if data[:email_template_id].is_a?(String) && data[:email_template_id].match?(/^\d+$/)
+        data[:email_template_id] = data[:email_template_id].to_i
+      end
+      
+      Rails.logger.info "📝 Creating campaign with data: #{data.inspect}"
+      
       campaign = Campaign.new(data)
       campaign.user = user
       campaign.entity = entity
       campaign.save!
       
-      Rails.logger.info "✅ Created campaign: #{campaign.name} (ID: #{campaign.id})"
+      Rails.logger.info "✅ Created campaign: #{campaign.name} (ID: #{campaign.id}), template_id: #{campaign.email_template_id}"
       campaign
     end
     
@@ -128,6 +140,16 @@ module Tools
       group
     end
     
+    def create_email_template(data)
+      template = EmailTemplate.new(data)
+      template.user = user
+      template.entity = entity
+      template.save!
+      
+      Rails.logger.info "✅ Created email template: #{template.name} (ID: #{template.id})"
+      template
+    end
+    
     def serialize_record(record)
       case record
       when Campaign
@@ -138,6 +160,14 @@ module Tools
           status: record.status,
           email_template_id: record.email_template_id,
           scheduled_at: record.scheduled_at,
+          created_at: record.created_at
+        }
+      when EmailTemplate
+        {
+          id: record.id,
+          name: record.name,
+          subject: record.subject,
+          body: record.body&.truncate(100),
           created_at: record.created_at
         }
       when Contact

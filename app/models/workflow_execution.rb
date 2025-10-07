@@ -10,6 +10,7 @@ class WorkflowExecution < ApplicationRecord
   enum :status, {
     pending: 'pending',
     running: 'running',
+    awaiting_input: 'awaiting_input',
     completed: 'completed',
     failed: 'failed',
     paused: 'paused',

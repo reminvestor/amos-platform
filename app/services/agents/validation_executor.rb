@@ -420,13 +420,25 @@ module Agents
       context_data = get_workflow_context
       
       # Look for HTML content in various possible keys
-      context_data['html_content'] || 
-      context_data[:html_content] ||
-      context_data['page_content'] ||
-      context_data[:page_content] ||
-      context_data['content'] ||
-      context_data[:content] ||
-      context_data.values.find { |v| v.is_a?(String) && v.include?('<html') }
+      html_content = context_data['html_content'] || 
+                    context_data[:html_content] ||
+                    context_data['page_content'] ||
+                    context_data[:page_content] ||
+                    context_data['content'] ||
+                    context_data[:content]
+      
+      # If not found directly, look in step outputs that might contain HTML
+      if html_content.blank?
+        html_content = context_data.values.find { |v| v.is_a?(String) && v.include?('<html') }
+      end
+      
+      # If still not found, try to find landing page data and extract HTML
+      if html_content.blank?
+        landing_page_data = context_data.values.find { |v| v.is_a?(Hash) && v['html_content'] }
+        html_content = landing_page_data['html_content'] if landing_page_data
+      end
+      
+      html_content
     end
   end
 end

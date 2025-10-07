@@ -3,7 +3,7 @@ module Tools
     def self.metadata
       {
         name: 'delegate_to_planner',
-        description: 'Delegate a complex multi-step request to the Planner Agent for workflow creation and automatic execution. The workflow will be created and immediately executed without requiring user approval.',
+        description: 'Delegate a complex multi-step request to the Planner Agent for workflow creation and automatic execution. The workflow will be created and immediately executed without requiring user approval. IMPORTANT: After calling this tool, do NOT ask the user for information - the workflow will handle that conversationally.',
         category: 'task_management',
         input_schema: {
           type: 'object',

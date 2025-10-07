@@ -30,6 +30,12 @@ class InteractiveTaskService
       return continue_workflow_with_message(message)
     end
     
+    # Check if there's a V2 workflow awaiting input
+    if v2_workflow_awaiting_input?
+      Rails.logger.info "InteractiveTaskService: V2 workflow awaiting input, resuming with user message"
+      return resume_v2_workflow_with_message(message)
+    end
+    
     # Always default to autonomous mode - let the AI decide if it needs planning
     Rails.logger.info "InteractiveTaskService: Processing message in autonomous mode (AI-driven)"
     
@@ -89,6 +95,62 @@ class InteractiveTaskService
     # Check if the current step result indicates awaiting input
     last_result = workflow_state['last_step_result'] || {}
     last_result['status'] == 'awaiting_input'
+  end
+  
+  def v2_workflow_awaiting_input?
+    state = @task_session.state || {}
+    return false unless state['current_phase']
+    return false unless state['workflow_status'] == 'awaiting_input'
+    
+    true
+  end
+  
+  def resume_v2_workflow_with_message(message)
+    Rails.logger.info "InteractiveTaskService: Resuming V2 workflow with user message"
+    
+    # Initialize workflow engine if needed
+    @workflow_engine = WorkflowEngine.new(@task_session) unless @workflow_engine
+    @workflow_engine.set_progress_callback(@progress_callback)
+    
+    # Resume the V2 workflow
+    result = @workflow_engine.resume_v2_workflow(message)
+    
+    # Convert to our response format
+    case result[:status]
+    when 'awaiting_input'
+      {
+        success: true,
+        message: result[:message],
+        canvas: 'conversation',
+        canvas_data: {},
+        mode: 'workflow_gathering',
+        awaiting_input: true
+      }
+    when 'completed'
+      {
+        success: true,
+        message: result[:message],
+        canvas: result[:canvas_type] || 'conversation',
+        canvas_data: result[:canvas_data] || {},
+        mode: 'workflow_completed'
+      }
+    when 'failed'
+      {
+        success: false,
+        message: result[:error] || "Workflow failed",
+        canvas: 'conversation',
+        canvas_data: {},
+        mode: 'workflow_failed'
+      }
+    else
+      {
+        success: true,
+        message: result[:message] || "Workflow continuing...",
+        canvas: 'conversation',
+        canvas_data: {},
+        mode: 'workflow_running'
+      }
+    end
   end
   
   def continue_workflow_with_message(message)
@@ -544,23 +606,48 @@ class InteractiveTaskService
           workflow_result = workflow_engine.start_workflow(workflow, {})
         end
         
-        if workflow_result[:success]
+        # Handle different workflow states
+        case workflow_result[:status]
+        when 'awaiting_input'
+          # Workflow paused for user input
+          Rails.logger.info "✋ Workflow paused for user input"
           return {
             success: true,
-            message: response[:final_response][:message],
-            message_already_saved: response[:final_response][:message_already_saved] || false,
-            canvas: response[:canvas_type] || 'conversation',
-            canvas_data: response[:canvas_data],
+            message: workflow_result[:message] || response[:final_response][:message],
+            message_already_saved: false,
+            canvas: 'conversation',
+            canvas_data: {},
             tools_used: response[:tools_used],
-            mode: 'autonomous',
-            workflow_executed: true,
-            workflow_result: workflow_result
+            mode: 'workflow_gathering',
+            awaiting_input: true
           }
-        else
+        when 'completed'
+          # Workflow completed successfully
+          return {
+            success: true,
+            message: workflow_result[:message] || "Workflow completed successfully!",
+            message_already_saved: false,
+            canvas: workflow_result[:canvas_type] || 'conversation',
+            canvas_data: workflow_result[:canvas_data] || {},
+            tools_used: response[:tools_used],
+            mode: 'workflow_completed',
+            workflow_executed: true
+          }
+        when 'failed'
           # Workflow execution failed
           return {
             success: false,
             message: "Workflow execution failed: #{workflow_result[:error]}",
+            canvas: 'conversation',
+            canvas_data: {},
+            tools_used: response[:tools_used],
+            mode: 'workflow_failed'
+          }
+        else
+          # Unknown state - return error
+          return {
+            success: false,
+            message: "Unexpected workflow state: #{workflow_result[:status]}",
             canvas: 'conversation',
             canvas_data: {},
             tools_used: response[:tools_used],
