@@ -1,0 +1,117 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1><i class="fas fa-shield-alt text-warning"></i> AI Usage Policies</h1>
+      <p class="text-muted">Control how AI agents can access and use your data</p>
+    </div>
+    <div class="col-auto">
+      <%= link_to new_entity_policy_path, class: "btn btn-primary" do %>
+        <i class="fas fa-plus me-1"></i> New Policy
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0"><%= @stats[:total] %></div>
+          <div class="text-muted small">Total Policies</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-success"><%= @stats[:active] %></div>
+          <div class="text-muted small">Active</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h3 mb-0 text-info"><%= @stats[:with_budgets] %></div>
+          <div class="text-muted small">With Budgets</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Policies Table -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Your Policies</h5>
+        </div>
+        <div class="card-body">
+          <% if @policies.any? %>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Action</th>
+                    <th>Status</th>
+                    <th>Budgets</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @policies.each do |policy| %>
+                    <tr>
+                      <td>
+                        <strong><%= policy.name %></strong>
+                        <% if policy.agent_role %>
+                          <br><small class="text-muted">For: <%= policy.agent_role %> agents</small>
+                        <% end %>
+                      </td>
+                      <td><span class="badge bg-secondary"><%= policy.resource_type %></span></td>
+                      <td><span class="badge bg-info"><%= policy.action.titleize %></span></td>
+                      <td>
+                        <% if policy.is_active %>
+                          <span class="badge bg-success">Active</span>
+                        <% else %>
+                          <span class="badge bg-secondary">Inactive</span>
+                        <% end %>
+                      </td>
+                      <td>
+                        <% if policy.max_daily_calls || policy.max_write_calls %>
+                          <small>
+                            <%= "#{policy.max_daily_calls}/day" if policy.max_daily_calls %>
+                            <%= "#{policy.max_write_calls} writes" if policy.max_write_calls %>
+                          </small>
+                        <% else %>
+                          <span class="text-muted">None</span>
+                        <% end %>
+                      </td>
+                      <td>
+                        <div class="btn-group btn-group-sm">
+                          <%= link_to "View", entity_policy_path(policy), class: "btn btn-outline-primary btn-sm" %>
+                          <%= button_to toggle_entity_policy_path(policy), method: :post, class: "btn btn-outline-#{policy.is_active ? 'warning' : 'success'} btn-sm" do %>
+                            <%= policy.is_active ? 'Disable' : 'Enable' %>
+                          <% end %>
+                        </div>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <div class="text-center py-5">
+              <i class="fas fa-shield-alt fa-4x text-muted mb-3"></i>
+              <h4>No Policies Defined</h4>
+              <p class="text-muted">Create policies to control how AI agents can access your data</p>
+              <%= link_to "Create Your First Policy", new_entity_policy_path, class: "btn btn-primary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
