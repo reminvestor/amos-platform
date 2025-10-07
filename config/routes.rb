@@ -260,6 +260,14 @@ Rails.application.routes.draw do
         end
       end
       get 'observability', to: 'observability#index'
+      
+      resources :policies do
+        member do
+          post :toggle
+        end
+      end
+      
+      resource :privacy, only: [:show, :update]
     end
     
     # Admin Portal (Platform Administration)

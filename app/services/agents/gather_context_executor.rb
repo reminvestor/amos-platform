@@ -12,9 +12,14 @@ module Agents
       @conversation_turns = 0
       
       # Get context sources in priority order
-      sources = @phase.dig(:context_sources, :priority) || 
-                @phase.dig('context_sources', 'priority') || 
-                ['workflow_context', 'conversation_history', 'entity_profile', 'direct_conversation']
+      context_sources = @phase[:context_sources] || @phase['context_sources']
+      sources = if context_sources.is_a?(Hash)
+                  context_sources[:priority] || context_sources['priority'] || []
+                elsif context_sources.is_a?(Array)
+                  context_sources
+                else
+                  ['workflow_context', 'conversation_history', 'entity_profile', 'direct_conversation']
+                end
       
       # Process each source
       sources.each do |source|
@@ -30,6 +35,11 @@ module Agents
         when 'web_search'
           @gathered_data.merge!(check_web_search)
         when 'direct_conversation'
+          # Check conversation for data FIRST
+          conversation_data = check_conversation_history
+          @gathered_data.merge!(conversation_data)
+          
+          # Only ask if we STILL need input after checking conversation
           return ask_user_conversationally if needs_user_input?
         end
         
@@ -135,33 +145,67 @@ module Agents
       
       gathered = {}
       
-      # Get recent conversation from task session
-      messages = @context[:task_session]&.conversation_history&.last(10) || []
+      # If we have a direct user message (resume scenario), check it first
+      if @context[:user_message].present?
+        Rails.logger.info "📨 Checking direct user message first..."
+        direct_data = extract_from_message(@context[:user_message])
+        gathered.merge!(direct_data) if direct_data.is_a?(Hash)
+        
+        # Log what we found
+        Rails.logger.info "📨 Extracted from direct message: #{gathered.keys.join(', ')}"
+        
+        # If we got all required fields, return immediately
+        return gathered if check_completion_criteria_with_data(gathered)
+      end
       
-      # Build extraction prompt
-      required_knowledge = @phase[:required_knowledge] || @phase['required_knowledge'] || {}
+      # Get recent conversation from scout messages
+      task_session = @context[:task_session]
+      return gathered unless task_session
+      
+      session_id = task_session.metadata['session_id']
+      return gathered unless session_id
+      
+      messages = ScoutMessage.where(session_id: session_id)
+                            .order(created_at: :asc)
+                            .limit(20)
+                            .select(:role, :content)
+      
+      return gathered if messages.empty?
+      
+      # Format conversation for AI
+      conversation_text = messages.map { |m| "#{m.role.capitalize}: #{m.content}" }.join("\n\n")
+      
+      # Get required fields to extract
+      required_fields = @phase[:required_fields] || @phase['required_fields'] || []
+      fields_list = required_fields.map { |f| "- #{f['key'] || f[:key]}: #{f['prompt'] || f[:prompt]}" }.join("\n")
       
       prompt = <<~PROMPT
-        Extract relevant information from this conversation history.
+        Extract the following information from this conversation if present:
         
-        Required Information:
-        #{JSON.pretty_generate(required_knowledge)}
+        #{fields_list}
         
-        Conversation History:
-        #{messages.map { |m| "#{m['role']}: #{m['content']}" }.join("\n")}
+        Conversation:
+        #{conversation_text}
         
-        Extract any mentioned information and return as JSON:
-        {
-          "field_name": "extracted_value"
-        }
-        
-        Only include fields that were explicitly mentioned.
+        Return ONLY a JSON object with the extracted values. Use null for fields not found.
+        Example: {"business_name": "Acme Corp", "target_audience": "small businesses"}
       PROMPT
       
-      result = ai_decide(prompt, expect_json: true)
-      gathered.merge!(result) if result.is_a?(Hash) && !result.key?('error')
+      begin
+        result = ai_decide(prompt, expect_json: true, max_tokens: 1000)
+        
+        if result.is_a?(Hash) && !result.key?('error')
+          # Filter out null values and merge with already gathered
+          result.each do |key, value|
+            gathered[key.to_s] = value if value.present? && !gathered.key?(key.to_s)
+          end
+          
+          Rails.logger.info "💬 Extracted from conversation: #{gathered.keys.join(', ')}"
+        end
+      rescue => e
+        Rails.logger.error "Failed to extract from conversation: #{e.message}"
+      end
       
-      Rails.logger.info "💬 Extracted from conversation: #{gathered.keys.join(', ')}"
       gathered
     end
     
@@ -191,27 +235,96 @@ module Agents
       {}
     end
     
-    def needs_user_input?
-      required_knowledge = @phase[:required_knowledge] || @phase['required_knowledge']
-      return false unless required_knowledge
+    def check_completion_criteria
+      check_completion_criteria_with_data(@gathered_data)
+    end
+    
+    def check_completion_criteria_with_data(data)
+      # Check if we've gathered enough data
+      required_fields = @phase[:required_fields] || @phase['required_fields'] || []
       
-      # Check what's still missing
-      missing = find_missing_fields
-      missing.any?
+      # Get truly required fields (not optional)
+      truly_required = required_fields.select { |f| f['required'] == true || f[:required] == true }
+      
+      # If no required fields defined, need at least some basic info
+      return data.keys.length >= 3 if truly_required.empty?
+      
+      # Check which required fields we have
+      gathered_keys = data.keys.map(&:to_s)
+      missing_required = truly_required.reject do |field|
+        field_key = (field['key'] || field[:key]).to_s
+        gathered_keys.include?(field_key) || gathered_keys.any? { |k| k.include?(field_key) }
+      end
+      
+      Rails.logger.info "📊 Required: #{truly_required.length}, Gathered: #{gathered_keys.length}, Missing: #{missing_required.length}"
+      
+      # Only complete if all required fields are gathered
+      missing_required.empty?
+    end
+    
+    def extract_from_message(message)
+      # Get required fields to extract
+      required_fields = @phase[:required_fields] || @phase['required_fields'] || []
+      fields_list = required_fields.map { |f| "- #{f['key'] || f[:key]}: #{f['prompt'] || f[:prompt]}" }.join("\n")
+      
+      prompt = <<~PROMPT
+        Extract the following information from this user message if present:
+        
+        Required Fields:
+        #{fields_list}
+        
+        User Message:
+        #{message}
+        
+        Return ONLY a JSON object with the extracted values. Use null for fields not found.
+        Be flexible in your extraction - infer information even if not explicitly stated.
+        
+        Example: {"company_name": "Acme Corp", "target_audience": "small businesses", "value_proposition": "affordable solutions"}
+      PROMPT
+      
+      begin
+        result = ai_decide(prompt, expect_json: true, max_tokens: 1000)
+        
+        if result.is_a?(Hash) && !result.key?('error')
+          # Filter out null values
+          extracted = {}
+          result.each do |key, value|
+            extracted[key.to_s] = value if value.present?
+          end
+          return extracted
+        end
+      rescue => e
+        Rails.logger.error "Failed to extract from message: #{e.message}"
+      end
+      
+      {}
+    end
+    
+    def needs_user_input?
+      # Check if completion criteria is NOT met (meaning we're missing required fields)
+      !check_completion_criteria
     end
     
     def find_missing_fields
-      required_knowledge = @phase[:required_knowledge] || @phase['required_knowledge'] || {}
+      required_fields = @phase[:required_fields] || @phase['required_fields'] || []
       missing = []
       
-      required_knowledge.each do |category, fields|
-        fields.each do |field|
-          field_key = field.to_s
-          unless @gathered_data.key?(field_key) || 
-                 @gathered_data.key?(field_key.to_sym) ||
-                 @gathered_data.values.any? { |v| v.to_s.downcase.include?(field_key.downcase) }
-            missing << { category: category, field: field }
-          end
+      required_fields.each do |field_def|
+        field_key = field_def['key'] || field_def[:key]
+        field_prompt = field_def['prompt'] || field_def[:prompt]
+        is_required = field_def['required'] || field_def[:required]
+        
+        # Skip optional fields if we're in the first pass
+        next unless is_required
+        
+        # Check if we have this field
+        unless @gathered_data.key?(field_key) || 
+               @gathered_data.key?(field_key.to_sym)
+          missing << { 
+            field: field_key,
+            prompt: field_prompt,
+            required: is_required
+          }
         end
       end
       
@@ -248,10 +361,16 @@ module Agents
         "Based on what I've found: #{@gathered_data.to_json}" : 
         "I need some information to help you."
       
+      # Format missing fields for the AI to understand
+      fields_list = missing_fields.map do |m| 
+        "- #{m[:field]}: #{m[:prompt]}"
+      end.join("\n")
+      
       prompt_request = <<~PROMPT
         Generate a natural, friendly conversational prompt to gather this information:
         
-        Missing Fields: #{missing_fields.map { |m| "#{m[:category]} - #{m[:field]}" }.join(', ')}
+        Missing Fields:
+        #{fields_list}
         
         Already Gathered: #{@gathered_data.keys.join(', ')}
         

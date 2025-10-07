@@ -931,6 +931,8 @@ class WorkflowEngine
   
   # ==================== V2 WORKFLOW EXECUTION ====================
   
+  public  # V2 methods must be public for external access
+  
   def start_v2_workflow(workflow_spec, initial_inputs = {})
     Rails.logger.info "🚀 Starting V2 (phase-based) workflow"
     
@@ -984,6 +986,31 @@ class WorkflowEngine
     
     Rails.logger.info "📋 Executing #{phases.length} phases"
     
+    # Load landing page viewer canvas at the start if this is a landing page workflow
+    workflow_name = workflow_spec[:name] || workflow_spec['name']
+    if workflow_name&.downcase&.include?('landing page')
+      @progress_callback&.call({
+        type: 'load_canvas',
+        canvas: 'landing_page_viewer',
+        data: {}
+      })
+    end
+    
+    # Ensure WorkflowExecution exists
+    unless @workflow_execution
+      @workflow_execution = WorkflowExecution.create!(
+        task_session: @task_session,
+        user: @task_session.user,
+        entity: @task_session.user.entity,
+        workflow_spec: workflow_spec,
+        status: 'running',
+        metadata: { 
+          initial_inputs: initial_inputs,
+          template_version: 2 
+        }
+      )
+    end
+    
     phases.each_with_index do |phase, index|
       phase_id = phase[:id] || phase['id']
       Rails.logger.info "🔄 Starting phase #{index + 1}/#{phases.length}: #{phase_id}"
@@ -1011,7 +1038,7 @@ class WorkflowEngine
         Rails.logger.info "⏸️ Phase #{phase_id} awaiting user input"
         
         @task_session.update_state(
-          workflow_state: 'awaiting_input',
+          workflow_status: 'awaiting_input',
           current_phase: phase_id,
           last_phase_result: result
         )
@@ -1108,7 +1135,17 @@ class WorkflowEngine
   def resume_v2_workflow(user_message)
     Rails.logger.info "▶️ Resuming V2 workflow with user input"
     
-    workflow_spec = @task_session.workflow_spec
+    # Load workflow execution if not already loaded
+    unless @workflow_execution
+      @workflow_execution = WorkflowExecution.find_by(task_session_id: @task_session.id)
+    end
+    
+    # Get workflow spec - may be nested under 'workflow' key
+    workflow_spec = @task_session.state['workflow_spec']
+    if workflow_spec && workflow_spec['workflow']
+      workflow_spec = workflow_spec['workflow']
+    end
+    
     current_phase_id = @task_session.state['current_phase']
     
     # Find the current phase
@@ -1196,11 +1233,38 @@ class WorkflowEngine
     # Generate final summary using AI
     final_summary = generate_workflow_summary
     
+    # Check if this is a landing page workflow and load the editor
+    canvas_type = nil
+    canvas_data = {}
+    workflow_name = workflow_spec[:name] || workflow_spec['name']
+    
+    if workflow_name&.downcase&.include?('landing page')
+      # Get the landing page ID from workflow context
+      landing_page_context = WorkflowContext
+        .where(workflow_execution_id: @workflow_execution.id)
+        .where("key LIKE ?", "%landing_page_id%")
+        .order(created_at: :desc)
+        .first
+      
+      if landing_page_context
+        landing_page_id = landing_page_context.value
+        # Remove quotes if it's a JSON string
+        landing_page_id = landing_page_id.gsub(/^"|"$/, '').to_i if landing_page_id.is_a?(String)
+        
+        canvas_type = 'landing_page_editor'
+        canvas_data = { landing_page_id: landing_page_id }
+        
+        Rails.logger.info "✅ Loading landing page editor for ID: #{landing_page_id}"
+      end
+    end
+    
     {
       success: true,
       status: 'completed',
       message: final_summary,
-      workflow_execution_id: @workflow_execution.id
+      workflow_execution_id: @workflow_execution.id,
+      canvas_type: canvas_type,
+      canvas_data: canvas_data
     }
   end
   

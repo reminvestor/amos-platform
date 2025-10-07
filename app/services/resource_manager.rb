@@ -197,7 +197,8 @@ class ResourceManager
   def check_token_limits(user)
     # Check user daily limit
     user_daily = @token_tracker.get_user_daily_total(user)
-    user_limit = user.token_limit || @limits[:daily_ai_tokens_per_user]
+    # Get limit from entity settings or use default
+    user_limit = user.entity&.settings&.dig('quotas', 'daily_ai_tokens_per_user') || @limits[:daily_ai_tokens_per_user]
     
     if user_daily > user_limit
       Rails.logger.warn "User #{user.id} exceeded daily token limit: #{user_daily}/#{user_limit}"

@@ -137,6 +137,11 @@ class BedrockService
       
       Rails.logger.info "Bedrock response received: #{content&.length || 0} characters"
       
+      # Log first 500 chars for debugging multi-step plans
+      if content && content.length > 100
+        Rails.logger.info "🔍 Response preview: #{content[0..500]}"
+      end
+      
       content
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock API Error: #{e.message}"

@@ -63,6 +63,11 @@ module Tools
     def execute(args)
       log_execution(args)
       
+      # DEBUG: Log received arguments
+      Rails.logger.info "🔍 DEBUG generate_landing_page received args: #{args.inspect}"
+      Rails.logger.info "🔍 DEBUG key_details: #{get_arg(args, :key_details).inspect}"
+      Rails.logger.info "🔍 DEBUG business_info: #{get_arg(args, :business_info).inspect}"
+      
       # Intelligently extract title from various sources
       title = get_arg(args, :title) || 
               get_arg(args, :program_name) || 
@@ -103,8 +108,8 @@ module Tools
           title: title,
           slug: generate_unique_slug(title),
           status: 'draft',
-          ai_generated: true,
           metadata: {
+            ai_generated: true,  # Store in metadata instead
             description: description,
             page_type: page_type,  # Store in metadata instead
             generated_at: Time.current,
@@ -113,25 +118,23 @@ module Tools
           }
         )
         
-        # Create generation job with high priority and full context
-        job = SimpleAiLandingPageJob.set(priority: 10).perform_later(
-          landing_page_id: landing_page.id,
-          description: description,
-          page_type: page_type,
-          user_id: user.id,
-          generation_context: generation_context
-        )
+        # Use AI to generate professional HTML
+        html_content = generate_ai_html(title, description, generation_context)
         
-        Rails.logger.info "🚀 Queued AI landing page generation job: #{job.job_id}"
+        landing_page.update!(html_content: html_content)
+        
+        Rails.logger.info "✅ Landing page created with HTML: #{landing_page.id}"
         
         success_response(
           id: landing_page.id,
           title: landing_page.title,
           slug: landing_page.slug,
-          status: 'generating',
-          job_id: job.job_id,
-          message: "AI is creating your landing page. This usually takes 20-30 seconds.",
-          preview_url: "/landing_pages/#{landing_page.slug}/preview"
+          status: 'draft',
+          message: "Landing page created successfully!",
+          preview_url: "/landing_pages/#{landing_page.slug}/preview",
+          html_content: html_content,  # Include HTML for validation
+          edit_url: "/landing_pages/#{landing_page.id}/edit",
+          landing_page_url: "/landing_pages/#{landing_page.slug}/preview"
         )
       rescue => e
         Rails.logger.error "Landing page generation failed: #{e.message}"
@@ -175,6 +178,145 @@ module Tools
       end
       
       slug
+    end
+    
+    def generate_ai_html(title, description, context)
+      # Use AI to generate professional landing page HTML
+      # Extract values from nested structures
+      key_details = context[:key_details] || {}
+      business_info = context[:business_info] || {}
+      design_prefs = context[:design_preferences] || {}
+      
+      # Get actual values with intelligent fallbacks
+      business_name = context[:business_name] || 
+                     key_details[:company_name] || 
+                     key_details['company_name'] || 
+                     title
+                     
+      value_prop = business_info[:value_proposition] || 
+                  business_info['value_proposition'] ||
+                  key_details[:value_proposition] ||
+                  key_details['value_proposition'] ||
+                  description
+                  
+      target_audience = business_info[:target_audience] ||
+                       business_info['target_audience'] ||
+                       key_details[:target_audience] ||
+                       key_details['target_audience'] ||
+                       "businesses"
+                       
+      cta_text = design_prefs[:cta] ||
+                design_prefs['cta'] ||
+                key_details[:call_to_action] ||
+                key_details['call_to_action'] ||
+                "Get Started"
+                
+      design_style = context[:design_style] || 
+                    design_prefs[:style] ||
+                    design_prefs['style'] ||
+                    key_details[:design_style] ||
+                    "modern and professional"
+      
+      Rails.logger.info "🎨 Generating HTML with: business=#{business_name}, value=#{value_prop}, audience=#{target_audience}, cta=#{cta_text}"
+      
+      prompt = <<~PROMPT
+        Generate a complete, professional landing page HTML for:
+        
+        Company Name: #{business_name}
+        Value Proposition: #{value_prop}
+        Target Audience: #{target_audience} 
+        Call to Action: #{cta_text}
+        Design Style: #{design_style}
+        
+        Requirements:
+        - Use Bootstrap 5 for responsive design
+        - Include hero section with compelling headline and CTA
+        - Add sections for features/benefits
+        - Include signup/contact form
+        - Mobile-responsive
+        - Professional styling
+        - Use the business information to create compelling copy
+        
+        CRITICAL: Use the EXACT values provided above:
+        - Company name in logo/header: "#{business_name}" (NOT generic placeholders)
+        - Hero headline should incorporate: "#{value_prop}"
+        - CTA buttons should say: "#{cta_text}"
+        - Content should speak to: "#{target_audience}"
+        
+        Return ONLY the complete HTML (from <!DOCTYPE html> to </html>).
+        Make it conversion-optimized and visually appealing.
+      PROMPT
+      
+      begin
+        ai_service = BedrockService.new(user: user, entity: entity)
+        
+        messages = [
+          { role: 'user', content: prompt }
+        ]
+        
+        response = ai_service.complete(
+          messages: messages,
+          max_tokens: 8000,
+          temperature: 0.7
+        )
+        
+        # Extract HTML from response
+        if response.include?('<!DOCTYPE html>')
+          response
+        else
+          # Fallback if AI didn't return HTML
+          generate_fallback_html(title, description, business_name, value_prop, cta_text)
+        end
+      rescue => e
+        Rails.logger.error "AI HTML generation failed: #{e.message}"
+        generate_fallback_html(title, description, business_name, value_prop, cta_text)
+      end
+    end
+    
+    def generate_fallback_html(title, description, business_name, value_prop = nil, cta_text = nil)
+      # Simple fallback template
+      <<~HTML
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>#{title}</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+          <style>
+            .hero { min-height: 60vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+          </style>
+        </head>
+        <body>
+          <section class="hero d-flex align-items-center">
+            <div class="container text-center">
+              <h1 class="display-3 fw-bold mb-4">#{business_name}</h1>
+              <p class="lead mb-4">#{value_prop || description}</p>
+              <a href="#contact" class="btn btn-light btn-lg">#{cta_text || 'Get Started'}</a>
+            </div>
+          </section>
+          
+          <section id="contact" class="py-5">
+            <div class="container">
+              <div class="col-lg-6 mx-auto">
+                <h2 class="text-center mb-4">Get in Touch</h2>
+                <form class="card p-4">
+                  <div class="mb-3">
+                    <input type="text" class="form-control" placeholder="Name" required>
+                  </div>
+                  <div class="mb-3">
+                    <input type="email" class="form-control" placeholder="Email" required>
+                  </div>
+                  <button type="submit" class="btn btn-primary w-100">Submit</button>
+                </form>
+              </div>
+            </div>
+          </section>
+          
+          <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        </body>
+        </html>
+      HTML
     end
   end
 end
