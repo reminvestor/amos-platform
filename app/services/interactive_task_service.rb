@@ -1304,7 +1304,8 @@ class InteractiveTaskService
     planner = PlannerAgentService.new(
       user: @user,
       entity: @entity,
-      session_id: @session_id
+      session_id: @session_id,
+      progress_callback: @progress_callback
     )
     
     # Generate workflow plan

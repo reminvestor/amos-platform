@@ -1,10 +1,11 @@
 class PlannerAgentService
   attr_reader :user, :entity, :session_id
   
-  def initialize(user:, entity:, session_id:)
+  def initialize(user:, entity:, session_id:, progress_callback: nil)
     @user = user
     @entity = entity
     @session_id = session_id
+    @progress_callback = progress_callback
     @ai_service = BedrockService.new
     @tool_catalog = Tools::ToolCatalog.instance
   end
@@ -48,6 +49,15 @@ class PlannerAgentService
   
   private
   
+  # Send progress updates to UI
+  def notify_progress(message, type: 'planner_progress')
+    @progress_callback&.call({
+      type: type,
+      message: message,
+      source: 'planner'
+    })
+  end
+  
   def gather_planning_context(request_text, context)
     # Analyze request with regex for hints
     intent_hints = analyze_intent(request_text)
@@ -80,6 +90,9 @@ class PlannerAgentService
   end
   
   def generate_llm_plan(request_text, planning_context)
+    # Notify user of planning process
+    notify_progress("🤔 Analyzing your request and planning workflow...")
+    
     system_prompt = build_planner_prompt(planning_context)
     
     user_message = <<~PROMPT
@@ -737,6 +750,9 @@ class PlannerAgentService
       if result['template_slug'] && result['confidence'] != 'none'
         Rails.logger.info "AI selected template: #{result['template_slug']} (#{result['confidence']} confidence)"
         Rails.logger.info "Reasoning: #{result['reasoning']}"
+        
+        notify_progress("🎯 Found perfect template: #{result['template_slug']}")
+        notify_progress("💭 Reasoning: #{result['reasoning']}")
         
         # Load and return the selected template
         template_data = WorkflowTemplateLoader.load_template_by_slug(result['template_slug'])
