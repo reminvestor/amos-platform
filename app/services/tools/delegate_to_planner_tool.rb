@@ -64,7 +64,8 @@ module Tools
         planner = PlannerAgentService.new(
           user: user,
           entity: entity,
-          session_id: context[:session_id] || task_session.metadata['session_id']
+          session_id: context[:session_id] || task_session.metadata['session_id'],
+          progress_callback: @progress_callback
         )
         
         # Generate the plan

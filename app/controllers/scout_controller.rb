@@ -400,19 +400,27 @@ class ScoutController < ApplicationController
               stream_content_chunk(progress_data[:content])
             end
           when 'phase_progress', 'phase_start'
-            # Workflow phase progress - just log it, don't stream to chat
+            # Stream workflow phase progress as transient messages
             Rails.logger.info "Phase progress: #{progress_data[:message]}"
-            # Don't stream these as they clutter the chat
+            stream_transient_update("🔄 #{progress_data[:message]}")
           when 'phase_complete'
-            # Phase completed - just log it, don't stream to chat
+            # Stream phase completion as transient messages
             Rails.logger.info "Phase complete: #{progress_data[:message]}"
-            # Don't stream these as they clutter the chat
+            stream_transient_update("✅ #{progress_data[:message]}")
           when 'tool_start'
-            # Tool starting - just log it
-            Rails.logger.info "Tool start: #{progress_data[:tool_name] || progress_data[:name]}"
+            # Stream tool start as transient messages
+            tool_name = progress_data[:tool_name] || progress_data[:name]
+            Rails.logger.info "Tool start: #{tool_name}"
+            stream_transient_update("🔧 Starting #{tool_name}...")
           when 'tool_complete'
-            # Tool completed - just log it
-            Rails.logger.info "Tool complete: #{progress_data[:tool_name] || progress_data[:name]}"
+            # Stream tool completion as transient messages
+            tool_name = progress_data[:tool_name] || progress_data[:name]
+            Rails.logger.info "Tool complete: #{tool_name}"
+            stream_transient_update("✅ Completed #{tool_name}")
+          when 'planner_progress'
+            # Stream planner reasoning as transient messages
+            Rails.logger.info "Planner: #{progress_data[:message]}"
+            stream_transient_update("🧠 #{progress_data[:message]}")
           when 'load_canvas'
             # Stream canvas loading
             stream_update(progress_data)
@@ -955,6 +963,26 @@ class ScoutController < ApplicationController
     else
       JSON.generate({ type: 'update', message: message })
     end
+    chunk = "data: #{data}\n\n"
+    
+    response.stream.write(chunk)
+    
+    puts "✅ Update streamed successfully"
+    STDOUT.flush
+  rescue => e
+    puts "❌ Stream update failed: #{e.message}"
+    STDOUT.flush
+  end
+
+  def stream_transient_update(message)
+    puts "🚨 PRODUCTION DEBUG: Streaming transient update: #{message}"
+    STDOUT.flush
+    # Create transient messages for progress/tool updates
+    data = JSON.generate({ 
+      type: 'transient', 
+      message: message,
+      timestamp: Time.current.to_f
+    })
     chunk = "data: #{data}\n\n"
     
     # Write and try to force immediate sending
