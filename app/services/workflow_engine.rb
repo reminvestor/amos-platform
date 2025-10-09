@@ -1274,6 +1274,11 @@ class WorkflowEngine
       { key: ctx.key, value: ctx.value, type: ctx.data_type }
     end
     
+    # Check for operation messages (e.g., "already existed" or "newly added")
+    operation_messages = context_data.select { |ctx| 
+      ctx[:value].is_a?(Hash) && ctx[:value]['operation_message']
+    }.map { |ctx| ctx[:value]['operation_message'] }
+    
     ai_service = BedrockService.new
     
     prompt = <<~PROMPT
@@ -1282,10 +1287,16 @@ class WorkflowEngine
       Workflow Data:
       #{JSON.pretty_generate(context_data.first(20))}
       
+      #{operation_messages.any? ? "Operation Details:\n#{operation_messages.join("\n")}\n" : ""}
+      
       Create a friendly, conversational summary of:
       1. What was created/accomplished
       2. Key details (IDs, names, etc.)
-      3. What the user can do next
+      3. Whether items were newly created or already existed (if applicable)
+      4. What the user can do next
+      
+      IMPORTANT: If the operation message says something was "already" on/in something,
+      treat this as SUCCESS - the goal was achieved even if no changes were needed.
       
       Be warm and helpful. Ask what they'd like to do next.
       

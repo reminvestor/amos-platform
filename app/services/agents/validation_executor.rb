@@ -60,7 +60,9 @@ module Agents
       }, 'validation_result')
       
       if all_passed
-        notify_progress("All validations passed!", type: 'phase_complete')
+        # Use custom success message from template if available
+        success_msg = @phase['success_message'] || @phase[:success_message] || "All validations passed!"
+        notify_progress(success_msg, type: 'phase_complete')
       else
         notify_progress("Some validations failed", type: 'phase_warning')
       end
@@ -69,7 +71,8 @@ module Agents
         success: all_passed,
         status: all_passed ? 'completed' : 'failed',
         validation_results: validation_results,
-        phase: phase_id
+        phase: phase_id,
+        message: all_passed ? (@phase['success_message'] || @phase[:success_message]) : nil
       }
     end
     
