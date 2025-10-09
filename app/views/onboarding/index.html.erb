@@ -7,38 +7,38 @@
         <i class="fas fa-cube text-primary"></i>
         <span class="brand-text">Amos</span>
       </div>
-      <p class="brand-tagline">Getting Scout acquainted with your business</p>
+      <p class="brand-tagline">Getting AMOS acquainted with your business</p>
     </div>
     
     <div class="auth-features">
-      <h4 class="mb-4">🤖 Meet Scout, Your AI Marketing Agent</h4>
+      <h4 class="mb-4">🤖 Meet AMOS, Your AI Business Automation Assistant</h4>
       <div class="feature-list">
         <div class="feature-item">
           <i class="fas fa-comments text-primary"></i>
           <div>
             <strong>Conversational Learning</strong>
-            <p>Scout learns about your business through natural conversation. Just chat like you would with a colleague!</p>
+            <p>AMOS learns about your business through natural conversation. Just chat like you would with a colleague!</p>
           </div>
         </div>
         <div class="feature-item">
           <i class="fas fa-brain text-success"></i>
           <div>
             <strong>Intelligent Adaptation</strong>
-            <p>The more Scout knows about your business, the better recommendations and content it can create.</p>
+            <p>The more AMOS knows about your business, the better recommendations and content it can create.</p>
           </div>
         </div>
         <div class="feature-item">
           <i class="fas fa-magic text-warning"></i>
           <div>
             <strong>Instant Marketing Materials</strong>
-            <p>Once Scout understands your business, it can create landing pages, emails, and campaigns in seconds.</p>
+            <p>Once AMOS understands your business, it can create landing pages, emails, and campaigns in seconds.</p>
           </div>
         </div>
         <div class="feature-item">
           <i class="fas fa-chart-line text-info"></i>
           <div>
             <strong>Continuous Optimization</strong>
-            <p>Scout analyzes performance and suggests improvements to help your marketing efforts succeed.</p>
+            <p>AMOS analyzes performance and suggests improvements to help your marketing efforts succeed.</p>
           </div>
         </div>
       </div>
@@ -48,8 +48,8 @@
         <ul class="mb-0 small" style="list-style: none; padding: 0; color: var(--scout-text-muted, #9ca3af);">
           <li class="mb-2">• Share your industry, target audience, and what makes your business unique</li>
           <li class="mb-2">• Mention your goals - lead generation, sales, brand awareness, etc.</li>
-          <li class="mb-2">• Tell Scout about your current marketing challenges</li>
-          <li>• Don't worry about being perfect - Scout will ask follow-up questions!</li>
+          <li class="mb-2">• Tell AMOS about your current marketing challenges</li>
+          <li>• Don't worry about being perfect - AMOS will ask follow-up questions!</li>
         </ul>
       </div>
     </div>
@@ -62,7 +62,7 @@
       <div class="onboarding-header">
         <div class="header-title">
           <h2>Welcome to Amos! 🚀</h2>
-          <p class="text-muted mb-0">Let's get Scout acquainted with your business</p>
+          <p class="text-muted mb-0">Let's get AMOS acquainted with your business</p>
         </div>
         <div class="header-user">
           <i class="fas fa-user-circle me-2"></i>
@@ -89,7 +89,7 @@
               <div class="message-bubble">
                 <% if message[:role] == 'assistant' %>
                   <div class="message-header">
-                    <strong class="text-primary">Scout</strong>
+                    <strong class="text-primary">AMOS</strong>
                     <small class="text-muted ms-2">
                       <%= Time.parse(message[:timestamp]).strftime("%I:%M %p") rescue Time.current.strftime("%I:%M %p") %>
                     </small>
@@ -120,7 +120,7 @@
           <div class="message-content">
             <div class="message-bubble">
               <div class="message-header">
-                <strong class="text-primary">Scout</strong>
+                <strong class="text-primary">AMOS</strong>
               </div>
               <div class="typing-dots">
                 <span class="dot"></span>
@@ -139,7 +139,7 @@
             <textarea 
               class="chat-input" 
               id="message-input"
-              placeholder="Tell Scout about your business - industry, goals, challenges..." 
+              placeholder="Tell AMOS about your business - industry, goals, challenges..." 
               rows="1"
               maxlength="1000"></textarea>
             <button type="submit" class="send-btn" id="send-button">
@@ -163,7 +163,7 @@
             <i class="fas fa-check text-white" style="font-size: 2rem;"></i>
           </div>
           <h4 class="fw-bold mb-2">🎉 Perfect! You're all set!</h4>
-          <p class="text-muted">Scout now knows about your business and is ready to help you succeed with comprehensive marketing strategies.</p>
+          <p class="text-muted">AMOS now knows about your business and is ready to help you succeed with comprehensive marketing strategies.</p>
         </div>
         <button type="button" 
                 class="btn btn-primary btn-lg" 
@@ -551,7 +551,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Scroll to bottom initially
   scrollToBottom();
   
-  // Auto-resize textarea (same as main Scout interface)
+  // Auto-resize textarea (same as main AMOS interface)
   function autoResizeTextarea() {
     try {
       if (!messageInput) return;
@@ -662,7 +662,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Use the same addMessage function as main Scout interface
+  // Use the same addMessage function as main AMOS interface
   function addMessage(content, role, timestamp = null) {
     try {
       const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
@@ -685,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <div class="message-bubble">
             ${isAssistant ? `
               <div class="message-header">
-                <strong class="text-primary">Scout</strong>
+                <strong class="text-primary">AMOS</strong>
                 <small class="text-muted ms-2">${timeString}</small>
               </div>
             ` : ''}

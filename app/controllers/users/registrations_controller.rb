@@ -7,7 +7,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   before_action :configure_sign_up_params, only: [:create]
   before_action :configure_account_update_params, only: [:update]
 
-  # Override build_resource to parse full_name before user creation
+  # Override build_resource to parse full_name and create entity before user creation
   def build_resource(hash = {})
     # Parse full name and add first_name/last_name to the hash
     # Only do this when form is being submitted (params[:user] exists)
@@ -24,15 +24,34 @@ class Users::RegistrationsController < Devise::RegistrationsController
       end
     end
     
+    # Create entity BEFORE user so we can set entity_id
+    if params[:user]&.dig(:business_name).present? || hash[:first_name].present?
+      business_name = params[:user]&.dig(:business_name)&.strip
+      first_name = hash[:first_name] || 'User'
+      last_name = hash[:last_name] || ''
+      entity = create_entity_for_signup(business_name, first_name, last_name)
+      hash[:entity_id] = entity.id if entity
+    end
+    
     super(hash)
   end
 
-  # Override create to handle entity creation
+  # Override create to associate user with entity after creation
   def create
     super do |resource|
-      if resource.persisted?
-        # Create business entity for the user (always create one)
-        create_business_entity(resource)
+      if resource.persisted? && resource.entity_id
+        # Create the EntityUser association
+        EntityUser.find_or_create_by!(
+          entity_id: resource.entity_id,
+          user: resource
+        ) do |eu|
+          eu.role = 'owner'
+        end
+        
+        # Set the entity in session for immediate use
+        session[:entity_id] = resource.entity_id
+        
+        Rails.logger.info "✅ User #{resource.email} associated with entity #{resource.entity_id}"
       end
     end
   end
@@ -62,12 +81,10 @@ class Users::RegistrationsController < Devise::RegistrationsController
   
   private
   
-  def create_business_entity(user)
-    business_name = params[:user][:business_name]&.strip
-    
+  def create_entity_for_signup(business_name, first_name, last_name)
     # If no business name provided, create default using user's name
     if business_name.blank?
-      business_name = "#{user.full_name} Inc"
+      business_name = "#{first_name} #{last_name} Business"
     end
     
     begin
@@ -78,21 +95,11 @@ class Users::RegistrationsController < Devise::RegistrationsController
         status: 'active'
       )
       
-      # Associate user as owner
-      EntityUser.create!(
-        entity: entity,
-        user: user,
-        role: 'owner'
-      )
-      
-      # Set the entity in session for immediate use
-      session[:entity_id] = entity.id
-      
-      Rails.logger.info "✅ Created entity '#{business_name}' for user #{user.email}"
+      Rails.logger.info "✅ Created entity '#{business_name}' (ID: #{entity.id})"
+      entity
     rescue => e
-      Rails.logger.error "❌ Failed to create entity for user #{user.email}: #{e.message}"
-      # Don't prevent user creation if entity creation fails
-      # User will be directed to create entity during onboarding
+      Rails.logger.error "❌ Failed to create entity: #{e.message}"
+      nil
     end
   end
   
