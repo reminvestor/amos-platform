@@ -1,0 +1,121 @@
+template_version: 2
+name: "Add Contact Group to Campaign"
+slug: "add_group_to_campaign_v2"
+description: "Add a contact group to an existing campaign"
+category: "campaign_management"
+
+config:
+  execution_mode: "adaptive"
+  context_aware: true
+  conversational: true
+
+keywords:
+  - "add group to campaign"
+  - "add contacts to campaign"
+  - "attach group"
+  - "include group in campaign"
+  - "add audience to campaign"
+  - "add recipients to campaign"
+
+phases:
+  # Phase 1: Identify what to add
+  - id: "gather_context"
+    type: "gather_context"
+    name: "Identify Campaign and Group"
+    goal: "Determine which campaign and which contact group to link together"
+    
+    required_fields:
+      - key: "campaign_id"
+        prompt: "Which campaign do you want to add the group to?"
+        required: true
+        validation: "number"
+        help_text: "You can provide the campaign name or ID"
+        
+      - key: "contact_group_id"
+        prompt: "Which contact group do you want to add to this campaign?"
+        required: true
+        validation: "number"
+        help_text: "You can provide the group name or ID"
+    
+    context_sources:
+      - "conversation_history"
+      - "workflow_context"
+      - "direct_conversation"
+    
+    ai_instructions: |
+      Gather information about which campaign and contact group need to be linked.
+      
+      Be intelligent:
+      - If user says "add my sales leads to the Q4 campaign", extract both campaign and group names
+      - Use get_data tool to find IDs from names if needed
+      - Check conversation history for recently mentioned campaigns/groups
+      - If user just says "add this group to that campaign", look in recent context
+      
+      If names are provided instead of IDs, use get_data to look them up:
+      - get_data(object_type: "campaigns", filters: {name: "campaign_name"})
+      - get_data(object_type: "contact_groups", filters: {name: "group_name"})
+
+  # Phase 2: Add the group to the campaign
+  - id: "execute_goal"
+    type: "execute_goal"
+    name: "Add Group to Campaign"
+    goal: "Link the contact group to the campaign"
+    
+    # Use structured data mapping for reliability
+    data_mapping:
+      tool: "update_object"
+      args:
+        object_type: "campaign"
+        id: "{{campaign_id}}"
+        data:
+          add_contact_group_ids:
+            - "{{contact_group_id}}"
+    
+    execution_strategy:
+      approach: "structured"
+      allowed_tools:
+        - update_object
+      success_when:
+        campaign_updated: true
+    
+    ai_instructions: |
+      Execute the data_mapping to add the contact group to the campaign.
+      Use the update_object tool with add_contact_group_ids field.
+
+  # Phase 3: Verify success
+  - id: "validation"
+    type: "validate_result"
+    name: "Verify Association"
+    goal: "Confirm the contact group is associated with the campaign"
+    
+    validation_rules:
+      - rule: "ai_check"
+        check: "The contact group is now associated with the campaign (whether newly added or already existed)"
+        context_required:
+          - "execute_goal result with operation_message"
+          - "contact_group_count from updated campaign"
+        
+    success_message: |
+      ✅ Task complete! The contact group is associated with the campaign.
+      
+      The campaign can now reach all contacts in this group when it sends.
+
+# Success criteria
+success_criteria:
+  required_outputs:
+    - campaign_id
+    - contact_group_id
+    - updated_campaign
+  validation_rules:
+    - "Group added to campaign successfully"
+
+# Error handling
+validation:
+  required_context:
+    - campaign_id
+    - contact_group_id
+  error_messages:
+    missing_campaign: "Could not find the specified campaign"
+    missing_group: "Could not find the specified contact group"
+    already_added: "This contact group is already part of this campaign"
+

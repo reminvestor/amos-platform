@@ -106,7 +106,32 @@ module Tools
         return error_response("Some contact groups not found") if groups_to_add.count != group_ids.count
         
         # Add to existing groups without removing current ones
-        campaign.contact_groups << groups_to_add
+        # Make idempotent - only add groups that aren't already there
+        existing_group_ids = campaign.contact_group_ids
+        new_groups = groups_to_add.reject { |g| existing_group_ids.include?(g.id) }
+        already_added_groups = groups_to_add.select { |g| existing_group_ids.include?(g.id) }
+        
+        if new_groups.any?
+          campaign.contact_groups << new_groups
+          Rails.logger.info "✅ Added #{new_groups.count} new contact group(s) to campaign"
+          
+          # Store info about what was added
+          @add_group_result = {
+            newly_added: new_groups.count,
+            already_existed: already_added_groups.count,
+            message: "Added #{new_groups.count} contact group(s). #{already_added_groups.count > 0 ? "(#{already_added_groups.count} already existed)" : ""}"
+          }
+        else
+          Rails.logger.info "ℹ️ All requested contact groups already associated with campaign"
+          
+          # Still a success - the goal is achieved (groups are on campaign)
+          @add_group_result = {
+            newly_added: 0,
+            already_existed: already_added_groups.count,
+            message: "Contact group(s) already on this campaign - no changes needed"
+          }
+        end
+        
         data.delete('add_contact_group_ids')
       end
       
@@ -184,16 +209,25 @@ module Tools
     
     # Formatting helpers
     def format_campaign(campaign)
-      {
+      result = {
         id: campaign.id,
         name: campaign.name,
-        type: campaign.campaign_type,
+        description: campaign.description,
         status: campaign.status,
         email_template_id: campaign.email_template_id,
         contact_groups: campaign.contact_groups.pluck(:id, :name),
+        contact_group_count: campaign.contact_groups.count,
         created_at: campaign.created_at,
         updated_at: campaign.updated_at
       }
+      
+      # Include add_group result if it was an add operation
+      if @add_group_result
+        result[:add_group_result] = @add_group_result
+        result[:operation_message] = @add_group_result[:message]
+      end
+      
+      result
     end
     
     def format_contact(contact)

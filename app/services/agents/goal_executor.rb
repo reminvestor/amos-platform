@@ -597,14 +597,23 @@ module Agents
       
       if result[:success]
         Rails.logger.info "✅ Structured execution successful!"
+        
+        # Extract operation message if available (for idempotent operations)
+        operation_msg = result[:result]&.dig('operation_message') || 
+                       result[:result]&.dig(:operation_message)
+        
         store_phase_output(result[:result] || {}, 'step_output')
-        notify_progress("Goal achieved!", type: 'phase_complete')
+        
+        # Use specific message if available, otherwise generic success
+        success_msg = operation_msg || "Goal achieved!"
+        notify_progress(success_msg, type: 'phase_complete')
         
         return {
           success: true,
           status: 'completed',
           data: result[:result],
-          phase: phase[:id] || phase['id']
+          phase: phase[:id] || phase['id'],
+          message: success_msg
         }
       else
         Rails.logger.error "❌ Structured execution failed: #{result[:error]}"
