@@ -107,10 +107,18 @@ When asked to create a workflow:
    - Ensure template_version: 2 is set
    - Test that it loads without errors
 
-4. **Document requirements:**
-   - List tools needed
+4. **Verify and provide feedback:**
+   - Test the template loads: `WorkflowTemplateLoader.load_template('[slug]')`
+   - Show the user what was created
+   - Display the trigger keywords
+   - Explain how to test it: "Just say: [example trigger]"
+   - List tools needed and check if they exist
+
+5. **Document requirements:**
+   - List tools needed (existing vs new)
    - Note any missing capabilities
    - Suggest integrations if external APIs needed
+   - Provide example conversation to trigger the workflow
 
 ## Available Tools Reference
 
@@ -140,8 +148,62 @@ Check `Tools::ToolCatalog.instance.all_tools` for available tools:
 - Available in validation phase
 - No "context." prefix needed
 
+## Ideal Response Format
+
+After creating the workflow, provide a comprehensive summary:
+
+```
+✅ Workflow Template Created!
+
+📄 File: app/workflow_templates/your_workflow_v2.yml
+🎯 Name: Your Workflow Name
+🔑 Trigger Keywords:
+   • "keyword 1"
+   • "keyword 2"
+   • "keyword 3"
+
+📋 Template Structure:
+   Phase 1: Gather Context
+   ├─ Collects: field1, field2, field3
+   └─ Sources: conversation history, direct questions
+
+   Phase 2: Execute Goal
+   ├─ Approach: Structured
+   ├─ Tools Used: tool_name
+   └─ Creates: [description of output]
+
+   Phase 3: Validation
+   └─ Checks: [validation criteria]
+
+🛠️ Tools Required:
+   ✅ tool_name (exists)
+   ✅ another_tool (exists)
+   ❌ missing_tool (needs to be created)
+
+🧪 How to Test:
+   Just say: "keyword 1 for my business"
+
+   AMOS will:
+   1. Ask you for [required info]
+   2. Execute using [tool_name]
+   3. Validate and return results
+
+📝 Next Steps:
+   • Template is ready to use immediately (auto-discovered)
+   • Test it in the chat interface
+   • Create missing_tool if needed (use /add-tool)
+```
+
+This helps users understand:
+- ✅ What was created
+- ✅ How to trigger it
+- ✅ What to expect
+- ✅ What's missing (if anything)
+
 ## Project Context
 
 - Codebase: AMOS - AI-powered marketing automation
 - Framework: Rails 8, AWS Bedrock (Claude Sonnet 4.5)
+- Templates are auto-discovered from app/workflow_templates/
+- No database/UI needed - file-based system
 - See CLAUDE.md for full architecture details
