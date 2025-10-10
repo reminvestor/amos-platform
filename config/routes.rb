@@ -47,7 +47,9 @@ Rails.application.routes.draw do
   end
   
   # Routes with constraints on subdomain - application routes for 'app' subdomain
-  constraints(lambda { |req| req.subdomain == 'app' }) do
+  # TEMP: Commented out for local testing - uncomment for production
+  # constraints(lambda { |req| req.subdomain == 'app' }) do
+  if true  # Temporary - always allow access
     # Solid Queue Interface
     authenticate :user, lambda { |u| u.admin? } do
       mount SolidQueueInterface::Engine => '/solid_queue'

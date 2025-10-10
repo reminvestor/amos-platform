@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_30_151650) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_10_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -181,7 +181,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_151650) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "email_template_id"
-    t.bigint "entity_id"
+    t.bigint "entity_id", null: false
     t.text "ai_analysis"
     t.datetime "last_analyzed_at"
     t.string "mailgun_tag"
@@ -217,7 +217,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_151650) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.bigint "entity_id"
+    t.bigint "entity_id", null: false
     t.index ["entity_id"], name: "index_contact_groups_on_entity_id"
     t.index ["user_id"], name: "index_contact_groups_on_user_id"
   end
@@ -242,7 +242,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_151650) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.jsonb "metadata"
-    t.bigint "entity_id"
+    t.bigint "entity_id", null: false
     t.boolean "opted_out", default: false
     t.datetime "opted_out_at"
     t.boolean "lead", default: true, null: false
@@ -363,6 +363,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_151650) do
     t.index ["status"], name: "index_email_deliveries_on_status"
   end
 
+  create_table "email_sequences", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "goal"
+    t.string "status", default: "draft", null: false
+    t.bigint "contact_group_id", null: false
+    t.bigint "entity_id", null: false
+    t.integer "enrolled_count", default: 0
+    t.integer "completed_count", default: 0
+    t.integer "active_count", default: 0
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contact_group_id"], name: "index_email_sequences_on_contact_group_id"
+    t.index ["entity_id", "status"], name: "index_email_sequences_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_email_sequences_on_entity_id"
+    t.index ["status"], name: "index_email_sequences_on_status"
+  end
+
   create_table "email_templates", force: :cascade do |t|
     t.string "name"
     t.string "subject"
@@ -370,7 +388,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_151650) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.bigint "entity_id"
+    t.bigint "entity_id", null: false
     t.index ["entity_id"], name: "index_email_templates_on_entity_id"
     t.index ["user_id"], name: "index_email_templates_on_user_id"
   end
@@ -735,6 +753,46 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_151650) do
     t.index ["entity_id"], name: "index_scout_messages_on_entity_id"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_id_and_created_at"
     t.index ["user_id"], name: "index_scout_messages_on_user_id"
+  end
+
+  create_table "sequence_enrollments", force: :cascade do |t|
+    t.bigint "email_sequence_id", null: false
+    t.bigint "contact_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "status", default: "pending", null: false
+    t.integer "current_step_number", default: 0
+    t.datetime "next_send_at"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "last_email_sent_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contact_id"], name: "index_sequence_enrollments_on_contact_id"
+    t.index ["email_sequence_id", "contact_id"], name: "index_enrollments_on_sequence_and_contact", unique: true
+    t.index ["email_sequence_id"], name: "index_sequence_enrollments_on_email_sequence_id"
+    t.index ["entity_id", "status"], name: "index_sequence_enrollments_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_sequence_enrollments_on_entity_id"
+    t.index ["next_send_at"], name: "index_sequence_enrollments_on_next_send_at"
+    t.index ["status"], name: "index_sequence_enrollments_on_status"
+  end
+
+  create_table "sequence_steps", force: :cascade do |t|
+    t.bigint "email_sequence_id", null: false
+    t.integer "step_number", null: false
+    t.integer "delay_hours", default: 0, null: false
+    t.bigint "email_template_id"
+    t.string "subject"
+    t.text "body"
+    t.integer "sent_count", default: 0
+    t.integer "opened_count", default: 0
+    t.integer "clicked_count", default: 0
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["delay_hours"], name: "index_sequence_steps_on_delay_hours"
+    t.index ["email_sequence_id", "step_number"], name: "index_sequence_steps_on_email_sequence_id_and_step_number", unique: true
+    t.index ["email_sequence_id"], name: "index_sequence_steps_on_email_sequence_id"
+    t.index ["email_template_id"], name: "index_sequence_steps_on_email_template_id"
   end
 
   create_table "shared_models", force: :cascade do |t|
@@ -1168,6 +1226,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_151650) do
   add_foreign_key "email_deliveries", "campaigns"
   add_foreign_key "email_deliveries", "contacts"
   add_foreign_key "email_deliveries", "email_templates"
+  add_foreign_key "email_sequences", "contact_groups"
+  add_foreign_key "email_sequences", "entities"
   add_foreign_key "email_templates", "entities"
   add_foreign_key "email_templates", "users"
   add_foreign_key "entity_users", "entities"
@@ -1209,6 +1269,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_151650) do
   add_foreign_key "scout_conversations", "users"
   add_foreign_key "scout_messages", "entities"
   add_foreign_key "scout_messages", "users"
+  add_foreign_key "sequence_enrollments", "contacts"
+  add_foreign_key "sequence_enrollments", "email_sequences"
+  add_foreign_key "sequence_enrollments", "entities"
+  add_foreign_key "sequence_steps", "email_sequences"
+  add_foreign_key "sequence_steps", "email_templates"
   add_foreign_key "shared_models", "custom_models"
   add_foreign_key "shared_models", "entities"
   add_foreign_key "shared_plugins", "custom_plugins"
