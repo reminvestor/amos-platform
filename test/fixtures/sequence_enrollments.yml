@@ -1,0 +1,24 @@
+active_enrollment:
+  email_sequence: active_sequence
+  contact: one
+  entity: default
+  status: "active"
+  current_step_number: 1
+  next_send_at: <%= 1.day.from_now %>
+  started_at: <%= 1.day.ago %>
+
+pending_enrollment:
+  email_sequence: welcome_sequence
+  contact: two
+  entity: default
+  status: "pending"
+  current_step_number: 0
+
+completed_enrollment:
+  email_sequence: active_sequence
+  contact: three
+  entity: default
+  status: "completed"
+  current_step_number: 3
+  started_at: <%= 10.days.ago %>
+  completed_at: <%= 1.day.ago %>

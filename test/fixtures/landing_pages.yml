@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  entity: one
+  user: one
+  title: "Test Landing Page 1"
+  slug: "test-landing-page-1"
+  status: "draft"
+  description: "Test description 1"
+
+two:
+  entity: one
+  user: two
+  title: "Test Landing Page 2"
+  slug: "test-landing-page-2"
+  status: "published"
+  description: "Test description 2"
