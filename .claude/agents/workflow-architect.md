@@ -30,35 +30,60 @@ keywords:
   - "trigger phrase 2"
 
 phases:
-  gather_context:
-    system_prompt: |
-      Instructions for gathering user input and analyzing context
-    questions:
-      - "Required question 1?"
-      - "Optional question 2?"
-    file_analysis:
-      - type: "pdf|image|brand_guide"
-        purpose: "What to extract"
+  - id: "gather_context"
+    type: "gather_context"
+    name: "Gather Requirements"
+    goal: "Collect all needed information"
 
-  execute_goal:
-    execution_mode: "structured|adaptive"
-    system_prompt: |
-      Instructions for achieving the goal
-    structured_execution:
-      tool_sequence:
-        - tool: "tool_name"
-          params:
-            field: "{{context.field}}"
-    adaptive_execution:
-      system_prompt: |
-        Let AI plan tool sequence dynamically
+    required_fields:
+      - key: "field_name"
+        prompt: "What's the question?"
+        required: true
+        validation: "text|email|url|number"
 
-  validate_result:
-    system_prompt: |
-      Validation criteria and auto-fix instructions
-    validation_criteria:
-      - "Must have X"
-      - "Should include Y"
+    context_sources:
+      - "direct_conversation"
+      - "conversation_history"
+      - "entity_profile"
+
+    ai_instructions: |
+      Ask conversationally for the information.
+      Check conversation history first before asking.
+
+  - id: "execute_goal"
+    type: "execute_goal"
+    name: "Execute Task"
+    goal: "Accomplish the objective"
+
+    # Option A: Structured (reliable, explicit)
+    data_mapping:
+      tool: "tool_name"
+      args:
+        field1: "{{field_name}}"
+        field2: "{{another_field}}"
+
+    execution_strategy:
+      approach: "structured"  # or "adaptive"
+      allowed_tools:
+        - tool_name
+
+    ai_instructions: |
+      Execute the data_mapping using actual context values.
+
+  - id: "validation"
+    type: "validate_result"
+    name: "Quality Check"
+    goal: "Ensure success"
+
+    validation_rules:
+      - rule: "ai_check"
+        check: "Output meets requirements"
+
+    ai_instructions: |
+      Validate the result and attempt auto-fixes if needed.
+
+    success_message: |
+      ✅ Task complete!
 ```
 
 ## Your Process
@@ -109,10 +134,11 @@ Check `Tools::ToolCatalog.instance.all_tools` for available tools:
 - Dynamic tool selection needed
 - Flexible problem-solving required
 
-**Context Variables** - Format: `{{context.field_name}}`
-- Gathered from gather_context phase
-- Used in execute_goal parameters
+**Context Variables** - Format: `{{field_name}}`
+- Gathered from gather_context phase (required_fields)
+- Used in execute_goal data_mapping
 - Available in validation phase
+- No "context." prefix needed
 
 ## Project Context
 
