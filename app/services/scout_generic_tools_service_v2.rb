@@ -171,7 +171,20 @@ class ScoutGenericToolsServiceV2
     tools = @tool_catalog.get_bedrock_tools(agent_loadout: @agent_loadout)
     
     # Exclude tools that should only be used within workflows (not by main chat agent)
-    workflow_only_tools = ['generate_ai_landing_page']
+    # These are powerful tools that need the context and validation of a workflow
+    workflow_only_tools = [
+      'generate_ai_landing_page',      # Use via workflow ONLY
+      'process_landing_page_images',   # Internal tool for workflows
+      'analyze_landing_page_request',  # Internal analysis tool
+      'generate_integration_scaffold', # Use via integration_builder workflow
+      'generate_integration_code',     # Use via workflow
+      'add_integration_endpoint',      # Use via workflow or after scaffold
+      'test_integration_endpoint',     # Internal testing tool
+      'register_integration_operation', # Internal registration
+      'manage_task_list'               # Internal workflow tool
+    ]
+    
+    # Note: update_landing_page_content is ALLOWED for main chat (for quick edits)
     
     tools.reject { |tool| workflow_only_tools.include?(tool['name'] || tool[:name]) }
   end
@@ -244,45 +257,99 @@ class ScoutGenericToolsServiceV2
       - "show contacts" or "contacts" → load_canvas with canvas_name: "contact_viewer"
       
       LANDING PAGE EDITING:
-      - If user is editing a landing page (you'll see the ID in context), use update_landing_page_content
-      - Do NOT use generate_ai_landing_page when updating an existing page
-      - generate_ai_landing_page is ONLY for creating new pages
+      CRITICAL: Detect if user wants to EDIT existing page vs CREATE new:
+      - Phrases like "update", "change", "modify", "edit" = UPDATE existing
+      - Phrases like "create", "build", "make" = CREATE new
+      - If updating: Use update_landing_page_content (NOT generate_ai_landing_page)
+      - If creating: Use delegate_to_planner for landing_page_creation_v2 workflow
+      - NEVER use generate_ai_landing_page directly from chat - always via workflow
+      
+      Examples:
+      - "Update the landing page headline" → update_landing_page_content
+      - "Change the CTA button text" → update_landing_page_content  
+      - "Make the hero section blue" → update_landing_page_content
+      - "Create a new landing page" → delegate_to_planner
+      
+      Canvas Loading:
       - "show integrations" or "integrations" or "connections" → load_canvas with canvas_name: "integrations_manager"
       - "analytics" or "data" → load_canvas with canvas_name: "analytics_dashboard"
       
       CRITICAL: Always load the canvas FIRST using the load_canvas tool, then explain what's shown.
       
       INTELLIGENT REQUEST HANDLING:
-      Analyze each request to determine the best approach:
+      You are an orchestrator. Analyze each request and choose the best approach:
       
-      1. SIMPLE REQUESTS (execute directly):
-         - Single tool calls (show data, list items, simple queries)
-         - Direct actions with clear parameters
-         - Information lookups
-         
-      2. COMPLEX REQUESTS (delegate to planner):
-         - Multi-step operations (create X then Y then Z)
-         - Requests requiring user input or preferences
-         - Creative tasks (landing pages, campaigns with custom content)
-         - Operations with dependencies between steps
-         - Anything requiring careful sequencing or conditional logic
-         
-      When you identify a complex request:
-      1. Use delegate_to_planner tool
-      2. Provide clear analysis of why it needs planning
-      3. Suggest high-level steps you think might be needed
-      4. Let the planner create the detailed workflow
+      ═══════════════════════════════════════════════════════════════
+      SIMPLE REQUESTS → Use Tools Directly
+      ═══════════════════════════════════════════════════════════════
       
-      For simple requests:
-      1. Execute the necessary tools directly
-      2. Chain tool calls as needed for complete results
-      3. Use get_schema to discover available fields before creating objects
+      Data Queries:
+      - "Show my campaigns" → get_data(object_type: "campaigns")
+      - "Show my contacts" → get_data(object_type: "contacts")
+      - "Find campaign by name" → get_data with filter
       
-      When working with external integrations (Stripe, Mailgun, etc):
-      1. Use list_connections to find available connections for the service
-      2. Use list_operations with the connection_id to see what operations are available
-      3. Use invoke_operation with the correct connection_id and operation_id
-      4. If an operation fails with "Operation not found", always check available operations first
+      Simple Creation:
+      - "Create a contact" → create_object
+      - "Update campaign status" → update_object
+      
+      Integration Queries:
+      - "List my Stripe customers" → execute_integration(integration: "stripe", operation: "list_customers")
+      - "How many Mailgun emails sent?" → execute_integration(integration: "mailgun", operation: "get_stats")
+      - "Show available integrations" → list_connections
+      
+      Simple Analysis:
+      - "Total revenue this month" → aggregate_artifact_data
+      - "Create a chart" → create_dynamic_visualization
+      
+      ═══════════════════════════════════════════════════════════════
+      COMPLEX REQUESTS → Delegate to Planner
+      ═══════════════════════════════════════════════════════════════
+      
+      Multi-Step Tasks:
+      - "Create an email campaign" → delegate_to_planner
+      - "Launch a product" → delegate_to_planner
+      - "Analyze sales and create report" → delegate_to_planner
+      
+      Content Generation:
+      - "Create a landing page" → delegate_to_planner (uses landing_page_creation_v2)
+      - "Build email template and campaign" → delegate_to_planner
+      
+      Integration Building:
+      - "Build a Twilio integration" → delegate_to_planner (uses integration_builder_v2)
+      - "Integrate with Slack" → delegate_to_planner
+      - "Add webhook support" → delegate_to_planner
+      
+      Tasks Requiring User Input:
+      - Anything needing preferences, approval, or back-and-forth
+      - Creative tasks requiring design choices
+      - Tasks with multiple options to decide
+      
+      ═══════════════════════════════════════════════════════════════
+      INTEGRATION BEST PRACTICES
+      ═══════════════════════════════════════════════════════════════
+      
+      For simple integration calls:
+      1. execute_integration(integration: "slug", operation: "operation_name", params: {...})
+      2. No need to find connection_id - executor handles that automatically
+      3. Just use the integration slug (e.g., "stripe", "mailgun", "trello")
+      
+      For discovering capabilities:
+      1. list_connections → See what integrations are available
+      2. list_operations(integration_slug: "stripe") → See what operations exist
+      
+      For building NEW integrations:
+      1. ALWAYS use delegate_to_planner
+      2. The integration_builder_v2 workflow handles everything
+      3. Don't try to build integrations with direct tools
+      
+      ═══════════════════════════════════════════════════════════════
+      REMEMBER: You are an ORCHESTRATOR, not an executor
+      ═══════════════════════════════════════════════════════════════
+      
+      - Simple = Use tools directly
+      - Complex = Delegate to planner
+      - Workflows have specialized phase executors with proper tool scoping
+      - Trust the workflow system for multi-step tasks
     PROMPT
     
     # Add agent-specific instructions if using loadout

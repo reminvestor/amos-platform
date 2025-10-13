@@ -600,9 +600,13 @@ module Agents
         
         # Extract operation message if available (for idempotent operations)
         operation_msg = result[:result]&.dig('operation_message') || 
-                       result[:result]&.dig(:operation_message)
+                       result[:result]&.dig(:operation_message) ||
+                       result[:message] || result['message']
         
-        store_phase_output(result[:result] || {}, 'step_output')
+        # Store the result data - tools return data directly, not nested in [:result]
+        data_to_store = result[:data] || result['data'] || result.except(:success, :message, 'success', 'message')
+        Rails.logger.info "📦 Storing phase output: #{data_to_store.keys.join(', ')}"
+        store_phase_output(data_to_store, 'step_output')
         
         # Use specific message if available, otherwise generic success
         success_msg = operation_msg || "Goal achieved!"
@@ -611,7 +615,7 @@ module Agents
         return {
           success: true,
           status: 'completed',
-          data: result[:result],
+          data: data_to_store,
           phase: phase[:id] || phase['id'],
           message: success_msg
         }
