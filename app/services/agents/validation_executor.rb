@@ -57,7 +57,7 @@ module Agents
       store_phase_output({
         validation_results: validation_results,
         all_passed: all_passed
-      }, 'validation_result')
+      }, 'step_output')  # Use valid enum value
       
       if all_passed
         # Use custom success message from template if available
@@ -439,6 +439,44 @@ module Agents
       if html_content.blank?
         landing_page_data = context_data.values.find { |v| v.is_a?(Hash) && v['html_content'] }
         html_content = landing_page_data['html_content'] if landing_page_data
+      end
+      
+      # If STILL not found, check if we have a landing_page_id and load it from database
+      if html_content.blank?
+        # Try multiple ways to find the landing_page_id
+        landing_page_id = context_data['landing_page_id'] || 
+                         context_data[:landing_page_id] ||
+                         context_data['id'] ||  # Also try just 'id'
+                         context_data[:id] ||
+                         context_data.dig('step_output', 'landing_page_id') ||
+                         context_data.dig(:step_output, :landing_page_id) ||
+                         context_data.dig('execute_goal_landing_page_id') ||
+                         context_data.dig(:execute_goal_landing_page_id) ||
+                         context_data.dig('execute_goal_id') ||  # Phase prefix + id
+                         context_data.dig(:execute_goal_id)
+        
+        # Also check in nested results
+        if landing_page_id.blank?
+          context_data.each do |key, value|
+            if (key.to_s.include?('landing_page_id') || key.to_s.end_with?('_id')) && value.is_a?(Integer) && value.present?
+              landing_page_id = value
+              Rails.logger.info "🔍 Found ID in key: #{key} = #{value}"
+              break
+            end
+          end
+        end
+        
+        if landing_page_id
+          begin
+            landing_page = LandingPage.find(landing_page_id)
+            html_content = landing_page.html_content
+            Rails.logger.info "✅ Found HTML content from landing page ##{landing_page_id} (#{html_content&.length || 0} chars)"
+          rescue => e
+            Rails.logger.warn "Could not load landing page ##{landing_page_id}: #{e.message}"
+          end
+        else
+          Rails.logger.warn "⚠️ No landing_page_id found in context. Available keys: #{context_data.keys.join(', ')}"
+        end
       end
       
       html_content

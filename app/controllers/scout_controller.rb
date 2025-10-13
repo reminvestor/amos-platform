@@ -44,8 +44,14 @@ class ScoutController < ApplicationController
       save_scout_message('user', user_message)
       Rails.logger.info "Scout: Saved user message"
       
-      # Use the new V2 tools service
-      generic_tools_service = ScoutGenericToolsServiceV2.new(current_user, current_entity, session[:scout_session_id])
+      # Use the new V2 tools service with main_chat agent loadout
+      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+      generic_tools_service = ScoutGenericToolsServiceV2.new(
+        current_user, 
+        current_entity, 
+        session[:scout_session_id],
+        agent_loadout: main_chat_loadout
+      )
       
       conversation_history = persisted_history_last_k(12)
       

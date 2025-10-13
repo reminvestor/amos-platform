@@ -127,6 +127,7 @@ module Tools
         
         success_response(
           id: landing_page.id,
+          landing_page_id: landing_page.id,  # Include for workflow context
           title: landing_page.title,
           slug: landing_page.slug,
           status: 'draft',

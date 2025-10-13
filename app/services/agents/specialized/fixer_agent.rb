@@ -290,7 +290,7 @@ module Agents
         PROMPT
         
         response = @ai_service.complete(
-          prompt: fix_prompt,
+          messages: [{ role: 'user', content: fix_prompt }],
           max_tokens: 1000,
           temperature: 0.5
         )
@@ -422,12 +422,38 @@ module Agents
       end
       
       def build_tool_context
+        # Safely extract workflow_execution_id
+        workflow_exec = @execution_context[:workflow_execution]
+        workflow_exec_id = if workflow_exec.respond_to?(:id)
+          workflow_exec.id
+        elsif workflow_exec.is_a?(Hash)
+          workflow_exec[:id] || workflow_exec['id']
+        else
+          nil
+        end
+        
+        # Safely extract task_session_id
+        task_session_id = if @task_session.respond_to?(:id)
+          @task_session.id
+        elsif @task_session.is_a?(Hash)
+          @task_session[:id] || @task_session['id']
+        else
+          nil
+        end
+        
+        # Safely extract user and entity
+        user = @execution_context[:user]
+        user = user.is_a?(Hash) ? nil : user  # Skip if hash, needs to be object
+        
+        entity = @execution_context[:entity]
+        entity = entity.is_a?(Hash) ? nil : entity  # Skip if hash, needs to be object
+        
         {
-          user: @execution_context[:user] || @task_session&.user,
-          entity: @execution_context[:entity] || @task_session&.user&.entity,
+          user: user || @task_session&.user,
+          entity: entity || @task_session&.user&.entity,
           context: {
-            task_session_id: @task_session&.id,
-            workflow_execution_id: @execution_context[:workflow_execution]&.id,
+            task_session_id: task_session_id,
+            workflow_execution_id: workflow_exec_id,
             fixer_agent_id: @id
           }
         }

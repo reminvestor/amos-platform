@@ -1,0 +1,324 @@
+template_version: 2
+name: "AI Integration Builder"
+slug: "integration_builder_v2"
+description: "Intelligently build integrations with external APIs through research, RAG storage, and iterative development"
+category: "integration"
+
+config:
+  execution_mode: "adaptive"
+  context_aware: true
+  conversational: true
+  self_healing: true
+  iterative: true
+
+keywords:
+  - integration
+  - api
+  - connect
+  - build integration
+  - connect to app
+  - integrate with
+  - api integration
+  - third party
+
+phases:
+  # Phase 1: Discover the integration target
+  - id: "discover_target"
+    type: "gather_context"
+    name: "Identify Integration Target"
+    goal: "Understand which application the user wants to integrate with"
+    
+    required_fields:
+      - key: "app_name"
+        prompt: "Which application or API would you like to integrate with?"
+        required: true
+        validation: "text"
+      - key: "integration_purpose"
+        prompt: "What do you want to accomplish with this integration?"
+        required: true
+        validation: "text"
+      - key: "key_features"
+        prompt: "What specific features or endpoints are you most interested in?"
+        required: false
+        validation: "text"
+    
+    context_sources:
+      - "direct_conversation"
+      - "conversation_history"
+      - "entity_profile"
+    
+    ai_instructions: |
+      Ask the user which app they want to integrate with and what they want to accomplish.
+      Be conversational and helpful. Extract the app name clearly.
+
+  # Phase 2: Research the API
+  - id: "research_api"
+    type: "execute_goal"
+    name: "Research API Documentation"
+    goal: "Search the web for comprehensive API documentation and return a summary to the user"
+    
+    execution_strategy:
+      approach: "adaptive"
+      allowed_tools:
+        - web_search
+        - get_workflow_context
+      
+      success_when:
+        search_completed: true
+        results_found: true
+    
+    ai_instructions: |
+      1. Use web_search to find API documentation for the app_name
+      2. Search for: "[app_name] API documentation", "[app_name] API reference", "[app_name] developer docs"
+      3. Compile a comprehensive summary of:
+         - Authentication methods available
+         - Key API endpoints discovered
+         - Rate limits and constraints
+         - Required credentials/API keys
+         - Link to official documentation
+      4. Present this summary to the user in a clear, organized format
+      5. STOP and wait for user feedback - DO NOT proceed to next phase automatically
+
+  # Phase 3: Gather user feedback and documents
+  - id: "gather_feedback"
+    type: "gather_context"
+    name: "Collect User Feedback & Resources"
+    goal: "Get user's feedback on research and collect any additional documentation they want to provide"
+    
+    required_fields:
+      - key: "user_feedback"
+        prompt: "Based on the research summary, does this look correct? Any additional information or corrections?"
+        required: true
+        validation: "text"
+      - key: "documentation_links"
+        prompt: "Do you have any specific documentation links or pages you'd like me to review?"
+        required: false
+        validation: "array"
+      - key: "uploaded_docs"
+        prompt: "You can also upload any API documentation files (PDFs, markdown, etc.)"
+        required: false
+        validation: "files"
+    
+    context_sources:
+      - "workflow_context"  # Check for uploaded files
+      - "direct_conversation"
+    
+    ai_instructions: |
+      Ask the user for feedback on the API research.
+      Allow them to provide:
+      - Corrections or clarifications
+      - Additional documentation links
+      - Uploaded documentation files
+      
+      Be encouraging and make it clear they can provide as much or as little as they want.
+
+  # Phase 4: Build RAG knowledge base
+  - id: "build_rag_store"
+    type: "execute_goal"
+    name: "Create Knowledge Base"
+    goal: "Perform comprehensive search and create a RAG store with all API documentation"
+    
+    execution_strategy:
+      approach: "adaptive"
+      allowed_tools:
+        - web_search
+        - create_rag_store
+        - get_workflow_context
+      
+      success_when:
+        rag_store_created: true
+        documentation_indexed: true
+    
+    ai_instructions: |
+      1. Gather ALL documentation from:
+         - Previous search results from research_api phase
+         - User-provided links from gather_feedback
+         - Uploaded files from workflow context
+      
+      2. Perform additional targeted searches for:
+         - "[app_name] authentication guide"
+         - "[app_name] API endpoints list"
+         - "[app_name] code examples"
+         - "[app_name] API client library"
+      
+      3. Use create_rag_store tool with:
+         - app_name: from context
+         - documentation: array of URLs from searches
+         - search_results: all search results gathered
+         - user_uploads: files from workflow_context
+      
+      4. Confirm to user that knowledge base has been created with X documents indexed
+
+  # Phase 5: Generate integration scaffold
+  - id: "generate_scaffold"
+    type: "execute_goal"
+    name: "Create Integration Shell"
+    goal: "Generate integration structure with authentication and one test endpoint"
+    
+    execution_strategy:
+      approach: "adaptive"
+      allowed_tools:
+        - query_rag_store
+        - generate_integration_scaffold
+        - generate_integration_code
+        - get_workflow_context
+      
+      success_when:
+        scaffold_created: true
+        auth_implemented: true
+        test_endpoint_created: true
+    
+    ai_instructions: |
+      1. Query the RAG store to understand authentication requirements
+      2. Use generate_integration_scaffold to create the integration structure
+         - This automatically creates the service, auth, and operations files
+         - Auto-discovery will register any operations
+      
+      3. Use add_integration_endpoint to create one test endpoint
+         - Choose a simple endpoint like "get_account" or "list_items"
+         - This will automatically register the operation
+      
+      4. Present the generated code structure to the user
+      5. Tell them to use execute_integration to test it
+
+  # Phase 6: Test the endpoint
+  - id: "test_endpoint"
+    type: "gather_context"
+    name: "User Testing"
+    goal: "Have user test the integration and provide feedback"
+    
+    required_fields:
+      - key: "test_results"
+        prompt: "Please test the integration endpoint. Did it work? What happened?"
+        required: true
+        validation: "text"
+      - key: "test_credentials"
+        prompt: "Did you provide test credentials? (We'll guide you on securing these properly)"
+        required: false
+        validation: "text"
+      - key: "errors_encountered"
+        prompt: "Did you encounter any errors? If so, please share the error messages."
+        required: false
+        validation: "text"
+    
+    context_sources:
+      - "direct_conversation"
+      - "workflow_context"
+    
+    ai_instructions: |
+      Ask the user to test the integration endpoint.
+      Be supportive and help troubleshoot any issues.
+      Get clear feedback on whether it worked or not.
+
+  # Phase 7: Fix issues (if any)
+  - id: "fix_issues"
+    type: "execute_goal"
+    name: "Debug & Fix"
+    goal: "Analyze test results and fix any issues with the integration"
+    
+    execution_strategy:
+      approach: "adaptive"
+      allowed_tools:
+        - query_rag_store
+        - add_integration_endpoint
+        - get_workflow_context
+      
+      adaptive:
+        max_attempts: 3
+      
+      success_when:
+        issues_resolved: true
+        endpoint_working: true
+    
+    ai_instructions: |
+      1. Analyze the test_results and errors_encountered from previous phase
+      2. If successful, skip to next phase
+      3. If issues found:
+         - Query RAG store for solutions
+         - Identify the root cause
+         - Generate fixed code
+         - Explain the fix to the user
+         - Ask them to test again
+      4. Repeat until working or max attempts reached
+
+  # Phase 8: Build remaining endpoints
+  - id: "build_endpoints"
+    type: "execute_goal"
+    name: "Complete Integration"
+    goal: "Build out all remaining API endpoints based on user's requirements"
+    
+    execution_strategy:
+      approach: "adaptive"
+      allowed_tools:
+        - query_rag_store
+        - add_integration_endpoint
+        - execute_integration
+        - get_workflow_context
+      
+      success_when:
+        all_endpoints_created: true
+        all_tests_passed: true
+    
+    ai_instructions: |
+      Now that one endpoint is working, build out the rest:
+      
+      1. Query RAG store to understand available endpoints
+      2. Based on integration_purpose and key_features, identify endpoints to build
+      3. For each endpoint:
+         a. Query RAG for endpoint details (params, response format)
+         b. Generate code using add_integration_endpoint
+         c. Test using execute_integration
+         d. Fix any issues
+         e. Move to next endpoint
+      
+      4. Generate comprehensive documentation for the integration:
+         - How to use each endpoint
+         - Example code
+         - Common errors and solutions
+      
+      5. Present completed integration to user with usage guide
+
+  # Phase 9: Validate complete integration
+  - id: "validation"
+    type: "validate_result"
+    name: "Quality Check"
+    goal: "Ensure the integration is complete, tested, and documented"
+    
+    validation_rules:
+      - rule: "auth_working"
+        check: "Authentication is properly implemented and tested"
+        
+      - rule: "endpoints_complete"
+        check: "All requested endpoints are implemented"
+        
+      - rule: "error_handling"
+        check: "Proper error handling and rate limiting in place"
+        
+      - rule: "documented"
+        check: "Integration has clear documentation and examples"
+        
+      - rule: "tested"
+        check: "All endpoints have been tested successfully"
+    
+    on_failure:
+      action: "attempt_fix"
+      max_fix_attempts: 2
+      use_fixer_agent: true
+
+success_criteria:
+  - integration_created: true
+  - auth_implemented: true
+  - endpoints_working: true
+  - documented: true
+  - tested: true
+
+validation:
+  required_context:
+    - app_name
+    - integration_purpose
+  quality_checks:
+    - check_auth_implementation
+    - verify_endpoints
+    - validate_error_handling
+    - check_documentation
+
