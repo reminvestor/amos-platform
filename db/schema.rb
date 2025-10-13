@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_10_000001) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_13_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -405,8 +405,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_10_000001) do
     t.integer "custom_plugin_limit", default: 5
     t.integer "custom_model_limit", default: 1
     t.boolean "marketplace_vendor", default: false
+    t.string "stripe_customer_id"
+    t.string "stripe_subscription_id"
+    t.string "subscription_status"
+    t.datetime "trial_ends_at"
+    t.datetime "current_period_end"
+    t.integer "token_usage", default: 0
+    t.integer "token_limit"
+    t.string "plan_tier"
     t.index ["slug"], name: "index_entities_on_slug", unique: true
+    t.index ["stripe_customer_id"], name: "index_entities_on_stripe_customer_id"
+    t.index ["stripe_subscription_id"], name: "index_entities_on_stripe_subscription_id"
     t.index ["subdomain"], name: "index_entities_on_subdomain", unique: true
+    t.index ["subscription_status"], name: "index_entities_on_subscription_status"
   end
 
   create_table "entity_users", force: :cascade do |t|
