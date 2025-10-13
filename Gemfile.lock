@@ -517,6 +517,7 @@ GEM
     stimulus-rails (1.3.4)
       railties (>= 6.0.0)
     stringio (3.1.5)
+    stripe (12.6.0)
     thor (1.3.2)
     thruster (0.1.12)
     thruster (0.1.12-aarch64-linux)
@@ -613,6 +614,7 @@ DEPENDENCIES
   solid_queue
   solid_queue_interface
   stimulus-rails
+  stripe (~> 12.0)
   thruster
   turbo-rails
   tzinfo-data

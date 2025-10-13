@@ -1,0 +1,147 @@
+<% content_for :title, "Choose Your Plan" %>
+
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold mb-3">Choose Your Plan</h1>
+        <p class="lead text-muted">Start your 7-day free trial. No credit card required until trial ends.</p>
+      </div>
+
+      <div class="row g-4">
+        <!-- Starter Plan -->
+        <div class="col-md-4">
+          <div class="card h-100 shadow-sm">
+            <div class="card-header text-center bg-transparent pt-4 border-bottom-0">
+              <h4 class="mb-1">Starter</h4>
+              <p class="text-muted small mb-3">For individuals and small teams</p>
+              <h2 class="mb-0">$29<small class="text-muted fs-6">/month</small></h2>
+            </div>
+            <div class="card-body">
+              <ul class="list-unstyled">
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  <strong>10,000</strong> Emails/month
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  <strong>200k</strong> AI Credits
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  <strong>Unlimited</strong> Landing Pages
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  Full suite of tools
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  Email & chat support
+                </li>
+              </ul>
+            </div>
+            <div class="card-footer bg-transparent text-center border-top-0 pb-4">
+              <%= button_to subscriptions_path, params: { price_id: ENV['STRIPE_STARTER_PRICE_ID'] }, method: :post, class: "btn btn-outline-primary btn-lg w-100", data: { turbo: false } do %>
+                Start 7-Day Trial
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Professional Plan (Most Popular) -->
+        <div class="col-md-4">
+          <div class="card h-100 shadow border-primary position-relative">
+            <span class="badge bg-primary position-absolute top-0 start-50 translate-middle px-3 py-2">
+              MOST POPULAR
+            </span>
+            <div class="card-header text-center bg-primary text-white pt-4 border-bottom-0">
+              <h4 class="mb-1">Professional</h4>
+              <p class="text-white-50 small mb-3">For growing businesses</p>
+              <h2 class="mb-0 text-white">$119<small class="text-white-50 fs-6">/month</small></h2>
+            </div>
+            <div class="card-body">
+              <ul class="list-unstyled">
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  <strong>40,000</strong> Emails/month
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  <strong>1M</strong> AI Credits
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  <strong>Unlimited</strong> Landing Pages
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  Full suite of tools
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  Priority support
+                </li>
+              </ul>
+            </div>
+            <div class="card-footer bg-transparent text-center border-top-0 pb-4">
+              <%= button_to subscriptions_path, params: { price_id: ENV['STRIPE_PROFESSIONAL_PRICE_ID'] }, method: :post, class: "btn btn-primary btn-lg w-100", data: { turbo: false } do %>
+                Start 7-Day Trial
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Business Plan -->
+        <div class="col-md-4">
+          <div class="card h-100 shadow-sm">
+            <div class="card-header text-center bg-transparent pt-4 border-bottom-0">
+              <h4 class="mb-1">Business</h4>
+              <p class="text-muted small mb-3">For established teams</p>
+              <h2 class="mb-0">$299<small class="text-muted fs-6">/month</small></h2>
+            </div>
+            <div class="card-body">
+              <ul class="list-unstyled">
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  <strong>100,000</strong> Emails/month
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  <strong>2M</strong> AI Credits
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  <strong>Unlimited</strong> Landing Pages
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  Full suite of tools
+                </li>
+                <li class="mb-3">
+                  <i class="fas fa-check text-success me-2"></i>
+                  Dedicated success manager
+                </li>
+              </ul>
+            </div>
+            <div class="card-footer bg-transparent text-center border-top-0 pb-4">
+              <%= button_to subscriptions_path, params: { price_id: ENV['STRIPE_BUSINESS_PRICE_ID'] }, method: :post, class: "btn btn-outline-primary btn-lg w-100", data: { turbo: false } do %>
+                Start 7-Day Trial
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-5">
+        <p class="text-muted">
+          <i class="fas fa-lock me-2"></i>
+          Your payment information is secure. You won't be charged until your trial ends.
+        </p>
+        <p class="text-muted small">
+          Overage charges: $0.01 per 1,000 AI credits over your monthly limit
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
