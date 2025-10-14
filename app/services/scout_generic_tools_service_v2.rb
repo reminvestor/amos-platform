@@ -283,6 +283,24 @@ class ScoutGenericToolsServiceV2
       2. Use list_operations with the connection_id to see what operations are available
       3. Use invoke_operation with the correct connection_id and operation_id
       4. If an operation fails with "Operation not found", always check available operations first
+
+      CRITICAL SUBSCRIPTION MANAGEMENT RULES:
+      When users request subscription changes (upgrade, downgrade, cancel, update plan):
+
+      **YOU MUST CALL THE ACTUAL TOOLS - NEVER FAKE RESPONSES**
+
+      ❌ WRONG: Saying "Your subscription has been upgraded" without calling update_subscription
+      ❌ WRONG: Saying "Subscription cancelled" without calling cancel_subscription
+      ✅ CORRECT: Call update_subscription tool, wait for result, then confirm based on actual response
+      ✅ CORRECT: Call cancel_subscription tool with confirm:true, wait for result, then report outcome
+
+      Available subscription tools:
+      - update_subscription: Change plan tier (requires plan_tier parameter)
+      - cancel_subscription: Cancel subscription (requires confirm:true parameter)
+      - get_billing_info: Get current subscription details
+
+      NEVER assume a subscription action succeeded - ALWAYS call the tool and report the actual result.
+      If a tool fails, report the error honestly - do not pretend it worked.
     PROMPT
     
     # Add agent-specific instructions if using loadout

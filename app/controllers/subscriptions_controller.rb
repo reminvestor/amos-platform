@@ -81,6 +81,9 @@ class SubscriptionsController < ApplicationController
         token_limit: determine_token_limit(subscription.items.data.first&.price&.lookup_key)
       )
 
+      # Set session flag to show subscription confirmation in onboarding
+      session[:show_subscription_confirmation] = true
+
       # Redirect to onboarding
       redirect_to onboarding_path, notice: "Welcome! Your 7-day trial has started."
     rescue Stripe::StripeError => e

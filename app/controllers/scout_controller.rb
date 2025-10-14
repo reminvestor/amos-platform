@@ -1,10 +1,11 @@
 class ScoutController < ApplicationController
   include ActionController::Live  # Enable real-time streaming
-  
+  include ActionView::Helpers::NumberHelper  # For number formatting
+
   before_action :authenticate_user!
   before_action :ensure_entity_exists
   before_action :ensure_onboarded
-  
+
   layout 'scout'
   
   def index
@@ -1169,18 +1170,35 @@ class ScoutController < ApplicationController
   def create_welcome_message
     business_name = current_entity&.name || "your business"
     profile = current_user.business_profile
-    
+    entity = current_entity
+
+    # Build subscription info if available
+    subscription_info = ""
+    if entity.subscription_status.present? && entity.plan_tier.present?
+      plan_name = entity.plan_tier.titleize
+      token_limit = entity.token_limit || 200_000
+      token_limit_formatted = number_to_human(token_limit, format: '%n%u', units: { thousand: 'K', million: 'M' })
+
+      if entity.subscription_status == 'trialing' && entity.trial_ends_at
+        trial_days_left = ((entity.trial_ends_at - Time.current) / 1.day).ceil
+        subscription_info = "\n\n✨ You're on the **#{plan_name}** plan (#{token_limit_formatted} AI tokens/month). " \
+                           "Your trial has #{trial_days_left} days remaining."
+      elsif entity.subscription_status == 'active'
+        subscription_info = "\n\n✨ You're on the **#{plan_name}** plan with #{token_limit_formatted} AI tokens/month."
+      end
+    end
+
     welcome_message = if profile&.industry.present?
       "Welcome back! I'm Amos, your AI business automation assistant for #{business_name}. " \
       "I can help you analyze your #{profile.industry.downcase} business performance, " \
       "manage operations, automate workflows, handle integrations, and create marketing materials. " \
-      "What would you like to explore today? 🎯"
+      "What would you like to explore today? 🎯#{subscription_info}"
     else
       "Welcome to Amos! I'm your AI business automation assistant for #{business_name}. " \
       "I can help analyze your business performance, automate operations, manage data integrations, " \
-      "and create marketing materials. What can I help you with today? 🚀"
+      "and create marketing materials. What can I help you with today? 🚀#{subscription_info}"
     end
-    
+
     save_scout_message('assistant', welcome_message)
   end
 

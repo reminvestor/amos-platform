@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_13_000001) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_13_214821) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1021,6 +1021,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_13_000001) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "subscription_events", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "event_type", null: false
+    t.string "previous_status"
+    t.string "new_status"
+    t.string "previous_plan"
+    t.string "new_plan"
+    t.string "stripe_event_id"
+    t.jsonb "metadata", default: {}
+    t.string "triggered_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "created_at"], name: "index_subscription_events_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_subscription_events_on_entity_id"
+    t.index ["event_type"], name: "index_subscription_events_on_event_type"
+    t.index ["stripe_event_id"], name: "index_subscription_events_on_stripe_event_id", unique: true, where: "(stripe_event_id IS NOT NULL)"
+  end
+
   create_table "task_events", force: :cascade do |t|
     t.bigint "task_session_id", null: false
     t.string "event_type", null: false
@@ -1300,6 +1318,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_13_000001) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "subscription_events", "entities"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
   add_foreign_key "users", "entities"

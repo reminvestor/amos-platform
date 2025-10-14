@@ -1,6 +1,6 @@
 class OnboardingController < ApplicationController
-  layout 'devise'
-  
+  layout 'application'
+
   before_action :authenticate_user!
   before_action :check_if_already_onboarded, except: [:complete]
   
@@ -8,10 +8,23 @@ class OnboardingController < ApplicationController
     # Get or create the user's first onboarding conversation
     @session_id = session[:onboarding_session_id] ||= SecureRandom.uuid
     @conversation_history = onboarding_conversation_history
-    
+
+    # Check if user just subscribed (coming from Stripe checkout)
+    entity = current_user.entity
+    if @conversation_history.empty? && entity&.subscription_status == 'trialing' && entity.trial_ends_at
+      # User just subscribed, add subscription confirmation first
+      add_subscription_confirmation_message
+    end
+
     # If this is a fresh start, add Scout's welcome message
     if @conversation_history.empty?
       create_welcome_message
+      @conversation_history = onboarding_conversation_history
+    elsif session[:show_subscription_confirmation] && !session[:subscription_confirmed]
+      # User returned from Stripe, prepend confirmation to existing conversation
+      prepend_subscription_confirmation_message
+      session[:subscription_confirmed] = true
+      session.delete(:show_subscription_confirmation)
       @conversation_history = onboarding_conversation_history
     end
   end
@@ -149,9 +162,17 @@ class OnboardingController < ApplicationController
     # User has 1:1 relationship with entity
     entity = current_user.entity
     business_name = entity&.name || "your business"
-    
-    welcome_message = "👋 Hi #{current_user.first_name}! I'm Scout, your AI marketing agent. 
 
+    # Check if user just subscribed (has trial status and recent subscription)
+    subscription_info = if entity&.subscription_status == 'trialing' && entity.trial_ends_at
+      plan_name = entity.plan_tier&.titleize || 'Starter'
+      trial_end = entity.trial_ends_at.strftime('%B %d, %Y')
+      "\n🎉 Great news! Your #{plan_name} plan 7-day trial has started successfully. You won't be charged until #{trial_end}.\n\n"
+    else
+      ""
+    end
+
+    welcome_message = "👋 Hi #{current_user.first_name}! I'm Scout, your AI marketing agent.#{subscription_info}
 I see you're working with #{business_name} - that's exciting! I'm here to learn more about your business so I can help you succeed across all marketing channels. This will only take a few minutes, and I promise to make it conversational - no boring forms!
 
 Since I already know your business name, let's dive deeper: What industry is #{business_name} in? Are you in tech, retail, healthcare, consulting, or something else?"
@@ -159,6 +180,26 @@ Since I already know your business name, let's dive deeper: What industry is #{b
     save_onboarding_message('assistant', welcome_message)
   end
   
+  def add_subscription_confirmation_message
+    entity = current_user.entity
+    plan_name = entity.plan_tier&.titleize || 'Starter'
+    trial_end = entity.trial_ends_at.strftime('%B %d, %Y')
+
+    confirmation = "🎉 **Subscription Confirmed!**\n\nYour #{plan_name} plan 7-day trial has started successfully. You won't be charged until #{trial_end}.\n\nNow let's get your business set up!"
+
+    save_onboarding_message('assistant', confirmation)
+  end
+
+  def prepend_subscription_confirmation_message
+    entity = current_user.entity
+    plan_name = entity.plan_tier&.titleize || 'Starter'
+    trial_end = entity.trial_ends_at.strftime('%B %d, %Y')
+
+    confirmation = "🎉 **Welcome back!** Your #{plan_name} plan 7-day trial has started successfully. You won't be charged until #{trial_end}.\n\nLet's continue setting up your business!"
+
+    save_onboarding_message('assistant', confirmation)
+  end
+
   def save_onboarding_message(role, content)
     # Store onboarding conversations only in Rails cache to avoid cookie overflow
     cache_key = "onboarding_#{session[:onboarding_session_id]}"
@@ -168,7 +209,7 @@ Since I already know your business name, let's dive deeper: What industry is #{b
       content: content,
       timestamp: Time.current.iso8601
     }
-    
+
     # Store in cache with 2 hour expiration
     Rails.cache.write(cache_key, messages, expires_in: 2.hours)
   end

@@ -28,6 +28,9 @@ class Entity < ApplicationRecord
   # Scout AI Associations
   has_many :scout_conversations, dependent: :destroy
   has_many :business_insights, dependent: :destroy
+
+  # Subscription tracking
+  has_many :subscription_events, dependent: :destroy
   
   # JSONB settings accessor
   store_accessor :settings, :timezone, :currency, :date_format, :logo_url, :primary_color
@@ -47,7 +50,58 @@ class Entity < ApplicationRecord
   
   # Slug generation
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
-  
+
+  # Subscription history helpers
+  def subscription_history
+    subscription_events.recent.map do |event|
+      {
+        date: event.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        event_type: event.event_type,
+        status_change: "#{event.previous_status || 'nil'} → #{event.new_status}",
+        plan_change: "#{event.previous_plan || 'nil'} → #{event.new_plan || 'nil'}",
+        triggered_by: event.triggered_by,
+        metadata: event.metadata
+      }
+    end
+  end
+
+  def print_subscription_history
+    puts "\n" + "=" * 80
+    puts "Subscription History for: #{name}"
+    puts "=" * 80
+
+    if subscription_events.empty?
+      puts "No subscription events recorded yet."
+      return
+    end
+
+    subscription_events.recent.each do |event|
+      puts "\n#{event.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
+      puts "  Event: #{event.event_type}"
+      puts "  Status: #{event.previous_status || 'none'} → #{event.new_status}"
+      puts "  Plan: #{event.previous_plan || 'none'} → #{event.new_plan || 'none'}" if event.previous_plan || event.new_plan
+      puts "  Triggered by: #{event.triggered_by}"
+      puts "  Metadata: #{event.metadata.inspect}" if event.metadata.present?
+    end
+
+    puts "\n" + "=" * 80
+    puts "Total Events: #{subscription_events.count}"
+    puts "=" * 80
+  end
+
+  def subscription_stats
+    {
+      total_events: subscription_events.count,
+      subscriptions_created: subscription_events.where(event_type: 'subscription_created').count,
+      subscriptions_cancelled: subscription_events.where(event_type: 'subscription_cancelled').count,
+      plan_changes: subscription_events.where(event_type: 'plan_changed').count,
+      payment_failures: subscription_events.where(event_type: 'payment_failed').count,
+      payment_successes: subscription_events.where(event_type: 'payment_succeeded').count,
+      first_subscription: subscription_events.where(event_type: 'subscription_created').order(:created_at).first&.created_at,
+      last_event: subscription_events.order(:created_at).last&.created_at
+    }
+  end
+
   private
   
   def generate_slug

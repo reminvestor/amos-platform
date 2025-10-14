@@ -38,6 +38,10 @@ module Tools
       begin
         subscription = Stripe::Subscription.retrieve(entity.stripe_subscription_id)
 
+        # Capture previous state
+        previous_status = entity.subscription_status
+        previous_plan = entity.plan_tier
+
         # Cancel at period end (not immediately)
         cancelled_subscription = Stripe::Subscription.update(
           subscription.id,
@@ -48,6 +52,24 @@ module Tools
         )
 
         end_date = Time.at(cancelled_subscription.current_period_end).strftime('%B %d, %Y')
+
+        # Log cancellation event
+        SubscriptionEvent.log_event(
+          entity: entity,
+          event_type: 'subscription_cancelled',
+          previous_status: previous_status,
+          new_status: 'cancelling',
+          previous_plan: previous_plan,
+          new_plan: previous_plan,
+          stripe_event_id: cancelled_subscription.id,
+          metadata: {
+            cancel_at_period_end: true,
+            current_period_end: cancelled_subscription.current_period_end,
+            cancellation_feedback: get_arg(args, :feedback),
+            cancelled_by_user: true
+          },
+          triggered_by: 'user_action'
+        )
 
         success_response(
           subscription: {

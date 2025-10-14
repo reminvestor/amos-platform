@@ -1,4 +1,6 @@
 class StripeCheckoutController < ApplicationController
+  include ActionView::Helpers::NumberHelper  # For number formatting
+
   skip_before_action :authenticate_user!, only: [:create, :success, :cancel]
 
   def create
@@ -57,17 +59,51 @@ class StripeCheckoutController < ApplicationController
       entity = Entity.find_by(stripe_customer_id: session.customer)
 
       if entity
+        plan_tier = subscription.items.data.first&.price&.lookup_key || 'basic'
+        token_limit = determine_token_limit(plan_tier)
+
+        # Capture previous state
+        previous_status = entity.subscription_status
+        previous_plan = entity.plan_tier
+
         entity.update!(
           stripe_subscription_id: subscription.id,
           subscription_status: subscription.status,
           trial_ends_at: subscription.trial_end ? Time.at(subscription.trial_end) : nil,
           current_period_end: Time.at(subscription.current_period_end),
-          plan_tier: subscription.items.data.first&.price&.lookup_key || 'basic',
-          token_limit: determine_token_limit(subscription.items.data.first&.price&.lookup_key)
+          plan_tier: plan_tier,
+          token_limit: token_limit
         )
-      end
 
-      redirect_to root_path, notice: "Welcome! Your 7-day trial has started."
+        # Log subscription event
+        SubscriptionEvent.log_event(
+          entity: entity,
+          event_type: 'subscription_created',
+          previous_status: previous_status,
+          new_status: subscription.status,
+          previous_plan: previous_plan,
+          new_plan: plan_tier,
+          stripe_event_id: subscription.id,
+          metadata: {
+            trial_ends_at: subscription.trial_end ? Time.at(subscription.trial_end) : nil,
+            current_period_end: Time.at(subscription.current_period_end),
+            token_limit: token_limit,
+            checkout_session_id: session_id
+          },
+          triggered_by: 'user_checkout'
+        )
+
+        # Create success message with plan details
+        plan_name = plan_tier.titleize
+        trial_end_date = entity.trial_ends_at ? entity.trial_ends_at.strftime('%B %d, %Y') : 'the trial period ends'
+        token_limit_formatted = number_to_human(token_limit, format: '%n%u', units: { thousand: 'K', million: 'M' })
+
+        success_message = "🎉 Subscription confirmed! Your #{plan_name} plan (#{token_limit_formatted} AI tokens/month) 7-day trial has started. You won't be charged until #{trial_end_date}."
+
+        redirect_to root_path, notice: success_message
+      else
+        redirect_to root_path, alert: "There was an error finding your account."
+      end
     rescue Stripe::StripeError => e
       Rails.logger.error "Error retrieving checkout session: #{e.message}"
       redirect_to root_path, alert: "There was an error processing your subscription."
