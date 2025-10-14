@@ -101,7 +101,7 @@ module Agents
         prompt = build_analysis_prompt(step, error_details, context)
         
         response = @ai_service.complete(
-          prompt: prompt,
+          messages: [{ role: 'user', content: prompt }],
           max_tokens: 1000,
           temperature: 0.3
         )
@@ -199,7 +199,7 @@ module Agents
         PROMPT
         
         response = @ai_service.complete(
-          prompt: creation_prompt,
+          messages: [{ role: 'user', content: creation_prompt }],
           max_tokens: 500,
           temperature: 0.3
         )
@@ -240,7 +240,7 @@ module Agents
         PROMPT
         
         response = @ai_service.complete(
-          prompt: correction_prompt,
+          messages: [{ role: 'user', content: correction_prompt }],
           max_tokens: 500,
           temperature: 0.3
         )
