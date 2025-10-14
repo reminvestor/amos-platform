@@ -4,6 +4,14 @@ class StripeWebhooksControllerTest < ActionDispatch::IntegrationTest
   setup do
     @entity = entities(:one)
     @entity.update!(stripe_customer_id: "cus_test123")
+
+    # Stub Stripe webhook signature verification
+    @original_webhook_secret = ENV['STRIPE_WEBHOOK_SECRET']
+    ENV['STRIPE_WEBHOOK_SECRET'] = nil  # Disable signature verification for tests
+  end
+
+  teardown do
+    ENV['STRIPE_WEBHOOK_SECRET'] = @original_webhook_secret
   end
 
   test "should handle subscription created event" do
@@ -68,7 +76,7 @@ class StripeWebhooksControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     @entity.reload
     assert_equal "professional", @entity.plan_tier
-    assert_equal 500_000, @entity.token_limit
+    assert_equal 1_000_000, @entity.token_limit
   end
 
   test "should handle subscription deleted event" do

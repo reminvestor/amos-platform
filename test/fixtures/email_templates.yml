@@ -5,21 +5,25 @@ one:
   subject: "Welcome to Our Service!"
   body: "Thanks for joining us. Here's what you can expect..."
   user: one
+  entity: one
 
 two:
   name: "Follow-up Email Template"
   subject: "How's it going?"
   body: "We wanted to check in and see how things are going..."
   user: two
+  entity: one
 
 default_template_1:
   name: "Default Welcome Template"
   subject: "Welcome to our platform!"
   body: "Thank you for signing up. We're excited to have you here."
   user: default
+  entity: default
 
 default_template_2:
   name: "Default Followup Template"
   subject: "Let's get started!"
   body: "Here are some tips to help you get the most out of our platform."
   user: default
+  entity: default

@@ -7,6 +7,7 @@ one:
   last_name: "User1"
   encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
   onboarded: true
+  role: "admin"
 
 two:
   entity: one
@@ -15,6 +16,7 @@ two:
   last_name: "User2"
   encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
   onboarded: true
+  role: "marketer"
 
 default:
   entity: default
@@ -23,3 +25,4 @@ default:
   last_name: "User"
   encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
   onboarded: true
+  role: "admin"
