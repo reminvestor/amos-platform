@@ -170,15 +170,16 @@ phases:
     
     ai_instructions: |
       1. Query the RAG store to understand authentication requirements
-      2. Use generate_integration_scaffold to create the integration structure
-         - This automatically creates the service, auth, and operations files
-         - Auto-discovery will register any operations
+      2. Use generate_integration_scaffold to create the integration record
+         - Creates Integration and Connection records in database
+         - NO code files generated (secure DB-only approach)
       
       3. Use add_integration_endpoint to create one test endpoint
-         - Choose a simple endpoint like "get_account" or "list_items"
-         - This will automatically register the operation
+         - Choose a simple endpoint like "get_account" or "list_items"  
+         - Creates IntegrationOperation record in database
+         - NO code generation (secure!)
       
-      4. Present the generated code structure to the user
+      4. Tell user the integration is ready and stored securely in database
       5. Tell them to use execute_integration to test it
 
   # Phase 6: Test the endpoint
@@ -266,17 +267,17 @@ phases:
       2. Based on integration_purpose and key_features, identify endpoints to build
       3. For each endpoint:
          a. Query RAG for endpoint details (params, response format)
-         b. Generate code using add_integration_endpoint
+         b. Create operation using add_integration_endpoint (creates DB record)
          c. Test using execute_integration
          d. Fix any issues
          e. Move to next endpoint
       
-      4. Generate comprehensive documentation for the integration:
+      4. Tell user about the integration:
+         - All operations stored securely in database (no code files)
          - How to use each endpoint
-         - Example code
-         - Common errors and solutions
+         - Example: execute_integration(integration: "slug", operation: "operation_name", params: {...})
       
-      5. Present completed integration to user with usage guide
+      5. Present completed integration summary
 
   # Phase 9: Validate complete integration
   - id: "validation"

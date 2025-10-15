@@ -67,39 +67,46 @@ module Tools
           return error_response("Integration not found: #{integration_slug}. Please create the integration scaffold first.")
         end
         
-        # Use the code generator service
-        code_gen_service = IntegrationCodeGeneratorService.new
-        result = code_gen_service.generate_code(
-          integration: integration,
-          code_type: 'endpoint',
-          endpoint_name: endpoint_name,
-          http_method: http_method,
-          endpoint_path: endpoint_path,
-          parameters: parameters,
-          response_format: response_format,
-          documentation: description
+        # Create IntegrationOperation record (secure DB-only approach!)
+        operation = integration.integration_operations.create!(
+          operation_id: endpoint_name.underscore,
+          name: endpoint_name.titleize,
+          description: description,
+          http_method: http_method.upcase,
+          path_template: endpoint_path,
+          request_schema: generate_request_schema(parameters),
+          response_schema: response_format || {},
+          is_idempotent: http_method.upcase == 'GET',
+          requires_confirmation: ['DELETE', 'POST', 'PUT', 'PATCH'].include?(http_method.upcase),
+          is_enabled: true,
+          metadata: {
+            generated_by: 'ai_integration_builder',
+            created_at: Time.current,
+            parameters: parameters
+          }
         )
         
+        result = {
+          success: true,
+          operation_id: operation.id,
+          method_name: endpoint_name.underscore
+        }
+        
         if result[:success]
-          # Automatically discover operations to sync to database
-          Rails.logger.info "🔍 Running auto-discovery for #{integration.name}..."
-          discovery_result = OperationDiscoveryService.discover_integration(integration.slug)
+          Rails.logger.info "✅ Created IntegrationOperation record (secure DB-only)"
           
           success_response(
-            message: "Successfully added #{endpoint_name} endpoint to #{integration.name}",
+            message: "Successfully added #{endpoint_name} endpoint to #{integration.name} (secure DB-only)",
             endpoint_name: endpoint_name,
-            method_name: result[:method_name],
+            operation_id: endpoint_name.underscore,
             http_method: http_method,
             endpoint_path: endpoint_path,
-            file_path: result[:file_path],
-            code: result[:code],
-            usage_example: result[:usage_example],
-            operations_discovered: discovery_result&.length || 0,
+            database_record_id: result[:operation_id],
             next_steps: [
               "Use execute_integration to call this endpoint",
-              "Use list_operations to see all available operations",
               "Test with: execute_integration(integration: '#{integration.slug}', operation: '#{endpoint_name.underscore}', params: {...})",
-              "Review the generated code in #{result[:file_path]}"
+              "Use list_operations to see all available operations",
+              "Operation is securely stored in database (no code files)"
             ]
           )
         else

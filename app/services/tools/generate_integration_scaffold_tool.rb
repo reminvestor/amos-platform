@@ -50,36 +50,83 @@ module Tools
       end
       
       begin
-        # Generate scaffold using service
-        scaffold_service = IntegrationScaffoldService.new
-        result = scaffold_service.generate_scaffold(
-          app_name: app_name,
+        # Create integration record in database (secure - no code generation!)
+        integration = Integration.create!(
+          name: app_name,
           slug: slug,
-          auth_type: auth_type,
-          base_url: base_url,
           description: description,
-          entity: @entity,
-          user: @user
+          category: 'custom',
+          auth_type: auth_type,
+          api_base_url: base_url || "https://api.#{slug}.com",
+          is_active: true,
+          is_custom: true,
+          metadata: {
+            created_by: 'ai_integration_builder',
+            created_at: Time.current
+          }
         )
+        
+        # Create connection for the user
+        connection = Connection.create!(
+          integration: integration,
+          entity: @entity,
+          name: "#{app_name} Connection",
+          status: :disconnected,
+          metadata: {
+            created_by: 'ai_integration_builder',
+            setup_required: true
+          }
+        )
+        
+        # Create pending credential
+        connection.integration_credentials.create!(
+          name: "#{app_name} Credentials",
+          credentials: {}.to_json,
+          auth_method: determine_auth_method(auth_type),
+          status: :expired,
+          metadata: { pending_setup: true }
+        )
+        
+        result = {
+          success: true,
+          integration_id: integration.id,
+          connection_id: connection.id
+        }
         
         if result[:success]
           success_response(
-            message: "Successfully generated integration scaffold for #{app_name}",
+            message: "Successfully created #{app_name} integration (secure DB-only approach)",
             integration_id: result[:integration_id],
-            files_created: result[:files_created],
+            connection_id: result[:connection_id],
+            integration_slug: slug,
             next_steps: [
-              "Review the generated files in app/services/integrations/#{slug}/",
-              "Add your API credentials to the connection",
-              "Implement specific endpoints in the service class"
+              "Add your API credentials using the integrations UI",
+              "Use add_integration_endpoint to add API operations",
+              "Operations are stored securely in the database (no code generation)"
             ]
           )
         else
-          error_response("Scaffold generation failed: #{result[:error]}")
+          error_response("Integration creation failed: #{result[:error]}")
         end
       rescue => e
-        Rails.logger.error "Integration scaffold generation failed: #{e.message}"
+        Rails.logger.error "Integration creation failed: #{e.message}"
         Rails.logger.error e.backtrace.join("\n")
-        error_response("Scaffold generation failed: #{e.message}")
+        error_response("Integration creation failed: #{e.message}")
+      end
+    end
+    
+    private
+    
+    def determine_auth_method(auth_type)
+      case auth_type.to_s
+      when 'api_key', 'bearer_token'
+        'header'
+      when 'basic_auth'
+        'basic'
+      when 'oauth2'
+        'bearer'
+      else
+        'header'
       end
     end
   end
