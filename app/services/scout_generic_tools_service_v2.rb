@@ -315,8 +315,24 @@ class ScoutGenericToolsServiceV2
       - "Find campaign by name" → get_data with filter
       
       Simple Creation:
-      - "Create a contact" → create_object
+      - "Create a contact" → ALWAYS use get_schema first, then create_object
       - "Update campaign status" → update_object
+      
+      CRITICAL - Creating Objects:
+      Before using create_object, ALWAYS:
+      1. Call get_schema(object_type: "contact") to see valid fields
+      2. Read the creation_notes carefully - shows metadata field usage
+      3. Then call create_object with only valid fields
+      
+      Example:
+      - get_schema(object_type: "contact")
+      - See that address/company go in metadata
+      - create_object(object_type: "contacts", data: {
+          first_name: "John",
+          last_name: "Doe",
+          email: "john@example.com",
+          metadata: { address: "123 Main St", company: "Acme" }
+        })
       
       Integration Queries:
       - "List my Stripe customers" → execute_integration(integration: "stripe", operation: "list_customers")
