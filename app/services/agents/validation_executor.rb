@@ -127,12 +127,14 @@ module Agents
         }
       end
       
-      # Basic HTML validation (could be enhanced with a proper validator)
+      # Basic HTML validation (lenient for real-world HTML)
       has_html_tag = html_content.include?('<html') || html_content.include?('<!DOCTYPE')
       has_body_tag = html_content.include?('<body')
-      properly_closed = html_content.scan(/<(\w+)[^>]*>/).count == html_content.scan(/<\/(\w+)>/).count
+      has_closing_html = html_content.include?('</html>')
+      has_closing_body = html_content.include?('</body>')
       
-      passed = has_html_tag && has_body_tag && properly_closed
+      # Just check for basic structure, not strict tag counting (self-closing tags exist!)
+      passed = has_html_tag && has_body_tag && has_closing_html && has_closing_body
       
       {
         rule: 'html_validity',
