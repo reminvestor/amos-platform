@@ -81,6 +81,56 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.index ["email"], name: "index_admin_users_on_email", unique: true
   end
 
+  create_table "affiliate_clicks", force: :cascade do |t|
+    t.bigint "affiliate_id", null: false
+    t.string "referral_code"
+    t.string "ip_address"
+    t.text "user_agent"
+    t.string "referrer"
+    t.datetime "landed_at"
+    t.string "session_id"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["affiliate_id", "landed_at"], name: "index_affiliate_clicks_on_affiliate_id_and_landed_at"
+    t.index ["affiliate_id"], name: "index_affiliate_clicks_on_affiliate_id"
+    t.index ["ip_address"], name: "index_affiliate_clicks_on_ip_address"
+    t.index ["landed_at"], name: "index_affiliate_clicks_on_landed_at"
+    t.index ["referral_code"], name: "index_affiliate_clicks_on_referral_code"
+  end
+
+  create_table "affiliate_tiers", force: :cascade do |t|
+    t.string "name", null: false
+    t.decimal "commission_rate", precision: 5, scale: 4, null: false
+    t.integer "min_referrals", default: 0, null: false
+    t.jsonb "benefits", default: {}
+    t.boolean "is_active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["is_active"], name: "index_affiliate_tiers_on_is_active"
+    t.index ["min_referrals"], name: "index_affiliate_tiers_on_min_referrals"
+    t.index ["name"], name: "index_affiliate_tiers_on_name", unique: true
+  end
+
+  create_table "affiliates", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "affiliate_code", null: false
+    t.integer "status", default: 0, null: false
+    t.decimal "commission_rate", precision: 5, scale: 4, default: "0.2", null: false
+    t.string "payment_email"
+    t.text "application_notes"
+    t.datetime "approved_at"
+    t.bigint "approved_by_id"
+    t.string "tier", default: "bronze", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["affiliate_code"], name: "index_affiliates_on_affiliate_code", unique: true
+    t.index ["approved_by_id"], name: "index_affiliates_on_approved_by_id"
+    t.index ["status"], name: "index_affiliates_on_status"
+    t.index ["tier"], name: "index_affiliates_on_tier"
+    t.index ["user_id"], name: "index_affiliates_on_user_id"
+  end
+
   create_table "agent_activities", force: :cascade do |t|
     t.bigint "conversation_id", null: false
     t.string "agent_name"
@@ -181,7 +231,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "email_template_id"
-    t.bigint "entity_id"
+    t.bigint "entity_id", null: false
     t.text "ai_analysis"
     t.datetime "last_analyzed_at"
     t.string "mailgun_tag"
@@ -190,6 +240,31 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.index ["email_template_id"], name: "index_campaigns_on_email_template_id"
     t.index ["entity_id"], name: "index_campaigns_on_entity_id"
     t.index ["user_id"], name: "index_campaigns_on_user_id"
+  end
+
+  create_table "commissions", force: :cascade do |t|
+    t.bigint "affiliate_id", null: false
+    t.bigint "referral_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "commission_type"
+    t.decimal "amount", precision: 10, scale: 2, null: false
+    t.string "currency", default: "USD", null: false
+    t.integer "status", default: 0, null: false
+    t.bigint "subscription_event_id"
+    t.datetime "earned_at"
+    t.datetime "approved_at"
+    t.bigint "approved_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["affiliate_id", "status"], name: "index_commissions_on_affiliate_id_and_status"
+    t.index ["affiliate_id"], name: "index_commissions_on_affiliate_id"
+    t.index ["approved_by_id"], name: "index_commissions_on_approved_by_id"
+    t.index ["commission_type"], name: "index_commissions_on_commission_type"
+    t.index ["earned_at"], name: "index_commissions_on_earned_at"
+    t.index ["entity_id"], name: "index_commissions_on_entity_id"
+    t.index ["referral_id"], name: "index_commissions_on_referral_id"
+    t.index ["status", "approved_at"], name: "index_commissions_on_status_and_approved_at"
+    t.index ["subscription_event_id"], name: "index_commissions_on_subscription_event_id"
   end
 
   create_table "connections", force: :cascade do |t|
@@ -217,7 +292,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.bigint "entity_id"
+    t.bigint "entity_id", null: false
     t.index ["entity_id"], name: "index_contact_groups_on_entity_id"
     t.index ["user_id"], name: "index_contact_groups_on_user_id"
   end
@@ -242,7 +317,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.jsonb "metadata"
-    t.bigint "entity_id"
+    t.bigint "entity_id", null: false
     t.boolean "opted_out", default: false
     t.datetime "opted_out_at"
     t.boolean "lead", default: true, null: false
@@ -363,6 +438,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.index ["status"], name: "index_email_deliveries_on_status"
   end
 
+  create_table "email_sequences", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "goal"
+    t.string "status", default: "draft", null: false
+    t.bigint "contact_group_id", null: false
+    t.bigint "entity_id", null: false
+    t.integer "enrolled_count", default: 0
+    t.integer "completed_count", default: 0
+    t.integer "active_count", default: 0
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contact_group_id"], name: "index_email_sequences_on_contact_group_id"
+    t.index ["entity_id", "status"], name: "index_email_sequences_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_email_sequences_on_entity_id"
+    t.index ["status"], name: "index_email_sequences_on_status"
+  end
+
   create_table "email_templates", force: :cascade do |t|
     t.string "name"
     t.string "subject"
@@ -370,7 +463,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.bigint "entity_id"
+    t.bigint "entity_id", null: false
     t.index ["entity_id"], name: "index_email_templates_on_entity_id"
     t.index ["user_id"], name: "index_email_templates_on_user_id"
   end
@@ -387,8 +480,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.integer "custom_plugin_limit", default: 5
     t.integer "custom_model_limit", default: 1
     t.boolean "marketplace_vendor", default: false
+    t.string "stripe_customer_id"
+    t.string "stripe_subscription_id"
+    t.string "subscription_status"
+    t.datetime "trial_ends_at"
+    t.datetime "current_period_end"
+    t.integer "token_usage", default: 0
+    t.integer "token_limit"
+    t.string "plan_tier"
     t.index ["slug"], name: "index_entities_on_slug", unique: true
+    t.index ["stripe_customer_id"], name: "index_entities_on_stripe_customer_id"
+    t.index ["stripe_subscription_id"], name: "index_entities_on_stripe_subscription_id"
     t.index ["subdomain"], name: "index_entities_on_subdomain", unique: true
+    t.index ["subscription_status"], name: "index_entities_on_subscription_status"
   end
 
   create_table "entity_users", force: :cascade do |t|
@@ -596,6 +700,26 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
   end
 
+  create_table "payouts", force: :cascade do |t|
+    t.bigint "affiliate_id", null: false
+    t.decimal "amount", precision: 10, scale: 2, null: false
+    t.string "currency", default: "USD", null: false
+    t.string "payment_method"
+    t.string "payment_reference"
+    t.integer "status", default: 0, null: false
+    t.date "payout_date"
+    t.text "notes"
+    t.integer "commission_ids", default: [], array: true
+    t.bigint "processed_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["affiliate_id", "status"], name: "index_payouts_on_affiliate_id_and_status"
+    t.index ["affiliate_id"], name: "index_payouts_on_affiliate_id"
+    t.index ["payout_date"], name: "index_payouts_on_payout_date"
+    t.index ["processed_by_id"], name: "index_payouts_on_processed_by_id"
+    t.index ["status"], name: "index_payouts_on_status"
+  end
+
   create_table "plugin_permissions", force: :cascade do |t|
     t.bigint "custom_plugin_id", null: false
     t.bigint "user_id"
@@ -701,6 +825,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.index ["user_id"], name: "index_rag_stores_on_user_id"
   end
 
+  create_table "referrals", force: :cascade do |t|
+    t.bigint "affiliate_id", null: false
+    t.bigint "referred_user_id"
+    t.bigint "referred_entity_id"
+    t.string "referral_code_used"
+    t.integer "status", default: 0, null: false
+    t.datetime "converted_at"
+    t.jsonb "cookie_data", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["affiliate_id", "referred_entity_id"], name: "index_referrals_on_affiliate_id_and_referred_entity_id"
+    t.index ["affiliate_id"], name: "index_referrals_on_affiliate_id"
+    t.index ["converted_at"], name: "index_referrals_on_converted_at"
+    t.index ["referred_entity_id"], name: "index_referrals_on_referred_entity_id"
+    t.index ["referred_user_id"], name: "index_referrals_on_referred_user_id"
+    t.index ["status"], name: "index_referrals_on_status"
+  end
+
   create_table "rich_text_sections", force: :cascade do |t|
     t.string "title"
     t.string "section_type"
@@ -737,6 +879,46 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.index ["entity_id"], name: "index_scout_messages_on_entity_id"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_id_and_created_at"
     t.index ["user_id"], name: "index_scout_messages_on_user_id"
+  end
+
+  create_table "sequence_enrollments", force: :cascade do |t|
+    t.bigint "email_sequence_id", null: false
+    t.bigint "contact_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "status", default: "pending", null: false
+    t.integer "current_step_number", default: 0
+    t.datetime "next_send_at"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "last_email_sent_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contact_id"], name: "index_sequence_enrollments_on_contact_id"
+    t.index ["email_sequence_id", "contact_id"], name: "index_enrollments_on_sequence_and_contact", unique: true
+    t.index ["email_sequence_id"], name: "index_sequence_enrollments_on_email_sequence_id"
+    t.index ["entity_id", "status"], name: "index_sequence_enrollments_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_sequence_enrollments_on_entity_id"
+    t.index ["next_send_at"], name: "index_sequence_enrollments_on_next_send_at"
+    t.index ["status"], name: "index_sequence_enrollments_on_status"
+  end
+
+  create_table "sequence_steps", force: :cascade do |t|
+    t.bigint "email_sequence_id", null: false
+    t.integer "step_number", null: false
+    t.integer "delay_hours", default: 0, null: false
+    t.bigint "email_template_id"
+    t.string "subject"
+    t.text "body"
+    t.integer "sent_count", default: 0
+    t.integer "opened_count", default: 0
+    t.integer "clicked_count", default: 0
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["delay_hours"], name: "index_sequence_steps_on_delay_hours"
+    t.index ["email_sequence_id", "step_number"], name: "index_sequence_steps_on_email_sequence_id_and_step_number", unique: true
+    t.index ["email_sequence_id"], name: "index_sequence_steps_on_email_sequence_id"
+    t.index ["email_template_id"], name: "index_sequence_steps_on_email_template_id"
   end
 
   create_table "shared_models", force: :cascade do |t|
@@ -954,6 +1136,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "subscription_events", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "event_type", null: false
+    t.string "previous_status"
+    t.string "new_status"
+    t.string "previous_plan"
+    t.string "new_plan"
+    t.string "stripe_event_id"
+    t.jsonb "metadata", default: {}
+    t.string "triggered_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "created_at"], name: "index_subscription_events_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_subscription_events_on_entity_id"
+    t.index ["event_type"], name: "index_subscription_events_on_event_type"
+    t.index ["stripe_event_id"], name: "index_subscription_events_on_stripe_event_id", unique: true, where: "(stripe_event_id IS NOT NULL)"
+  end
+
   create_table "task_events", force: :cascade do |t|
     t.bigint "task_session_id", null: false
     t.string "event_type", null: false
@@ -1136,6 +1336,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "admin_activities", "admin_users"
+  add_foreign_key "affiliate_clicks", "affiliates"
+  add_foreign_key "affiliates", "admin_users", column: "approved_by_id"
+  add_foreign_key "affiliates", "users"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
   add_foreign_key "agent_messages", "task_sessions"
   add_foreign_key "artifacts", "entities"
@@ -1149,6 +1352,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
   add_foreign_key "campaigns", "email_templates"
   add_foreign_key "campaigns", "entities"
   add_foreign_key "campaigns", "users"
+  add_foreign_key "commissions", "admin_users", column: "approved_by_id"
+  add_foreign_key "commissions", "affiliates"
+  add_foreign_key "commissions", "entities"
+  add_foreign_key "commissions", "referrals"
+  add_foreign_key "commissions", "subscription_events"
   add_foreign_key "connections", "entities"
   add_foreign_key "connections", "integrations"
   add_foreign_key "contact_groups", "entities"
@@ -1170,6 +1378,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
   add_foreign_key "email_deliveries", "campaigns"
   add_foreign_key "email_deliveries", "contacts"
   add_foreign_key "email_deliveries", "email_templates"
+  add_foreign_key "email_sequences", "contact_groups"
+  add_foreign_key "email_sequences", "entities"
   add_foreign_key "email_templates", "entities"
   add_foreign_key "email_templates", "users"
   add_foreign_key "entity_users", "entities"
@@ -1192,6 +1402,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
   add_foreign_key "landing_pages", "users"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
+  add_foreign_key "payouts", "admin_users", column: "processed_by_id"
+  add_foreign_key "payouts", "affiliates"
   add_foreign_key "plugin_permissions", "custom_plugins"
   add_foreign_key "plugin_permissions", "entities"
   add_foreign_key "plugin_permissions", "users"
@@ -1206,11 +1418,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
   add_foreign_key "policy_rules", "entities"
   add_foreign_key "rag_stores", "entities"
   add_foreign_key "rag_stores", "users"
+  add_foreign_key "referrals", "affiliates"
+  add_foreign_key "referrals", "entities", column: "referred_entity_id"
+  add_foreign_key "referrals", "users", column: "referred_user_id"
   add_foreign_key "rich_text_sections", "landing_pages"
   add_foreign_key "scout_conversations", "entities"
   add_foreign_key "scout_conversations", "users"
   add_foreign_key "scout_messages", "entities"
   add_foreign_key "scout_messages", "users"
+  add_foreign_key "sequence_enrollments", "contacts"
+  add_foreign_key "sequence_enrollments", "email_sequences"
+  add_foreign_key "sequence_enrollments", "entities"
+  add_foreign_key "sequence_steps", "email_sequences"
+  add_foreign_key "sequence_steps", "email_templates"
   add_foreign_key "shared_models", "custom_models"
   add_foreign_key "shared_models", "entities"
   add_foreign_key "shared_plugins", "custom_plugins"
@@ -1226,6 +1446,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "subscription_events", "entities"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
   add_foreign_key "users", "entities"
