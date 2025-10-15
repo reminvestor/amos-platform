@@ -127,40 +127,41 @@ class ScoutGenericToolsServiceV2
   
   def execute_tool_by_name(tool_name, args, progress_callback = nil)
     Rails.logger.info "🔧 Executing tool: #{tool_name}"
-    
+
     # Check if tool is allowed by agent loadout
     if @agent_loadout && !@agent_loadout.tool_allowed?(tool_name)
       Rails.logger.warn "Tool #{tool_name} not allowed by agent loadout"
       return { success: false, error: "Tool not permitted for current context" }
     end
-    
+
     # Special handling for canvas loading
     if tool_name == 'load_canvas'
       return execute_load_canvas(args, progress_callback)
     end
-    
+
     # Create context that will be shared with the tool
-    tool_context = { 
+    # IMPORTANT: Memory tools need session_id to access Redis storage
+    tool_context = {
       session_id: @session_id,
       canvas_suggestion: nil,
       canvas_data: {},
       **@context  # Include any additional context (like task_session)
     }
-    
+
     # Execute through tool catalog
     result = @tool_catalog.execute_tool(
-      tool_name, 
+      tool_name,
       args,
       user: @user,
       entity: @entity,
       context: tool_context
     )
-    
+
     # Handle any canvas suggestions from tools
     if tool_context[:canvas_suggestion]
       safe_load_canvas(tool_context[:canvas_suggestion], tool_context[:canvas_data] || {})
     end
-    
+
     result
   end
   
@@ -210,7 +211,17 @@ class ScoutGenericToolsServiceV2
       USER CONTEXT:
       - User: #{@user.first_name} #{@user.last_name}
       - Entity: #{@entity.name}
-      
+
+      CONVERSATION HISTORY:
+      You have access to the last 20 messages in your active context window. If the user references
+      something from earlier in the conversation that you don't see in your current context, you can:
+      - Use get_message_count to see how many total messages exist
+      - Use retrieve_history to get older messages by index range or count
+      - Use search_history to find messages containing specific keywords
+
+      Example: If user says "What did I say about the budget earlier?" and you don't see budget
+      discussions in your recent messages, use search_history(keywords: "budget") to find them.
+
       AVAILABLE DATA MODELS: #{available_models.join(', ')}
       
       AVAILABLE WORKFLOW TEMPLATES:
