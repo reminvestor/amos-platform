@@ -13,6 +13,7 @@ class AgentLoadout
     'main_chat' => {
       tool_allowlist: [
         'delegate_to_planner',        # Complex multi-step tasks
+        'get_schema',                 # Check field structure before creating
         'get_data',                   # Simple data queries
         'create_object',              # Simple object creation
         'update_object',              # Simple updates

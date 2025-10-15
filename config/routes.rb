@@ -267,7 +267,7 @@ Rails.application.routes.draw do
         end
       end
       
-      resource :privacy, only: [:show, :update]
+      resource :privacy, only: [:show, :update], controller: 'privacy'
     end
     
     # Admin Portal (Platform Administration)
