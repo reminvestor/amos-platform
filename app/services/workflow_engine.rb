@@ -1304,7 +1304,7 @@ class WorkflowEngine
     PROMPT
     
     ai_service.complete(
-      prompt: prompt,
+      messages: [{ role: 'user', content: prompt }],
       max_tokens: 500,
       temperature: 0.7
     )
