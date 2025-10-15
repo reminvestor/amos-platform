@@ -593,6 +593,7 @@ DEPENDENCIES
   kramdown (~> 2.4)
   mailgun-ruby (~> 1.2)
   matrix (~> 0.4.2)
+  mini_magick
   nokogiri
   oauth2 (~> 2.0)
   openai (~> 0.3.0)

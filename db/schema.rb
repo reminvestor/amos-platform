@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_15_073005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -110,6 +110,40 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.index ["sender_id"], name: "index_agent_messages_on_sender_id"
     t.index ["task_session_id", "created_at"], name: "index_agent_messages_on_task_session_id_and_created_at"
     t.index ["task_session_id"], name: "index_agent_messages_on_task_session_id"
+  end
+
+  create_table "analytics_connections", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "name"
+    t.integer "connection_type"
+    t.integer "status"
+    t.text "credentials"
+    t.jsonb "config"
+    t.datetime "last_health_check"
+    t.jsonb "metadata"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_analytics_connections_on_entity_id"
+  end
+
+  create_table "analytics_query_logs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "metric_definition_id", null: false
+    t.string "metric_name"
+    t.string "query_hash"
+    t.jsonb "query_params"
+    t.text "compiled_query"
+    t.integer "rows_returned"
+    t.integer "execution_time_ms"
+    t.boolean "success"
+    t.text "error_message"
+    t.jsonb "metadata"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_analytics_query_logs_on_entity_id"
+    t.index ["metric_definition_id"], name: "index_analytics_query_logs_on_metric_definition_id"
+    t.index ["user_id"], name: "index_analytics_query_logs_on_user_id"
   end
 
   create_table "artifacts", force: :cascade do |t|
@@ -323,6 +357,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.index ["plugin_type"], name: "index_custom_plugins_on_plugin_type"
     t.index ["status"], name: "index_custom_plugins_on_status"
     t.index ["user_id"], name: "index_custom_plugins_on_user_id"
+  end
+
+  create_table "data_contracts", force: :cascade do |t|
+    t.string "name"
+    t.string "version"
+    t.string "entity_type"
+    t.jsonb "schema_definition"
+    t.jsonb "privacy_rules"
+    t.string "freshness_slo"
+    t.boolean "is_active"
+    t.jsonb "metadata"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "dripped_campaigns", force: :cascade do |t|
@@ -582,6 +629,25 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.index ["metadata"], name: "index_landing_pages_on_metadata", using: :gin
     t.index ["slug"], name: "index_landing_pages_on_slug", unique: true
     t.index ["user_id"], name: "index_landing_pages_on_user_id"
+  end
+
+  create_table "metric_definitions", force: :cascade do |t|
+    t.string "name"
+    t.string "version"
+    t.text "description"
+    t.text "expression"
+    t.string "source"
+    t.string "time_column"
+    t.string "grain_default"
+    t.jsonb "dimensions"
+    t.jsonb "filters_default"
+    t.jsonb "quality_rules"
+    t.string "owner"
+    t.string "category"
+    t.boolean "is_active"
+    t.jsonb "metadata"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "model_permissions", force: :cascade do |t|
@@ -984,6 +1050,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
     t.index ["user_id"], name: "index_task_sessions_on_user_id"
   end
 
+  create_table "tenant_quotas", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "row_budget"
+    t.integer "window_days_cap"
+    t.integer "qps_limit"
+    t.jsonb "metadata"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_tenant_quotas_on_entity_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -1138,6 +1215,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
   add_foreign_key "admin_activities", "admin_users"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
   add_foreign_key "agent_messages", "task_sessions"
+  add_foreign_key "analytics_connections", "entities"
+  add_foreign_key "analytics_query_logs", "entities"
+  add_foreign_key "analytics_query_logs", "metric_definitions"
+  add_foreign_key "analytics_query_logs", "users"
   add_foreign_key "artifacts", "entities"
   add_foreign_key "artifacts", "users"
   add_foreign_key "business_insights", "entities"
@@ -1228,6 +1309,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_14_235445) do
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
+  add_foreign_key "tenant_quotas", "entities"
   add_foreign_key "users", "entities"
   add_foreign_key "webhook_events", "webhook_subscriptions"
   add_foreign_key "webhook_subscriptions", "connections"

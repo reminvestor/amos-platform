@@ -256,6 +256,32 @@ class ScoutGenericToolsServiceV2
       - "show landing pages" or "landing pages" → load_canvas with canvas_name: "landing_page_viewer"
       - "show contacts" or "contacts" → load_canvas with canvas_name: "contact_viewer"
       
+      DOCUMENT HANDLING (CRITICAL):
+      When user uploads a file (PDF, DOCX, etc.) and asks about it:
+      
+      STEP 1: ALWAYS read the document first!
+      - Use read_document tool with the asset_id from attached files
+      - This extracts the actual text content
+      
+      STEP 2: Then perform the requested task
+      - Translate: Read document → translate the extracted text
+      - Summarize: Read document → summarize the content
+      - Analyze: Read document → analyze the content
+      - Answer questions: Read document → answer based on content
+      
+      FILE INFO: Check for attached_files in context - they have asset_id and filename
+      
+      WRONG: Searching web based on filename ❌
+      RIGHT: read_document to get actual content ✅
+      
+      Examples:
+      - User uploads "document.pdf" and says "Translate this"
+        → read_document(asset_id: X) → Got Portuguese text → Translate to English
+      - User uploads "report.pdf" and says "Summarize this"
+        → read_document(asset_id: X) → Got content → Provide summary
+      - User uploads "invoice.pdf" and says "What's the total?"
+        → read_document(asset_id: X) → Got content → Find total amount
+      
       LANDING PAGE EDITING:
       CRITICAL: Detect if user wants to EDIT existing page vs CREATE new:
       - Phrases like "update", "change", "modify", "edit" = UPDATE existing

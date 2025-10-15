@@ -20,6 +20,10 @@ class AgentLoadout
         'execute_integration',        # Simple integration calls
         'list_operations',            # Discover integration capabilities
         'list_connections',           # See available integrations
+        'query_metric',               # Analytics queries
+        'list_metrics',               # Discover metrics
+        'explain_query',              # Explain analytics queries
+        'read_document',              # Read uploaded PDFs/docs
         'load_canvas',                # UI interactions
         'aggregate_artifact_data',    # Simple aggregations
         'create_dynamic_visualization', # Quick visualizations
@@ -47,7 +51,7 @@ class AgentLoadout
       budgets: { max_tokens: 15000, max_tool_calls: 30, timeout_seconds: 300 }
     },
     'analyst' => {
-      tool_allowlist: ['aggregate_artifact_data', 'fetch_next_page', 'create_dynamic_visualization'],
+      tool_allowlist: ['aggregate_artifact_data', 'fetch_next_page', 'create_dynamic_visualization', 'query_metric', 'list_metrics', 'explain_query'],
       canvas_allowlist: ['dynamic_canvas', 'analytics_dashboard'],
       data_scopes: { read: ['artifacts'], write: ['artifacts'] },
       budgets: { max_tokens: 8000, max_tool_calls: 15, timeout_seconds: 60 }
