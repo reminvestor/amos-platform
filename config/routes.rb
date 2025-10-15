@@ -348,10 +348,17 @@ Rails.application.routes.draw do
     get 'login', to: 'sessions#new', as: :new_session
     post 'login', to: 'sessions#create', as: :session
     delete 'logout', to: 'sessions#destroy', as: :destroy_session
-    
+
     # Dashboard
     get '/', to: 'dashboard#index', as: :dashboard
-    
+
+    # Scout session management
+    resources :scout_sessions, only: [:index, :show, :destroy] do
+      member do
+        post :sync_redis
+      end
+    end
+
     # Integrations management
     resources :integrations do
       collection do
