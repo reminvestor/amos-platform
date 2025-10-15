@@ -261,9 +261,12 @@ module Tools
           temperature: 0.7
         )
         
+        # Strip markdown code blocks if AI wrapped the HTML
+        cleaned_response = strip_markdown_wrapper(response)
+        
         # Extract HTML from response
-        if response.include?('<!DOCTYPE html>')
-          response
+        if cleaned_response.include?('<!DOCTYPE html>')
+          cleaned_response
         else
           # Fallback if AI didn't return HTML
           generate_fallback_html(title, description, business_name, value_prop, cta_text)
@@ -272,6 +275,20 @@ module Tools
         Rails.logger.error "AI HTML generation failed: #{e.message}"
         generate_fallback_html(title, description, business_name, value_prop, cta_text)
       end
+    end
+    
+    def strip_markdown_wrapper(html)
+      # Remove markdown code block wrappers: ```html ... ``` or ``` ... ```
+      cleaned = html.to_s.strip
+      
+      # Remove starting code block (case insensitive)
+      cleaned = cleaned.sub(/\A```html\s*\n?/i, '')
+      cleaned = cleaned.sub(/\A```\s*\n?/, '')
+      
+      # Remove ending code block
+      cleaned = cleaned.sub(/\n?```\s*\z/, '')
+      
+      cleaned.strip
     end
     
     def generate_fallback_html(title, description, business_name, value_prop = nil, cta_text = nil)
