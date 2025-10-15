@@ -145,8 +145,12 @@ class ScoutController < ApplicationController
       metadata = {}
       
       if file_urls.any?
-        file_info = file_urls.map { |f| "📎 #{f['filename']}" }.join(", ")
-        enhanced_message = "#{user_message}\n\n[Attached: #{file_info}]"
+        # Include asset_id so AMOS can use read_document tool
+        file_details = file_urls.map do |f| 
+          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+        end.join(", ")
+        
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
         metadata[:file_urls] = file_urls
       end
       
@@ -369,8 +373,12 @@ class ScoutController < ApplicationController
       metadata = {}
       
       if file_urls.any?
-        file_info = file_urls.map { |f| "📎 #{f['filename']}" }.join(", ")
-        enhanced_message = "#{user_message}\n\n[Attached: #{file_info}]"
+        # Include asset_id so AMOS can use read_document tool
+        file_details = file_urls.map do |f| 
+          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+        end.join(", ")
+        
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
         metadata[:file_urls] = file_urls
       end
       

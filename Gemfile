@@ -40,6 +40,9 @@ gem "mailgun-ruby", "~> 1.2"
 gem "ruby-openai", "~> 6.3"
 gem "json", "~> 2.7"
 
+gem 'mini_magick'
+
+
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
