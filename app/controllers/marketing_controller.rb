@@ -1,4 +1,6 @@
 class MarketingController < ApplicationController
+  include AffiliateTracking
+
   skip_before_action :authenticate_user!
   layout 'marketing'
   

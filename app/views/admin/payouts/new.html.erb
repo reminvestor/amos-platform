@@ -1,0 +1,166 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <h1><i class="fas fa-money-check-alt"></i> Create Batch Payout</h1>
+        <%= link_to admin_payouts_path, class: "btn btn-outline-secondary" do %>
+          <i class="fas fa-arrow-left"></i> Back
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Threshold Filter -->
+  <div class="card bg-secondary mb-4">
+    <div class="card-body">
+      <%= form_with url: new_admin_payout_path, method: :get, local: true, class: "row g-3 align-items-end" do %>
+        <div class="col-md-4">
+          <label class="form-label text-white">Minimum Threshold</label>
+          <%= number_field_tag :threshold, @minimum_threshold, step: 0.01, class: "form-control" %>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-filter"></i> Apply Filter
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Batch Summary -->
+  <% if @affiliates_data.any? %>
+    <div class="card bg-primary text-white mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Batch Summary</h5>
+        <div class="row">
+          <div class="col-md-4">
+            <p class="mb-0">
+              <strong>Total Affiliates:</strong> <%= @affiliates_data.count %>
+            </p>
+          </div>
+          <div class="col-md-4">
+            <p class="mb-0">
+              <strong>Total Amount:</strong> $<%= number_with_delimiter(@affiliates_data.sum { |d| d[:amount] }, precision: 2) %>
+            </p>
+          </div>
+          <div class="col-md-4">
+            <p class="mb-0">
+              <strong>Total Commissions:</strong> <%= @affiliates_data.sum { |d| d[:commission_count] } %>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Batch Creation Form -->
+    <%= form_with url: admin_payouts_path, method: :post, local: true, id: "batch-payout-form", data: { controller: "payout-calculator bulk-select" } do %>
+      <%= hidden_field_tag :minimum_threshold, @minimum_threshold %>
+
+      <div class="card bg-secondary mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Payment Settings</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <label class="form-label text-white">Payment Method</label>
+              <%= select_tag :payment_method, options_for_select([['Manual', 'manual'], ['PayPal', 'paypal'], ['Stripe', 'stripe']], 'manual'), class: "form-select", required: true %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card bg-secondary">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            Select Affiliates for Payout
+            <span class="badge bg-info ms-2">
+              <span data-bulk-select-target="counter">0</span> selected
+            </span>
+          </h5>
+          <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-light"
+                    data-action="payout-calculator#selectAll bulk-select#selectAll">
+              Select All
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-light"
+                    data-action="payout-calculator#deselectAll bulk-select#deselectAll">
+              Deselect All
+            </button>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+              <thead>
+                <tr>
+                  <th width="50">
+                    <input type="checkbox"
+                           data-bulk-select-target="masterCheckbox"
+                           data-action="bulk-select#toggleAll payout-calculator#calculate"
+                           class="form-check-input"
+                           checked>
+                  </th>
+                  <th>Affiliate</th>
+                  <th>Email</th>
+                  <th>Payment Email</th>
+                  <th>Commissions</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @affiliates_data.each do |data| %>
+                  <% affiliate = data[:affiliate] %>
+                  <tr>
+                    <td>
+                      <%= check_box_tag "affiliate_ids[]", affiliate.id, true,
+                          class: "form-check-input",
+                          data: {
+                            amount: data[:amount],
+                            payout_calculator_target: "checkbox",
+                            bulk_select_target: "checkbox",
+                            action: "change->payout-calculator#calculate bulk-select#updateCount"
+                          } %>
+                    </td>
+                    <td>
+                      <%= affiliate.user.full_name %>
+                      <span class="badge bg-<%= case affiliate.tier
+                        when 'bronze' then 'secondary'
+                        when 'silver' then 'light text-dark'
+                        when 'gold' then 'warning'
+                        end %>">
+                        <%= affiliate.tier.humanize %>
+                      </span>
+                    </td>
+                    <td><%= affiliate.user.email %></td>
+                    <td><%= affiliate.payment_email || 'Not set' %></td>
+                    <td><%= data[:commission_count] %> commission(s)</td>
+                    <td class="payout-amount">$<%= number_with_delimiter(data[:amount], precision: 2) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+              <tfoot>
+                <tr class="table-primary">
+                  <td colspan="5" class="text-end"><strong>Total Selected:</strong></td>
+                  <td>
+                    <strong data-payout-calculator-target="total">$0.00</strong>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button type="submit" class="btn btn-success btn-lg"
+                  data-bulk-select-target="actionButton">
+            <i class="fas fa-check"></i> Create Batch Payout
+          </button>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle"></i> No affiliates ready for payout with the current threshold of $<%= number_with_delimiter(@minimum_threshold, precision: 2) %>.
+    </div>
+  <% end %>
+</div>

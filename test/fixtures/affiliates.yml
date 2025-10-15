@@ -1,0 +1,44 @@
+# Affiliates fixtures
+pending_affiliate:
+  user: one
+  affiliate_code: PENDING01
+  status: 0  # pending
+  commission_rate: 0.20
+  payment_email: pending@example.com
+  application_notes: "I want to promote your product to my audience"
+  tier: 0  # bronze
+  approved_at: null
+  approved_by: null
+
+active_affiliate:
+  user: two
+  affiliate_code: ACTIVE123
+  status: 1  # active
+  commission_rate: 0.20
+  payment_email: active@example.com
+  application_notes: "Experienced affiliate marketer"
+  tier: 0  # bronze
+  approved_at: <%= 10.days.ago %>
+  approved_by: null
+
+silver_affiliate:
+  user: one
+  affiliate_code: SILVER99
+  status: 1  # active
+  commission_rate: 0.25
+  payment_email: silver@example.com
+  application_notes: "Pro marketer with 10+ referrals"
+  tier: 1  # silver
+  approved_at: <%= 30.days.ago %>
+  approved_by: null
+
+suspended_affiliate:
+  user: two
+  affiliate_code: SUSPEND1
+  status: 2  # suspended
+  commission_rate: 0.20
+  payment_email: suspended@example.com
+  application_notes: "Had some issues"
+  tier: 0  # bronze
+  approved_at: <%= 60.days.ago %>
+  approved_by: null
