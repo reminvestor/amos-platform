@@ -1,0 +1,147 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1><i class="fas fa-cog"></i> Affiliate Program Settings</h1>
+    </div>
+  </div>
+
+  <%= form_with url: admin_settings_affiliate_path, method: :patch, local: true do |f| %>
+    <!-- General Settings -->
+    <div class="card bg-secondary mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">General Settings</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label text-white">Default Commission Rate</label>
+            <%= f.number_field :default_commission_rate, value: @settings.default_commission_rate, step: 0.01, min: 0, max: 1, class: "form-control" %>
+            <small class="text-muted">Enter as decimal (0.20 = 20%)</small>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label class="form-label text-white">Cookie Duration (Days)</label>
+            <%= f.number_field :cookie_duration_days, value: @settings.cookie_duration_days, class: "form-control" %>
+            <small class="text-muted">How long to track referrals after click</small>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label class="form-label text-white">Minimum Payout Threshold ($)</label>
+            <%= f.number_field :minimum_payout_threshold, value: @settings.minimum_payout_threshold, step: 0.01, min: 0, class: "form-control" %>
+            <small class="text-muted">Minimum balance required for payout</small>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <div class="form-check form-switch">
+              <%= f.check_box :auto_approve_applications, checked: @settings.auto_approve_applications, class: "form-check-input" %>
+              <label class="form-check-label text-white">
+                Auto-Approve Applications
+              </label>
+            </div>
+            <small class="text-muted">Automatically approve new affiliate applications</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commission Review Settings -->
+    <div class="card bg-secondary mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Commission Review Settings</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <div class="form-check form-switch">
+              <%= f.check_box :require_review_for_high_commissions, checked: @settings.require_review_for_high_commissions, class: "form-check-input" %>
+              <label class="form-check-label text-white">
+                Require Review for High-Value Commissions
+              </label>
+            </div>
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label class="form-label text-white">High Commission Threshold ($)</label>
+            <%= f.number_field :high_commission_threshold, value: @settings.high_commission_threshold, step: 0.01, min: 0, class: "form-control" %>
+            <small class="text-muted">Commissions above this amount require manual approval</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commission Structure -->
+    <div class="card bg-secondary mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Commission Structure</h5>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle"></i> Commission structure is currently hardcoded in the application. Contact development team to modify.
+        </div>
+        <ul class="text-white">
+          <li><strong>First Payment Commission:</strong> Paid when referred customer makes first payment</li>
+          <li><strong>Recurring Commission:</strong> Paid on each subscription renewal for 12 months</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Affiliate Tiers -->
+    <div class="card bg-secondary mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Affiliate Tiers</h5>
+      </div>
+      <div class="card-body">
+        <% if @tiers.any? %>
+          <div class="table-responsive">
+            <table class="table table-dark">
+              <thead>
+                <tr>
+                  <th>Tier Name</th>
+                  <th>Min Referrals</th>
+                  <th>Commission Rate</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @tiers.each do |tier| %>
+                  <tr>
+                    <td>
+                      <span class="badge bg-<%= case tier.name.downcase
+                        when 'bronze' then 'secondary'
+                        when 'silver' then 'light text-dark'
+                        when 'gold' then 'warning'
+                        end %>">
+                        <%= tier.name %>
+                      </span>
+                    </td>
+                    <td><%= tier.min_referrals %></td>
+                    <td><%= number_to_percentage(tier.commission_rate * 100, precision: 2) %></td>
+                    <td>
+                      <% if tier.is_active %>
+                        <span class="badge bg-success">Active</span>
+                      <% else %>
+                        <span class="badge bg-secondary">Inactive</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <p class="text-muted">No tiers configured yet.</p>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Save Button -->
+    <div class="d-flex justify-content-between">
+      <%= link_to admin_dashboard_path, class: "btn btn-outline-secondary" do %>
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+      <% end %>
+      <button type="submit" class="btn btn-primary btn-lg">
+        <i class="fas fa-save"></i> Save Settings
+      </button>
+    </div>
+  <% end %>
+</div>

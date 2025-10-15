@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 class Users::RegistrationsController < Devise::RegistrationsController
+  include AffiliateTracking
+
   layout 'application', only: [:edit, :update]
   layout 'devise', only: [:new, :create]
-  
+
   before_action :configure_sign_up_params, only: [:create]
   before_action :configure_account_update_params, only: [:update]
 
@@ -47,11 +49,34 @@ class Users::RegistrationsController < Devise::RegistrationsController
         ) do |eu|
           eu.role = 'owner'
         end
-        
+
         # Set the entity in session for immediate use
         session[:entity_id] = resource.entity_id
-        
+
         Rails.logger.info "✅ User #{resource.email} associated with entity #{resource.entity_id}"
+
+        # Track affiliate referral if cookie present
+        if affiliate_referral_code.present?
+          begin
+            AffiliateReferralService.create_referral(
+              referral_code: affiliate_referral_code,
+              user: resource,
+              entity: resource.entity,
+              cookie_data: {
+                ip: request.remote_ip,
+                user_agent: request.user_agent,
+                referrer: request.referrer
+              }
+            )
+
+            # Clear the cookie after conversion
+            cookies.delete(:affiliate_ref)
+            Rails.logger.info "✅ Affiliate referral tracked for user #{resource.email}"
+          rescue => e
+            # Don't fail registration if affiliate tracking fails
+            Rails.logger.error "❌ Failed to track affiliate referral: #{e.message}"
+          end
+        end
       end
     end
   end
