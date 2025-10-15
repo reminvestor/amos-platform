@@ -447,22 +447,26 @@ module Agents
       
       # If STILL not found, check if we have a landing_page_id and load it from database
       if html_content.blank?
+        # Reload workflow contexts to ensure we have latest data
+        @workflow_execution.workflow_contexts.reload if @workflow_execution
+        context_data = get_workflow_context  # Refresh context data
+        
+        Rails.logger.info "🔍 All workflow context keys: #{context_data.keys.join(', ')}"
+        
         # Try multiple ways to find the landing_page_id
         landing_page_id = context_data['landing_page_id'] || 
                          context_data[:landing_page_id] ||
                          context_data['id'] ||  # Also try just 'id'
                          context_data[:id] ||
+                         context_data['execute_goal_landing_page_id'] ||  # NEW - check this first!
+                         context_data['execute_goal_id'] ||
                          context_data.dig('step_output', 'landing_page_id') ||
-                         context_data.dig(:step_output, :landing_page_id) ||
-                         context_data.dig('execute_goal_landing_page_id') ||
-                         context_data.dig(:execute_goal_landing_page_id) ||
-                         context_data.dig('execute_goal_id') ||  # Phase prefix + id
-                         context_data.dig(:execute_goal_id)
+                         context_data.dig(:step_output, :landing_page_id)
         
         # Also check in nested results
         if landing_page_id.blank?
           context_data.each do |key, value|
-            if (key.to_s.include?('landing_page_id') || key.to_s.end_with?('_id')) && value.is_a?(Integer) && value.present?
+            if (key.to_s.include?('landing_page_id') || key.to_s.include?('_id')) && value.is_a?(Integer) && value.present?
               landing_page_id = value
               Rails.logger.info "🔍 Found ID in key: #{key} = #{value}"
               break
