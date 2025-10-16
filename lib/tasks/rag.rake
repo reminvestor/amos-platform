@@ -1,9 +1,9 @@
 namespace :rag do
-  desc "Load AMOS documentation from docs/rag_sources/system/amos/"
+  desc "Load AMOS documentation from rag_sources/system/amos/"
   task load_amos_docs: :environment do
     puts "\n📚 Loading AMOS Documentation into System RAG...\n\n"
 
-    docs_path = Rails.root.join("docs", "rag_sources", "system", "amos")
+    docs_path = Rails.root.join("rag_sources", "system", "amos")
 
     unless Dir.exist?(docs_path)
       puts "❌ Directory not found: #{docs_path}"
@@ -61,13 +61,13 @@ namespace :rag do
     end
   end
 
-  desc "Load integration docs from docs/rag_sources/system/integrations/"
+  desc "Load integration docs from rag_sources/system/integrations/"
   task :load_integration_docs, [:integration_name] => :environment do |t, args|
     integration_name = args[:integration_name] || "all"
 
     puts "\n📚 Loading Integration Documentation...\n\n"
 
-    base_path = Rails.root.join("docs", "rag_sources", "system", "integrations")
+    base_path = Rails.root.join("rag_sources", "system", "integrations")
 
     unless Dir.exist?(base_path)
       puts "❌ Directory not found: #{base_path}"
