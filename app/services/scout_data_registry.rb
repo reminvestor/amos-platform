@@ -1,155 +1,155 @@
 class ScoutDataRegistry
   # Registry of all data objects that Scout can interact with
   AVAILABLE_OBJECTS = {
-    'campaigns' => {
-      model: 'Campaign',
-      description: 'Email marketing campaigns with performance metrics',
+    "campaigns" => {
+      model: "Campaign",
+      description: "Email marketing campaigns with performance metrics",
       queryable_fields: [
-        'id', 'name', 'subject', 'status', 'created_at', 'sent_at', 'scheduled_at', 
-        'description', 'from_email', 'from_name'
+        "id", "name", "subject", "status", "created_at", "sent_at", "scheduled_at",
+        "description", "from_email", "from_name"
       ],
       filterable_fields: [
-        'status', 'created_at', 'sent_at', 'scheduled_at'
+        "status", "created_at", "sent_at", "scheduled_at"
       ],
       metrics: [
-        'total_sent', 'total_delivered', 'total_opened', 'total_clicked', 
-        'total_unsubscribed', 'open_rate', 'click_rate', 'unsubscribe_rate'
+        "total_sent", "total_delivered", "total_opened", "total_clicked",
+        "total_unsubscribed", "open_rate", "click_rate", "unsubscribe_rate"
       ],
       relationships: [
-        'email_deliveries', 'contact_groups', 'email_template', 'entity', 'user'
+        "email_deliveries", "contact_groups", "email_template", "entity", "user"
       ],
-      scoped_by: 'entity_id',
+      scoped_by: "entity_id",
       creatable: true,
       creation_schema: {
-        required: ['name', 'email_template_id'],
-        optional: ['subject', 'scheduled_at', 'description', 'from_email', 'from_name', 'contact_group_ids'],
+        required: [ "name", "email_template_id" ],
+        optional: [ "subject", "scheduled_at", "description", "from_email", "from_name", "contact_group_ids" ],
         defaults: {
-          status: 'draft',
+          status: "draft",
           from_email: -> { entity.default_from_email },
           from_name: -> { entity.name }
         }
       }
     },
-    
-    'landing_pages' => {
-      model: 'LandingPage',
-      description: 'Landing pages with conversion and engagement metrics',
+
+    "landing_pages" => {
+      model: "LandingPage",
+      description: "Landing pages with conversion and engagement metrics",
       queryable_fields: [
-        'id', 'title', 'slug', 'status', 'created_at', 'updated_at', 'description'
+        "id", "title", "slug", "status", "created_at", "updated_at", "description"
       ],
       filterable_fields: [
-        'status', 'created_at', 'updated_at'
+        "status", "created_at", "updated_at"
       ],
       metrics: [
-        'total_views', 'unique_views', 'conversion_count', 'conversion_rate', 
-        'bounce_rate', 'avg_time_on_page'
+        "total_views", "unique_views", "conversion_count", "conversion_rate",
+        "bounce_rate", "avg_time_on_page"
       ],
       relationships: [
-        'landing_page_versions', 'campaigns', 'entity', 'user'
+        "landing_page_versions", "campaigns", "entity", "user"
       ],
-      scoped_by: 'entity_id',
+      scoped_by: "entity_id",
       creatable: true,
       creation_schema: {
-        required: ['title', 'description'],
-        optional: ['slug', 'campaign_id', 'template_type', 'status'],
+        required: [ "title", "description" ],
+        optional: [ "slug", "campaign_id", "template_type", "status" ],
         defaults: {
-          status: 'draft'
+          status: "draft"
         }
       }
     },
-    
-    'contacts' => {
-      model: 'Contact',
-      description: 'Contact list with engagement history and metrics',
+
+    "contacts" => {
+      model: "Contact",
+      description: "Contact list with engagement history and metrics",
       queryable_fields: [
-        'id', 'email', 'first_name', 'last_name', 'created_at', 'updated_at',
-        'opted_out', 'opted_out_at', 'last_engagement_at'
+        "id", "email", "first_name", "last_name", "created_at", "updated_at",
+        "opted_out", "opted_out_at", "last_engagement_at"
       ],
       filterable_fields: [
-        'created_at', 'updated_at', 'opted_out', 'last_engagement_at'
+        "created_at", "updated_at", "opted_out", "last_engagement_at"
       ],
       metrics: [
-        'total_campaigns_received', 'total_opens', 'total_clicks', 'engagement_score',
-        'last_open_date', 'last_click_date'
+        "total_campaigns_received", "total_opens", "total_clicks", "engagement_score",
+        "last_open_date", "last_click_date"
       ],
       relationships: [
-        'contact_groups', 'email_deliveries', 'entity'
+        "contact_groups", "email_deliveries", "entity"
       ],
-      scoped_by: 'entity_id',
+      scoped_by: "entity_id",
       creatable: true,
       creation_schema: {
-        required: ['email'],
-        optional: ['first_name', 'last_name', 'contact_group_ids'],
+        required: [ "email" ],
+        optional: [ "first_name", "last_name", "contact_group_ids" ],
         defaults: {
           opted_out: false
         }
       }
     },
-    
-    'contact_groups' => {
-      model: 'ContactGroup',
-      description: 'Contact segments and groups with performance metrics',
+
+    "contact_groups" => {
+      model: "ContactGroup",
+      description: "Contact segments and groups with performance metrics",
       queryable_fields: [
-        'id', 'name', 'description', 'created_at', 'updated_at'
+        "id", "name", "description", "created_at", "updated_at"
       ],
       filterable_fields: [
-        'created_at', 'updated_at'
+        "created_at", "updated_at"
       ],
       metrics: [
-        'contact_count', 'avg_engagement_rate', 'total_campaigns_sent'
+        "contact_count", "avg_engagement_rate", "total_campaigns_sent"
       ],
       relationships: [
-        'contacts', 'campaigns', 'entity', 'user'
+        "contacts", "campaigns", "entity", "user"
       ],
-      scoped_by: 'entity_id',
+      scoped_by: "entity_id",
       creatable: true,
       creation_schema: {
-        required: ['name'],
-        optional: ['description', 'contact_ids'],
+        required: [ "name" ],
+        optional: [ "description", "contact_ids" ],
         defaults: {}
       }
     },
-    
-    'email_templates' => {
-      model: 'EmailTemplate',
-      description: 'Email templates used in campaigns',
+
+    "email_templates" => {
+      model: "EmailTemplate",
+      description: "Email templates used in campaigns",
       queryable_fields: [
-        'id', 'name', 'subject', 'created_at', 'updated_at'
+        "id", "name", "subject", "created_at", "updated_at"
       ],
       filterable_fields: [
-        'created_at', 'updated_at'
+        "created_at", "updated_at"
       ],
       metrics: [
-        'usage_count', 'avg_open_rate', 'avg_click_rate'
+        "usage_count", "avg_open_rate", "avg_click_rate"
       ],
       relationships: [
-        'campaigns', 'entity', 'user'
+        "campaigns", "entity", "user"
       ],
-      scoped_by: 'entity_id',
+      scoped_by: "entity_id",
       creatable: true,
       creation_schema: {
-        required: ['name', 'subject', 'body'],
-        optional: ['description'],
+        required: [ "name", "subject", "body" ],
+        optional: [ "description" ],
         defaults: {}
       }
     },
-    
-    'email_deliveries' => {
-      model: 'EmailDelivery',
-      description: 'Individual email delivery records with engagement tracking',
+
+    "email_deliveries" => {
+      model: "EmailDelivery",
+      description: "Individual email delivery records with engagement tracking",
       queryable_fields: [
-        'id', 'sent_at', 'opened_at', 'clicked_at', 'unsubscribed_at', 'bounced_at'
+        "id", "sent_at", "opened_at", "clicked_at", "unsubscribed_at", "bounced_at"
       ],
       filterable_fields: [
-        'sent_at', 'opened_at', 'clicked_at', 'unsubscribed_at', 'bounced_at'
+        "sent_at", "opened_at", "clicked_at", "unsubscribed_at", "bounced_at"
       ],
       metrics: [
-        'delivery_status', 'engagement_level'
+        "delivery_status", "engagement_level"
       ],
       relationships: [
-        'campaign', 'contact'
+        "campaign", "contact"
       ],
-      scoped_by: 'campaign.entity_id',
+      scoped_by: "campaign.entity_id",
       creatable: false  # These are created automatically by campaigns
     },
 
@@ -242,92 +242,92 @@ class ScoutDataRegistry
       }
     }
   }.freeze
-  
+
   class << self
     # Get list of available object types
     def available_object_types
       AVAILABLE_OBJECTS.keys
     end
-    
+
     # Get configuration for a specific object type
     def object_config(object_type)
       AVAILABLE_OBJECTS[object_type.to_s]
     end
-    
+
     # Check if an object type is queryable
     def queryable?(object_type)
       AVAILABLE_OBJECTS.key?(object_type.to_s)
     end
-    
+
     # Check if an object type is creatable
     def creatable?(object_type)
       config = object_config(object_type)
       config && config[:creatable]
     end
-    
+
     # Get model class for an object type
     def model_class(object_type)
       config = object_config(object_type)
       return nil unless config
-      
+
       config[:model].constantize
     rescue NameError
       nil
     end
-    
+
     # Get queryable fields for an object type
     def queryable_fields(object_type)
       config = object_config(object_type)
       config ? config[:queryable_fields] : []
     end
-    
+
     # Get filterable fields for an object type
     def filterable_fields(object_type)
       config = object_config(object_type)
       config ? config[:filterable_fields] : []
     end
-    
+
     # Get available metrics for an object type
     def metrics(object_type)
       config = object_config(object_type)
       config ? config[:metrics] : []
     end
-    
+
     # Get available relationships for an object type
     def relationships(object_type)
       config = object_config(object_type)
       config ? config[:relationships] : []
     end
-    
+
     # Get creation schema for an object type
     def creation_schema(object_type)
       config = object_config(object_type)
       config && config[:creatable] ? config[:creation_schema] : nil
     end
-    
+
     # Format object registry for Claude AI function calling
     def for_claude_function_calling
       objects_description = AVAILABLE_OBJECTS.map do |type, config|
         "#{type}: #{config[:description]} (queryable fields: #{config[:queryable_fields].join(', ')})"
       end.join('\n')
-      
+
       {
         available_objects: objects_description,
         object_types: available_objects
       }
     end
-    
+
     # Validate filters against object schema
     def validate_filters(object_type, filters)
       return {} unless filters.is_a?(Hash)
-      
+
       allowed_fields = filterable_fields(object_type) + queryable_fields(object_type)
-      
+
       filters.select do |field, _value|
         allowed_fields.include?(field.to_s)
       end
     end
-    
+
     # Get scope field for entity filtering
     def scope_field(object_type)
       config = object_config(object_type)
@@ -337,10 +337,10 @@ class ScoutDataRegistry
     # Dynamic schema discovery methods
     def get_actual_schema(object_type)
       return nil unless queryable?(object_type)
-      
+
       config = AVAILABLE_OBJECTS[object_type]
       model_class = config[:model].constantize
-      
+
       {
         object_type: object_type,
         model: config[:model],
@@ -354,65 +354,65 @@ class ScoutDataRegistry
         creatable: config[:creatable]
       }
     end
-    
+
     def get_available_fields(model_class)
       # Get actual columns that exist in the database
       columns = model_class.column_names
-      
+
       # Filter out system columns that aren't useful for queries
-      excluded_columns = %w[id created_at updated_at encrypted_password reset_password_token 
-                           reset_password_sent_at remember_created_at confirmation_token 
+      excluded_columns = %w[id created_at updated_at encrypted_password reset_password_token
+                           reset_password_sent_at remember_created_at confirmation_token
                            confirmed_at confirmation_sent_at unconfirmed_email]
-      
+
       useful_columns = columns - excluded_columns
-      
+
       # Add created_at and updated_at back if they exist (these are useful for filtering)
       useful_columns += (columns & %w[created_at updated_at])
-      
+
       useful_columns.sort
     end
-    
+
     def get_actual_relationships(model_class)
       # Get actual ActiveRecord associations
       associations = model_class.reflections.keys
-      
+
       # Filter to common relationship types
       associations.select do |assoc|
         reflection = model_class.reflections[assoc]
         %w[belongs_to has_many has_one].include?(reflection.macro.to_s)
       end.sort
     end
-    
+
     def validate_field_exists(object_type, field)
       return false unless queryable?(object_type)
-      
+
       config = AVAILABLE_OBJECTS[object_type]
       model_class = config[:model].constantize
-      
+
       model_class.column_names.include?(field.to_s)
     end
-    
+
     def get_safe_order_field(object_type)
-      return 'id' unless queryable?(object_type)
-      
+      return "id" unless queryable?(object_type)
+
       config = AVAILABLE_OBJECTS[object_type]
       model_class = config[:model].constantize
       columns = model_class.column_names
-      
+
       # Preferred order: created_at, updated_at, id
       preferred_fields = %w[created_at updated_at id]
-      
+
       preferred_fields.each do |field|
         return field if columns.include?(field)
       end
-      
+
       # Fallback to first column if none of the preferred exist
-      columns.first || 'id'
+      columns.first || "id"
     end
-    
+
     def discover_all_schemas
       schemas = {}
-      
+
       AVAILABLE_OBJECTS.each do |object_type, config|
         begin
           schemas[object_type] = get_actual_schema(object_type)
@@ -421,8 +421,8 @@ class ScoutDataRegistry
           schemas[object_type] = { error: e.message }
         end
       end
-      
+
       schemas
     end
   end
-end 
+end

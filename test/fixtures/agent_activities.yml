@@ -2,10 +2,16 @@
 
 one:
   conversation: one
-  agent_name: "test_agent"
-  activity_type: "test"
+  agent_name: "conversation_engine"
+  activity_type: "message_processing"
+  input_data: {"message": "Hello"}
+  output_data: {"response": "Processing complete"}
+  processing_time_ms: 150
 
 two:
   conversation: two
-  agent_name: "test_agent_2"
-  activity_type: "test"
+  agent_name: "intent_analyzer"
+  activity_type: "intent_analysis"
+  input_data: {"message": "Help with campaign"}
+  output_data: {"intent": "campaign_assistance"}
+  processing_time_ms: 200

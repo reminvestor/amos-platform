@@ -1,29 +1,29 @@
 class DocumentProcessorService
-  require 'open-uri'
-  require 'pdf-reader'
-  require 'kramdown'
-  require 'yaml'
-  require 'json'
-  
+  require "open-uri"
+  require "pdf-reader"
+  require "kramdown"
+  require "yaml"
+  require "json"
+
   def initialize
     @chunks = []
     @metadata = {}
   end
-  
+
   def process_documents(documents)
     Rails.logger.info "📄 Processing #{documents.length} documents"
-    
+
     documents.each do |doc|
       case doc[:type]
-      when 'url'
+      when "url"
         process_url(doc[:content])
-      when 'file'
+      when "file"
         process_file(doc[:content], doc[:filename])
-      when 'text'
+      when "text"
         process_text(doc[:content], doc[:metadata] || {})
       end
     end
-    
+
     {
       success: true,
       chunks: @chunks,
@@ -34,22 +34,22 @@ class DocumentProcessorService
     Rails.logger.error "Document processing failed: #{e.message}"
     { success: false, error: e.message, chunks: @chunks }
   end
-  
+
   private
-  
+
   def process_url(url)
     Rails.logger.info "🌐 Fetching URL: #{url}"
-    
+
     begin
-      response = URI.open(url, 
-        'User-Agent' => 'AMOS Labs Integration Builder/1.0',
+      response = URI.open(url,
+        "User-Agent" => "AMOS Labs Integration Builder/1.0",
         read_timeout: 30,
         open_timeout: 10
       )
-      
+
       content_type = response.content_type
       content = response.read
-      
+
       case content_type
       when /json/i
         process_json_content(content, { source: url })
@@ -72,165 +72,165 @@ class DocumentProcessorService
       }
     end
   end
-  
+
   def process_file(file_path, filename)
     Rails.logger.info "📁 Processing file: #{filename}"
-    
+
     extension = File.extname(filename).downcase
     content = File.read(file_path)
-    
+
     case extension
-    when '.json'
+    when ".json"
       process_json_content(content, { source: filename })
-    when '.yaml', '.yml'
+    when ".yaml", ".yml"
       process_yaml_content(content, { source: filename })
-    when '.md', '.markdown'
+    when ".md", ".markdown"
       process_markdown_content(content, { source: filename })
-    when '.pdf'
+    when ".pdf"
       process_pdf_file(file_path, { source: filename })
-    when '.html', '.htm'
+    when ".html", ".htm"
       process_html_content(content, { source: filename })
     else
       process_text(content, { source: filename })
     end
   end
-  
+
   def process_json_content(content, metadata)
     data = JSON.parse(content)
-    
+
     # Handle OpenAPI/Swagger specifications
-    if data['openapi'] || data['swagger']
+    if data["openapi"] || data["swagger"]
       process_openapi_spec(data, metadata)
     else
       # Generic JSON processing
-      extract_chunks_from_hash(data, metadata, '')
+      extract_chunks_from_hash(data, metadata, "")
     end
   rescue JSON::ParserError => e
     Rails.logger.error "JSON parse error: #{e.message}"
     process_text(content, metadata.merge(parse_error: true))
   end
-  
+
   def process_yaml_content(content, metadata)
     data = YAML.safe_load(content)
-    
+
     # Handle OpenAPI/Swagger specifications
-    if data['openapi'] || data['swagger']
+    if data["openapi"] || data["swagger"]
       process_openapi_spec(data, metadata)
     else
       # Generic YAML processing
-      extract_chunks_from_hash(data, metadata, '')
+      extract_chunks_from_hash(data, metadata, "")
     end
   rescue => e
     Rails.logger.error "YAML parse error: #{e.message}"
     process_text(content, metadata.merge(parse_error: true))
   end
-  
+
   def process_openapi_spec(spec, metadata)
     # Extract authentication information
-    if spec['components'] && spec['components']['securitySchemes']
+    if spec["components"] && spec["components"]["securitySchemes"]
       auth_chunk = {
         content: "Authentication Methods:\n#{format_security_schemes(spec['components']['securitySchemes'])}",
-        metadata: metadata.merge(type: 'authentication', api_version: spec['info']['version'])
+        metadata: metadata.merge(type: "authentication", api_version: spec["info"]["version"])
       }
       @chunks << auth_chunk
     end
-    
+
     # Extract endpoint information
-    if spec['paths']
-      spec['paths'].each do |path, methods|
+    if spec["paths"]
+      spec["paths"].each do |path, methods|
         methods.each do |method, details|
-          next if method == 'parameters'
-          
+          next if method == "parameters"
+
           endpoint_chunk = {
             content: format_endpoint(path, method, details),
             metadata: metadata.merge(
-              type: 'endpoint',
+              type: "endpoint",
               path: path,
               method: method.upcase,
-              operation_id: details['operationId']
+              operation_id: details["operationId"]
             )
           }
           @chunks << endpoint_chunk
         end
       end
     end
-    
+
     # Extract server/base URL information
-    if spec['servers']
+    if spec["servers"]
       server_chunk = {
         content: "API Servers:\n#{spec['servers'].map { |s| "#{s['url']} - #{s['description']}" }.join("\n")}",
-        metadata: metadata.merge(type: 'servers')
+        metadata: metadata.merge(type: "servers")
       }
       @chunks << server_chunk
     end
-    
+
     # Store overall API metadata
     @metadata[metadata[:source]] = {
-      api_name: spec.dig('info', 'title'),
-      api_version: spec.dig('info', 'version'),
-      base_url: spec.dig('servers', 0, 'url'),
-      total_endpoints: spec['paths']&.values&.map(&:keys)&.flatten&.count || 0
+      api_name: spec.dig("info", "title"),
+      api_version: spec.dig("info", "version"),
+      base_url: spec.dig("servers", 0, "url"),
+      total_endpoints: spec["paths"]&.values&.map(&:keys)&.flatten&.count || 0
     }
   end
-  
+
   def format_security_schemes(schemes)
     schemes.map do |name, config|
-      case config['type']
-      when 'apiKey'
+      case config["type"]
+      when "apiKey"
         "#{name}: API Key (#{config['in']}: #{config['name']})"
-      when 'http'
+      when "http"
         "#{name}: HTTP #{config['scheme']} authentication"
-      when 'oauth2'
+      when "oauth2"
         "#{name}: OAuth 2.0 - #{config['flows'].keys.join(', ')}"
       else
         "#{name}: #{config['type']}"
       end
     end.join("\n")
   end
-  
+
   def format_endpoint(path, method, details)
     content = []
     content << "#{method.upcase} #{path}"
-    content << "Summary: #{details['summary']}" if details['summary']
-    content << "Description: #{details['description']}" if details['description']
-    
-    if details['parameters']
+    content << "Summary: #{details['summary']}" if details["summary"]
+    content << "Description: #{details['description']}" if details["description"]
+
+    if details["parameters"]
       content << "\nParameters:"
-      details['parameters'].each do |param|
+      details["parameters"].each do |param|
         content << "  - #{param['name']} (#{param['in']}): #{param['description']} #{param['required'] ? '[Required]' : '[Optional]'}"
       end
     end
-    
-    if details['requestBody']
+
+    if details["requestBody"]
       content << "\nRequest Body:"
-      if details['requestBody']['content']
-        details['requestBody']['content'].each do |content_type, schema|
+      if details["requestBody"]["content"]
+        details["requestBody"]["content"].each do |content_type, schema|
           content << "  Content-Type: #{content_type}"
-          if schema['schema'] && schema['schema']['properties']
+          if schema["schema"] && schema["schema"]["properties"]
             content << "  Properties: #{schema['schema']['properties'].keys.join(', ')}"
           end
         end
       end
     end
-    
-    if details['responses']
+
+    if details["responses"]
       content << "\nResponses:"
-      details['responses'].each do |code, response|
+      details["responses"].each do |code, response|
         content << "  #{code}: #{response['description']}"
       end
     end
-    
+
     content.join("\n")
   end
-  
+
   def process_markdown_content(content, metadata)
     # Parse markdown to extract structure
     doc = Kramdown::Document.new(content)
-    
+
     # Extract sections
     current_section = []
     current_heading = nil
-    
+
     doc.root.children.each do |element|
       case element.type
       when :header
@@ -239,53 +239,53 @@ class DocumentProcessorService
           @chunks << {
             content: current_section.join("\n"),
             metadata: metadata.merge(
-              type: 'documentation',
+              type: "documentation",
               section: current_heading
             )
           }
         end
-        
+
         current_heading = element.options[:raw_text]
-        current_section = [current_heading]
+        current_section = [ current_heading ]
       else
         current_section << element_to_text(element)
       end
     end
-    
+
     # Save last section
     if current_section.any?
       @chunks << {
         content: current_section.join("\n"),
         metadata: metadata.merge(
-          type: 'documentation',
+          type: "documentation",
           section: current_heading
         )
       }
     end
   end
-  
+
   def process_html_content(content, metadata)
     # Simple HTML text extraction
-    text = content.gsub(/<script.*?<\/script>/m, '') # Remove scripts
-                 .gsub(/<style.*?<\/style>/m, '')   # Remove styles
-                 .gsub(/<[^>]+>/, ' ')              # Remove tags
-                 .gsub(/\s+/, ' ')                  # Normalize whitespace
+    text = content.gsub(/<script.*?<\/script>/m, "") # Remove scripts
+                 .gsub(/<style.*?<\/style>/m, "")   # Remove styles
+                 .gsub(/<[^>]+>/, " ")              # Remove tags
+                 .gsub(/\s+/, " ")                  # Normalize whitespace
                  .strip
-    
-    process_text(text, metadata.merge(type: 'html'))
+
+    process_text(text, metadata.merge(type: "html"))
   end
-  
+
   def process_pdf_file(file_path, metadata)
     reader = PDF::Reader.new(file_path)
-    
+
     reader.pages.each_with_index do |page, index|
       text = page.text
       next if text.strip.empty?
-      
+
       @chunks << {
         content: text,
         metadata: metadata.merge(
-          type: 'pdf',
+          type: "pdf",
           page: index + 1,
           total_pages: reader.page_count
         )
@@ -298,47 +298,47 @@ class DocumentProcessorService
       metadata: metadata.merge(error: true)
     }
   end
-  
+
   def process_text(content, metadata)
     # Split long text into chunks
     max_chunk_size = 2000
-    
+
     if content.length <= max_chunk_size
       @chunks << {
         content: content,
-        metadata: metadata.merge(type: 'text')
+        metadata: metadata.merge(type: "text")
       }
     else
       # Split by paragraphs or sentences
       paragraphs = content.split(/\n\n+/)
-      
+
       current_chunk = []
       current_size = 0
-      
+
       paragraphs.each do |paragraph|
         if current_size + paragraph.length > max_chunk_size && current_chunk.any?
           @chunks << {
             content: current_chunk.join("\n\n"),
-            metadata: metadata.merge(type: 'text', chunked: true)
+            metadata: metadata.merge(type: "text", chunked: true)
           }
-          current_chunk = [paragraph]
+          current_chunk = [ paragraph ]
           current_size = paragraph.length
         else
           current_chunk << paragraph
           current_size += paragraph.length
         end
       end
-      
+
       # Add remaining chunk
       if current_chunk.any?
         @chunks << {
           content: current_chunk.join("\n\n"),
-          metadata: metadata.merge(type: 'text', chunked: true)
+          metadata: metadata.merge(type: "text", chunked: true)
         }
       end
     end
   end
-  
+
   def extract_chunks_from_hash(data, metadata, prefix)
     case data
     when Hash
@@ -356,18 +356,18 @@ class DocumentProcessorService
         # Simple array - create chunk
         @chunks << {
           content: "#{prefix}: #{data.join(', ')}",
-          metadata: metadata.merge(type: 'data', path: prefix)
+          metadata: metadata.merge(type: "data", path: prefix)
         }
       end
     else
       # Leaf value - create chunk
       @chunks << {
         content: "#{prefix}: #{data}",
-        metadata: metadata.merge(type: 'data', path: prefix)
+        metadata: metadata.merge(type: "data", path: prefix)
       }
     end
   end
-  
+
   def element_to_text(element)
     case element.type
     when :text
@@ -384,7 +384,7 @@ class DocumentProcessorService
       element.children.map { |child| element_to_text(child) }.join if element.children
     end
   end
-  
+
   def aggregate_metadata
     {
       total_sources: @metadata.keys.count,

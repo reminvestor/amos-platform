@@ -20,21 +20,21 @@ puts "Using API key: #{key[0..5]}...#{key[-4..-1]}"
 begin
   puts "Creating Claude service..."
   claude = ClaudeService.new
-  
+
   puts "Sending test message to Claude 3.7..."
   system_prompt = "You are a helpful AI assistant."
   user_message = "What's 2+2? Keep your answer very short."
-  
+
   start_time = Time.now
   response = claude.send_message(system_prompt, user_message, max_tokens: 150)
   elapsed = Time.now - start_time
-  
+
   puts "\nSUCCESS! Received response in #{elapsed.round(2)} seconds:"
   puts "-" * 50
   puts response
   puts "-" * 50
-  
+
 rescue => e
   puts "ERROR: #{e.class} - #{e.message}"
   puts e.backtrace[0..5]
-end 
+end

@@ -5,15 +5,18 @@ one:
   subdomain: "testentity1"
   slug: "test-entity-one"
   status: "active"
+  settings: {}
 
 two:
   name: "Test Entity Two"
   subdomain: "testentity2"
   slug: "test-entity-two"
   status: "active"
+  settings: {}
 
 default:
   name: "Default Test Entity"
   subdomain: "defaulttest"
   slug: "default-test-entity"
   status: "active"
+  settings: {}
