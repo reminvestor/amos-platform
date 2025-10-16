@@ -675,6 +675,9 @@ class ScoutController < ApplicationController
       when 'analytics_dashboard'
         canvas_content = render_analytics_canvas(canvas_data)
         canvas_title = "Analytics Dashboard"
+      when 'document_viewer'
+        canvas_content = render_document_viewer_canvas(canvas_data)
+        canvas_title = "Document Viewer"
       when 'contact_generator'
         canvas_content = render_contact_generator(canvas_data)
         canvas_title = "Create Contact"
@@ -1409,6 +1412,26 @@ class ScoutController < ApplicationController
     )
   end
 
+  def render_document_viewer_canvas(data = {})
+    # Build document URL from asset_id
+    if data[:asset_id]
+      asset = ImageAsset.find_by(id: data[:asset_id], entity: current_entity)
+      if asset && asset.file.attached?
+        data[:url] = rails_blob_url(asset.file)
+        data[:download_url] = rails_blob_url(asset.file, disposition: 'attachment')
+      end
+    end
+    
+    render_to_string(
+      partial: 'scout/canvas/document_viewer',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+  
   def render_analytics_canvas(data = {})
     # Get analytics data for the dashboard
     analytics_data = {
