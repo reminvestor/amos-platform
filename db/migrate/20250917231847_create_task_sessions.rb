@@ -10,10 +10,10 @@ class CreateTaskSessions < ActiveRecord::Migration[8.0]
 
       t.timestamps
     end
-    
+
     add_index :task_sessions, :status
     add_index :task_sessions, :session_type
-    add_index :task_sessions, [:user_id, :status]
+    add_index :task_sessions, [ :user_id, :status ]
     add_index :task_sessions, :created_at
   end
 end

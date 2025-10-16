@@ -28,4 +28,4 @@ plugin :tmp_restart
 # Redirect stderr/stdout to files in production
 if ENV.fetch("RAILS_ENV") { "development" } == "production"
   stdout_redirect "log/puma.stdout.log", "log/puma.stderr.log", true
-end 
+end

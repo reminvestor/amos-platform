@@ -88,7 +88,7 @@ module Tools
         if text_content.length > max_length
           text_content = text_content[0...max_length] + "\n\n[Content truncated - full document has #{text_content.length} characters]"
         end
-        
+
         # Suggest loading document viewer canvas
         @context[:canvas_suggestion] = 'document_viewer'
         @context[:canvas_data] = {
@@ -98,7 +98,7 @@ module Tools
           size: asset&.file&.blob&.byte_size,
           extracted_text_preview: text_content.first(500)
         }
-        
+
         success_response(
           content: text_content,
           filename: filename,

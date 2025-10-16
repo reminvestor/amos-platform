@@ -16,13 +16,13 @@ class CreateLandingPageSubmissions < ActiveRecord::Migration[8.0]
 
       t.timestamps
     end
-    
+
     # Indexes for performance
     add_index :landing_page_submissions, :form_type
     add_index :landing_page_submissions, :status
     add_index :landing_page_submissions, :submitted_at
-    add_index :landing_page_submissions, [:landing_page_id, :submitted_at]
-    add_index :landing_page_submissions, [:contact_id, :submitted_at]
+    add_index :landing_page_submissions, [ :landing_page_id, :submitted_at ]
+    add_index :landing_page_submissions, [ :contact_id, :submitted_at ]
     add_index :landing_page_submissions, :session_id
   end
 end
