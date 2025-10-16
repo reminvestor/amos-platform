@@ -27,17 +27,21 @@ class DoclingBridgeService
   # @option options [Integer] :chunk_size Maximum chunk size (default: 2000)
   # @option options [Boolean] :preserve_tables Keep table structure (default: true)
   # @option options [Boolean] :extract_images Extract image metadata (default: false)
+  # @option options [String] :chunking_strategy 'simple' or 'semantic' (default: from RagConfig)
+  # @option options [Integer] :chunk_overlap Overlap in characters for semantic chunking (default: from RagConfig)
   # @return [Hash] Result with success status, chunks, and metadata
   def process_file(file_path, options = {})
     unless File.exist?(file_path)
       return error_result("File not found: #{file_path}")
     end
 
-    chunk_size = options.fetch(:chunk_size, CHUNK_SIZE)
+    chunk_size = options.fetch(:chunk_size, RagConfig.chunk_size)
     preserve_tables = options.fetch(:preserve_tables, true)
     extract_images = options.fetch(:extract_images, false)
+    chunking_strategy = options.fetch(:chunking_strategy, RagConfig.chunking_strategy)
+    chunk_overlap = options.fetch(:chunk_overlap, RagConfig.chunk_overlap)
 
-    Rails.logger.info "📄 Processing document with Docling: #{File.basename(file_path)}"
+    Rails.logger.info "📄 Processing document with Docling: #{File.basename(file_path)} (#{chunking_strategy} chunking)"
 
     begin
       stdout, stderr, status = Open3.capture3(
@@ -47,6 +51,8 @@ class DoclingBridgeService
         chunk_size.to_s,
         preserve_tables.to_s,
         extract_images.to_s,
+        chunking_strategy,
+        chunk_overlap.to_s,
         timeout: 300 # 5 minute timeout
       )
 

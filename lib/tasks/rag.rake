@@ -1,5 +1,146 @@
 namespace :rag do
-  desc "Populate system RAG with AMOS knowledge"
+  desc "Load AMOS documentation from docs/rag_sources/system/amos/"
+  task load_amos_docs: :environment do
+    puts "\n📚 Loading AMOS Documentation into System RAG...\n\n"
+
+    docs_path = Rails.root.join("docs", "rag_sources", "system", "amos")
+
+    unless Dir.exist?(docs_path)
+      puts "❌ Directory not found: #{docs_path}"
+      puts "   Create it with: mkdir -p #{docs_path}"
+      exit 1
+    end
+
+    # Find all supported files
+    files = Dir.glob(docs_path.join("**", "*")).select do |f|
+      File.file?(f) && f.match?(/\.(md|pdf|docx|pptx|txt)$/i)
+    end
+
+    if files.empty?
+      puts "⚠️  No documents found in #{docs_path}"
+      puts "   Supported formats: .md, .pdf, .docx, .pptx, .txt"
+      exit 0
+    end
+
+    puts "Found #{files.length} document(s)"
+    puts ""
+
+    # Process all files
+    documents = files.map { |f| { type: 'file', content: f } }
+
+    processor = DocumentProcessorService.new
+    result = processor.process_documents(documents)
+
+    if result[:success]
+      puts "✅ Extracted #{result[:total_chunks]} chunks from #{files.length} files"
+
+      # Create system RAG store
+      rag_service = RagStoreService.new
+      rag_result = rag_service.create_rag_store(
+        "AMOS",
+        result[:chunks],
+        {
+          store_type: 'system',
+          entity: nil,
+          user: nil,
+          name: "AMOS Platform Documentation (System)",
+          source_files: files.map { |f| f.gsub(Rails.root.to_s, '') }
+        }
+      )
+
+      if rag_result[:success]
+        puts "✅ Created RAG store: #{rag_result[:rag_store_id]}"
+        puts "   Index: #{rag_result[:index_name]}"
+        puts "   Namespace: #{rag_result[:namespace]}"
+        puts "   Chunks: #{rag_result[:chunks_stored]}"
+      else
+        puts "❌ Failed to create RAG store: #{rag_result[:error]}"
+      end
+    else
+      puts "❌ Document processing failed: #{result[:error]}"
+    end
+  end
+
+  desc "Load integration docs from docs/rag_sources/system/integrations/"
+  task :load_integration_docs, [:integration_name] => :environment do |t, args|
+    integration_name = args[:integration_name] || "all"
+
+    puts "\n📚 Loading Integration Documentation...\n\n"
+
+    base_path = Rails.root.join("docs", "rag_sources", "system", "integrations")
+
+    unless Dir.exist?(base_path)
+      puts "❌ Directory not found: #{base_path}"
+      exit 1
+    end
+
+    # Determine which integrations to load
+    if integration_name == "all"
+      integration_dirs = Dir.glob(base_path.join("*")).select { |f| File.directory?(f) }
+    else
+      integration_dirs = [base_path.join(integration_name)]
+    end
+
+    integration_dirs.each do |int_dir|
+      next unless Dir.exist?(int_dir)
+
+      int_name = File.basename(int_dir).titleize
+      puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      puts "Processing: #{int_name}"
+      puts ""
+
+      # Find all files
+      files = Dir.glob(File.join(int_dir, "**", "*")).select do |f|
+        File.file?(f) && f.match?(/\.(md|pdf|docx|pptx|txt)$/i)
+      end
+
+      if files.empty?
+        puts "⚠️  No documents found in #{int_dir}"
+        next
+      end
+
+      puts "Found #{files.length} document(s)"
+
+      # Process files
+      documents = files.map { |f| { type: 'file', content: f } }
+
+      processor = DocumentProcessorService.new
+      result = processor.process_documents(documents)
+
+      if result[:success]
+        puts "✅ Extracted #{result[:total_chunks]} chunks"
+
+        # Create system RAG store
+        rag_service = RagStoreService.new
+        rag_result = rag_service.create_rag_store(
+          int_name,
+          result[:chunks],
+          {
+            store_type: 'system',
+            entity: nil,
+            user: nil,
+            name: "#{int_name} Integration Docs (System)",
+            source_files: files.map { |f| f.gsub(Rails.root.to_s, '') }
+          }
+        )
+
+        if rag_result[:success]
+          puts "✅ Created RAG store: #{rag_result[:rag_store_id]}"
+          puts "   Chunks: #{rag_result[:chunks_stored]}"
+        else
+          puts "❌ Failed to create RAG store: #{rag_result[:error]}"
+        end
+      else
+        puts "❌ Processing failed: #{result[:error]}"
+      end
+
+      puts ""
+    end
+
+    puts "✅ Integration docs loading complete!"
+  end
+
+  desc "Populate system RAG with AMOS knowledge (from URLs)"
   task populate_system: :environment do
     puts "\n📚 Populating system RAG with AMOS knowledge...\n\n"
 
