@@ -1,0 +1,21 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  title: "Test Landing Page"
+  slug: "test-landing-page-1"
+  description: "A test landing page for automated testing"
+  status: "published"
+  user: one
+  entity: one
+  html_content: "<h1>Welcome to our test page</h1>"
+  metadata: {}
+
+two:
+  title: "Demo Landing Page"
+  slug: "demo-landing-page-2"
+  description: "Another test landing page"
+  status: "draft"
+  user: one
+  entity: one
+  html_content: "<h1>Demo Page</h1>"
+  metadata: {}

@@ -31,8 +31,8 @@ module SocialMedia
       post.update!(
         status: status,
         post_url: post_url,
-        published_at: status == 'published' ? Time.current : nil
+        published_at: status == "published" ? Time.current : nil
       )
     end
   end
-end 
+end

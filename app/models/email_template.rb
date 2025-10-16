@@ -1,16 +1,16 @@
 class EmailTemplate < ApplicationRecord
   belongs_to :user
   belongs_to :entity
-  
+
   # Associations
   has_many :campaigns
   has_many :email_deliveries, dependent: :nullify
-  
+
   # Validations
   validates :name, presence: true
   validates :subject, presence: true
   validates :body, presence: true
-  
+
   # Methods for AI integration
   def generate_content(prompt = nil)
     # This will be implemented later with AI integration

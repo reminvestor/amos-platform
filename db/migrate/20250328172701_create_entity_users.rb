@@ -7,7 +7,7 @@ class CreateEntityUsers < ActiveRecord::Migration[8.0]
 
       t.timestamps
     end
-    
-    add_index :entity_users, [:entity_id, :user_id], unique: true
+
+    add_index :entity_users, [ :entity_id, :user_id ], unique: true
   end
 end

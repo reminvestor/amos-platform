@@ -1,22 +1,22 @@
 class DebugController < ApplicationController
   # Skip all authentication and redirect checks for debugging
-  skip_before_action :authenticate_user!, only: [:status]
-  skip_before_action :check_onboarding_status, only: [:status]
-  
+  skip_before_action :authenticate_user!, only: [ :status ]
+  skip_before_action :check_onboarding_status, only: [ :status ]
+
   def index
     # Simple debug page
   end
 
   def test_sse
-    response.headers['Content-Type'] = 'text/event-stream'
-    response.headers['Cache-Control'] = 'no-cache'
-    
+    response.headers["Content-Type"] = "text/event-stream"
+    response.headers["Cache-Control"] = "no-cache"
+
     # Enable streaming
     sse = SSE.new(response.stream, retry: 300, event: "debug")
-    
+
     begin
       Rails.logger.info "🧪 Starting SSE debug test"
-      
+
       # Send test messages
       (1..5).each do |i|
         message = "Debug message #{i} at #{Time.current}"
@@ -24,16 +24,16 @@ class DebugController < ApplicationController
         Rails.logger.info "📡 Sent debug message #{i}: #{message}"
         sleep(1)
       end
-      
+
       Rails.logger.info "✅ SSE debug test completed"
-      
+
     rescue IOError => e
       Rails.logger.error "❌ SSE debug test failed: #{e.message}"
     ensure
       sse.close
     end
   end
-  
+
   def status
     if user_signed_in?
       render json: {
@@ -42,7 +42,7 @@ class DebugController < ApplicationController
         user_email: current_user.email,
         onboarded: current_user.onboarded?,
         entities_count: current_user.entity ? 1 : 0,
-        entity_names: current_user.entity ? [current_user.entity.name] : [],
+        entity_names: current_user.entity ? [ current_user.entity.name ] : [],
         current_entity_id: session[:entity_id],
         current_entity_name: current_entity&.name,
         has_business_profile: current_user.business_profile.present?,
@@ -63,10 +63,10 @@ class DebugController < ApplicationController
       }
     end
   end
-  
+
   private
-  
+
   def current_entity
     @current_entity ||= current_user&.entity_users&.first&.entity
   end
-end 
+end

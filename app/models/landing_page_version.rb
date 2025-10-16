@@ -1,8 +1,8 @@
 class LandingPageVersion < ApplicationRecord
   belongs_to :landing_page
-  
+
   validates :landing_page_id, presence: true
-  
+
   # Create a version from a landing page
   def self.create_from_landing_page(landing_page, ai_applied: true, description: nil)
     create(
@@ -19,7 +19,7 @@ class LandingPageVersion < ApplicationRecord
       description: description || (ai_applied ? "AI-generated update" : "Manual update")
     )
   end
-  
+
   # Restore this version to the landing page
   def restore
     landing_page.update(
@@ -32,7 +32,7 @@ class LandingPageVersion < ApplicationRecord
       secondary_color: self.secondary_color,
       font_family: self.font_family
     )
-    
+
     # Create a new version that represents the rollback
     LandingPageVersion.create(
       landing_page: landing_page,

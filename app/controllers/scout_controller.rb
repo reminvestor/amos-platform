@@ -1,76 +1,76 @@
 class ScoutController < ApplicationController
   include ActionController::Live  # Enable real-time streaming
-  
+
   before_action :authenticate_user!
   before_action :ensure_entity_exists
   before_action :ensure_onboarded
-  
-  layout 'scout'
-  
+
+  layout "scout"
+
   def index
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     @conversation_history = persisted_history_last_k(10)
-    
+
     # If this is a fresh start, add Scout's welcome message and load default canvas
     if @conversation_history.empty?
       create_welcome_message
       @conversation_history = persisted_history_last_k(10)
-      @auto_load_canvas = 'default' unless params[:load].present?
+      @auto_load_canvas = "default" unless params[:load].present?
     end
-    
+
     # Business context for display
     @business_profile = current_user.business_profile
     @entity = current_entity
-    
+
     # Handle auto-load parameters
     @auto_load_canvas = params[:load] if params[:load].present?
   end
-  
+
   def chat
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
-    
+
     Rails.logger.info "Scout chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
-    
+
     if user_message.blank?
-      render json: { error: 'Message cannot be empty' }, status: 400
+      render json: { error: "Message cannot be empty" }, status: 400
       return
     end
-    
+
     begin
       # Save user message
-      save_scout_message('user', user_message)
+      save_scout_message("user", user_message)
       Rails.logger.info "Scout: Saved user message"
-      
+
       # Use the new V2 tools service with main_chat agent loadout
-      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+      main_chat_loadout = AgentLoadout.new(agent_role: "main_chat")
       generic_tools_service = ScoutGenericToolsServiceV2.new(
-        current_user, 
-        current_entity, 
+        current_user,
+        current_entity,
         session[:scout_session_id],
         agent_loadout: main_chat_loadout
       )
-      
+
       conversation_history = persisted_history_last_k(12)
-      
+
       # Note: V2 uses streaming by default, but this endpoint returns JSON
       # We'll need to update this to use process_message_with_tools_streaming properly
       # For now, let's create a simple wrapper
       result = nil
       generic_tools_service.process_message_with_tools_streaming(
-        user_message, 
-        ->(update) { 
+        user_message,
+        ->(update) {
           # Collect the final response
           if update.is_a?(Hash) && update[:final_response]
             result = update
           end
         },
-        conversation_history, 
+        conversation_history,
         current_canvas
       )
-      
+
       # Extract response from result
       response = if result
         {
@@ -78,7 +78,7 @@ class ScoutController < ApplicationController
           tools_used: result[:tools_used] || [],
           success_count: result[:tools_used]&.length || 0,
           error_count: 0,
-          canvas_type: result[:canvas_type] || 'conversation',
+          canvas_type: result[:canvas_type] || "conversation",
           canvas_data: result[:canvas_data] || {}
         }
       else
@@ -87,16 +87,16 @@ class ScoutController < ApplicationController
           tools_used: [],
           success_count: 0,
           error_count: 1,
-          canvas_type: 'conversation',
+          canvas_type: "conversation",
           canvas_data: {}
         }
       end
-      
+
       Rails.logger.info "Scout: Got response - tools_used: #{response[:tools_used]}, success_count: #{response[:success_count]}"
-      
+
       # Save Scout's response
-      save_scout_message('assistant', response[:message])
-      
+      save_scout_message("assistant", response[:message])
+
       # Return structured response
       render json: {
         message: response[:message],
@@ -106,16 +106,16 @@ class ScoutController < ApplicationController
         error_count: response[:error_count],
         canvas: response[:canvas]
       }
-      
+
     rescue StandardError => e
       Rails.logger.error "Scout chat error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
-      
+
       # Fallback response
       fallback_message = "I apologize, but I'm experiencing some technical difficulties. Please try again, or contact support if the issue persists."
-      save_scout_message('assistant', fallback_message)
-      
-      render json: { 
+      save_scout_message("assistant", fallback_message)
+
+      render json: {
         message: fallback_message,
         error: true,
         tools_used: false
@@ -129,68 +129,72 @@ class ScoutController < ApplicationController
     current_canvas = params[:current_canvas]
     context = params[:context]
     file_urls = params[:file_urls] || []
-    
+
     Rails.logger.info "Scout interactive chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
     Rails.logger.info "Chat context: #{context.inspect}" if context
     Rails.logger.info "File URLs: #{file_urls.inspect}" if file_urls.any?
-    
+
     if user_message.blank?
-      render json: { error: 'Message cannot be empty' }, status: 400
+      render json: { error: "Message cannot be empty" }, status: 400
       return
     end
-    
+
     begin
       # Build enhanced message if files are attached
       enhanced_message = user_message
       metadata = {}
-      
+
       if file_urls.any?
-        file_info = file_urls.map { |f| "📎 #{f['filename']}" }.join(", ")
-        enhanced_message = "#{user_message}\n\n[Attached: #{file_info}]"
+        # Include asset_id so AMOS can use read_document tool
+        file_details = file_urls.map do |f|
+          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+        end.join(", ")
+
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
         metadata[:file_urls] = file_urls
       end
-      
+
       # Save user message with file info
-      save_scout_message('user', enhanced_message, metadata: metadata)
-      
+      save_scout_message("user", enhanced_message, metadata: metadata)
+
       # Initialize interactive task service
       interactive_service = InteractiveTaskService.new(current_user, current_entity, @session_id)
-      
+
       # Add file URLs to context if present
       if file_urls.any?
         interactive_service.set_context(attached_files: file_urls)
       end
-      
+
       # Capture workflow messages during progress
       workflow_message = nil
-      
+
       # Set up progress callback for real-time updates
       interactive_service.on_progress do |progress_data|
         Rails.logger.info "Workflow progress: #{progress_data.inspect}"
-        
+
         # Capture workflow questions/messages for awaiting_input state
         if progress_data.is_a?(Hash)
-          if progress_data[:type] == 'content_chunk' && progress_data[:awaiting_input]
+          if progress_data[:type] == "content_chunk" && progress_data[:awaiting_input]
             workflow_message = progress_data[:message]
-          elsif progress_data[:type] == 'phase_progress' && progress_data[:message]
+          elsif progress_data[:type] == "phase_progress" && progress_data[:message]
             workflow_message ||= progress_data[:message]
           end
         end
       end
-      
+
       # Process the message
       result = interactive_service.process_message(user_message, persisted_history_last_k(12), current_canvas)
-      
+
       # If workflow is awaiting input and we captured a message, use that
       if result[:awaiting_input] && workflow_message
         result[:message] = workflow_message
       end
-      
+
       # Save assistant response if present
       if result[:message]
-        save_scout_message('assistant', result[:message])
+        save_scout_message("assistant", result[:message])
       end
-      
+
       # Return structured response
       render json: {
         success: result[:success],
@@ -202,44 +206,44 @@ class ScoutController < ApplicationController
         workflow_completed: result[:workflow_completed],
         step_completed: result[:step_completed]
       }
-      
+
     rescue => e
       Rails.logger.error "Scout interactive chat error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
-      
+
       render json: {
         success: false,
         message: "I encountered an error processing your request. Please try again.",
         error: e.message,
-        canvas: 'conversation'
+        canvas: "conversation"
       }, status: 500
     end
   end
-  
+
   # Approve or reject a workflow
   def approve_workflow
     task_session_id = params[:task_session_id]
     approved = params[:approved]
-    
+
     begin
       task_session = TaskSession.find(task_session_id)
-      
+
       if approved
         # Start the workflow
         interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id])
         result = interactive_service.handle_plan_approval(
-          task_session.state['workflow_spec'],
+          task_session.state["workflow_spec"],
           approved: true
         )
-        
+
         render json: { success: true, message: "Workflow approved and started" }
       else
         # Cancel the workflow
         task_session.update!(
-          status: 'cancelled',
-          state: task_session.state.merge('cancelled_at' => Time.current)
+          status: "cancelled",
+          state: task_session.state.merge("cancelled_at" => Time.current)
         )
-        
+
         render json: { success: true, message: "Workflow cancelled" }
       end
     rescue ActiveRecord::RecordNotFound
@@ -249,11 +253,11 @@ class ScoutController < ApplicationController
       render json: { success: false, error: e.message }, status: 500
     end
   end
-  
+
   # Handle file uploads from chat
   def upload_files
     uploaded_urls = []
-    
+
     if params[:files].present?
       params[:files].each do |index, file|
         if file.is_a?(ActionDispatch::Http::UploadedFile)
@@ -263,9 +267,9 @@ class ScoutController < ApplicationController
             user: current_user,
             title: file.original_filename,
             file: file,
-            source: 'upload'
+            source: "upload"
           )
-          
+
           uploaded_urls << {
             url: rails_blob_url(image_asset.file),
             filename: file.original_filename,
@@ -276,37 +280,37 @@ class ScoutController < ApplicationController
         end
       end
     end
-    
+
     render json: { success: true, urls: uploaded_urls }
   rescue => e
     Rails.logger.error "File upload error: #{e.message}"
     render json: { success: false, error: e.message }, status: 500
   end
-  
+
   def continue_workflow
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
-    
+
     # Convert ActionController::Parameters to regular hash
     user_inputs = if params[:inputs].is_a?(ActionController::Parameters)
       params[:inputs].to_unsafe_h
     else
       params[:inputs] || {}
     end
-    
+
     Rails.logger.info "Scout continue workflow - Session: #{@session_id}, Inputs: #{user_inputs.keys}"
-    
+
     begin
       # Initialize interactive task service
       interactive_service = InteractiveTaskService.new(current_user, current_entity, @session_id)
-      
+
       # Continue the workflow
       result = interactive_service.continue_workflow(user_inputs)
-      
+
       # Save any assistant response
       if result[:message]
-        save_scout_message('assistant', result[:message])
+        save_scout_message("assistant", result[:message])
       end
-      
+
       render json: {
         success: result[:success],
         message: result[:message],
@@ -315,16 +319,16 @@ class ScoutController < ApplicationController
         workflow_completed: result[:workflow_completed],
         step_completed: result[:step_completed]
       }
-      
+
     rescue => e
       Rails.logger.error "Scout continue workflow error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
-      
+
       render json: {
         success: false,
         message: "I encountered an error continuing the workflow. Please try again.",
         error: e.message,
-        canvas: 'conversation'
+        canvas: "conversation"
       }, status: 500
     end
   end
@@ -335,58 +339,62 @@ class ScoutController < ApplicationController
     current_canvas = params[:current_canvas]
     context = params[:context]
     file_urls = params[:file_urls] || []
-    
+
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
     puts "🚨 PRODUCTION DEBUG: Scout chat request received - #{Time.current}"
     STDOUT.flush
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
     Rails.logger.info "Chat context: #{context.inspect}" if context
     Rails.logger.info "File URLs: #{file_urls.inspect}" if file_urls.any?
-    
+
     if user_message.blank?
-      render json: { error: 'Message cannot be empty' }, status: 400
+      render json: { error: "Message cannot be empty" }, status: 400
       return
     end
 
     # Set streaming headers
-    response.headers['Content-Type'] = 'text/event-stream'
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Connection'] = 'keep-alive'
-    response.headers['X-Accel-Buffering'] = 'no' # Prevent nginx buffering
-    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers["Content-Type"] = "text/event-stream"
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Connection"] = "keep-alive"
+    response.headers["X-Accel-Buffering"] = "no" # Prevent nginx buffering
+    response.headers["Access-Control-Allow-Origin"] = "*"
     puts "🚨 PRODUCTION DEBUG: SSE Headers set - #{Time.current}"
     STDOUT.flush
-    
+
     # Force the headers to be sent immediately
     response.status = 200
-    
+
     begin
       # Send immediate response to establish streaming
       stream_update("💬 Message received")
-      
+
       # Build enhanced message if files are attached
       enhanced_message = user_message
       metadata = {}
-      
+
       if file_urls.any?
-        file_info = file_urls.map { |f| "📎 #{f['filename']}" }.join(", ")
-        enhanced_message = "#{user_message}\n\n[Attached: #{file_info}]"
+        # Include asset_id so AMOS can use read_document tool
+        file_details = file_urls.map do |f|
+          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+        end.join(", ")
+
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
         metadata[:file_urls] = file_urls
       end
-      
+
       # Save user message with file info
-      save_scout_message('user', enhanced_message, metadata: metadata)
+      save_scout_message("user", enhanced_message, metadata: metadata)
       stream_update("📚 Loading conversation history...")
-      
+
       # Get conversation history
       conversation_history = persisted_history_last_k(12)
       stream_update("📚 Loading conversation history (#{conversation_history.length} messages)")
-      
+
       # Use InteractiveTaskService with streaming updates
       stream_update("🧠 Analyzing your request...")
       stream_update("📋 Detecting task mode and preparing workflow...")
       interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id])
-      
+
       # Set up progress callback for streaming updates
       interactive_service.on_progress do |progress_data|
         # Handle both string and hash formats
@@ -396,81 +404,99 @@ class ScoutController < ApplicationController
         elsif progress_data.is_a?(Hash)
           # Structured progress data
           case progress_data[:type]
-          when 'content_chunk'
+          when "content_chunk"
             # Stream content chunks directly
             stream_content_chunk(progress_data[:content])
-          when 'intermediate_message', 'save_message'
+          when "intermediate_message", "save_message"
             # Save and stream intermediate messages
             if progress_data[:content]
-              save_scout_message(progress_data[:role] || 'assistant', progress_data[:content])
+              save_scout_message(progress_data[:role] || "assistant", progress_data[:content])
               stream_content_chunk(progress_data[:content])
             end
-          when 'phase_progress', 'phase_start'
-            # Stream workflow phase progress as transient messages
-            Rails.logger.info "Phase progress: #{progress_data[:message]}"
-            stream_transient_update("🔄 #{progress_data[:message]}")
-          when 'phase_complete'
-            # Stream phase completion as transient messages
-            Rails.logger.info "Phase complete: #{progress_data[:message]}"
-            stream_transient_update("✅ #{progress_data[:message]}")
-          when 'tool_start'
-            # Stream tool start as transient messages
+          when "phase_progress", "phase_start"
+            # Show workflow phase progress as VISIBLE messages (not transient)
+            phase_message = "🔄 #{progress_data[:message]}"
+            Rails.logger.info "Phase progress: #{phase_message}"
+            save_scout_message("assistant", phase_message)
+            stream_update({
+              type: "intermediate_message",
+              content: phase_message,
+              role: "assistant"
+            })
+          when "phase_complete"
+            # Show phase completion as VISIBLE messages
+            complete_message = "✅ #{progress_data[:message]}"
+            Rails.logger.info "Phase complete: #{complete_message}"
+            save_scout_message("assistant", complete_message)
+            stream_update({
+              type: "intermediate_message",
+              content: complete_message,
+              role: "assistant"
+            })
+          when "tool_start"
+            # Show tool start as VISIBLE message with thinking indicator
             tool_name = progress_data[:tool_name] || progress_data[:name]
-            Rails.logger.info "Tool start: #{tool_name}"
-            stream_transient_update("🔧 Starting #{tool_name}...")
-          when 'tool_complete'
-            # Stream tool completion as transient messages
+            tool_message = "🔧 #{get_friendly_tool_name(tool_name)}..."
+            Rails.logger.info "Tool start: #{tool_message}"
+            save_scout_message("assistant", tool_message)
+            stream_update({
+              type: "intermediate_message",
+              content: tool_message,
+              role: "assistant"
+            })
+          when "tool_complete"
+            # Tool complete - just log, don't spam chat
             tool_name = progress_data[:tool_name] || progress_data[:name]
             Rails.logger.info "Tool complete: #{tool_name}"
-            stream_transient_update("✅ Completed #{tool_name}")
-          when 'planner_progress'
+            # Don't show tool complete messages - too noisy
+          when "planner_progress"
             # Stream planner reasoning as transient messages
             Rails.logger.info "Planner: #{progress_data[:message]}"
             stream_transient_update("🧠 #{progress_data[:message]}")
-          when 'load_canvas'
+          when "load_canvas"
             # Stream canvas loading
             stream_update(progress_data)
-          when 'canvas_update'
+          when "canvas_update"
             # Stream canvas update
             stream_update(progress_data)
-          when 'workflow_approval_needed'
+          when "workflow_approval_needed"
             # Handle workflow approval request
             task_session_id = progress_data[:task_session_id]
             workflow_spec = progress_data[:workflow_spec]
-            
+
             # Stream the message and approval UI
             stream_content_chunk(progress_data[:message] || "I've created a workflow plan for your request. Please review:")
-            
+
             # Load the approval canvas
             stream_update({
-              type: 'load_canvas',
-              canvas: 'task_progress',
+              type: "load_canvas",
+              canvas: "task_progress",
               canvas_data: {
                 task_session_id: task_session_id,
                 awaiting_approval: true,
                 workflow_spec: workflow_spec
               }
             })
-          when :step_completed, 'step_completed'
+          when :step_completed, "step_completed"
             # Stream step completion and trigger canvas refresh
             stream_update({
-              type: 'step_completed',
+              type: "step_completed",
               step_id: progress_data[:step_id],
               step_name: progress_data[:step_name],
               message: "✅ Completed: #{progress_data[:step_name] || progress_data[:step_id]}"
             })
             # Also send a canvas update to refresh the task list
             stream_update({
-              type: 'canvas_update',
-              canvas_type: 'task_progress',
+              type: "canvas_update",
+              canvas_type: "task_progress",
               canvas_data: {
                 task_session_id: interactive_service.instance_variable_get(:@task_session)&.id
               }
             })
-          when :step_failed, 'step_failed'
+          when :step_failed, "step_failed"
             # Stream step failure and trigger canvas refresh
             stream_update({
-              type: 'step_failed',
+              type: "step_failed",
               step_id: progress_data[:step_id],
               step_name: progress_data[:step_name],
               error: progress_data[:error],
@@ -478,26 +504,26 @@ class ScoutController < ApplicationController
             })
             # Also send a canvas update to refresh the task list
             stream_update({
-              type: 'canvas_update',
-              canvas_type: 'task_progress',
+              type: "canvas_update",
+              canvas_type: "task_progress",
               canvas_data: {
                 task_session_id: interactive_service.instance_variable_get(:@task_session)&.id
               }
             })
-          when 'tool_start', 'tool_complete'
+          when "tool_start", "tool_complete"
             # Save and stream tool updates as content
             tool_name = progress_data[:tool_name] || progress_data[:name]
-            tool_message = if progress_data[:type] == 'tool_start'
+            tool_message = if progress_data[:type] == "tool_start"
               "🔧 Using tool: #{tool_name}"
             else
               "✅ Tool completed: #{tool_name}"
             end
-            save_scout_message('assistant', tool_message)
+            save_scout_message("assistant", tool_message)
             # Stream as intermediate message so it appears in chat
             stream_update({
-              type: 'intermediate_message',
+              type: "intermediate_message",
               content: tool_message,
-              role: 'assistant'
+              role: "assistant"
             })
           else
             # Default progress message
@@ -505,61 +531,61 @@ class ScoutController < ApplicationController
           end
         else
           # Fallback for other types
-          stream_update("🔄 #{progress_data.to_s}")
+          stream_update("🔄 #{progress_data}")
         end
       end
-      
+
       # Check if we should use context (keeping legacy support for now)
       if false  # Disabled context setting for now
         # No context loading needed for InteractiveTaskService
       end
-      
+
       # Check if this is a plan approval response
-      if current_canvas.dig('data', 'awaiting_approval') && is_approval_response?(user_message)
+      if current_canvas.dig("data", "awaiting_approval") && is_approval_response?(user_message)
         stream_update("📋 Processing your plan feedback...")
         approval_action = extract_approval_action(user_message)
         result = interactive_service.handle_plan_approval(approval_action, user_message)
       else
         # Process message using InteractiveTaskService
         stream_update("🎯 Processing your request...")
-        
+
         # Add file URLs to context if present
         if file_urls.any?
           interactive_service.set_context(attached_files: file_urls)
         end
-        
+
         result = interactive_service.process_message(user_message, conversation_history, current_canvas)
       end
-      
+
       # Handle the response from InteractiveTaskService
       if result[:success]
         # Save assistant response (only if not already streamed)
-        if result[:mode] != 'autonomous' && result[:message] && !result[:message_already_saved]
-          save_scout_message('assistant', result[:message])
+        if result[:mode] != "autonomous" && result[:message] && !result[:message_already_saved]
+          save_scout_message("assistant", result[:message])
           stream_content_chunk(result[:message])
         end
-        
+
         # Handle canvas loading (if not already done during streaming)
         canvas = result[:canvas_type] || result[:canvas]
-        if canvas && canvas != 'conversation' && result[:mode] != 'autonomous'
+        if canvas && canvas != "conversation" && result[:mode] != "autonomous"
           stream_update({
-            type: 'load_canvas',
+            type: "load_canvas",
             canvas: canvas,
             canvas_data: result[:canvas_data] || {}
           })
         end
-        
+
         # Return the response
         final_response = {
           message: result[:message],
           message_already_saved: result[:message_already_saved] || false,
-          canvas_type: result[:canvas_type] || result[:canvas] || 'conversation',
+          canvas_type: result[:canvas_type] || result[:canvas] || "conversation",
           canvas_data: result[:canvas_data] || {},
           tools_used: result[:tools_used] || [],
           success_count: (result[:tools_used].is_a?(Array) ? result[:tools_used].count : 0),
           error_count: 0
         }
-        
+
         # Check if workflow approval is needed
         if result[:workflow_approval_needed]
           final_response[:workflow_approval] = {
@@ -572,24 +598,24 @@ class ScoutController < ApplicationController
         error_message = result[:error] || "An error occurred while processing your request."
         stream_update("❌ Error: #{error_message}")
         stream_content_chunk(error_message)
-        
+
         final_response = {
           message: error_message,
-          canvas_type: 'conversation',
+          canvas_type: "conversation",
           canvas_data: {},
           tools_used: [],
           success_count: 0,
           error_count: 1
         }
       end
-      
+
       # Stream final response and close
       stream_final_response(final_response)
-      
+
     rescue StandardError => e
       Rails.logger.error "Scout streaming chat error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
-      
+
       fallback_message = case e.message
       when /timeout/i
         "I'm taking longer than expected to respond. Please try again in a moment."
@@ -598,7 +624,7 @@ class ScoutController < ApplicationController
       else
         "I encountered an unexpected error. Please try rephrasing your request."
       end
-      
+
       stream_update("❌ Error occurred")
       stream_final_response({
         message: fallback_message,
@@ -609,75 +635,75 @@ class ScoutController < ApplicationController
       response.stream.close
     end
   end
-  
+
   # Template/Canvas Actions for Intelligent Canvas
   def load_canvas
     canvas_type = params[:canvas_type]
     canvas_data = params[:canvas_data] || {}
-    
+
     begin
       Rails.logger.info "Scout: Loading canvas - Type: #{canvas_type}, Data: #{canvas_data}"
-      
+
       case canvas_type
-      when 'landing_page_viewer'
+      when "landing_page_viewer"
         canvas_content = render_landing_page_canvas(canvas_data)
         canvas_title = "Landing Page Viewer"
-      when 'landing_page_details'
+      when "landing_page_details"
         canvas_content = render_landing_page_details(canvas_data)
         canvas_title = "Landing Page Details"
-      when 'landing_page_generator' 
+      when "landing_page_generator"
         canvas_content = render_landing_page_generator(canvas_data)
         canvas_title = "Landing Page Generator"
-      when 'landing_page_editor'
+      when "landing_page_editor"
         canvas_content = render_landing_page_editor(canvas_data)
         canvas_title = "Edit Landing Page"
-      when 'interactive_wizard'
+      when "interactive_wizard"
         canvas_content = render_interactive_wizard(canvas_data)
         canvas_title = determine_wizard_title(canvas_data)
-      when 'form_submissions'
+      when "form_submissions"
         canvas_content = render_form_submissions_canvas(canvas_data)
         canvas_title = "Form Submissions"
-      when 'workflow_analytics'
+      when "workflow_analytics"
         canvas_content = render_workflow_analytics_canvas(canvas_data)
         canvas_title = "Workflow Analytics"
-      when 'contact_viewer'
+      when "contact_viewer"
         canvas_content = render_contact_canvas(canvas_data)
         canvas_title = "Contacts"
-      when 'campaign_viewer'
+      when "campaign_viewer"
         canvas_content = render_campaign_canvas(canvas_data)
         canvas_title = "Campaigns"
-      when 'analytics_dashboard'
+      when "analytics_dashboard"
         canvas_content = render_analytics_canvas(canvas_data)
         canvas_title = "Analytics Dashboard"
-      when 'contact_generator'
+      when "contact_generator"
         canvas_content = render_contact_generator(canvas_data)
         canvas_title = "Create Contact"
-      when 'user_profile'
+      when "user_profile"
         canvas_content = render_user_profile_canvas(canvas_data)
         canvas_title = "My Profile"
-      when 'business_profile'
+      when "business_profile"
         canvas_content = render_business_profile_canvas(canvas_data)
         canvas_title = "Business Settings"
-      when 'email_template_viewer'
+      when "email_template_viewer"
         canvas_content = render_email_template_viewer(canvas_data)
         canvas_title = "Email Templates"
-      when 'email_template_editor'
+      when "email_template_editor"
         canvas_content = render_email_template_editor(canvas_data)
         canvas_title = "Edit Email Template"
-      when 'dynamic_canvas'
+      when "dynamic_canvas"
         canvas_content = render_dynamic_canvas(canvas_data)
-        canvas_title = canvas_data['title'] || "Custom Analysis"
-      when 'task_progress'
+        canvas_title = canvas_data["title"] || "Custom Analysis"
+      when "task_progress"
         canvas_content = render_task_progress(canvas_data)
         canvas_title = "Task Progress"
-      when 'campaign_editor'
+      when "campaign_editor"
         canvas_content = render_campaign_editor(canvas_data)
         canvas_title = "Campaign Editor"
-      when 'integrations_manager'
+      when "integrations_manager"
         # Always fetch integrations data for this canvas
         integrations = Integration.where(is_active: true).order(:name)
         connections = current_user.connections.includes(:integration)
-        
+
         canvas_data[:integrations] = integrations.map do |integration|
           {
             id: integration.id,
@@ -689,10 +715,10 @@ class ScoutController < ApplicationController
             icon_url: integration.icon_url,
             is_verified: integration.is_verified,
             operations_count: integration.integration_operations.count,
-            is_connected: connections.any? { |c| c.integration_id == integration.id && c.status == 'connected' }
+            is_connected: connections.any? { |c| c.integration_id == integration.id && c.status == "connected" }
           }
         end
-        
+
         canvas_data[:connections] = connections.map do |connection|
           {
             id: connection.id,
@@ -708,20 +734,20 @@ class ScoutController < ApplicationController
             }
           }
         end
-        
+
         canvas_content = render_integrations_manager(canvas_data)
         canvas_title = "Integration Connections"
-      when 'integration_connect'
+      when "integration_connect"
         canvas_content = render_integration_connect(canvas_data)
         canvas_title = "Connect Integration"
-      when 'integration_operations'
+      when "integration_operations"
         canvas_content = render_integration_operations(canvas_data)
         canvas_title = "Integration Operations"
       else
         canvas_content = render_default_canvas
         canvas_title = ""
       end
-      
+
       render json: {
         success: true,
         canvas: {
@@ -735,7 +761,7 @@ class ScoutController < ApplicationController
       Rails.logger.error "Canvas loading error: #{e.class.name}: #{e.message}"
       Rails.logger.error "Canvas type: #{canvas_type}, Data: #{canvas_data}"
       Rails.logger.error e.backtrace.first(5).join("\n")
-      
+
       render json: {
         success: false,
         error: "Sorry, I couldn't load that view. Error: #{e.message}"
@@ -747,77 +773,77 @@ class ScoutController < ApplicationController
     begin
       # Return available canvas types for Scout
       canvases = [
-        { 
-          type: 'landing_page_viewer', 
-          name: 'Landing Pages', 
-          description: 'View and manage landing pages',
-          icon: 'fas fa-globe'
-        },
-        { 
-          type: 'contact_viewer',
-          name: 'Contacts', 
-          description: 'View and manage contacts',
-          icon: 'fas fa-users'
-        },
-        { 
-          type: 'campaign_viewer', 
-          name: 'Campaigns', 
-          description: 'View and manage email campaigns',
-          icon: 'fas fa-envelope'
+        {
+          type: "landing_page_viewer",
+          name: "Landing Pages",
+          description: "View and manage landing pages",
+          icon: "fas fa-globe"
         },
         {
-          type: 'integrations_manager',
-          name: 'Integrations',
-          description: 'Manage external application connections',
-          icon: 'fas fa-plug'
+          type: "contact_viewer",
+          name: "Contacts",
+          description: "View and manage contacts",
+          icon: "fas fa-users"
         },
         {
-          type: 'integration_connect',
-          name: 'Connect Integration',
-          description: 'Connect to an external service',
-          icon: 'fas fa-link'
+          type: "campaign_viewer",
+          name: "Campaigns",
+          description: "View and manage email campaigns",
+          icon: "fas fa-envelope"
         },
-        { 
-          type: 'analytics_dashboard', 
-          name: 'Analytics', 
-          description: 'Marketing performance dashboard',
-          icon: 'fas fa-chart-bar'
+        {
+          type: "integrations_manager",
+          name: "Integrations",
+          description: "Manage external application connections",
+          icon: "fas fa-plug"
+        },
+        {
+          type: "integration_connect",
+          name: "Connect Integration",
+          description: "Connect to an external service",
+          icon: "fas fa-link"
+        },
+        {
+          type: "analytics_dashboard",
+          name: "Analytics",
+          description: "Marketing performance dashboard",
+          icon: "fas fa-chart-bar"
         }
       ]
-      
+
       # Add data-specific canvases if we have recent data
       if current_entity.landing_pages.recent.limit(1).exists?
         recent_page = current_entity.landing_pages.recent.first
         canvases << {
-          type: 'landing_page_generator',
+          type: "landing_page_generator",
           name: recent_page.title || "Recent Landing Page",
-          description: 'Landing page in progress',
-          icon: 'fas fa-edit',
+          description: "Landing page in progress",
+          icon: "fas fa-edit",
           data: { landing_page_id: recent_page.id }
         }
       end
-      
+
       render json: { canvases: canvases }
     rescue => e
       Rails.logger.error "Available canvases error: #{e.message}"
       render json: { canvases: [] }
     end
   end
-  
+
   def clear_conversation
     session_id = session[:scout_session_id]
     if session_id
       Rails.cache.delete("scout_conversation_#{session_id}")
       session.delete(:scout_session_id)
     end
-    
+
     render json: { success: true, message: "Conversation cleared" }
   end
-  
+
   def conversation_export
     @session_id = session[:scout_session_id]
     @conversation_history = scout_conversation_history
-    
+
     respond_to do |format|
       format.json { render json: @conversation_history }
       format.html # Will render conversation_export.html.erb if you create one
@@ -835,19 +861,19 @@ class ScoutController < ApplicationController
     if before_id.present?
       # Load messages older than the given id
       before_message = ScoutMessage.find_by(id: before_id)
-      scope = scope.where('created_at < ?', before_message.created_at) if before_message
+      scope = scope.where("created_at < ?", before_message.created_at) if before_message
     end
 
     batch = scope.last(limit)
     render json: {
-      messages: batch.map { |m| { 
-        id: m.id, 
-        role: m.role, 
-        content: m.content, 
+      messages: batch.map { |m| {
+        id: m.id,
+        role: m.role,
+        content: m.content,
         timestamp: m.created_at.iso8601,
-        metadata: m.metadata 
+        metadata: m.metadata
       } },
-      has_more: ScoutMessage.for_session(session_id).count > (before_id.present? ? ScoutMessage.for_session(session_id).where('created_at <= ?', batch.first&.created_at).count : batch.count)
+      has_more: ScoutMessage.for_session(session_id).count > (before_id.present? ? ScoutMessage.for_session(session_id).where("created_at <= ?", batch.first&.created_at).count : batch.count)
     }
   end
 
@@ -856,18 +882,18 @@ class ScoutController < ApplicationController
     # Get recent conversations for this user
     recent_sessions = ScoutMessage
       .where(user_id: current_user.id)
-      .select(:session_id, 'MIN(created_at) as created_at', 'COUNT(*) as message_count')
+      .select(:session_id, "MIN(created_at) as created_at", "COUNT(*) as message_count")
       .group(:session_id)
-      .order('MIN(created_at) DESC')
+      .order("MIN(created_at) DESC")
       .limit(10)
-    
+
     # Get first message for each session
     conversations = recent_sessions.map do |session|
       first_message = ScoutMessage
-        .where(session_id: session.session_id, role: 'user')
+        .where(session_id: session.session_id, role: "user")
         .order(:created_at)
         .first
-      
+
       {
         session_id: session.session_id,
         created_at: session.created_at,
@@ -875,25 +901,25 @@ class ScoutController < ApplicationController
         first_message: first_message&.content&.truncate(50)
       }
     end
-    
+
     render json: conversations
   end
-  
+
   # GET /scout/conversation/:session_id
   def conversation
     session_id = params[:session_id]
     messages = ScoutMessage
       .where(session_id: session_id, user_id: current_user.id)
       .order(:created_at)
-      .map { |m| { 
-        role: m.role, 
-        content: m.content, 
-        created_at: m.created_at.iso8601 
+      .map { |m| {
+        role: m.role,
+        content: m.content,
+        created_at: m.created_at.iso8601
       } }
-    
+
     render json: messages
   end
-  
+
   # POST /scout/new_session
   def new_session
     # Clear old session cache if exists
@@ -901,35 +927,35 @@ class ScoutController < ApplicationController
     if old_session_id
       Rails.cache.delete("scout_conversation_#{old_session_id}")
     end
-    
+
     # Create new session
     session[:scout_session_id] = SecureRandom.uuid
     render json: { session_id: session[:scout_session_id] }
   end
-  
+
   private
-  
+
   def is_approval_response?(message)
     approval_patterns = [
       /\b(approve|yes|go ahead|proceed|execute|looks good|lgtm)\b/i,
       /\b(modify|change|update|edit|adjust)\b/i,
       /\b(cancel|stop|no|abort|reject)\b/i
     ]
-    
+
     approval_patterns.any? { |pattern| message.match?(pattern) }
   end
-  
+
   def extract_approval_action(message)
     case message.downcase
     when /approve|yes|go ahead|proceed|execute|looks good|lgtm/
-      'approve'
+      "approve"
     when /modify|change|update|edit|adjust/
-      'modify'
+      "modify"
     when /cancel|stop|no|abort|reject/
-      'cancel'
+      "cancel"
     else
       # Default to modify if unclear
-      'modify'
+      "modify"
     end
   end
 
@@ -938,19 +964,19 @@ class ScoutController < ApplicationController
     puts "🚨 PRODUCTION DEBUG: Streaming content chunk: #{content.inspect}"
     puts "🔍 Content length: #{content.length}, newlines: #{content.count("\n")}"
     STDOUT.flush
-    
-    data = JSON.generate({ type: 'content', content: content })
+
+    data = JSON.generate({ type: "content", content: content })
     chunk = "data: #{data}\n\n"
-    
+
     response.stream.write(chunk)
-    
+
     # Try to flush
     begin
       response.stream.flush if response.stream.respond_to?(:flush)
     rescue
       # Ignore flush errors
     end
-    
+
     puts "✅ Content chunk streamed successfully"
     STDOUT.flush
   rescue => e
@@ -965,14 +991,14 @@ class ScoutController < ApplicationController
     # Create the SSE (Server-Sent Events) format
     # Handle both string and hash data
     data = if message.is_a?(Hash)
-      JSON.generate(message.merge(type: message[:type] || 'update'))
+      JSON.generate(message.merge(type: message[:type] || "update"))
     else
-      JSON.generate({ type: 'update', message: message })
+      JSON.generate({ type: "update", message: message })
     end
     chunk = "data: #{data}\n\n"
-    
+
     response.stream.write(chunk)
-    
+
     puts "✅ Update streamed successfully"
     STDOUT.flush
   rescue => e
@@ -984,23 +1010,23 @@ class ScoutController < ApplicationController
     puts "🚨 PRODUCTION DEBUG: Streaming transient update: #{message}"
     STDOUT.flush
     # Create transient messages for progress/tool updates
-    data = JSON.generate({ 
-      type: 'transient', 
+    data = JSON.generate({
+      type: "transient",
       message: message,
       timestamp: Time.current.to_f
     })
     chunk = "data: #{data}\n\n"
-    
+
     # Write and try to force immediate sending
     response.stream.write(chunk)
-    
+
     # Try multiple methods to flush
     begin
       response.stream.flush if response.stream.respond_to?(:flush)
     rescue
       # Ignore flush errors
     end
-    
+
     # Force Rails to send the response chunk immediately
     begin
       if defined?(ActionController::Live) && response.stream.is_a?(ActionController::Live::SSE)
@@ -1009,11 +1035,31 @@ class ScoutController < ApplicationController
     rescue
       # Ignore if this doesn't work
     end
-    
+
     Rails.logger.info "Streamed update: #{message.to_s.lines.first&.strip.to_s[0..80]}..."
-    
+
   rescue => e
     Rails.logger.error "Stream update error: #{e.message}"
+  end
+
+  def get_friendly_tool_name(tool_name)
+    friendly_names = {
+      "generate_ai_landing_page" => "Generating landing page",
+      "execute_integration" => "Calling integration API",
+      "get_data" => "Fetching data",
+      "create_object" => "Creating record",
+      "update_object" => "Updating record",
+      "create_rag_store" => "Building knowledge base",
+      "web_search" => "Searching the web",
+      "query_rag_store" => "Querying documentation",
+      "add_integration_endpoint" => "Adding API endpoint",
+      "generate_integration_scaffold" => "Creating integration",
+      "list_operations" => "Listing available operations",
+      "list_connections" => "Checking connections",
+      "aggregate_artifact_data" => "Aggregating data",
+      "create_dynamic_visualization" => "Creating visualization"
+    }
+    friendly_names[tool_name] || tool_name.titleize
   end
 
   def stream_final_response(response_data)
@@ -1021,87 +1067,87 @@ class ScoutController < ApplicationController
     Rails.logger.info "📝 Message length: #{response_data[:message]&.length} characters"
     Rails.logger.info "📝 Message preview: #{response_data[:message]&.first(100)}..."
     Rails.logger.info "📝 Message already saved: #{response_data[:message_already_saved]}"
-    
+
     # Persist final assistant message as a safety net if not already saved
     if response_data[:message].present? && !response_data[:message_already_saved]
       begin
-        save_scout_message('assistant', response_data[:message])
+        save_scout_message("assistant", response_data[:message])
       rescue => e
         Rails.logger.warn "Final message save skipped/failed: #{e.message}"
       end
     end
-    
+
     # Create the final SSE response
-    data = JSON.generate({ type: 'response', data: response_data })
+    data = JSON.generate({ type: "response", data: response_data })
     chunk = "data: #{data}\n\n"
-    
+
     # Write and try to force immediate sending
     response.stream.write(chunk)
-    
+
     # Try to flush
     begin
       response.stream.flush if response.stream.respond_to?(:flush)
     rescue
       # Ignore flush errors
     end
-    
+
     Rails.logger.info "Streamed final response"
-    
+
   rescue => e
     Rails.logger.error "Stream final response error: #{e.message}"
   end
-  
+
   def check_active_job_status(response_data)
     Rails.logger.info "🔍 Checking active job status for response data: #{response_data.keys}"
-    
+
     # Only check for job status if the response includes canvas data with landing_page_id
     unless response_data[:canvas_data]&.dig(:landing_page_id)
       Rails.logger.info "❌ No canvas_data or landing_page_id found"
       return nil
     end
-    
+
     landing_page_id = response_data[:canvas_data][:landing_page_id]
     job_status_key = "job_status_#{current_user.id}_#{landing_page_id}"
-    
+
     Rails.logger.info "🔍 Looking for job status with key: #{job_status_key}"
-    
+
     # Get job status from cache
     job_status = Rails.cache.read(job_status_key)
-    
+
     if job_status
       Rails.logger.info "📊 Found job status for LP #{landing_page_id}: #{job_status[:type]} (#{job_status[:status]})"
-      
+
       # Don't clear processing status, only clear completed/failed status
-      if job_status[:status].in?(['completed', 'failed'])
+      if job_status[:status].in?([ "completed", "failed" ])
         Rails.cache.delete(job_status_key)
         Rails.logger.info "🗑️ Cleared consumed job status from cache"
       else
         Rails.logger.info "⏳ Keeping processing job status in cache for future checks"
       end
-      
+
       return job_status
     else
       Rails.logger.info "❌ No job status found in cache for key: #{job_status_key}"
     end
-    
+
     nil
   end
 
   def send_job_started_status_if_exists(response_data)
-    # Only check if there's a landing page job 
+    # Only check if there's a landing page job
     return unless response_data[:canvas_data]&.dig(:landing_page_id)
-    
+
     landing_page_id = response_data[:canvas_data][:landing_page_id]
     job_status_key = "job_status_#{current_user.id}_#{landing_page_id}"
-    
+
     # Get job status from cache
     job_status = Rails.cache.read(job_status_key)
-    
-    if job_status && job_status[:status] == 'processing'
+
+    if job_status && job_status[:status] == "processing"
       Rails.logger.info "📡 Sending job_started status via SSE: #{job_status[:type]}"
-      
+
       # Send job status through SSE
-      job_data = JSON.generate({ type: 'job_status', data: job_status })
+      job_data = JSON.generate({ type: "job_status", data: job_status })
       job_chunk = "data: #{job_data}\n\n"
       response.stream.write(job_chunk)
       response.stream.flush if response.stream.respond_to?(:flush)
@@ -1113,23 +1159,23 @@ class ScoutController < ApplicationController
   def current_entity
     @current_entity ||= current_user.entity
   end
-  
+
   def ensure_entity_exists
     unless current_entity
       redirect_to new_entity_path, alert: "You need to set up your business profile first."
     end
   end
-  
+
   def ensure_onboarded
     unless current_user.onboarded?
       redirect_to onboarding_path, notice: "Let's finish setting up your profile first."
     end
   end
-  
+
   def scout_conversation_history
     session_id = session[:scout_session_id]
     return [] unless session_id
-    
+
     Rails.cache.fetch("scout_conversation_#{session_id}", expires_in: 2.hours) || []
   end
 
@@ -1138,25 +1184,25 @@ class ScoutController < ApplicationController
     session_id = session[:scout_session_id]
     return [] unless session_id
     ScoutMessage.for_session(session_id).oldest_first.last(k).map do |m|
-      { 
-        role: m.role, 
-        content: m.content, 
+      {
+        role: m.role,
+        content: m.content,
         timestamp: m.created_at.iso8601,
         metadata: m.metadata
       }
     end
   end
-  
+
   def save_scout_message(role, message, metadata: {})
     session_id = session[:scout_session_id]
     return unless session_id
-    
+
     # Don't save empty messages
     return if message.blank?
-    
+
     # Log what we're about to save
     Rails.logger.info "💾 Saving #{role} message (#{message.class}): #{message.to_s.first(200)}..."
-    
+
     # Persist in DB (durable)
     ScoutMessage.create!(
       user_id: current_user.id,
@@ -1166,16 +1212,16 @@ class ScoutController < ApplicationController
       content: message,
       metadata: metadata
     )
-    
+
     # Mirror the last 50 in cache for fast UI render
     conversation = persisted_history_last_k(50)
     Rails.cache.write("scout_conversation_#{session_id}", conversation, expires_in: 12.hours)
   end
-  
+
   def create_welcome_message
     business_name = current_entity&.name || "your business"
     profile = current_user.business_profile
-    
+
     welcome_message = if profile&.industry.present?
       "Welcome back! I'm Amos, your AI business automation assistant for #{business_name}. " \
       "I can help you analyze your #{profile.industry.downcase} business performance, " \
@@ -1186,17 +1232,17 @@ class ScoutController < ApplicationController
       "I can help analyze your business performance, automate operations, manage data integrations, " \
       "and create marketing materials. What can I help you with today? 🚀"
     end
-    
-    save_scout_message('assistant', welcome_message)
+
+    save_scout_message("assistant", welcome_message)
   end
 
   # Canvas rendering methods
   def render_landing_page_canvas(data = {})
     landing_pages = current_entity.landing_pages.recent.limit(20)
-    
+
     render_to_string(
-      partial: 'scout/canvas/landing_page_viewer',
-      locals: { 
+      partial: "scout/canvas/landing_page_viewer",
+      locals: {
         landing_pages: landing_pages,
         entity: current_entity,
         user: current_user,
@@ -1206,8 +1252,8 @@ class ScoutController < ApplicationController
   end
 
   def render_landing_page_details(data = {})
-    landing_page_id = data['landing_page_id'] || data[:landing_page_id]
-    
+    landing_page_id = data["landing_page_id"] || data[:landing_page_id]
+
     if landing_page_id.present?
       begin
         landing_page = current_entity.landing_pages.find(landing_page_id)
@@ -1219,17 +1265,17 @@ class ScoutController < ApplicationController
       # Fallback to most recent landing page if no ID provided
       landing_page = current_entity.landing_pages.recent.first
     end
-    
+
     # If no landing pages exist, return a helpful message
     if landing_page.nil?
       return render_to_string(
         inline: "<div class='text-center py-5'><h5>No Landing Pages Found</h5><p>Create your first landing page to get started.</p><button class='btn btn-primary' onclick='window.scoutCreateLandingPage()'>Create Landing Page</button></div>"
       )
     end
-    
+
     render_to_string(
-      partial: 'scout/canvas/landing_page_details',
-      locals: { 
+      partial: "scout/canvas/landing_page_details",
+      locals: {
         landing_page: landing_page,
         entity: current_entity,
         user: current_user,
@@ -1253,11 +1299,11 @@ class ScoutController < ApplicationController
   end
 
   def render_landing_page_editor(data = {})
-    landing_page = current_entity.landing_pages.find(data['landing_page_id'])
-    
+    landing_page = current_entity.landing_pages.find(data["landing_page_id"])
+
     render_to_string(
-      partial: 'scout/canvas/landing_page_editor',
-      locals: { 
+      partial: "scout/canvas/landing_page_editor",
+      locals: {
         landing_page: landing_page,
         entity: current_entity,
         user: current_user
@@ -1267,17 +1313,17 @@ class ScoutController < ApplicationController
 
   def render_contact_canvas(data = {})
     contacts = current_entity.contacts.includes(:contact_groups).order(created_at: :desc).limit(50)
-    
+
     # Get summary stats
     stats = {
       total_contacts: current_entity.contacts.count,
-      recent_contacts: current_entity.contacts.where('created_at > ?', 7.days.ago).count,
+      recent_contacts: current_entity.contacts.where("created_at > ?", 7.days.ago).count,
       contact_groups: current_entity.contact_groups.count
     }
-    
+
     render_to_string(
-      partial: 'scout/canvas/contact_viewer',
-      locals: { 
+      partial: "scout/canvas/contact_viewer",
+      locals: {
         contacts: contacts,
         stats: stats,
         entity: current_entity,
@@ -1290,10 +1336,10 @@ class ScoutController < ApplicationController
   def render_contact_generator(data = {})
     contact = current_entity.contacts.build
     contact_groups = current_entity.contact_groups.limit(20)
-    
+
     render_to_string(
-      partial: 'scout/canvas/contact_generator',
-      locals: { 
+      partial: "scout/canvas/contact_generator",
+      locals: {
         contact: contact,
         contact_groups: contact_groups,
         entity: current_entity,
@@ -1309,7 +1355,7 @@ class ScoutController < ApplicationController
       .includes(:contact_groups, :email_template)
       .recent
       .limit(20)
-    
+
     # Get all delivery stats in one query
     campaign_ids = campaigns.pluck(:id)
     delivery_stats = EmailDelivery
@@ -1322,7 +1368,7 @@ class ScoutController < ApplicationController
         Arel.sql("COUNT(*) FILTER (WHERE clicked_at IS NOT NULL)"),
         Arel.sql("MIN(sent_at)")
       )
-    
+
     # Build a hash for quick lookup
     stats_by_campaign = {}
     delivery_stats.each do |campaign_id, sent_count, opened_count, clicked_count, first_sent|
@@ -1333,7 +1379,7 @@ class ScoutController < ApplicationController
         first_sent_at: first_sent
       }
     end
-    
+
     # Inject stats into campaigns
     campaigns.each do |campaign|
       if stats = stats_by_campaign[campaign.id]
@@ -1343,17 +1389,17 @@ class ScoutController < ApplicationController
         campaign.instance_variable_set(:@cached_first_sent_at, stats[:first_sent_at])
       end
     end
-    
+
     # Get summary stats
     stats = {
       total_campaigns: current_entity.campaigns.count,
-      sent_campaigns: current_entity.campaigns.where(status: 'sent').count,
-      draft_campaigns: current_entity.campaigns.where(status: 'draft').count
+      sent_campaigns: current_entity.campaigns.where(status: "sent").count,
+      draft_campaigns: current_entity.campaigns.where(status: "draft").count
     }
-    
+
     render_to_string(
-      partial: 'scout/canvas/campaign_viewer',
-      locals: { 
+      partial: "scout/canvas/campaign_viewer",
+      locals: {
         campaigns: campaigns,
         stats: stats,
         entity: current_entity,
@@ -1367,15 +1413,15 @@ class ScoutController < ApplicationController
     # Get analytics data for the dashboard
     analytics_data = {
       campaigns: current_entity.campaigns.includes(:email_deliveries).limit(10),
-      recent_contacts: current_entity.contacts.where('created_at > ?', 30.days.ago).count,
-      total_emails_sent: current_entity.campaigns.sum { |c| c.mailgun_stats&.dig('sent') || 0 },
+      recent_contacts: current_entity.contacts.where("created_at > ?", 30.days.ago).count,
+      total_emails_sent: current_entity.campaigns.sum { |c| c.mailgun_stats&.dig("sent") || 0 },
       avg_open_rate: calculate_avg_open_rate,
       landing_pages: current_entity.landing_pages.count
     }
-    
+
     render_to_string(
-      partial: 'scout/canvas/analytics_dashboard',
-      locals: { 
+      partial: "scout/canvas/analytics_dashboard",
+      locals: {
         analytics_data: analytics_data,
         entity: current_entity,
         user: current_user,
@@ -1386,8 +1432,8 @@ class ScoutController < ApplicationController
 
   def render_default_canvas
     render_to_string(
-      partial: 'scout/canvas/default',
-      locals: { 
+      partial: "scout/canvas/default",
+      locals: {
         entity: current_entity,
         user: current_user
       }
@@ -1396,8 +1442,8 @@ class ScoutController < ApplicationController
 
   def render_user_profile_canvas(data = {})
     render_to_string(
-      partial: 'scout/canvas/user_profile',
-      locals: { 
+      partial: "scout/canvas/user_profile",
+      locals: {
         user: current_user,
         entity: current_entity,
         canvas_data: data
@@ -1407,7 +1453,7 @@ class ScoutController < ApplicationController
 
   def render_business_profile_canvas(data = {})
     render_to_string(
-      partial: 'scout/canvas/business_profile',
+      partial: "scout/canvas/business_profile",
       locals: {
         business_profile: current_user.business_profile,
         user: current_user,
@@ -1420,37 +1466,37 @@ class ScoutController < ApplicationController
   def calculate_avg_open_rate
     campaigns_with_stats = current_entity.campaigns.where.not(mailgun_stats: nil)
     return 0 if campaigns_with_stats.empty?
-    
+
     total_sent = 0
     total_opened = 0
-    
+
     campaigns_with_stats.each do |campaign|
-      sent = campaign.mailgun_stats&.dig('sent') || 0
-      opened = campaign.mailgun_stats&.dig('opened') || 0
+      sent = campaign.mailgun_stats&.dig("sent") || 0
+      opened = campaign.mailgun_stats&.dig("opened") || 0
       total_sent += sent
       total_opened += opened
     end
-    
+
     return 0 if total_sent == 0
     ((total_opened.to_f / total_sent) * 100).round(1)
   end
 
   def render_email_template_viewer(data = {})
     templates = current_entity.email_templates.order(created_at: :desc)
-    
+
     # Get stats
     total_count = templates.count
     used_count = templates.joins(:campaigns).distinct.count
-    
+
     stats = {
       total_templates: total_count,
       active_templates: used_count,
       used_templates: used_count,
       unused_templates: total_count - used_count
     }
-    
+
     render_to_string(
-      partial: 'scout/canvas/email_template_viewer',
+      partial: "scout/canvas/email_template_viewer",
       locals: {
         templates: templates,
         stats: stats,
@@ -1462,11 +1508,11 @@ class ScoutController < ApplicationController
   end
 
   def render_email_template_editor(data = {})
-    template_id = data['template_id'] || data[:template_id]
+    template_id = data["template_id"] || data[:template_id]
     email_template = current_entity.email_templates.find(template_id)
-    
+
     render_to_string(
-      partial: 'scout/canvas/email_template_editor',
+      partial: "scout/canvas/email_template_editor",
       locals: {
         email_template: email_template,
         entity: current_entity,
@@ -1478,7 +1524,7 @@ class ScoutController < ApplicationController
 
   def render_dynamic_canvas(data = {})
     render_to_string(
-      partial: 'scout/canvas/dynamic_canvas',
+      partial: "scout/canvas/dynamic_canvas",
       locals: {
         entity: current_entity,
         user: current_user,
@@ -1492,9 +1538,9 @@ class ScoutController < ApplicationController
     if data.is_a?(ActionController::Parameters)
       data = JSON.parse(data.to_json).with_indifferent_access
     end
-    
+
     render_to_string(
-      partial: 'scout/canvas/interactive_wizard',
+      partial: "scout/canvas/interactive_wizard",
       locals: {
         entity: current_entity,
         user: current_user,
@@ -1505,18 +1551,18 @@ class ScoutController < ApplicationController
       }
     )
   end
-  
+
   def determine_wizard_title(canvas_data)
     step = canvas_data[:step]
     progress = canvas_data[:progress]
-    
+
     if step && step[:config] && step[:config][:title]
       step[:config][:title]
     elsif progress && progress[:workflow_type]
       case progress[:workflow_type]
-      when 'landing_page_creation'
+      when "landing_page_creation"
         "Landing Page Wizard"
-      when 'campaign_creation'
+      when "campaign_creation"
         "Campaign Wizard"
       else
         "Interactive Wizard"
@@ -1525,13 +1571,13 @@ class ScoutController < ApplicationController
       "Interactive Wizard"
     end
   end
-  
+
   def render_form_submissions_canvas(data = {})
     # Load form submissions data
     submissions_data = load_form_submissions_data(data)
-    
+
     render_to_string(
-      partial: 'scout/canvas/form_submissions',
+      partial: "scout/canvas/form_submissions",
       locals: {
         entity: current_entity,
         user: current_user,
@@ -1539,41 +1585,41 @@ class ScoutController < ApplicationController
       }
     )
   end
-  
+
   def load_form_submissions_data(filters = {})
     # Base query for submissions from user's landing pages
     base_query = LandingPageSubmission.joins(:landing_page)
                                       .where(landing_pages: { user: current_user, entity: current_entity })
                                       .includes(:contact, :landing_page)
-    
+
     # Apply filters
     if filters[:landing_page_id]
       base_query = base_query.where(landing_page_id: filters[:landing_page_id])
     end
-    
+
     if filters[:form_type].present?
       base_query = base_query.where(form_type: filters[:form_type])
     end
-    
+
     if filters[:status].present?
       base_query = base_query.where(status: filters[:status])
     end
-    
+
     case filters[:time_range]
-    when 'today'
+    when "today"
       base_query = base_query.today
-    when 'week'
+    when "week"
       base_query = base_query.this_week
-    when 'month'
+    when "month"
       base_query = base_query.this_month
     end
-    
+
     # Get submissions with pagination
     submissions = base_query.recent.limit(50)
-    
+
     # Calculate stats
     stats = calculate_submission_stats(base_query)
-    
+
     # Format submissions for display
     formatted_submissions = submissions.map do |submission|
       {
@@ -1594,11 +1640,11 @@ class ScoutController < ApplicationController
         submission_data: submission.submission_data
       }
     end
-    
+
     {
       submissions: formatted_submissions,
       stats: stats,
-      landing_page: filters[:landing_page_id] ? 
+      landing_page: filters[:landing_page_id] ?
         LandingPage.find_by(id: filters[:landing_page_id], user: current_user) : nil,
       pagination: {
         current_count: formatted_submissions.length,
@@ -1608,16 +1654,16 @@ class ScoutController < ApplicationController
       }
     }
   end
-  
+
   def calculate_submission_stats(base_query)
     total = base_query.count
-    processed = base_query.where(status: ['processed', 'duplicate']).count
-    pending = base_query.where(status: 'pending').count
-    failed = base_query.where(status: 'failed').count
-    spam = base_query.where(status: 'spam').count
-    
+    processed = base_query.where(status: [ "processed", "duplicate" ]).count
+    pending = base_query.where(status: "pending").count
+    failed = base_query.where(status: "failed").count
+    spam = base_query.where(status: "spam").count
+
     conversion_rate = total > 0 ? (processed.to_f / total * 100).round(1) : 0.0
-    
+
     {
       total: total,
       processed: processed,
@@ -1627,13 +1673,13 @@ class ScoutController < ApplicationController
       conversion_rate: conversion_rate
     }
   end
-  
+
   def render_workflow_analytics_canvas(data = {})
     # Load analytics data
     analytics_data = load_workflow_analytics_data(data)
-    
+
     render_to_string(
-      partial: 'scout/canvas/workflow_analytics',
+      partial: "scout/canvas/workflow_analytics",
       locals: {
         entity: current_entity,
         user: current_user,
@@ -1641,13 +1687,13 @@ class ScoutController < ApplicationController
       }
     )
   end
-  
+
   def load_workflow_analytics_data(options = {})
     period = (options[:period] || 30).to_i.days
-    
+
     # Get analytics from ObservabilityService
     observability = ObservabilityService.instance
-    
+
     {
       workflow_analytics: observability.workflow_analytics(period),
       tool_analytics: observability.tool_analytics(period),
@@ -1662,7 +1708,7 @@ class ScoutController < ApplicationController
   def render_task_progress(data = {})
     # Handle both symbol and string keys
     data = data.with_indifferent_access if data.is_a?(Hash)
-    
+
     # If we have progress data from workflow, use it
     if data[:progress] && !data[:tasks]
       Rails.logger.info "📋 Converting workflow progress to task list format"
@@ -1673,7 +1719,7 @@ class ScoutController < ApplicationController
           workflow_engine = WorkflowEngine.new(task_session)
           workflow_progress = workflow_engine.progress
           workflow = workflow_engine.instance_variable_get(:@workflow)
-          
+
           data = {
             tasks: workflow.steps.map do |step|
               {
@@ -1682,7 +1728,7 @@ class ScoutController < ApplicationController
                 status: step.status,
                 details: step.error,
                 completed_at: step.completed_at,
-                failed_at: step.status == 'failed' ? step.completed_at : nil
+                failed_at: step.status == "failed" ? step.completed_at : nil
               }
             end,
             title: task_session.workflow_name || "Workflow Progress",
@@ -1691,15 +1737,15 @@ class ScoutController < ApplicationController
         end
       end
     end
-    
+
     # If no data provided, try to load from TaskSession
     # Skip loading if we have workflow approval data
-    if (data.empty? || data.nil? || data[:tasks].nil?) && !data[:awaiting_approval] && !data['awaiting_approval']
+    if (data.empty? || data.nil? || data[:tasks].nil?) && !data[:awaiting_approval] && !data["awaiting_approval"]
       session_id = session[:scout_session_id]
-      
+
       # If we have a specific task_session_id, load that regardless of status
-      if data[:task_session_id] || data['task_session_id']
-        task_session_id = data[:task_session_id] || data['task_session_id']
+      if data[:task_session_id] || data["task_session_id"]
+        task_session_id = data[:task_session_id] || data["task_session_id"]
         task_session = TaskSession.where(user: current_user, id: task_session_id).first
       else
         # Try to find active task session
@@ -1708,32 +1754,32 @@ class ScoutController < ApplicationController
                                  .where("metadata->>'session_id' = ?", session_id)
                                  .first
       end
-      
+
       if task_session
         # Check if we have a task list in state
-        if task_session.state&.dig('task_list')
-          data = task_session.state['task_list']
+        if task_session.state&.dig("task_list")
+          data = task_session.state["task_list"]
           Rails.logger.info "📋 Loaded task list from TaskSession state: #{data[:tasks]&.size} tasks"
         elsif task_session.workflow_spec
           # Convert workflow to task list format for display with proper state restoration
           workflow_engine = WorkflowEngine.new(task_session)
           workflow_progress = workflow_engine.progress
-          
+
           # Get workflow instance to access steps
           workflow = workflow_engine.instance_variable_get(:@workflow)
-          
+
           # Try to get workflow execution for accurate step statuses
           workflow_execution = task_session.workflow_execution
-          
+
           data = {
             tasks: workflow.steps.map do |step|
               step_name = step.name || step.config[:name] || step.description
               step_details = step.config[:description] || step.description
-              
+
               # Get status from workflow execution if available
               step_status = step.status
               completed_at = step.completed_at
-              
+
               if workflow_execution
                 step_exec = workflow_execution.workflow_step_executions.find_by(step_id: step.id)
                 if step_exec
@@ -1741,16 +1787,16 @@ class ScoutController < ApplicationController
                   completed_at = step_exec.completed_at
                 end
               end
-              
+
               Rails.logger.info "📋 Step mapping: id=#{step.id}, name=#{step_name}, details=#{step_details}, status=#{step_status}"
-              
+
               {
                 id: step.id,
                 description: step_name,
                 details: step_details,
                 status: step_status,
                 completed_at: completed_at,
-                failed_at: step_status == 'failed' ? completed_at : nil
+                failed_at: step_status == "failed" ? completed_at : nil
               }
             end,
             workflow_status: workflow_progress[:status],
@@ -1768,11 +1814,11 @@ class ScoutController < ApplicationController
     else
       Rails.logger.info "📋 Using provided task data: #{data[:tasks]&.size} tasks"
     end
-    
+
     # Check if this is a workflow approval
-    if data[:awaiting_approval] || data['awaiting_approval']
+    if data[:awaiting_approval] || data["awaiting_approval"]
       render_to_string(
-        partial: 'scout/canvas/workflow_approval',
+        partial: "scout/canvas/workflow_approval",
         locals: {
           entity: current_entity,
           user: current_user,
@@ -1781,7 +1827,7 @@ class ScoutController < ApplicationController
       )
     else
       render_to_string(
-        partial: 'scout/canvas/task_progress',
+        partial: "scout/canvas/task_progress",
         locals: {
           entity: current_entity,
           user: current_user,
@@ -1792,15 +1838,15 @@ class ScoutController < ApplicationController
   end
 
   def render_integrations_manager(data = {})
-    render_to_string(partial: 'scout/canvas/integrations_manager', locals: { canvas_data: data })
+    render_to_string(partial: "scout/canvas/integrations_manager", locals: { canvas_data: data })
   end
 
   def render_integration_connect(data = {})
-    render_to_string(partial: 'scout/canvas/integration_connect', locals: { canvas_data: data })
+    render_to_string(partial: "scout/canvas/integration_connect", locals: { canvas_data: data })
   end
 
   def render_integration_operations(data = {})
-    render_to_string(partial: 'scout/canvas/integration_operations', locals: { canvas_data: data })
+    render_to_string(partial: "scout/canvas/integration_operations", locals: { canvas_data: data })
   end
 
   def render_campaign_editor(data = {})
@@ -1810,13 +1856,13 @@ class ScoutController < ApplicationController
     else
       current_entity.campaigns.build
     end
-    
+
     # Load contact groups and email templates
     contact_groups = current_entity.contact_groups.active
     email_templates = current_entity.email_templates
-    
+
     render_to_string(
-      partial: 'scout/canvas/campaign_editor',
+      partial: "scout/canvas/campaign_editor",
       locals: {
         campaign: campaign,
         contact_groups: contact_groups,
@@ -1827,4 +1873,4 @@ class ScoutController < ApplicationController
       }
     )
   end
-end 
+end

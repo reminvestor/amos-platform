@@ -5,30 +5,30 @@ module Api
       def create
         # Find the crawler job
         crawler_job = CrawlerJob.find(params[:id])
-        
+
         # Authentication is crucial - crawler should supply API key
         # This is the same auth as crawler_contacts_controller
-        api_key = request.headers['Authorization']&.split(' ')&.last
-        
+        api_key = request.headers["Authorization"]&.split(" ")&.last
+
         if api_key.blank?
-          render json: { error: 'API key missing' }, status: :unauthorized
+          render json: { error: "API key missing" }, status: :unauthorized
           return
         end
-        
+
         # Connect API key to user that owns the job
         if crawler_job.user.api_key != api_key
-          render json: { error: 'Invalid API key for this crawler job' }, status: :unauthorized
+          render json: { error: "Invalid API key for this crawler job" }, status: :unauthorized
           return
         end
-        
+
         # Create the log entry
         log_params = params.require(:log).permit(:message, :level)
-        
+
         log = crawler_job.add_log(
-          log_params[:message], 
-          log_params[:level] || 'info'
+          log_params[:message],
+          log_params[:level] || "info"
         )
-        
+
         if log.persisted?
           render json: { message: "Log entry created", log: log }, status: :created
         else
@@ -43,4 +43,4 @@ module Api
       end
     end
   end
-end 
+end

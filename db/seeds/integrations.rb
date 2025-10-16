@@ -7,7 +7,7 @@ stripe = Integration.find_or_create_by!(slug: 'stripe') do |i|
   i.category = 'payment'
   i.auth_type = 'basic_auth'
   i.api_base_url = 'https://api.stripe.com'
-  i.allowed_hosts = ['api.stripe.com']
+  i.allowed_hosts = [ 'api.stripe.com' ]
   i.documentation_url = 'https://stripe.com/docs/api'
   i.icon_url = 'https://cdn.brandfolder.io/KGT2DTA4/at/8gkvgs86vw4gv4x48878kh4/Stripe_icon_-_square.svg'
   i.description = 'Accept payments and manage subscriptions'
@@ -94,7 +94,7 @@ stripe.integration_operations.find_or_create_by!(
   op.response_schema = {
     type: 'object',
     properties: {
-      object: { type: 'string', enum: ['list'] },
+      object: { type: 'string', enum: [ 'list' ] },
       url: { type: 'string' },
       has_more: { type: 'boolean' },
       data: {
@@ -103,7 +103,7 @@ stripe.integration_operations.find_or_create_by!(
           type: 'object',
           properties: {
             id: { type: 'string' },
-            object: { type: 'string', enum: ['customer'] },
+            object: { type: 'string', enum: [ 'customer' ] },
             email: { type: 'string' },
             name: { type: 'string' },
             created: { type: 'integer' }
@@ -157,7 +157,7 @@ stripe.integration_operations.find_or_create_by!(
         additionalProperties: { type: 'string' }
       }
     },
-    required: ['email']
+    required: [ 'email' ]
   }
   op.examples = {
     body: {
@@ -176,7 +176,7 @@ shopify = Integration.find_or_create_by!(slug: 'shopify') do |i|
   i.category = 'ecommerce'
   i.auth_type = 'api_key'
   i.api_base_url = 'https://{shop_domain}/admin/api/2024-01'
-  i.allowed_hosts = ['*.myshopify.com']
+  i.allowed_hosts = [ '*.myshopify.com' ]
   i.documentation_url = 'https://shopify.dev/docs/api/admin-rest'
   i.icon_url = 'https://cdn.shopify.com/shopifycloud/brochure/assets/brand-assets/shopify-logo-primary-logo@2x-11ee0e2c8d0635c096c0c258e1f3c3e26d95bd4bdc1a08c75f00e12afa91e1a6.png'
   i.description = 'Manage your online store, products, and orders'
@@ -258,7 +258,7 @@ shopify.integration_operations.find_or_create_by!(
       },
       status: {
         type: 'string',
-        enum: ['active', 'archived', 'draft'],
+        enum: [ 'active', 'archived', 'draft' ],
         description: 'Filter by status'
       }
     }
@@ -271,7 +271,7 @@ hubspot = Integration.find_or_create_by!(slug: 'hubspot') do |i|
   i.category = 'crm'
   i.auth_type = 'oauth2'
   i.api_base_url = 'https://api.hubapi.com'
-  i.allowed_hosts = ['api.hubapi.com']
+  i.allowed_hosts = [ 'api.hubapi.com' ]
   i.documentation_url = 'https://developers.hubspot.com/docs/api/overview'
   i.icon_url = 'https://www.hubspot.com/hubfs/HubSpot_Logos/HubSpot-Inversed-Favicon.png'
   i.description = 'CRM, marketing, and sales platform'
@@ -280,7 +280,7 @@ hubspot = Integration.find_or_create_by!(slug: 'hubspot') do |i|
   i.auth_config = {
     authorize_url: 'https://app.hubspot.com/oauth/authorize',
     token_url: 'https://api.hubapi.com/oauth/v1/token',
-    scopes: ['crm.objects.contacts.read', 'crm.objects.contacts.write'],
+    scopes: [ 'crm.objects.contacts.read', 'crm.objects.contacts.write' ],
     client_id: ENV['HUBSPOT_CLIENT_ID'],
     client_secret: ENV['HUBSPOT_CLIENT_SECRET'],
     redirect_uri: 'https://app.agentmarketing.com/integrations/callback/hubspot'
@@ -353,7 +353,7 @@ google_sheets = Integration.find_or_create_by!(slug: 'google_sheets') do |i|
   i.category = 'productivity'
   i.auth_type = 'oauth2_custom'
   i.api_base_url = 'https://sheets.googleapis.com/v4'
-  i.allowed_hosts = ['sheets.googleapis.com']
+  i.allowed_hosts = [ 'sheets.googleapis.com' ]
   i.documentation_url = 'https://developers.google.com/sheets/api/reference/rest'
   i.icon_url = 'https://upload.wikimedia.org/wikipedia/commons/3/30/Google_Sheets_logo_%282014-2020%29.svg'
   i.description = 'Read and write Google Sheets spreadsheets'
@@ -362,7 +362,7 @@ google_sheets = Integration.find_or_create_by!(slug: 'google_sheets') do |i|
   i.auth_config = {
     requires_user_app: true,
     auth_provider: 'google',
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    scopes: [ 'https://www.googleapis.com/auth/spreadsheets' ],
     setup_instructions: <<~INSTRUCTIONS
       1. Go to Google Cloud Console
       2. Create a new project or select existing
@@ -398,16 +398,16 @@ slack = Integration.find_or_create_by!(slug: 'slack') do |i|
   i.category = 'communication'
   i.auth_type = 'custom'
   i.api_base_url = 'https://slack.com/api'
-  i.allowed_hosts = ['slack.com', 'hooks.slack.com']
+  i.allowed_hosts = [ 'slack.com', 'hooks.slack.com' ]
   i.documentation_url = 'https://api.slack.com/docs'
   i.icon_url = 'https://a.slack-edge.com/80588/marketing/img/icons/icon_slack_hash_colored.png'
   i.description = 'Send messages and notifications to Slack'
   i.is_active = true
   i.is_verified = true
   i.auth_config = {
-    auth_types: ['webhook', 'oauth2'],
+    auth_types: [ 'webhook', 'oauth2' ],
     webhook_instructions: 'Create an Incoming Webhook in your Slack workspace',
-    oauth_scopes: ['chat:write', 'channels:read']
+    oauth_scopes: [ 'chat:write', 'channels:read' ]
   }
 end
 
@@ -455,7 +455,7 @@ slack.integration_operations.find_or_create_by!(
         description: 'Override default channel'
       }
     },
-    required: ['text']
+    required: [ 'text' ]
   }
 end
 
@@ -465,7 +465,7 @@ gmail = Integration.find_or_create_by!(slug: 'gmail') do |i|
   i.category = 'communication'
   i.auth_type = 'oauth2'
   i.api_base_url = 'https://gmail.googleapis.com/gmail/v1'
-  i.allowed_hosts = ['gmail.googleapis.com', 'www.googleapis.com']
+  i.allowed_hosts = [ 'gmail.googleapis.com', 'www.googleapis.com' ]
   i.documentation_url = 'https://developers.google.com/gmail/api/reference/rest'
   i.icon_url = 'https://ssl.gstatic.com/ui/v1/icons/mail/rfr/logo_gmail_lockup_default_2x_r2.png'
   i.description = 'Send emails, manage inbox, and organize messages'
@@ -524,7 +524,7 @@ gmail.integration_operations.find_or_create_by!(
   op.requires_confirmation = true
   op.request_schema = {
     type: 'object',
-    required: ['raw'],
+    required: [ 'raw' ],
     properties: {
       raw: {
         type: 'string',
@@ -586,7 +586,7 @@ gmail.integration_operations.find_or_create_by!(
     properties: {
       format: {
         type: 'string',
-        enum: ['minimal', 'full', 'raw', 'metadata'],
+        enum: [ 'minimal', 'full', 'raw', 'metadata' ],
         default: 'full'
       }
     }
@@ -599,7 +599,7 @@ google_drive = Integration.find_or_create_by!(slug: 'google_drive') do |i|
   i.category = 'productivity'
   i.auth_type = 'oauth2'
   i.api_base_url = 'https://www.googleapis.com/drive/v3'
-  i.allowed_hosts = ['www.googleapis.com', 'googleapis.com']
+  i.allowed_hosts = [ 'www.googleapis.com', 'googleapis.com' ]
   i.documentation_url = 'https://developers.google.com/drive/api/v3/reference'
   i.icon_url = 'https://ssl.gstatic.com/images/branding/product/2x/drive_2020q4_48dp.png'
   i.description = 'Store, sync, and share files in the cloud'
@@ -697,7 +697,7 @@ google_drive.integration_operations.find_or_create_by!(
   op.requires_confirmation = true
   op.request_schema = {
     type: 'object',
-    required: ['name', 'mimeType'],
+    required: [ 'name', 'mimeType' ],
     properties: {
       name: {
         type: 'string',
@@ -705,7 +705,7 @@ google_drive.integration_operations.find_or_create_by!(
       },
       mimeType: {
         type: 'string',
-        enum: ['application/vnd.google-apps.folder'],
+        enum: [ 'application/vnd.google-apps.folder' ],
         default: 'application/vnd.google-apps.folder'
       },
       parents: {
@@ -728,7 +728,7 @@ google_drive.integration_operations.find_or_create_by!(
   op.requires_confirmation = true
   op.request_schema = {
     type: 'object',
-    required: ['name'],
+    required: [ 'name' ],
     properties: {
       name: {
         type: 'string',
@@ -754,7 +754,7 @@ quickbooks = Integration.find_or_create_by!(slug: 'quickbooks') do |i|
   i.category = 'payment'
   i.auth_type = 'oauth2'
   i.api_base_url = 'https://sandbox-quickbooks.api.intuit.com/v3'  # Switch to production URL in prod
-  i.allowed_hosts = ['sandbox-quickbooks.api.intuit.com', 'quickbooks.api.intuit.com']
+  i.allowed_hosts = [ 'sandbox-quickbooks.api.intuit.com', 'quickbooks.api.intuit.com' ]
   i.documentation_url = 'https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/account'
   i.icon_url = 'https://quickbooks.intuit.com/etc/designs/qb-core/graphics/favicon.ico'
   i.description = 'Accounting software for invoicing, expenses, and financial reporting'
@@ -763,7 +763,7 @@ quickbooks = Integration.find_or_create_by!(slug: 'quickbooks') do |i|
   i.auth_config = {
     authorize_url: 'https://appcenter.intuit.com/connect/oauth2',
     token_url: 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
-    scopes: ['com.intuit.quickbooks.accounting'],
+    scopes: [ 'com.intuit.quickbooks.accounting' ],
     client_id: ENV['QUICKBOOKS_CLIENT_ID'],
     client_secret: ENV['QUICKBOOKS_CLIENT_SECRET'],
     redirect_uri: 'https://app.agentmarketing.com/integrations/callback/quickbooks',
@@ -781,7 +781,7 @@ quickbooks = Integration.find_or_create_by!(slug: 'quickbooks') do |i|
   }
 end
 
-# QuickBooks - Test Connection  
+# QuickBooks - Test Connection
 quickbooks.integration_operations.find_or_create_by!(
   operation_id: 'quickbooks.test_connection.v3'
 ) do |op|
@@ -811,11 +811,11 @@ quickbooks.integration_operations.find_or_create_by!(
   op.requires_confirmation = true
   op.request_schema = {
     type: 'object',
-    required: ['Line', 'CustomerRef'],
+    required: [ 'Line', 'CustomerRef' ],
     properties: {
       CustomerRef: {
         type: 'object',
-        required: ['value'],
+        required: [ 'value' ],
         properties: {
           value: { type: 'string', description: 'Customer ID' }
         }
@@ -825,11 +825,11 @@ quickbooks.integration_operations.find_or_create_by!(
         minItems: 1,
         items: {
           type: 'object',
-          required: ['Amount', 'DetailType'],
+          required: [ 'Amount', 'DetailType' ],
           properties: {
             Amount: { type: 'number' },
             Description: { type: 'string' },
-            DetailType: { type: 'string', enum: ['SalesItemLineDetail'] },
+            DetailType: { type: 'string', enum: [ 'SalesItemLineDetail' ] },
             SalesItemLineDetail: {
               type: 'object',
               properties: {
@@ -871,7 +871,7 @@ quickbooks.integration_operations.find_or_create_by!(
   op.max_limit = 1000
   op.request_schema = {
     type: 'object',
-    required: ['query'],
+    required: [ 'query' ],
     properties: {
       query: {
         type: 'string',
@@ -915,11 +915,11 @@ quickbooks.integration_operations.find_or_create_by!(
   op.requires_confirmation = true
   op.request_schema = {
     type: 'object',
-    required: ['CustomerRef', 'TotalAmt'],
+    required: [ 'CustomerRef', 'TotalAmt' ],
     properties: {
       CustomerRef: {
         type: 'object',
-        required: ['value'],
+        required: [ 'value' ],
         properties: {
           value: { type: 'string', description: 'Customer ID' }
         }
@@ -941,7 +941,7 @@ quickbooks.integration_operations.find_or_create_by!(
                 type: 'object',
                 properties: {
                   TxnId: { type: 'string' },
-                  TxnType: { type: 'string', enum: ['Invoice'] }
+                  TxnType: { type: 'string', enum: [ 'Invoice' ] }
                 }
               }
             }

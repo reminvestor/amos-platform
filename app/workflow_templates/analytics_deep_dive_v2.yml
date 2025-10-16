@@ -1,0 +1,152 @@
+template_version: 2
+name: "AI-Powered Analytics Deep Dive"
+slug: "analytics_deep_dive_v2"
+description: "Analyze business metrics with AI-powered insights, safe query execution, and beautiful visualizations"
+category: "analytics"
+
+config:
+  execution_mode: "adaptive"
+  context_aware: true
+  conversational: true
+  self_healing: true
+
+keywords:
+  - analytics
+  - analyze
+  - metrics
+  - revenue
+  - trends
+  - report
+  - insights
+  - data analysis
+
+phases:
+  # Phase 1: Understand the analysis question
+  - id: "understand_question"
+    type: "gather_context"
+    name: "Understand Analysis Requirements"
+    goal: "Clarify what metrics and timeframe to analyze"
+    
+    required_fields:
+      - key: "analysis_question"
+        prompt: "What would you like to analyze?"
+        required: true
+        validation: "text"
+      - key: "time_period"
+        prompt: "What time period? (e.g., 'last 90 days', 'this quarter', 'last 6 months')"
+        required: true
+        validation: "text"
+      - key: "breakdown_by"
+        prompt: "How should we break down the data? (e.g., by region, channel, product)"
+        required: false
+        validation: "text"
+    
+    context_sources:
+      - "direct_conversation"
+      - "conversation_history"
+    
+    ai_instructions: |
+      Ask the user what they want to analyze conversationally.
+      Clarify the time period and any breakdowns they want.
+
+  # Phase 2: Discover relevant metrics
+  - id: "discover_metrics"
+    type: "execute_goal"
+    name: "Find Relevant Metrics"
+    goal: "Discover which metrics are available and relevant to the question"
+    
+    execution_strategy:
+      approach: "adaptive"
+      allowed_tools:
+        - list_metrics
+        - explain_query
+      
+      success_when:
+        metrics_identified: true
+    
+    ai_instructions: |
+      1. Use list_metrics to see all available metrics
+      2. Based on the analysis_question, identify the most relevant metric(s)
+      3. If user asked about revenue/sales, use "revenue" metric
+      4. If user asked about orders/transactions, use "orders" metric
+      5. Tell user which metrics you'll query
+
+  # Phase 3: Query the data
+  - id: "query_data"
+    type: "execute_goal"
+    name: "Query Metrics"
+    goal: "Execute safe, tenant-isolated metric queries with budget enforcement"
+    
+    execution_strategy:
+      approach: "adaptive"
+      allowed_tools:
+        - query_metric
+        - explain_query
+      
+      success_when:
+        data_retrieved: true
+    
+    ai_instructions: |
+      1. Parse the time_period into start_date and end_date
+      2. Determine time_grain (day/week/month) based on period length
+      3. Parse breakdown_by into group_by dimensions
+      4. Use query_metric to get the data
+      5. If query fails due to budget, try with shorter time period or fewer dimensions
+
+  # Phase 4: Create visualizations
+  - id: "visualize"
+    type: "execute_goal"
+    name: "Create Visualizations"
+    goal: "Generate charts and insights from the queried data"
+    
+    execution_strategy:
+      approach: "adaptive"
+      allowed_tools:
+        - create_dynamic_visualization
+        - aggregate_artifact_data
+      
+      success_when:
+        visualization_created: true
+    
+    ai_instructions: |
+      1. Use the data from query_data phase
+      2. Create appropriate visualization:
+         - Time series for trends over time
+         - Bar chart for comparisons
+         - Pie chart for composition
+      3. Use create_dynamic_visualization with the queried data
+      4. Include key insights and trends
+
+  # Phase 5: Validate results
+  - id: "validation"
+    type: "validate_result"
+    name: "Quality Check"
+    goal: "Verify data quality and insights accuracy"
+    
+    validation_rules:
+      - rule: "data_returned"
+        check: "Query returned data successfully"
+        
+      - rule: "within_budget"
+        check: "Query stayed within row budget"
+        
+      - rule: "visualization_created"
+        check: "Visualization generated successfully"
+    
+    on_failure:
+      action: "attempt_fix"
+      max_fix_attempts: 1
+
+success_criteria:
+  - data_queried: true
+  - visualization_created: true
+  - insights_generated: true
+
+validation:
+  required_context:
+    - analysis_question
+    - time_period
+  quality_checks:
+    - data_not_empty
+    - metrics_exist
+

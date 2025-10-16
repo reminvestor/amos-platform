@@ -11,7 +11,7 @@ class SocialPostAnalytic < ApplicationRecord
 
   def calculate_engagement_rate
     return if reach.zero?
-    
+
     total_engagement = likes + comments + shares
     self.engagement_rate = (total_engagement.to_f / reach) * 100
   end

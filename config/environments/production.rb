@@ -30,7 +30,7 @@ Rails.application.configure do
 
   # Set Active Storage URL host in production
   config.active_storage.service_urls_expire_in = 1.week
-  Rails.application.routes.default_url_options[:host] = ENV['APP_HOST'] || 'app.amoslabs.com'
+  Rails.application.routes.default_url_options[:host] = ENV["APP_HOST"] || "app.amoslabs.com"
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
   config.assume_ssl = true
@@ -41,30 +41,30 @@ Rails.application.configure do
 
   # Configure proxy settings for Heroku
   config.action_dispatch.trusted_proxies = ActionDispatch::RemoteIp::TRUSTED_PROXIES +
-    [IPAddr.new('10.0.0.0/8'), IPAddr.new('172.16.0.0/12'), IPAddr.new('192.168.0.0/16')]
+    [ IPAddr.new("10.0.0.0/8"), IPAddr.new("172.16.0.0/12"), IPAddr.new("192.168.0.0/16") ]
 
   # Add Heroku's proxy IPs as trusted
   config.action_dispatch.ip_spoofing_check = false
-  
+
   # Custom middleware to deal with SSL - disabled for now as it causes issues
   # config.middleware.insert_before ActionDispatch::HostAuthorization, "ApiSslMiddleware"
-  
+
   # SSL options - comment out to let Heroku handle it
-  # config.ssl_options = { 
+  # config.ssl_options = {
   #   redirect: { exclude: ->(request) { request.path == "/up" || request.path.start_with?("/api/") } },
   #   hsts: { expires: 1.year }
   # }
-  
+
   # Disable forgery protection for API routes
   config.action_controller.allow_forgery_protection = false
-  
+
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]
   config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
 
   # Change to "debug" to log everything (including potentially personally-identifiable information!)
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "debug")
-  
+
   # Force Rails to log to STDOUT for Heroku visibility
   config.logger = ActiveSupport::Logger.new(STDOUT)
   config.logger.level = Logger::DEBUG
@@ -87,9 +87,9 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = false
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { 
-    host: ENV['APPLICATION_HOST'] || 'app.amoslabs.com',
-    protocol: 'https'
+  config.action_mailer.default_url_options = {
+    host: ENV["APPLICATION_HOST"] || "app.amoslabs.com",
+    protocol: "https"
   }
 
   # Set up asset host for emails (used for images)
@@ -126,44 +126,44 @@ Rails.application.configure do
   # Mailgun configuration
   config.action_mailer.delivery_method = :mailgun
   config.action_mailer.mailgun_settings = {
-    api_key: ENV['MAILGUN_API_KEY'],
-    domain: ENV['MAILGUN_DOMAIN']
+    api_key: ENV["MAILGUN_API_KEY"],
+    domain: ENV["MAILGUN_DOMAIN"]
   }
   config.action_mailer.perform_deliveries = true
 
   # Add your actual domain to allowed hosts
-  config.hosts << ENV['APPLICATION_HOST']
+  config.hosts << ENV["APPLICATION_HOST"]
   config.hosts << "www.#{ENV['APPLICATION_HOST']}"
   config.hosts << "app.#{ENV['APPLICATION_HOST']}"
-  
+
   # Allow Heroku app domain
   config.hosts << "nuvola-marketing-agent-86aa0618d72d.herokuapp.com"
-  
+
   # Allow amoslabs.com domains
   config.hosts << "amoslabs.com"
   config.hosts << "www.amoslabs.com"
   config.hosts << "app.amoslabs.com"
-  
+
   # Legacy everloom.ai domains (for migration period)
   config.hosts << "everloom.ai"
   config.hosts << "www.everloom.ai"
   config.hosts << "app.everloom.ai"
-  
+
   # Allow cruxmarketing.ai domains
   config.hosts << "cruxmarketing.ai"
   config.hosts << "www.cruxmarketing.ai"
   config.hosts << "app.cruxmarketing.ai"
-  
+
   # Allow ALB DNS names
   config.hosts << /.*\.elb\.amazonaws\.com$/
-  
+
   # Skip host authorization for health checks
-  config.host_authorization = { 
-    exclude: ->(request) { 
-      request.path == "/up" || 
-      request.path == "/health" || 
+  config.host_authorization = {
+    exclude: ->(request) {
+      request.path == "/up" ||
+      request.path == "/health" ||
       request.path == "/health_check" ||
       request.user_agent =~ /ELB-HealthChecker/
-    } 
+    }
   }
 end

@@ -4,5 +4,3 @@ class AddLeadToContacts < ActiveRecord::Migration[8.0]
     add_index :contacts, :lead
   end
 end
-
-
