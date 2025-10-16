@@ -14,6 +14,3 @@ class CreateImageAssets < ActiveRecord::Migration[8.0]
     add_index :image_assets, :tags, using: :gin
   end
 end
-
-
-

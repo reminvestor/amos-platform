@@ -1,27 +1,27 @@
 class InteractiveTaskService
   attr_reader :task_session, :workflow_engine, :user, :entity
-  
+
   def initialize(user, entity, session_id = nil)
     @user = user
     @entity = entity
     @session_id = session_id || SecureRandom.uuid
-    
+
     # Find or create task session
     @task_session = find_or_create_task_session
-    
+
     # Initialize workflow engine
     @workflow_engine = WorkflowEngine.new(@task_session)
-    
+
     # Set up progress callback for real-time updates
     @progress_callback = nil
     @additional_context = {}
   end
-  
+
   # Set additional context for the service
   def set_context(context = {})
     @additional_context.merge!(context)
   end
-  
+
   # Process a message and determine if it should use interactive workflow
   def process_message(message, conversation_history = [], current_canvas = nil)
     # Check if we have an active workflow awaiting input
@@ -29,16 +29,16 @@ class InteractiveTaskService
       Rails.logger.info "InteractiveTaskService: Active workflow awaiting input, continuing with user message"
       return continue_workflow_with_message(message)
     end
-    
+
     # Check if there's a V2 workflow awaiting input
     if v2_workflow_awaiting_input?
       Rails.logger.info "InteractiveTaskService: V2 workflow awaiting input, resuming with user message"
       return resume_v2_workflow_with_message(message)
     end
-    
+
     # Always default to autonomous mode - let the AI decide if it needs planning
     Rails.logger.info "InteractiveTaskService: Processing message in autonomous mode (AI-driven)"
-    
+
     # Store mode detection in task session
     @task_session.update!(
       session_type: 'autonomous',
@@ -541,7 +541,8 @@ class InteractiveTaskService
     end
     
     # Let the AI decide if it needs planning - no more keyword checking
-    generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id)
+    main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+    generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout)
     
     # Pass task session context and any additional context (like files) so AI can delegate if needed
     generic_tools_service.set_context(task_session: @task_session, **@additional_context)
@@ -1357,8 +1358,9 @@ class InteractiveTaskService
       # Planning failed, fall back to direct autonomous execution
       Rails.logger.error "Planning failed: #{plan_result[:error]}"
       
-      # Delegate to autonomous system
-      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id)
+      # Delegate to autonomous system with main_chat loadout
+      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout)
       
       if @progress_callback
         generic_tools_service.process_message_with_tools_streaming(

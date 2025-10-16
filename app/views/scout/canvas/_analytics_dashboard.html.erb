@@ -230,6 +230,47 @@
     </div>
   </div>
   
+  <!-- AI-Powered Analytics Query Section -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="card-body text-white">
+          <h6 class="mb-3">
+            <i class="fas fa-magic me-2"></i>
+            AI-Powered Analytics
+          </h6>
+          <p class="mb-3 opacity-75 small">Ask Amos to analyze your marketing data, integration metrics, or create custom reports</p>
+          
+          <!-- Quick Analysis Buttons -->
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-light btn-sm" onclick="quickAnalyticsQuery('campaign_performance')">
+              <i class="fas fa-envelope me-1"></i>
+              Campaign Performance
+            </button>
+            <button class="btn btn-light btn-sm" onclick="quickAnalyticsQuery('email_engagement')">
+              <i class="fas fa-chart-line me-1"></i>
+              Email Engagement
+            </button>
+            <button class="btn btn-light btn-sm" onclick="quickAnalyticsQuery('contact_growth')">
+              <i class="fas fa-user-plus me-1"></i>
+              Contact Growth
+            </button>
+            <% if current_entity.connections.joins(:integration).where(integrations: { slug: 'stripe' }).where(status: :connected).exists? %>
+            <button class="btn btn-success btn-sm" onclick="quickAnalyticsQuery('stripe_revenue')">
+              <i class="fas fa-dollar-sign me-1"></i>
+              Stripe Revenue
+            </button>
+            <% end %>
+            <button class="btn btn-outline-light btn-sm" onclick="customAnalyticsQuery()">
+              <i class="fas fa-question me-1"></i>
+              Custom Analysis
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
   <!-- Recent Activity -->
   <div class="row">
     <div class="col-12">
@@ -296,6 +337,30 @@ function scoutExportReport() {
 
 function scoutCustomReport() {
   window.scoutSendMessage?.("Help me create a custom analytics report");
+}
+
+// Quick analytics queries
+function quickAnalyticsQuery(type) {
+  const queries = {
+    'campaign_performance': "Show me campaign performance metrics for the last 90 days",
+    'email_engagement': "Analyze email engagement trends over the last quarter",
+    'contact_growth': "Show me contact growth trends for the last 6 months",
+    'stripe_revenue': "Show me Stripe revenue breakdown by month for this year"
+  };
+  
+  const query = queries[type];
+  if (query && window.scoutSendMessage) {
+    window.scoutSendMessage(query);
+  }
+}
+
+// Custom analytics query
+function customAnalyticsQuery() {
+  const question = prompt("What would you like to analyze?\n\nExamples:\n- Revenue trends by channel\n- Campaign performance comparison\n- Customer lifetime value\n- Email vs Stripe correlation");
+  
+  if (question && window.scoutSendMessage) {
+    window.scoutSendMessage(question);
+  }
 }
 
 function scoutViewAllCampaigns() {

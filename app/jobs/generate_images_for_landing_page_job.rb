@@ -39,6 +39,3 @@ class GenerateImagesForLandingPageJob < ApplicationJob
     landing_page.update!(html_content: updated_html)
   end
 end
-
-
-

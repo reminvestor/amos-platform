@@ -10,11 +10,6 @@ class CreateScoutMessages < ActiveRecord::Migration[7.1]
       t.timestamps
     end
 
-    add_index :scout_messages, [:session_id, :created_at]
+    add_index :scout_messages, [ :session_id, :created_at ]
   end
 end
-
-
-
-
-

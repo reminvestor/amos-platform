@@ -5,10 +5,10 @@ class AdminMailer < ApplicationMailer
     @job_id = job_id
     @arguments = arguments
     @timestamp = Time.current
-    
+
     mail(
-      to: ENV['ADMIN_EMAIL'] || ENV['MAILGUN_FROM'],
+      to: ENV["ADMIN_EMAIL"] || ENV["MAILGUN_FROM"],
       subject: "Error in #{job_class}: #{error_message.to_s.truncate(50)}"
     )
   end
-end 
+end

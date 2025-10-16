@@ -3,38 +3,38 @@ module Tools
     def self.read_only?
       true  # This tool only provides schema information
     end
-    
+
     def self.metadata
       {
-        name: 'get_schema',
-        description: 'Get database schema and field information for any object type',
-        category: 'data',
+        name: "get_schema",
+        description: "Get database schema and field information for any object type",
+        category: "data",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             object_type: {
-              type: 'string',
+              type: "string",
               description: "The type of object to get schema for (e.g., 'campaign', 'contact')"
             }
           },
-          required: ['object_type']
+          required: [ "object_type" ]
         }
       }
     end
-    
+
     def execute(args)
       log_execution(args)
-      
+
       object_type = get_arg(args, :object_type)
-      
+
       # Validate required args
-      if error = validate_required_args(args, [:object_type])
+      if error = validate_required_args(args, [ :object_type ])
         return error
       end
-      
+
       # Use ScoutSchemaService for comprehensive schema
       schema_data = ScoutSchemaService.get_model_schema(object_type)
-      
+
       if schema_data
         success_response(
           object_type: object_type,

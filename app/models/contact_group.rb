@@ -1,42 +1,45 @@
 class ContactGroup < ApplicationRecord
   belongs_to :user
   belongs_to :entity, optional: true
-  
+
   # Many-to-many association with contacts
-  has_and_belongs_to_many :contacts, 
-                          -> { distinct }, 
-                          class_name: 'Contact',
+  has_and_belongs_to_many :contacts,
+                          -> { distinct },
+                          class_name: "Contact",
                           after_add: :remove_from_other_groups
-  
+
+  # Email sequence associations
+  has_many :email_sequences, dependent: :destroy
+
   # Validations
   validates :name, presence: true, uniqueness: { scope: :user_id }
   validates :user_id, presence: true
-  
+
   # Callback to prevent deletion if contacts are associated
   before_destroy :check_for_contacts
-  
+
   # Add a debugging method to check contact association
   def debug_contacts
     begin
       contacts_count = contacts.count
       Rails.logger.info("CONTACT_GROUP DEBUG [#{id}]: Has #{contacts_count} contacts")
-      
+
       # Try to access the first few contacts to check for issues
       if contacts_count > 0
         sample = contacts.limit(5).to_a
         Rails.logger.info("CONTACT_GROUP DEBUG [#{id}]: First contact sample: #{sample.first.inspect}")
       end
-      
-      return true
+
+      true
     rescue => e
       Rails.logger.error("CONTACT_GROUP DEBUG ERROR [#{id}]: #{e.class.name}: #{e.message}")
       Rails.logger.error(e.backtrace.join("\n"))
-      return false
+      false
     end
   end
-  
+
   private
-  
+
   def check_for_contacts
     Rails.logger.info("CHECK_FOR_CONTACTS [#{id}]: Checking if contacts exist before destroy")
     begin
@@ -52,21 +55,21 @@ class ContactGroup < ApplicationRecord
       throw :abort
     end
   end
-  
+
   def remove_from_other_groups(contact)
     # Skip if contact is nil or already being processed
     return unless contact
-    
+
     begin
       Rails.logger.info("REMOVE_FROM_OTHER_GROUPS: Contact [#{contact.id}] added to group [#{id}], checking other groups")
-      
+
       # Only remove from groups in the same entity
       if entity_id.present?
         Rails.logger.info("REMOVE_FROM_OTHER_GROUPS: Group has entity_id [#{entity_id}], finding other groups in same entity")
         # Find groups in the same entity, excluding this one
         same_entity_groups = ContactGroup.where(entity_id: entity_id).where.not(id: id)
         Rails.logger.info("REMOVE_FROM_OTHER_GROUPS: Found #{same_entity_groups.count} other groups in same entity")
-        
+
         # Remove contact from all groups in the same entity
         same_entity_groups.each do |group|
           # Use delete instead of delete_all to trigger callbacks
@@ -82,7 +85,7 @@ class ContactGroup < ApplicationRecord
         # For global groups (no entity), only remove from other global groups
         global_groups = ContactGroup.where(entity_id: nil).where.not(id: id)
         Rails.logger.info("REMOVE_FROM_OTHER_GROUPS: Found #{global_groups.count} other global groups")
-        
+
         # Remove contact from all global groups
         global_groups.each do |group|
           if group.contacts.include?(contact)
