@@ -538,6 +538,138 @@ add_index :rag_stores, :index_pool_id
 
 ---
 
+## Data Storage & Compliance
+
+### Where is Data Stored?
+
+#### Scout Redis Memory
+- **Storage:** Redis in-memory database (managed by your infrastructure)
+- **Location:** Your server/cloud provider (AWS, GCP, etc.)
+- **Control:** Full control - data stays on your infrastructure
+- **Backup:** Redis RDB snapshots (configurable)
+- **Compliance:** Easy - data under your direct control
+
+#### Docling RAG (Pinecone Serverless)
+- **Storage:** Pinecone's cloud infrastructure (AWS-based)
+- **Location:** Pinecone region you select at index creation:
+  - `us-east-1` (N. Virginia)
+  - `us-west-2` (Oregon)
+  - `eu-west-1` (Ireland)
+  - `ap-southeast-1` (Singapore)
+  - Others available
+- **Control:** Pinecone manages all infrastructure (fully managed service)
+- **Backup:** Automatic (Pinecone handles replication)
+- **Compliance:** Depends on Pinecone certifications + region choice
+
+### Data Flow for RAG
+
+```
+User uploads document (PDF/DOCX)
+         ↓
+Your Rails App (local processing)
+         ↓
+OpenAI API (generate embeddings) ← Text sent to OpenAI (US-based)
+         ↓
+Pinecone Serverless (store vectors) ← Vectors sent to region you chose
+         ↓
+Stored in AWS S3 + Pinecone compute (region-specific)
+```
+
+**Key Points:**
+1. **Document content** is sent to OpenAI API to generate embeddings
+2. **Embeddings (vectors)** are stored in Pinecone cloud (your chosen region)
+3. **Original documents** can be stored locally or in Pinecone metadata
+4. **No self-hosted option** for Pinecone Serverless (fully managed only)
+
+### Regulatory Compliance Considerations
+
+#### GDPR (Europe)
+- ✅ Use Pinecone `eu-west-1` region (Ireland) for EU data residency
+- ✅ Pinecone has Data Processing Addendum (DPA) available
+- ⚠️ OpenAI processes text for embeddings (US-based) - may require consent
+- ✅ Option 2 (index-per-entity) provides data isolation per customer
+
+#### HIPAA (Healthcare)
+- ⚠️ **Pinecone Serverless NOT HIPAA-compliant** (as of 2024)
+- ⚠️ **OpenAI NOT HIPAA-compliant for embeddings API**
+- ❌ Do NOT use for Protected Health Information (PHI)
+- Alternative: Self-hosted vector DB (pgvector, Weaviate, Milvus)
+
+#### SOC 2
+- ✅ Pinecone is SOC 2 Type II certified
+- ✅ OpenAI is SOC 2 Type II certified
+- ✅ Suitable for most B2B SaaS compliance requirements
+
+#### Data Residency Requirements
+- ✅ Can choose Pinecone region (US, EU, Asia)
+- ⚠️ OpenAI embeddings API is US-based (no region choice)
+- ⚠️ Text sent to OpenAI leaves your chosen region
+
+### Alternative: Self-Hosted Vector Database
+
+If you need full control (HIPAA, strict data residency):
+
+**Option A: pgvector (PostgreSQL extension)**
+```ruby
+# Use existing PostgreSQL database
+# Pros: Data stays on your infrastructure, HIPAA-compliant if configured
+# Cons: Slower than Pinecone, limited to ~1M vectors per table
+```
+
+**Option B: Weaviate (self-hosted)**
+```ruby
+# Docker-based vector database
+# Pros: Full control, multi-tenant, fast
+# Cons: Infrastructure management overhead
+```
+
+**Option C: Milvus (self-hosted)**
+```ruby
+# Kubernetes-based vector database
+# Pros: Scales to billions of vectors, full control
+# Cons: Complex deployment, requires DevOps expertise
+```
+
+### Security & Encryption
+
+#### Pinecone Serverless
+- ✅ **Encryption at rest:** AES-256 (AWS-managed keys)
+- ✅ **Encryption in transit:** TLS 1.2+ for all API calls
+- ✅ **Access control:** API keys (not shared between indexes)
+- ✅ **Network isolation:** VPC peering available (Enterprise plan)
+- ⚠️ **Metadata:** Stored alongside vectors (limit sensitive data in metadata)
+
+#### OpenAI Embeddings API
+- ✅ **Zero data retention:** OpenAI does not store embeddings API requests (as of 2024)
+- ✅ **Encryption in transit:** TLS 1.2+
+- ⚠️ **Text processing:** Document text sent to OpenAI servers for embedding
+
+### Recommendations
+
+**For most B2B SaaS (non-healthcare):**
+- ✅ Use Pinecone Serverless (Option 2: index-per-entity)
+- ✅ Choose region based on primary customer base
+- ✅ Enable Pinecone's security features (API rotation, audit logs)
+- ✅ Document data flow in privacy policy
+
+**For healthcare/HIPAA:**
+- ❌ Do NOT use Pinecone Serverless or OpenAI for PHI
+- ✅ Use self-hosted pgvector or Weaviate
+- ✅ Use local embedding models (HuggingFace Transformers)
+- ✅ Keep all data on-premises or in HIPAA-compliant cloud
+
+**For strict EU data residency:**
+- ⚠️ Pinecone `eu-west-1` works for storage
+- ⚠️ BUT OpenAI embeddings API is US-based
+- Alternative: Use EU-based embedding service or local models
+
+**For government/defense:**
+- ❌ Do NOT use third-party cloud services
+- ✅ Self-hosted only (pgvector, Milvus)
+- ✅ Air-gapped deployment if required
+
+---
+
 ## Intake Process (How Data Gets In)
 
 ### Scout Redis Memory Intake
