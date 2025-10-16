@@ -541,7 +541,8 @@ class InteractiveTaskService
     end
     
     # Let the AI decide if it needs planning - no more keyword checking
-    generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id)
+    main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+    generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout)
     
     # Pass task session context and any additional context (like files) so AI can delegate if needed
     generic_tools_service.set_context(task_session: @task_session, **@additional_context)
@@ -1357,8 +1358,9 @@ class InteractiveTaskService
       # Planning failed, fall back to direct autonomous execution
       Rails.logger.error "Planning failed: #{plan_result[:error]}"
       
-      # Delegate to autonomous system
-      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id)
+      # Delegate to autonomous system with main_chat loadout
+      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout)
       
       if @progress_callback
         generic_tools_service.process_message_with_tools_streaming(
