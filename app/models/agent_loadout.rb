@@ -12,24 +12,24 @@ class AgentLoadout
     # Main chat agent (AMOS) - Reduced tool set for better decision making
     "main_chat" => {
       tool_allowlist: [
-        "delegate_to_planner",        # Complex multi-step tasks
-        "get_schema",                 # Check field structure before creating
-        "get_data",                   # Simple data queries
-        "create_object",              # Simple object creation
-        "update_object",              # Simple updates
-        "update_landing_page_content", # Update existing landing pages
-        "execute_integration",        # Simple integration calls
-        "list_operations",            # Discover integration capabilities
-        "list_connections",           # See available integrations
-        "query_metric",               # Analytics queries
-        "list_metrics",               # Discover metrics
-        "explain_query",              # Explain analytics queries
-        "read_document",              # Read uploaded PDFs/docs
-        "load_canvas",                # UI interactions
-        "aggregate_artifact_data",    # Simple aggregations
-        "create_dynamic_visualization", # Quick visualizations
-        "get_workflow_context",       # Access uploaded files
-        "get_my_ai_usage"            # Usage tracking
+        'delegate_to_planner',        # Complex multi-step tasks
+        'get_schema',                 # Check field structure before creating
+        'get_data',                   # Simple data queries
+        'create_object',              # Simple object creation
+        'update_object',              # Simple updates
+        'update_landing_page_content', # Update existing landing pages
+        'execute_integration',        # Simple integration calls
+        'list_operations',            # Discover integration capabilities
+        'list_connections',           # See available integrations
+        'query_metric',               # Analytics queries
+        'list_metrics',               # Discover metrics
+        'explain_query',              # Explain analytics queries
+        'read_document',              # Read uploaded PDFs/docs
+        'load_canvas',                # UI interactions
+        'aggregate_artifact_data',    # Simple aggregations
+        'create_dynamic_visualization', # Quick visualizations
+        'get_workflow_context',       # Access uploaded files
+        'get_my_ai_usage'            # Usage tracking
       ],
       canvas_allowlist: [ "*" ],
       data_scopes: { read: [ "*" ], write: [ "*" ] },
@@ -51,10 +51,10 @@ class AgentLoadout
       data_scopes: { read: [ "*" ], write: [ "*" ] },
       budgets: { max_tokens: 15000, max_tool_calls: 30, timeout_seconds: 300 }
     },
-    "analyst" => {
-      tool_allowlist: ["aggregate_artifact_data", "fetch_next_page", "create_dynamic_visualization", "query_metric", "list_metrics", "explain_query"],
-      canvas_allowlist: ["dynamic_canvas", "analytics_dashboard"],
-      data_scopes: { read: ["artifacts"], write: ["artifacts"] },
+    'analyst' => {
+      tool_allowlist: ['aggregate_artifact_data', 'fetch_next_page', 'create_dynamic_visualization', 'query_metric', 'list_metrics', 'explain_query'],
+      canvas_allowlist: ['dynamic_canvas', 'analytics_dashboard'],
+      data_scopes: { read: ['artifacts'], write: ['artifacts'] },
       budgets: { max_tokens: 8000, max_tool_calls: 15, timeout_seconds: 60 }
     },
     "verifier" => {

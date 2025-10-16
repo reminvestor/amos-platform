@@ -66,12 +66,12 @@ class BedrockService
         ]
       }
     ]
-    
+
     # Use Opus 4.1 for vision (has "Text Vision" capability)
     # Higher token limit for large documents
     complete(messages: messages, max_tokens: 10000, model: 'claude-opus-4-1')
   end
-  
+
   def complete(messages:, temperature: 0.7, max_tokens: 1000, model: nil)
     model_to_use = @custom_model_id || model || "claude-3-sonnet"
 

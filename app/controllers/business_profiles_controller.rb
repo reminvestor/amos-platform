@@ -36,10 +36,27 @@ class BusinessProfilesController < ApplicationController
     @business_profile = current_user.ensure_business_profile
   end
 
+  def update_style_guidelines
+    style_guidelines = params[:style_guidelines] || {}
+
+    # Process colors (split by newlines)
+    if style_guidelines[:colors]
+      colors_array = style_guidelines[:colors].first.split("\n").map(&:strip).select { |c| c.start_with?('#') }
+      style_guidelines[:colors] = colors_array
+    end
+
+    if @business_profile.update(style_guidelines: style_guidelines)
+      render json: { success: true, message: "Style guidelines updated successfully" }, status: :ok
+    else
+      render json: { success: false, errors: @business_profile.errors }, status: :unprocessable_entity
+    end
+  end
+
   def business_profile_params
     params.require(:business_profile).permit(
       :name, :industry, :description, :founded_year,
-      :website, :values, :target_audience, :tone_of_voice
+      :website, :values, :target_audience, :tone_of_voice,
+      style_guidelines: [:colors, :typography, :aesthetic, :logo_url]
     )
   end
 end

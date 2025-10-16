@@ -67,4 +67,3 @@ class AnalyticsConnection < ApplicationRecord
     self.metadata ||= {}
   end
 end
-
