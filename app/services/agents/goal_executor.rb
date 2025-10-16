@@ -43,7 +43,15 @@ module Agents
     def gather_required_data
       requires = @phase[:requires_from_previous] || @phase['requires_from_previous'] || []
       data = {}
+      
+      # Reload workflow contexts to ensure we have latest data from previous phase
+      if @workflow_execution
+        @workflow_execution.workflow_contexts.reload
+      end
+      
       context_data = get_workflow_context
+      
+      Rails.logger.info "📊 Raw context data from DB: #{context_data.keys.join(', ')}"
       
       # Include ALL context data (prefixed and unprefixed versions)
       data = context_data.dup
@@ -54,11 +62,12 @@ module Agents
         if key.to_s.match(/^(gather_context|extract)_(.+)/)
           unprefixed_key = $2
           data[unprefixed_key] = value unless data.key?(unprefixed_key)
+          Rails.logger.info "  📍 Mapped #{key} → #{unprefixed_key}"
         end
       end
       
       Rails.logger.info "📋 Gathered data keys: #{data.keys.join(', ')}"
-      Rails.logger.info "📋 Data values: #{data.inspect}"
+      Rails.logger.info "📋 Sample value: company_name=#{data['company_name']}"
       data
     end
     
