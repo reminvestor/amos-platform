@@ -3,7 +3,7 @@ module Tools
     def self.metadata
       {
         name: "create_rag_store",
-        description: "Create a RAG (Retrieval Augmented Generation) knowledge base from API documentation",
+        description: "Create a RAG (Retrieval Augmented Generation) knowledge base from API documentation. Creates entity-scoped knowledge bases by default for customer data isolation.",
         category: "integration",
         input_schema: {
           type: "object",
@@ -23,6 +23,15 @@ module Tools
             user_uploads: {
               type: "array",
               description: "Array of uploaded file references"
+            },
+            store_type: {
+              type: "string",
+              description: "Type of RAG store: 'entity' (default, customer-specific) or 'system' (shared AMOS knowledge)",
+              enum: ["entity", "system"]
+            },
+            name: {
+              type: "string",
+              description: "Optional custom name for the RAG store"
             }
           },
           required: [ "app_name" ]
@@ -122,14 +131,24 @@ module Tools
           return error_response("Document processing failed: #{processing_result[:error]}")
         end
 
+        # Determine store type (default: entity for customer data)
+        store_type = get_arg(args, :store_type, 'entity')
+
+        # SECURITY: Entity stores require entity context
+        if store_type == 'entity' && entity.nil?
+          return error_response("Cannot create entity RAG store without entity context")
+        end
+
         # Create RAG store with Pinecone
         rag_service = RagStoreService.new
         rag_result = rag_service.create_rag_store(
           app_name,
           processing_result[:chunks],
           {
-            user: user,
+            store_type: store_type,
             entity: entity,
+            user: user,
+            name: get_arg(args, :name),  # Optional custom name
             total_sources: documents_to_process.length,
             processing_metadata: processing_result[:metadata]
           }

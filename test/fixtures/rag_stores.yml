@@ -1,0 +1,57 @@
+# System RAG stores (accessible to all entities)
+system_stripe:
+  name: "Stripe Integration Docs (System)"
+  app_name: "Stripe"
+  store_type: system
+  entity: null
+  pinecone_index: "amos-system-knowledge"
+  pinecone_namespace: "system_stripe_1234567890"
+  chunk_count: 100
+  status: "active"
+  metadata: { "sources": ["https://stripe.com/docs/api"] }
+
+system_hubspot:
+  name: "HubSpot Integration Docs (System)"
+  app_name: "HubSpot"
+  store_type: system
+  entity: null
+  pinecone_index: "amos-system-knowledge"
+  pinecone_namespace: "system_hubspot_1234567890"
+  chunk_count: 75
+  status: "active"
+  metadata: { "sources": ["https://developers.hubspot.com/docs/api"] }
+
+# Entity-specific RAG stores
+entity_one_custom:
+  name: "Custom API Docs - Entity One"
+  app_name: "CustomAPI"
+  store_type: entity
+  entity: one
+  pinecone_index: "amos-entity-knowledge"
+  pinecone_namespace: "entity_1_customapi_1234567890"
+  chunk_count: 50
+  status: "active"
+  metadata: { "sources": ["custom_docs.pdf"] }
+
+entity_two_internal:
+  name: "Internal API Docs - Entity Two"
+  app_name: "InternalAPI"
+  store_type: entity
+  entity: two
+  pinecone_index: "amos-entity-knowledge"
+  pinecone_namespace: "entity_2_internalapi_1234567890"
+  chunk_count: 30
+  status: "active"
+  metadata: { "sources": ["internal_docs.md"] }
+
+# Archived store
+entity_one_archived:
+  name: "Old Docs - Entity One"
+  app_name: "OldAPI"
+  store_type: entity
+  entity: one
+  pinecone_index: "amos-entity-knowledge"
+  pinecone_namespace: "entity_1_oldapi_1111111111"
+  chunk_count: 20
+  status: "archived"
+  metadata: {}
