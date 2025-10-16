@@ -383,6 +383,13 @@ Rails.application.routes.draw do
     # Dashboard
     get "/", to: "dashboard#index", as: :dashboard
 
+    # Scout session management (Redis history)
+    resources :scout_sessions, only: [:index, :show, :destroy] do
+      member do
+        post :sync_redis
+      end
+    end
+
     # Affiliate Management
     resources :affiliates do
       member do
