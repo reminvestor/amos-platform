@@ -11,6 +11,10 @@ class RagStoreService
   def initialize
     @pinecone = Pinecone::Client.new
     @openai_client = OpenAI::Client.new(access_token: ENV["OPENAI_API_KEY"])
+    @embedding_cache = EmbeddingCacheService.new
+    @cache_enabled = RagConfig.embedding_cache_enabled?
+
+    Rails.logger.info "🔧 RAG Service initialized (cache: #{@cache_enabled ? 'enabled' : 'disabled'})"
   end
 
   def create_rag_store(app_name, chunks, metadata = {})
@@ -242,10 +246,20 @@ class RagStoreService
   end
 
   def generate_embeddings(chunks)
-    Rails.logger.info "🧮 Generating embeddings for #{chunks.length} chunks"
+    Rails.logger.info "🧮 Generating embeddings for #{chunks.length} chunks (cache: #{@cache_enabled ? 'on' : 'off'})"
 
+    chunk_texts = chunks.map { |c| c[:content] }
+
+    # Try cache first if enabled
+    embeddings = if @cache_enabled && @embedding_cache.available?
+      generate_embeddings_with_cache(chunk_texts)
+    else
+      generate_embeddings_batch(chunk_texts)
+    end
+
+    # Combine embeddings with chunk data
     chunks.map.with_index do |chunk, index|
-      embedding = generate_embedding(chunk[:content])
+      embedding = embeddings[index]
 
       {
         id: generate_vector_id(chunk),
@@ -262,9 +276,27 @@ class RagStoreService
   end
 
   def generate_embedding(text)
+    # Try cache first if enabled
+    if @cache_enabled && @embedding_cache.available?
+      cached = @embedding_cache.get(text)
+      return cached if cached
+    end
+
+    # Generate from API
+    embedding = generate_embedding_from_api(text)
+
+    # Cache for future use
+    if @cache_enabled && @embedding_cache.available?
+      @embedding_cache.put(text, embedding)
+    end
+
+    embedding
+  end
+
+  def generate_embedding_from_api(text)
     response = @openai_client.embeddings(
       parameters: {
-        model: "text-embedding-ada-002",
+        model: RagConfig.embedding_model,
         input: text.slice(0, 8000) # Limit text length
       }
     )
@@ -273,6 +305,93 @@ class RagStoreService
   rescue => e
     Rails.logger.error "Embedding generation failed: #{e.message}"
     raise
+  end
+
+  # Generate embeddings with cache support
+  def generate_embeddings_with_cache(texts)
+    Rails.logger.info "📦 Batch generating #{texts.length} embeddings with cache"
+
+    # Check cache for all texts
+    cached_embeddings = @embedding_cache.get_batch(texts)
+
+    # Find indices of uncached texts
+    uncached_indices = cached_embeddings.each_with_index
+                                        .select { |emb, _| emb.nil? }
+                                        .map(&:last)
+
+    if uncached_indices.any?
+      Rails.logger.info "🔄 Generating #{uncached_indices.length} uncached embeddings"
+
+      # Get uncached texts
+      uncached_texts = uncached_indices.map { |i| texts[i] }
+
+      # Generate embeddings for uncached texts
+      new_embeddings = generate_embeddings_batch(uncached_texts)
+
+      # Cache new embeddings
+      @embedding_cache.put_batch(uncached_texts, new_embeddings)
+
+      # Merge cached + new embeddings
+      uncached_indices.each_with_index do |original_idx, new_idx|
+        cached_embeddings[original_idx] = new_embeddings[new_idx]
+      end
+
+      Rails.logger.info "✅ Generated and cached #{uncached_indices.length} new embeddings"
+    else
+      Rails.logger.info "✅ All embeddings retrieved from cache!"
+    end
+
+    cached_embeddings
+  end
+
+  # Batch generate embeddings (no caching)
+  def generate_embeddings_batch(texts)
+    batch_size = RagConfig.embedding_batch_size
+    all_embeddings = []
+
+    Rails.logger.info "🔄 Batch generating #{texts.length} embeddings (batch_size: #{batch_size})"
+
+    texts.each_slice(batch_size).with_index do |batch, batch_num|
+      Rails.logger.info "  Processing batch #{batch_num + 1} (#{batch.length} texts)"
+
+      # Retry with exponential backoff
+      embeddings = retry_with_backoff do
+        response = @openai_client.embeddings(
+          parameters: {
+            model: RagConfig.embedding_model,
+            input: batch.map { |t| t.slice(0, 8000) }
+          }
+        )
+
+        response.dig("data")&.map { |d| d["embedding"] } || []
+      end
+
+      all_embeddings.concat(embeddings)
+    end
+
+    Rails.logger.info "✅ Generated #{all_embeddings.length} embeddings"
+    all_embeddings
+  end
+
+  # Retry logic with exponential backoff
+  def retry_with_backoff(max_attempts: 3, initial_delay: 1)
+    attempt = 0
+
+    begin
+      attempt += 1
+      yield
+    rescue => e
+      if attempt < max_attempts
+        delay = initial_delay * (2 ** (attempt - 1)) # Exponential backoff
+        Rails.logger.warn "⚠️  Embedding API error (attempt #{attempt}/#{max_attempts}): #{e.message}"
+        Rails.logger.warn "   Retrying in #{delay} seconds..."
+        sleep(delay)
+        retry
+      else
+        Rails.logger.error "❌ Embedding API failed after #{max_attempts} attempts: #{e.message}"
+        raise
+      end
+    end
   end
 
   def generate_vector_id(chunk)
@@ -301,6 +420,28 @@ class RagStoreService
 
   def extract_sources(chunks)
     chunks.map { |c| c[:metadata][:source] }.uniq
+  end
+
+  # Get cache statistics
+  def cache_stats
+    if @cache_enabled && @embedding_cache.available?
+      @embedding_cache.stats
+    else
+      {
+        enabled: false,
+        message: "Cache not enabled or Redis not available"
+      }
+    end
+  end
+
+  # Clear embedding cache
+  def clear_cache!
+    if @cache_enabled && @embedding_cache.available?
+      @embedding_cache.clear!
+      Rails.logger.info "✅ Embedding cache cleared"
+    else
+      Rails.logger.warn "⚠️  Cache not available"
+    end
   end
 end
 
