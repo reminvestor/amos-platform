@@ -469,4 +469,4 @@ A: Yes. 40% better accuracy means fewer failed queries and happier users.
 - [RAG_COMPARISON_OTTOMATOR.md](RAG_COMPARISON_OTTOMATOR.md) - Full comparison with Ottomator
 - [MULTI_TENANT_RAG_ARCHITECTURE.md](MULTI_TENANT_RAG_ARCHITECTURE.md) - System architecture
 - [DOCLING_SETUP.md](DOCLING_SETUP.md) - Docling installation guide
-- [docs/rag_sources/QUICK_START.md](rag_sources/QUICK_START.md) - Loading documents into RAG
+- [rag_sources/QUICK_START.md](../rag_sources/QUICK_START.md) - Loading documents into RAG

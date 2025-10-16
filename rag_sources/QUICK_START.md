@@ -3,7 +3,7 @@
 ## Directory Structure
 
 ```
-docs/rag_sources/
+rag_sources/
 ├── system/
 │   ├── amos/              # 🏠 AMOS app docs (your platform documentation)
 │   │   ├── architecture/  # Architecture guides
@@ -61,9 +61,9 @@ Examples:
 
 ```bash
 # Copy your docs to the folder
-cp docs/AGENT_ARCHITECTURE.md docs/rag_sources/system/amos/architecture/
-cp docs/WORKFLOW_V2_EXECUTIVE_SUMMARY.md docs/rag_sources/system/amos/architecture/
-cp docs/QUICK_START.md docs/rag_sources/system/amos/user_guides/
+cp docs/AGENT_ARCHITECTURE.md rag_sources/system/amos/architecture/
+cp docs/WORKFLOW_V2_EXECUTIVE_SUMMARY.md rag_sources/system/amos/architecture/
+cp docs/QUICK_START.md rag_sources/system/amos/user_guides/
 
 # Load into RAG
 docker-compose exec web rails rag:load_amos_docs
@@ -73,7 +73,7 @@ docker-compose exec web rails rag:load_amos_docs
 
 ```bash
 # Download integration docs (PDFs, etc.)
-# Place in: docs/rag_sources/system/integrations/<integration_name>/
+# Place in: rag_sources/system/integrations/<integration_name>/
 
 # Load all integrations
 docker-compose exec web rails rag:load_integration_docs
@@ -178,9 +178,9 @@ Without these, RAG commands will fail.
 ## Next Steps
 
 1. Add API keys to `.env`
-2. Copy AMOS docs to `docs/rag_sources/system/amos/`
+2. Copy AMOS docs to `rag_sources/system/amos/`
 3. Run `rails rag:load_amos_docs`
 4. Test in Scout: "How does AMOS work?"
-5. Add integration docs to `docs/rag_sources/system/integrations/`
+5. Add integration docs to `rag_sources/system/integrations/`
 6. Run `rails rag:load_integration_docs`
 7. Test in Scout: "How do I use Stripe?"

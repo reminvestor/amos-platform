@@ -332,7 +332,7 @@ RAG_CHUNK_SIZE=1500  # Larger chunks
 - **[RAG_CHUNKING_STRATEGIES.md](RAG_CHUNKING_STRATEGIES.md)** - Complete user guide
 - **[RAG_COMPARISON_OTTOMATOR.md](RAG_COMPARISON_OTTOMATOR.md)** - Full Ottomator analysis
 - **[MULTI_TENANT_RAG_ARCHITECTURE.md](MULTI_TENANT_RAG_ARCHITECTURE.md)** - System architecture
-- **[docs/rag_sources/QUICK_START.md](rag_sources/QUICK_START.md)** - Loading documents
+- **[rag_sources/QUICK_START.md](../rag_sources/QUICK_START.md)** - Loading documents
 
 ## Summary
 
