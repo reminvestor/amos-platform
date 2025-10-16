@@ -1,0 +1,26 @@
+AMOS Admin - New Affiliate Application
+
+A new affiliate application has been submitted and requires review.
+
+APPLICANT INFORMATION
+Name: <%= @user.full_name %>
+Email: <%= @user.email %>
+Payment Email: <%= @payment_email.present? ? @payment_email : 'Not provided' %>
+Affiliate Code: <%= @affiliate.affiliate_code %>
+Applied On: <%= @affiliate.created_at.strftime('%B %d, %Y at %I:%M %p') %>
+
+<% if @application_notes.present? %>
+APPLICATION NOTES
+<%= @application_notes %>
+<% end %>
+
+ACTION REQUIRED
+Please review this application and approve or reject it based on:
+- Quality of their marketing channels
+- Alignment with AMOS brand values
+- Potential to drive quality referrals
+
+Review application: <%= @review_url %>
+
+---
+AMOS Admin Panel

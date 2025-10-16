@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      padding: 40px 30px;
+      text-align: center;
+      color: white;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .logo {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .content h2 {
+      color: #10b981;
+      margin-top: 0;
+    }
+    .highlight-box {
+      background: #ecfdf5;
+      border: 2px solid #10b981;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .referral-link {
+      font-family: 'Courier New', monospace;
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      word-break: break-all;
+      font-size: 14px;
+      margin: 10px 0;
+    }
+    .button {
+      display: inline-block;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 14px 30px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      margin: 20px 0;
+    }
+    .info-box {
+      background: #f8f9fa;
+      border-left: 4px solid #10b981;
+      padding: 15px 20px;
+      margin: 20px 0;
+    }
+    .footer {
+      background: #f8f9fa;
+      padding: 20px 30px;
+      text-align: center;
+      font-size: 14px;
+      color: #666;
+      border-top: 1px solid #e9ecef;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    ul li {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">AMOS</div>
+      <h1>Welcome to the Affiliate Program!</h1>
+    </div>
+
+    <div class="content">
+      <p>Hi <%= @user.first_name %>,</p>
+
+      <p><strong>Congratulations!</strong> Your affiliate application has been approved. You're now part of the AMOS Affiliate Program!</p>
+
+      <div class="highlight-box">
+        <h3 style="margin-top: 0; color: #10b981;">Your Unique Referral Link</h3>
+        <div class="referral-link"><%= @referral_link %></div>
+        <p style="margin-bottom: 0; font-size: 14px; color: #666;">Share this link to start earning commissions!</p>
+      </div>
+
+      <div class="info-box">
+        <strong>Your Commission Details:</strong>
+        <ul style="margin: 10px 0;">
+          <li>Commission Rate: <strong><%= (@affiliate.commission_rate * 100).round(2) %>%</strong></li>
+          <li>Current Tier: <strong><%= @affiliate.tier.capitalize %></strong></li>
+          <li>Commission Duration: <strong>12 months recurring</strong></li>
+          <li>Minimum Payout: <strong>$50</strong></li>
+        </ul>
+      </div>
+
+      <h3>Next Steps:</h3>
+      <ul>
+        <li>Visit your <a href="<%= @dashboard_url %>">Affiliate Dashboard</a> to track performance</li>
+        <li>Download marketing materials from <a href="<%= @resources_url %>">Resources</a></li>
+        <li>Share your referral link with your audience</li>
+        <li>Monitor your clicks, signups, and commissions in real-time</li>
+      </ul>
+
+      <center>
+        <a href="<%= @dashboard_url %>" class="button">Go to Dashboard</a>
+      </center>
+
+      <p><strong>How to Succeed:</strong></p>
+      <ul>
+        <li>Share your link on social media, blogs, and newsletters</li>
+        <li>Create authentic content about your AMOS experience</li>
+        <li>Engage with your audience about their marketing challenges</li>
+        <li>Use our provided marketing materials for best results</li>
+      </ul>
+
+      <p>We're excited to have you on board! If you have any questions, our support team is here to help.</p>
+
+      <p>Best regards,<br>
+      The AMOS Team</p>
+    </div>
+
+    <div class="footer">
+      <p>AMOS Affiliate Program<br>
+      Track your performance at <a href="<%= @dashboard_url %>"><%= @dashboard_url %></a></p>
+    </div>
+  </div>
+</body>
+</html>
