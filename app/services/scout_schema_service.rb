@@ -135,7 +135,13 @@ class ScoutSchemaService
       {
         email: "john@example.com",
         first_name: "John",
-        last_name: "Doe"
+        last_name: "Doe",
+        metadata: {
+          address: "123 Main St, City, State 12345",
+          company: "Acme Corp",
+          phone: "555-1234",
+          title: "Manager"
+        }
       }
     when 'ContactGroup'
       {
@@ -169,7 +175,7 @@ class ScoutSchemaService
     when 'campaign'
       "Campaigns will be automatically scoped to the current entity. Status defaults to 'draft'."
     when 'contact'
-      "Contacts will be automatically scoped to the current entity. Email must be unique within the entity."
+      "Contacts will be automatically scoped to the current entity. Email must be unique within the entity.\n\nIMPORTANT - Metadata Field:\nContact has a 'metadata' JSONB field for flexible data storage. Use it for:\n- address: Full address string\n- company: Company/organization name  \n- phone: Phone number\n- title: Job title\n- notes: Additional notes\n- Any custom fields\n\nExample:\n{\n  first_name: 'John',\n  last_name: 'Doe',\n  email: 'john@example.com',\n  metadata: {\n    address: '123 Main St, City, State 12345',\n    company: 'Acme Corp',\n    phone: '555-1234',\n    title: 'CEO'\n  }\n}"
     when 'contact_group'
       "Contact groups will be automatically scoped to the current entity."
     when 'landing_page'

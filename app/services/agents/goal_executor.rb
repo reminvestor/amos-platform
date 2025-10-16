@@ -43,7 +43,15 @@ module Agents
     def gather_required_data
       requires = @phase[:requires_from_previous] || @phase['requires_from_previous'] || []
       data = {}
+      
+      # Reload workflow contexts to ensure we have latest data from previous phase
+      if @workflow_execution
+        @workflow_execution.workflow_contexts.reload
+      end
+      
       context_data = get_workflow_context
+      
+      Rails.logger.info "📊 Raw context data from DB: #{context_data.keys.join(', ')}"
       
       # Include ALL context data (prefixed and unprefixed versions)
       data = context_data.dup
@@ -54,11 +62,12 @@ module Agents
         if key.to_s.match(/^(gather_context|extract)_(.+)/)
           unprefixed_key = $2
           data[unprefixed_key] = value unless data.key?(unprefixed_key)
+          Rails.logger.info "  📍 Mapped #{key} → #{unprefixed_key}"
         end
       end
       
       Rails.logger.info "📋 Gathered data keys: #{data.keys.join(', ')}"
-      Rails.logger.info "📋 Data values: #{data.inspect}"
+      Rails.logger.info "📋 Sample value: company_name=#{data['company_name']}"
       data
     end
     
@@ -600,9 +609,13 @@ module Agents
         
         # Extract operation message if available (for idempotent operations)
         operation_msg = result[:result]&.dig('operation_message') || 
-                       result[:result]&.dig(:operation_message)
+                       result[:result]&.dig(:operation_message) ||
+                       result[:message] || result['message']
         
-        store_phase_output(result[:result] || {}, 'step_output')
+        # Store the result data - tools return data directly, not nested in [:result]
+        data_to_store = result[:data] || result['data'] || result.except(:success, :message, 'success', 'message')
+        Rails.logger.info "📦 Storing phase output: #{data_to_store.keys.join(', ')}"
+        store_phase_output(data_to_store, 'step_output')
         
         # Use specific message if available, otherwise generic success
         success_msg = operation_msg || "Goal achieved!"
@@ -611,7 +624,7 @@ module Agents
         return {
           success: true,
           status: 'completed',
-          data: result[:result],
+          data: data_to_store,
           phase: phase[:id] || phase['id'],
           message: success_msg
         }

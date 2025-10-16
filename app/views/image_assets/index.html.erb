@@ -10,7 +10,17 @@
         <div class="col-6 col-md-4 col-lg-3">
           <div class="card h-100 shadow-sm">
             <% if asset.file.attached? %>
-              <%= image_tag asset.file.variant(resize_to_fill: [400, 250]).processed, class: 'card-img-top', alt: asset.display_title %>
+              <% if asset.file.content_type.start_with?('image/') %>
+                <%= image_tag asset.file.variant(resize_to_fill: [400, 250]).processed, class: 'card-img-top', alt: asset.display_title %>
+              <% elsif asset.file.content_type == 'application/pdf' %>
+                <div class="card-img-top bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="height: 250px;">
+                  <i class="fas fa-file-pdf text-danger" style="font-size: 4rem;"></i>
+                </div>
+              <% else %>
+                <div class="card-img-top bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center" style="height: 250px;">
+                  <i class="fas fa-file text-secondary" style="font-size: 4rem;"></i>
+                </div>
+              <% end %>
             <% end %>
             <div class="card-body">
               <h6 class="card-title text-truncate" title="<%= asset.display_title %>"><%= asset.display_title %></h6>
