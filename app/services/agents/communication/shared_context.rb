@@ -2,18 +2,18 @@ module Agents
   module Communication
     class SharedContext
       attr_reader :task_session_id
-      
+
       def initialize(initial_context = {})
         @task_session_id = initial_context[:task_session_id]
-        @redis = Redis.new(url: ENV['REDIS_URL'] || 'redis://localhost:6379/1')
+        @redis = Redis.new(url: ENV["REDIS_URL"] || "redis://localhost:6379/1")
         @local_cache = initial_context.dup
         @subscriptions = {}
         @mutex = Mutex.new
-        
+
         # Subscribe to context updates
         start_subscription_thread if @task_session_id
       end
-      
+
       # Write to shared context
       def write(key, value, agent_id)
         data = {
@@ -22,27 +22,27 @@ module Agents
           timestamp: Time.current.to_f,
           version: next_version(key)
         }
-        
+
         # Update local cache
         @mutex.synchronize do
           @local_cache[key] = data
         end
-        
+
         # Persist to Redis if we have a task session
         if @task_session_id
           redis_key = context_key(key)
           @redis.set(redis_key, data.to_json, ex: 24.hours.to_i)
-          
+
           # Publish update event
           publish_update(key, data)
         end
-        
+
         # Notify local subscribers
         notify_subscribers(key, data)
-        
+
         data
       end
-      
+
       # Read from shared context
       def read(key)
         # Try local cache first
@@ -51,39 +51,39 @@ module Agents
             return @local_cache[key][:value]
           end
         end
-        
+
         # Try Redis if we have a task session
         if @task_session_id
           redis_key = context_key(key)
           if data = @redis.get(redis_key)
             parsed = JSON.parse(data, symbolize_names: true)
-            
+
             # Update local cache
             @mutex.synchronize do
               @local_cache[key] = parsed
             end
-            
+
             return parsed[:value]
           end
         end
-        
+
         nil
       end
-      
+
       # Alias for read to maintain consistency
       alias_method :get, :read
-      
+
       # Read all context
       def read_all
         # Get all keys from Redis if we have a task session
         if @task_session_id
           pattern = "context:#{@task_session_id}:*"
           redis_keys = @redis.keys(pattern)
-          
+
           redis_keys.each do |redis_key|
-            key = redis_key.split(':').last
+            key = redis_key.split(":").last
             next if @local_cache.key?(key.to_sym)
-            
+
             if data = @redis.get(redis_key)
               parsed = JSON.parse(data, symbolize_names: true)
               @mutex.synchronize do
@@ -92,13 +92,13 @@ module Agents
             end
           end
         end
-        
+
         # Return values from cache
         @mutex.synchronize do
           @local_cache.transform_values { |data| data[:value] }
         end
       end
-      
+
       # Subscribe to context changes
       def subscribe(pattern, agent_id, &callback)
         @mutex.synchronize do
@@ -110,7 +110,7 @@ module Agents
           }
         end
       end
-      
+
       # Unsubscribe from context changes
       def unsubscribe(pattern, agent_id)
         @mutex.synchronize do
@@ -120,7 +120,7 @@ module Agents
           end
         end
       end
-      
+
       # Get context metadata
       def metadata(key)
         @mutex.synchronize do
@@ -133,38 +133,38 @@ module Agents
           end
         end
       end
-      
+
       # Get context history
       def history(key, limit = 10)
         return [] unless @task_session_id
-        
+
         history_key = "#{context_key(key)}:history"
         history_data = @redis.lrange(history_key, 0, limit - 1)
-        
+
         history_data.map { |data| JSON.parse(data, symbolize_names: true) }
       rescue => e
         Rails.logger.error "Failed to get context history: #{e.message}"
         []
       end
-      
+
       # Clear context
       def clear!
         @mutex.synchronize do
           @local_cache.clear
         end
-        
+
         if @task_session_id
           pattern = "context:#{@task_session_id}:*"
           redis_keys = @redis.keys(pattern)
           @redis.del(*redis_keys) if redis_keys.any?
         end
       end
-      
+
       # Atomic compare and swap
       def compare_and_swap(key, expected_value, new_value, agent_id)
         @mutex.synchronize do
           current = @local_cache[key]
-          
+
           if current && current[:value] == expected_value
             write(key, new_value, agent_id)
             true
@@ -173,33 +173,33 @@ module Agents
           end
         end
       end
-      
+
       # Get keys matching pattern
       def keys_matching(pattern)
-        regex = Regexp.new(pattern.gsub('*', '.*'))
-        
+        regex = Regexp.new(pattern.gsub("*", ".*"))
+
         @mutex.synchronize do
           @local_cache.keys.select { |key| key.to_s =~ regex }
         end
       end
-      
+
       # Cleanup old entries
       def cleanup(older_than: 1.hour)
         cutoff = Time.current - older_than
-        
+
         @mutex.synchronize do
           @local_cache.delete_if do |key, data|
             Time.at(data[:timestamp]) < cutoff
           end
         end
       end
-      
+
       private
-      
+
       def context_key(key)
         "context:#{@task_session_id}:#{key}"
       end
-      
+
       def next_version(key)
         if current = @local_cache[key]
           current[:version] + 1
@@ -207,7 +207,7 @@ module Agents
           1
         end
       end
-      
+
       def publish_update(key, data)
         channel = "context:#{@task_session_id}:updates"
         message = {
@@ -215,9 +215,9 @@ module Agents
           data: data,
           task_session_id: @task_session_id
         }
-        
+
         @redis.publish(channel, message.to_json)
-        
+
         # Also store in history
         history_key = "#{context_key(key)}:history"
         @redis.lpush(history_key, data.to_json)
@@ -226,11 +226,11 @@ module Agents
       rescue => e
         Rails.logger.error "Failed to publish context update: #{e.message}"
       end
-      
+
       def notify_subscribers(key, data)
         @mutex.synchronize do
           @subscriptions.each do |pattern, subscribers|
-            if key.to_s =~ Regexp.new(pattern.gsub('*', '.*'))
+            if key.to_s =~ Regexp.new(pattern.gsub("*", ".*"))
               subscribers.each do |sub|
                 begin
                   sub[:callback].call(key, data)
@@ -242,24 +242,24 @@ module Agents
           end
         end
       end
-      
+
       def start_subscription_thread
         Thread.new do
           begin
-            redis_sub = Redis.new(url: ENV['REDIS_URL'] || 'redis://localhost:6379/1')
+            redis_sub = Redis.new(url: ENV["REDIS_URL"] || "redis://localhost:6379/1")
             channel = "context:#{@task_session_id}:updates"
-            
+
             redis_sub.subscribe(channel) do |on|
               on.message do |_, message|
                 begin
                   update = JSON.parse(message, symbolize_names: true)
-                  
+
                   # Update local cache if it's not our own update
                   if update[:data][:agent_id] != Thread.current[:agent_id]
                     @mutex.synchronize do
                       @local_cache[update[:key]] = update[:data]
                     end
-                    
+
                     # Notify subscribers
                     notify_subscribers(update[:key], update[:data])
                   end
@@ -276,7 +276,3 @@ module Agents
     end
   end
 end
-
-
-
-

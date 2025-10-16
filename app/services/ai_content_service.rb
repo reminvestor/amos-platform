@@ -1,21 +1,21 @@
-require 'openai'
+require "openai"
 
 class AiContentService
   attr_reader :client
-  
+
   DEFAULT_MODEL = "gpt-4o"
-  
+
   def initialize
     @client = OpenAI::Client.new(
-      access_token: ENV['OPENAI_API_KEY'],
+      access_token: ENV["OPENAI_API_KEY"],
       request_timeout: 240
     )
   end
-  
+
   # Generate email content based on parameters
   def generate_email_content(params)
     prompt = build_prompt(params)
-    
+
     response = client.chat(
       parameters: {
         model: DEFAULT_MODEL,
@@ -26,14 +26,14 @@ class AiContentService
         temperature: 0.7
       }
     )
-    
+
     parse_response(response)
   end
-  
+
   # Generate improved content based on analytics
   def improve_content(original_content, stats, audience)
     prompt = build_improvement_prompt(original_content, stats, audience)
-    
+
     response = client.chat(
       parameters: {
         model: DEFAULT_MODEL,
@@ -44,10 +44,10 @@ class AiContentService
         temperature: 0.7
       }
     )
-    
+
     parse_response(response)
   end
-  
+
   # Extract insights from campaign analytics
   def analyze_campaign_results(campaign)
     stats = {
@@ -60,18 +60,18 @@ class AiContentService
       engagement_score: campaign.engagement_score,
       time_to_open: campaign.time_to_open
     }
-    
+
     template_info = ""
     if campaign.email_template.present?
       template_info = "Email subject: \"#{campaign.email_template.subject}\"\n"
       template_info += "Email length: #{campaign.email_template.body.to_s.length} characters\n"
     end
-    
+
     status_message = "Campaign status: #{campaign.status.humanize}\n"
     if campaign.sent_at.present?
       status_message += "Sent on: #{campaign.sent_at.strftime('%B %d, %Y at %I:%M %p')}\n"
     end
-    
+
     prompt = "Analyze these email campaign results and provide actionable insights:\n\n" +
              "Campaign: #{campaign.name}\n" +
              status_message +
@@ -81,17 +81,17 @@ class AiContentService
              "Open rate: #{stats[:open_rate]}%\n" +
              "Click rate: #{stats[:click_rate]}%\n" +
              "Unsubscribe rate: #{stats[:unsubscribe_rate]}%\n" +
-             "Bounce rate: #{stats[:bounce_rate]}%\n" 
-             
+             "Bounce rate: #{stats[:bounce_rate]}%\n"
+
     if stats[:time_to_open].present?
       prompt += "Average time to open: #{stats[:time_to_open]} minutes\n"
     end
-    
+
     prompt += "Engagement score: #{stats[:engagement_score]}/100\n\n" +
               "Provide 3-5 specific recommendations for improving this campaign. " +
               "Focus on actionable suggestions based on these metrics, especially addressing " +
               "any concerning metrics like high unsubscribe rates or low open/click rates."
-    
+
     response = client.chat(
       parameters: {
         model: DEFAULT_MODEL,
@@ -102,19 +102,19 @@ class AiContentService
         temperature: 0.5
       }
     )
-    
+
     parse_response(response)
   end
-  
+
   private
-  
+
   def system_prompt
     "You are an expert email marketing copywriter. Your task is to write compelling, " +
     "personalized email content that drives engagement. Write in a conversational, " +
     "friendly tone that connects with readers. Focus on providing value and clear calls to action. " +
     "Avoid spammy language and all-caps text. Always format your response as clean HTML."
   end
-  
+
   def build_prompt(params)
     audience = params[:audience] || "general subscribers"
     purpose = params[:purpose] || "newsletter"
@@ -122,21 +122,21 @@ class AiContentService
     product = params[:product] || ""
     length = params[:length] || "medium"
     specific_points = params[:specific_points] || []
-    
+
     prompt = "Write a compelling #{purpose} email for #{audience}."
     prompt += " The tone should be #{tone}."
-    
+
     if product.present?
       prompt += " The email should focus on our product: #{product}."
     end
-    
+
     if specific_points.any?
       prompt += " Include these specific points:\n"
       specific_points.each do |point|
         prompt += "- #{point}\n"
       end
     end
-    
+
     case length
     when "short"
       prompt += " Keep it brief, around 100-150 words."
@@ -145,11 +145,11 @@ class AiContentService
     when "long"
       prompt += " Create a comprehensive email, around 300-400 words."
     end
-    
+
     prompt += "\n\nInclude a subject line, greeting, body, and signature. Format as clean HTML."
     prompt
   end
-  
+
   def build_improvement_prompt(original_content, stats, audience)
     "The following email has these performance metrics:\n" +
     "- Open rate: #{stats[:open_rate]}%\n" +
@@ -160,7 +160,7 @@ class AiContentService
     "Keep the same general purpose but make it more compelling and effective. " +
     "Format as clean HTML and explain your key improvements at the end."
   end
-  
+
   def parse_response(response)
     if response.dig("choices", 0, "message", "content")
       response.dig("choices", 0, "message", "content").strip
@@ -168,4 +168,4 @@ class AiContentService
       "Error generating content. Please try again."
     end
   end
-end 
+end

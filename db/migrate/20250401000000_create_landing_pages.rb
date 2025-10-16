@@ -28,8 +28,8 @@ class CreateLandingPages < ActiveRecord::Migration[8.0]
 
       t.timestamps
     end
-    
+
     add_index :landing_pages, :slug, unique: true
     add_index :landing_pages, :published
   end
-end 
+end

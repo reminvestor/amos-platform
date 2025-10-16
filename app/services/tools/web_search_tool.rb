@@ -3,52 +3,52 @@ module Tools
     def self.read_only?
       true  # This tool only searches for information
     end
-    
+
     def self.metadata
       {
-        name: 'web_search',
-        description: 'Search the web for information, documentation, or current data',
-        category: 'research',
+        name: "web_search",
+        description: "Search the web for information, documentation, or current data",
+        category: "research",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             query: {
-              type: 'string',
-              description: 'The search query to look up'
+              type: "string",
+              description: "The search query to look up"
             },
             num_results: {
-              type: 'integer',
-              description: 'Number of search results to return (default: 5, max: 10)'
+              type: "integer",
+              description: "Number of search results to return (default: 5, max: 10)"
             }
           },
-          required: ['query']
+          required: [ "query" ]
         }
       }
     end
-    
+
     def execute(args)
       log_execution(args)
-      
+
       query = get_arg(args, :query)
       num_results = get_arg(args, :num_results, 5)
-      
+
       # Validate required args
-      if error = validate_required_args(args, [:query])
+      if error = validate_required_args(args, [ :query ])
         return error
       end
-      
+
       begin
         # Use real Serper API if available, otherwise fall back to mock
-        if ENV['SERPER_API_KEY'].present?
+        if ENV["SERPER_API_KEY"].present?
           serper = SerperApiService.new
           result = serper.search(query, num_results: num_results)
-          
+
           if result[:success]
             success_response(
               query: query,
               results: result[:results],
               count: result[:results].length,
-              source: 'serper'
+              source: "serper"
             )
           else
             # Fall back to mock on error
@@ -64,25 +64,25 @@ module Tools
         error_response("Search failed: #{e.message}")
       end
     end
-    
+
     private
-    
+
     def use_mock_results(query, num_results)
-      results = query.match?(/API|documentation|auth/i) ? 
-        generate_api_doc_search_results(query) : 
+      results = query.match?(/API|documentation|auth/i) ?
+        generate_api_doc_search_results(query) :
         generate_general_search_results(query)
-      
+
       success_response(
         query: query,
         results: results.first(num_results),
         count: results.length,
-        source: 'mock'
+        source: "mock"
       )
     end
-    
+
     def generate_api_doc_search_results(query)
-      app_name = query.match(/(\w+)\s+API/i)&.captures&.first || 'Service'
-      
+      app_name = query.match(/(\w+)\s+API/i)&.captures&.first || "Service"
+
       [
         {
           title: "#{app_name} API Documentation - Getting Started",
@@ -104,7 +104,7 @@ module Tools
         }
       ]
     end
-    
+
     def generate_general_search_results(query)
       [
         {

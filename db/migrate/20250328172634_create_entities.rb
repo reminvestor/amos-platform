@@ -9,7 +9,7 @@ class CreateEntities < ActiveRecord::Migration[8.0]
 
       t.timestamps
     end
-    
+
     add_index :entities, :subdomain, unique: true
     add_index :entities, :slug, unique: true
   end

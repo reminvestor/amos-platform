@@ -17,7 +17,7 @@ class CreateWorkflowExecutions < ActiveRecord::Migration[8.0]
 
     add_index :workflow_executions, :status
     add_index :workflow_executions, :workflow_template_id
-    add_index :workflow_executions, [:entity_id, :status]
+    add_index :workflow_executions, [ :entity_id, :status ]
     add_index :workflow_executions, :created_at
   end
 end

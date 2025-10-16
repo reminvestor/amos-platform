@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # Debug the ToolRunner flow
 
-require_relative '../config/environment'
+require_relative "../config/environment"
 
 puts "\n=== DEBUGGING TOOL RUNNER FLOW ==="
 
@@ -15,10 +15,10 @@ puts "Entity: #{entity.id} (#{entity.name})"
 artifact = Artifact.create!(
   entity: entity,
   user: user,
-  name: 'Debug Test',
-  source: 'test',
-  schema: { 'plan' => 'string' },
-  sample: [{ 'plan' => 'test' }],
+  name: "Debug Test",
+  source: "test",
+  schema: { "plan" => "string" },
+  sample: [ { "plan" => "test" } ],
   row_count: 1
 )
 puts "\nCreated artifact ID: #{artifact.id}"
@@ -28,10 +28,10 @@ puts "Artifact entity: #{artifact.entity_id}"
 puts "\n1. Testing through ToolRunner..."
 tool_runner = ToolRunner.new
 result = tool_runner.call(
-  tool: 'aggregate_artifact_data',
+  tool: "aggregate_artifact_data",
   inputs: {
     artifact_id: artifact.id,
-    operation: 'simple_stats',
+    operation: "simple_stats",
     user_id: user.id,
     entity_id: entity.id
   }

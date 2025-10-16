@@ -1,26 +1,26 @@
-require 'aws-sdk-bedrockruntime'
-require 'json'
+require "aws-sdk-bedrockruntime"
+require "json"
 
 class BedrockService
   class BedrockError < StandardError; end
-  
+
   attr_reader :model_registry
-  
+
   def initialize(custom_model_id: nil, user: nil, entity: nil)
     @client = Aws::BedrockRuntime::Client.new(
-      region: ENV['AWS_REGION'] || 'us-east-1',
+      region: ENV["AWS_REGION"] || "us-east-1",
       # Let AWS SDK use the default credential chain
       # This will automatically find credentials from:
       # 1. Environment variables
-      # 2. ECS/EC2 instance profile  
+      # 2. ECS/EC2 instance profile
       # 3. AWS CLI configuration (~/.aws/credentials)
-      
+
       # Increase timeout for long-running operations like landing page generation
       # Default is 60 seconds, but landing pages can take 4-5 minutes
       http_read_timeout: 600, # 10 minutes
       http_open_timeout: 30   # 30 seconds to establish connection
     )
-    
+
     # Platform integration
     @model_registry = Agents::Platform::ModelRegistry.instance if defined?(Agents::Platform::ModelRegistry)
     @custom_model_id = custom_model_id
@@ -30,60 +30,88 @@ class BedrockService
   end
 
   # Main method to send messages to Claude via Bedrock
-  def send_message(system_prompt, messages, model: 'claude-sonnet-4-5', max_tokens: 10000, temperature: 0.7, json_mode: false, stream: false, &block)
+  def send_message(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, stream: false, &block)
     # Use custom model if specified
     if @custom_model_id && @model_registry
       return send_via_platform(system_prompt, messages, model: @custom_model_id, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, stream: stream, &block)
     end
-    
+
     if stream && block_given?
       send_message_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, &block)
     else
       send_message_non_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode)
     end
   end
-  
+
   # Complete method for simple API
-  def complete(messages:, temperature: 0.7, max_tokens: 1000, model: nil)
-    model_to_use = @custom_model_id || model || 'claude-3-sonnet'
+  # Send message with image (for vision/OCR)
+  # Uses Claude Opus 4.1 which supports vision (Sonnet 4.5 is text-only)
+  def send_message_with_image(prompt, base64_image, media_type = 'image/png')
+    messages = [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: media_type,
+              data: base64_image
+            }
+          },
+          {
+            type: 'text',
+            text: prompt
+          }
+        ]
+      }
+    ]
     
+    # Use Opus 4.1 for vision (has "Text Vision" capability)
+    # Higher token limit for large documents
+    complete(messages: messages, max_tokens: 10000, model: 'claude-opus-4-1')
+  end
+  
+  def complete(messages:, temperature: 0.7, max_tokens: 1000, model: nil)
+    model_to_use = @custom_model_id || model || "claude-3-sonnet"
+
     # Extract system prompt if present
     system_prompt = nil
     user_messages = messages
-    
-    if messages.first && messages.first[:role] == 'system'
+
+    if messages.first && messages.first[:role] == "system"
       system_prompt = messages.first[:content]
       user_messages = messages[1..]
     end
-    
+
     send_message(system_prompt, user_messages, model: model_to_use, max_tokens: max_tokens, temperature: temperature, stream: false)
   end
 
   private
 
-  def send_message_non_streaming(system_prompt, messages, model: 'claude-sonnet-4-5', max_tokens: 10000, temperature: 0.7, json_mode: false)
+  def send_message_non_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false)
     # Map model names to Bedrock model IDs
     # Using global inference profiles for Claude Sonnet 4.5
     model_id = case model
-    when 'claude-sonnet-4-5', 'claude-sonnet-4.5'
-      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
-    when 'claude-opus-4-1', 'claude-opus-4-1-20250805'
-      'us.anthropic.claude-opus-4-1-20250805-v1:0'
-    when 'claude-3-5-sonnet', 'claude-3.5-sonnet'
-      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
-    when 'claude-3-haiku'
-      'us.anthropic.claude-3-5-haiku-20241022-v1:0'
+    when "claude-sonnet-4-5", "claude-sonnet-4.5"
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    when "claude-opus-4-1", "claude-opus-4-1-20250805"
+      "us.anthropic.claude-opus-4-1-20250805-v1:0"
+    when "claude-3-5-sonnet", "claude-3.5-sonnet"
+      "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    when "claude-3-haiku"
+      "us.anthropic.claude-3-5-haiku-20241022-v1:0"
     else
       # Default to Claude Sonnet 4.5 (latest)
-      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     end
 
     # Format messages for Claude
     formatted_messages = format_messages_for_claude(messages)
-    
+
     # Debug the formatted messages
     Rails.logger.info "🔍 Bedrock formatted messages: #{formatted_messages.inspect}"
-    
+
     # Modify system prompt for JSON mode if requested
     final_system_prompt = if json_mode && system_prompt.present?
       Rails.logger.info "🔧 Bedrock JSON mode enabled - enforcing structured output"
@@ -104,44 +132,44 @@ class BedrockService
     request_body[:system] = final_system_prompt if final_system_prompt.present?
 
     Rails.logger.info "Sending request to Bedrock Claude (#{model_id})"
-    
+
     begin
       response = @client.invoke_model(
         model_id: model_id,
         body: request_body.to_json,
-        content_type: 'application/json',
-        accept: 'application/json'
+        content_type: "application/json",
+        accept: "application/json"
       )
 
       # Parse the response
       response_body = JSON.parse(response.body.read)
-      content = response_body.dig('content', 0, 'text')
-      
+      content = response_body.dig("content", 0, "text")
+
       # Track token usage if available in response
-      if response_body['usage']
+      if response_body["usage"]
         tokens = {
-          input: response_body['usage']['input_tokens'] || 0,
-          output: response_body['usage']['output_tokens'] || 0
+          input: response_body["usage"]["input_tokens"] || 0,
+          output: response_body["usage"]["output_tokens"] || 0
         }
-        
+
         if @user && @entity && @resource_manager
           @resource_manager.track_tokens(@user, model_id, tokens, {
             stream: false,
-            method: 'invoke_model',
+            method: "invoke_model",
             timestamp: Time.current
           })
         end
-        
+
         Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
       end
-      
+
       Rails.logger.info "Bedrock response received: #{content&.length || 0} characters"
-      
+
       # Log first 500 chars for debugging multi-step plans
       if content && content.length > 100
         Rails.logger.info "🔍 Response preview: #{content[0..500]}"
       end
-      
+
       content
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock API Error: #{e.message}"
@@ -153,19 +181,19 @@ class BedrockService
   end
 
   # Generate images using Amazon Titan
-  def generate_image(prompt, size: '1024x1024', style: 'photographic')
+  def generate_image(prompt, size: "1024x1024", style: "photographic")
     # Map sizes to Titan's supported dimensions
     width, height = case size
-    when '1024x1024'
-      [1024, 1024]
-    when '1024x1792', '1792x1024'
-      size.include?('1792x1024') ? [1792, 1024] : [1024, 1792]
-    when '768x768'
-      [768, 768]
-    when '512x512'
-      [512, 512]
+    when "1024x1024"
+      [ 1024, 1024 ]
+    when "1024x1792", "1792x1024"
+      size.include?("1792x1024") ? [ 1792, 1024 ] : [ 1024, 1792 ]
+    when "768x768"
+      [ 768, 768 ]
+    when "512x512"
+      [ 512, 512 ]
     else
-      [1024, 1024] # Default
+      [ 1024, 1024 ] # Default
     end
 
     request_body = {
@@ -186,17 +214,17 @@ class BedrockService
 
     begin
       response = @client.invoke_model(
-        model_id: 'amazon.titan-image-generator-v2:0',
+        model_id: "amazon.titan-image-generator-v2:0",
         body: request_body.to_json,
-        content_type: 'application/json',
-        accept: 'application/json'
+        content_type: "application/json",
+        accept: "application/json"
       )
 
       response_body = JSON.parse(response.body.read)
-      
+
       # Titan returns base64 encoded images
-      if response_body['images'] && response_body['images'].first
-        base64_image = response_body['images'].first
+      if response_body["images"] && response_body["images"].first
+        base64_image = response_body["images"].first
         {
           url: "data:image/png;base64,#{base64_image}",
           base64: base64_image,
@@ -214,14 +242,14 @@ class BedrockService
   # Analyze an image using Claude with vision capabilities
   def analyze_image(image_url, context = nil)
     # For Bedrock, we need to convert image URLs to base64
-    image_data = if image_url.start_with?('data:image')
+    image_data = if image_url.start_with?("data:image")
       # Already base64
-      image_url.split(',').last
+      image_url.split(",").last
     else
       # Download and convert to base64
-      require 'open-uri'
-      require 'base64'
-      
+      require "open-uri"
+      require "base64"
+
       image_content = URI.open(image_url).read
       Base64.strict_encode64(image_content)
     end
@@ -247,39 +275,39 @@ class BedrockService
     ]
 
     # Use Claude 3.5 Sonnet for vision tasks
-    send_message(nil, messages, model: 'claude-3-5-sonnet', max_tokens: 300)
+    send_message(nil, messages, model: "claude-3-5-sonnet", max_tokens: 300)
   rescue => e
     Rails.logger.error "Failed to analyze image: #{e.message}"
     "Image analysis unavailable"
   end
 
   public
-  
+
   # Non-streaming version using converse API (for tool continuation)
-  def send_message_converse(system_prompt, messages, model: 'claude-sonnet-4-5', max_tokens: 10000, temperature: 0.7, tools: [])
+  def send_message_converse(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, tools: [])
     # Map model names to Bedrock model IDs
     model_id = case model
-    when 'claude-sonnet-4-5', 'claude-sonnet-4.5'
-      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
-    when 'claude-opus-4-1', 'claude-opus-4-1-20250805'
-      'us.anthropic.claude-opus-4-1-20250805-v1:0'
-    when 'claude-3-5-sonnet', 'claude-3.5-sonnet'
-      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
-    when 'claude-3-haiku'
-      'us.anthropic.claude-3-5-haiku-20241022-v1:0'
+    when "claude-sonnet-4-5", "claude-sonnet-4.5"
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    when "claude-opus-4-1", "claude-opus-4-1-20250805"
+      "us.anthropic.claude-opus-4-1-20250805-v1:0"
+    when "claude-3-5-sonnet", "claude-3.5-sonnet"
+      "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    when "claude-3-haiku"
+      "us.anthropic.claude-3-5-haiku-20241022-v1:0"
     else
-      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     end
-    
+
     # Messages are already in converse format from our formatting
     # Just ensure they're properly structured
     converse_messages = messages.map do |msg|
       {
         role: msg[:role],
-        content: msg[:content].is_a?(Array) ? msg[:content] : [{ text: msg[:content] }]
+        content: msg[:content].is_a?(Array) ? msg[:content] : [ { text: msg[:content] } ]
       }
     end
-    
+
     # Build payload for converse
     payload = {
       model_id: model_id,
@@ -289,12 +317,12 @@ class BedrockService
         temperature: temperature
       }
     }
-    
+
     # Add system prompt if present
     if system_prompt.present?
-      payload[:system] = [{ text: system_prompt }]
+      payload[:system] = [ { text: system_prompt } ]
     end
-    
+
     # Add tools if provided (required when using tool results)
     if tools.any?
       payload[:tool_config] = {
@@ -302,37 +330,37 @@ class BedrockService
         tool_choice: { auto: {} }
       }
     end
-    
+
     Rails.logger.info "Sending non-streaming request to Bedrock Claude (#{model_id}) using converse"
-    
+
     begin
       response = @client.converse(payload)
-      
+
       # Extract the text from the response
       content = response.output.message.content.map do |content_block|
         content_block.text if content_block.respond_to?(:text)
-      end.compact.join('')
-      
+      end.compact.join("")
+
       # Track token usage if available
       if response.respond_to?(:usage) && response.usage
         tokens = {
           input: response.usage.input_tokens || 0,
           output: response.usage.output_tokens || 0
         }
-        
+
         if @user && @entity && @resource_manager
           @resource_manager.track_tokens(@user, model_id, tokens, {
             stream: false,
-            method: 'converse',
+            method: "converse",
             timestamp: Time.current
           })
         end
-        
+
         Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
       end
-      
+
       Rails.logger.info "Bedrock converse response received: #{content.length} characters"
-      
+
       content
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock API Error: #{e.message}"
@@ -344,33 +372,33 @@ class BedrockService
     end
   end
 
-  def send_message_streaming(system_prompt, messages, model: 'claude-sonnet-4-5', max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], &block)
+  def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], &block)
     # Map model names to Bedrock model IDs
     model_id = case model
-    when 'claude-sonnet-4-5', 'claude-sonnet-4.5'
-      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
-    when 'claude-opus-4-1', 'claude-opus-4-1-20250805'
-      'us.anthropic.claude-opus-4-1-20250805-v1:0'
-    when 'claude-3-5-sonnet', 'claude-3.5-sonnet'
-      'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
-    when 'claude-3-haiku'
-      'us.anthropic.claude-3-5-haiku-20241022-v1:0'
+    when "claude-sonnet-4-5", "claude-sonnet-4.5"
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    when "claude-opus-4-1", "claude-opus-4-1-20250805"
+      "us.anthropic.claude-opus-4-1-20250805-v1:0"
+    when "claude-3-5-sonnet", "claude-3.5-sonnet"
+      "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    when "claude-3-haiku"
+      "us.anthropic.claude-3-5-haiku-20241022-v1:0"
     else
-      'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     end
 
     # Format messages for Claude
     formatted_messages = format_messages_for_claude(messages)
-    
+
     # Filter out messages with empty content arrays
     formatted_messages = formatted_messages.reject do |msg|
-      msg[:content].nil? || msg[:content].empty? || 
-      (msg[:content].is_a?(Array) && msg[:content].all? { |c| 
+      msg[:content].nil? || msg[:content].empty? ||
+      (msg[:content].is_a?(Array) && msg[:content].all? { |c|
         # Check if this is a text block with empty text
-        c[:type] == 'text' && c[:text].to_s.strip.empty?
+        c[:type] == "text" && c[:text].to_s.strip.empty?
       })
     end
-    
+
     # Build the request body
     request_body = {
       anthropic_version: "bedrock-2023-05-31",
@@ -378,7 +406,7 @@ class BedrockService
       max_tokens: max_tokens,
       temperature: temperature
     }
-    
+
     request_body[:system] = system_prompt if system_prompt.present?
 
     Rails.logger.info "Sending streaming request to Bedrock Claude (#{model_id}) using converse_stream"
@@ -387,18 +415,18 @@ class BedrockService
       # Convert messages to converse API format
       # The converse API expects content to be an array of content blocks
       # where each block is directly the content type (text, image, etc)
-      converse_messages = formatted_messages.reject { |msg| 
-        msg[:content].nil? || msg[:content].empty? || 
-        (msg[:content].is_a?(Array) && msg[:content].all? { |c| 
+      converse_messages = formatted_messages.reject { |msg|
+        msg[:content].nil? || msg[:content].empty? ||
+        (msg[:content].is_a?(Array) && msg[:content].all? { |c|
           # Check if this is a text block with empty text
-          c[:type] == 'text' && c[:text].to_s.strip.empty?
+          c[:type] == "text" && c[:text].to_s.strip.empty?
         })
       }.map do |msg|
         content_blocks = msg[:content].map do |block|
           case block[:type]
-          when 'text'
+          when "text"
             { text: block[:text] }
-          when 'tool_use'
+          when "tool_use"
             # Convert tool_use format
             tool_data = block[:tool_use]
             {
@@ -408,17 +436,17 @@ class BedrockService
                 input: tool_data[:input]
               }
             }
-          when 'tool_result'
+          when "tool_result"
             # Convert tool_result format
             result_data = block[:tool_result]
             {
               tool_result: {
                 tool_use_id: result_data[:tool_use_id],
-                content: result_data[:content].is_a?(Array) ? 
-                  result_data[:content].map { |c| 
-                    c[:type] == 'text' ? { text: c[:text] } : c 
-                  } : 
-                  [{ text: result_data[:content].to_s }]
+                content: result_data[:content].is_a?(Array) ?
+                  result_data[:content].map { |c|
+                    c[:type] == "text" ? { text: c[:text] } : c
+                  } :
+                  [ { text: result_data[:content].to_s } ]
               }
             }
           else
@@ -426,17 +454,17 @@ class BedrockService
             block
           end
         end
-        
+
         {
-          role: msg[:role] == 'system' ? 'user' : msg[:role],
+          role: msg[:role] == "system" ? "user" : msg[:role],
           content: content_blocks
         }
       end
-      
+
       Rails.logger.info "🔍 Original formatted messages count: #{formatted_messages.length}"
       Rails.logger.info "🔍 Converse messages count after conversion: #{converse_messages.length}"
       Rails.logger.info "🔍 Converse messages structure: #{converse_messages.to_json}"
-      
+
       # Build payload for converse_stream
       payload = {
         model_id: model_id,
@@ -446,12 +474,12 @@ class BedrockService
           temperature: temperature
         }
       }
-      
+
       # Add system prompt if present
       if system_prompt.present?
-        payload[:system] = [{ text: system_prompt }]
+        payload[:system] = [ { text: system_prompt } ]
       end
-      
+
       # Add tools if provided
       if tools.any?
         payload[:tool_config] = {
@@ -464,26 +492,26 @@ class BedrockService
       buffer = ""
       start_time = Time.now
       chunk_count = 0
-      
+
       # Use converse_stream for true streaming
       @client.converse_stream(payload) do |stream|
         stream.on_error_event do |event|
           Rails.logger.error "Bedrock stream error: #{event.inspect}"
           raise BedrockError, "Streaming error: #{event.error_message || 'Unknown error'}"
         end
-        
+
         stream.on_event do |event|
           case event.event_type
           when :content_block_delta
             if event.delta.respond_to?(:text) && event.delta.text
               content = event.delta.text
               buffer += content
-              
+
               # Log timing
               chunk_count += 1
               elapsed = (Time.now - start_time).round(3)
               Rails.logger.info "Bedrock chunk ##{chunk_count} at #{elapsed}s: #{content.length} chars"
-              
+
               # Yield content chunk immediately
               yield(type: :content, content: content)
             elsif event.delta.respond_to?(:tool_use) && event.delta.tool_use
@@ -510,7 +538,7 @@ class BedrockService
                 input: usage.input_tokens || 0,
                 output: usage.output_tokens || 0
               }
-              
+
               # Track tokens if we have user and entity
               if @user && @entity && @resource_manager
                 @resource_manager.track_tokens(@user, model_id, tokens, {
@@ -518,18 +546,18 @@ class BedrockService
                   timestamp: Time.current
                 })
               end
-              
+
               # Yield usage info
               yield(type: :usage, tokens: tokens) if block_given?
-              
+
               Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
             end
-            
+
             Rails.logger.debug "Bedrock metadata: #{event.inspect}"
           end
         end
       end
-      
+
       buffer
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock streaming error: #{e.message}"
@@ -542,7 +570,7 @@ class BedrockService
   end
 
   private
-  
+
   def format_tools_for_bedrock(tools)
     tools.map do |tool|
       {
@@ -560,74 +588,74 @@ class BedrockService
       }
     end
   end
-  
+
   def format_messages_for_claude(messages)
     # Ensure messages is an array
     messages_array = case messages
     when Array
       messages
     when String
-      [{ role: 'user', content: messages }]
+      [ { role: "user", content: messages } ]
     else
-      [{ role: 'user', content: messages.to_s }]
+      [ { role: "user", content: messages.to_s } ]
     end
 
     # Claude on Bedrock expects specific format with content as array containing type
     Rails.logger.debug "🔍 format_messages_for_claude input: #{messages_array.inspect}" if Rails.env.development?
-    
+
     # Check if messages are already properly formatted
-    if messages_array.all? { |msg| 
-      msg.is_a?(Hash) && 
-      msg[:content].is_a?(Array) && 
+    if messages_array.all? { |msg|
+      msg.is_a?(Hash) &&
+      msg[:content].is_a?(Array) &&
       msg[:content].all? { |item| item.is_a?(Hash) && item[:type] }
     }
       Rails.logger.debug "🔍 Messages already properly formatted, returning as-is" if Rails.env.development?
       return messages_array
     end
-    
+
     formatted = messages_array.map do |msg|
-      content = msg[:content] || msg['content']
-      
+      content = msg[:content] || msg["content"]
+
       Rails.logger.debug "🔍 Processing message content: #{content.inspect}" if Rails.env.development?
-      
+
       # Format content for Bedrock API
       formatted_content = if content.is_a?(Array)
         # Check if array items already have 'type' field, if not fix them
         content.map do |item|
-          if item.is_a?(Hash) && (item[:type] || item['type'])
+          if item.is_a?(Hash) && (item[:type] || item["type"])
             # Already correctly formatted - ensure keys are symbols and text is not nil
-            text_content = (item[:text] || item['text'])
-            { type: (item[:type] || item['type']).to_s, text: text_content || '' }
-          elsif item.is_a?(Hash) && (item[:text] || item['text'])
-            text_value = (item[:text] || item['text'])
-            { type: 'text', text: text_value || '' }  # Fix missing type field
+            text_content = (item[:text] || item["text"])
+            { type: (item[:type] || item["type"]).to_s, text: text_content || "" }
+          elsif item.is_a?(Hash) && (item[:text] || item["text"])
+            text_value = (item[:text] || item["text"])
+            { type: "text", text: text_value || "" }  # Fix missing type field
           elsif item.is_a?(String)
-            { type: 'text', text: item }
+            { type: "text", text: item }
           else
-            { type: 'text', text: item.to_s }
+            { type: "text", text: item.to_s }
           end
         end
       elsif content.is_a?(String)
         # Convert string to required format
-        [{ type: 'text', text: content }]
+        [ { type: "text", text: content } ]
       else
         # Convert other types to string first
-        [{ type: 'text', text: content.to_s }]
+        [ { type: "text", text: content.to_s } ]
       end
-      
+
       result = {
-        role: (msg[:role] || msg['role'] || 'user').to_s,
+        role: (msg[:role] || msg["role"] || "user").to_s,
         content: formatted_content
       }
-      
+
       Rails.logger.debug "🔍 Formatted message: #{result.inspect}" if Rails.env.development?
       result
     end
-    
+
     Rails.logger.debug "🔍 Final formatted messages: #{formatted.inspect}" if Rails.env.development?
     formatted
   end
-  
+
   # Send via platform model registry
   def send_via_platform(system_prompt, messages, model:, max_tokens:, temperature:, json_mode:, stream:, &block)
     prompt_config = {
@@ -637,50 +665,50 @@ class BedrockService
       temperature: temperature,
       json_mode: json_mode
     }
-    
+
     if stream && block_given?
       @model_registry.invoke_model_stream(model, prompt_config, user: @user, entity: @entity) do |chunk|
         yield chunk[:content] if chunk[:content]
       end
     else
       result = @model_registry.invoke_model(model, prompt_config, user: @user, entity: @entity)
-      
+
       # Format response to match expected format
       {
-        'id' => "platform-#{SecureRandom.hex(16)}",
-        'model' => model,
-        'choices' => [{
-          'message' => {
-            'role' => 'assistant',
-            'content' => result[:content]
+        "id" => "platform-#{SecureRandom.hex(16)}",
+        "model" => model,
+        "choices" => [ {
+          "message" => {
+            "role" => "assistant",
+            "content" => result[:content]
           },
-          'finish_reason' => result[:stop_reason] || 'stop'
-        }],
-        'usage' => result[:usage]
+          "finish_reason" => result[:stop_reason] || "stop"
+        } ],
+        "usage" => result[:usage]
       }
     end
   rescue => e
     Rails.logger.error "Platform model invocation failed: #{e.message}"
     raise BedrockError, "Platform model error: #{e.message}"
   end
-  
+
   # Format messages for platform models
   def format_platform_messages(system_prompt, messages)
     formatted = []
-    
+
     # Add system prompt as first message if present
     if system_prompt.present?
-      formatted << { role: 'system', content: system_prompt }
+      formatted << { role: "system", content: system_prompt }
     end
-    
+
     # Add user messages
     messages.each do |msg|
       formatted << {
-        role: msg[:role] || 'user',
+        role: msg[:role] || "user",
         content: msg[:content] || msg[:text] || msg.to_s
       }
     end
-    
+
     formatted
   end
 end

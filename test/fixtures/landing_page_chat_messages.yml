@@ -1,13 +1,13 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  landing_page_id: one
-  content: MyText
-  role: MyString
-  user_id: one
+  landing_page: one
+  content: "Hello, I'm interested in learning more about your product"
+  role: "user"
+  user: one
 
 two:
-  landing_page_id: two
-  content: MyText
-  role: MyString
-  user_id: two
+  landing_page: one
+  content: "Thank you for your interest! I'd be happy to help you learn more."
+  role: "assistant"
+  user: one
