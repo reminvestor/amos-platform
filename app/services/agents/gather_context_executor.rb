@@ -116,15 +116,66 @@ module Agents
     end
 
     def extract_from_image(file_info, extraction_hint)
-      # For images, extract visual info like colors, style
-      # Note: This would need vision API integration
-      # For now, use filename and metadata
+      # Use Claude Vision to analyze screenshot/design inspiration
+      Rails.logger.info "🎨 Analyzing image with Claude Vision for design elements"
 
-      {
-        image_provided: true,
-        image_url: file_info[:url],
-        image_filename: file_info[:filename]
-      }
+      begin
+        # Get the image from storage
+        asset = ImageAsset.find_by(id: file_info[:asset_id])
+        return {} unless asset
+
+        file_path = ActiveStorage::Blob.service.path_for(asset.file.blob.key)
+        image_data = File.read(file_path)
+        base64_image = Base64.strict_encode64(image_data)
+
+        # Use vision to analyze design
+        ai_service = BedrockService.new
+
+        prompt = <<~PROMPT
+          Analyze this image for landing page design inspiration.
+
+          Extract:
+          1. Primary colors (hex codes if visible)
+          2. Design style (modern, classic, minimal, bold, etc.)
+          3. Layout observations (hero section, CTA placement, sections)
+          4. Typography feel (professional, playful, elegant, etc.)
+          5. Overall aesthetic and mood
+
+          Also determine if this is:
+          - A screenshot to inspire design
+          - A photo/image to USE in the landing page
+          - Brand guidelines document
+
+          Return JSON:
+          {
+            "colors": ["#hex1", "#hex2", ...],
+            "design_style": "modern minimalist",
+            "layout_notes": "Hero with centered CTA, 3-column features",
+            "typography": "clean sans-serif",
+            "aesthetic": "professional and trustworthy",
+            "image_usage": "inspiration|use_in_page|brand_guidelines"
+          }
+        PROMPT
+
+        response = ai_service.send_message_with_image(prompt, base64_image, file_info[:content_type])
+        result = JSON.parse(response) rescue {}
+
+        # Add image URL for potential use in landing page
+        result.merge({
+          image_provided: true,
+          image_url: file_info[:url],
+          image_filename: file_info[:filename],
+          image_asset_id: file_info[:asset_id]
+        })
+
+      rescue => e
+        Rails.logger.error "Image analysis failed: #{e.message}"
+        {
+          image_provided: true,
+          image_url: file_info[:url],
+          image_filename: file_info[:filename]
+        }
+      end
     end
 
     def extract_from_document(file_info, extraction_hint)
@@ -213,16 +264,35 @@ module Agents
 
       gathered = {}
       entity = @context[:entity]
+      user = @context[:user]
 
       return gathered unless entity
 
       # Map entity fields to required knowledge
-      gathered["business_name"] = entity.name if entity.name.present?
-      gathered["company_name"] = entity.name if entity.name.present?
-      gathered["entity_name"] = entity.name if entity.name.present?
+      gathered['business_name'] = entity.name if entity.name.present?
+      gathered['company_name'] = entity.name if entity.name.present?
+      gathered['entity_name'] = entity.name if entity.name.present?
 
-      # Add any other entity fields that might be useful
-      gathered["subdomain"] = entity.subdomain if entity.subdomain.present?
+      # Add subdomain
+      gathered['subdomain'] = entity.subdomain if entity.subdomain.present?
+
+      # Check business profile for style guidelines
+      if user&.business_profile
+        profile = user.business_profile
+
+        # Add style guidelines if present
+        if profile.style_guidelines.present?
+          Rails.logger.info "🎨 Found style guidelines in business profile"
+          gathered['style_guidelines'] = profile.style_guidelines
+
+          # Extract specific style elements
+          guidelines = profile.style_guidelines
+          gathered['brand_colors'] = guidelines['colors'] if guidelines['colors'].present?
+          gathered['typography'] = guidelines['typography'] if guidelines['typography'].present?
+          gathered['design_aesthetic'] = guidelines['aesthetic'] if guidelines['aesthetic'].present?
+        end
+      end
+
 
       Rails.logger.info "🏢 Extracted from entity: #{gathered.keys.join(', ')}"
       gathered

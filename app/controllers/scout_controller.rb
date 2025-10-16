@@ -413,43 +413,43 @@ class ScoutController < ApplicationController
               save_scout_message(progress_data[:role] || "assistant", progress_data[:content])
               stream_content_chunk(progress_data[:content])
             end
-          when "phase_progress", "phase_start"
+          when 'phase_progress', 'phase_start'
             # Show workflow phase progress as VISIBLE messages (not transient)
             phase_message = "🔄 #{progress_data[:message]}"
             Rails.logger.info "Phase progress: #{phase_message}"
-            save_scout_message("assistant", phase_message)
+            save_scout_message('assistant', phase_message)
             stream_update({
-              type: "intermediate_message",
+              type: 'intermediate_message',
               content: phase_message,
-              role: "assistant"
+              role: 'assistant'
             })
-          when "phase_complete"
+          when 'phase_complete'
             # Show phase completion as VISIBLE messages
             complete_message = "✅ #{progress_data[:message]}"
             Rails.logger.info "Phase complete: #{complete_message}"
-            save_scout_message("assistant", complete_message)
+            save_scout_message('assistant', complete_message)
             stream_update({
-              type: "intermediate_message",
+              type: 'intermediate_message',
               content: complete_message,
-              role: "assistant"
+              role: 'assistant'
             })
-          when "tool_start"
+          when 'tool_start'
             # Show tool start as VISIBLE message with thinking indicator
             tool_name = progress_data[:tool_name] || progress_data[:name]
             tool_message = "🔧 #{get_friendly_tool_name(tool_name)}..."
             Rails.logger.info "Tool start: #{tool_message}"
-            save_scout_message("assistant", tool_message)
+            save_scout_message('assistant', tool_message)
             stream_update({
-              type: "intermediate_message",
+              type: 'intermediate_message',
               content: tool_message,
-              role: "assistant"
+              role: 'assistant'
             })
-          when "tool_complete"
+          when 'tool_complete'
             # Tool complete - just log, don't spam chat
             tool_name = progress_data[:tool_name] || progress_data[:name]
             Rails.logger.info "Tool complete: #{tool_name}"
             # Don't show tool complete messages - too noisy
-          when "planner_progress"
+          when 'planner_progress'
             # Stream planner reasoning as transient messages
             Rails.logger.info "Planner: #{progress_data[:message]}"
             stream_transient_update("🧠 #{progress_data[:message]}")
@@ -675,7 +675,10 @@ class ScoutController < ApplicationController
       when "analytics_dashboard"
         canvas_content = render_analytics_canvas(canvas_data)
         canvas_title = "Analytics Dashboard"
-      when "contact_generator"
+      when 'document_viewer'
+        canvas_content = render_document_viewer_canvas(canvas_data)
+        canvas_title = "Document Viewer"
+      when 'contact_generator'
         canvas_content = render_contact_generator(canvas_data)
         canvas_title = "Create Contact"
       when "user_profile"
@@ -1044,23 +1047,24 @@ class ScoutController < ApplicationController
 
   def get_friendly_tool_name(tool_name)
     friendly_names = {
-      "generate_ai_landing_page" => "Generating landing page",
-      "execute_integration" => "Calling integration API",
-      "get_data" => "Fetching data",
-      "create_object" => "Creating record",
-      "update_object" => "Updating record",
-      "create_rag_store" => "Building knowledge base",
-      "web_search" => "Searching the web",
-      "query_rag_store" => "Querying documentation",
-      "add_integration_endpoint" => "Adding API endpoint",
-      "generate_integration_scaffold" => "Creating integration",
-      "list_operations" => "Listing available operations",
-      "list_connections" => "Checking connections",
-      "aggregate_artifact_data" => "Aggregating data",
-      "create_dynamic_visualization" => "Creating visualization"
+      'generate_ai_landing_page' => 'Generating landing page',
+      'execute_integration' => 'Calling integration API',
+      'get_data' => 'Fetching data',
+      'create_object' => 'Creating record',
+      'update_object' => 'Updating record',
+      'create_rag_store' => 'Building knowledge base',
+      'web_search' => 'Searching the web',
+      'query_rag_store' => 'Querying documentation',
+      'add_integration_endpoint' => 'Adding API endpoint',
+      'generate_integration_scaffold' => 'Creating integration',
+      'list_operations' => 'Listing available operations',
+      'list_connections' => 'Checking connections',
+      'aggregate_artifact_data' => 'Aggregating data',
+      'create_dynamic_visualization' => 'Creating visualization'
     }
     friendly_names[tool_name] || tool_name.titleize
   end
+
 
   def stream_final_response(response_data)
     Rails.logger.info "🌊 stream_final_response called with data keys: #{response_data.keys}"
@@ -1409,6 +1413,26 @@ class ScoutController < ApplicationController
     )
   end
 
+  def render_document_viewer_canvas(data = {})
+    # Build document URL from asset_id
+    if data[:asset_id]
+      asset = ImageAsset.find_by(id: data[:asset_id], entity: current_entity)
+      if asset && asset.file.attached?
+        data[:url] = rails_blob_url(asset.file)
+        data[:download_url] = rails_blob_url(asset.file, disposition: 'attachment')
+      end
+    end
+    
+    render_to_string(
+      partial: 'scout/canvas/document_viewer',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+  
   def render_analytics_canvas(data = {})
     # Get analytics data for the dashboard
     analytics_data = {

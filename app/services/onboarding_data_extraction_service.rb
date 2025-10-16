@@ -83,15 +83,15 @@ class OnboardingDataExtractionService
       4. Return valid JSON only, no additional text
       5. Use null for fields that aren't mentioned
 
-      FIELDS TO EXTRACT:
-      - industry: Business industry/sector (e.g., "technology", "healthcare", "education")
-      - description: What the business does, their mission, value proposition
-      - target_audience: Who their customers are (e.g., "police officers", "small businesses")
+      FIELDS TO EXTRACT (REQUIRED FIELDS MARKED):
+      - industry: Business industry/sector [REQUIRED] (e.g., "technology", "healthcare", "education")
+      - description: What the business does, their mission, value proposition [REQUIRED]
+      - target_audience: Who their customers are [REQUIRED] (e.g., "police officers", "small businesses")
+      - values: Company values, principles, or mission [REQUIRED] (e.g., "quality education", "customer success")
+      - tone_of_voice: Preferred communication style [REQUIRED] (e.g., "professional", "casual and friendly", "authoritative")
       - founded_year: Year business was founded (number only)
       - website: Website URL (validate format)
-      - values: Company values or principles
-      - tone_of_voice: Preferred communication style (e.g., "professional", "casual", "friendly")
-      - business_model: How they make money (e.g., "subscription", "one-time purchase")
+      - business_model: How they make money (e.g., "subscription", "one-time purchase", "marketplace")
       - unique_selling_proposition: What makes them different from competitors
       - company_size: Number of employees or size indicator
       - geographic_focus: Where they operate (e.g., "United States", "Global")
@@ -211,14 +211,17 @@ class OnboardingDataExtractionService
 
   def get_missing_required_fields
     profile = @user.business_profile
-    required_fields = %w[industry description target_audience]
+    required_fields = %w[industry description target_audience values tone_of_voice]
 
     return required_fields unless profile
 
     missing = []
-    missing << "industry" if profile.industry.blank?
-    missing << "description" if profile.description.blank?
-    missing << "target_audience" if profile.target_audience.blank?
+    missing << 'industry' if profile.industry.blank?
+    missing << 'description' if profile.description.blank?
+    missing << 'target_audience' if profile.target_audience.blank?
+    missing << 'values' if profile.values.blank?
+    missing << 'tone_of_voice' if profile.tone_of_voice.blank?
+
 
     missing
   end
@@ -228,7 +231,7 @@ class OnboardingDataExtractionService
     return 0 unless profile
 
     # Base onboarding completion on required fields only
-    required_fields = %w[name industry description target_audience]
+    required_fields = %w[name industry description target_audience values tone_of_voice]
     completed_fields = required_fields.count { |field| profile.send(field).present? }
 
     (completed_fields.to_f / required_fields.length * 100).round
