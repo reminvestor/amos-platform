@@ -48,13 +48,37 @@ phases:
         validation: "text"
     
     context_sources:
+      - "workflow_context"      # Check uploaded files FIRST!
       - "direct_conversation"
       - "conversation_history"
       - "entity_profile"
     
+    extraction_strategies:
+      workflow_context:
+        file_types:
+          image:
+            - "Extract design elements: colors, style, layout ideas"
+            - "Identify hero section style, CTA placement"
+            - "Note typography and overall aesthetic"
+          pdf:
+            - "Extract brand guidelines: colors, fonts, logos"
+            - "Look for style requirements"
+    
     ai_instructions: |
-      Gather landing page information conversationally.
-      Ask for company name, value proposition, target audience, and call to action.
+      Gather landing page information intelligently.
+      
+      PRIORITY ORDER:
+      1. Check uploaded files first (screenshots, brand guidelines, inspiration)
+      2. Check conversation history
+      3. Check business profile for style guidelines
+      4. Only ask user for missing information
+      
+      If user uploaded:
+      - Screenshot: Extract design style, colors, layout ideas
+      - Brand guidelines: Extract colors, fonts, style rules
+      - Images: Note for use in landing page
+      
+      Ask conversationally for any missing required fields.
 
   # Phase 2: Build the landing page
   - id: "execute_goal"

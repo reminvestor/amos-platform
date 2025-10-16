@@ -98,7 +98,13 @@ module Tools
           form_fields: get_arg(args, :form_fields) || [],
           business_name: get_arg(args, :business_name),
           program_name: get_arg(args, :program_name),
-          content_focus: get_arg(args, :content_focus)
+          content_focus: get_arg(args, :content_focus),
+          # NEW - Image and style data
+          uploaded_images: get_arg(args, :uploaded_images) || [],
+          image_urls: get_arg(args, :image_urls) || [],
+          brand_colors: get_arg(args, :brand_colors) || get_arg(args, :colors),
+          style_guidelines: get_arg(args, :style_guidelines),
+          layout_inspiration: get_arg(args, :layout_notes)
         }
         
         # Create the landing page record (without page_type field)
@@ -218,7 +224,43 @@ module Tools
                     key_details[:design_style] ||
                     "modern and professional"
       
-      Rails.logger.info "🎨 Generating HTML with: business=#{business_name}, value=#{value_prop}, audience=#{target_audience}, cta=#{cta_text}"
+      # Get style data from context
+      brand_colors = context[:brand_colors] || []
+      style_guidelines = context[:style_guidelines] || {}
+      layout_inspiration = context[:layout_inspiration]
+      uploaded_images = context[:uploaded_images] || []
+      image_urls = context[:image_urls] || []
+      
+      Rails.logger.info "🎨 Generating HTML with: business=#{business_name}, colors=#{brand_colors.inspect}, images=#{uploaded_images.length}"
+      
+      # Build enhanced prompt with style data
+      style_section = if brand_colors.any? || style_guidelines.present?
+        <<~STYLE
+          
+          BRAND STYLE GUIDELINES:
+          #{brand_colors.any? ? "- Brand Colors: #{brand_colors.join(', ')}" : ""}
+          #{style_guidelines['typography'] ? "- Typography: #{style_guidelines['typography']}" : ""}
+          #{style_guidelines['aesthetic'] ? "- Aesthetic: #{style_guidelines['aesthetic']}" : ""}
+          #{layout_inspiration ? "- Layout Inspiration: #{layout_inspiration}" : ""}
+          
+          CRITICAL: Use these brand colors in the design!
+        STYLE
+      else
+        ""
+      end
+      
+      image_section = if uploaded_images.any? || image_urls.any?
+        image_list = (uploaded_images + image_urls).first(3)
+        <<~IMAGES
+          
+          IMAGES TO USE:
+          #{image_list.map { |img| "- #{img}" }.join("\n")}
+          
+          CRITICAL: Include these images in the landing page (hero section, features, etc.)
+        IMAGES
+      else
+        ""
+      end
       
       prompt = <<~PROMPT
         Generate a complete, professional landing page HTML for:
@@ -228,7 +270,7 @@ module Tools
         Target Audience: #{target_audience} 
         Call to Action: #{cta_text}
         Design Style: #{design_style}
-        
+        #{style_section}#{image_section}
         Requirements:
         - Use Bootstrap 5 for responsive design
         - Include hero section with compelling headline and CTA
@@ -237,12 +279,15 @@ module Tools
         - Mobile-responsive
         - Professional styling
         - Use the business information to create compelling copy
+        #{brand_colors.any? ? "- Use brand colors: #{brand_colors.join(', ')}" : ""}
+        #{uploaded_images.any? ? "- Include uploaded images in appropriate sections" : ""}
         
         CRITICAL: Use the EXACT values provided above:
         - Company name in logo/header: "#{business_name}" (NOT generic placeholders)
         - Hero headline should incorporate: "#{value_prop}"
         - CTA buttons should say: "#{cta_text}"
         - Content should speak to: "#{target_audience}"
+        #{brand_colors.any? ? "- Use ONLY these brand colors: #{brand_colors.join(', ')}" : ""}
         
         Return ONLY the complete HTML (from <!DOCTYPE html> to </html>).
         Make it conversion-optimized and visually appealing.
