@@ -432,14 +432,31 @@ index_name = "amos-entity-knowledge"  # Single index for ALL entities
 # Problem: One index must hold ALL customer data
 ```
 
-**Option 2: Index-per-entity - SCALABLE but EXPENSIVE**
+**Option 2: Index-per-entity with Serverless - RECOMMENDED FOR PROPRIETARY DATA** ⭐
 ```ruby
-# Each entity gets own index
+# Each entity gets own index (Pinecone Serverless)
 index_name = "amos-entity-#{entity.id}"
-namespace = app_name
+namespace = app_name  # Optional: can further subdivide by app
 
-# Pros: Perfect isolation, infinite scale
-# Cons: Pinecone charges $45/month PER index (too expensive)
+# ✅ Pros:
+# - Maximum security isolation (separate indexes = separate databases)
+# - Cost-effective with Serverless ($0.025/GB + $0.03 per 1M queries)
+# - Easy customer deletion (just delete their index)
+# - Regulatory compliance ready (HIPAA, SOC2)
+# - No cross-contamination risk
+
+# ⚠️ Cons:
+# - Index creation takes 30-60 seconds per customer
+# - Management overhead (1000 customers = 1000 indexes)
+
+# Cost example for 1000 customers:
+# - 10K vectors each × 1536 dimensions = ~60GB total
+# - Storage: 60GB × $0.025/mo = $1.50/month
+# - Queries: 100K queries × $0.03 per 1M = $3/month
+# TOTAL: ~$5/month for 1000 customers!
+
+# NOTE: Uses Pinecone SERVERLESS (not pod-based)
+# Pod-based would be $70/month per index (too expensive)
 ```
 
 **Option 3: Pooled Indexes (Recommended) - SCALABLE**
