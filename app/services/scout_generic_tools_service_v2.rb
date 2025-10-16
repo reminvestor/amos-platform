@@ -317,7 +317,7 @@ class ScoutGenericToolsServiceV2
       Simple Creation:
       - "Create a contact" → ALWAYS use get_schema first, then create_object
       - "Update campaign status" → update_object
-      
+
       CRITICAL - Creating Objects:
       Before using create_object, ALWAYS:
       1. Call get_schema(object_type: "contact") to see valid fields
