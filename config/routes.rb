@@ -215,6 +215,7 @@ Rails.application.routes.draw do
     resource :business_profile, only: [:edit, :update] do
       member do
         post :add_knowledge
+        patch :update_style_guidelines
       end
     end
     
@@ -269,7 +270,7 @@ Rails.application.routes.draw do
         end
       end
       
-      resource :privacy, only: [:show, :update]
+      resource :privacy, only: [:show, :update], controller: 'privacy'
     end
     
     # Admin Portal (Platform Administration)

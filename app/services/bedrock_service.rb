@@ -44,6 +44,34 @@ class BedrockService
   end
   
   # Complete method for simple API
+  # Send message with image (for vision/OCR)
+  # Uses Claude Opus 4.1 which supports vision (Sonnet 4.5 is text-only)
+  def send_message_with_image(prompt, base64_image, media_type = 'image/png')
+    messages = [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: media_type,
+              data: base64_image
+            }
+          },
+          {
+            type: 'text',
+            text: prompt
+          }
+        ]
+      }
+    ]
+    
+    # Use Opus 4.1 for vision (has "Text Vision" capability)
+    # Higher token limit for large documents
+    complete(messages: messages, max_tokens: 10000, model: 'claude-opus-4-1')
+  end
+  
   def complete(messages:, temperature: 0.7, max_tokens: 1000, model: nil)
     model_to_use = @custom_model_id || model || 'claude-3-sonnet'
     

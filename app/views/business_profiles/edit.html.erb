@@ -32,6 +32,11 @@
                 <i class="fas fa-brain me-1"></i> Knowledge Base
               </button>
             </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="style-tab" data-bs-toggle="tab" data-bs-target="#style" type="button" role="tab" aria-controls="style" aria-selected="false">
+                <i class="fas fa-palette me-1"></i> Style Guidelines
+              </button>
+            </li>
           </ul>
         </div>
         <div class="card-body">
@@ -163,9 +168,95 @@
                 <% end %>
               </div>
             </div>
+            
+            <!-- Style Guidelines Tab -->
+            <div class="tab-pane fade" id="style" role="tabpanel" aria-labelledby="style-tab">
+              <div class="mb-4">
+                <h5>Landing Page Style Guidelines</h5>
+                <p class="text-muted">
+                  Define your brand's visual style for AI-generated landing pages. These will be automatically applied to all new landing pages.
+                </p>
+
+                <%= form_with(model: @business_profile, url: update_style_guidelines_business_profile_path, method: :patch, local: false, data: { turbo: false }) do |f| %>
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <%= label_tag 'colors', "Brand Colors", class: "form-label" %>
+                      <%= text_area_tag 'style_guidelines[colors][]', 
+                          (@business_profile.style_guidelines&.dig('colors') || []).join("\n"),
+                          class: "form-control font-monospace", 
+                          rows: 4,
+                          placeholder: "#667eea\n#764ba2\n#4F46E5\n(Enter hex codes, one per line)" %>
+                      <div class="form-text">Hex color codes for your brand palette</div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Color Preview</label>
+                      <div class="d-flex gap-2 flex-wrap" id="colorPreview">
+                        <% (@business_profile.style_guidelines&.dig('colors') || []).each do |color| %>
+                          <div style="width: 60px; height: 60px; background-color: <%= color %>; border-radius: 8px; border: 2px solid #dee2e6;" title="<%= color %>"></div>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <%= label_tag 'typography', "Typography Style", class: "form-label" %>
+                    <%= text_field_tag 'style_guidelines[typography]', 
+                        @business_profile.style_guidelines&.dig('typography'),
+                        class: "form-control",
+                        placeholder: "e.g. Modern sans-serif, Classic serif, Clean and minimal" %>
+                    <div class="form-text">Describe your preferred typography style</div>
+                  </div>
+
+                  <div class="mb-3">
+                    <%= label_tag 'aesthetic', "Overall Aesthetic", class: "form-label" %>
+                    <%= text_field_tag 'style_guidelines[aesthetic]', 
+                        @business_profile.style_guidelines&.dig('aesthetic'),
+                        class: "form-control",
+                        placeholder: "e.g. Professional and trustworthy, Bold and energetic, Calm and reassuring" %>
+                    <div class="form-text">Describe the mood and feel of your brand</div>
+                  </div>
+
+                  <div class="mb-3">
+                    <%= label_tag 'logo_url', "Logo URL (optional)", class: "form-label" %>
+                    <%= text_field_tag 'style_guidelines[logo_url]', 
+                        @business_profile.style_guidelines&.dig('logo_url'),
+                        class: "form-control",
+                        placeholder: "/assets/your-logo.png or https://..." %>
+                    <div class="form-text">URL to your logo image</div>
+                  </div>
+
+                  <div class="alert alert-info">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    <strong>Tip:</strong> These guidelines will be automatically used when generating landing pages. 
+                    You can also upload screenshots for design inspiration when creating a new page!
+                  </div>
+
+                  <div class="text-end">
+                    <%= f.submit "Save Style Guidelines", class: "btn btn-primary" %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+// Live color preview
+document.addEventListener('DOMContentLoaded', function() {
+  const colorInput = document.querySelector('textarea[name="style_guidelines[colors][]"]');
+  const colorPreview = document.getElementById('colorPreview');
+  
+  if (colorInput && colorPreview) {
+    colorInput.addEventListener('input', function() {
+      const colors = this.value.split('\n').filter(c => c.trim().startsWith('#'));
+      colorPreview.innerHTML = colors.map(color => 
+        `<div style="width: 60px; height: 60px; background-color: ${color.trim()}; border-radius: 8px; border: 2px solid #dee2e6;" title="${color.trim()}"></div>`
+      ).join('');
+    });
+  }
+});
+</script>
