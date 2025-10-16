@@ -411,6 +411,87 @@ namespace :rag do
       puts "  ⚠️  Not installed (optional)"
     end
 
+    # Check Embedding Cache
+    puts "\nEmbedding Cache:"
+    rag_service = RagStoreService.new
+    cache_stats = rag_service.cache_stats
+
+    if cache_stats[:enabled]
+      puts "  ✅ Enabled (Redis connected)"
+      puts "  Cached embeddings: #{cache_stats[:total_keys]}"
+      puts "  Memory usage: #{cache_stats[:memory_usage]}"
+      puts "  Hit rate: #{cache_stats[:hit_rate]}%"
+      puts "  Total requests: #{cache_stats[:total_requests]}"
+      puts "  Hits: #{cache_stats[:hits]} | Misses: #{cache_stats[:misses]}"
+    else
+      puts "  ⚠️  Disabled or Redis not available"
+      puts "  Enable in .env: RAG_EMBEDDING_CACHE_ENABLED=true"
+    end
+
+    # Check RAG Configuration
+    puts "\nRAG Configuration:"
+    puts "  Chunking strategy: #{RagConfig.chunking_strategy}"
+    puts "  Chunk size: #{RagConfig.chunk_size}"
+    puts "  Chunk overlap: #{RagConfig.chunk_overlap}"
+    puts "  Embedding model: #{RagConfig.embedding_model}"
+    puts "  Embedding batch size: #{RagConfig.embedding_batch_size}"
+    puts "  Cache enabled: #{RagConfig.embedding_cache_enabled?}"
+
     puts "\n✅ Health check complete"
+  end
+
+  desc "Show embedding cache statistics"
+  task cache_stats: :environment do
+    puts "\n📊 Embedding Cache Statistics\n\n"
+
+    rag_service = RagStoreService.new
+    stats = rag_service.cache_stats
+
+    if stats[:enabled]
+      puts "Status: ✅ Enabled"
+      puts ""
+      puts "Cache Performance:"
+      puts "  Total requests: #{stats[:total_requests]}"
+      puts "  Cache hits: #{stats[:hits]}"
+      puts "  Cache misses: #{stats[:misses]}"
+      puts "  Hit rate: #{stats[:hit_rate]}%"
+      puts ""
+      puts "Cache Storage:"
+      puts "  Cached embeddings: #{stats[:total_keys]} / #{stats[:max_size]}"
+      puts "  Memory usage: #{stats[:memory_usage]}"
+      puts "  TTL: #{stats[:ttl_days]} days"
+      puts ""
+
+      # Calculate estimated savings
+      if stats[:total_requests] > 0
+        api_calls_saved = stats[:hits]
+        cost_per_1k_tokens = 0.0001
+        avg_tokens_per_chunk = 500
+        estimated_savings = (api_calls_saved * avg_tokens_per_chunk / 1000.0) * cost_per_1k_tokens
+
+        puts "Estimated Savings:"
+        puts "  API calls avoided: #{api_calls_saved}"
+        puts "  Cost savings: $#{estimated_savings.round(4)}"
+      end
+    else
+      puts "Status: ❌ Disabled"
+      puts ""
+      puts "Reason: #{stats[:message]}"
+      puts ""
+      puts "To enable:"
+      puts "  1. Ensure Redis is running"
+      puts "  2. Set RAG_EMBEDDING_CACHE_ENABLED=true in .env"
+      puts "  3. Restart application"
+    end
+  end
+
+  desc "Clear embedding cache"
+  task clear_cache: :environment do
+    puts "\n🗑️  Clearing Embedding Cache...\n"
+
+    rag_service = RagStoreService.new
+    rag_service.clear_cache!
+
+    puts "✅ Cache cleared successfully"
   end
 end
