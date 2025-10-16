@@ -42,19 +42,19 @@ class ApplicationController < ActionController::Base
 
   # Override the default devise redirect to avoid /entities being appended
   def after_sign_in_path_for(resource)
+    # First check if user needs onboarding (regardless of subdomain)
+    unless resource.onboarded?
+      return onboarding_path
+    end
+
+    # Check if user needs subscription
+    entity = resource.entity
+    if entity && !['active', 'trialing'].include?(entity.subscription_status)
+      return new_subscription_path
+    end
+
     # Check if we're on the app subdomain (or localhost without subdomain for testing)
     if request.subdomain == "app" || request.subdomain.blank?
-      # First check if user needs onboarding (regardless of subdomain)
-      unless resource.onboarded?
-        return onboarding_path
-      end
-
-      # Check if user needs subscription
-      entity = resource.entity
-      if entity && !['active', 'trialing'].include?(entity.subscription_status)
-        return new_subscription_path
-      end
-
       # User is onboarded and has subscription, proceed with entity logic
       if resource.entity
         # User has an entity, go to dashboard

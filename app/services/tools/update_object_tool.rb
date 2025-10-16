@@ -40,9 +40,9 @@ module Tools
       
       # Normalize object type (remove 's' if present)
       object_type = object_type.to_s.singularize
-      
+
       # Validate object type
-      valid_types = ['campaign', 'contact', 'contact_group', 'landing_page', 'email_template', 'email_sequence', 'sequence_step', 'sequence_enrollment']
+      valid_types = [ "campaign", "contact", "contact_group", "landing_page", "email_template", "email_sequence", "sequence_step", "sequence_enrollment", "affiliate", "commission", "payout" ]
       unless valid_types.include?(object_type)
         return error_response(
           "Cannot update objects of type: #{object_type}",
