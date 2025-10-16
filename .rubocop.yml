@@ -3,9 +3,6 @@ inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 
 # Overwrite or add rules to create your own house style
 #
-AllCops:
-  # Disable obsolete cop warnings from rubocop-rails-omakase gem
-  DisableObsoleteChecks: true
 
 # Temporarily disable all Style cops to focus on functionality
 Style:
@@ -13,4 +10,8 @@ Style:
 
 # Temporarily disable Layout cops to avoid formatting issues
 Layout:
+  Enabled: false
+
+# Disable redundant string coercion check
+Lint/RedundantStringCoercion:
   Enabled: false
