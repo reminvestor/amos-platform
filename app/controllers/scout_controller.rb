@@ -54,8 +54,8 @@ class ScoutController < ApplicationController
         agent_loadout: main_chat_loadout
       )
 
-      conversation_history = persisted_history_last_k(12)
-
+      # Use last 20 messages for active context window (keeping token usage manageable)
+      conversation_history = persisted_history_last_k(20)
       # Note: V2 uses streaming by default, but this endpoint returns JSON
       # We'll need to update this to use process_message_with_tools_streaming properly
       # For now, let's create a simple wrapper
@@ -183,8 +183,8 @@ class ScoutController < ApplicationController
         end
       end
 
-      # Process the message
-      result = interactive_service.process_message(user_message, persisted_history_last_k(12), current_canvas)
+      # Process the message with 20-message active window
+      result = interactive_service.process_message(user_message, persisted_history_last_k(20), current_canvas)
 
       # If workflow is awaiting input and we captured a message, use that
       if result[:awaiting_input] && workflow_message
@@ -387,8 +387,8 @@ class ScoutController < ApplicationController
       save_scout_message("user", enhanced_message, metadata: metadata)
       stream_update("📚 Loading conversation history...")
 
-      # Get conversation history
-      conversation_history = persisted_history_last_k(12)
+      # Get conversation history (last 20 messages for active window)
+      conversation_history = persisted_history_last_k(20)
       stream_update("📚 Loading conversation history (#{conversation_history.length} messages)")
 
       # Use InteractiveTaskService with streaming updates
@@ -837,7 +837,17 @@ class ScoutController < ApplicationController
   def clear_conversation
     session_id = session[:scout_session_id]
     if session_id
+      # Clear Rails cache
       Rails.cache.delete("scout_conversation_#{session_id}")
+
+      # Clear Redis history
+      begin
+        memory = Scout::MemoryTools.new(session_id)
+        memory.clear_session
+      rescue => e
+        Rails.logger.warn "Failed to clear Redis history: #{e.message}"
+      end
+
       session.delete(:scout_session_id)
     end
 
@@ -1217,6 +1227,15 @@ class ScoutController < ApplicationController
       content: message,
       metadata: metadata
     )
+
+    # Also store in Redis for extended history access
+    begin
+      memory = Scout::MemoryTools.new(session_id)
+      memory.store_message(role, message, metadata)
+    rescue => e
+      Rails.logger.warn "Failed to store message in Redis: #{e.message}"
+      # Continue - Redis storage is optional enhancement
+    end
 
     # Mirror the last 50 in cache for fast UI render
     conversation = persisted_history_last_k(50)

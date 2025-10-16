@@ -29,7 +29,10 @@ class AgentLoadout
         'aggregate_artifact_data',    # Simple aggregations
         'create_dynamic_visualization', # Quick visualizations
         'get_workflow_context',       # Access uploaded files
-        'get_my_ai_usage'            # Usage tracking
+        'get_my_ai_usage',           # Usage tracking
+        'retrieve_history',           # Retrieve older conversation messages
+        'get_message_count',          # Get total message count
+        'search_history'              # Search conversation history
       ],
       canvas_allowlist: [ "*" ],
       data_scopes: { read: [ "*" ], write: [ "*" ] },
