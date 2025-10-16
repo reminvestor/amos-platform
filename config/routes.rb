@@ -344,6 +344,25 @@ Rails.application.routes.draw do
   # Webhook endpoints
   post "webhooks/:integration_slug", to: "webhooks#receive", as: :webhook_receive
 
+  # Subscription management (signup flow)
+  resources :subscriptions, only: [:new, :create] do
+    collection do
+      get 'success'
+      get 'cancel'
+    end
+  end
+
+  # Stripe billing webhooks
+  post 'stripe/webhooks', to: 'stripe_webhooks#create', as: :stripe_webhooks
+
+  # Stripe checkout and billing
+  namespace :stripe do
+    post 'checkout', to: 'stripe_checkout#create', as: :checkout
+    get 'checkout/success', to: 'stripe_checkout#success', as: :checkout_success
+    get 'checkout/cancel', to: 'stripe_checkout#cancel', as: :checkout_cancel
+    post 'portal', to: 'stripe_checkout#create_portal_session', as: :portal
+  end
+
   # Admin routes
   namespace :admin do
     get "login", to: "sessions#new", as: :new_session

@@ -1,0 +1,13 @@
+<tr id="email_template_<%= template.id %>" class="<%= 'table-success animate-highlight' if template.created_at > 10.seconds.ago %>">
+  <td><%= template.name %></td>
+  <td><%= template.subject %></td>
+  <td><%= template.created_at.strftime("%b %d, %Y") %></td>
+  <td>
+    <%= link_to "View", email_template_path(template), class: "btn btn-sm btn-outline-primary" %>
+    <%= link_to improve_ai_content_path(template), class: "btn btn-sm btn-outline-info" do %>
+      <i class="fas fa-robot"></i> Improve
+    <% end %>
+    <%= link_to "Edit", edit_email_template_path(template), class: "btn btn-sm btn-outline-secondary" %>
+    <%= button_to "Delete", email_template_path(template), method: :delete, data: { turbo_confirm: "Are you sure?" }, class: "btn btn-sm btn-outline-danger", form_class: "d-inline" %>
+  </td>
+</tr>

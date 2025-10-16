@@ -151,6 +151,95 @@ class ScoutDataRegistry
       ],
       scoped_by: "campaign.entity_id",
       creatable: false  # These are created automatically by campaigns
+    },
+
+    'email_sequences' => {
+      model: 'EmailSequence',
+      description: 'Automated email sequences (drip campaigns) with time-based delays',
+      queryable_fields: [
+        'id', 'name', 'goal', 'status', 'created_at', 'updated_at',
+        'enrolled_count', 'completed_count', 'active_count'
+      ],
+      filterable_fields: [
+        'status', 'created_at', 'updated_at'
+      ],
+      metrics: [
+        'enrolled_count', 'active_count', 'completed_count', 'step_count',
+        'total_sent', 'total_opened', 'total_clicked', 'open_rate', 'click_rate', 'completion_rate'
+      ],
+      relationships: [
+        'entity', 'contact_group', 'sequence_steps', 'sequence_enrollments', 'contacts'
+      ],
+      scoped_by: 'entity_id',
+      creatable: true,
+      creation_schema: {
+        required: ['name', 'contact_group_id'],
+        optional: ['goal', 'status'],
+        defaults: {
+          status: 'draft',
+          enrolled_count: 0,
+          completed_count: 0,
+          active_count: 0
+        }
+      }
+    },
+
+    'sequence_steps' => {
+      model: 'SequenceStep',
+      description: 'Individual email steps within an email sequence',
+      queryable_fields: [
+        'id', 'step_number', 'delay_hours', 'subject', 'created_at', 'updated_at',
+        'sent_count', 'opened_count', 'clicked_count'
+      ],
+      filterable_fields: [
+        'email_sequence_id', 'step_number', 'delay_hours'
+      ],
+      metrics: [
+        'sent_count', 'opened_count', 'clicked_count', 'open_rate', 'click_rate', 'delay_in_days'
+      ],
+      relationships: [
+        'email_sequence', 'email_template'
+      ],
+      scoped_by: 'email_sequence.entity_id',
+      creatable: true,
+      creation_schema: {
+        required: ['email_sequence_id', 'step_number', 'delay_hours'],
+        optional: ['email_template_id', 'subject', 'body'],
+        defaults: {
+          delay_hours: 0,
+          sent_count: 0,
+          opened_count: 0,
+          clicked_count: 0
+        }
+      }
+    },
+
+    'sequence_enrollments' => {
+      model: 'SequenceEnrollment',
+      description: 'Contact enrollment records tracking progress through email sequences',
+      queryable_fields: [
+        'id', 'status', 'current_step_number', 'created_at', 'updated_at',
+        'next_send_at', 'started_at', 'completed_at', 'last_email_sent_at'
+      ],
+      filterable_fields: [
+        'email_sequence_id', 'contact_id', 'status', 'next_send_at'
+      ],
+      metrics: [
+        'progress_percentage', 'days_in_sequence'
+      ],
+      relationships: [
+        'email_sequence', 'contact', 'entity'
+      ],
+      scoped_by: 'entity_id',
+      creatable: true,
+      creation_schema: {
+        required: ['email_sequence_id', 'contact_id', 'entity_id'],
+        optional: ['status', 'next_send_at'],
+        defaults: {
+          status: 'pending',
+          current_step_number: 0
+        }
+      }
     }
   }.freeze
 

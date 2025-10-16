@@ -70,13 +70,14 @@ class Users::RegistrationsController < Devise::RegistrationsController
     devise_parameter_sanitizer.permit(:account_update, keys: [ :first_name, :last_name, :role ])
   end
 
-  # Override the after_sign_up_path_for method to redirect to onboarding
+  # Override the after_sign_up_path_for method to redirect to Stripe checkout
   def after_sign_up_path_for(resource)
-    onboarding_path
+    # Redirect to plan selection page (which will show Stripe checkout)
+    new_subscription_path
   end
 
   def after_inactive_sign_up_path_for(resource)
-    onboarding_path
+    new_subscription_path
   end
 
   private
