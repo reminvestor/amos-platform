@@ -6,8 +6,8 @@ if Rails.env.production?
   Rails.application.config.after_initialize do
     ActionController::Base.class_eval do
       def self.default_url_options
-        { protocol: 'https' }
+        { protocol: "https" }
       end
     end
   end
-end 
+end

@@ -1,14 +1,14 @@
 class AiContentController < ApplicationController
   before_action :authenticate_user!
-  
+
   def new
     @email_templates = current_user.email_templates
     @contact_groups = current_user.contact_groups
   end
-  
+
   def generate
     service = AiContentService.new
-    
+
     generation_params = {
       audience: params[:audience],
       purpose: params[:purpose],
@@ -17,9 +17,9 @@ class AiContentController < ApplicationController
       length: params[:length],
       specific_points: params[:specific_points].to_s.split("\n").reject(&:blank?)
     }
-    
+
     @generated_content = service.generate_email_content(generation_params)
-    
+
     # If template_id provided, update that template
     if params[:template_id].present? && !params[:template_id].empty?
       template = current_user.email_templates.find_by(id: params[:template_id])
@@ -30,7 +30,7 @@ class AiContentController < ApplicationController
         return
       end
     end
-    
+
     # Otherwise, create a new template if requested
     if params[:create_template] == "1"
       template = current_user.email_templates.create(
@@ -42,27 +42,27 @@ class AiContentController < ApplicationController
       redirect_to email_template_path(template)
       return
     end
-    
+
     # If not saving to a template, just render the result
     render :result
   end
-  
+
   def improve
     @template = current_user.email_templates.find(params[:template_id])
-    
+
     # Mock stats for now, would come from actual analytics in production
     stats = {
       open_rate: params[:open_rate] || 15,
       click_rate: params[:click_rate] || 2.5
     }
-    
+
     service = AiContentService.new
     @improved_content = service.improve_content(
       @template.body,
       stats,
       params[:audience] || "general subscribers"
     )
-    
+
     if params[:update_template] == "1"
       @template.update(body: @improved_content)
       flash[:notice] = "Template updated with improved content"
@@ -71,16 +71,16 @@ class AiContentController < ApplicationController
       render :improve_result
     end
   end
-  
+
   def analyze_campaign
     @campaign = current_user.campaigns.find(params[:campaign_id])
-    
+
     # Check if we should reanalyze
     if params[:force_reanalyze] || @campaign.ai_analysis.blank? || @campaign.last_analyzed_at.blank?
       # Generate new analysis
       service = AiContentService.new
       @analysis = service.analyze_campaign_results(@campaign)
-      
+
       # Store the analysis in the campaign
       @campaign.update(
         ai_analysis: @analysis,
@@ -90,23 +90,23 @@ class AiContentController < ApplicationController
       # Use existing analysis
       @analysis = @campaign.ai_analysis
     end
-    
+
     render :analysis_result
   end
-  
+
   def reanalyze_campaign
     # Simply redirect to analyze_campaign with force_reanalyze parameter
     redirect_to ai_analyze_campaign_path(params[:campaign_id], force_reanalyze: true)
   end
-  
+
   private
-  
+
   def extract_subject(content)
     # Try to extract subject line from HTML content
     # This is a simple version; could be improved with regex
     if content.include?("<subject>") && content.include?("</subject>")
       content.match(/<subject>(.*?)<\/subject>/)[1]
-    elsif content.downcase.include?("subject:") 
+    elsif content.downcase.include?("subject:")
       content.match(/subject:(.*?)($|\n)/i)[1].strip
     else
       "AI Generated Email"
@@ -114,4 +114,4 @@ class AiContentController < ApplicationController
   rescue
     "AI Generated Email"
   end
-end 
+end

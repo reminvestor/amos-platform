@@ -11,14 +11,14 @@ suspicious_messages.each do |msg|
   puts "Session: #{msg.session_id}"
   puts "Content: #{msg.content}"
   puts "Created: #{msg.created_at}"
-  
+
   # Check if there's a user message with the same content in the same session around the same time
   potential_duplicate = ScoutMessage.where(
     session_id: msg.session_id,
     role: 'user',
     content: msg.content
   ).where("created_at BETWEEN ? AND ?", msg.created_at - 5.seconds, msg.created_at + 5.seconds).first
-  
+
   if potential_duplicate
     puts "Found matching user message (ID: #{potential_duplicate.id}) - this assistant message is likely a duplicate"
     puts "Deleting incorrect assistant message..."

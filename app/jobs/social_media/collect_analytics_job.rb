@@ -8,4 +8,4 @@ module SocialMedia
       service.collect_analytics(post)
     end
   end
-end 
+end

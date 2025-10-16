@@ -4,8 +4,8 @@ module SocialMedia
       super
       @client = InstagramBasicDisplay::Client.new(
         access_token: access_token,
-        client_id: ENV['INSTAGRAM_CLIENT_ID'],
-        client_secret: ENV['INSTAGRAM_CLIENT_SECRET']
+        client_id: ENV["INSTAGRAM_CLIENT_ID"],
+        client_secret: ENV["INSTAGRAM_CLIENT_SECRET"]
       )
     end
 
@@ -14,41 +14,41 @@ module SocialMedia
         # Note: Instagram Basic Display API doesn't support direct posting
         # We'll need to use the Instagram Graph API (through Facebook) for posting
         # This is a more complex setup requiring a Facebook Business account
-        
+
         # For now, we'll use the Facebook Graph API through Koala
         fb_graph = Koala::Facebook::API.new(facebook_access_token)
-        
+
         # First, we need to get the Instagram Business Account ID
         instagram_account_id = get_instagram_account_id(fb_graph)
-        
+
         response = if post.image.present?
           # For Instagram, we need to first create a media container
           media = fb_graph.put_connections(
             instagram_account_id,
-            'media',
+            "media",
             {
               image_url: post.image.url,
               caption: format_content(post)
             }
           )
-          
+
           # Then publish it
           fb_graph.put_connections(
             instagram_account_id,
-            'media_publish',
-            { creation_id: media['id'] }
+            "media_publish",
+            { creation_id: media["id"] }
           )
         else
-          raise StandardError, 'Instagram posts require an image'
+          raise StandardError, "Instagram posts require an image"
         end
 
         post_url = "https://instagram.com/p/#{response['id']}"
-        update_post_status(post, 'published', post_url)
+        update_post_status(post, "published", post_url)
         collect_analytics(post)
-        
+
         true
       rescue StandardError => e
-        update_post_status(post, 'failed')
+        update_post_status(post, "failed")
         Rails.logger.error("Instagram post failed: #{e.message}")
         false
       end
@@ -59,14 +59,14 @@ module SocialMedia
 
       begin
         media_id = extract_media_id(post.post_url)
-        
+
         # Using Facebook Graph API to get Instagram insights
         fb_graph = Koala::Facebook::API.new(facebook_access_token)
         instagram_account_id = get_instagram_account_id(fb_graph)
-        
+
         insights = fb_graph.get_object(
           "#{instagram_account_id}/media/#{media_id}/insights",
-          metric: 'engagement,impressions,reach'
+          metric: "engagement,impressions,reach"
         )
 
         metrics = {
@@ -87,12 +87,12 @@ module SocialMedia
 
     def access_token
       # TODO: Implement access token retrieval from your configuration system
-      ENV['INSTAGRAM_ACCESS_TOKEN']
+      ENV["INSTAGRAM_ACCESS_TOKEN"]
     end
 
     def facebook_access_token
       # TODO: Implement Facebook access token retrieval from your configuration system
-      ENV['FACEBOOK_ACCESS_TOKEN']
+      ENV["FACEBOOK_ACCESS_TOKEN"]
     end
 
     def format_content(post)
@@ -103,44 +103,44 @@ module SocialMedia
 
     def get_instagram_account_id(fb_graph)
       # Get Instagram Business Account ID through Facebook Graph API
-      accounts = fb_graph.get_connections('me', 'accounts')
-      page_id = accounts.first['id'] # Assuming the first page is the one we want
-      
+      accounts = fb_graph.get_connections("me", "accounts")
+      page_id = accounts.first["id"] # Assuming the first page is the one we want
+
       instagram_accounts = fb_graph.get_connections(
         page_id,
-        'instagram_accounts'
+        "instagram_accounts"
       )
-      
-      instagram_accounts.first['id']
+
+      instagram_accounts.first["id"]
     end
 
     def extract_media_id(post_url)
       # Extract the media ID from Instagram URL
-      post_url.split('/p/').last.split('/').first
+      post_url.split("/p/").last.split("/").first
     end
 
     def get_likes_count(media_id)
       response = @client.media(media_id)
-      response['like_count'] rescue 0
+      response["like_count"] rescue 0
     end
 
     def get_comments_count(media_id)
       response = @client.media(media_id)
-      response['comments_count'] rescue 0
+      response["comments_count"] rescue 0
     end
 
     def get_views_count(insights)
       return 0 unless insights
 
-      impression_data = insights.find { |i| i['name'] == 'impressions' }
-      impression_data['values'].first['value'] rescue 0
+      impression_data = insights.find { |i| i["name"] == "impressions" }
+      impression_data["values"].first["value"] rescue 0
     end
 
     def get_reach_count(insights)
       return 0 unless insights
 
-      reach_data = insights.find { |i| i['name'] == 'reach' }
-      reach_data['values'].first['value'] rescue 0
+      reach_data = insights.find { |i| i["name"] == "reach" }
+      reach_data["values"].first["value"] rescue 0
     end
   end
-end 
+end
