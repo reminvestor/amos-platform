@@ -1,0 +1,13 @@
+rules:
+  - id: json-file-scan
+    patterns:
+      - pattern: |
+          {...}
+    languages: [json]
+    paths:
+      include:
+        - "*.json"
+        - .mcp.json
+        - "**/*.json"
+    message: JSON file validation
+    severity: INFO

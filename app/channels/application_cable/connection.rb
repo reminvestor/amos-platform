@@ -16,12 +16,12 @@ module ApplicationCable
 
     def find_verified_user
       # Try to get user from Warden (Devise)
-      if request.env['warden']&.user
-        request.env['warden'].user
+      if request.env["warden"]&.user
+        request.env["warden"].user
       else
         Rails.logger.warn "ActionCable connection rejected - no authenticated user found"
         reject_unauthorized_connection
       end
     end
   end
-end 
+end

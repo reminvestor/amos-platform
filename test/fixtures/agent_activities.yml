@@ -1,11 +1,17 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
-# This model initially had no columns defined. If you add columns to the
-# model remove the "{}" from the fixture names and add the columns immediately
-# below each fixture, per the syntax in the comments below
-#
-one: {}
-# column: value
-#
-two: {}
-# column: value
+one:
+  conversation: one
+  agent_name: "conversation_engine"
+  activity_type: "message_processing"
+  input_data: {"message": "Hello"}
+  output_data: {"response": "Processing complete"}
+  processing_time_ms: 150
+
+two:
+  conversation: two
+  agent_name: "intent_analyzer"
+  activity_type: "intent_analysis"
+  input_data: {"message": "Help with campaign"}
+  output_data: {"intent": "campaign_assistance"}
+  processing_time_ms: 200
