@@ -2,55 +2,55 @@ module ApplicationHelper
   # Return Bootstrap color class for campaign status
   def campaign_status_color(status)
     case status
-    when 'draft'
-      'secondary'
-    when 'scheduled'
-      'info'
-    when 'in_progress'
-      'primary'
-    when 'completed'
-      'success'
-    when 'paused'
-      'warning'
-    when 'stopped'
-      'danger'
+    when "draft"
+      "secondary"
+    when "scheduled"
+      "info"
+    when "in_progress"
+      "primary"
+    when "completed"
+      "success"
+    when "paused"
+      "warning"
+    when "stopped"
+      "danger"
     else
-      'secondary'
+      "secondary"
     end
   end
-  
+
   # Return Bootstrap color class for email delivery status
   def delivery_status_color(status)
     case status
-    when 'pending'
-      'secondary'
-    when 'sent'
-      'primary'
-    when 'delivered'
-      'info'
-    when 'opened'
-      'success'
-    when 'clicked'
-      'success'
-    when 'bounced'
-      'danger'
-    when 'failed'
-      'danger'
+    when "pending"
+      "secondary"
+    when "sent"
+      "primary"
+    when "delivered"
+      "info"
+    when "opened"
+      "success"
+    when "clicked"
+      "success"
+    when "bounced"
+      "danger"
+    when "failed"
+      "danger"
     else
-      'secondary'
+      "secondary"
     end
   end
 
   def markdown(text)
-    return '' if text.blank?
-    
+    return "" if text.blank?
+
     # Initialize Redcarpet Markdown renderer
     renderer = Redcarpet::Render::HTML.new(
       hard_wrap: true,
       filter_html: false,
-      link_attributes: { target: '_blank', rel: 'noopener noreferrer' }
+      link_attributes: { target: "_blank", rel: "noopener noreferrer" }
     )
-    
+
     markdown = Redcarpet::Markdown.new(
       renderer,
       autolink: true,
@@ -63,7 +63,7 @@ module ApplicationHelper
       highlight: true,
       quote: true
     )
-    
+
     # Process the markdown
     markdown.render(text)
   end
@@ -81,22 +81,22 @@ module ApplicationHelper
   # Helper method for styling CrawlerJob status badges
   def status_badge_class(status)
     case status
-    when 'pending', 'queued_for_run'
-      'bg-secondary'
-    when 'generating', 'running'
-      'bg-info text-dark' # Using text-dark for better contrast on info
-    when 'improving'
-      'bg-warning text-dark'
-    when 'fixing'
-      'bg-danger text-white'
-    when 'ready'
-      'bg-primary'
-    when 'completed' # Assuming we add this status later
-      'bg-success'
-    when 'failed'
-      'bg-danger'
+    when "pending", "queued_for_run"
+      "bg-secondary"
+    when "generating", "running"
+      "bg-info text-dark" # Using text-dark for better contrast on info
+    when "improving"
+      "bg-warning text-dark"
+    when "fixing"
+      "bg-danger text-white"
+    when "ready"
+      "bg-primary"
+    when "completed" # Assuming we add this status later
+      "bg-success"
+    when "failed"
+      "bg-danger"
     else
-      'bg-light text-dark' # Default/unknown status
+      "bg-light text-dark" # Default/unknown status
     end
   end
 end

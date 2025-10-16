@@ -9,9 +9,9 @@ class CreateTaskEvents < ActiveRecord::Migration[8.0]
 
       t.timestamps
     end
-    
-    add_index :task_events, [:task_session_id, :created_at]
+
+    add_index :task_events, [ :task_session_id, :created_at ]
     add_index :task_events, :event_type
-    add_index :task_events, [:task_session_id, :sequence_number], unique: true
+    add_index :task_events, [ :task_session_id, :sequence_number ], unique: true
   end
 end

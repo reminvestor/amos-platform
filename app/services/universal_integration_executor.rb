@@ -45,10 +45,12 @@ class UniversalIntegrationExecutor
         return error_response("Rate limit exceeded", retry_after: 1.hour.from_now)
       end
       
-      # 6. Execute operation via IntegrationApiService (DB-driven, secure!)
-      # All integrations use the same safe executor - no arbitrary code execution
-      Rails.logger.info "🔒 Executing via secure DB-driven IntegrationApiService"
-      result = execute_via_api_service(connection, operation_record, params)
+      # 6. Load service class
+      service = load_service(integration_record, connection)
+      return error_response("Service class not found for #{integration_record.name}") unless service
+      
+      # 7. Execute operation
+      result = service.execute_operation(operation_record.operation_id, params)
       
       # 8. Log the execution
       log_execution(
@@ -105,8 +107,26 @@ class UniversalIntegrationExecutor
                .find_by(operation_id: operation_id)
   end
   
-  # Removed load_service method - no longer loading service class files
-  # All integrations now execute via secure DB-driven IntegrationApiService
+  def load_service(integration, connection)
+    # Try to load service class
+    service_class_name = "Integrations::#{integration.slug.camelize}::#{integration.slug.camelize}Service"
+    
+    begin
+      service_class = service_class_name.constantize
+      service_class.new(connection)
+    rescue NameError
+      # Try loading the file
+      service_path = Rails.root.join('app', 'services', 'integrations', integration.slug, "#{integration.slug}_service.rb")
+      
+      if File.exist?(service_path)
+        load service_path
+        service_class = service_class_name.constantize
+        service_class.new(connection)
+      else
+        nil
+      end
+    end
+  end
   
   def log_execution(connection:, operation:, params:, result:, duration_ms:)
     IntegrationLog.create!(
@@ -223,34 +243,6 @@ class UniversalIntegrationExecutor
     when Hash then 'object'
     else 'string'
     end
-  end
-  
-  def execute_via_api_service(connection, operation, params)
-    # Fallback to IntegrationApiService for legacy integrations
-    api_service = IntegrationApiService.new(connection)
-    response = api_service.execute_operation(operation, params: params)
-    
-    # Convert HTTParty response to standardized format
-    if response.code.between?(200, 299)
-      {
-        success: true,
-        data: response.parsed_response,
-        status_code: response.code
-      }
-    else
-      {
-        success: false,
-        error: response.message,
-        status_code: response.code,
-        error_details: response.parsed_response
-      }
-    end
-  rescue => e
-    {
-      success: false,
-      error: e.message,
-      error_class: e.class.name
-    }
   end
   
   def error_response(message, **extra)

@@ -2,51 +2,51 @@ module Tools
   class CreateRagStoreTool < BaseTool
     def self.metadata
       {
-        name: 'create_rag_store',
-        description: 'Create a RAG (Retrieval Augmented Generation) knowledge base from API documentation',
-        category: 'integration',
+        name: "create_rag_store",
+        description: "Create a RAG (Retrieval Augmented Generation) knowledge base from API documentation",
+        category: "integration",
         input_schema: {
-          type: 'object',
+          type: "object",
           properties: {
             app_name: {
-              type: 'string',
-              description: 'Name of the application/API'
+              type: "string",
+              description: "Name of the application/API"
             },
             documentation: {
-              type: 'array',
-              description: 'Array of documentation URLs or text content'
+              type: "array",
+              description: "Array of documentation URLs or text content"
             },
             search_results: {
-              type: 'array',
-              description: 'Array of search results to process'
+              type: "array",
+              description: "Array of search results to process"
             },
             user_uploads: {
-              type: 'array',
-              description: 'Array of uploaded file references'
+              type: "array",
+              description: "Array of uploaded file references"
             }
           },
-          required: ['app_name']
+          required: [ "app_name" ]
         }
       }
     end
-    
+
     def execute(args)
       log_execution(args)
-      
+
       app_name = get_arg(args, :app_name)
       documentation = get_arg(args, :documentation, [])
       search_results = get_arg(args, :search_results, [])
       user_uploads = get_arg(args, :user_uploads, [])
-      
+
       # Validate required args
-      if error = validate_required_args(args, [:app_name])
+      if error = validate_required_args(args, [ :app_name ])
         return error
       end
-      
+
       begin
         # Process all documentation sources
         documents_to_process = []
-        
+
         # Add search results as URLs
         # search_results can be either:
         # 1. Array of web_search tool responses (each with :results array inside)
@@ -54,74 +54,74 @@ module Tools
         search_results.each do |result|
           # Skip if result is a string (unresolved template variable)
           next if result.is_a?(String)
-          
+
           # Check if this is a web_search tool response (has :results key)
-          if result.is_a?(Hash) && (result[:results] || result['results'])
+          if result.is_a?(Hash) && (result[:results] || result["results"])
             # Extract individual results from web_search response
-            results_array = result[:results] || result['results']
+            results_array = result[:results] || result["results"]
             results_array.each do |search_result|
-              url = search_result[:url] || search_result['url']
+              url = search_result[:url] || search_result["url"]
               next unless url
-              
+
               documents_to_process << {
-                type: 'url',
+                type: "url",
                 content: url,
-                metadata: { 
-                  title: search_result[:title] || search_result['title'],
-                  snippet: search_result[:snippet] || search_result['snippet']
+                metadata: {
+                  title: search_result[:title] || search_result["title"],
+                  snippet: search_result[:snippet] || search_result["snippet"]
                 }
               }
             end
-          elsif result.is_a?(Hash) && (result[:url] || result['url'])
+          elsif result.is_a?(Hash) && (result[:url] || result["url"])
             # This is an individual result hash
             documents_to_process << {
-              type: 'url',
-              content: result[:url] || result['url'],
-              metadata: { title: result[:title] || result['title'] }
+              type: "url",
+              content: result[:url] || result["url"],
+              metadata: { title: result[:title] || result["title"] }
             }
           end
         end
-        
+
         # Add user-provided documentation
         documentation.each do |doc|
-          if doc.start_with?('http')
-            documents_to_process << { type: 'url', content: doc }
+          if doc.start_with?("http")
+            documents_to_process << { type: "url", content: doc }
           else
-            documents_to_process << { type: 'text', content: doc }
+            documents_to_process << { type: "text", content: doc }
           end
         end
-        
+
         # Add uploaded files
         user_uploads.each do |upload|
           # Skip if upload is a string (unresolved template variable)
           next if upload.is_a?(String)
           next unless upload.is_a?(Hash)
-          
-          path = upload[:path] || upload['path']
+
+          path = upload[:path] || upload["path"]
           next unless path
-          
+
           documents_to_process << {
-            type: 'file',
+            type: "file",
             content: path,
-            filename: upload[:filename] || upload['filename']
+            filename: upload[:filename] || upload["filename"]
           }
         end
-        
+
         # Check if we have any documents to process
         if documents_to_process.empty?
           return error_response("No valid documentation sources found. Please provide URLs, search results, or uploaded files.")
         end
-        
+
         Rails.logger.info "📚 Processing #{documents_to_process.length} documents for RAG store"
-        
+
         # Process documents to extract chunks
         processor = DocumentProcessorService.new
         processing_result = processor.process_documents(documents_to_process)
-        
+
         if !processing_result[:success]
           return error_response("Document processing failed: #{processing_result[:error]}")
         end
-        
+
         # Create RAG store with Pinecone
         rag_service = RagStoreService.new
         rag_result = rag_service.create_rag_store(
@@ -134,14 +134,14 @@ module Tools
             processing_metadata: processing_result[:metadata]
           }
         )
-        
+
         if rag_result[:success]
           success_response(
             rag_store_id: rag_result[:rag_store_id],
             app_name: app_name,
             documents_indexed: documents_to_process.length,
             chunks_created: rag_result[:chunks_stored],
-            status: 'ready',
+            status: "ready",
             message: "Successfully created knowledge base for #{app_name}"
           )
         else

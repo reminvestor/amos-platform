@@ -7,7 +7,7 @@ class AdminMailer < ApplicationMailer
     @timestamp = Time.current
 
     mail(
-      to: ENV['ADMIN_EMAIL'] || ENV['MAILGUN_FROM'],
+      to: ENV["ADMIN_EMAIL"] || ENV["MAILGUN_FROM"],
       subject: "Error in #{job_class}: #{error_message.to_s.truncate(50)}"
     )
   end
@@ -93,4 +93,4 @@ class AdminMailer < ApplicationMailer
   def admin_commission_url(commission)
     Rails.application.routes.url_helpers.admin_commissions_url(anchor: "commission-#{commission.id}")
   end
-end 
+end

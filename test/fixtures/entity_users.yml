@@ -3,9 +3,9 @@
 one:
   entity: one
   user: one
-  role: "owner"
+  role: "member"
 
 two:
   entity: one
   user: two
-  role: "owner"
+  role: "admin"

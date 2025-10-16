@@ -1,10 +1,10 @@
-require 'open3'
-require 'timeout'
+require "open3"
+require "timeout"
 
 class CrawlerJobsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_entity
-  before_action :set_crawler_job, only: [:show, :execute, :test, :logs, :debug, :improve, :fix_bugs, :chat, :reset_conversation]
+  before_action :set_crawler_job, only: [ :show, :execute, :test, :logs, :debug, :improve, :fix_bugs, :chat, :reset_conversation ]
 
   def index
     @crawler_jobs = @entity.crawler_jobs.order(created_at: :desc)
@@ -12,13 +12,13 @@ class CrawlerJobsController < ApplicationController
 
   def show
     # @crawler_job is set by before_action
-    
+
     # Initialize conversation if needed - but with intelligent questions
     if @crawler_job.crawler_conversations.empty?
       # Set an initial greeting
-      @crawler_job.add_message('assistant', "Hello! I'll help you create a crawler to collect contact information based on your description. Let me ask a few questions to get started.")
-      @crawler_job.update(conversation_stage: 'analyzing') # Start in analyzing mode
-      
+      @crawler_job.add_message("assistant", "Hello! I'll help you create a crawler to collect contact information based on your description. Let me ask a few questions to get started.")
+      @crawler_job.update(conversation_stage: "analyzing") # Start in analyzing mode
+
       # Use the conversation handler to generate the first set of questions
       # based on the initial description
       if @crawler_job.description.present?
@@ -36,7 +36,7 @@ class CrawlerJobsController < ApplicationController
   def create
     @crawler_job = @entity.crawler_jobs.new(crawler_job_params)
     @crawler_job.user = current_user
-    @crawler_job.status = 'pending' # Initial status
+    @crawler_job.status = "pending" # Initial status
 
     if @crawler_job.save
       # Redirect to the show page where the chat interface is
@@ -52,57 +52,57 @@ class CrawlerJobsController < ApplicationController
   def chat
     # Processing a message in the chat
     return head :bad_request unless params[:message].present?
-    
+
     # Don't process if the job is currently in a busy state
-    busy_statuses = ['generating', 'testing', 'improving', 'fixing']
+    busy_statuses = [ "generating", "testing", "improving", "fixing" ]
     if busy_statuses.include?(@crawler_job.status)
       render json: { error: "Cannot process messages while the crawler is being #{@crawler_job.status}" }, status: :unprocessable_entity
       return
     end
-    
+
     begin
       # Process the message and get a response
       conversation_handler = ConversationHandlerService.new(@crawler_job)
       response = conversation_handler.handle_message(params[:message])
-      
+
       # Check if we're starting generation (indicated by status change)
-      generating = @crawler_job.reload.status == 'generating'
-      
+      generating = @crawler_job.reload.status == "generating"
+
       # Return the response and status
       render json: { response: response, generating: generating }
     rescue => e
       # Log the error
       Rails.logger.error("Error in chat action: #{e.message}")
       Rails.logger.error(e.backtrace.join("\n"))
-      
+
       # Add error to crawler job logs
       @crawler_job.add_log("Chat error: #{e.message}", "error")
-      
+
       # Return a friendlier error message to the client
-      render json: { 
+      render json: {
         response: "Sorry, I encountered an error while processing your message. Please try again or use different wording.",
         error: "An error occurred while processing your request."
       }, status: :ok
     end
   end
-  
+
   # POST /crawler_jobs/:id/reset_conversation
   def reset_conversation
     @crawler_job.reset_conversation
-    
+
     # If the crawler is in a 'ready' or 'failed' state, reset it for a new conversation
-    if ['ready', 'failed'].include?(@crawler_job.status)
+    if [ "ready", "failed" ].include?(@crawler_job.status)
       @crawler_job.update(
-        conversation_stage: 'analyzing',
+        conversation_stage: "analyzing",
         target_urls: nil,
         test_results: nil,
         improvement_attempts: nil
       )
     end
-    
+
     # Set an initial assistant message
-    @crawler_job.add_message('assistant', "Hello! I'm your crawler assistant. Please describe what kind of contact information you want to collect and from which websites.")
-    
+    @crawler_job.add_message("assistant", "Hello! I'm your crawler assistant. Please describe what kind of contact information you want to collect and from which websites.")
+
     # Return success
     head :ok
   end
@@ -110,7 +110,7 @@ class CrawlerJobsController < ApplicationController
   # POST /crawler_jobs/:id/execute
   def execute
     # @crawler_job is set by before_action
-    if @crawler_job.status == 'ready' && @crawler_job.generated_code.present?
+    if @crawler_job.status == "ready" && @crawler_job.generated_code.present?
       ExecuteCrawlerJob.perform_later(@crawler_job.id)
       flash[:notice] = "Crawler execution has been queued."
     else
@@ -122,7 +122,7 @@ class CrawlerJobsController < ApplicationController
   # POST /crawler_jobs/:id/test
   def test
     # @crawler_job is set by before_action
-    if @crawler_job.status == 'ready' && @crawler_job.generated_code.present?
+    if @crawler_job.status == "ready" && @crawler_job.generated_code.present?
       # Enqueue the TestCrawlerJob
       TestCrawlerJob.perform_later(@crawler_job.id)
       flash[:notice] = "Crawler test run has been queued. Check Heroku dyno logs (run.XXXX) for output."
@@ -137,9 +137,9 @@ class CrawlerJobsController < ApplicationController
   def logs
     since_id = params[:since].to_i
     @logs = @crawler_job.crawler_job_logs.where("id > ?", since_id)
-    
+
     render json: {
-      logs: @logs.as_json(only: [:id, :message, :log_level, :timestamp]),
+      logs: @logs.as_json(only: [ :id, :message, :log_level, :timestamp ]),
       job_status: @crawler_job.status,
       job_status_class: helpers.status_badge_class(@crawler_job.status)
     }
@@ -148,38 +148,38 @@ class CrawlerJobsController < ApplicationController
   # POST /crawler_jobs/:id/debug
   def debug
     # @crawler_job is set by before_action
-    if @crawler_job.status == 'ready' && @crawler_job.generated_code.present?
+    if @crawler_job.status == "ready" && @crawler_job.generated_code.present?
       # Run the Python script locally and capture the output
       output = nil
       error = nil
       exit_status = nil
-      
-      Tempfile.create(["debug_crawler_#{@crawler_job.id}_", '.py']) do |file|
+
+      Tempfile.create([ "debug_crawler_#{@crawler_job.id}_", ".py" ]) do |file|
         file.write(@crawler_job.generated_code)
         file.flush
-        
+
         # Rather than using Timeout which can lead to thread issues,
         # we'll use the Open3.popen3 method with a separate thread
         # for monitoring timeout
         begin
           # Build the command with environment variables
-          env = { 'MARKETING_API_KEY' => current_user.api_key, 'CRAWLER_TEST_MODE' => 'true' }
+          env = { "MARKETING_API_KEY" => current_user.api_key, "CRAWLER_TEST_MODE" => "true" }
           cmd = "python3 #{file.path}"
-          
+
           # Log the first 20 lines of code for debugging
           @crawler_job.add_log("Debug execution starting with the first 20 lines of Python code:", "debug")
           @crawler_job.add_log(@crawler_job.generated_code.lines.take(20).join, "debug")
-          
+
           # Use a mutex and condition variable for thread synchronization
           mutex = Mutex.new
           resource = ConditionVariable.new
           timeout_reached = false
           cmd_completed = false
-          
+
           # For partial output collection in case of timeout
           partial_output = []
           partial_error = []
-          
+
           # Start the command in a separate thread
           thread = Thread.new do
             Open3.popen3(env, cmd) do |stdin, stdout, stderr, wait_thr|
@@ -189,18 +189,18 @@ class CrawlerJobsController < ApplicationController
                   mutex.synchronize { partial_output << line.strip }
                 end
               end
-              
+
               stderr_reader = Thread.new do
                 while line = stderr.gets
                   mutex.synchronize { partial_error << line.strip }
                 end
               end
-              
+
               # Wait for the process to complete
               status = wait_thr.value
               stdout_reader.join(2)
               stderr_reader.join(2)
-              
+
               # Get full output
               mutex.synchronize do
                 unless timeout_reached
@@ -213,7 +213,7 @@ class CrawlerJobsController < ApplicationController
               end
             end
           end
-          
+
           # Wait for either completion or timeout
           mutex.synchronize do
             # Increase timeout to 60 seconds
@@ -223,12 +223,12 @@ class CrawlerJobsController < ApplicationController
               output = partial_output.empty? ? "Command timed out after 60 seconds (no output)" : partial_output.join("\n")
               error = partial_error.empty? ? "Execution exceeded 60 second timeout" : partial_error.join("\n")
               exit_status = -1
-              
+
               # Try to kill the thread gracefully
               thread.kill if thread.alive?
             end
           end
-          
+
           # Wait for thread to finish (it should be done already)
           thread.join(5)
         rescue => e
@@ -237,7 +237,7 @@ class CrawlerJobsController < ApplicationController
           exit_status = -1
         end
       end
-      
+
       # Save the output as logs
       if output.present?
         output.each_line do |line|
@@ -246,11 +246,11 @@ class CrawlerJobsController < ApplicationController
           @crawler_job.add_log(line, "debug")
         end
       end
-      
+
       # Track if we had any errors
       has_errors = false
-      
-      if error.present? && error != ''
+
+      if error.present? && error != ""
         has_errors = true
         error.each_line do |line|
           line = line.strip
@@ -258,16 +258,16 @@ class CrawlerJobsController < ApplicationController
           @crawler_job.add_log("ERROR: #{line}", "error")
         end
       end
-      
+
       # Also consider exit status
       has_errors = true if exit_status != 0
-      
+
       # Always log the final status
       @crawler_job.add_log("Debug execution completed with exit status: #{exit_status}", exit_status == 0 ? "info" : "error")
-      
+
       # Check for auto_fix parameter
-      auto_fix = params[:auto_fix] == 'true'
-      
+      auto_fix = params[:auto_fix] == "true"
+
       # Automatically trigger bug fixing if requested and errors were found
       if auto_fix && has_errors
         flash[:notice] = "Debug execution completed with errors. Automatically starting bug fixing..."
@@ -275,43 +275,43 @@ class CrawlerJobsController < ApplicationController
         fix_bugs
         return
       end
-      
+
       flash[:notice] = "Debug execution completed. See logs for details."
     else
       flash[:alert] = "Crawler job is not ready for debugging or has no code."
     end
-    
+
     redirect_to crawler_job_path(@crawler_job)
   end
 
   # POST /crawler_jobs/:id/improve
   def improve
     # @crawler_job is set by before_action
-    if @crawler_job.status == 'ready' || @crawler_job.status == 'failed'
+    if @crawler_job.status == "ready" || @crawler_job.status == "failed"
       # Queue job to improve the code
       ImproveGeneratedCodeJob.perform_later(@crawler_job.id)
-      @crawler_job.update(status: 'improving')
+      @crawler_job.update(status: "improving")
       flash[:notice] = "Code improvement has been queued. LLM will fix common issues in the generated code."
     else
       flash[:alert] = "Crawler job must be in 'ready' or 'failed' state to improve the code."
     end
-    
+
     redirect_to crawler_job_path(@crawler_job)
   end
 
   # POST /crawler_jobs/:id/fix_bugs
   def fix_bugs
     # @crawler_job is set by before_action
-    if @crawler_job.status == 'ready' || @crawler_job.status == 'failed'
+    if @crawler_job.status == "ready" || @crawler_job.status == "failed"
       # Use the BugFixService to fix runtime issues
       bug_fix_service = BugFixService.new(@crawler_job)
       bug_fix_service.fix_runtime_bugs
-      
+
       flash[:notice] = "Runtime bug fixing has been started. Check logs for updates."
     else
       flash[:alert] = "Crawler job must be in 'ready' or 'failed' state to fix runtime bugs."
     end
-    
+
     redirect_to crawler_job_path(@crawler_job)
   end
 

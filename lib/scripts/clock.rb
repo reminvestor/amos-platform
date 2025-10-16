@@ -15,10 +15,10 @@ module Clockwork
     Rails.logger.info "Syncing active campaigns with Mailgun"
     SyncMailgunStatsJob.perform_later
   end
-  
+
   # Run daily at midnight UTC
   every(1.day, 'Daily maintenance tasks', at: '00:00') do
     Rails.logger.info "Running daily maintenance tasks"
     # Add other daily tasks here
   end
-end 
+end

@@ -3,62 +3,62 @@ class WorkflowTemplate < ApplicationRecord
   validates :slug, presence: true, uniqueness: true
   validates :category, presence: true
   validates :template_spec, presence: true
-  
+
   scope :active, -> { where(is_active: true) }
   scope :system, -> { where(is_system: true) }
   scope :by_category, ->(category) { where(category: category) }
-  
+
   # Class method to get all templates (DB + file-based)
   def self.all_templates
     # Get templates from database
     db_templates = all.to_a
-    
+
     # Get templates from files
     file_templates = WorkflowTemplateLoader.load_all.map do |template_data|
       # Create in-memory WorkflowTemplate objects
       new(template_data)
     end
-    
+
     # Combine and return
     db_templates + file_templates
   end
-  
+
   # Override active scope to include file templates
   def self.active_with_files
     db_templates = active.to_a
-    
+
     # Load V2 templates from files
     file_templates = WorkflowTemplateLoader.load_all_v2.map do |template_data|
       new(template_data) if template_data[:is_active] != false
     end.compact
-    
+
     db_templates + file_templates
   end
-  
+
   # Categories of workflow templates
   CATEGORIES = {
-    analytics: 'Data Analytics & Reporting',
-    campaign_creation: 'Campaign Creation & Management',
-    data_import: 'Data Import & Sync',
-    customer_analysis: 'Customer Analysis',
-    content_generation: 'Content Generation',
-    maintenance: 'System Maintenance'
+    analytics: "Data Analytics & Reporting",
+    campaign_creation: "Campaign Creation & Management",
+    data_import: "Data Import & Sync",
+    customer_analysis: "Customer Analysis",
+    content_generation: "Content Generation",
+    maintenance: "System Maintenance"
   }.freeze
-  
+
   # Generate a workflow instance from this template
   def generate_workflow(params = {})
     spec = deep_interpolate_template(template_spec, params)
-    
+
     SimpleWorkflow.new(
       name: interpolate_string(name, params),
       description: interpolate_string(description, params),
-      steps: build_steps_from_spec(spec['steps'] || []),
-      metadata: spec['metadata'] || {}
+      steps: build_steps_from_spec(spec["steps"] || []),
+      metadata: spec["metadata"] || {}
     )
   end
-  
+
   private
-  
+
   def deep_interpolate_template(template, params)
     case template
     when Hash
@@ -71,30 +71,30 @@ class WorkflowTemplate < ApplicationRecord
       template
     end
   end
-  
+
   def interpolate_string(str, params)
     return str unless str.is_a?(String)
-    
+
     str.gsub(/\{\{(\w+)\}\}/) do |match|
       key = $1.to_sym
       params[key] || match
     end
   end
-  
+
   def build_steps_from_spec(steps_spec)
     steps_spec.map.with_index do |step_spec, index|
       Step.new(
-        id: step_spec['id'] || "step_#{index + 1}",
-        agent_role: step_spec['agent_role'],
-        name: step_spec['name'],
-        description: step_spec['description'],
-        dependencies: step_spec['dependencies'] || [],
-        tool_allowlist: step_spec['tool_allowlist'] || [],
-        canvas_allowlist: step_spec['canvas_allowlist'] || [],
-        data_scopes: step_spec['data_scopes'] || {},
-        budgets: step_spec['budgets'] || {},
-        confirmations: step_spec['confirmations'] || {},
-        prompts: step_spec['prompts'] || {}
+        id: step_spec["id"] || "step_#{index + 1}",
+        agent_role: step_spec["agent_role"],
+        name: step_spec["name"],
+        description: step_spec["description"],
+        dependencies: step_spec["dependencies"] || [],
+        tool_allowlist: step_spec["tool_allowlist"] || [],
+        canvas_allowlist: step_spec["canvas_allowlist"] || [],
+        data_scopes: step_spec["data_scopes"] || {},
+        budgets: step_spec["budgets"] || {},
+        confirmations: step_spec["confirmations"] || {},
+        prompts: step_spec["prompts"] || {}
       )
     end
   end

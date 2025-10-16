@@ -10,12 +10,12 @@ class CreateRagStores < ActiveRecord::Migration[7.1]
       t.string :status, default: 'active'
       t.references :user, foreign_key: true
       t.references :entity, foreign_key: true
-      
+
       t.timestamps
     end
-    
+
     add_index :rag_stores, :app_name
     add_index :rag_stores, :status
-    add_index :rag_stores, [:pinecone_index, :pinecone_namespace], unique: true
+    add_index :rag_stores, [ :pinecone_index, :pinecone_namespace ], unique: true
   end
 end

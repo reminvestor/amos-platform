@@ -8,4 +8,4 @@ module SocialMedia
       service.publish_post(post)
     end
   end
-end 
+end

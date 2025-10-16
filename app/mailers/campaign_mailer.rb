@@ -5,15 +5,15 @@ class CampaignMailer < ApplicationMailer
     @campaign = email_delivery.campaign
     @contact = email_delivery.contact
     @email_template = email_delivery.email_template || @campaign.email_template
-    
+
     # For tracking opens - ensure full URL with app subdomain
     host_with_subdomain = "app.#{ENV['APPLICATION_HOST'] || 'everloom.ai'}"
     @tracking_pixel_url = email_open_url(
-      email_delivery.id, 
+      email_delivery.id,
       host: host_with_subdomain,
-      protocol: 'https'
+      protocol: "https"
     )
-    
+
     # Just process template variables without adding our own tracking links
     # Let Mailgun handle the link tracking for us
     if @email_template.body.present?
@@ -21,114 +21,114 @@ class CampaignMailer < ApplicationMailer
     else
       @email_body = @email_template.body
     end
-    
+
     # Set mail headers
-    headers['X-Campaign-ID'] = @campaign.id.to_s
-    headers['X-Contact-ID'] = @contact.id.to_s
-    
+    headers["X-Campaign-ID"] = @campaign.id.to_s
+    headers["X-Contact-ID"] = @contact.id.to_s
+
     # Set Mailgun tags for tracking in Mailgun
     campaign_tag = "campaign_#{@campaign.id}"
-    headers['X-Mailgun-Tag'] = campaign_tag
-    
+    headers["X-Mailgun-Tag"] = campaign_tag
+
     # Ensure campaign has a tag for Mailgun tracking
     @campaign.update(mailgun_tag: campaign_tag) if @campaign.mailgun_tag.blank?
-    
+
     # Set this delivery event as the message-id for tracking
     message_id = "<campaign-#{@campaign.id}-delivery-#{email_delivery.id}@#{ENV['MAILGUN_DOMAIN']}>"
-    headers['Message-ID'] = message_id
-    
+    headers["Message-ID"] = message_id
+
     # Store the message-id for later reference
     email_delivery.update(mailgun_message_id: message_id)
-    
+
     mail(
       to: @contact.email,
       subject: @email_template.subject,
-      template_name: 'campaign_email'
+      template_name: "campaign_email"
     )
   end
-  
+
   # Send a test email for a campaign
   def test_campaign_email(campaign, email)
     @campaign = campaign
     @email_template = campaign.email_template
-    @contact = OpenStruct.new(first_name: 'Test', last_name: 'User', email: email)
-    
+    @contact = OpenStruct.new(first_name: "Test", last_name: "User", email: email)
+
     # Set a dummy tracking URL for test emails
     @tracking_pixel_url = "#"
-    
+
     # Process the template content to replace variables
     if @email_template.body.present?
       @email_body = process_template_variables(@email_template.body, @contact)
     else
       @email_body = @email_template.body
     end
-    
+
     # Set test headers
-    headers['X-Test-Email'] = 'true'
-    headers['X-Campaign-ID'] = @campaign.id.to_s
-    
+    headers["X-Test-Email"] = "true"
+    headers["X-Campaign-ID"] = @campaign.id.to_s
+
     # Set Mailgun tags for tracking test emails
-    headers['X-Mailgun-Tag'] = "test_campaign_#{@campaign.id}"
-    
+    headers["X-Mailgun-Tag"] = "test_campaign_#{@campaign.id}"
+
     # Ensure campaign has a tag for Mailgun tracking
     @campaign.update(mailgun_tag: "campaign_#{@campaign.id}") if @campaign.mailgun_tag.blank?
-    
+
     mail(
       to: email,
       subject: "[TEST] #{@email_template.subject}",
-      template_name: 'campaign_email'
+      template_name: "campaign_email"
     )
   end
-  
+
   private
-  
+
   # Process template variables like {{first_name}}
   def process_template_variables(content, contact)
     return content unless content.present? && contact.present?
-    
+
     # Replace common contact variables
     content = content.gsub(/\{\{\s*first_name\s*\}\}/, contact.first_name.to_s)
     content = content.gsub(/\{\{\s*last_name\s*\}\}/, contact.last_name.to_s)
     content = content.gsub(/\{\{\s*email\s*\}\}/, contact.email.to_s)
     content = content.gsub(/\{\{\s*full_name\s*\}\}/, "#{contact.first_name} #{contact.last_name}".strip)
-    
+
     # Add more variables as needed
-    
+
     content
   end
-  
+
   # Add tracking to links in the email content
   def add_tracking_to_links(html_content, delivery_id)
     # Use nokogiri to parse HTML
-    require 'nokogiri'
-    
+    require "nokogiri"
+
     doc = Nokogiri::HTML(html_content)
-    
+
     # Host for tracking URLs
     host_with_subdomain = "app.#{ENV['APPLICATION_HOST'] || 'everloom.ai'}"
-    
+
     # Find all links
-    doc.css('a').each do |link|
-      href = link['href']
-      next if href.blank? || href.start_with?('#')
-      
+    doc.css("a").each do |link|
+      href = link["href"]
+      next if href.blank? || href.start_with?("#")
+
       # Make sure we're not double-encoding if already encoded
-      original_url = href.include?('%') ? URI.decode_www_form_component(href) : href
-      
+      original_url = href.include?("%") ? URI.decode_www_form_component(href) : href
+
       # Wrap the link with our tracking URL - use original_url as a parameter
       tracked_url = email_click_url(
-        delivery_id, 
+        delivery_id,
         host: host_with_subdomain,
-        protocol: 'https',
+        protocol: "https",
         url: original_url
       )
-      
-      link['href'] = tracked_url
-      
+
+      link["href"] = tracked_url
+
       # Add original URL as data attribute for debugging
-      link['data-original-url'] = original_url
+      link["data-original-url"] = original_url
     end
-    
+
     doc.to_html
   end
 end

@@ -4,10 +4,14 @@ one:
   user: one
   entity: one
   session_id: "test-session-1"
+  message_type: "user"
+  content: "Hello, I need help with my marketing campaign"
   metadata: {}
 
 two:
   user: one
   entity: one
-  session_id: "test-session-2"
+  session_id: "test-session-1"
+  message_type: "assistant"
+  content: "I'd be happy to help! What type of campaign are you working on?"
   metadata: {}

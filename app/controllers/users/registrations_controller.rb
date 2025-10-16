@@ -3,11 +3,11 @@
 class Users::RegistrationsController < Devise::RegistrationsController
   include AffiliateTracking
 
-  layout 'application', only: [:edit, :update]
-  layout 'devise', only: [:new, :create]
+  layout "application", only: [ :edit, :update ]
+  layout "devise", only: [ :new, :create ]
 
-  before_action :configure_sign_up_params, only: [:create]
-  before_action :configure_account_update_params, only: [:update]
+  before_action :configure_sign_up_params, only: [ :create ]
+  before_action :configure_account_update_params, only: [ :update ]
 
   # Override build_resource to parse full_name and create entity before user creation
   def build_resource(hash = {})
@@ -16,25 +16,25 @@ class Users::RegistrationsController < Devise::RegistrationsController
     if params[:user]&.dig(:full_name).present?
       full_name = params[:user][:full_name].strip
       name_parts = full_name.split(/\s+/)
-      
+
       if name_parts.length >= 2
         hash[:first_name] = name_parts.first
-        hash[:last_name] = name_parts[1..-1].join(' ')
+        hash[:last_name] = name_parts[1..-1].join(" ")
       else
         hash[:first_name] = name_parts.first
-        hash[:last_name] = 'Unknown'
+        hash[:last_name] = "Unknown"
       end
     end
-    
+
     # Create entity BEFORE user so we can set entity_id
     if params[:user]&.dig(:business_name).present? || hash[:first_name].present?
       business_name = params[:user]&.dig(:business_name)&.strip
-      first_name = hash[:first_name] || 'User'
-      last_name = hash[:last_name] || ''
+      first_name = hash[:first_name] || "User"
+      last_name = hash[:last_name] || ""
       entity = create_entity_for_signup(business_name, first_name, last_name)
       hash[:entity_id] = entity.id if entity
     end
-    
+
     super(hash)
   end
 
@@ -47,7 +47,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
           entity_id: resource.entity_id,
           user: resource
         ) do |eu|
-          eu.role = 'owner'
+          eu.role = "owner"
         end
 
         # Set the entity in session for immediate use
@@ -87,12 +87,12 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def configure_sign_up_params
     # Note: full_name and business_name are handled manually in the create method
     # We only permit parameters that actually exist on the User model
-    devise_parameter_sanitizer.permit(:sign_up, keys: [:role])
+    devise_parameter_sanitizer.permit(:sign_up, keys: [ :role ])
   end
 
   # If you have extra params to permit, append them to the sanitizer.
   def configure_account_update_params
-    devise_parameter_sanitizer.permit(:account_update, keys: [:first_name, :last_name, :role])
+    devise_parameter_sanitizer.permit(:account_update, keys: [ :first_name, :last_name, :role ])
   end
 
   # Override the after_sign_up_path_for method to redirect to Stripe checkout
@@ -104,23 +104,23 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def after_inactive_sign_up_path_for(resource)
     new_subscription_path
   end
-  
+
   private
-  
+
   def create_entity_for_signup(business_name, first_name, last_name)
     # If no business name provided, create default using user's name
     if business_name.blank?
       business_name = "#{first_name} #{last_name} Business"
     end
-    
+
     begin
       # Create the entity
       entity = Entity.create!(
         name: business_name,
         subdomain: generate_subdomain(business_name),
-        status: 'active'
+        status: "active"
       )
-      
+
       Rails.logger.info "✅ Created entity '#{business_name}' (ID: #{entity.id})"
       entity
     rescue => e
@@ -128,19 +128,19 @@ class Users::RegistrationsController < Devise::RegistrationsController
       nil
     end
   end
-  
+
   def generate_subdomain(business_name)
     # Generate a subdomain from business name
     base_subdomain = business_name.parameterize
     subdomain = base_subdomain
-    
+
     # Ensure uniqueness
     counter = 1
     while Entity.where(subdomain: subdomain).exists?
       subdomain = "#{base_subdomain}-#{counter}"
       counter += 1
     end
-    
+
     subdomain
   end
-end 
+end

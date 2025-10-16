@@ -12,7 +12,7 @@ class CreateDrippedCampaigns < ActiveRecord::Migration[8.0]
 
       t.timestamps
     end
-    
-    add_index :dripped_campaigns, [:original_campaign_id, :sequence_position], unique: true, name: 'idx_dripped_campaigns_on_original_campaign_and_position'
+
+    add_index :dripped_campaigns, [ :original_campaign_id, :sequence_position ], unique: true, name: 'idx_dripped_campaigns_on_original_campaign_and_position'
   end
 end

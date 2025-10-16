@@ -9,9 +9,9 @@ class CreateWorkflowContexts < ActiveRecord::Migration[8.0]
       t.jsonb :metadata, default: {}
       t.timestamps
     end
-    
+
     add_index :workflow_contexts, :key
     add_index :workflow_contexts, :data_type
-    add_index :workflow_contexts, [:workflow_execution_id, :key]
+    add_index :workflow_contexts, [ :workflow_execution_id, :key ]
   end
 end

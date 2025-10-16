@@ -1,26 +1,26 @@
 # Configure Redis connection
-require 'openssl'
-require 'uri'
-require 'redis'
+require "openssl"
+require "uri"
+require "redis"
 
 # Add a NullRedis implementation that won't break the app if Redis is unavailable
 class NullRedis
   def ping
     "PONG" # Simulate successful connection
   end
-  
+
   def get(key)
     nil # Always return nil for any key
   end
-  
+
   def set(key, value)
     true # Pretend we saved it
   end
-  
+
   def expire(key, seconds)
     true # Pretend we set expiration
   end
-  
+
   def method_missing(method, *args, &block)
     nil # Return nil for any other method
   end
@@ -46,13 +46,13 @@ REDIS_OPTIONS = {}
 
 if Rails.env.production?
   REDIS_OPTIONS[:url] = redis_url
-  
+
   # Add additional options to improve reliability - use options compatible with Redis 5.x
   REDIS_OPTIONS[:reconnect_attempts] = 5
   REDIS_OPTIONS[:timeout] = 5
   REDIS_OPTIONS[:read_timeout] = 5
   REDIS_OPTIONS[:write_timeout] = 5
-  
+
   # Log the Redis connection setup for debugging
   Rails.logger.info("Configuring Redis with: #{masked_url}")
 else
@@ -82,16 +82,16 @@ def safe_redis
   rescue Redis::BaseError => e
     Rails.logger.error("Redis connection error: #{e.message}")
   end
-  
+
   begin
     # Try to reconnect
     $redis = Redis.new(REDIS_OPTIONS)
-    return $redis
+    $redis
   rescue Redis::BaseError => e
     Rails.logger.error("Failed to reconnect to Redis: #{e.message}")
     # Return NullRedis if Redis is unavailable
     $redis = NullRedis.new
-    return $redis
+    $redis
   end
 end
 
@@ -119,4 +119,4 @@ Redis.singleton_class.prepend(RedisHelper)
 #   end
 # rescue => e
 #   Rails.logger.error("Failed to configure Sidekiq with Redis: #{e.message}")
-# end 
+# end

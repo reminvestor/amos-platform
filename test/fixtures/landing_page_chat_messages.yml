@@ -2,12 +2,12 @@
 
 one:
   landing_page: one
-  content: "Test message 1"
+  content: "Hello, I'm interested in learning more about your product"
   role: "user"
   user: one
 
 two:
-  landing_page: two
-  content: "Test message 2"
+  landing_page: one
+  content: "Thank you for your interest! I'd be happy to help you learn more."
   role: "assistant"
-  user: two
+  user: one

@@ -25,11 +25,11 @@ begin
   conn = Faraday.new do |conn|
     conn.options.timeout = 120 # 2 minute timeout
   end
-  
+
   puts "Preparing request to Claude 3.7 Messages API..."
   system_prompt = "You are a helpful AI assistant."
   user_message = "What's 2+2? Keep your answer very short."
-  
+
   # Build the request body
   body = {
     model: MODEL,
@@ -40,10 +40,10 @@ begin
       { role: "user", content: user_message }
     ]
   }
-  
+
   start_time = Time.now
   puts "Sending request to Messages API..."
-  
+
   response = conn.post do |req|
     req.url API_URL
     req.headers['Content-Type'] = 'application/json'
@@ -51,13 +51,13 @@ begin
     req.headers['anthropic-version'] = '2023-06-01'
     req.body = body.to_json
   end
-  
+
   elapsed = Time.now - start_time
   puts "Request completed in #{elapsed.round(2)} seconds with status: #{response.status}"
-  
+
   # Parse the response
   json_response = JSON.parse(response.body)
-  
+
   if response.status != 200
     puts "\nERROR from API:"
     pp json_response
@@ -69,8 +69,8 @@ begin
     puts "Full response object:"
     pp json_response
   end
-  
+
 rescue => e
   puts "ERROR: #{e.class} - #{e.message}"
   puts e.backtrace[0..5]
-end 
+end

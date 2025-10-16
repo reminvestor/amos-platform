@@ -1,35 +1,35 @@
 class IntegrationsController < ApplicationController
   before_action :authenticate_user!
-  
+
   def index
     # Redirect to Scout with integrations canvas
-    redirect_to scout_path(canvas: 'integrations_manager')
+    redirect_to scout_path(canvas: "integrations_manager")
   end
-  
+
   def connect
     @integration = Integration.find_by!(slug: params[:slug])
-    
+
     case @integration.auth_type
-    when 'oauth2', 'oauth2_custom'
+    when "oauth2", "oauth2_custom"
       redirect_to integrations_oauth_authorize_path(@integration.slug)
     else
       # Show credentials form
       render :connect
     end
   end
-  
+
   def create_connection
     @integration = Integration.find_by!(slug: params[:slug])
-    
+
     begin
       # Create connection
       connection = current_entity.connections.find_or_initialize_by(
         integration: @integration
       )
-      
+
       connection.name = params[:connection_name] || "#{@integration.name} - #{current_user.email}"
       connection.status = :connected
-      
+
       if connection.save
         # Create credentials (store as JSON)
         credential = connection.integration_credentials.build(
@@ -38,12 +38,12 @@ class IntegrationsController < ApplicationController
           auth_method: determine_auth_method,
           status: :active
         )
-        
+
         if credential.save
           # Test connection
           begin
             test_result = connection.test_connection!
-            
+
             if test_result[:success]
               respond_to do |format|
                 format.html { redirect_to integrations_path, notice: "Successfully connected to #{@integration.name}!" }
@@ -63,14 +63,14 @@ class IntegrationsController < ApplicationController
             end
           end
         else
-          error_msg = credential.errors.full_messages.join(', ')
+          error_msg = credential.errors.full_messages.join(", ")
           respond_to do |format|
             format.html { redirect_to connect_integration_path(@integration.slug), alert: "Failed to save credentials: #{error_msg}" }
             format.json { render json: { success: false, error: "Failed to save credentials: #{error_msg}" } }
           end
         end
       else
-        error_msg = connection.errors.full_messages.join(', ')
+        error_msg = connection.errors.full_messages.join(", ")
         respond_to do |format|
           format.html { redirect_to connect_integration_path(@integration.slug), alert: "Failed to create connection: #{error_msg}" }
           format.json { render json: { success: false, error: "Failed to create connection: #{error_msg}" } }
@@ -79,32 +79,32 @@ class IntegrationsController < ApplicationController
     rescue => e
       Rails.logger.error "Connection creation failed: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
-      
+
       respond_to do |format|
         format.html { redirect_to connect_integration_path(@integration.slug), alert: "An error occurred: #{e.message}" }
         format.json { render json: { success: false, error: "An error occurred: #{e.message}" } }
       end
     end
   end
-  
+
   private
-  
+
   def build_credentials_from_params
     case @integration.auth_type
-    when 'api_key'
-      { 'api_key' => params[:api_key] }
-    when 'bearer_token'
-      { 'token' => params[:bearer_token] }
-    when 'basic_auth'
-      { 
-        'username' => params[:username],
-        'password' => params[:password]
+    when "api_key"
+      { "api_key" => params[:api_key] }
+    when "bearer_token"
+      { "token" => params[:bearer_token] }
+    when "basic_auth"
+      {
+        "username" => params[:username],
+        "password" => params[:password]
       }
-    when 'custom'
+    when "custom"
       # Handle custom auth based on integration
       case @integration.slug
-      when 'slack'
-        { 'webhook_url' => params[:webhook_url] }
+      when "slack"
+        { "webhook_url" => params[:webhook_url] }
       else
         params.permit(:api_key, :token, :username, :password).to_h.stringify_keys
       end
@@ -112,17 +112,17 @@ class IntegrationsController < ApplicationController
       {}
     end
   end
-  
+
   def determine_auth_method
     case @integration.auth_type
-    when 'api_key'
-      'header' # Usually goes in header
-    when 'bearer_token'
-      'bearer'
-    when 'basic_auth'
-      'basic'
+    when "api_key"
+      "header" # Usually goes in header
+    when "bearer_token"
+      "bearer"
+    when "basic_auth"
+      "basic"
     else
-      'header'
+      "header"
     end
   end
 end

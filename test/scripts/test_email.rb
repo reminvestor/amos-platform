@@ -9,7 +9,7 @@ user = User.first
 puts "Using user: #{user.email}"
 
 # Find or create a template
-template = user.email_templates.first 
+template = user.email_templates.first
 if template.nil?
   puts "No template found, creating one..."
   template = user.email_templates.create!(
@@ -48,4 +48,4 @@ rescue => e
   puts e.backtrace.join("\n")
 end
 
-puts "Test completed." 
+puts "Test completed."

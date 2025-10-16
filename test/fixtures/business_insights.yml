@@ -3,11 +3,13 @@
 one:
   entity: one
   source_conversation: one
-  insight_type: "test"
-  content: "Test insight 1"
+  insight_type: "industry"
+  content: {"industry": "technology"}
+  confidence_score: 0.9
 
 two:
   entity: one
   source_conversation: two
-  insight_type: "test"
-  content: "Test insight 2"
+  insight_type: "target_audience"
+  content: {"target_audience": "small businesses"}
+  confidence_score: 0.85

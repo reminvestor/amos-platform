@@ -21,11 +21,11 @@ class CleanupLandingPagesTable < ActiveRecord::Migration[8.0]
     remove_column :landing_pages, :migration_status, :string
     remove_column :landing_pages, :clarification_questions, :text
     remove_column :landing_pages, :clarification_answers, :text
-    
+
     # Remove the published index since we're removing the column (if it exists)
     remove_index :landing_pages, :published if index_exists?(:landing_pages, :published)
   end
-  
+
   def down
     # Add back all the columns if we need to rollback
     add_column :landing_pages, :content, :jsonb, default: {}
@@ -48,7 +48,7 @@ class CleanupLandingPagesTable < ActiveRecord::Migration[8.0]
     add_column :landing_pages, :migration_status, :string, default: 'pending'
     add_column :landing_pages, :clarification_questions, :text
     add_column :landing_pages, :clarification_answers, :text
-    
+
     add_index :landing_pages, :published
   end
 end

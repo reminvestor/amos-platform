@@ -12,15 +12,13 @@ class Artifact < ApplicationRecord
     first.keys.index_with do |k|
       v = first[k]
       case v
-      when Integer then 'integer'
-      when Float then 'float'
-      when TrueClass, FalseClass then 'boolean'
-      when Hash then 'object'
-      when Array then 'array'
-      else 'string'
+      when Integer then "integer"
+      when Float then "float"
+      when TrueClass, FalseClass then "boolean"
+      when Hash then "object"
+      when Array then "array"
+      else "string"
       end
     end
   end
 end
-
-
