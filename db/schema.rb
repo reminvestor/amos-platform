@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_15_210334) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_16_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -791,11 +791,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_15_210334) do
     t.bigint "entity_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "store_type", default: "entity", null: false
     t.index ["app_name"], name: "index_rag_stores_on_app_name"
     t.index ["entity_id"], name: "index_rag_stores_on_entity_id"
     t.index ["pinecone_index", "pinecone_namespace"], name: "index_rag_stores_on_pinecone_index_and_pinecone_namespace", unique: true
     t.index ["status"], name: "index_rag_stores_on_status"
+    t.index ["store_type"], name: "index_rag_stores_on_store_type"
     t.index ["user_id"], name: "index_rag_stores_on_user_id"
+    t.check_constraint "store_type::text = 'system'::text AND entity_id IS NULL OR store_type::text = 'entity'::text AND entity_id IS NOT NULL", name: "check_entity_required_for_store_type"
   end
 
   create_table "rich_text_sections", force: :cascade do |t|
