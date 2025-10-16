@@ -19,7 +19,7 @@ class CreateWorkflowStepExecutions < ActiveRecord::Migration[8.0]
 
     add_index :workflow_step_executions, :step_id
     add_index :workflow_step_executions, :status
-    add_index :workflow_step_executions, [:workflow_execution_id, :step_id], unique: true, name: 'idx_workflow_step_unique'
-    add_index :workflow_step_executions, [:workflow_execution_id, :status], name: 'idx_workflow_step_status'
+    add_index :workflow_step_executions, [ :workflow_execution_id, :step_id ], unique: true, name: 'idx_workflow_step_unique'
+    add_index :workflow_step_executions, [ :workflow_execution_id, :status ], name: 'idx_workflow_step_status'
   end
 end

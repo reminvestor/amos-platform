@@ -17,12 +17,12 @@ module SocialMedia
         end
 
         post_url = "https://facebook.com/#{response['id']}"
-        update_post_status(post, 'published', post_url)
+        update_post_status(post, "published", post_url)
         collect_analytics(post)
-        
+
         true
       rescue Koala::Facebook::APIError => e
-        update_post_status(post, 'failed')
+        update_post_status(post, "failed")
         Rails.logger.error("Facebook post failed: #{e.message}")
         false
       end
@@ -35,7 +35,7 @@ module SocialMedia
         post_id = extract_post_id(post.post_url)
         insights = @graph.get_object(
           post_id,
-          fields: ['insights.metric(post_impressions,post_reactions_by_type,post_clicks)']
+          fields: [ "insights.metric(post_impressions,post_reactions_by_type,post_clicks)" ]
         )
 
         metrics = {
@@ -56,7 +56,7 @@ module SocialMedia
 
     def access_token
       # TODO: Implement access token retrieval from your configuration system
-      ENV['FACEBOOK_ACCESS_TOKEN']
+      ENV["FACEBOOK_ACCESS_TOKEN"]
     end
 
     def format_content(post)
@@ -66,45 +66,45 @@ module SocialMedia
     end
 
     def extract_post_id(post_url)
-      post_url.split('/').last
+      post_url.split("/").last
     end
 
     def count_reactions(insights)
-      return 0 unless insights['insights']
-      
-      reactions = insights['insights']['data'].find { |d| d['name'] == 'post_reactions_by_type' }
-      return 0 unless reactions && reactions['values'].any?
+      return 0 unless insights["insights"]
 
-      values = reactions['values'].first['value']
+      reactions = insights["insights"]["data"].find { |d| d["name"] == "post_reactions_by_type" }
+      return 0 unless reactions && reactions["values"].any?
+
+      values = reactions["values"].first["value"]
       values.values.sum
     end
 
     def get_comments_count(post_id)
-      comments = @graph.get_connections(post_id, 'comments', summary: true)
-      comments['summary']['total_count'] rescue 0
+      comments = @graph.get_connections(post_id, "comments", summary: true)
+      comments["summary"]["total_count"] rescue 0
     end
 
     def get_shares_count(post_id)
-      shares = @graph.get_object(post_id, fields: ['shares'])
-      shares['shares']['count'] rescue 0
+      shares = @graph.get_object(post_id, fields: [ "shares" ])
+      shares["shares"]["count"] rescue 0
     end
 
     def get_views_count(insights)
-      return 0 unless insights['insights']
-      
-      views = insights['insights']['data'].find { |d| d['name'] == 'post_impressions' }
-      return 0 unless views && views['values'].any?
+      return 0 unless insights["insights"]
 
-      views['values'].first['value']
+      views = insights["insights"]["data"].find { |d| d["name"] == "post_impressions" }
+      return 0 unless views && views["values"].any?
+
+      views["values"].first["value"]
     end
 
     def get_reach_count(insights)
-      return 0 unless insights['insights']
-      
-      reach = insights['insights']['data'].find { |d| d['name'] == 'post_impressions_unique' }
-      return 0 unless reach && reach['values'].any?
+      return 0 unless insights["insights"]
 
-      reach['values'].first['value']
+      reach = insights["insights"]["data"].find { |d| d["name"] == "post_impressions_unique" }
+      return 0 unless reach && reach["values"].any?
+
+      reach["values"].first["value"]
     end
   end
-end 
+end

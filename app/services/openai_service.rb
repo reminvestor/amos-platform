@@ -1,44 +1,44 @@
-require 'httparty'
+require "httparty"
 
 class OpenaiService
   include HTTParty
-  base_uri 'https://api.openai.com/v1'
-  
+  base_uri "https://api.openai.com/v1"
+
   def initialize
-    @api_key = ENV['OPENAI_API_KEY']
+    @api_key = ENV["OPENAI_API_KEY"]
     @headers = {
-      'Content-Type' => 'application/json',
-      'Authorization' => "Bearer #{@api_key}"
+      "Content-Type" => "application/json",
+      "Authorization" => "Bearer #{@api_key}"
     }
 
     # Extend HTTP timeouts for complex requests
     # HTTParty uses Net::HTTP under the hood; :timeout covers both open/read timeouts
     self.class.default_options.merge!(timeout: 240)
   end
-  
+
   # Unified chat interface to align with ClaudeService/GrokService
   # Returns assistant content string
-  def send_message(system_prompt, messages, model: 'gpt-5', max_tokens: 4000, temperature: 0.7, json_mode: false)
+  def send_message(system_prompt, messages, model: "gpt-5", max_tokens: 4000, temperature: 0.7, json_mode: false)
     # Ensure messages is an array and normalize to OpenAI schema
     messages_array = case messages
     when Array
       messages
     when String
-      [{ role: 'user', content: messages }]
+      [ { role: "user", content: messages } ]
     else
-      [{ role: 'user', content: messages.to_s }]
+      [ { role: "user", content: messages.to_s } ]
     end
 
     # Validate non-empty contents
     messages_array.each do |msg|
       if msg[:content].to_s.strip.empty?
-        raise ArgumentError, 'All messages must have non-empty content'
+        raise ArgumentError, "All messages must have non-empty content"
       end
     end
 
     # Prepend system prompt if provided
     formatted_messages = []
-    formatted_messages << { role: 'system', content: system_prompt } if system_prompt.present?
+    formatted_messages << { role: "system", content: system_prompt } if system_prompt.present?
     formatted_messages.concat(messages_array)
 
     body = {
@@ -47,12 +47,12 @@ class OpenaiService
     }
 
     # Only include temperature for models that support it
-    unless model.to_s.start_with?('gpt-5')
+    unless model.to_s.start_with?("gpt-5")
       body[:temperature] = temperature
     end
 
     # Some newer models (e.g., GPT-5) require max_completion_tokens instead of max_tokens
-    if model.to_s.start_with?('gpt-5')
+    if model.to_s.start_with?("gpt-5")
       body[:max_completion_tokens] = max_tokens
     else
       body[:max_tokens] = max_tokens
@@ -60,15 +60,15 @@ class OpenaiService
 
     # Enforce JSON mode if requested
     if json_mode
-      body[:response_format] = { type: 'json_object' }
-      Rails.logger.info '🔧 OpenAI JSON mode enabled'
+      body[:response_format] = { type: "json_object" }
+      Rails.logger.info "🔧 OpenAI JSON mode enabled"
     end
 
     Rails.logger.info "Sending request to OpenAI (#{model}) with #{formatted_messages.length} messages"
     start_time = Time.current
 
     begin
-      response = self.class.post('/chat/completions', {
+      response = self.class.post("/chat/completions", {
         body: body.to_json,
         headers: @headers,
         timeout: 240 # seconds
@@ -79,9 +79,9 @@ class OpenaiService
 
       if response.success?
         parsed = response.parsed_response
-        content = parsed.dig('choices', 0, 'message', 'content')
+        content = parsed.dig("choices", 0, "message", "content")
         Rails.logger.info "OpenAI response: #{content&.length || 0} characters"
-        return content
+        content
       else
         error_msg = "OpenAI API Error (#{response.code}): #{response.body}"
         Rails.logger.error error_msg
@@ -111,7 +111,7 @@ class OpenaiService
         content: system_prompt(business_profile, platform)
       }
     ]
-    
+
     if purpose.present?
       messages << {
         role: "user",
@@ -128,29 +128,29 @@ class OpenaiService
         content: "Create a social media post that would be engaging for my target audience."
       }
     end
-    
+
     response = self.class.post(
-      '/chat/completions',
+      "/chat/completions",
       body: {
-        model: 'gpt-3.5-turbo',
+        model: "gpt-3.5-turbo",
         messages: messages,
         temperature: 0.7,
         max_tokens: 500
       }.to_json,
       headers: @headers
     )
-    
+
     if response.success?
       response_data = JSON.parse(response.body)
-      response_data.dig('choices', 0, 'message', 'content')
+      response_data.dig("choices", 0, "message", "content")
     else
       Rails.logger.error("OpenAI API error: #{response.code} - #{response.body}")
       "Error generating content. Please try again later."
     end
   end
-  
+
   private
-  
+
   def system_prompt(business_profile, platform)
     <<~PROMPT
       You are a professional social media content writer for #{business_profile.name}.
@@ -159,7 +159,7 @@ class OpenaiService
       #{business_profile.llm_context}
 
       PLATFORM: #{platform}
-      
+
       INSTRUCTIONS:
       1. Create a single social media post appropriate for the #{platform} platform
       2. Follow the brand's tone of voice
@@ -168,7 +168,7 @@ class OpenaiService
       5. Make the content engaging, shareable, and relevant
       6. Do not include hashtags in brackets, but include them naturally if appropriate
       7. Return only the post content, nothing else
-      
+
       If it's for Instagram, make it visual and include relevant hashtags.
       If it's for LinkedIn, make it professional and insightful.
       If it's for Twitter, make it concise and impactful within the character limit.
@@ -197,11 +197,11 @@ class OpenaiService
     ]
 
     Rails.logger.info "Analyzing image with OpenAI Vision: #{image_url}"
-    
+
     begin
-      response = self.class.post('/chat/completions', {
+      response = self.class.post("/chat/completions", {
         body: {
-          model: 'gpt-4-vision-preview',
+          model: "gpt-4-vision-preview",
           messages: messages,
           max_tokens: 300
         }.to_json,
@@ -211,16 +211,16 @@ class OpenaiService
 
       if response.success?
         parsed = response.parsed_response
-        description = parsed.dig('choices', 0, 'message', 'content')
+        description = parsed.dig("choices", 0, "message", "content")
         Rails.logger.info "Image analysis complete: #{description&.length || 0} characters"
-        return description
+        description
       else
         Rails.logger.error "OpenAI Vision API Error: #{response.body}"
-        return "Image at #{image_url} (description unavailable)"
+        "Image at #{image_url} (description unavailable)"
       end
     rescue => e
       Rails.logger.error "Failed to analyze image: #{e.message}"
-      return "Image at #{image_url} (analysis failed)"
+      "Image at #{image_url} (analysis failed)"
     end
   end
-end 
+end

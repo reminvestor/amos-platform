@@ -1,3 +1,5 @@
+<%= turbo_stream_from "entity_#{current_entity.id}_email_templates" %>
+
 <div class="email-template-viewer">
   <div class="card shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
@@ -25,9 +27,9 @@
                 <th class="text-end">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="email-templates-tbody">
               <% templates.each do |template| %>
-                <tr>
+                <tr id="email_template_<%= template.id %>" class="<%= 'table-success animate-highlight' if template.created_at > 10.seconds.ago %>">
                   <td>
                     <div class="fw-medium">
                       <%= template.name.presence || "Untitled Template" %>
@@ -53,22 +55,22 @@
                   </td>
                   <td class="text-end">
                     <div class="btn-group btn-group-sm" role="group">
-                      <button class="btn btn-outline-primary" 
+                      <button class="btn btn-outline-primary"
                               onclick="window.scoutLoadCanvas?.('email_template_editor', { template_id: <%= template.id %> })"
                               title="Edit Template">
                         <i class="fas fa-edit"></i>
                       </button>
-                      <button class="btn btn-outline-info" 
+                      <button class="btn btn-outline-info"
                               onclick="window.scoutSendMessage?.('Send a test email for template <%= template.id %>')"
                               title="Send Test">
                         <i class="fas fa-paper-plane"></i>
                       </button>
-                      <button class="btn btn-outline-warning" 
+                      <button class="btn btn-outline-warning"
                               onclick="window.scoutSendMessage?.('Create a copy of email template <%= template.id %>')"
                               title="Duplicate">
                         <i class="fas fa-copy"></i>
                       </button>
-                      <button class="btn btn-outline-danger" 
+                      <button class="btn btn-outline-danger"
                               onclick="if(confirm('Are you sure you want to delete this template?')) { window.scoutSendMessage?.('Delete email template <%= template.id %>') }"
                               title="Delete">
                         <i class="fas fa-trash"></i>

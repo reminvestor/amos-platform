@@ -9,6 +9,7 @@ one:
   platform: MyString
   post_url: MyString
   user: one
+  entity_id: 980190962
 
 two:
   title: MyString
@@ -19,3 +20,4 @@ two:
   platform: MyString
   post_url: MyString
   user: two
+  entity_id: 980190962

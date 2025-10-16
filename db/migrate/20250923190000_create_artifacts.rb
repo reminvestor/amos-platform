@@ -25,5 +25,3 @@ class CreateArtifacts < ActiveRecord::Migration[7.1]
     add_index :artifacts, :storage_ref
   end
 end
-
-

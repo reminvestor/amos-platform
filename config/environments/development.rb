@@ -33,7 +33,7 @@ Rails.application.configure do
 
   # Set Active Storage URL host in development
   config.active_storage.service_urls_expire_in = 1.hour
-  Rails.application.routes.default_url_options[:host] = 'app.app.localhost:5001'
+  Rails.application.routes.default_url_options[:host] = "app.app.localhost:5001"
 
   # Don't care if the mailer can't send.
   config.action_mailer.raise_delivery_errors = true
@@ -42,13 +42,13 @@ Rails.application.configure do
   config.action_mailer.perform_caching = false
 
   # Devise mailer configuration
-  config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }
+  config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
 
   # Mailgun configuration
   config.action_mailer.delivery_method = :mailgun
   config.action_mailer.mailgun_settings = {
-    api_key: ENV['MAILGUN_API_KEY'],
-    domain: ENV['MAILGUN_DOMAIN']
+    api_key: ENV["MAILGUN_API_KEY"],
+    domain: ENV["MAILGUN_DOMAIN"]
   }
 
   # Print deprecation notices to the Rails logger.
@@ -67,11 +67,11 @@ Rails.application.configure do
   config.active_job.verbose_enqueue_logs = true
 
   # Set log level to reduce debug information
-  #config.log_level = :info
+  # config.log_level = :info
 
   # Disable debug request logging
   # config.middleware.delete ActionDispatch::DebugExceptions
-  
+
   # Raises error for missing translations.
   # config.i18n.raise_on_missing_translations = true
 
@@ -95,24 +95,24 @@ Rails.application.configure do
   config.hosts << ".lvh.me"
   config.hosts << "lvh.me"
   config.hosts << "app.lvh.me"
-  
+
   # Allow some additional localhost variations that might be used during development
   config.hosts << "127.0.0.1"
   config.hosts << "app.127.0.0.1"
   config.hosts << "app.app.127.0.0.1"
-  
+
   # Allow testing with a fake domain
   config.hosts << ".yourdomain.test"
   config.hosts << "yourdomain.test"
   config.hosts << "app.yourdomain.test"
   config.hosts << "app.app.yourdomain.test"
-  
+
   # Allow nuvola development environment
   config.hosts << "nuvola.default.localhost"
   config.hosts << ".nuvola.default.localhost"
   config.hosts << "default.localhost"
   config.hosts << ".default.localhost"
-  
+
   # Disable CSRF protection in development to match production behavior
   # This prevents CSRF token authenticity errors with complex subdomain setups
   config.action_controller.allow_forgery_protection = false

@@ -65,8 +65,19 @@
           <p class="text-muted mb-0">Let's get AMOS acquainted with your business</p>
         </div>
         <div class="header-user">
-          <i class="fas fa-user-circle me-2"></i>
-          <%= current_user.full_name %>
+          <div class="dropdown">
+            <button class="btn btn-link text-decoration-none dropdown-toggle" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="color: var(--scout-text-muted, #9ca3af);">
+              <i class="fas fa-user-circle me-2"></i>
+              <%= current_user.full_name %>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuDropdown">
+              <li>
+                <%= link_to destroy_user_session_path, method: :delete, class: "dropdown-item" do %>
+                  <i class="fas fa-sign-out-alt me-2"></i> Sign Out
+                <% end %>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
       
@@ -134,7 +145,7 @@
       
       <!-- Chat Input -->
       <div class="chat-input-area">
-        <form id="message-form">
+        <form id="message-form" data-turbo="false">
           <div class="input-group">
             <textarea 
               class="chat-input" 

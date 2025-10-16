@@ -171,6 +171,24 @@
 
 .log-debug .log-level {
   color: #6c757d;
-} 
+}
+
+// Highlight animation for newly created items
+@keyframes highlight-fade {
+  0% {
+    background-color: #d1e7dd;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.animate-highlight {
+  animation: highlight-fade 3s ease-out;
+}
+
+.table-success.animate-highlight td {
+  font-weight: 500;
+}
 
 @import 'marketing_home';

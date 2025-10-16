@@ -18,8 +18,8 @@ WorkflowTemplate.find_or_create_by!(slug: 'customer_analysis_yearly') do |templa
           'tool' => 'invoke_operation',
           'operation_id' => '{{integration_slug}}.list_customers.v2020-08-27'
         },
-        'tool_allowlist' => ['list_connections', 'invoke_operation', 'fetch_next_page'],
-        'canvas_allowlist' => ['dynamic_canvas'],
+        'tool_allowlist' => [ 'list_connections', 'invoke_operation', 'fetch_next_page' ],
+        'canvas_allowlist' => [ 'dynamic_canvas' ],
         'budgets' => { 'max_tool_calls' => 10, 'timeout_seconds' => 120 }
       },
       {
@@ -34,9 +34,9 @@ WorkflowTemplate.find_or_create_by!(slug: 'customer_analysis_yearly') do |templa
           'time_field' => 'created',
           'time_bucket' => 'month'
         },
-        'dependencies' => ['fetch_customer_data'],
-        'tool_allowlist' => ['aggregate_artifact_data'],
-        'canvas_allowlist' => ['dynamic_canvas'],
+        'dependencies' => [ 'fetch_customer_data' ],
+        'tool_allowlist' => [ 'aggregate_artifact_data' ],
+        'canvas_allowlist' => [ 'dynamic_canvas' ],
         'budgets' => { 'max_tool_calls' => 5, 'timeout_seconds' => 60 }
       },
       {
@@ -50,9 +50,9 @@ WorkflowTemplate.find_or_create_by!(slug: 'customer_analysis_yearly') do |templa
           'operation' => 'group_by_field',
           'field' => 'plan'
         },
-        'dependencies' => ['fetch_customer_data'],
-        'tool_allowlist' => ['aggregate_artifact_data'],
-        'canvas_allowlist' => ['dynamic_canvas'],
+        'dependencies' => [ 'fetch_customer_data' ],
+        'tool_allowlist' => [ 'aggregate_artifact_data' ],
+        'canvas_allowlist' => [ 'dynamic_canvas' ],
         'budgets' => { 'max_tool_calls' => 5, 'timeout_seconds' => 60 }
       },
       {
@@ -67,9 +67,9 @@ WorkflowTemplate.find_or_create_by!(slug: 'customer_analysis_yearly') do |templa
           'field' => 'total_spent',
           'k' => 20
         },
-        'dependencies' => ['fetch_customer_data'],
-        'tool_allowlist' => ['aggregate_artifact_data'],
-        'canvas_allowlist' => ['dynamic_canvas'],
+        'dependencies' => [ 'fetch_customer_data' ],
+        'tool_allowlist' => [ 'aggregate_artifact_data' ],
+        'canvas_allowlist' => [ 'dynamic_canvas' ],
         'budgets' => { 'max_tool_calls' => 5, 'timeout_seconds' => 60 }
       },
       {
@@ -81,9 +81,9 @@ WorkflowTemplate.find_or_create_by!(slug: 'customer_analysis_yearly') do |templa
         'config' => {
           'tool' => 'create_dynamic_visualization'
         },
-        'dependencies' => ['analyze_by_month', 'analyze_by_plan', 'top_customers'],
-        'tool_allowlist' => ['create_dynamic_visualization'],
-        'canvas_allowlist' => ['dynamic_canvas', 'analytics_dashboard'],
+        'dependencies' => [ 'analyze_by_month', 'analyze_by_plan', 'top_customers' ],
+        'tool_allowlist' => [ 'create_dynamic_visualization' ],
+        'canvas_allowlist' => [ 'dynamic_canvas', 'analytics_dashboard' ],
         'budgets' => { 'max_tool_calls' => 3, 'timeout_seconds' => 30 }
       },
       {
@@ -98,14 +98,14 @@ WorkflowTemplate.find_or_create_by!(slug: 'customer_analysis_yearly') do |templa
             { 'type' => 'time_coverage', 'expected' => '12_months' }
           ]
         },
-        'dependencies' => ['generate_report'],
+        'dependencies' => [ 'generate_report' ],
         'tool_allowlist' => [],
-        'canvas_allowlist' => ['task_progress'],
+        'canvas_allowlist' => [ 'task_progress' ],
         'budgets' => { 'max_tool_calls' => 2, 'timeout_seconds' => 30 }
       }
     ],
     'metadata' => {
-      'keywords' => ['annual', 'yearly', 'customer', 'analysis', 'year'],
+      'keywords' => [ 'annual', 'yearly', 'customer', 'analysis', 'year' ],
       'estimated_duration' => 300,
       'requires_integration' => true
     }
@@ -130,8 +130,8 @@ WorkflowTemplate.find_or_create_by!(slug: 'campaign_performance_analysis') do |t
           'object_type' => 'campaigns',
           'options' => { 'include_metrics' => true, 'date_range' => '{{time_period}}' }
         },
-        'tool_allowlist' => ['get_data', 'get_schema'],
-        'canvas_allowlist' => ['campaign_viewer'],
+        'tool_allowlist' => [ 'get_data', 'get_schema' ],
+        'canvas_allowlist' => [ 'campaign_viewer' ],
         'budgets' => { 'max_tool_calls' => 3, 'timeout_seconds' => 30 }
       },
       {
@@ -144,9 +144,9 @@ WorkflowTemplate.find_or_create_by!(slug: 'campaign_performance_analysis') do |t
           'tool' => 'aggregate_artifact_data',
           'operation' => 'simple_stats'
         },
-        'dependencies' => ['fetch_campaigns'],
-        'tool_allowlist' => ['aggregate_artifact_data'],
-        'canvas_allowlist' => ['dynamic_canvas'],
+        'dependencies' => [ 'fetch_campaigns' ],
+        'tool_allowlist' => [ 'aggregate_artifact_data' ],
+        'canvas_allowlist' => [ 'dynamic_canvas' ],
         'budgets' => { 'max_tool_calls' => 5, 'timeout_seconds' => 60 }
       },
       {
@@ -159,14 +159,14 @@ WorkflowTemplate.find_or_create_by!(slug: 'campaign_performance_analysis') do |t
           'tool' => 'create_dynamic_visualization',
           'visualization_type' => 'campaign_dashboard'
         },
-        'dependencies' => ['analyze_metrics'],
-        'tool_allowlist' => ['create_dynamic_visualization'],
-        'canvas_allowlist' => ['analytics_dashboard'],
+        'dependencies' => [ 'analyze_metrics' ],
+        'tool_allowlist' => [ 'create_dynamic_visualization' ],
+        'canvas_allowlist' => [ 'analytics_dashboard' ],
         'budgets' => { 'max_tool_calls' => 3, 'timeout_seconds' => 30 }
       }
     ],
     'metadata' => {
-      'keywords' => ['campaign', 'performance', 'email', 'metrics', 'analyze'],
+      'keywords' => [ 'campaign', 'performance', 'email', 'metrics', 'analyze' ],
       'estimated_duration' => 120
     }
   }
@@ -195,7 +195,7 @@ WorkflowTemplate.find_or_create_by!(slug: 'full_campaign_creation') do |template
           ]
         },
         'tool_allowlist' => [],
-        'canvas_allowlist' => ['campaign_viewer']
+        'canvas_allowlist' => [ 'campaign_viewer' ]
       },
       {
         'id' => 'create_campaign',
@@ -207,9 +207,9 @@ WorkflowTemplate.find_or_create_by!(slug: 'full_campaign_creation') do |template
           'tool' => 'create_object',
           'object_type' => 'campaigns'
         },
-        'dependencies' => ['define_campaign'],
-        'tool_allowlist' => ['create_object', 'get_schema'],
-        'canvas_allowlist' => ['campaign_viewer'],
+        'dependencies' => [ 'define_campaign' ],
+        'tool_allowlist' => [ 'create_object', 'get_schema' ],
+        'canvas_allowlist' => [ 'campaign_viewer' ],
         'budgets' => { 'max_tool_calls' => 3, 'timeout_seconds' => 30 }
       },
       {
@@ -222,9 +222,9 @@ WorkflowTemplate.find_or_create_by!(slug: 'full_campaign_creation') do |template
           'tool' => 'create_object',
           'object_type' => 'email_templates'
         },
-        'dependencies' => ['create_campaign'],
-        'tool_allowlist' => ['create_object', 'get_schema'],
-        'canvas_allowlist' => ['email_template_editor'],
+        'dependencies' => [ 'create_campaign' ],
+        'tool_allowlist' => [ 'create_object', 'get_schema' ],
+        'canvas_allowlist' => [ 'email_template_editor' ],
         'budgets' => { 'max_tool_calls' => 3, 'timeout_seconds' => 30 }
       },
       {
@@ -236,9 +236,9 @@ WorkflowTemplate.find_or_create_by!(slug: 'full_campaign_creation') do |template
         'config' => {
           'tool' => 'link_template_to_campaign'
         },
-        'dependencies' => ['create_template'],
-        'tool_allowlist' => ['link_template_to_campaign'],
-        'canvas_allowlist' => ['campaign_viewer'],
+        'dependencies' => [ 'create_template' ],
+        'tool_allowlist' => [ 'link_template_to_campaign' ],
+        'canvas_allowlist' => [ 'campaign_viewer' ],
         'budgets' => { 'max_tool_calls' => 2, 'timeout_seconds' => 30 }
       },
       {
@@ -254,14 +254,14 @@ WorkflowTemplate.find_or_create_by!(slug: 'full_campaign_creation') do |template
             { 'type' => 'valid_content', 'check_personalization' => true }
           ]
         },
-        'dependencies' => ['link_template'],
-        'tool_allowlist' => ['get_data'],
-        'canvas_allowlist' => ['task_progress'],
+        'dependencies' => [ 'link_template' ],
+        'tool_allowlist' => [ 'get_data' ],
+        'canvas_allowlist' => [ 'task_progress' ],
         'budgets' => { 'max_tool_calls' => 3, 'timeout_seconds' => 30 }
       }
     ],
     'metadata' => {
-      'keywords' => ['create', 'campaign', 'email', 'template', 'new'],
+      'keywords' => [ 'create', 'campaign', 'email', 'template', 'new' ],
       'estimated_duration' => 180
     }
   }
@@ -284,8 +284,8 @@ WorkflowTemplate.find_or_create_by!(slug: 'integration_data_sync') do |template|
         'config' => {
           'tool' => 'list_connections'
         },
-        'tool_allowlist' => ['list_connections'],
-        'canvas_allowlist' => ['integrations_manager'],
+        'tool_allowlist' => [ 'list_connections' ],
+        'canvas_allowlist' => [ 'integrations_manager' ],
         'budgets' => { 'max_tool_calls' => 2, 'timeout_seconds' => 30 }
       },
       {
@@ -301,9 +301,9 @@ WorkflowTemplate.find_or_create_by!(slug: 'integration_data_sync') do |template|
             { 'name' => 'sync_all', 'type' => 'checkbox', 'default' => false }
           ]
         },
-        'dependencies' => ['list_integrations'],
-        'tool_allowlist' => ['describe_connection'],
-        'canvas_allowlist' => ['integrations_manager']
+        'dependencies' => [ 'list_integrations' ],
+        'tool_allowlist' => [ 'describe_connection' ],
+        'canvas_allowlist' => [ 'integrations_manager' ]
       },
       {
         'id' => 'import_data',
@@ -314,9 +314,9 @@ WorkflowTemplate.find_or_create_by!(slug: 'integration_data_sync') do |template|
         'config' => {
           'tool' => 'invoke_operation'
         },
-        'dependencies' => ['select_source'],
-        'tool_allowlist' => ['invoke_operation', 'fetch_next_page'],
-        'canvas_allowlist' => ['dynamic_canvas'],
+        'dependencies' => [ 'select_source' ],
+        'tool_allowlist' => [ 'invoke_operation', 'fetch_next_page' ],
+        'canvas_allowlist' => [ 'dynamic_canvas' ],
         'budgets' => { 'max_tool_calls' => 20, 'timeout_seconds' => 300 }
       },
       {
@@ -329,14 +329,14 @@ WorkflowTemplate.find_or_create_by!(slug: 'integration_data_sync') do |template|
           'tool' => 'aggregate_artifact_data',
           'operation' => 'simple_stats'
         },
-        'dependencies' => ['import_data'],
-        'tool_allowlist' => ['aggregate_artifact_data'],
-        'canvas_allowlist' => ['dynamic_canvas'],
+        'dependencies' => [ 'import_data' ],
+        'tool_allowlist' => [ 'aggregate_artifact_data' ],
+        'canvas_allowlist' => [ 'dynamic_canvas' ],
         'budgets' => { 'max_tool_calls' => 5, 'timeout_seconds' => 60 }
       }
     ],
     'metadata' => {
-      'keywords' => ['import', 'sync', 'integration', 'fetch', 'data'],
+      'keywords' => [ 'import', 'sync', 'integration', 'fetch', 'data' ],
       'estimated_duration' => 300,
       'requires_integration' => true
     }

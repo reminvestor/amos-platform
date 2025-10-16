@@ -6,9 +6,9 @@ class ImageAsset < ApplicationRecord
 
   validates :file, presence: true, unless: :placeholder?
   validates :source, inclusion: { in: %w[upload ai placeholder] }
-  
+
   def placeholder?
-    source == 'placeholder'
+    source == "placeholder"
   end
 
   scope :by_entity, ->(entity_id) { where(entity_id: entity_id) }
@@ -27,16 +27,16 @@ class ImageAsset < ApplicationRecord
       nil
     end
   end
-  
+
   def placeholder_url
-    slot = metadata&.dig('slot') || 1
+    slot = metadata&.dig("slot") || 1
     # Inline SVG data URI to avoid missing static asset 404s in dev
     colors = {
-      1 => '#e9ecef',
-      2 => '#f8f9fa',
-      3 => '#dee2e6'
+      1 => "#e9ecef",
+      2 => "#f8f9fa",
+      3 => "#dee2e6"
     }
-    bg = colors[slot.to_i] || '#e9ecef'
+    bg = colors[slot.to_i] || "#e9ecef"
     svg = <<~SVG
       <svg xmlns='http://www.w3.org/2000/svg' width='600' height='400'>
         <rect width='100%' height='100%' fill='#{bg}'/>
@@ -46,6 +46,3 @@ class ImageAsset < ApplicationRecord
     "data:image/svg+xml;utf8,#{ERB::Util.url_encode(svg.strip)}"
   end
 end
-
-
-

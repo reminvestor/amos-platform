@@ -5,43 +5,43 @@ class GenerateLandingPageClarificationJob < ApplicationJob
     landing_page = LandingPage.find(landing_page_id)
     entity = Entity.find(entity_id)
     business_profile = business_profile_id ? BusinessProfile.find(business_profile_id) : nil
-    
+
     # Build context for AI
     context = {
       description: description,
       business_profile: business_profile,
       entity: entity
     }
-    
+
     # Generate clarification questions using AI
     questions = generate_clarification_questions(context)
-    
+
     # Store questions in the landing page
     landing_page.update!(clarification_questions: questions)
-    
+
     Rails.logger.info "Generated #{questions.length} clarification questions for landing page #{landing_page_id}"
-    
+
   rescue => e
     Rails.logger.error "Error generating clarification questions for landing page #{landing_page_id}: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
-    
+
     # Store empty questions array so the UI knows generation failed
     landing_page&.update(clarification_questions: [])
   end
-  
+
   private
-  
+
   def generate_clarification_questions(context)
     system_prompt = "You are an expert landing page consultant who asks clarifying questions to create better landing pages."
     user_prompt = build_clarification_prompt(context)
-    
+
     # Use Claude to generate questions
     response = ClaudeService.new.send_message(system_prompt, user_prompt)
-    
+
     # Parse the response to extract questions
     parse_questions_response(response)
   end
-  
+
   def build_clarification_prompt(context)
     business_context = ""
     if context[:business_profile]
@@ -55,7 +55,7 @@ Business Context:
 - Brand Voice: #{bp.tone_of_voice}
 "
     end
-    
+
     "You are an expert landing page consultant. A user wants to create a landing page and has provided this description:
 
 \"#{context[:description]}\"
@@ -80,7 +80,7 @@ Only ask questions that are not already answered in the description or business 
 
 Return only the JSON array, no other text."
   end
-  
+
   def parse_questions_response(response)
     begin
       # Extract JSON from response
@@ -95,4 +95,4 @@ Return only the JSON array, no other text."
       []
     end
   end
-end 
+end
