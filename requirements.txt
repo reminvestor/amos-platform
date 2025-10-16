@@ -1,0 +1,10 @@
+# Docling - IBM's document parser for RAG
+docling==2.18.1
+docling-core==2.8.1
+docling-ibm-models==2.1.1
+docling-parse==2.0.4
+
+# Supporting libraries
+pillow>=10.0.0
+pdfplumber>=0.10.0
+python-magic>=0.4.27
