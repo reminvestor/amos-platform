@@ -47,7 +47,8 @@ Rails.application.routes.draw do
   end
 
   # Routes with constraints on subdomain - application routes for 'app' subdomain
-  constraints(lambda { |req| req.subdomain == "app" }) do
+  # In development, allow localhost without subdomain for Docker testing
+  constraints(lambda { |req| req.subdomain == "app" || (Rails.env.development? && req.host == "localhost") }) do
     # Solid Queue Interface
     authenticate :user, lambda { |u| u.admin? } do
       mount SolidQueueInterface::Engine => "/solid_queue"
