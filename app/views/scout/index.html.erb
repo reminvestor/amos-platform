@@ -1151,16 +1151,10 @@ document.addEventListener('turbo:load', function() {
   
   // Determine if message should use interactive mode
   function shouldUseInteractiveMode(message) {
-    const interactiveKeywords = [
-      'create landing page', 'design page', 'build website', 'landing page',
-      'campaign strategy', 'help me plan', 'brainstorm',
-      'create content', 'write content', 'design layout'
-    ];
-    
-    const lowerMessage = message.toLowerCase();
-    const shouldUse = interactiveKeywords.some(keyword => lowerMessage.includes(keyword));
-    console.log('🎯 Interactive mode check:', { message, shouldUse, lowerMessage });
-    return shouldUse;
+    // DISABLED: Always use streaming mode for better UX with progress visibility
+    // Streaming mode handles both simple queries AND workflows with real-time progress
+    console.log('🎯 Using streaming mode (interactive disabled for better UX)');
+    return false;  // Always use streaming
   }
 
   // Scroll to bottom (with defensive check)
@@ -1831,6 +1825,10 @@ document.addEventListener('turbo:load', function() {
                 // Reset streaming message so the next content creates a new message
                 streamingMessage = null;
                 streamingContent = '';
+              } else if (data.type === 'transient') {
+                // Handle transient progress messages (tool usage, phase progress, etc.)
+                console.log('🔄 Transient update:', data.message);
+                showTransientMessage(data.message);
               } else if (data.type === 'load_canvas') {
                 // Immediately load a canvas (e.g., task progress)
                 console.log('🎨 Received canvas load request:', data.canvas, 'at', new Date().toISOString());

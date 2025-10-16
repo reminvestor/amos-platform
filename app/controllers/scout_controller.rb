@@ -45,8 +45,14 @@ class ScoutController < ApplicationController
       save_scout_message('user', user_message)
       Rails.logger.info "Scout: Saved user message"
       
-      # Use the new V2 tools service
-      generic_tools_service = ScoutGenericToolsServiceV2.new(current_user, current_entity, session[:scout_session_id])
+      # Use the new V2 tools service with main_chat agent loadout
+      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+      generic_tools_service = ScoutGenericToolsServiceV2.new(
+        current_user, 
+        current_entity, 
+        session[:scout_session_id],
+        agent_loadout: main_chat_loadout
+      )
       
       conversation_history = persisted_history_last_k(12)
       
@@ -140,8 +146,12 @@ class ScoutController < ApplicationController
       metadata = {}
       
       if file_urls.any?
-        file_info = file_urls.map { |f| "📎 #{f['filename']}" }.join(", ")
-        enhanced_message = "#{user_message}\n\n[Attached: #{file_info}]"
+        # Include asset_id so AMOS can use read_document tool
+        file_details = file_urls.map do |f| 
+          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+        end.join(", ")
+        
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
         metadata[:file_urls] = file_urls
       end
       
@@ -364,8 +374,12 @@ class ScoutController < ApplicationController
       metadata = {}
       
       if file_urls.any?
-        file_info = file_urls.map { |f| "📎 #{f['filename']}" }.join(", ")
-        enhanced_message = "#{user_message}\n\n[Attached: #{file_info}]"
+        # Include asset_id so AMOS can use read_document tool
+        file_details = file_urls.map do |f| 
+          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+        end.join(", ")
+        
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
         metadata[:file_urls] = file_urls
       end
       
@@ -401,23 +415,41 @@ class ScoutController < ApplicationController
               stream_content_chunk(progress_data[:content])
             end
           when 'phase_progress', 'phase_start'
-            # Stream workflow phase progress as transient messages
-            Rails.logger.info "Phase progress: #{progress_data[:message]}"
-            stream_transient_update("🔄 #{progress_data[:message]}")
+            # Show workflow phase progress as VISIBLE messages (not transient)
+            phase_message = "🔄 #{progress_data[:message]}"
+            Rails.logger.info "Phase progress: #{phase_message}"
+            save_scout_message('assistant', phase_message)
+            stream_update({
+              type: 'intermediate_message',
+              content: phase_message,
+              role: 'assistant'
+            })
           when 'phase_complete'
-            # Stream phase completion as transient messages
-            Rails.logger.info "Phase complete: #{progress_data[:message]}"
-            stream_transient_update("✅ #{progress_data[:message]}")
+            # Show phase completion as VISIBLE messages
+            complete_message = "✅ #{progress_data[:message]}"
+            Rails.logger.info "Phase complete: #{complete_message}"
+            save_scout_message('assistant', complete_message)
+            stream_update({
+              type: 'intermediate_message',
+              content: complete_message,
+              role: 'assistant'
+            })
           when 'tool_start'
-            # Stream tool start as transient messages
+            # Show tool start as VISIBLE message with thinking indicator
             tool_name = progress_data[:tool_name] || progress_data[:name]
-            Rails.logger.info "Tool start: #{tool_name}"
-            stream_transient_update("🔧 Starting #{tool_name}...")
+            tool_message = "🔧 #{get_friendly_tool_name(tool_name)}..."
+            Rails.logger.info "Tool start: #{tool_message}"
+            save_scout_message('assistant', tool_message)
+            stream_update({
+              type: 'intermediate_message',
+              content: tool_message,
+              role: 'assistant'
+            })
           when 'tool_complete'
-            # Stream tool completion as transient messages
+            # Tool complete - just log, don't spam chat
             tool_name = progress_data[:tool_name] || progress_data[:name]
             Rails.logger.info "Tool complete: #{tool_name}"
-            stream_transient_update("✅ Completed #{tool_name}")
+            # Don't show tool complete messages - too noisy
           when 'planner_progress'
             # Stream planner reasoning as transient messages
             Rails.logger.info "Planner: #{progress_data[:message]}"
@@ -1011,6 +1043,26 @@ class ScoutController < ApplicationController
     Rails.logger.error "Stream update error: #{e.message}"
   end
 
+  def get_friendly_tool_name(tool_name)
+    friendly_names = {
+      'generate_ai_landing_page' => 'Generating landing page',
+      'execute_integration' => 'Calling integration API',
+      'get_data' => 'Fetching data',
+      'create_object' => 'Creating record',
+      'update_object' => 'Updating record',
+      'create_rag_store' => 'Building knowledge base',
+      'web_search' => 'Searching the web',
+      'query_rag_store' => 'Querying documentation',
+      'add_integration_endpoint' => 'Adding API endpoint',
+      'generate_integration_scaffold' => 'Creating integration',
+      'list_operations' => 'Listing available operations',
+      'list_connections' => 'Checking connections',
+      'aggregate_artifact_data' => 'Aggregating data',
+      'create_dynamic_visualization' => 'Creating visualization'
+    }
+    friendly_names[tool_name] || tool_name.titleize
+  end
+  
   def stream_final_response(response_data)
     Rails.logger.info "🌊 stream_final_response called with data keys: #{response_data.keys}"
     Rails.logger.info "📝 Message length: #{response_data[:message]&.length} characters"

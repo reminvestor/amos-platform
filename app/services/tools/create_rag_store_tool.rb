@@ -48,12 +48,38 @@ module Tools
         documents_to_process = []
         
         # Add search results as URLs
+        # search_results can be either:
+        # 1. Array of web_search tool responses (each with :results array inside)
+        # 2. Array of individual result hashes (with :url and :title)
         search_results.each do |result|
-          documents_to_process << {
-            type: 'url',
-            content: result[:url] || result['url'],
-            metadata: { title: result[:title] || result['title'] }
-          }
+          # Skip if result is a string (unresolved template variable)
+          next if result.is_a?(String)
+          
+          # Check if this is a web_search tool response (has :results key)
+          if result.is_a?(Hash) && (result[:results] || result['results'])
+            # Extract individual results from web_search response
+            results_array = result[:results] || result['results']
+            results_array.each do |search_result|
+              url = search_result[:url] || search_result['url']
+              next unless url
+              
+              documents_to_process << {
+                type: 'url',
+                content: url,
+                metadata: { 
+                  title: search_result[:title] || search_result['title'],
+                  snippet: search_result[:snippet] || search_result['snippet']
+                }
+              }
+            end
+          elsif result.is_a?(Hash) && (result[:url] || result['url'])
+            # This is an individual result hash
+            documents_to_process << {
+              type: 'url',
+              content: result[:url] || result['url'],
+              metadata: { title: result[:title] || result['title'] }
+            }
+          end
         end
         
         # Add user-provided documentation
@@ -67,12 +93,26 @@ module Tools
         
         # Add uploaded files
         user_uploads.each do |upload|
+          # Skip if upload is a string (unresolved template variable)
+          next if upload.is_a?(String)
+          next unless upload.is_a?(Hash)
+          
+          path = upload[:path] || upload['path']
+          next unless path
+          
           documents_to_process << {
             type: 'file',
-            content: upload[:path] || upload['path'],
+            content: path,
             filename: upload[:filename] || upload['filename']
           }
         end
+        
+        # Check if we have any documents to process
+        if documents_to_process.empty?
+          return error_response("No valid documentation sources found. Please provide URLs, search results, or uploaded files.")
+        end
+        
+        Rails.logger.info "📚 Processing #{documents_to_process.length} documents for RAG store"
         
         # Process documents to extract chunks
         processor = DocumentProcessorService.new

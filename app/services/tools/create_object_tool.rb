@@ -131,6 +131,7 @@ module Tools
       
       contact = Contact.new(data)
       contact.entity = entity
+      contact.user = user  # AUTO-SET user_id - fixes "User must exist" error
       contact.save!
       
       Rails.logger.info "✅ Created contact: #{contact.email} (ID: #{contact.id})"
