@@ -12,6 +12,9 @@ class ScoutController < ApplicationController
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     @conversation_history = persisted_history_last_k(10)
 
+    # Load available RAG stores for the entity
+    @rag_stores = RagLoaderService.load_for_entity(current_entity)
+
     # If this is a fresh start, add Scout's welcome message and load default canvas
     if @conversation_history.empty?
       create_welcome_message
@@ -1244,18 +1247,46 @@ class ScoutController < ApplicationController
       end
     end
 
+    # Build RAG store info
+    rag_info = build_rag_info
+
     welcome_message = if profile&.industry.present?
       "Welcome back! I'm Amos, your AI business automation assistant for #{business_name}. " \
       "I can help you analyze your #{profile.industry.downcase} business performance, " \
       "manage operations, automate workflows, handle integrations, and create marketing materials. " \
-      "What would you like to explore today? 🎯#{subscription_info}"
+      "What would you like to explore today? 🎯#{subscription_info}#{rag_info}"
     else
       "Welcome to Amos! I'm your AI business automation assistant for #{business_name}. " \
       "I can help analyze your business performance, automate operations, manage data integrations, " \
-      "and create marketing materials. What can I help you with today? 🚀#{subscription_info}"
+      "and create marketing materials. What can I help you with today? 🚀#{subscription_info}#{rag_info}"
     end
 
     save_scout_message("assistant", welcome_message)
+  end
+
+  def build_rag_info
+    # Get RAG stores (use instance variable if already loaded)
+    rag_stores = @rag_stores || RagLoaderService.load_for_entity(current_entity)
+
+    return "" if rag_stores[:total_stores].zero?
+
+    info_parts = []
+
+    # System stores
+    if rag_stores[:system_stores].any?
+      apps = rag_stores[:system_stores].map { |s| s[:app_name] }.join(", ")
+      info_parts << "🌐 **System Knowledge**: #{apps}"
+    end
+
+    # Entity stores
+    if rag_stores[:entity_stores].any?
+      apps = rag_stores[:entity_stores].map { |s| s[:app_name] }.join(", ")
+      info_parts << "🏢 **Your Knowledge**: #{apps}"
+    end
+
+    return "" if info_parts.empty?
+
+    "\n\n📚 **Available Knowledge Bases**:\n" + info_parts.join("\n")
   end
 
   # Canvas rendering methods
