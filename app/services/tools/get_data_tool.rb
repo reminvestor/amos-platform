@@ -162,24 +162,30 @@ module Tools
     def normalize_object_type(object_type)
       # Convert singular to plural forms expected by the query engine
       case object_type.to_s.downcase
-      when 'campaign'
-        'campaigns'
-      when 'contact'
-        'contacts'
-      when 'contact_group'
-        'contact_groups'
-      when 'landing_page'
-        'landing_pages'
-      when 'email_template'
-        'email_templates'
-      when 'email_delivery'
-        'email_deliveries'
-      when 'email_sequence'
-        'email_sequences'
-      when 'sequence_step'
-        'sequence_steps'
-      when 'sequence_enrollment'
-        'sequence_enrollments'
+      when "campaign"
+        "campaigns"
+      when "contact"
+        "contacts"
+      when "contact_group"
+        "contact_groups"
+      when "landing_page"
+        "landing_pages"
+      when "email_template"
+        "email_templates"
+      when "email_delivery"
+        "email_deliveries"
+      when "email_sequence"
+        "email_sequences"
+      when "sequence_step"
+        "sequence_steps"
+      when "sequence_enrollment"
+        "sequence_enrollments"
+      when "affiliate"
+        "affiliates"
+      when "commission"
+        "commissions"
+      when "payout"
+        "payouts"
       else
         object_type.to_s
       end

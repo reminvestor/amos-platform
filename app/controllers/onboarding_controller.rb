@@ -178,6 +178,16 @@ Since I already know your business name, let's dive deeper: What industry is #{b
     save_onboarding_message("assistant", welcome_message)
   end
 
+  def add_subscription_confirmation_message
+    entity = current_user.entity
+    plan_name = entity.plan_tier&.titleize || 'Starter'
+    trial_end = entity.trial_ends_at.strftime('%B %d, %Y')
+
+    confirmation = "🎉 **Subscription Confirmed!**\n\nYour #{plan_name} plan 7-day trial has started successfully. You won't be charged until #{trial_end}.\n\nNow let's get your business set up!"
+
+    save_onboarding_message('assistant', confirmation)
+  end
+
   def prepend_subscription_confirmation_message
     entity = current_user.entity
     plan_name = entity.plan_tier&.titleize || 'Starter'
