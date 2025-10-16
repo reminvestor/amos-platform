@@ -1,0 +1,32 @@
+welcome_step_1:
+  email_sequence: welcome_sequence
+  step_number: 1
+  delay_hours: 0
+  subject: "Welcome to Our Platform!"
+  body: "<p>Welcome! We're excited to have you.</p>"
+  sent_count: 0
+  opened_count: 0
+  clicked_count: 0
+  metadata: {}
+
+welcome_step_2:
+  email_sequence: welcome_sequence
+  step_number: 2
+  delay_hours: 72
+  subject: "Getting Started Guide"
+  body: "<p>Here's how to get started...</p>"
+  sent_count: 0
+  opened_count: 0
+  clicked_count: 0
+  metadata: {}
+
+welcome_step_3:
+  email_sequence: welcome_sequence
+  step_number: 3
+  delay_hours: 168
+  subject: "Tips for Success"
+  body: "<p>Here are some tips...</p>"
+  sent_count: 0
+  opened_count: 0
+  clicked_count: 0
+  metadata: {}

@@ -1,0 +1,21 @@
+welcome_sequence:
+  name: "Welcome Email Sequence"
+  goal: "Welcome new subscribers and introduce our product"
+  status: "draft"
+  contact_group: default_group
+  entity: default
+  enrolled_count: 0
+  completed_count: 0
+  active_count: 0
+  metadata: {}
+
+active_sequence:
+  name: "Active Promotion Sequence"
+  goal: "Promote new product launch"
+  status: "active"
+  contact_group: default_group
+  entity: default
+  enrolled_count: 5
+  completed_count: 1
+  active_count: 4
+  metadata: {}

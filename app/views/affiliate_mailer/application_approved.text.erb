@@ -1,0 +1,37 @@
+AMOS Affiliate Program - Welcome!
+
+Hi <%= @user.first_name %>,
+
+Congratulations! Your affiliate application has been approved. You're now part of the AMOS Affiliate Program!
+
+YOUR UNIQUE REFERRAL LINK
+<%= @referral_link %>
+
+Share this link to start earning commissions!
+
+YOUR COMMISSION DETAILS
+- Commission Rate: <%= (@affiliate.commission_rate * 100).round(2) %>%
+- Current Tier: <%= @affiliate.tier.capitalize %>
+- Commission Duration: 12 months recurring
+- Minimum Payout: $50
+
+NEXT STEPS:
+1. Visit your Affiliate Dashboard to track performance: <%= @dashboard_url %>
+2. Download marketing materials from Resources: <%= @resources_url %>
+3. Share your referral link with your audience
+4. Monitor your clicks, signups, and commissions in real-time
+
+HOW TO SUCCEED:
+- Share your link on social media, blogs, and newsletters
+- Create authentic content about your AMOS experience
+- Engage with your audience about their marketing challenges
+- Use our provided marketing materials for best results
+
+We're excited to have you on board! If you have any questions, our support team is here to help.
+
+Best regards,
+The AMOS Team
+
+---
+AMOS Affiliate Program
+Track your performance at <%= @dashboard_url %>

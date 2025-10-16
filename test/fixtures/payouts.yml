@@ -1,0 +1,48 @@
+# Payouts fixtures
+pending_payout:
+  affiliate: active_affiliate
+  amount: 150.00
+  currency: USD
+  payment_method: paypal
+  payment_reference: null
+  status: 0  # pending
+  payout_date: <%= Date.today %>
+  notes: "Monthly payout"
+  commission_ids: []
+  processed_by: null
+
+completed_payout:
+  affiliate: silver_affiliate
+  amount: 200.00
+  currency: USD
+  payment_method: paypal
+  payment_reference: PAYPAL-TXN-12345
+  status: 2  # completed
+  payout_date: <%= 10.days.ago.to_date %>
+  notes: "Payout for March"
+  commission_ids: []
+  processed_by: null
+
+processing_payout:
+  affiliate: active_affiliate
+  amount: 100.00
+  currency: USD
+  payment_method: stripe
+  payment_reference: null
+  status: 1  # processing
+  payout_date: <%= 2.days.ago.to_date %>
+  notes: "Processing via Stripe"
+  commission_ids: []
+  processed_by: null
+
+failed_payout:
+  affiliate: suspended_affiliate
+  amount: 75.00
+  currency: USD
+  payment_method: manual
+  payment_reference: null
+  status: 3  # failed
+  payout_date: <%= 5.days.ago.to_date %>
+  notes: "Failed - invalid payment details"
+  commission_ids: []
+  processed_by: null

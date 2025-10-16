@@ -32,7 +32,7 @@ port ENV.fetch("PORT", 3000)
 
 # Set up workers - disable on Windows due to lack of fork support
 # Also disable in development to avoid pg gem segfaults
-if Gem.win_platform? || ENV['RAILS_ENV'] == 'development'
+if Gem.win_platform? || ENV["RAILS_ENV"] == "development"
   workers 0
 else
   workers ENV.fetch("WEB_CONCURRENCY", 2)
@@ -46,7 +46,7 @@ if ENV["RACK_ENV"] == "production"
     # Log the error
     Rails.logger.error "Puma caught error: #{e.message}\n#{e.backtrace.join("\n")}"
     # Return a minimal response
-    [500, {}, ["An error has occurred, and engineers have been informed. Please try again later."]]
+    [ 500, {}, [ "An error has occurred, and engineers have been informed. Please try again later." ] ]
   end
 end
 

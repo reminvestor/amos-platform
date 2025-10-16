@@ -5,7 +5,7 @@ class ConnectionsController < ApplicationController
   # POST /connections/:id/test
   def test
     connection = current_entity.connections.find_by(id: params[:id])
-    return render json: { success: false, error: 'Connection not found' }, status: :not_found unless connection
+    return render json: { success: false, error: "Connection not found" }, status: :not_found unless connection
 
     result = connection.test_connection!
     render json: result.merge(success: result[:success])
@@ -15,8 +15,8 @@ class ConnectionsController < ApplicationController
 
   # GET /connections/:id/operations
   def operations
-    connection = current_entity.connections.includes(:integration => :integration_operations).find_by(id: params[:id])
-    return render json: { success: false, error: 'Connection not found' }, status: :not_found unless connection
+    connection = current_entity.connections.includes(integration: :integration_operations).find_by(id: params[:id])
+    return render json: { success: false, error: "Connection not found" }, status: :not_found unless connection
 
     ops = connection.available_operations.order(:name).map do |op|
       {
@@ -34,9 +34,9 @@ class ConnectionsController < ApplicationController
     render json: {
       success: true,
       connection: { id: connection.id, name: connection.name },
-      integration: { 
-        id: connection.integration.id, 
-        name: connection.integration.name, 
+      integration: {
+        id: connection.integration.id,
+        name: connection.integration.name,
         slug: connection.integration.slug,
         auth_type: connection.integration.auth_type,
         auth_config: connection.integration.auth_config
@@ -48,28 +48,28 @@ class ConnectionsController < ApplicationController
   # PATCH /connections/:id/credentials
   def update_credentials
     connection = current_entity.connections.includes(:integration, :integration_credentials).find_by(id: params[:id])
-    return render json: { success: false, error: 'Connection not found' }, status: :not_found unless connection
+    return render json: { success: false, error: "Connection not found" }, status: :not_found unless connection
 
     integration = connection.integration
-    
+
     # Find existing active credential or create new one
     # First, deactivate any existing active credentials
     connection.integration_credentials.active.update_all(status: :expired)
-    
+
     # Create a new credential (always create new for security)
-    credential = connection.integration_credentials.build(name: 'API Credentials')
+    credential = connection.integration_credentials.build(name: "API Credentials")
 
     # Build credentials based on integration auth type
     creds = case integration.auth_type
-            when 'api_key'
-              { 'api_key' => params[:api_key] }
-            when 'bearer_token'
-              { 'token' => params[:bearer_token] }
-            when 'basic_auth'
-              { 'username' => params[:username], 'password' => params[:password] }
-            else
+    when "api_key"
+              { "api_key" => params[:api_key] }
+    when "bearer_token"
+              { "token" => params[:bearer_token] }
+    when "basic_auth"
+              { "username" => params[:username], "password" => params[:password] }
+    else
               params.permit(:api_key, :token, :username, :password, :webhook_url).to_h.stringify_keys
-            end
+    end
 
     # Store credentials as proper JSON string
     credential.credentials = creds.compact.to_json
@@ -77,7 +77,7 @@ class ConnectionsController < ApplicationController
     credential.status = :active
     credential.save!
 
-    render json: { success: true, message: 'Credentials updated successfully' }
+    render json: { success: true, message: "Credentials updated successfully" }
   rescue => e
     render json: { success: false, error: e.message }, status: :unprocessable_entity
   end
@@ -86,16 +86,14 @@ class ConnectionsController < ApplicationController
 
   def determine_auth_method(integration)
     case integration.auth_type
-    when 'api_key'
-      'header'
-    when 'bearer_token'
-      'bearer'
-    when 'basic_auth'
-      'basic'
+    when "api_key"
+      "header"
+    when "bearer_token"
+      "bearer"
+    when "basic_auth"
+      "basic"
     else
-      'header'
+      "header"
     end
   end
 end
-
-

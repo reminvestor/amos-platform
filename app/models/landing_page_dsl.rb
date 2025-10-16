@@ -1,19 +1,19 @@
-require 'json-schema'
+require "json-schema"
 
 class LandingPageDsl
   # JSON Schema for validating landing page DSL structure
   SCHEMA = {
     "$schema" => "http://json-schema.org/draft-04/schema#",
     "type" => "object",
-    "required" => ["page"],
+    "required" => [ "page" ],
     "properties" => {
       "page" => {
         "type" => "object",
-        "required" => ["theme", "sections"],
+        "required" => [ "theme", "sections" ],
         "properties" => {
           "theme" => {
             "type" => "string",
-            "enum" => ["clean", "modern", "bold", "professional", "creative"]
+            "enum" => [ "clean", "modern", "bold", "professional", "creative" ]
           },
           "title" => {
             "type" => "string",
@@ -29,11 +29,11 @@ class LandingPageDsl
             "maxItems" => 10,
             "items" => {
               "type" => "object",
-              "required" => ["type"],
+              "required" => [ "type" ],
               "properties" => {
                 "type" => {
                   "type" => "string",
-                  "enum" => ["hero", "features", "cta", "testimonials", "contact", "about"]
+                  "enum" => [ "hero", "features", "cta", "testimonials", "contact", "about" ]
                 },
                 "headline" => { "type" => "string" },
                 "subheadline" => { "type" => "string" },
@@ -57,7 +57,7 @@ class LandingPageDsl
     "definitions" => {
       "hero" => {
         "type" => "object",
-        "required" => ["type", "headline"],
+        "required" => [ "type", "headline" ],
         "properties" => {
           "type" => { "const" => "hero" },
           "headline" => {
@@ -76,7 +76,7 @@ class LandingPageDsl
       },
       "features" => {
         "type" => "object",
-        "required" => ["type", "title", "items"],
+        "required" => [ "type", "title", "items" ],
         "properties" => {
           "type" => { "const" => "features" },
           "title" => {
@@ -93,7 +93,7 @@ class LandingPageDsl
             "maxItems" => 6,
             "items" => {
               "type" => "object",
-              "required" => ["title", "description"],
+              "required" => [ "title", "description" ],
               "properties" => {
                 "title" => {
                   "type" => "string",
@@ -114,7 +114,7 @@ class LandingPageDsl
       },
       "cta" => {
         "type" => "object",
-        "required" => ["type", "headline", "button"],
+        "required" => [ "type", "headline", "button" ],
         "properties" => {
           "type" => { "const" => "cta" },
           "headline" => {
@@ -131,7 +131,7 @@ class LandingPageDsl
       },
       "testimonials" => {
         "type" => "object",
-        "required" => ["type", "title", "items"],
+        "required" => [ "type", "title", "items" ],
         "properties" => {
           "type" => { "const" => "testimonials" },
           "title" => {
@@ -144,7 +144,7 @@ class LandingPageDsl
             "maxItems" => 3,
             "items" => {
               "type" => "object",
-              "required" => ["quote", "author"],
+              "required" => [ "quote", "author" ],
               "properties" => {
                 "quote" => {
                   "type" => "string",
@@ -166,7 +166,7 @@ class LandingPageDsl
       },
       "contact" => {
         "type" => "object",
-        "required" => ["type", "title"],
+        "required" => [ "type", "title" ],
         "properties" => {
           "type" => { "const" => "contact" },
           "title" => {
@@ -181,14 +181,14 @@ class LandingPageDsl
             "type" => "array",
             "items" => {
               "type" => "string",
-              "enum" => ["name", "email", "phone", "company", "message"]
+              "enum" => [ "name", "email", "phone", "company", "message" ]
             }
           }
         }
       },
       "about" => {
         "type" => "object",
-        "required" => ["type", "title", "content"],
+        "required" => [ "type", "title", "content" ],
         "properties" => {
           "type" => { "const" => "about" },
           "title" => {
@@ -204,7 +204,7 @@ class LandingPageDsl
       },
       "button" => {
         "type" => "object",
-        "required" => ["text", "action"],
+        "required" => [ "text", "action" ],
         "properties" => {
           "text" => {
             "type" => "string",
@@ -213,7 +213,7 @@ class LandingPageDsl
           },
           "action" => {
             "type" => "string",
-            "enum" => ["submit_form", "scroll_to", "external_link", "download"]
+            "enum" => [ "submit_form", "scroll_to", "external_link", "download" ]
           },
           "target" => {
             "type" => "string",
@@ -221,13 +221,13 @@ class LandingPageDsl
           },
           "style" => {
             "type" => "string",
-            "enum" => ["primary", "secondary", "outline"]
+            "enum" => [ "primary", "secondary", "outline" ]
           }
         }
       },
       "image" => {
         "type" => "object",
-        "required" => ["src", "alt"],
+        "required" => [ "src", "alt" ],
         "properties" => {
           "src" => {
             "type" => "string",
@@ -254,7 +254,7 @@ class LandingPageDsl
         "properties" => {
           "type" => {
             "type" => "string",
-            "enum" => ["color", "gradient", "image"]
+            "enum" => [ "color", "gradient", "image" ]
           },
           "value" => {
             "type" => "string"
@@ -263,41 +263,41 @@ class LandingPageDsl
       }
     }
   }.freeze
-  
+
   # Theme configurations
   THEMES = {
-    'clean' => {
-      primary_color: '#2563eb',
-      secondary_color: '#64748b',
-      font_family: 'Inter, sans-serif',
-      border_radius: '8px'
+    "clean" => {
+      primary_color: "#2563eb",
+      secondary_color: "#64748b",
+      font_family: "Inter, sans-serif",
+      border_radius: "8px"
     },
-    'modern' => {
-      primary_color: '#7c3aed',
-      secondary_color: '#a78bfa',
-      font_family: 'Poppins, sans-serif',
-      border_radius: '12px'
+    "modern" => {
+      primary_color: "#7c3aed",
+      secondary_color: "#a78bfa",
+      font_family: "Poppins, sans-serif",
+      border_radius: "12px"
     },
-    'bold' => {
-      primary_color: '#dc2626',
-      secondary_color: '#f59e0b',
-      font_family: 'Montserrat, sans-serif',
-      border_radius: '4px'
+    "bold" => {
+      primary_color: "#dc2626",
+      secondary_color: "#f59e0b",
+      font_family: "Montserrat, sans-serif",
+      border_radius: "4px"
     },
-    'professional' => {
-      primary_color: '#1f2937',
-      secondary_color: '#6b7280',
-      font_family: 'Source Sans Pro, sans-serif',
-      border_radius: '6px'
+    "professional" => {
+      primary_color: "#1f2937",
+      secondary_color: "#6b7280",
+      font_family: "Source Sans Pro, sans-serif",
+      border_radius: "6px"
     },
-    'creative' => {
-      primary_color: '#ec4899',
-      secondary_color: '#8b5cf6',
-      font_family: 'Nunito, sans-serif',
-      border_radius: '16px'
+    "creative" => {
+      primary_color: "#ec4899",
+      secondary_color: "#8b5cf6",
+      font_family: "Nunito, sans-serif",
+      border_radius: "16px"
     }
   }.freeze
-  
+
   class << self
     # Validate DSL content against schema
     def validate(dsl_content)
@@ -305,61 +305,61 @@ class LandingPageDsl
         JSON::Validator.validate!(SCHEMA, dsl_content)
         { valid: true, errors: [] }
       rescue JSON::Schema::ValidationError => e
-        { valid: false, errors: [e.message] }
+        { valid: false, errors: [ e.message ] }
       rescue => e
-        { valid: false, errors: ["Invalid JSON format: #{e.message}"] }
+        { valid: false, errors: [ "Invalid JSON format: #{e.message}" ] }
       end
     end
-    
+
     # Quick validation check
     def valid?(dsl_content)
       validate(dsl_content)[:valid]
     end
-    
+
     # Get theme configuration
     def theme_config(theme_name)
-      THEMES[theme_name] || THEMES['clean']
+      THEMES[theme_name] || THEMES["clean"]
     end
-    
+
     # Get available themes
     def available_themes
       THEMES.keys
     end
-    
+
     # Sanitize and normalize DSL content
     def sanitize(dsl_content)
       return nil unless dsl_content.is_a?(Hash)
-      
+
       # Deep clone to avoid modifying original
       sanitized = deep_clone(dsl_content)
-      
+
       # Sanitize strings
       sanitize_strings!(sanitized)
-      
+
       # Ensure required structure
-      sanitized['page'] ||= {}
-      sanitized['page']['theme'] ||= 'clean'
-      sanitized['page']['sections'] ||= []
-      
+      sanitized["page"] ||= {}
+      sanitized["page"]["theme"] ||= "clean"
+      sanitized["page"]["sections"] ||= []
+
       sanitized
     end
-    
+
     # Create a sample DSL for testing/examples
-    def sample_dsl(business_type = 'consulting')
+    def sample_dsl(business_type = "consulting")
       case business_type.downcase
-      when 'consulting'
+      when "consulting"
         consulting_sample
-      when 'restaurant'
+      when "restaurant"
         restaurant_sample
-      when 'tech'
+      when "tech"
         tech_sample
       else
         generic_sample
       end
     end
-    
+
     private
-    
+
     def deep_clone(obj)
       case obj
       when Hash
@@ -370,7 +370,7 @@ class LandingPageDsl
         obj.dup rescue obj
       end
     end
-    
+
     def sanitize_strings!(obj)
       case obj
       when Hash
@@ -385,15 +385,15 @@ class LandingPageDsl
         obj.each { |item| sanitize_strings!(item) }
       end
     end
-    
+
     def sanitize_string(str)
       # Remove HTML tags and dangerous characters
-      str.gsub(/<[^>]*>/, '')
-         .gsub(/[<>\"'&]/, '')
+      str.gsub(/<[^>]*>/, "")
+         .gsub(/[<>\"'&]/, "")
          .strip
          .truncate(500)
     end
-    
+
     def consulting_sample
       {
         "page" => {
@@ -446,7 +446,7 @@ class LandingPageDsl
         }
       }
     end
-    
+
     def restaurant_sample
       {
         "page" => {
@@ -467,7 +467,7 @@ class LandingPageDsl
         }
       }
     end
-    
+
     def tech_sample
       {
         "page" => {
@@ -483,7 +483,7 @@ class LandingPageDsl
         }
       }
     end
-    
+
     def generic_sample
       {
         "page" => {

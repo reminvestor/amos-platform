@@ -12,7 +12,7 @@ class CreateWorkflowVariables < ActiveRecord::Migration[8.0]
     end
 
     add_index :workflow_variables, :name
-    add_index :workflow_variables, [:workflow_execution_id, :name], unique: true, name: 'idx_workflow_var_unique'
-    add_index :workflow_variables, [:source_type, :source_id]
+    add_index :workflow_variables, [ :workflow_execution_id, :name ], unique: true, name: 'idx_workflow_var_unique'
+    add_index :workflow_variables, [ :source_type, :source_id ]
   end
 end

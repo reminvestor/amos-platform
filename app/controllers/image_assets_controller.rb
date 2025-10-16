@@ -2,7 +2,7 @@ class ImageAssetsController < ApplicationController
   include EntityScoped
 
   before_action :authenticate_user!
-  before_action :set_image_asset, only: [:show, :destroy]
+  before_action :set_image_asset, only: [ :show, :destroy ]
 
   def index
     @image_assets = ImageAsset.by_entity(current_entity.id).recent
@@ -24,15 +24,15 @@ class ImageAssetsController < ApplicationController
     @image_asset = ImageAsset.new(image_asset_params)
     @image_asset.user_id = current_user.id
     @image_asset.entity_id = current_entity.id
-    @image_asset.source ||= 'upload'
+    @image_asset.source ||= "upload"
 
     respond_to do |format|
       if @image_asset.save
-        format.html { redirect_to image_assets_path, notice: 'Image uploaded successfully.' }
+        format.html { redirect_to image_assets_path, notice: "Image uploaded successfully." }
         format.json { render json: { success: true, image: serialize_asset(@image_asset) } }
       else
         format.html { render :new, status: :unprocessable_entity }
-        format.json { render json: { error: @image_asset.errors.full_messages.join(', ') }, status: :unprocessable_entity }
+        format.json { render json: { error: @image_asset.errors.full_messages.join(", ") }, status: :unprocessable_entity }
       end
     end
   end
@@ -41,12 +41,12 @@ class ImageAssetsController < ApplicationController
   # Params: prompt, size (e.g. "1200x600"), title(optional), tags(optional array)
   def generate
     prompt = params[:prompt].to_s.strip
-    requested_size = params[:size].presence || '1024x1024'
+    requested_size = params[:size].presence || "1024x1024"
     title = params[:title].presence || "AI Image"
     tags = Array(params[:tags]).map(&:to_s)
 
     if prompt.blank?
-      render json: { error: 'prompt is required' }, status: :unprocessable_entity and return
+      render json: { error: "prompt is required" }, status: :unprocessable_entity and return
     end
 
     begin
@@ -59,14 +59,14 @@ class ImageAssetsController < ApplicationController
         if requested_size.to_s =~ /\A(\d+)x(\d+)\z/
           w = $1.to_i; h = $2.to_i
           if w > h
-            '1792x1024'
+            "1792x1024"
           elsif h > w
-            '1024x1792'
+            "1024x1792"
           else
-            '1024x1024'
+            "1024x1024"
           end
         else
-          '1024x1024'
+          "1024x1024"
         end
       end
 
@@ -81,7 +81,7 @@ class ImageAssetsController < ApplicationController
       render json: { success: true, image: serialize_asset(asset) }
     rescue => e
       Rails.logger.error("AI image generation failed: #{e.message}")
-      render json: { error: 'Image generation failed' }, status: :internal_server_error
+      render json: { error: "Image generation failed" }, status: :internal_server_error
     end
   end
 
@@ -90,7 +90,7 @@ class ImageAssetsController < ApplicationController
 
   def destroy
     @image_asset.destroy
-    redirect_to image_assets_path, notice: 'Image removed.'
+    redirect_to image_assets_path, notice: "Image removed."
   end
 
   private
@@ -121,5 +121,3 @@ class ImageAssetsController < ApplicationController
     }
   end
 end
-
-

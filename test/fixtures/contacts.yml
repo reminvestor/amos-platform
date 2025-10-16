@@ -1,17 +1,28 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  email: MyString
-  first_name: MyString
-  last_name: MyString
-  status: MyString
+  email: contact1@example.com
+  first_name: John
+  last_name: Doe
+  status: active
   tags: MyString
   user: one
+  entity: default
 
 two:
-  email: MyString
-  first_name: MyString
-  last_name: MyString
-  status: MyString
+  email: contact2@example.com
+  first_name: Jane
+  last_name: Smith
+  status: active
   tags: MyString
   user: two
+  entity: default
+
+three:
+  email: contact3@example.com
+  first_name: Bob
+  last_name: Johnson
+  status: active
+  tags: MyString
+  user: default
+  entity: default

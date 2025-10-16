@@ -6,7 +6,3 @@ class JobNotificationChannel < ApplicationCable::Channel
   def unsubscribed
   end
 end
-
-
-
-

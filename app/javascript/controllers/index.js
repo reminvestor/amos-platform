@@ -4,17 +4,32 @@
 
 import { application } from "./application"
 
-import HelloController from "./hello_controller"
-application.register("hello", HelloController)
+import AffiliateChartController from "./affiliate_chart_controller"
+application.register("affiliate-chart", AffiliateChartController)
 
-import TurboFormController from "./turbo_form_controller"
-application.register("turbo-form", TurboFormController)
+import BulkSelectController from "./bulk_select_controller"
+application.register("bulk-select", BulkSelectController)
 
 import ContactSelectionController from "./contact_selection_controller"
 application.register("contact-selection", ContactSelectionController)
 
-import LandingPageChatController from "./landing_page/chat"
-application.register("landing-page-chat", LandingPageChatController)
+import CopyToClipboardController from "./copy_to_clipboard_controller"
+application.register("copy-to-clipboard", CopyToClipboardController)
+
+import FilterTableController from "./filter_table_controller"
+application.register("filter-table", FilterTableController)
+
+import HelloController from "./hello_controller"
+application.register("hello", HelloController)
+
+import PayoutCalculatorController from "./payout_calculator_controller"
+application.register("payout-calculator", PayoutCalculatorController)
+
+import QrCodeController from "./qr_code_controller"
+application.register("qr-code", QrCodeController)
 
 import ScoutController from "./scout_controller"
 application.register("scout", ScoutController)
+
+import TurboFormController from "./turbo_form_controller"
+application.register("turbo-form", TurboFormController)

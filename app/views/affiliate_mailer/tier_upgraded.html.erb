@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      padding: 40px 30px;
+      text-align: center;
+      color: white;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .celebration {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .highlight-box {
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+      border: 2px solid #8b5cf6;
+      border-radius: 8px;
+      padding: 30px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .tier-badge {
+      display: inline-block;
+      padding: 10px 30px;
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      color: white;
+      border-radius: 50px;
+      font-size: 24px;
+      font-weight: 700;
+      margin: 15px 0;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .info-box {
+      background: #f8f9fa;
+      border-left: 4px solid #8b5cf6;
+      padding: 15px 20px;
+      margin: 20px 0;
+    }
+    .button {
+      display: inline-block;
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      color: white;
+      padding: 14px 30px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      margin: 20px 0;
+    }
+    .footer {
+      background: #f8f9fa;
+      padding: 20px 30px;
+      text-align: center;
+      font-size: 14px;
+      color: #666;
+      border-top: 1px solid #e9ecef;
+    }
+    .comparison {
+      display: flex;
+      justify-content: space-around;
+      margin: 20px 0;
+    }
+    .tier-item {
+      text-align: center;
+      flex: 1;
+    }
+    .tier-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .tier-value {
+      font-size: 32px;
+      font-weight: 700;
+      margin: 10px 0;
+    }
+    .arrow {
+      font-size: 32px;
+      color: #8b5cf6;
+      align-self: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="celebration">🏆</div>
+      <h1>Tier Upgraded!</h1>
+    </div>
+
+    <div class="content">
+      <p>Hi <%= @user.first_name %>,</p>
+
+      <p>Congratulations! Your outstanding performance has earned you a tier upgrade!</p>
+
+      <div class="highlight-box">
+        <p style="margin: 0; font-size: 16px; color: #6b21a8;">You've been upgraded to</p>
+        <div class="tier-badge"><%= @new_tier %></div>
+        <p style="margin: 0; color: #6b21a8;">New Commission Rate: <strong><%= @new_commission_rate %>%</strong></p>
+      </div>
+
+      <div class="comparison">
+        <div class="tier-item">
+          <div class="tier-label">Previous</div>
+          <div class="tier-value" style="color: #9ca3af;"><%= @old_tier %></div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="tier-item">
+          <div class="tier-label">Current</div>
+          <div class="tier-value" style="color: #8b5cf6;"><%= @new_tier %></div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <h4 style="margin-top: 0;"><%= @new_tier %> Tier Benefits</h4>
+        <ul style="margin: 10px 0;">
+          <li>Higher commission rate: <strong><%= @new_commission_rate %>%</strong></li>
+          <% if @new_tier == 'Silver' %>
+          <li>Priority support for your referrals</li>
+          <li>Early access to new features</li>
+          <li>Featured in affiliate spotlight</li>
+          <% elsif @new_tier == 'Gold' %>
+          <li>Dedicated account manager</li>
+          <li>Co-marketing opportunities</li>
+          <li>Exclusive webinars and training</li>
+          <li>Custom landing pages</li>
+          <% else %>
+          <li>Standard affiliate benefits</li>
+          <li>Access to marketing materials</li>
+          <li>Real-time analytics</li>
+          <% end %>
+        </ul>
+      </div>
+
+      <p><strong>How to maintain your tier:</strong></p>
+      <ul>
+        <li>Continue referring quality customers</li>
+        <li>Engage with your referrals to ensure success</li>
+        <li>Use advanced marketing materials</li>
+        <li>Share best practices with the community</li>
+      </ul>
+
+      <center>
+        <a href="<%= @dashboard_url %>" class="button">View Dashboard</a>
+      </center>
+
+      <p>Thank you for being an exceptional AMOS affiliate! Your success is our success.</p>
+
+      <p>Best regards,<br>
+      The AMOS Team</p>
+    </div>
+
+    <div class="footer">
+      <p>AMOS Affiliate Program<br>
+      Keep up the great work at <a href="<%= @dashboard_url %>"><%= @dashboard_url %></a></p>
+    </div>
+  </div>
+</body>
+</html>

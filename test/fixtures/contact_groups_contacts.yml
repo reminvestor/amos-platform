@@ -1,0 +1,14 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+# Associate contacts with contact groups
+one:
+  contact: one
+  contact_group: one
+
+two:
+  contact: two
+  contact_group: one
+
+three:
+  contact: three
+  contact_group: default_group

@@ -1,0 +1,28 @@
+AMOS Affiliate Program - New Referral Signup!
+
+Hi <%= @user.first_name %>,
+
+Great news! Someone just signed up using your referral link.
+
+NEW SIGNUP
+Name: <%= @referred_user.full_name %>
+Signed up: Just now
+
+WHAT HAPPENS NEXT?
+When this user subscribes to a paid plan, you'll earn a commission! We'll notify you as soon as that happens.
+
+YOUR POTENTIAL EARNINGS:
+- Commission Rate: <%= (@affiliate.commission_rate * 100).round(2) %>%
+- Commission Period: 12 months recurring
+- Estimated value (if they subscribe to $49/mo plan): $<%= (49 * @affiliate.commission_rate * 12).round(2) %>
+
+Keep up the great work promoting AMOS!
+
+View your dashboard: <%= @dashboard_url %>
+
+Best regards,
+The AMOS Team
+
+---
+AMOS Affiliate Program
+Track all your referrals at <%= @dashboard_url %>

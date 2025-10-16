@@ -9,7 +9,8 @@ one:
   access_token: MyString
   refresh_token: MyString
   token_expires_at: 2025-03-28 11:35:17
-  settings: 
+  settings:
+  entity_id: 980190962
 
 two:
   user: two
@@ -20,4 +21,5 @@ two:
   access_token: MyString
   refresh_token: MyString
   token_expires_at: 2025-03-28 11:35:17
-  settings: 
+  settings:
+  entity_id: 980190962

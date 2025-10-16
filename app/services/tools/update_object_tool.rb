@@ -40,9 +40,9 @@ module Tools
       
       # Normalize object type (remove 's' if present)
       object_type = object_type.to_s.singularize
-      
+
       # Validate object type
-      valid_types = ['campaign', 'contact', 'contact_group', 'landing_page', 'email_template']
+      valid_types = [ "campaign", "contact", "contact_group", "landing_page", "email_template", "email_sequence", "sequence_step", "sequence_enrollment", "affiliate", "commission", "payout" ]
       unless valid_types.include?(object_type)
         return error_response(
           "Cannot update objects of type: #{object_type}",
@@ -62,6 +62,12 @@ module Tools
           update_landing_page(object_id, data)
         when 'email_template'
           update_email_template(object_id, data)
+        when 'email_sequence'
+          update_email_sequence(object_id, data)
+        when 'sequence_step'
+          update_sequence_step(object_id, data)
+        when 'sequence_enrollment'
+          update_sequence_enrollment(object_id, data)
         end
         
         success_response(
@@ -197,16 +203,95 @@ module Tools
     
     def update_email_template(id, data)
       template = entity.email_templates.find(id)
-      
+
       # Ensure HTML content is properly formatted
       if data['html_content'].present? && !data['html_content'].include?('<html')
         data['html_content'] = wrap_in_html(data['html_content'])
       end
-      
+
       template.update!(data)
       format_email_template(template)
     end
-    
+
+    def update_email_sequence(id, data)
+      sequence = entity.email_sequences.find(id)
+
+      # Handle status changes with special actions
+      if data['status'].present?
+        case data['status']
+        when 'active'
+          unless sequence.activate!
+            return error_response("Cannot activate sequence: #{sequence.errors.full_messages.join(', ')}")
+          end
+          data.delete('status') # Already handled by activate!
+        when 'paused'
+          unless sequence.pause!
+            return error_response("Cannot pause sequence")
+          end
+          data.delete('status')
+        when 'completed'
+          unless sequence.complete!
+            return error_response("Cannot complete sequence")
+          end
+          data.delete('status')
+        end
+      end
+
+      # Handle enrollment trigger
+      if data['enroll_contacts'] == true
+        enrolled_count = sequence.enroll_contacts!
+        Rails.logger.info "✅ Enrolled #{enrolled_count} contacts in sequence"
+        data.delete('enroll_contacts')
+      end
+
+      sequence.update!(data) if data.any?
+      format_email_sequence(sequence)
+    end
+
+    def update_sequence_step(id, data)
+      # Find step through entity's sequences
+      step = SequenceStep.joins(:email_sequence)
+                         .where(email_sequences: { entity_id: entity.id })
+                         .find(id)
+
+      step.update!(data)
+      format_sequence_step(step)
+    end
+
+    def update_sequence_enrollment(id, data)
+      enrollment = entity.sequence_enrollments.find(id)
+
+      # Handle status actions
+      if data['action'].present?
+        case data['action']
+        when 'start'
+          unless enrollment.start!
+            return error_response("Cannot start enrollment")
+          end
+        when 'pause'
+          unless enrollment.pause!
+            return error_response("Cannot pause enrollment")
+          end
+        when 'resume'
+          unless enrollment.resume!
+            return error_response("Cannot resume enrollment")
+          end
+        when 'cancel'
+          unless enrollment.cancel!
+            return error_response("Cannot cancel enrollment")
+          end
+        when 'complete'
+          unless enrollment.complete!
+            return error_response("Cannot complete enrollment")
+          end
+        end
+        data.delete('action')
+      end
+
+      enrollment.update!(data) if data.any?
+      format_sequence_enrollment(enrollment)
+    end
+
     # Formatting helpers
     def format_campaign(campaign)
       result = {
@@ -280,7 +365,62 @@ module Tools
         updated_at: template.updated_at
       }
     end
-    
+
+    def format_email_sequence(sequence)
+      {
+        id: sequence.id,
+        name: sequence.name,
+        goal: sequence.goal,
+        status: sequence.status,
+        contact_group_id: sequence.contact_group_id,
+        step_count: sequence.step_count,
+        enrolled_count: sequence.enrolled_count,
+        active_count: sequence.active_count,
+        completed_count: sequence.completed_count,
+        open_rate: sequence.open_rate,
+        click_rate: sequence.click_rate,
+        completion_rate: sequence.completion_rate,
+        created_at: sequence.created_at,
+        updated_at: sequence.updated_at
+      }
+    end
+
+    def format_sequence_step(step)
+      {
+        id: step.id,
+        email_sequence_id: step.email_sequence_id,
+        step_number: step.step_number,
+        delay_hours: step.delay_hours,
+        delay_in_days: step.delay_in_days,
+        subject: step.effective_subject,
+        email_template_id: step.email_template_id,
+        sent_count: step.sent_count,
+        opened_count: step.opened_count,
+        clicked_count: step.clicked_count,
+        open_rate: step.open_rate,
+        click_rate: step.click_rate,
+        created_at: step.created_at,
+        updated_at: step.updated_at
+      }
+    end
+
+    def format_sequence_enrollment(enrollment)
+      {
+        id: enrollment.id,
+        email_sequence_id: enrollment.email_sequence_id,
+        contact_id: enrollment.contact_id,
+        status: enrollment.status,
+        current_step_number: enrollment.current_step_number,
+        next_send_at: enrollment.next_send_at,
+        started_at: enrollment.started_at,
+        completed_at: enrollment.completed_at,
+        progress_percentage: enrollment.progress_percentage,
+        days_in_sequence: enrollment.days_in_sequence,
+        created_at: enrollment.created_at,
+        updated_at: enrollment.updated_at
+      }
+    end
+
     def wrap_in_html(content)
       <<~HTML
         <!DOCTYPE html>
