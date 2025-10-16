@@ -1,15 +1,22 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  name: "Test Company"
-  subdomain: "testcompany"
-  slug: "test-company"
+  name: "Test Entity One"
+  subdomain: "testentity1"
+  slug: "test-entity-one"
   status: "active"
   settings: {}
 
 two:
-  name: "Demo Company"
-  subdomain: "democompany"
-  slug: "demo-company"
+  name: "Test Entity Two"
+  subdomain: "testentity2"
+  slug: "test-entity-two"
+  status: "active"
+  settings: {}
+
+default:
+  name: "Default Test Entity"
+  subdomain: "defaulttest"
+  slug: "default-test-entity"
   status: "active"
   settings: {}

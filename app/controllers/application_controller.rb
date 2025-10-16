@@ -12,6 +12,7 @@ class ApplicationController < ActionController::Base
 
   # Require authentication for all controllers except API ones
   before_action :authenticate_user!, unless: :api_request?
+  before_action :check_subscription_status
   before_action :check_onboarding_status
   before_action :configure_permitted_parameters, if: :devise_controller?
 
@@ -41,14 +42,20 @@ class ApplicationController < ActionController::Base
 
   # Override the default devise redirect to avoid /entities being appended
   def after_sign_in_path_for(resource)
+    # First check if user needs onboarding (regardless of subdomain)
+    unless resource.onboarded?
+      return onboarding_path
+    end
+
+    # Check if user needs subscription
+    entity = resource.entity
+    if entity && !['active', 'trialing'].include?(entity.subscription_status)
+      return new_subscription_path
+    end
+
     # Check if we're on the app subdomain (or localhost without subdomain for testing)
     if request.subdomain == "app" || request.subdomain.blank?
-      # First check if user needs onboarding
-      unless resource.onboarded?
-        return onboarding_path
-      end
-
-      # User is onboarded, proceed with entity logic
+      # User is onboarded and has subscription, proceed with entity logic
       if resource.entity
         # User has an entity, go to dashboard
         root_path
@@ -114,17 +121,40 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def check_subscription_status
+    return unless user_signed_in?
+    return if devise_controller? && (action_name == 'destroy' || controller_name == 'sessions')
+    return if controller_name == 'subscriptions' # Allow subscription pages
+    return if controller_name == 'stripe_webhooks' # Allow webhooks
+    return if controller_name == 'stripe_checkout' # Allow checkout pages
+    return if request.path.start_with?('/api/')
+    return if request.path.start_with?('/stripe/')
+
+    entity = current_entity
+    return unless entity
+
+    # Allow access if subscription is active or in trial
+    return if ['active', 'trialing'].include?(entity.subscription_status)
+
+    # Redirect to subscription page if no active subscription
+    redirect_to new_subscription_path, alert: "Please select a plan to continue."
+  end
+
   def check_onboarding_status
     return unless user_signed_in?
     return if devise_controller? && (action_name == "destroy" || controller_name == "sessions") # Allow logout
     return if controller_name == "onboarding" # Don't redirect from onboarding pages
     return if controller_name == "campaign_tracking" # Allow campaign tracking
+    return if controller_name == "subscriptions" # Allow subscription pages
+    return if controller_name == "stripe_webhooks" # Allow Stripe webhooks
+    return if controller_name == "stripe_checkout" # Allow Stripe checkout
     return if request.path.start_with?("/api/") # Skip API requests
+    return if request.path.start_with?("/subscriptions") # Allow all subscription paths
     return if request.path == "/scout" # Don't redirect from scout path to prevent loops
     return if request.path == "/onboarding/debug_status" # Allow debug status check
 
     # Debug logging for production troubleshooting
-    Rails.logger.info "🔍 Onboarding check - User: #{current_user.id}, Onboarded: #{current_user.onboarded?}, Path: #{request.path}, Domain: #{request.domain}"
+    Rails.logger.info "🔍 Onboarding check - Controller: #{controller_name}, User: #{current_user.id}, Onboarded: #{current_user.onboarded?}, Path: #{request.path}, Domain: #{request.domain}"
 
     return if current_user.onboarded? # User has completed onboarding
 

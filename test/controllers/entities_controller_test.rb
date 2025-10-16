@@ -1,61 +1,54 @@
 require "test_helper"
 
 class EntitiesControllerTest < ActionDispatch::IntegrationTest
-  # TODO: Fix these auto-generated scaffold tests - they use incorrect URL helpers
-  # Skipping for now to focus on security fixes
+  setup do
+    @entity = entities(:one)
+    @user = users(:one)
+    sign_in @user
+  end
 
   test "should get index" do
-    skip "Auto-generated test needs fixing"
-
-    get entities_index_url
+    get entities_url
     assert_response :success
   end
 
   test "should get show" do
-
-    skip "Auto-generated test needs fixing"
-
-    get entities_show_url
+    get entity_url(@entity)
     assert_response :success
   end
 
   test "should get new" do
-
-    skip "Auto-generated test needs fixing"
-
-    get entities_new_url
+    get new_entity_url
     assert_response :success
   end
 
-  test "should get create" do
+  test "should create entity" do
+    assert_difference("Entity.count") do
+      post entities_url, params: {
+        entity: {
+          name: "New Entity",
+          subdomain: "newentity",
+          slug: "new-entity"
+        }
+      }
+    end
 
-    skip "Auto-generated test needs fixing"
-
-    get entities_create_url
-    assert_response :success
+    assert_redirected_to entity_url(Entity.last)
   end
 
   test "should get edit" do
-
-    skip "Auto-generated test needs fixing"
-
-    get entities_edit_url
+    get edit_entity_url(@entity)
     assert_response :success
   end
 
-  test "should get update" do
-
-    skip "Auto-generated test needs fixing"
-
-    get entities_update_url
-    assert_response :success
+  test "should update entity" do
+    patch entity_url(@entity), params: { entity: { name: "Updated Name" } }
+    assert_response :redirect
   end
 
-  test "should get destroy" do
-
-    skip "Auto-generated test needs fixing"
-
-    get entities_destroy_url
-    assert_response :success
+  test "should destroy entity" do
+    # Entities with associated records may not be destroyable
+    delete entity_url(@entity)
+    assert_response :redirect
   end
 end

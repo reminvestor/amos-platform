@@ -1,17 +1,28 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  email: "test1@example.com"
-  first_name: "Test"
-  last_name: "User"
-  role: "marketer"
-  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
   entity: one
+  email: "user1@test.com"
+  first_name: "Test"
+  last_name: "User1"
+  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  onboarded: true
+  role: "admin"
 
 two:
-  email: "test2@example.com"
-  first_name: "Admin"
-  last_name: "User"
-  role: "admin"
-  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
   entity: one
+  email: "user2@test.com"
+  first_name: "Test"
+  last_name: "User2"
+  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  onboarded: true
+  role: "marketer"
+
+default:
+  entity: default
+  email: "default@test.com"
+  first_name: "Default"
+  last_name: "User"
+  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  onboarded: true
+  role: "admin"

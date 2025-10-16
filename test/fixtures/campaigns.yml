@@ -6,6 +6,7 @@ one:
   status: MyString
   scheduled_at: 2025-03-10 15:30:53
   user: one
+  entity: one
 
 two:
   name: MyString
@@ -13,3 +14,4 @@ two:
   status: MyString
   scheduled_at: 2025-03-10 15:30:53
   user: two
+  entity: one

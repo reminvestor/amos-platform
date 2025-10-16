@@ -174,6 +174,12 @@ module Tools
         "email_templates"
       when "email_delivery"
         "email_deliveries"
+      when "email_sequence"
+        "email_sequences"
+      when "sequence_step"
+        "sequence_steps"
+      when "sequence_enrollment"
+        "sequence_enrollments"
       else
         object_type.to_s
       end

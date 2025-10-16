@@ -1,0 +1,301 @@
+template_version: 2
+name: "Automated Email Sequence Builder"
+slug: "email_sequence_v2"
+description: "Create automated email sequences with time-based delays conversationally"
+category: "campaign_automation"
+
+config:
+  execution_mode: "adaptive"
+  context_aware: true
+  conversational: true
+  self_healing: true
+
+keywords:
+  - email sequence
+  - automated sequence
+  - drip campaign
+  - follow up sequence
+  - email series
+  - nurture sequence
+  - autoresponder
+  - sequential emails
+  - email automation
+  - timed emails
+
+phases:
+  # Phase 1: Gather sequence requirements
+  - id: "gather_context"
+    type: "gather_context"
+    name: "Understand Sequence Requirements"
+    goal: "Gather all information needed to create an automated email sequence"
+
+    required_fields:
+      - key: "sequence_name"
+        prompt: "What would you like to name this email sequence?"
+        required: true
+        validation: "text"
+        help_text: "Example: 'Welcome Series', 'Product Launch Sequence', 'Lead Nurture Campaign'"
+
+      - key: "sequence_goal"
+        prompt: "What is the goal or purpose of this sequence?"
+        required: false
+        validation: "text"
+        help_text: "Example: 'Welcome new subscribers', 'Promote new product', 'Re-engage inactive leads'"
+
+      - key: "contact_group_id"
+        prompt: "Which contact group should receive this sequence?"
+        required: true
+        validation: "number"
+        help_text: "Provide the group name or ID. All contacts in this group will be enrolled."
+
+      - key: "tags"
+        prompt: "Any tags to help organize this sequence?"
+        required: false
+        validation: "text"
+        help_text: "Example: 'onboarding', 'sales', 'product-launch'"
+
+      - key: "email_content_strategy"
+        prompt: "Would you like to use existing email templates or have AI generate content based on your goal?"
+        required: true
+        validation: "text"
+        help_text: "Options: 'use_templates' (specify template IDs), 'ai_generate' (AI creates content based on goal)"
+
+      - key: "email_template_ids"
+        prompt: "Which email templates would you like to use in this sequence?"
+        required: false
+        validation: "array"
+        help_text: "Only needed if using existing templates. Provide template IDs in order."
+        condition: "email_content_strategy == 'use_templates'"
+
+      - key: "number_of_emails"
+        prompt: "How many emails should be in this sequence?"
+        required: false
+        validation: "number"
+        help_text: "Only needed if AI is generating content. Minimum 2, maximum 10."
+        condition: "email_content_strategy == 'ai_generate'"
+
+      - key: "delay_pattern"
+        prompt: "What timing pattern should the sequence follow?"
+        required: false
+        validation: "text"
+        help_text: "Example: 'immediate, 3 days, 7 days' OR 'default' for standard 3-day spacing"
+
+    context_sources:
+      - "conversation_history"
+      - "workflow_context"
+      - "direct_conversation"
+
+    ai_instructions: |
+      Gather email sequence requirements conversationally.
+
+      INTELLIGENT CONTEXT CHECKING:
+      - Check conversation history for recently mentioned contact groups
+      - Look for previous discussions about campaign goals
+      - Check if user has mentioned specific email templates
+      - Use get_data to fetch available contact groups and templates to help user choose
+
+      CONVERSATIONAL APPROACH:
+      - Ask about the sequence name and purpose together
+      - Then ask about the target audience (contact group)
+      - Ask if they want to use existing templates or generate new content
+      - If using templates, fetch available ones to show options
+      - If AI generating, ask how many emails they want
+      - Ask about timing naturally (can suggest "most sequences space emails 3-7 days apart")
+
+      DATA GATHERING TOOLS:
+      - Use get_data(object_type: "contact_groups") to show available groups
+      - Use get_data(object_type: "email_templates") to show available templates
+      - Use get_workflow_context to check for previously stored preferences
+
+      Be helpful and guide the user through the process naturally.
+
+    allowed_tools:
+      - get_workflow_context
+      - get_data
+
+  # Phase 2: Create the sequence
+  - id: "execute_goal"
+    type: "execute_goal"
+    name: "Build Email Sequence"
+    goal: "Create the email sequence with all steps, content, and timing configured"
+
+    requires_from_previous:
+      - sequence_name
+      - contact_group_id
+      - email_content_strategy
+
+    execution_strategy:
+      approach: "structured"
+
+      allowed_tools:
+        - create_object
+        - update_object
+        - get_data
+        - get_schema
+
+      success_when:
+        sequence_created: true
+        steps_configured: true
+        minimum_two_steps: true
+
+    ai_instructions: |
+      Build the email sequence using structured data mapping approach:
+
+      STEP 1: Create the base sequence (EmailSequence model)
+      - Use create_object tool with object_type: "email_sequences"
+      - Set status to "draft" (user activates separately)
+      - Include: name, goal, status, entity_id
+
+      STEP 2: Configure email steps (SequenceStep model)
+      - If using existing templates:
+        * Create one SequenceStep per template_id provided
+        * Set delay_hours for each step (parse from delay_pattern or use defaults)
+        * Link to EmailTemplate via email_template_id
+
+      - If AI generating content:
+        * Create SequenceStep records based on number_of_emails
+        * Generate subject lines and content based on sequence_goal
+        * Use create_object to create EmailTemplate for each step
+        * Link steps to newly created templates
+
+      STEP 3: Set up timing
+      - First email: delay_hours = 0 (immediate upon enrollment)
+      - Subsequent emails: parse delay_pattern OR use default 72 hours (3 days)
+      - Store in SequenceStep.delay_hours
+
+      STEP 4: Enroll contacts (SequenceEnrollment model)
+      - Get all contacts from contact_group_id
+      - Create SequenceEnrollment for each contact
+      - Set status: "pending", enrolled_at: now
+      - Note: Sequence stays "draft" until user activates
+
+      TIMING EXAMPLES:
+      - "immediate, 3 days, 7 days" → [0, 72, 168] hours
+      - "1 hour, 24 hours, 72 hours" → [1, 24, 72] hours
+      - "default" → [0, 72, 144, 216] hours (0, 3, 6, 9 days)
+
+      ERROR HANDLING:
+      - If template not found, return clear error
+      - If contact group empty, warn user
+      - If email generation fails, fall back to placeholder templates
+
+      Use get_schema to verify field names before creating objects.
+
+    data_mapping:
+      # This section provides the structured mapping approach
+      primary_object: "email_sequence"
+      steps:
+        - action: "create_sequence"
+          tool: "create_object"
+          args:
+            object_type: "email_sequences"
+            data:
+              name: "{{sequence_name}}"
+              goal: "{{sequence_goal}}"
+              status: "draft"
+              contact_group_id: "{{contact_group_id}}"
+              tags: "{{tags}}"
+
+        - action: "create_sequence_steps"
+          tool: "create_object"
+          args:
+            object_type: "sequence_steps"
+            # Steps created based on email_content_strategy
+
+        - action: "enroll_contacts"
+          tool: "create_object"
+          args:
+            object_type: "sequence_enrollments"
+            # Enrollments created for each contact
+
+  # Phase 3: Validate the sequence
+  - id: "validation"
+    type: "validate_result"
+    name: "Validate Sequence Configuration"
+    goal: "Ensure the email sequence meets quality standards and is ready for activation"
+
+    validation_rules:
+      - rule: "minimum_steps"
+        check: "Sequence has at least 2 email steps"
+        required: true
+
+      - rule: "all_steps_have_content"
+        check: "Every step has associated email content (template or generated)"
+        required: true
+        auto_fix: "Generate basic email templates for steps missing content"
+
+      - rule: "valid_delays"
+        check: "All delay values are >= 0 hours and <= 2160 hours (90 days)"
+        required: true
+        auto_fix: "Adjust delays to reasonable defaults (3 days)"
+
+      - rule: "contact_group_exists"
+        check: "The specified contact group exists and has contacts"
+        required: true
+        auto_fix: false
+        error_message: "Cannot create sequence: contact group is empty or doesn't exist"
+
+      - rule: "subject_lines_present"
+        check: "All email steps have subject lines"
+        required: true
+        auto_fix: "Generate subject lines based on sequence goal and step number"
+
+      - rule: "reasonable_timing"
+        check: "Email spacing is logical (not all emails sent immediately)"
+        required: false
+        warning: "All emails except first should have delay > 1 hour"
+        auto_fix: "Suggest 3-day spacing between emails"
+
+      - rule: "ai_check"
+        check: "EmailSequence record created successfully with draft status"
+        context_required:
+          - "sequence_id from execute_goal"
+          - "minimum 2 sequence_steps"
+
+    on_failure:
+      action: "attempt_fix"
+      max_fix_attempts: 2
+      use_fixer_agent: true
+      allowed_fixes:
+        - generate_missing_subject_lines
+        - adjust_delay_timing
+        - create_placeholder_templates
+        - fix_step_ordering
+
+    success_message: |
+      ✅ Email sequence created successfully!
+
+      Your sequence "{{sequence_name}}" is configured with {{step_count}} emails.
+      Status: Draft (ready for review)
+
+      All contacts in the selected group have been enrolled but emails won't send until you activate the sequence.
+
+      Next steps:
+      - Review the sequence configuration
+      - Activate when ready to start sending
+
+# Success criteria
+success_criteria:
+  required_outputs:
+    - email_sequence_id
+    - sequence_steps_count
+    - enrolled_contacts_count
+  validation_rules:
+    - "Sequence created in draft status"
+    - "Minimum 2 email steps configured"
+    - "All steps have valid content"
+    - "Delay timing is reasonable"
+    - "Contact enrollment completed"
+
+# Error handling
+validation:
+  required_context:
+    - sequence_name
+    - contact_group_id
+    - email_content_strategy
+  error_messages:
+    missing_contact_group: "Could not find the specified contact group"
+    empty_contact_group: "The contact group has no contacts to enroll"
+    invalid_template_id: "One or more email templates could not be found"
+    invalid_delay_pattern: "Could not parse delay timing pattern"
+    ai_generation_failed: "AI content generation failed, please use existing templates"

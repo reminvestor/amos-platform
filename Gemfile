@@ -106,6 +106,9 @@ gem "clockwork"
 # Email validation
 gem "email_validator"
 
+# Stripe for payments and subscriptions
+gem "stripe", "~> 12.0"
+
 # API clients
 gem "openai", "~> 0.3.0"
 gem "anthropic", "~> 0.1.0"  # Add Anthropic gem for Claude
