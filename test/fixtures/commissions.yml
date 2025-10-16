@@ -1,0 +1,60 @@
+# Commissions fixtures
+pending_commission:
+  affiliate: active_affiliate
+  referral: converted_referral
+  entity: two
+  commission_type: first_payment
+  amount: 100.00
+  currency: USD
+  status: 0  # pending
+  earned_at: <%= 5.days.ago %>
+  approved_at: null
+  approved_by: null
+
+approved_commission:
+  affiliate: active_affiliate
+  referral: converted_referral
+  entity: two
+  commission_type: recurring
+  amount: 50.00
+  currency: USD
+  status: 1  # approved
+  earned_at: <%= 3.days.ago %>
+  approved_at: <%= 1.day.ago %>
+  approved_by: null
+
+paid_commission:
+  affiliate: silver_affiliate
+  referral: silver_referral
+  entity: two
+  commission_type: first_payment
+  amount: 200.00
+  currency: USD
+  status: 2  # paid
+  earned_at: <%= 15.days.ago %>
+  approved_at: <%= 10.days.ago %>
+  approved_by: null
+
+cancelled_commission:
+  affiliate: suspended_affiliate
+  referral: cancelled_referral
+  entity: one
+  commission_type: first_payment
+  amount: 75.00
+  currency: USD
+  status: 3  # cancelled
+  earned_at: <%= 20.days.ago %>
+  approved_at: null
+  approved_by: null
+
+high_value_commission:
+  affiliate: silver_affiliate
+  referral: silver_referral
+  entity: two
+  commission_type: first_payment
+  amount: 600.00
+  currency: USD
+  status: 0  # pending - requires manual review
+  earned_at: <%= 1.day.ago %>
+  approved_at: null
+  approved_by: null

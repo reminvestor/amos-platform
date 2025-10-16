@@ -1,0 +1,309 @@
+<% content_for :title, "Marketing Resources - AMOS Affiliate" %>
+
+<div class="container-fluid py-4">
+  <!-- Page Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="display-5 mb-2">
+        <i class="bi bi-box-seam text-primary"></i>
+        Marketing Resources
+      </h1>
+      <p class="text-muted">Download assets and use pre-written content to promote AMOS</p>
+    </div>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        <strong>Your Referral Code:</strong> <code><%= @affiliate.affiliate_code %></code>
+        | <strong>Commission Rate:</strong> <%= (@affiliate.commission_rate * 100).round(2) %>%
+        | <strong>Tier:</strong> <%= @affiliate.tier&.titleize || 'Bronze' %>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Logos & Branding -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="bi bi-image me-2"></i>
+            Logos & Branding
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">Official AMOS logos in various formats and sizes</p>
+
+          <div class="list-group">
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <i class="bi bi-file-earmark-image text-primary me-2"></i>
+                <strong>Primary Logo (PNG)</strong>
+                <br>
+                <small class="text-muted">High resolution, transparent background</small>
+              </div>
+              <button class="btn btn-sm btn-outline-primary" disabled>
+                <i class="bi bi-download me-1"></i>Download
+              </button>
+            </div>
+
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <i class="bi bi-file-earmark-code text-info me-2"></i>
+                <strong>Logo (SVG)</strong>
+                <br>
+                <small class="text-muted">Vector format, scalable</small>
+              </div>
+              <button class="btn btn-sm btn-outline-primary" disabled>
+                <i class="bi bi-download me-1"></i>Download
+              </button>
+            </div>
+
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <i class="bi bi-square text-dark me-2"></i>
+                <strong>Logo Variations</strong>
+                <br>
+                <small class="text-muted">White, black, and color versions</small>
+              </div>
+              <button class="btn btn-sm btn-outline-primary" disabled>
+                <i class="bi bi-download me-1"></i>Download ZIP
+              </button>
+            </div>
+          </div>
+
+          <div class="alert alert-warning mt-3 mb-0">
+            <small>
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              Please follow our brand guidelines when using these assets
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Banner Images -->
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="bi bi-file-image me-2"></i>
+            Banner Images
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">Pre-designed banners for your website or blog</p>
+
+          <div class="list-group">
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <strong>Leaderboard Banner</strong>
+                <br>
+                <small class="text-muted">728 x 90 pixels</small>
+              </div>
+              <button class="btn btn-sm btn-outline-primary" disabled>
+                <i class="bi bi-download me-1"></i>Download
+              </button>
+            </div>
+
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <strong>Medium Rectangle</strong>
+                <br>
+                <small class="text-muted">300 x 250 pixels</small>
+              </div>
+              <button class="btn btn-sm btn-outline-primary" disabled>
+                <i class="bi bi-download me-1"></i>Download
+              </button>
+            </div>
+
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <strong>Social Media Banner</strong>
+                <br>
+                <small class="text-muted">1200 x 628 pixels (Facebook/Twitter)</small>
+              </div>
+              <button class="btn btn-sm btn-outline-primary" disabled>
+                <i class="bi bi-download me-1"></i>Download
+              </button>
+            </div>
+
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <strong>All Banners</strong>
+                <br>
+                <small class="text-muted">Complete set in one ZIP file</small>
+              </div>
+              <button class="btn btn-sm btn-outline-primary" disabled>
+                <i class="bi bi-download me-1"></i>Download ZIP
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Social Media Posts -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="bi bi-share-fill me-2"></i>
+            Pre-Written Social Media Posts
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-4">Copy and customize these posts for your social media channels</p>
+
+          <% @social_posts.each_with_index do |post, index| %>
+            <div class="card mb-3 <%= 'border-primary' if index == 0 %>" data-controller="copy-to-clipboard">
+              <div class="card-header bg-light">
+                <strong><i class="bi bi-<%= post[:platform].downcase %> me-2"></i><%= post[:platform] %></strong>
+              </div>
+              <div class="card-body">
+                <p class="mb-3" data-copy-to-clipboard-target="source"><%= post[:text] %></p>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-primary"
+                          data-action="copy-to-clipboard#copy">
+                    <i class="bi bi-clipboard me-1"></i>Copy Text
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary"
+                          data-copy-to-clipboard-text-value="<%= request.base_url %>?ref=<%= @affiliate.affiliate_code %>"
+                          data-action="copy-to-clipboard#copy">
+                    <i class="bi bi-link-45deg me-1"></i>Copy My Link
+                  </button>
+                </div>
+              </div>
+            </div>
+          <% end %>
+
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-lightbulb-fill me-2"></i>
+            <strong>Tip:</strong> Personalize these posts with your own experience and add your referral link:
+            <code><%= request.base_url %>?ref=<%= @affiliate.affiliate_code %></code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Templates -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="bi bi-envelope-fill me-2"></i>
+            Email Template Ideas
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-4">Use these as inspiration for your email campaigns</p>
+
+          <div class="row g-3">
+            <% @email_templates.each do |template| %>
+              <div class="col-md-6">
+                <div class="card h-100 border">
+                  <div class="card-body">
+                    <h6 class="card-title">
+                      <i class="bi bi-envelope-open me-2"></i>
+                      <%= template[:subject] %>
+                    </h6>
+                    <p class="card-text text-muted small">
+                      <%= template[:preview] %>
+                    </p>
+                    <button class="btn btn-sm btn-outline-primary" disabled>
+                      <i class="bi bi-eye me-1"></i>View Full Template
+                    </button>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="alert alert-warning mt-4 mb-0">
+            <i class="bi bi-shield-check me-2"></i>
+            <strong>Email Best Practices:</strong> Always disclose your affiliate relationship and follow CAN-SPAM regulations
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Brand Guidelines -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="bi bi-file-pdf me-2"></i>
+            Brand Guidelines & Documentation
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="d-flex align-items-start mb-3">
+                <div class="bg-danger bg-opacity-10 p-3 rounded me-3">
+                  <i class="bi bi-file-pdf-fill text-danger fs-4"></i>
+                </div>
+                <div>
+                  <h6>Brand Guidelines PDF</h6>
+                  <p class="text-muted small mb-2">
+                    Complete guide on how to use our brand assets correctly
+                  </p>
+                  <button class="btn btn-sm btn-outline-danger" disabled>
+                    <i class="bi bi-download me-1"></i>Download PDF
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="d-flex align-items-start mb-3">
+                <div class="bg-primary bg-opacity-10 p-3 rounded me-3">
+                  <i class="bi bi-book-fill text-primary fs-4"></i>
+                </div>
+                <div>
+                  <h6>Affiliate Handbook</h6>
+                  <p class="text-muted small mb-2">
+                    Best practices and tips for promoting AMOS effectively
+                  </p>
+                  <button class="btn btn-sm btn-outline-primary" disabled>
+                    <i class="bi bi-download me-1"></i>Download PDF
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card border-primary shadow-sm">
+        <div class="card-body text-center">
+          <h5>Need More Help?</h5>
+          <p class="text-muted mb-3">Contact our affiliate support team or visit the dashboard for performance tracking</p>
+          <div class="d-flex gap-2 justify-content-center">
+            <%= link_to affiliate_dashboard_path, class: "btn btn-primary" do %>
+              <i class="bi bi-speedometer2 me-2"></i>Back to Dashboard
+            <% end %>
+            <button class="btn btn-outline-primary" disabled>
+              <i class="bi bi-envelope me-2"></i>Contact Support
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

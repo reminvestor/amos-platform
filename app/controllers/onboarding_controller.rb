@@ -9,15 +9,13 @@ class OnboardingController < ApplicationController
     @session_id = session[:onboarding_session_id] ||= SecureRandom.uuid
     @conversation_history = onboarding_conversation_history
 
-    # Check if user just subscribed (coming from Stripe checkout)
-    entity = current_user.entity
-    if @conversation_history.empty? && entity&.subscription_status == 'trialing' && entity.trial_ends_at
-      # User just subscribed, add subscription confirmation first
-      add_subscription_confirmation_message
-    end
-
     # If this is a fresh start, add Scout's welcome message
     if @conversation_history.empty?
+      # Check if user just subscribed (coming from Stripe checkout)
+      entity = current_user.entity
+      if entity&.subscription_status == 'trialing' && entity.trial_ends_at
+        # User just subscribed, add subscription confirmation in welcome message
+      end
       create_welcome_message
       @conversation_history = onboarding_conversation_history
     elsif session[:show_subscription_confirmation] && !session[:subscription_confirmed]

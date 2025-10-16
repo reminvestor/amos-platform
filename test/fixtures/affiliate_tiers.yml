@@ -1,0 +1,28 @@
+# Affiliate Tiers fixtures
+bronze:
+  name: Bronze
+  commission_rate: 0.20
+  min_referrals: 0
+  is_active: true
+  benefits: { "perks": ["Standard support", "Marketing materials"] }
+
+silver:
+  name: Silver
+  commission_rate: 0.25
+  min_referrals: 5
+  is_active: true
+  benefits: { "perks": ["Priority support", "Early access", "Custom materials"] }
+
+gold:
+  name: Gold
+  commission_rate: 0.30
+  min_referrals: 20
+  is_active: true
+  benefits: { "perks": ["Dedicated manager", "Co-marketing", "VIP support"] }
+
+inactive_tier:
+  name: Platinum
+  commission_rate: 0.35
+  min_referrals: 50
+  is_active: false
+  benefits: { "perks": ["All the bells and whistles"] }

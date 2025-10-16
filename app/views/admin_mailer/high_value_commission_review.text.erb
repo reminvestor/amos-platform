@@ -1,0 +1,36 @@
+AMOS Admin - High-Value Commission Review Required
+
+A high-value commission has been generated and requires manual review before approval.
+
+COMMISSION AMOUNT: $<%= @amount.round(2) %>
+(Threshold: $500)
+
+COMMISSION DETAILS
+Commission ID: #<%= @commission.id %>
+Amount: $<%= @amount.round(2) %>
+Commission Type: <%= @commission_type %>
+Status: Pending Review
+Created: <%= @commission.created_at.strftime('%B %d, %Y at %I:%M %p') %>
+
+AFFILIATE INFORMATION
+Affiliate: <%= @user.full_name %>
+Email: <%= @user.email %>
+Affiliate Code: <%= @affiliate.affiliate_code %>
+Commission Rate: <%= (@affiliate.commission_rate * 100).round(2) %>%
+Tier: <%= @affiliate.tier.capitalize %>
+
+CUSTOMER INFORMATION
+Customer: <%= @entity.name %>
+Entity ID: #<%= @entity.id %>
+
+REVIEW GUIDELINES
+Please verify:
+- The customer is legitimate and not a test/fraudulent account
+- The referral source appears authentic
+- No suspicious patterns in the affiliate's activity
+- Commission calculation is correct
+
+Review commission: <%= @review_url %>
+
+---
+AMOS Admin Panel - Commission Review

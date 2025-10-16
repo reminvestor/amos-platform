@@ -1,4 +1,6 @@
 class HomeController < ApplicationController
+  include AffiliateTracking
+
   before_action :authenticate_user!
 
   def index

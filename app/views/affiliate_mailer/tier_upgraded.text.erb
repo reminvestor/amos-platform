@@ -1,0 +1,45 @@
+AMOS Affiliate Program - Tier Upgraded!
+
+Hi <%= @user.first_name %>,
+
+Congratulations! Your outstanding performance has earned you a tier upgrade!
+
+YOU'VE BEEN UPGRADED TO <%= @new_tier.upcase %> TIER!
+
+Previous Tier: <%= @old_tier %>
+Current Tier: <%= @new_tier %>
+New Commission Rate: <%= @new_commission_rate %>%
+
+<%= @new_tier.upcase %> TIER BENEFITS:
+- Higher commission rate: <%= @new_commission_rate %>%
+<% if @new_tier == 'Silver' %>
+- Priority support for your referrals
+- Early access to new features
+- Featured in affiliate spotlight
+<% elsif @new_tier == 'Gold' %>
+- Dedicated account manager
+- Co-marketing opportunities
+- Exclusive webinars and training
+- Custom landing pages
+<% else %>
+- Standard affiliate benefits
+- Access to marketing materials
+- Real-time analytics
+<% end %>
+
+HOW TO MAINTAIN YOUR TIER:
+- Continue referring quality customers
+- Engage with your referrals to ensure success
+- Use advanced marketing materials
+- Share best practices with the community
+
+Thank you for being an exceptional AMOS affiliate! Your success is our success.
+
+View your dashboard: <%= @dashboard_url %>
+
+Best regards,
+The AMOS Team
+
+---
+AMOS Affiliate Program
+Keep up the great work at <%= @dashboard_url %>
