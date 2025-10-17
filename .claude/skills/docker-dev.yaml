@@ -1,0 +1,292 @@
+# Docker Development Skill for AMOS
+# Manage Docker Compose development environment
+
+name: docker-dev
+description: Manage AMOS Docker Compose development environment (Rails, Postgres, Redis)
+version: "1.0"
+
+parameters:
+  action:
+    description: "Docker action to perform"
+    type: string
+    required: true
+    enum:
+      - start       # Start all services
+      - stop        # Stop all services
+      - restart     # Restart all services
+      - rebuild     # Rebuild and restart
+      - logs        # View logs
+      - console     # Open Rails console
+      - db          # Database operations
+      - shell       # Open bash shell in web container
+      - ps          # Show running containers
+      - clean       # Clean up containers and volumes
+      - test        # Run tests
+      - rag         # RAG-specific commands
+
+  service:
+    description: "Specific service (web, db, redis, or all)"
+    type: string
+    default: "all"
+
+  db_action:
+    description: "Database action (when action=db): migrate, rollback, seed, reset, drop"
+    type: string
+    default: "migrate"
+
+  rag_action:
+    description: "RAG action (when action=rag): health, verify, seed, list, test"
+    type: string
+    default: "health"
+
+  test_path:
+    description: "Test path (when action=test): all, model, controller, system, or specific file"
+    type: string
+    default: "all"
+
+steps:
+  - name: Execute Docker Command
+    run: |
+      case "${{ parameters.action }}" in
+
+        start)
+          echo "🚀 Starting AMOS development environment..."
+          docker-compose up -d
+          echo "⏳ Waiting for services..."
+          sleep 5
+          docker-compose ps
+          echo ""
+          echo "✅ Services started!"
+          echo "📍 Rails app: http://localhost:3000"
+          echo "📍 Database: localhost:5432"
+          echo "📍 Redis: localhost:6379"
+          ;;
+
+        stop)
+          echo "🛑 Stopping all services..."
+          docker-compose down
+          echo "✅ All services stopped"
+          ;;
+
+        restart)
+          echo "🔄 Restarting services..."
+          if [ "${{ parameters.service }}" = "all" ]; then
+            docker-compose restart
+          else
+            docker-compose restart ${{ parameters.service }}
+          fi
+          echo "✅ Services restarted"
+          ;;
+
+        rebuild)
+          echo "🔨 Rebuilding and restarting..."
+          docker-compose down
+          docker-compose build --no-cache ${{ parameters.service }}
+          docker-compose up -d
+          echo "✅ Rebuild complete!"
+          ;;
+
+        logs)
+          echo "📋 Viewing logs..."
+          if [ "${{ parameters.service }}" = "all" ]; then
+            docker-compose logs -f --tail=100
+          else
+            docker-compose logs -f --tail=100 ${{ parameters.service }}
+          fi
+          ;;
+
+        console)
+          echo "🔧 Opening Rails console..."
+          docker-compose exec web rails console
+          ;;
+
+        db)
+          echo "🗄️  Running database operation: ${{ parameters.db_action }}"
+          case "${{ parameters.db_action }}" in
+            migrate)
+              docker-compose exec web rails db:migrate
+              ;;
+            rollback)
+              docker-compose exec web rails db:rollback
+              ;;
+            seed)
+              docker-compose exec web rails db:seed
+              ;;
+            reset)
+              docker-compose exec web rails db:reset
+              ;;
+            drop)
+              echo "⚠️  This will DELETE all data. Type 'yes' to confirm:"
+              read -r confirm
+              if [ "$confirm" = "yes" ]; then
+                docker-compose exec web rails db:drop db:create db:migrate db:seed
+              else
+                echo "Cancelled."
+              fi
+              ;;
+            *)
+              echo "❌ Unknown db action: ${{ parameters.db_action }}"
+              exit 1
+              ;;
+          esac
+          ;;
+
+        shell)
+          echo "🐚 Opening bash shell in web container..."
+          docker-compose exec web bash
+          ;;
+
+        ps)
+          echo "📊 Container status:"
+          docker-compose ps
+          ;;
+
+        clean)
+          echo "🧹 Cleaning up Docker resources..."
+          docker-compose down -v
+          docker system prune -f
+          echo "✅ Cleanup complete!"
+          ;;
+
+        test)
+          echo "🧪 Running tests..."
+          case "${{ parameters.test_path }}" in
+            all)
+              docker-compose exec web rails test
+              ;;
+            model)
+              docker-compose exec web rails test:models
+              ;;
+            controller)
+              docker-compose exec web rails test:controllers
+              ;;
+            system)
+              docker-compose exec web rails test:system
+              ;;
+            *)
+              docker-compose exec web rails test ${{ parameters.test_path }}
+              ;;
+          esac
+          ;;
+
+        rag)
+          echo "🔍 Running RAG operation: ${{ parameters.rag_action }}"
+          case "${{ parameters.rag_action }}" in
+            health)
+              docker-compose exec web rails rag:health
+              ;;
+            verify)
+              echo "Checking Docling..."
+              docker-compose exec web python3 -c "import docling; print('✅ Docling v' + docling.__version__)"
+              echo ""
+              echo "Checking environment..."
+              docker-compose exec web bash -c '
+                [ -n "$OPENAI_API_KEY" ] && echo "✅ OPENAI_API_KEY set" || echo "❌ OPENAI_API_KEY missing"
+                [ -n "$PINECONE_API_KEY" ] && echo "✅ PINECONE_API_KEY set" || echo "❌ PINECONE_API_KEY missing"
+              '
+              ;;
+            seed)
+              docker-compose exec web rails rag:populate_system
+              ;;
+            list)
+              docker-compose exec web rails rag:list
+              ;;
+            test)
+              docker-compose exec web rails runner '
+                user = User.first || User.create!(
+                  email: "test@example.com",
+                  password: "password123",
+                  entity: Entity.first || Entity.create!(name: "Test Entity")
+                )
+                chunks = [{ content: "Test RAG content", metadata: { source: "test" } }]
+                service = RagStoreService.new
+                result = service.create_rag_store("test", chunks, { entity: user.entity, user: user, name: "Test" })
+                puts "✅ RAG test successful! Store ID: #{result[:rag_store].id}"
+              '
+              ;;
+            *)
+              echo "❌ Unknown rag action: ${{ parameters.rag_action }}"
+              exit 1
+              ;;
+          esac
+          ;;
+
+        *)
+          echo "❌ Unknown action: ${{ parameters.action }}"
+          exit 1
+          ;;
+      esac
+
+examples:
+  # Basic operations
+  - description: "Start AMOS development environment"
+    command: "Use docker-dev with action=start"
+
+  - description: "Stop all services"
+    command: "Use docker-dev with action=stop"
+
+  - description: "Restart all services"
+    command: "Use docker-dev with action=restart"
+
+  - description: "Rebuild and restart everything"
+    command: "Use docker-dev with action=rebuild"
+
+  # Logs and monitoring
+  - description: "View Rails logs (follow mode)"
+    command: "Use docker-dev with action=logs and service=web"
+
+  - description: "View all service logs"
+    command: "Use docker-dev with action=logs and service=all"
+
+  - description: "Show container status"
+    command: "Use docker-dev with action=ps"
+
+  # Development tools
+  - description: "Open Rails console"
+    command: "Use docker-dev with action=console"
+
+  - description: "Open bash shell in web container"
+    command: "Use docker-dev with action=shell"
+
+  # Database operations
+  - description: "Run database migrations"
+    command: "Use docker-dev with action=db and db_action=migrate"
+
+  - description: "Rollback last migration"
+    command: "Use docker-dev with action=db and db_action=rollback"
+
+  - description: "Seed database"
+    command: "Use docker-dev with action=db and db_action=seed"
+
+  - description: "Reset database (drop, create, migrate, seed)"
+    command: "Use docker-dev with action=db and db_action=reset"
+
+  # Testing
+  - description: "Run all tests"
+    command: "Use docker-dev with action=test and test_path=all"
+
+  - description: "Run model tests"
+    command: "Use docker-dev with action=test and test_path=model"
+
+  - description: "Run specific test file"
+    command: "Use docker-dev with action=test and test_path=test/models/user_test.rb"
+
+  # RAG operations
+  - description: "Check RAG system health"
+    command: "Use docker-dev with action=rag and rag_action=health"
+
+  - description: "Verify RAG dependencies installed"
+    command: "Use docker-dev with action=rag and rag_action=verify"
+
+  - description: "Seed system RAG stores (Stripe, HubSpot docs)"
+    command: "Use docker-dev with action=rag and rag_action=seed"
+
+  - description: "List all RAG stores"
+    command: "Use docker-dev with action=rag and rag_action=list"
+
+  - description: "Test RAG functionality"
+    command: "Use docker-dev with action=rag and rag_action=test"
+
+  # Maintenance
+  - description: "Clean up Docker resources (stops containers, removes volumes)"
+    command: "Use docker-dev with action=clean"
