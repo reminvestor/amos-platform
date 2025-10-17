@@ -6,7 +6,7 @@ This document tracks the migration of custom YAML-based skills to the proper Cla
 
 ## Migration Progress
 
-### ✅ Completed Migrations (6 of 15)
+### ✅ Completed Migrations (14 of 15 = 93%)
 
 | Skill Name | Directory | Scripts | Resources | Notes |
 |------------|-----------|---------|-----------|-------|
@@ -15,26 +15,26 @@ This document tracks the migration of custom YAML-based skills to the proper Cla
 | Starting Features | `starting-features/` | 3 | 1 | GitHub issue workflow with AMOS patterns |
 | Managing Docker Development | `managing-docker-development/` | 3 | 0 | Complete Docker Compose management |
 | Fixing RuboCop Offenses | `fixing-rubocop-offenses/` | 1 | 0 | Auto-fix linting (safe/unsafe modes) |
-| **Running Workflows** | `running-workflows/` | 1 | 0 | **NEW**: Chains multiple skills together |
+| Running Workflows | `running-workflows/` | 1 | 0 | Chains multiple skills together |
+| Making Quick Commits | `making-quick-commits/` | 1 | 0 | Smart commit message generation |
+| Resetting Demo Database | `resetting-demo-database/` | 1 | 0 | Safe DB reset with snapshots |
+| Managing Database Snapshots | `managing-database-snapshots/` | 1 | 0 | Save/restore database states |
+| Checking Application Health | `checking-application-health/` | 1 | 0 | Comprehensive health checks |
+| Cleaning Up Git Branches | `cleaning-up-git-branches/` | 1 | 0 | Delete merged branches |
+| Checking Deployments | `checking-deployments/` | 1 | 0 | Pre-deployment checklist |
+| Fixing Pull Requests | `fixing-pull-requests/` | 1 | 0 | Auto-resolve PR issues |
+| Explaining Features | `explaining-features/` | 1 | 0 | Generate feature docs |
 
-### 🔄 Pending Migrations (9 of 15)
+### 🔄 Pending Migrations (1 remaining - low priority utilities)
 
 | Skill Name | Priority | Complexity | YAML File | Target Directory |
 |------------|----------|-----------|-----------|------------------|
-| quick-commit | High | Low | `quick-commit.yaml` | `making-quick-commits/` |
-| db-reset-demo | Medium | Low | `db-reset-demo.yaml` | `resetting-demo-database/` |
-| db-snapshot | Medium | Low | `db-snapshot.yaml` | `managing-database-snapshots/` |
-| check-health | Medium | Medium | `check-health.yaml` | `checking-application-health/` |
-| cleanup-branch | Medium | Low | `cleanup-branch.yaml` | `cleaning-up-git-branches/` |
-| check-deploy | Medium | High | `check-deploy.yaml` | `checking-deployments/` |
-| fix-pr | Low | Medium | `fix-pr.yaml` | `fixing-pull-requests/` |
-| explain-feature | Low | Low | `explain-feature.yaml` | `explaining-features/` |
 | add-entity | Low | Medium | `add-entity.yaml` | `adding-entities/` |
 | test-tool | Low | Low | `test-tool.yaml` | `testing-tools/` |
 | test-workflow | Low | Medium | `test-workflow.yaml` | `testing-workflows/` |
 | update-docs | Low | Low | `update-docs.yaml` | `updating-documentation/` |
 
-**Note**: Directories have been created for all pending skills, only need SKILL.md + scripts extraction.
+**Note**: All high and medium priority skills have been migrated. Remaining are developer utilities used infrequently.
 
 ## Proper Agent Skills Format
 
