@@ -1,0 +1,218 @@
+# Cleanup Branch - Delete merged branches and prune references
+# Removes local and remote branches that have been merged
+
+name: cleanup-branch
+description: Delete merged branches and prune remote references
+version: "1.0"
+
+parameters:
+  scope:
+    description: "What to clean: local, remote, or both"
+    type: string
+    default: "both"
+
+  force:
+    description: "Skip confirmation prompts (true/false)"
+    type: string
+    default: "false"
+
+steps:
+  - name: Fetch and Prune
+    run: |
+      echo "🔄 Fetching latest from remote and pruning..."
+      git fetch --prune
+
+      echo "✅ Fetch complete"
+      echo ""
+
+  - name: Find Merged Local Branches
+    run: |
+      echo "🔍 Finding merged local branches..."
+      echo ""
+
+      # Get current branch
+      CURRENT=$(git branch --show-current)
+
+      # Find merged branches (excluding main, master, develop, current)
+      MERGED_LOCAL=$(git branch --merged main 2>/dev/null | grep -v "^\*" | grep -v "main" | grep -v "master" | grep -v "develop" || true)
+
+      if [ -z "$MERGED_LOCAL" ]; then
+        echo "✅ No merged local branches to clean up"
+        echo "" > /tmp/merged_local.txt
+      else
+        echo "Found merged local branches:"
+        echo "$MERGED_LOCAL" | while read branch; do
+          branch=$(echo "$branch" | xargs)
+          echo "  - $branch"
+        done
+        echo ""
+
+        echo "$MERGED_LOCAL" > /tmp/merged_local.txt
+      fi
+
+  - name: Find Merged Remote Branches
+    run: |
+      echo "🔍 Finding merged remote branches..."
+      echo ""
+
+      # Find remote branches that have been merged
+      MERGED_REMOTE=$(git branch -r --merged main | grep "origin/" | grep -v "main" | grep -v "master" | grep -v "develop" | grep -v "HEAD" || true)
+
+      if [ -z "$MERGED_REMOTE" ]; then
+        echo "✅ No merged remote branches to clean up"
+        echo "" > /tmp/merged_remote.txt
+      else
+        echo "Found merged remote branches:"
+        echo "$MERGED_REMOTE" | while read branch; do
+          branch=$(echo "$branch" | xargs)
+          BRANCH_NAME=$(echo "$branch" | sed 's|origin/||')
+          echo "  - $BRANCH_NAME"
+        done
+        echo ""
+
+        echo "$MERGED_REMOTE" > /tmp/merged_remote.txt
+      fi
+
+  - name: Confirm Local Deletion
+    condition: "${{ parameters.scope == 'local' || parameters.scope == 'both' }}"
+    run: |
+      MERGED_LOCAL=$(cat /tmp/merged_local.txt | xargs)
+
+      if [ -z "$MERGED_LOCAL" ]; then
+        echo "HAS_LOCAL=false" > /tmp/has_local.txt
+        exit 0
+      fi
+
+      echo "HAS_LOCAL=true" > /tmp/has_local.txt
+
+      if [ "${{ parameters.force }}" = "true" ]; then
+        echo "CONFIRM_LOCAL=yes" > /tmp/confirm_local.txt
+        exit 0
+      fi
+    prompt: "Delete these local branches? (yes/no)"
+    store_as: confirm_local
+
+  - name: Delete Local Branches
+    condition: "${{ parameters.scope == 'local' || parameters.scope == 'both' }}"
+    run: |
+      HAS_LOCAL=$(cat /tmp/has_local.txt 2>/dev/null || echo "false")
+
+      if [ "$HAS_LOCAL" = "false" ]; then
+        echo "No local branches to delete"
+        exit 0
+      fi
+
+      CONFIRM="${{ confirm_local }}"
+      if [ -z "$CONFIRM" ]; then
+        CONFIRM=$(cat /tmp/confirm_local.txt 2>/dev/null || echo "no")
+      fi
+
+      if [ "$CONFIRM" != "yes" ]; then
+        echo "⏭️  Skipping local branch deletion"
+        exit 0
+      fi
+
+      echo "🗑️  Deleting merged local branches..."
+      echo ""
+
+      cat /tmp/merged_local.txt | while read branch; do
+        branch=$(echo "$branch" | xargs)
+        if [ -n "$branch" ]; then
+          echo "  Deleting: $branch"
+          git branch -d "$branch" 2>&1 || echo "    ⚠️  Could not delete (may have unmerged commits)"
+        fi
+      done
+
+      echo ""
+      echo "✅ Local cleanup complete"
+
+  - name: Confirm Remote Deletion
+    condition: "${{ parameters.scope == 'remote' || parameters.scope == 'both' }}"
+    run: |
+      MERGED_REMOTE=$(cat /tmp/merged_remote.txt | xargs)
+
+      if [ -z "$MERGED_REMOTE" ]; then
+        echo "HAS_REMOTE=false" > /tmp/has_remote.txt
+        exit 0
+      fi
+
+      echo "HAS_REMOTE=true" > /tmp/has_remote.txt
+
+      if [ "${{ parameters.force }}" = "true" ]; then
+        echo "CONFIRM_REMOTE=yes" > /tmp/confirm_remote.txt
+        exit 0
+      fi
+
+      echo "⚠️  WARNING: This will delete branches on GitHub!"
+      echo ""
+    prompt: "Delete these remote branches? (yes/no)"
+    store_as: confirm_remote
+
+  - name: Delete Remote Branches
+    condition: "${{ parameters.scope == 'remote' || parameters.scope == 'both' }}"
+    run: |
+      HAS_REMOTE=$(cat /tmp/has_remote.txt 2>/dev/null || echo "false")
+
+      if [ "$HAS_REMOTE" = "false" ]; then
+        echo "No remote branches to delete"
+        exit 0
+      fi
+
+      CONFIRM="${{ confirm_remote }}"
+      if [ -z "$CONFIRM" ]; then
+        CONFIRM=$(cat /tmp/confirm_remote.txt 2>/dev/null || echo "no")
+      fi
+
+      if [ "$CONFIRM" != "yes" ]; then
+        echo "⏭️  Skipping remote branch deletion"
+        exit 0
+      fi
+
+      echo "🗑️  Deleting merged remote branches..."
+      echo ""
+
+      cat /tmp/merged_remote.txt | while read branch; do
+        branch=$(echo "$branch" | xargs)
+        if [ -n "$branch" ]; then
+          BRANCH_NAME=$(echo "$branch" | sed 's|origin/||')
+          echo "  Deleting: $BRANCH_NAME (remote)"
+          git push origin --delete "$BRANCH_NAME" 2>&1 || echo "    ⚠️  Could not delete"
+        fi
+      done
+
+      echo ""
+      echo "✅ Remote cleanup complete"
+
+  - name: Final Summary
+    run: |
+      echo ""
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "📊 Cleanup Summary"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+
+      echo "Remaining local branches:"
+      git branch
+      echo ""
+
+      echo "Remaining remote branches:"
+      git branch -r | grep "origin/" | grep -v "HEAD"
+      echo ""
+
+      echo "✅ Branch cleanup complete!"
+
+      # Cleanup temp files
+      rm -f /tmp/merged_local.txt /tmp/merged_remote.txt /tmp/has_local.txt /tmp/has_remote.txt /tmp/confirm_local.txt /tmp/confirm_remote.txt
+
+examples:
+  - description: "Clean up both local and remote merged branches"
+    command: "Use cleanup-branch"
+
+  - description: "Clean up local branches only"
+    command: "Use cleanup-branch with scope=local"
+
+  - description: "Clean up remote branches only"
+    command: "Use cleanup-branch with scope=remote"
+
+  - description: "Force cleanup without confirmation"
+    command: "Use cleanup-branch with force=true"

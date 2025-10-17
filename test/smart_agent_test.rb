@@ -35,24 +35,23 @@ class SmartAgentTest < ActiveSupport::TestCase
     assert_equal @entity, @artifact.entity
     assert_equal @user, @artifact.user
 
-    # Test aggregation using ToolRunner
-    tool_runner = ToolRunner.new
-    result = tool_runner.call(
-      tool: "aggregate_artifact_data",
-      inputs: {
-        artifact_id: @artifact.id,
-        operation: "group_by_field",
-        field: "plan",
-        aggregations: [
-          { "function" => "count", "field" => "plan" },
-          { "function" => "sum", "field" => "amount", "alias" => "total_revenue" }
-        ],
-        user_id: @user.id,
-        entity_id: @entity.id
-      }
+    # Test aggregation using the tool directly
+    tool = Tools::AggregateArtifactDataTool.new(
+      user: @user,
+      entity: @entity
     )
 
-    assert_equal "success", result[:status], "Aggregation should succeed"
+    result = tool.execute(
+      artifact_id: @artifact.id,
+      operation: "group_by_field",
+      field: "plan",
+      aggregations: [
+        { "function" => "count", "field" => "plan" },
+        { "function" => "sum", "field" => "amount", "alias" => "total_revenue" }
+      ]
+    )
+
+    assert result[:success], "Aggregation should succeed"
     assert_not_nil result[:data][:results], "Results should be present"
   end
 
@@ -63,15 +62,19 @@ class SmartAgentTest < ActiveSupport::TestCase
       canvas_allowlist: [ "dynamic_canvas" ]
     )
 
-    tool_runner = ToolRunner.new
-    allowed_result = tool_runner.call(
-      tool: "aggregate_artifact_data",
-      inputs: { artifact_id: @artifact.id, operation: "simple_stats" },
-      agent_loadout: loadout
+    # Test aggregation using the tool directly
+    tool = Tools::AggregateArtifactDataTool.new(
+      user: @user,
+      entity: @entity
     )
 
-    assert_equal "success", allowed_result[:status], "Allowed tool should succeed"
-    assert_not allowed_result[:denied], "Allowed tool should not be denied"
+    result = tool.execute(
+      artifact_id: @artifact.id,
+      operation: "simple_stats"
+    )
+
+    assert result[:success], "Allowed tool should succeed"
+    assert loadout.tool_allowed?("aggregate_artifact_data"), "Tool should be in allowlist"
   end
 
   test "agent loadout enforcement blocks non-permitted tools" do

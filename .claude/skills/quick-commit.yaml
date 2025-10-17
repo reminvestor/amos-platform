@@ -1,0 +1,242 @@
+# Quick Commit - Smart commit message generation
+# Analyzes git diff and generates contextual commit messages
+
+name: quick-commit
+description: Generate smart commit messages based on git diff analysis
+version: "1.0"
+
+parameters:
+  push:
+    description: "Push after commit (true/false)"
+    type: string
+    default: "true"
+
+  message:
+    description: "Custom commit message (skip AI generation)"
+    type: string
+    required: false
+
+steps:
+  - name: Check Git Status
+    run: |
+      echo "🔍 Checking git status..."
+      echo ""
+
+      if ! git diff --quiet --cached; then
+        echo "✅ Staged changes found"
+        HAS_STAGED=true
+      else
+        HAS_STAGED=false
+      fi
+
+      if ! git diff --quiet; then
+        echo "📝 Unstaged changes found"
+        HAS_UNSTAGED=true
+      else
+        HAS_UNSTAGED=false
+      fi
+
+      if [ "$HAS_STAGED" = "false" ] && [ "$HAS_UNSTAGED" = "false" ]; then
+        echo "❌ No changes to commit"
+        exit 1
+      fi
+
+      echo "$HAS_STAGED" > /tmp/has_staged.txt
+      echo "$HAS_UNSTAGED" > /tmp/has_unstaged.txt
+
+      echo ""
+      git status --short
+
+  - name: Stage All Changes (if needed)
+    run: |
+      HAS_STAGED=$(cat /tmp/has_staged.txt)
+      HAS_UNSTAGED=$(cat /tmp/has_unstaged.txt)
+
+      if [ "$HAS_STAGED" = "false" ] && [ "$HAS_UNSTAGED" = "true" ]; then
+        echo "📦 Staging all changes..."
+        git add .
+      elif [ "$HAS_UNSTAGED" = "true" ]; then
+        echo "⚠️  You have both staged and unstaged changes."
+        echo ""
+        echo "Staged:"
+        git diff --cached --name-only
+        echo ""
+        echo "Unstaged:"
+        git diff --name-only
+        echo ""
+    prompt: "Stage all changes? (yes/no)"
+    store_as: stage_all
+
+  - name: Stage Unstaged if Requested
+    condition: "${{ stage_all == 'yes' }}"
+    run: |
+      echo "📦 Staging all changes..."
+      git add .
+
+  - name: Analyze Changes
+    condition: "${{ !parameters.message }}"
+    run: |
+      echo "🔍 Analyzing changes for commit message..."
+      echo ""
+
+      # Get diff stats
+      STATS=$(git diff --cached --stat)
+      echo "Changes:"
+      echo "$STATS"
+      echo ""
+
+      # Get changed files
+      CHANGED_FILES=$(git diff --cached --name-only)
+
+      # Categorize changes
+      NEW_FILES=$(git diff --cached --diff-filter=A --name-only | wc -l | tr -d ' ')
+      MODIFIED_FILES=$(git diff --cached --diff-filter=M --name-only | wc -l | tr -d ' ')
+      DELETED_FILES=$(git diff --cached --diff-filter=D --name-only | wc -l | tr -d ' ')
+
+      echo "Summary:"
+      echo "  - New files: $NEW_FILES"
+      echo "  - Modified files: $MODIFIED_FILES"
+      echo "  - Deleted files: $DELETED_FILES"
+      echo ""
+
+      # Save for message generation
+      echo "$CHANGED_FILES" > /tmp/changed_files.txt
+      echo "$NEW_FILES" > /tmp/new_files.txt
+      echo "$MODIFIED_FILES" > /tmp/modified_files.txt
+      echo "$DELETED_FILES" > /tmp/deleted_files.txt
+
+  - name: Generate Commit Message
+    condition: "${{ !parameters.message }}"
+    run: |
+      CHANGED_FILES=$(cat /tmp/changed_files.txt)
+      NEW_FILES=$(cat /tmp/new_files.txt)
+      MODIFIED_FILES=$(cat /tmp/modified_files.txt)
+      DELETED_FILES=$(cat /tmp/deleted_files.txt)
+
+      # Determine commit type based on changes
+      if echo "$CHANGED_FILES" | grep -q "^db/migrate/"; then
+        TYPE="Add"
+        SCOPE="database migration"
+      elif echo "$CHANGED_FILES" | grep -q "^app/models/"; then
+        TYPE="Update"
+        SCOPE="models"
+      elif echo "$CHANGED_FILES" | grep -q "^app/services/tools/"; then
+        TYPE="Update"
+        SCOPE="Scout tools"
+      elif echo "$CHANGED_FILES" | grep -q "^app/services/"; then
+        TYPE="Update"
+        SCOPE="services"
+      elif echo "$CHANGED_FILES" | grep -q "^app/controllers/"; then
+        TYPE="Update"
+        SCOPE="controllers"
+      elif echo "$CHANGED_FILES" | grep -q "^app/views/"; then
+        TYPE="Update"
+        SCOPE="views"
+      elif echo "$CHANGED_FILES" | grep -q "^config/routes.rb"; then
+        TYPE="Update"
+        SCOPE="routes"
+      elif echo "$CHANGED_FILES" | grep -q "^test/"; then
+        TYPE="Add"
+        SCOPE="tests"
+      elif echo "$CHANGED_FILES" | grep -q "^docs/\|\.md$"; then
+        TYPE="Update"
+        SCOPE="documentation"
+      elif echo "$CHANGED_FILES" | grep -q "^Gemfile\|^package.json"; then
+        TYPE="Update"
+        SCOPE="dependencies"
+      elif [ "$NEW_FILES" -gt "0" ]; then
+        TYPE="Add"
+        SCOPE="new files"
+      elif [ "$DELETED_FILES" -gt "0" ]; then
+        TYPE="Remove"
+        SCOPE="files"
+      else
+        TYPE="Update"
+        SCOPE="code"
+      fi
+
+      # Get first changed file for context
+      FIRST_FILE=$(echo "$CHANGED_FILES" | head -1)
+      FILE_BASE=$(basename "$FIRST_FILE" .rb)
+
+      # Generate message
+      if echo "$CHANGED_FILES" | grep -q "^app/services/tools/"; then
+        SUGGESTED_MSG="$TYPE ${FILE_BASE/_tool/} tool"
+      elif echo "$CHANGED_FILES" | grep -q "^app/models/"; then
+        SUGGESTED_MSG="$TYPE $FILE_BASE model"
+      elif echo "$CHANGED_FILES" | grep -q "^app/controllers/"; then
+        SUGGESTED_MSG="$TYPE ${FILE_BASE/_controller/} controller"
+      else
+        SUGGESTED_MSG="$TYPE $SCOPE"
+      fi
+
+      echo "💡 Suggested commit message:"
+      echo "   $SUGGESTED_MSG"
+      echo ""
+
+      echo "$SUGGESTED_MSG" > /tmp/suggested_message.txt
+
+  - name: Confirm or Edit Message
+    condition: "${{ !parameters.message }}"
+    prompt: |
+      Use the suggested message above, or provide your own:
+      (Press Enter to use suggested, or type custom message)
+    store_as: custom_message
+
+  - name: Create Commit
+    run: |
+      # Determine final message
+      if [ -n "${{ parameters.message }}" ]; then
+        MESSAGE="${{ parameters.message }}"
+      elif [ -n "${{ custom_message }}" ]; then
+        MESSAGE="${{ custom_message }}"
+      else
+        MESSAGE=$(cat /tmp/suggested_message.txt)
+      fi
+
+      echo "📝 Creating commit..."
+      echo "   Message: $MESSAGE"
+      echo ""
+
+      # Create commit with attribution
+      git commit -m "$MESSAGE
+
+🤖 Generated with Claude Code"
+
+      echo "✅ Commit created!"
+      echo ""
+
+      # Show commit
+      git log -1 --oneline
+
+      # Cleanup
+      rm -f /tmp/has_staged.txt /tmp/has_unstaged.txt /tmp/changed_files.txt
+      rm -f /tmp/new_files.txt /tmp/modified_files.txt /tmp/deleted_files.txt /tmp/suggested_message.txt
+
+  - name: Push Changes
+    condition: "${{ parameters.push == 'true' }}"
+    run: |
+      CURRENT_BRANCH=$(git branch --show-current)
+
+      echo ""
+      echo "📤 Pushing to origin/$CURRENT_BRANCH..."
+
+      # Check if branch has upstream
+      if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+        git push
+      else
+        echo "Setting upstream branch..."
+        git push -u origin "$CURRENT_BRANCH"
+      fi
+
+      echo "✅ Pushed successfully!"
+
+examples:
+  - description: "Quick commit with AI-generated message"
+    command: "Use quick-commit"
+
+  - description: "Commit with custom message"
+    command: "Use quick-commit with message='Fix bug in user authentication'"
+
+  - description: "Commit without pushing"
+    command: "Use quick-commit with push=false"

@@ -1,6 +1,7 @@
 ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
+require "mocha/minitest"
 
 module ActiveSupport
   class TestCase
@@ -10,7 +11,32 @@ module ActiveSupport
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     fixtures :all
 
-    # Add more helper methods to be used by all tests here...
+    # Test helpers for creating valid test data
+    def create_valid_user(attributes = {})
+      defaults = {
+        first_name: "Test",
+        last_name: "User",
+        role: "admin",
+        email: "test#{SecureRandom.hex(4)}@example.com",
+        password: "password123",
+        password_confirmation: "password123"
+      }
+
+      entity = attributes.delete(:entity) || entities(:one)
+      User.create!(defaults.merge(attributes).merge(entity: entity))
+    end
+
+    def create_valid_admin_user(attributes = {})
+      defaults = {
+        first_name: "Admin",
+        last_name: "User",
+        role: :super_admin,
+        email: "admin#{SecureRandom.hex(4)}@example.com",
+        password: "password123"
+      }
+
+      AdminUser.create!(defaults.merge(attributes))
+    end
   end
 end
 

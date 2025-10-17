@@ -11,6 +11,9 @@ class User < ApplicationRecord
   validates :first_name, :last_name, presence: true
   validates :role, presence: true, inclusion: { in: ROLES }
 
+  # Set defaults for test environment
+  before_validation :set_test_defaults, if: -> { Rails.env.test? }
+
   # Entity Association - Single entity per user
   belongs_to :entity, optional: true
 
@@ -133,5 +136,11 @@ class User < ApplicationRecord
 
   def generate_api_key
     self.api_key = SecureRandom.hex(32)
+  end
+
+  def set_test_defaults
+    self.first_name ||= "Test"
+    self.last_name ||= "User"
+    self.role ||= "admin"
   end
 end

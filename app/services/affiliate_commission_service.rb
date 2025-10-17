@@ -35,7 +35,7 @@ class AffiliateCommissionService
       commission_amount = amount * referral.affiliate.commission_rate
 
       # Auto-approve small commissions, require review for large ones
-      status = commission_amount > HIGH_COMMISSION_THRESHOLD ? :pending : :approved
+      status = commission_amount >= HIGH_COMMISSION_THRESHOLD ? :pending : :approved
       approved_at = status == :approved ? Time.current : nil
 
       # Create the commission
@@ -80,7 +80,7 @@ class AffiliateCommissionService
       end
 
       # Only pay recurring commissions for first 12 months
-      if referral.converted_at < 12.months.ago
+      if referral.converted_at <= 12.months.ago
         Rails.logger.debug "Referral #{referral.id} is older than 12 months, skipping commission"
         return nil
       end
@@ -89,7 +89,7 @@ class AffiliateCommissionService
       commission_amount = amount * referral.affiliate.commission_rate
 
       # Auto-approve small commissions, require review for large ones
-      status = commission_amount > HIGH_COMMISSION_THRESHOLD ? :pending : :approved
+      status = commission_amount >= HIGH_COMMISSION_THRESHOLD ? :pending : :approved
       approved_at = status == :approved ? Time.current : nil
 
       # Create the commission

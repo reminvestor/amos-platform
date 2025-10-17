@@ -1,18 +1,18 @@
-# Start Feature - Interactive Backlog Workflow
-# Lists Azure DevOps backlog items, creates feature branch, generates implementation plan
+# Start Feature - Interactive GitHub Issues Workflow
+# Lists GitHub issues, creates feature branch, generates implementation plan
 
 name: start-feature
-description: Create feature branch from Azure DevOps backlog item with detailed implementation plan
+description: Create feature branch from GitHub issue with detailed implementation plan
 version: "1.0"
 
 parameters:
-  project:
-    description: "Azure DevOps project name"
+  repo:
+    description: "GitHub repository (format: owner/repo)"
     type: string
-    default: "agent_marketing"
+    default: "NuvolaNetworks/agent_marketing"
 
-  work_item_id:
-    description: "Specific work item ID (skip interactive selection)"
+  issue_number:
+    description: "Specific issue number (skip interactive selection)"
     type: string
     required: false
 
@@ -38,46 +38,74 @@ steps:
       echo "✅ Ready on main branch"
       echo ""
 
-  - name: List Backlog Items (if no work_item_id provided)
-    condition: "${{ !parameters.work_item_id }}"
-    mcp: azure_devops
-    tool: list_work_items
-    parameters:
-      project: "${{ parameters.project }}"
-      state: "New,Active"
-      work_item_type: "User Story,Task,Bug"
-      assigned_to: "@me"
-      max_results: 20
-    output_format: |
-      📋 Available Work Items:
+  - name: List GitHub Issues (if no issue_number provided)
+    condition: "${{ !parameters.issue_number }}"
+    run: |
+      echo "📋 Fetching open issues from ${{ parameters.repo }}..."
+      echo ""
 
-      {{#each items}}
-      {{@index}}. [{{type}} #{{id}}] {{title}}
-         Priority: {{fields.Priority}} | State: {{fields.State}} | Assigned: {{fields.AssignedTo.displayName}}
-      {{/each}}
+      # List open issues with formatted output
+      gh issue list \
+        --repo "${{ parameters.repo }}" \
+        --state open \
+        --limit 20 \
+        --json number,title,labels,assignees,createdAt \
+        --template '{{range .}}{{tablerow (printf "#%v" .number) .title (pluck "name" .labels | join ", ") (pluck "login" .assignees | join ", ")}}{{end}}'
 
-  - name: Prompt for Work Item Selection
-    condition: "${{ !parameters.work_item_id }}"
-    prompt: "Which work item would you like to work on? (Enter number or work item ID)"
-    store_as: selected_item
+      echo ""
 
-  - name: Get Full Work Item Details
-    mcp: azure_devops
-    tool: get_work_item
-    parameters:
-      work_item_id: "${{ parameters.work_item_id || selected_item }}"
-      project: "${{ parameters.project }}"
-    store_as: work_item
+  - name: Prompt for Issue Selection
+    condition: "${{ !parameters.issue_number }}"
+    prompt: "Which issue would you like to work on? (Enter issue number)"
+    store_as: selected_issue
+
+  - name: Get Full Issue Details
+    run: |
+      # Determine which issue to fetch
+      ISSUE_NUM="${{ parameters.issue_number }}"
+      if [ -z "$ISSUE_NUM" ]; then
+        ISSUE_NUM="${{ selected_issue }}"
+      fi
+
+      echo "📖 Fetching details for issue #$ISSUE_NUM..."
+      echo ""
+
+      # Get full issue details
+      ISSUE_JSON=$(gh issue view "$ISSUE_NUM" \
+        --repo "${{ parameters.repo }}" \
+        --json number,title,body,labels,assignees,milestone)
+
+      # Parse and display issue details
+      ISSUE_TITLE=$(echo "$ISSUE_JSON" | jq -r '.title')
+      ISSUE_BODY=$(echo "$ISSUE_JSON" | jq -r '.body // ""')
+      ISSUE_LABELS=$(echo "$ISSUE_JSON" | jq -r '.labels | map(.name) | join(", ")')
+      ISSUE_ASSIGNEES=$(echo "$ISSUE_JSON" | jq -r '.assignees | map(.login) | join(", ")')
+
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "📌 Issue #$ISSUE_NUM: $ISSUE_TITLE"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      echo "📝 Description:"
+      echo "$ISSUE_BODY"
+      echo ""
+      [ -n "$ISSUE_LABELS" ] && echo "🏷️  Labels: $ISSUE_LABELS"
+      [ -n "$ISSUE_ASSIGNEES" ] && echo "👤 Assignees: $ISSUE_ASSIGNEES"
+      echo ""
+
+      # Store for next steps
+      echo "$ISSUE_JSON" > /tmp/github_issue_$ISSUE_NUM.json
+      echo "$ISSUE_NUM" > /tmp/github_issue_number.txt
+      echo "$ISSUE_TITLE" > /tmp/github_issue_title.txt
 
   - name: Create Feature Branch
     run: |
-      # Extract work item data
-      WORK_ITEM_ID="${{ work_item.id }}"
-      WORK_ITEM_TITLE="${{ work_item.fields.Title }}"
+      # Load issue data
+      ISSUE_NUM=$(cat /tmp/github_issue_number.txt)
+      ISSUE_TITLE=$(cat /tmp/github_issue_title.txt)
 
       # Generate branch slug (lowercase, hyphens, max 50 chars)
-      SLUG=$(echo "$WORK_ITEM_TITLE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-50)
-      BRANCH_NAME="feature/work-item-${WORK_ITEM_ID}-${SLUG}"
+      SLUG=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-50)
+      BRANCH_NAME="feature/issue-${ISSUE_NUM}-${SLUG}"
 
       echo "🌿 Creating feature branch: $BRANCH_NAME"
       git checkout -b "$BRANCH_NAME"
@@ -86,7 +114,7 @@ steps:
       echo ""
 
       # Store for later use
-      echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+      echo "$BRANCH_NAME" > /tmp/github_branch_name.txt
 
   - name: Ask About Testing Preferences
     condition: "${{ parameters.tests == 'ask' }}"
@@ -101,14 +129,16 @@ steps:
       Your choice (a/b/c/d):
     store_as: test_choice
 
-  - name: Analyze Work Item and Generate Plan
+  - name: Analyze Issue and Generate Plan
     run: |
-      # Parse work item details
-      TITLE="${{ work_item.fields.Title }}"
-      DESCRIPTION="${{ work_item.fields.Description }}"
-      ACCEPTANCE_CRITERIA="${{ work_item.fields.AcceptanceCriteria }}"
-      WORK_ITEM_TYPE="${{ work_item.fields.WorkItemType }}"
-      PRIORITY="${{ work_item.fields.Priority }}"
+      # Load issue data
+      ISSUE_NUM=$(cat /tmp/github_issue_number.txt)
+      ISSUE_TITLE=$(cat /tmp/github_issue_title.txt)
+      ISSUE_JSON=$(cat /tmp/github_issue_$ISSUE_NUM.json)
+      BRANCH_NAME=$(cat /tmp/github_branch_name.txt)
+
+      ISSUE_BODY=$(echo "$ISSUE_JSON" | jq -r '.body // ""')
+      ISSUE_LABELS=$(echo "$ISSUE_JSON" | jq -r '.labels | map(.name) | join(", ")')
 
       # Determine testing strategy
       TEST_PREF="${{ parameters.tests }}"
@@ -121,31 +151,25 @@ steps:
         esac
       fi
 
-      # Search codebase for related files (example patterns)
+      # Search codebase for related files
       echo "🔍 Analyzing codebase for related files..."
-
-      # Look for models, services, controllers mentioned in description
-      # This is a simplified example - real implementation would be more sophisticated
-
       echo ""
+
       echo "📝 Generating implementation plan..."
       echo ""
 
       # Generate comprehensive implementation plan
       cat << EOF
-# Implementation Plan: $TITLE
+# Implementation Plan: $ISSUE_TITLE
 
-## 📋 Work Item Details
-- **ID**: #${{ work_item.id }}
-- **Type**: $WORK_ITEM_TYPE
-- **Priority**: $PRIORITY
+## 📋 Issue Details
+- **Issue**: #$ISSUE_NUM
+- **Labels**: $ISSUE_LABELS
 - **Branch**: \`$BRANCH_NAME\`
+- **Repository**: ${{ parameters.repo }}
 
 ## 🎯 Objective
-$DESCRIPTION
-
-## ✅ Acceptance Criteria
-$ACCEPTANCE_CRITERIA
+$ISSUE_BODY
 
 ---
 
@@ -416,7 +440,7 @@ EOF
 **Database**:
 - Migration needed? YES
 - Indexes needed? YES (entity_id, uniqueness constraints)
-- Background jobs needed? {ASSESS BASED ON WORK ITEM}
+- Background jobs needed? {ASSESS BASED ON ISSUE}
 
 **API/Integration**:
 - New Scout tool? YES
@@ -463,8 +487,24 @@ EOF
 6. **Commit & Push**
    \`\`\`bash
    git add .
-   git commit -m "Implement #${{ work_item.id }}: $TITLE"
+   git commit -m "Implement #$ISSUE_NUM: $ISSUE_TITLE"
    git push -u origin $BRANCH_NAME
+   \`\`\`
+
+7. **Create Pull Request**
+   \`\`\`bash
+   gh pr create --repo "${{ parameters.repo }}" \\
+     --title "Fix #$ISSUE_NUM: $ISSUE_TITLE" \\
+     --body "Closes #$ISSUE_NUM
+
+## Summary
+{Brief description of changes}
+
+## Testing
+{How you tested this}
+
+## Screenshots (if applicable)
+{Add screenshots}"
    \`\`\`
 
 ---
@@ -486,12 +526,15 @@ EOF
 
 EOF
 
+      # Cleanup temp files
+      rm -f /tmp/github_issue_*.json /tmp/github_issue_*.txt /tmp/github_branch_name.txt
+
 examples:
-  - description: "Start working on a backlog item (interactive)"
+  - description: "Start working on an issue (interactive)"
     command: "Use start-feature"
 
-  - description: "Start specific work item (skip selection)"
-    command: "Use start-feature with work_item_id=1234"
+  - description: "Start specific issue (skip selection)"
+    command: "Use start-feature with issue_number=123"
 
   - description: "Start with unit tests only"
     command: "Use start-feature with tests=unit"
@@ -502,5 +545,5 @@ examples:
   - description: "Start without tests"
     command: "Use start-feature with tests=none"
 
-  - description: "Start for different Azure DevOps project"
-    command: "Use start-feature with project=my-project"
+  - description: "Start for different repository"
+    command: "Use start-feature with repo=owner/different-repo"

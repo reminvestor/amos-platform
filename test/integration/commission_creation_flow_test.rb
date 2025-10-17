@@ -121,6 +121,7 @@ class CommissionCreationFlowTest < ActionDispatch::IntegrationTest
     )
 
     assert_not_nil commission1
+    assert_not_nil commission1.id
 
     # Try to create duplicate
     commission2 = AffiliateCommissionService.create_for_first_payment(
@@ -129,6 +130,7 @@ class CommissionCreationFlowTest < ActionDispatch::IntegrationTest
     )
 
     # Should return existing commission
+    assert_not_nil commission2
     assert_equal commission1.id, commission2.id
   end
 
@@ -147,7 +149,13 @@ class CommissionCreationFlowTest < ActionDispatch::IntegrationTest
     assert commission.pending?
 
     # Admin approves it
-    admin = AdminUser.create!(email: 'admin@test.com', password: 'password123')
+    admin = AdminUser.create!(
+      email: 'admin@test.com',
+      password: 'password123',
+      first_name: 'Admin',
+      last_name: 'User',
+      role: :super_admin
+    )
     commission.approve!(admin)
 
     assert commission.approved?
@@ -183,7 +191,8 @@ class CommissionCreationFlowTest < ActionDispatch::IntegrationTest
       password: 'password123',
       password_confirmation: 'password123',
       first_name: 'Flow',
-      last_name: 'Test'
+      last_name: 'Test',
+      role: 'admin'
     )
 
     entity = Entity.create!(
