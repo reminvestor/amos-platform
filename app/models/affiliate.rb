@@ -7,7 +7,7 @@ class Affiliate < ApplicationRecord
   has_many :payouts, dependent: :restrict_with_error
 
   enum :status, { pending: 0, active: 1, suspended: 2, terminated: 3 }
-  enum :tier, { bronze: 0, silver: 1, gold: 2 }
+  enum :tier, { bronze: "bronze", silver: "silver", gold: "gold" }, default: "bronze"
 
   validates :affiliate_code, presence: true, uniqueness: true
   validates :commission_rate, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }

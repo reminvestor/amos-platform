@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_16_000000) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_16_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -887,6 +887,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_000000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "store_type", default: "entity", null: false
+    t.integer "metadata_schema_version", default: 1
+    t.boolean "supports_page_filtering", default: true
+    t.boolean "supports_section_filtering", default: true
+    t.boolean "supports_heading_search", default: true
+    t.integer "avg_chunk_tokens"
+    t.integer "chunks_with_pages", default: 0
+    t.integer "chunks_with_headings", default: 0
+    t.integer "chunks_with_tables", default: 0
     t.index ["app_name"], name: "index_rag_stores_on_app_name"
     t.index ["entity_id"], name: "index_rag_stores_on_entity_id"
     t.index ["pinecone_index", "pinecone_namespace"], name: "index_rag_stores_on_pinecone_index_and_pinecone_namespace", unique: true

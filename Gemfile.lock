@@ -300,6 +300,8 @@ GEM
       logger
     mini_mime (1.1.5)
     minitest (5.25.4)
+    mocha (2.7.1)
+      ruby2_keywords (>= 0.0.5)
     msgpack (1.8.0)
     multi_xml (0.7.1)
       bigdecimal (~> 3.1)
@@ -471,6 +473,7 @@ GEM
     ruby-vips (2.2.3)
       ffi (~> 1.12)
       logger
+    ruby2_keywords (0.0.5)
     rubyzip (2.4.1)
     securerandom (0.4.1)
     selenium-webdriver (4.29.1)
@@ -595,6 +598,7 @@ DEPENDENCIES
   mailgun-ruby (~> 1.2)
   matrix (~> 0.4.2)
   mini_magick
+  mocha
   nokogiri
   oauth2 (~> 2.0)
   openai (~> 0.3.0)

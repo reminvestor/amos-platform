@@ -1,0 +1,162 @@
+# DB Reset Demo - Reset database to demo state
+# Resets DB and loads demo/seed data for development
+
+name: db-reset-demo
+description: Reset database to demo state with seed data
+version: "1.0"
+
+parameters:
+  skip_confirm:
+    description: "Skip confirmation prompt (true/false)"
+    type: string
+    default: "false"
+
+  seed_file:
+    description: "Custom seed file to use (defaults to db/seeds.rb)"
+    type: string
+    required: false
+
+steps:
+  - name: Confirm Reset
+    condition: "${{ parameters.skip_confirm != 'true' }}"
+    run: |
+      echo "⚠️  Database Reset to Demo State"
+      echo ""
+      echo "This will:"
+      echo "  1. Drop the current database"
+      echo "  2. Create a fresh database"
+      echo "  3. Run all migrations"
+      echo "  4. Load demo seed data"
+      echo ""
+      echo "❌ ALL CURRENT DATA WILL BE LOST!"
+      echo ""
+    prompt: "Continue? (yes/no)"
+    store_as: confirm_reset
+
+  - name: Create Pre-Reset Snapshot
+    condition: "${{ confirm_reset == 'yes' || parameters.skip_confirm == 'true' }}"
+    run: |
+      echo "📸 Creating safety snapshot before reset..."
+      echo ""
+
+      SNAPSHOT_DIR=".db_snapshots"
+      mkdir -p "$SNAPSHOT_DIR"
+
+      SNAPSHOT_NAME="pre_reset_$(date +%Y%m%d_%H%M%S)"
+      SNAPSHOT_FILE="$SNAPSHOT_DIR/${SNAPSHOT_NAME}.sql"
+
+      # Get database name
+      DB_NAME=$(docker-compose run --rm web rails runner "puts ActiveRecord::Base.connection_db_config.database" 2>/dev/null | tail -1)
+
+      # Create snapshot
+      docker-compose exec -T db pg_dump -U postgres "$DB_NAME" > "$SNAPSHOT_FILE" 2>/dev/null
+
+      if [ -f "$SNAPSHOT_FILE" ]; then
+        SIZE=$(du -h "$SNAPSHOT_FILE" | cut -f1)
+        echo "✅ Safety snapshot created: $SNAPSHOT_NAME ($SIZE)"
+        echo "   Restore with: Use db-snapshot with action=restore name=$SNAPSHOT_NAME"
+      else
+        echo "⚠️  Could not create safety snapshot (database may be empty)"
+      fi
+
+      echo ""
+
+  - name: Reset Database
+    condition: "${{ confirm_reset == 'yes' || parameters.skip_confirm == 'true' }}"
+    run: |
+      echo "🔄 Resetting database..."
+      echo ""
+
+      echo "1️⃣ Dropping database..."
+      docker-compose run --rm web rails db:drop
+
+      echo ""
+      echo "2️⃣ Creating database..."
+      docker-compose run --rm web rails db:create
+
+      echo ""
+      echo "3️⃣ Running migrations..."
+      docker-compose run --rm web rails db:migrate
+
+      echo ""
+      echo "✅ Database structure ready"
+      echo ""
+
+  - name: Load Seed Data
+    condition: "${{ confirm_reset == 'yes' || parameters.skip_confirm == 'true' }}"
+    run: |
+      SEED_FILE="${{ parameters.seed_file }}"
+
+      if [ -z "$SEED_FILE" ]; then
+        SEED_FILE="db/seeds.rb"
+      fi
+
+      if [ ! -f "$SEED_FILE" ]; then
+        echo "❌ Seed file not found: $SEED_FILE"
+        exit 1
+      fi
+
+      echo "4️⃣ Loading seed data from: $SEED_FILE"
+      echo ""
+
+      if [ "$SEED_FILE" = "db/seeds.rb" ]; then
+        # Standard seed file
+        docker-compose run --rm web rails db:seed
+      else
+        # Custom seed file
+        docker-compose run --rm web rails runner "$SEED_FILE"
+      fi
+
+      echo ""
+      echo "✅ Seed data loaded"
+      echo ""
+
+  - name: Verify Data
+    condition: "${{ confirm_reset == 'yes' || parameters.skip_confirm == 'true' }}"
+    run: |
+      echo "5️⃣ Verifying data..."
+      echo ""
+
+      # Count records in key tables
+      echo "Record counts:"
+
+      docker-compose run --rm web rails runner "
+        puts '  Entities: ' + Entity.count.to_s if defined?(Entity)
+        puts '  Users: ' + User.count.to_s if defined?(User)
+        puts '  Campaigns: ' + Campaign.count.to_s if defined?(Campaign)
+        puts '  Contacts: ' + Contact.count.to_s if defined?(Contact)
+        puts '  Landing Pages: ' + LandingPage.count.to_s if defined?(LandingPage)
+        puts '  Integrations: ' + Integration.count.to_s if defined?(Integration)
+      " 2>/dev/null | grep -E "^\s+\w+:"
+
+      echo ""
+      echo "✅ Database verification complete"
+
+  - name: Summary
+    condition: "${{ confirm_reset == 'yes' || parameters.skip_confirm == 'true' }}"
+    run: |
+      echo ""
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "✅ Database Reset Complete!"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      echo "Your database is now in demo state."
+      echo ""
+      echo "Next steps:"
+      echo "  - Start the app: docker-dev start"
+      echo "  - Access the app: http://app.localhost:3000"
+      echo "  - Check demo users in db/seeds.rb for login credentials"
+      echo ""
+      echo "If you need to restore previous data:"
+      echo "  Use db-snapshot with action=list"
+      echo ""
+
+examples:
+  - description: "Reset to demo state (with confirmation)"
+    command: "Use db-reset-demo"
+
+  - description: "Reset without confirmation"
+    command: "Use db-reset-demo with skip_confirm=true"
+
+  - description: "Reset with custom seed file"
+    command: "Use db-reset-demo with seed_file=db/seeds/production_demo.rb"

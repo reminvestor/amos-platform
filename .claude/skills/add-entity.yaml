@@ -1,0 +1,278 @@
+# Add Entity - Create test entity with sample data
+# Quickly set up test entities for development
+
+name: add-entity
+description: Create test entity with sample data for development
+version: "1.0"
+
+parameters:
+  name:
+    description: "Entity name (defaults to 'Test Entity')"
+    type: string
+    required: false
+
+  with_data:
+    description: "Include sample data: minimal, full, or none"
+    type: string
+    default: "minimal"
+
+  domain:
+    description: "Custom domain for entity (optional)"
+    type: string
+    required: false
+
+steps:
+  - name: Gather Entity Details
+    run: |
+      ENTITY_NAME="${{ parameters.name }}"
+
+      if [ -z "$ENTITY_NAME" ]; then
+        echo "📝 Create New Entity"
+        echo ""
+      else
+        echo "📝 Creating entity: $ENTITY_NAME"
+        echo ""
+      fi
+
+      DATA_LEVEL="${{ parameters.with_data }}"
+      echo "Sample data: $DATA_LEVEL"
+      echo ""
+
+  - name: Prompt for Name (if not provided)
+    condition: "${{ !parameters.name }}"
+    prompt: "Entity name:"
+    store_as: entity_name
+
+  - name: Create Entity
+    run: |
+      ENTITY_NAME="${{ parameters.name }}"
+      if [ -z "$ENTITY_NAME" ]; then
+        ENTITY_NAME="${{ entity_name }}"
+      fi
+
+      DOMAIN="${{ parameters.domain }}"
+
+      echo "🏢 Creating entity: $ENTITY_NAME"
+      echo ""
+
+      # Create entity
+      RESULT=$(docker-compose run --rm web rails runner "
+        entity = Entity.create!(
+          name: '$ENTITY_NAME',
+          subdomain: '$ENTITY_NAME'.parameterize,
+          settings: {}
+        )
+
+        puts \"ENTITY_ID=#{entity.id}\"
+        puts \"SUBDOMAIN=#{entity.subdomain}\"
+        puts \"Entity created: #{entity.name} (ID: #{entity.id})\"
+      " 2>/dev/null)
+
+      echo "$RESULT"
+      echo ""
+
+      ENTITY_ID=$(echo "$RESULT" | grep "ENTITY_ID=" | cut -d'=' -f2)
+      SUBDOMAIN=$(echo "$RESULT" | grep "SUBDOMAIN=" | cut -d'=' -f2)
+
+      echo "$ENTITY_ID" > /tmp/new_entity_id.txt
+      echo "$SUBDOMAIN" > /tmp/new_entity_subdomain.txt
+
+  - name: Create Admin User
+    run: |
+      ENTITY_ID=$(cat /tmp/new_entity_id.txt)
+      ENTITY_NAME="${{ parameters.name }}"
+      if [ -z "$ENTITY_NAME" ]; then
+        ENTITY_NAME="${{ entity_name }}"
+      fi
+
+      echo "👤 Creating admin user..."
+      echo ""
+
+      # Create user
+      docker-compose run --rm web rails runner "
+        entity = Entity.find($ENTITY_ID)
+
+        user = User.create!(
+          entity: entity,
+          email: 'admin@#{entity.subdomain}.test',
+          password: 'password123',
+          password_confirmation: 'password123',
+          first_name: 'Admin',
+          last_name: 'User'
+        )
+
+        puts \"User created: #{user.email}\"
+        puts \"Password: password123\"
+      " 2>/dev/null
+
+      echo ""
+
+  - name: Add Minimal Sample Data
+    condition: "${{ parameters.with_data == 'minimal' || parameters.with_data == 'full' }}"
+    run: |
+      ENTITY_ID=$(cat /tmp/new_entity_id.txt)
+
+      echo "📦 Adding minimal sample data..."
+      echo ""
+
+      docker-compose run --rm web rails runner "
+        entity = Entity.find($ENTITY_ID)
+        user = entity.users.first
+
+        # Create a few contacts
+        3.times do |i|
+          Contact.create!(
+            entity: entity,
+            email: \"contact#{i+1}@example.com\",
+            first_name: \"Test\",
+            last_name: \"Contact #{i+1}\"
+          )
+        end
+        puts \"Created 3 contacts\"
+
+        # Create a contact group
+        group = ContactGroup.create!(
+          entity: entity,
+          name: 'Test Group'
+        )
+        puts \"Created contact group: #{group.name}\"
+
+        # Create an email template
+        template = EmailTemplate.create!(
+          entity: entity,
+          name: 'Welcome Email',
+          subject: 'Welcome to {{company_name}}',
+          body: 'Hello {{first_name}}, welcome!'
+        )
+        puts \"Created email template: #{template.name}\"
+      " 2>/dev/null
+
+      echo ""
+
+  - name: Add Full Sample Data
+    condition: "${{ parameters.with_data == 'full' }}"
+    run: |
+      ENTITY_ID=$(cat /tmp/new_entity_id.txt)
+
+      echo "📦 Adding full sample data..."
+      echo ""
+
+      docker-compose run --rm web rails runner "
+        entity = Entity.find($ENTITY_ID)
+        user = entity.users.first
+
+        # More contacts
+        7.times do |i|
+          Contact.create!(
+            entity: entity,
+            email: \"user#{i+1}@example.com\",
+            first_name: Faker::Name.first_name,
+            last_name: Faker::Name.last_name
+          )
+        end
+        puts \"Created 7 additional contacts\"
+
+        # Campaign
+        campaign = Campaign.create!(
+          entity: entity,
+          name: 'Product Launch Campaign',
+          status: 'draft',
+          email_template: entity.email_templates.first
+        )
+        puts \"Created campaign: #{campaign.name}\"
+
+        # Landing page
+        landing_page = LandingPage.create!(
+          entity: entity,
+          name: 'Product Landing Page',
+          slug: 'product',
+          content: {
+            headline: 'Our Amazing Product',
+            subheadline: 'The best solution for your needs',
+            sections: []
+          }
+        )
+        puts \"Created landing page: #{landing_page.name}\"
+
+        # Business profile
+        entity.update!(
+          settings: {
+            business_profile: {
+              industry: 'Technology',
+              description: 'A test company for development',
+              website: 'https://example.com'
+            }
+          }
+        )
+        puts \"Updated business profile\"
+      " 2>/dev/null
+
+      echo ""
+
+  - name: Summary
+    run: |
+      ENTITY_ID=$(cat /tmp/new_entity_id.txt)
+      SUBDOMAIN=$(cat /tmp/new_entity_subdomain.txt)
+      ENTITY_NAME="${{ parameters.name }}"
+      if [ -z "$ENTITY_NAME" ]; then
+        ENTITY_NAME="${{ entity_name }}"
+      fi
+
+      echo ""
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "✅ Entity Created Successfully!"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      echo "Entity Details:"
+      echo "  Name: $ENTITY_NAME"
+      echo "  ID: $ENTITY_ID"
+      echo "  Subdomain: $SUBDOMAIN"
+      echo ""
+      echo "Admin User:"
+      echo "  Email: admin@${SUBDOMAIN}.test"
+      echo "  Password: password123"
+      echo ""
+      echo "Access:"
+      echo "  URL: http://${SUBDOMAIN}.localhost:3000"
+      echo "  Scout AI: http://${SUBDOMAIN}.localhost:3000/scout"
+      echo ""
+
+      # Show data summary
+      docker-compose run --rm web rails runner "
+        entity = Entity.find($ENTITY_ID)
+
+        puts 'Data Summary:'
+        puts \"  Users: #{entity.users.count}\"
+        puts \"  Contacts: #{entity.contacts.count}\" if defined?(Contact)
+        puts \"  Contact Groups: #{entity.contact_groups.count}\" if defined?(ContactGroup)
+        puts \"  Email Templates: #{entity.email_templates.count}\" if defined?(EmailTemplate)
+        puts \"  Campaigns: #{entity.campaigns.count}\" if defined?(Campaign)
+        puts \"  Landing Pages: #{entity.landing_pages.count}\" if defined?(LandingPage)
+      " 2>/dev/null
+
+      echo ""
+      echo "Next Steps:"
+      echo "  - Start app: docker-dev start"
+      echo "  - Sign in with admin credentials above"
+      echo "  - Test Scout AI workflows"
+      echo "  - Test tools: Use test-tool"
+      echo ""
+
+      # Cleanup
+      rm -f /tmp/new_entity_id.txt /tmp/new_entity_subdomain.txt
+
+examples:
+  - description: "Create entity with minimal data (interactive)"
+    command: "Use add-entity"
+
+  - description: "Create entity with specific name"
+    command: "Use add-entity with name='Acme Corp'"
+
+  - description: "Create entity with full sample data"
+    command: "Use add-entity with name='Acme Corp' with_data=full"
+
+  - description: "Create entity without sample data"
+    command: "Use add-entity with name='Acme Corp' with_data=none"
+
+  - description: "Create entity with custom domain"
+    command: "Use add-entity with name='Acme Corp' domain=acme"

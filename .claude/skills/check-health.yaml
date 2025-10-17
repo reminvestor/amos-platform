@@ -1,0 +1,260 @@
+# Check Health - Run full health check
+# Tests, linting, security, dependencies, and database status
+
+name: check-health
+description: Run comprehensive health check (tests, linting, security, dependencies)
+version: "1.0"
+
+parameters:
+  scope:
+    description: "What to check: all, quick, tests, lint, security, or ask"
+    type: string
+    default: "ask"
+
+  fix:
+    description: "Auto-fix issues when possible (true/false)"
+    type: string
+    default: "false"
+
+steps:
+  - name: Determine Check Scope
+    condition: "${{ parameters.scope == 'ask' }}"
+    run: |
+      echo "🏥 Health Check"
+      echo ""
+      echo "Select check scope:"
+      echo "  a) Full health check (all checks)"
+      echo "  b) Quick check (linting + critical tests)"
+      echo "  c) Tests only"
+      echo "  d) Linting only"
+      echo "  e) Security scan only"
+      echo ""
+    prompt: "Your choice (a/b/c/d/e):"
+    store_as: check_scope
+
+  - name: Initialize Health Report
+    run: |
+      echo "🏥 Starting Health Check..."
+      echo ""
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+
+      # Initialize tracking
+      echo "0" > /tmp/health_issues.txt
+
+  - name: Database Status
+    condition: "${{ parameters.scope == 'all' || check_scope == 'a' }}"
+    run: |
+      echo "📊 Checking database status..."
+      echo ""
+
+      # Check if database is running
+      if docker-compose ps db | grep -q "Up"; then
+        echo "  ✅ Database is running"
+      else
+        echo "  ❌ Database is not running"
+        ISSUES=$(cat /tmp/health_issues.txt)
+        echo $((ISSUES + 1)) > /tmp/health_issues.txt
+      fi
+
+      # Check for pending migrations
+      PENDING=$(docker-compose run --rm web rails db:migrate:status 2>/dev/null | grep "^\s*down" || true)
+
+      if [ -z "$PENDING" ]; then
+        echo "  ✅ No pending migrations"
+      else
+        echo "  ⚠️  Pending migrations found:"
+        echo "$PENDING" | head -3
+        ISSUES=$(cat /tmp/health_issues.txt)
+        echo $((ISSUES + 1)) > /tmp/health_issues.txt
+      fi
+
+      echo ""
+
+  - name: Dependency Check
+    condition: "${{ parameters.scope == 'all' || check_scope == 'a' }}"
+    run: |
+      echo "📦 Checking dependencies..."
+      echo ""
+
+      # Check for outdated gems
+      OUTDATED=$(docker-compose run --rm web bundle outdated --strict 2>/dev/null | grep -c "newer version" || echo "0")
+
+      if [ "$OUTDATED" = "0" ]; then
+        echo "  ✅ All gems up to date"
+      else
+        echo "  ⚠️  $OUTDATED outdated gems found"
+        echo "     Run: docker-compose run --rm web bundle outdated"
+      fi
+
+      # Check for security vulnerabilities
+      echo ""
+      echo "  Checking for vulnerabilities..."
+      if docker-compose run --rm web bundle exec bundler-audit check --update 2>/dev/null; then
+        echo "  ✅ No known vulnerabilities"
+      else
+        echo "  ❌ Security vulnerabilities found!"
+        ISSUES=$(cat /tmp/health_issues.txt)
+        echo $((ISSUES + 1)) > /tmp/health_issues.txt
+      fi
+
+      echo ""
+
+  - name: RuboCop Check
+    condition: "${{ parameters.scope == 'all' || parameters.scope == 'lint' || check_scope == 'a' || check_scope == 'b' || check_scope == 'd' }}"
+    run: |
+      echo "🔍 Running RuboCop..."
+      echo ""
+
+      if docker-compose run --rm web bundle exec rubocop --format simple; then
+        echo "  ✅ No RuboCop offenses"
+      else
+        echo "  ❌ RuboCop offenses found"
+        ISSUES=$(cat /tmp/health_issues.txt)
+        echo $((ISSUES + 1)) > /tmp/health_issues.txt
+
+        if [ "${{ parameters.fix }}" = "true" ]; then
+          echo ""
+          echo "  🔧 Auto-fixing RuboCop offenses..."
+          docker-compose run --rm web bundle exec rubocop -a
+        else
+          echo "     Run with fix=true to auto-correct"
+        fi
+      fi
+
+      echo ""
+
+  - name: Test Suite
+    condition: "${{ parameters.scope == 'all' || parameters.scope == 'tests' || check_scope == 'a' || check_scope == 'b' || check_scope == 'c' }}"
+    run: |
+      echo "🧪 Running test suite..."
+      echo ""
+
+      if [ "${{ check_scope }}" = "b" ]; then
+        # Quick mode - run faster tests only
+        echo "  Running quick tests (models + services)..."
+        TEST_PATH="test/models test/services"
+      else
+        # Full test suite
+        echo "  Running full test suite..."
+        TEST_PATH=""
+      fi
+
+      if docker-compose run --rm web rails test $TEST_PATH; then
+        echo "  ✅ All tests passing"
+      else
+        echo "  ❌ Test failures detected"
+        ISSUES=$(cat /tmp/health_issues.txt)
+        echo $((ISSUES + 1)) > /tmp/health_issues.txt
+      fi
+
+      echo ""
+
+  - name: Security Scan
+    condition: "${{ parameters.scope == 'all' || parameters.scope == 'security' || check_scope == 'a' || check_scope == 'e' }}"
+    run: |
+      echo "🔒 Running security scan..."
+      echo ""
+
+      # Check for Brakeman (Rails security scanner)
+      if docker-compose run --rm web bundle exec brakeman -q 2>/dev/null; then
+        echo "  ✅ No security issues found"
+      else
+        echo "  ⚠️  Potential security issues detected"
+        echo "     Review with: docker-compose run --rm web bundle exec brakeman"
+        ISSUES=$(cat /tmp/health_issues.txt)
+        echo $((ISSUES + 1)) > /tmp/health_issues.txt
+      fi
+
+      echo ""
+
+  - name: Code Quality Metrics
+    condition: "${{ parameters.scope == 'all' || check_scope == 'a' }}"
+    run: |
+      echo "📈 Code quality metrics..."
+      echo ""
+
+      # Count files
+      RUBY_FILES=$(find app -name "*.rb" | wc -l | tr -d ' ')
+      TEST_FILES=$(find test -name "*_test.rb" | wc -l | tr -d ' ')
+
+      echo "  Ruby files: $RUBY_FILES"
+      echo "  Test files: $TEST_FILES"
+
+      # Calculate test ratio
+      if [ "$RUBY_FILES" -gt 0 ]; then
+        RATIO=$(awk "BEGIN {printf \"%.1f\", ($TEST_FILES / $RUBY_FILES) * 100}")
+        echo "  Test coverage ratio: $RATIO%"
+
+        if [ $(echo "$RATIO < 50" | bc -l) -eq 1 ]; then
+          echo "  ⚠️  Low test coverage"
+        else
+          echo "  ✅ Good test coverage"
+        fi
+      fi
+
+      echo ""
+
+  - name: Final Health Report
+    run: |
+      ISSUES=$(cat /tmp/health_issues.txt)
+
+      echo ""
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "📊 Health Check Report"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+
+      if [ "$ISSUES" = "0" ]; then
+        echo "✅ All checks passed! Your application is healthy."
+        echo ""
+        echo "Status: 🟢 HEALTHY"
+      elif [ "$ISSUES" -le "2" ]; then
+        echo "⚠️  $ISSUES issue(s) found - Minor issues detected"
+        echo ""
+        echo "Status: 🟡 NEEDS ATTENTION"
+      else
+        echo "❌ $ISSUES issue(s) found - Critical issues detected"
+        echo ""
+        echo "Status: 🔴 UNHEALTHY"
+      fi
+
+      echo ""
+      echo "Recommendations:"
+
+      if [ "$ISSUES" -gt "0" ]; then
+        echo "  - Review issues above"
+        echo "  - Run with fix=true to auto-fix where possible"
+        echo "  - Use specific skills for detailed fixes:"
+        echo "    • fix-rubocop - Fix linting issues"
+        echo "    • run-tests - Run and debug tests"
+        echo "    • docker-dev db db_action=migrate - Run pending migrations"
+      else
+        echo "  - Keep up the good work!"
+        echo "  - Run health checks regularly"
+        echo "  - Consider adding more tests"
+      fi
+
+      echo ""
+
+      # Cleanup
+      rm -f /tmp/health_issues.txt
+
+examples:
+  - description: "Interactive health check"
+    command: "Use check-health"
+
+  - description: "Full health check"
+    command: "Use check-health with scope=all"
+
+  - description: "Quick health check"
+    command: "Use check-health with scope=quick"
+
+  - description: "Tests only"
+    command: "Use check-health with scope=tests"
+
+  - description: "Linting only"
+    command: "Use check-health with scope=lint"
+
+  - description: "Health check with auto-fix"
+    command: "Use check-health with scope=all fix=true"

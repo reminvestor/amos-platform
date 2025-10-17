@@ -69,7 +69,7 @@ class AffiliateCommissionServiceTest < ActiveSupport::TestCase
   end
 
   test "create_for_first_payment returns nil when no pending referral exists" do
-    entity_without_referral = entities(:one)
+    entity_without_referral = entities(:default)
 
     commission = AffiliateCommissionService.create_for_first_payment(entity_without_referral, 500)
 
@@ -132,6 +132,9 @@ class AffiliateCommissionServiceTest < ActiveSupport::TestCase
   end
 
   test "create_for_recurring_payment returns nil for referrals older than 12 months" do
+    # Destroy any other converted referrals for this entity to avoid test pollution
+    Referral.where(referred_entity: @entity, status: :converted).destroy_all
+
     # Set converted_at to 13 months ago (beyond 12-month limit)
     @referral.update!(status: :converted, converted_at: 13.months.ago)
 
@@ -159,6 +162,9 @@ class AffiliateCommissionServiceTest < ActiveSupport::TestCase
   end
 
   test "create_for_recurring_payment returns nil for pending referrals" do
+    # Ensure only the pending referral exists for this entity
+    Referral.where(referred_entity: @entity, status: :converted).destroy_all
+
     assert @referral.pending?
 
     commission = AffiliateCommissionService.create_for_recurring_payment(@entity, 100)

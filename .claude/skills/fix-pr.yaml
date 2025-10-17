@@ -1,0 +1,271 @@
+# Fix PR - Automatically resolve common PR issues
+# Handles merge conflicts, failing checks, linting errors
+
+name: fix-pr
+description: Automatically fix common PR issues (conflicts, linting, failing tests)
+version: "1.0"
+
+parameters:
+  pr_number:
+    description: "PR number to fix (defaults to current branch's PR)"
+    type: string
+    required: false
+
+  fix_type:
+    description: "What to fix: all, conflicts, lint, tests, or ask"
+    type: string
+    default: "ask"
+
+steps:
+  - name: Get PR Information
+    run: |
+      if [ -n "${{ parameters.pr_number }}" ]; then
+        PR_NUM="${{ parameters.pr_number }}"
+      else
+        # Get PR for current branch
+        CURRENT_BRANCH=$(git branch --show-current)
+        echo "🔍 Finding PR for branch: $CURRENT_BRANCH"
+
+        PR_JSON=$(gh pr list --head "$CURRENT_BRANCH" --json number,title,url,mergeable --limit 1)
+        PR_NUM=$(echo "$PR_JSON" | jq -r '.[0].number // empty')
+
+        if [ -z "$PR_NUM" ]; then
+          echo "❌ No PR found for current branch: $CURRENT_BRANCH"
+          exit 1
+        fi
+      fi
+
+      echo "📋 Analyzing PR #$PR_NUM..."
+      echo ""
+
+      # Get full PR details
+      gh pr view "$PR_NUM" --json number,title,mergeable,statusCheckRollup,commits,baseRefName
+
+      echo "$PR_NUM" > /tmp/fix_pr_number.txt
+
+  - name: Check PR Status
+    run: |
+      PR_NUM=$(cat /tmp/fix_pr_number.txt)
+
+      # Get PR status details
+      PR_DATA=$(gh pr view "$PR_NUM" --json mergeable,statusCheckRollup,baseRefName)
+
+      MERGEABLE=$(echo "$PR_DATA" | jq -r '.mergeable')
+      BASE_BRANCH=$(echo "$PR_DATA" | jq -r '.baseRefName')
+
+      echo "🔍 PR Status:"
+      echo "  - Mergeable: $MERGEABLE"
+      echo "  - Base branch: $BASE_BRANCH"
+      echo ""
+
+      # Check for merge conflicts
+      if [ "$MERGEABLE" = "CONFLICTING" ]; then
+        echo "⚠️  Merge conflicts detected!"
+        echo "HAS_CONFLICTS=true" > /tmp/pr_has_conflicts.txt
+      else
+        echo "HAS_CONFLICTS=false" > /tmp/pr_has_conflicts.txt
+      fi
+
+      # Check failing status checks
+      FAILING_CHECKS=$(echo "$PR_DATA" | jq -r '.statusCheckRollup[] | select(.conclusion == "FAILURE") | .name' | head -5)
+
+      if [ -n "$FAILING_CHECKS" ]; then
+        echo "❌ Failing checks:"
+        echo "$FAILING_CHECKS" | while read check; do
+          echo "  - $check"
+        done
+        echo "$FAILING_CHECKS" > /tmp/pr_failing_checks.txt
+      else
+        echo "✅ All checks passing"
+        echo "" > /tmp/pr_failing_checks.txt
+      fi
+
+      echo "$BASE_BRANCH" > /tmp/pr_base_branch.txt
+
+  - name: Ask What to Fix
+    condition: "${{ parameters.fix_type == 'ask' }}"
+    run: |
+      HAS_CONFLICTS=$(cat /tmp/pr_has_conflicts.txt)
+      FAILING_CHECKS=$(cat /tmp/pr_failing_checks.txt)
+
+      echo ""
+      echo "🔧 What would you like to fix?"
+      echo ""
+
+      if [ "$HAS_CONFLICTS" = "true" ]; then
+        echo "  a) Merge conflicts (merge base branch)"
+      fi
+
+      if grep -q "RuboCop" /tmp/pr_failing_checks.txt 2>/dev/null; then
+        echo "  b) RuboCop linting errors"
+      fi
+
+      if grep -q -E "(test|Test)" /tmp/pr_failing_checks.txt 2>/dev/null; then
+        echo "  c) Failing tests"
+      fi
+
+      echo "  d) All of the above"
+      echo "  e) Let me analyze and decide"
+      echo ""
+    prompt: "Your choice (a/b/c/d/e):"
+    store_as: fix_choice
+
+  - name: Resolve Merge Conflicts
+    condition: "${{ parameters.fix_type == 'all' || parameters.fix_type == 'conflicts' || fix_choice == 'a' || fix_choice == 'd' || fix_choice == 'e' }}"
+    run: |
+      HAS_CONFLICTS=$(cat /tmp/pr_has_conflicts.txt)
+
+      if [ "$HAS_CONFLICTS" != "true" ]; then
+        echo "✅ No merge conflicts to resolve"
+        exit 0
+      fi
+
+      BASE_BRANCH=$(cat /tmp/pr_base_branch.txt)
+
+      echo "🔄 Merging $BASE_BRANCH into current branch..."
+
+      # Fetch latest
+      git fetch origin "$BASE_BRANCH"
+
+      # Attempt merge
+      if git merge "origin/$BASE_BRANCH" --no-edit; then
+        echo "✅ Merged successfully without conflicts!"
+      else
+        echo "⚠️  Merge conflicts detected. Attempting auto-resolution..."
+
+        # Get conflicted files
+        CONFLICTED=$(git diff --name-only --diff-filter=U)
+
+        echo "Conflicted files:"
+        echo "$CONFLICTED"
+        echo ""
+
+        # For common cases, try to auto-resolve
+        echo "$CONFLICTED" | while read file; do
+          case "$file" in
+            Gemfile.lock|package-lock.json|yarn.lock)
+              echo "  - $file: Using theirs (will regenerate)"
+              git checkout --theirs "$file"
+              ;;
+            db/schema.rb)
+              echo "  - $file: Using theirs (will regenerate from migrations)"
+              git checkout --theirs "$file"
+              ;;
+            *)
+              echo "  - $file: Manual resolution needed"
+              ;;
+          esac
+        done
+
+        # Regenerate lock files if needed
+        if echo "$CONFLICTED" | grep -q "Gemfile.lock"; then
+          echo "Regenerating Gemfile.lock..."
+          docker-compose run --rm web bundle install
+        fi
+
+        if echo "$CONFLICTED" | grep -q "package-lock.json\|yarn.lock"; then
+          echo "Regenerating package lock..."
+          yarn install
+        fi
+
+        # Stage resolved files
+        git add .
+
+        # Check if all conflicts resolved
+        if git diff --check; then
+          git commit --no-edit
+          echo "✅ Conflicts auto-resolved and committed!"
+        else
+          echo "⚠️  Some conflicts require manual resolution"
+          git status
+        fi
+      fi
+
+      # Push changes
+      echo ""
+      echo "📤 Pushing changes..."
+      git push
+
+  - name: Fix RuboCop Issues
+    condition: "${{ parameters.fix_type == 'all' || parameters.fix_type == 'lint' || fix_choice == 'b' || fix_choice == 'd' || fix_choice == 'e' }}"
+    run: |
+      echo "🔧 Running RuboCop auto-correct..."
+      echo ""
+
+      # Run safe auto-correct
+      if docker-compose run --rm web bundle exec rubocop -A; then
+        echo "✅ RuboCop issues fixed!"
+
+        # Commit if there are changes
+        if ! git diff --quiet; then
+          git add .
+          git commit -m "Fix RuboCop offenses
+
+🤖 Generated with Claude Code"
+          git push
+          echo "📤 Pushed RuboCop fixes"
+        else
+          echo "No changes needed"
+        fi
+      else
+        echo "⚠️  Some RuboCop issues require manual fixing"
+        docker-compose run --rm web bundle exec rubocop
+      fi
+
+  - name: Run Tests
+    condition: "${{ parameters.fix_type == 'all' || parameters.fix_type == 'tests' || fix_choice == 'c' || fix_choice == 'd' || fix_choice == 'e' }}"
+    run: |
+      echo "🧪 Running tests to identify failures..."
+      echo ""
+
+      # Run tests and capture output
+      if docker-compose run --rm web rails test; then
+        echo "✅ All tests passing!"
+      else
+        echo "❌ Tests failing. Review output above for details."
+        echo ""
+        echo "Common fixes:"
+        echo "  - Missing migrations: docker-dev db db_action=migrate"
+        echo "  - Schema out of sync: docker-dev db db_action=reset"
+        echo "  - Fixtures issues: Check test/fixtures/"
+        exit 1
+      fi
+
+  - name: Final PR Check
+    run: |
+      PR_NUM=$(cat /tmp/fix_pr_number.txt)
+
+      echo ""
+      echo "🔍 Final PR status check..."
+      echo ""
+
+      gh pr view "$PR_NUM"
+
+      echo ""
+      echo "✅ PR fixes complete!"
+      echo ""
+      echo "Next steps:"
+      echo "  - Review the changes in the PR"
+      echo "  - Wait for CI checks to complete"
+      echo "  - Request review if ready"
+      echo ""
+      echo "View PR: $(gh pr view "$PR_NUM" --json url -q .url)"
+
+      # Cleanup
+      rm -f /tmp/fix_pr_number.txt /tmp/pr_has_conflicts.txt /tmp/pr_failing_checks.txt /tmp/pr_base_branch.txt
+
+examples:
+  - description: "Fix current branch's PR (interactive)"
+    command: "Use fix-pr"
+
+  - description: "Fix specific PR"
+    command: "Use fix-pr with pr_number=123"
+
+  - description: "Fix merge conflicts only"
+    command: "Use fix-pr with fix_type=conflicts"
+
+  - description: "Fix linting issues only"
+    command: "Use fix-pr with fix_type=lint"
+
+  - description: "Fix everything automatically"
+    command: "Use fix-pr with fix_type=all"
