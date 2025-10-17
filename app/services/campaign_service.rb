@@ -5,31 +5,56 @@ class CampaignService
 
   # Create email deliveries for all contacts in the campaign's groups
   def prepare_email_deliveries
-    # First, get all contacts from the campaign's contact groups
+    Rails.logger.info("Campaign #{@campaign.id}: Preparing email deliveries with BULK INSERT")
+    
+    # Get all contacts from the campaign's contact groups
     contacts = @campaign.contacts
-
-    # Filter out opted-out contacts
     active_contacts = contacts.where(opted_out: false)
-
+    
     # Store count of opted-out contacts for the warning
     opted_out_count = contacts.count - active_contacts.count
     @campaign.update(opted_out_contacts_count: opted_out_count) if @campaign.respond_to?(:opted_out_contacts_count)
-
-    # Create an email delivery for each active contact
-    active_contacts.each do |contact|
-      # Skip if already exists
-      next if EmailDelivery.exists?(campaign: @campaign, contact: contact)
-
-      EmailDelivery.create!(
-        campaign: @campaign,
-        contact: contact,
-        email_template: @campaign.email_template,
-        status: "pending"
-      )
+    
+    # Get all contact IDs from campaign's contact groups
+    contact_ids = active_contacts.pluck(:id)
+    
+    Rails.logger.info("Campaign #{@campaign.id}: Found #{contact_ids.count} active contacts")
+    
+    # Get existing delivery contact_ids in ONE query
+    existing_contact_ids = @campaign.email_deliveries.pluck(:contact_id)
+    
+    # Find contacts that need deliveries (set difference - O(n) not O(n²)!)
+    missing_contact_ids = contact_ids - existing_contact_ids
+    
+    Rails.logger.info("Campaign #{@campaign.id}: Need to create #{missing_contact_ids.count} new deliveries")
+    
+    if missing_contact_ids.any?
+      # Build delivery records for bulk insert
+      timestamp = Time.current
+      deliveries_data = missing_contact_ids.map do |contact_id|
+        {
+          campaign_id: @campaign.id,
+          contact_id: contact_id,
+          email_template_id: @campaign.email_template_id,
+          status: 'pending',
+          created_at: timestamp,
+          updated_at: timestamp
+        }
+      end
+      
+      # Bulk insert in batches of 10,000 to avoid memory issues
+      deliveries_data.each_slice(10_000) do |batch|
+        EmailDelivery.insert_all(batch)
+        Rails.logger.info("Campaign #{@campaign.id}: Inserted batch of #{batch.size} deliveries")
+      end
+      
+      Rails.logger.info("Campaign #{@campaign.id}: ✅ Created #{missing_contact_ids.count} deliveries via BULK INSERT")
     end
-
-    # Return the count of deliveries created
-    @campaign.email_deliveries.count
+    
+    # Return the total count
+    total_count = @campaign.email_deliveries.count
+    Rails.logger.info("Campaign #{@campaign.id}: Total deliveries: #{total_count}")
+    total_count
   end
 
   # Process pending email deliveries

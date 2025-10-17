@@ -28,6 +28,14 @@ document.addEventListener('turbo:frame-load', (event) => {
 import "trix"
 import "@rails/actiontext"
 
+// Import Chart.js for affiliate charts
+import Chart from 'chart.js/auto'
+window.Chart = Chart
+
+// Import QRCode for QR code generation
+import QRCode from 'qrcode'
+window.QRCode = QRCode
+
 // Import landing page module (using the index.js)
 
 // Simple reveal-on-scroll for elements with class .reveal

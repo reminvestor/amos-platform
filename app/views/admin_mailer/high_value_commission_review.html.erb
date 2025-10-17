@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      border-bottom: 3px solid #f59e0b;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #f59e0b;
+      margin: 0;
+      font-size: 24px;
+    }
+    .alert-box {
+      background: #fef3c7;
+      border: 2px solid #f59e0b;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .amount {
+      font-size: 36px;
+      font-weight: 700;
+      color: #d97706;
+      margin: 10px 0;
+    }
+    .info-section {
+      background: #f8f9fa;
+      border-left: 4px solid #f59e0b;
+      padding: 15px 20px;
+      margin: 20px 0;
+    }
+    .info-section h3 {
+      margin-top: 0;
+      color: #f59e0b;
+    }
+    .button {
+      display: inline-block;
+      background: #f59e0b;
+      color: white;
+      padding: 12px 30px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      margin: 20px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    table td {
+      padding: 8px 0;
+      border-bottom: 1px solid #e9ecef;
+    }
+    table td:first-child {
+      color: #666;
+      width: 35%;
+    }
+    table td:last-child {
+      font-weight: 600;
+    }
+    .footer {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e9ecef;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚠️ High-Value Commission Review Required</h1>
+    </div>
+
+    <p>A high-value commission has been generated and requires manual review before approval.</p>
+
+    <div class="alert-box">
+      <p style="margin: 0; font-size: 18px; color: #78716c;">Commission Amount</p>
+      <div class="amount">$<%= @amount.round(2) %></div>
+      <p style="margin: 0; color: #78716c;">Threshold: $500</p>
+    </div>
+
+    <div class="info-section">
+      <h3>Commission Details</h3>
+      <table>
+        <tr>
+          <td>Commission ID:</td>
+          <td>#<%= @commission.id %></td>
+        </tr>
+        <tr>
+          <td>Amount:</td>
+          <td style="color: #f59e0b;">$<%= @amount.round(2) %></td>
+        </tr>
+        <tr>
+          <td>Commission Type:</td>
+          <td><%= @commission_type %></td>
+        </tr>
+        <tr>
+          <td>Status:</td>
+          <td><span style="color: #f59e0b;">Pending Review</span></td>
+        </tr>
+        <tr>
+          <td>Created:</td>
+          <td><%= @commission.created_at.strftime('%B %d, %Y at %I:%M %p') %></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="info-section">
+      <h3>Affiliate Information</h3>
+      <table>
+        <tr>
+          <td>Affiliate:</td>
+          <td><%= @user.full_name %></td>
+        </tr>
+        <tr>
+          <td>Email:</td>
+          <td><%= @user.email %></td>
+        </tr>
+        <tr>
+          <td>Affiliate Code:</td>
+          <td><%= @affiliate.affiliate_code %></td>
+        </tr>
+        <tr>
+          <td>Commission Rate:</td>
+          <td><%= (@affiliate.commission_rate * 100).round(2) %>%</td>
+        </tr>
+        <tr>
+          <td>Tier:</td>
+          <td><%= @affiliate.tier.capitalize %></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="info-section">
+      <h3>Customer Information</h3>
+      <table>
+        <tr>
+          <td>Customer:</td>
+          <td><%= @entity.name %></td>
+        </tr>
+        <tr>
+          <td>Entity ID:</td>
+          <td>#<%= @entity.id %></td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="info-section">
+      <h3>Review Guidelines</h3>
+      <p>Please verify:</p>
+      <ul>
+        <li>The customer is legitimate and not a test/fraudulent account</li>
+        <li>The referral source appears authentic</li>
+        <li>No suspicious patterns in the affiliate's activity</li>
+        <li>Commission calculation is correct</li>
+      </ul>
+    </div>
+
+    <center>
+      <a href="<%= @review_url %>" class="button">Review Commission</a>
+    </center>
+
+    <div class="footer">
+      <p>AMOS Admin Panel - Commission Review<br>
+      <a href="<%= @review_url %>"><%= @review_url %></a></p>
+    </div>
+  </div>
+</body>
+</html>

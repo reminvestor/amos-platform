@@ -47,8 +47,8 @@ Rails.application.routes.draw do
   end
 
   # Routes with constraints on subdomain - application routes for 'app' subdomain
-  # In development, allow localhost without subdomain for Docker testing
-  constraints(lambda { |req| req.subdomain == "app" || (Rails.env.development? && req.host == "localhost") }) do
+  # TEMP: For local development without subdomain support
+  constraints(lambda { |req| req.subdomain.blank? || req.subdomain == "app" }) do
     # Solid Queue Interface
     authenticate :user, lambda { |u| u.admin? } do
       mount SolidQueueInterface::Engine => "/solid_queue"
@@ -272,24 +272,34 @@ Rails.application.routes.draw do
       resource :privacy, only: [:show, :update], controller: 'privacy'
     end
 
+    # Affiliate Program Routes (User-facing)
+    namespace :affiliate do
+      get 'apply', to: 'applications#new', as: :apply
+      post 'apply', to: 'applications#create'
+      get 'dashboard', to: 'dashboard#show', as: :dashboard
+      resources :resources, only: [:index]
+      resources :payouts, only: [:index]
+    end
+
     # Admin Portal (Platform Administration)
     # Note: /admin routes are defined below in the admin namespace
   end
 
   # Routes for marketing site (no subdomain or www subdomain)
-  constraints(lambda { |req| !req.subdomain.present? || req.subdomain == "www" }) do
-    # Marketing site routes
-    get "/", to: "marketing#index", as: :marketing_root
-    get "/features", to: "marketing#features", as: :marketing_features
-    get "/pricing", to: "marketing#pricing", as: :marketing_pricing
-    get "/about", to: "marketing#about", as: :marketing_about
-    get "/contact", to: "marketing#contact", as: :marketing_contact
-    get "/help", to: "marketing#help", as: :marketing_help
-    post "/contact", to: "marketing#contact_submit", as: :marketing_contact_submit
-
-    # Set the root path for marketing site
-    root "marketing#index"
-  end
+  # TEMP: Disabled for local development - app routes take precedence
+  # constraints(lambda { |req| !req.subdomain.present? || req.subdomain == 'www' }) do
+  #   # Marketing site routes
+  #   get '/', to: 'marketing#index', as: :marketing_root
+  #   get '/features', to: 'marketing#features', as: :marketing_features
+  #   get '/pricing', to: 'marketing#pricing', as: :marketing_pricing
+  #   get '/about', to: 'marketing#about', as: :marketing_about
+  #   get '/contact', to: 'marketing#contact', as: :marketing_contact
+  #   get '/help', to: 'marketing#help', as: :marketing_help
+  #   post '/contact', to: 'marketing#contact_submit', as: :marketing_contact_submit
+  #
+  #   # Set the root path for marketing site
+  #   root 'marketing#index'
+  # end
 
   # Debug routes for troubleshooting
   get "debug", to: "debug#index"
@@ -372,6 +382,46 @@ Rails.application.routes.draw do
 
     # Dashboard
     get "/", to: "dashboard#index", as: :dashboard
+
+    # Scout session management (Redis history)
+    resources :scout_sessions, only: [:index, :show, :destroy] do
+      member do
+        post :sync_redis
+      end
+    end
+
+    # Affiliate Management
+    resources :affiliates do
+      member do
+        post :approve
+        post :suspend
+        patch :update_commission_rate
+      end
+    end
+
+    resources :commissions do
+      collection do
+        post :bulk_approve
+      end
+      member do
+        post :approve
+        post :cancel
+      end
+    end
+
+    resources :payouts do
+      member do
+        post :mark_completed
+      end
+    end
+
+    namespace :settings do
+      resource :affiliate, only: [:show, :update]
+    end
+
+    namespace :analytics do
+      resources :affiliates, only: [:index]
+    end
 
     # Integrations management
     resources :integrations do

@@ -1,0 +1,27 @@
+AMOS Affiliate Program - Commission Earned!
+
+Hi <%= @user.first_name %>,
+
+Congratulations! You've just earned a commission from your referral.
+
+COMMISSION EARNED: $<%= @amount.round(2) %>
+
+COMMISSION DETAILS:
+- Customer: <%= @customer_name %>
+- Commission Type: <%= @commission_type %>
+- Amount: $<%= @amount.round(2) %>
+- Status: Approved
+
+WHEN WILL I GET PAID?
+Your commission will be included in the next payout cycle once your total approved commissions reach $50 (minimum payout threshold).
+
+Keep sharing your referral link to earn more commissions!
+
+View your dashboard: <%= @dashboard_url %>
+
+Best regards,
+The AMOS Team
+
+---
+AMOS Affiliate Program
+Track your earnings at <%= @dashboard_url %>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      padding: 40px 30px;
+      text-align: center;
+      color: white;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .celebration {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .highlight-box {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border: 2px solid #f59e0b;
+      border-radius: 8px;
+      padding: 30px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .amount {
+      font-size: 48px;
+      font-weight: 700;
+      color: #d97706;
+      margin: 10px 0;
+    }
+    .info-box {
+      background: #f8f9fa;
+      border-left: 4px solid #f59e0b;
+      padding: 15px 20px;
+      margin: 20px 0;
+    }
+    .button {
+      display: inline-block;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+      padding: 14px 30px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      margin: 20px 0;
+    }
+    .footer {
+      background: #f8f9fa;
+      padding: 20px 30px;
+      text-align: center;
+      font-size: 14px;
+      color: #666;
+      border-top: 1px solid #e9ecef;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    table td {
+      padding: 8px 0;
+      border-bottom: 1px solid #e9ecef;
+    }
+    table td:first-child {
+      color: #666;
+    }
+    table td:last-child {
+      text-align: right;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="celebration">💰</div>
+      <h1>You've Earned a Commission!</h1>
+    </div>
+
+    <div class="content">
+      <p>Hi <%= @user.first_name %>,</p>
+
+      <p>Congratulations! You've just earned a commission from your referral.</p>
+
+      <div class="highlight-box">
+        <p style="margin: 0; font-size: 18px; color: #78716c;">Commission Earned</p>
+        <div class="amount">$<%= @amount.round(2) %></div>
+        <p style="margin: 0; color: #78716c;"><%= @commission_type %></p>
+      </div>
+
+      <div class="info-box">
+        <h4 style="margin-top: 0;">Commission Details</h4>
+        <table>
+          <tr>
+            <td>Customer:</td>
+            <td><%= @customer_name %></td>
+          </tr>
+          <tr>
+            <td>Commission Type:</td>
+            <td><%= @commission_type %></td>
+          </tr>
+          <tr>
+            <td>Amount:</td>
+            <td>$<%= @amount.round(2) %></td>
+          </tr>
+          <tr>
+            <td>Status:</td>
+            <td><span style="color: #10b981;">Approved</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <p><strong>When will I get paid?</strong></p>
+      <p>Your commission will be included in the next payout cycle once your total approved commissions reach $50 (minimum payout threshold).</p>
+
+      <center>
+        <a href="<%= @dashboard_url %>" class="button">View Dashboard</a>
+      </center>
+
+      <p>Keep sharing your referral link to earn more commissions!</p>
+
+      <p>Best regards,<br>
+      The AMOS Team</p>
+    </div>
+
+    <div class="footer">
+      <p>AMOS Affiliate Program<br>
+      Track your earnings at <a href="<%= @dashboard_url %>"><%= @dashboard_url %></a></p>
+    </div>
+  </div>
+</body>
+</html>

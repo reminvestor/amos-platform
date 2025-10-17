@@ -100,6 +100,9 @@ class WebhooksController < ApplicationController
   def process_stripe_webhook
     event = JSON.parse(request.body.read)
 
+    # Handle affiliate commission events first
+    handle_affiliate_commission_events(event)
+
     # Find connections for this Stripe account
     stripe_account_id = event.dig("account")
     connections = find_connections_for_webhook("stripe", stripe_account_id)
@@ -119,6 +122,78 @@ class WebhooksController < ApplicationController
         }
       )
     end
+  end
+
+  # Handle affiliate commission creation based on Stripe events
+  def handle_affiliate_commission_events(event)
+    case event['type']
+    when 'checkout.session.completed'
+      handle_checkout_completed(event)
+    when 'invoice.payment_succeeded'
+      handle_invoice_payment(event)
+    end
+  rescue => e
+    Rails.logger.error "Affiliate commission processing error: #{e.message}"
+    # Don't fail the entire webhook if commission processing fails
+  end
+
+  # Handle Stripe checkout completion - first payment
+  def handle_checkout_completed(event)
+    session = event['data']['object']
+    customer_id = session['customer']
+
+    return unless customer_id
+
+    # Find entity by Stripe customer ID
+    entity = Entity.find_by(stripe_customer_id: customer_id)
+    return unless entity
+
+    # Get amount (in cents, convert to dollars)
+    amount = session['amount_total'] ? session['amount_total'] / 100.0 : 0
+
+    return if amount.zero?
+
+    # Create affiliate commission for first payment
+    AffiliateCommissionService.create_for_first_payment(
+      entity,
+      amount,
+      stripe_event_id: event['id']
+    )
+
+    Rails.logger.info "Processed checkout.session.completed for entity #{entity.id}"
+  rescue => e
+    Rails.logger.error "Error handling checkout completion: #{e.message}"
+  end
+
+  # Handle Stripe invoice payment - recurring payments
+  def handle_invoice_payment(event)
+    invoice = event['data']['object']
+    customer_id = invoice['customer']
+
+    return unless customer_id
+
+    # Skip if this is the first invoice (handled by checkout.session.completed)
+    return if invoice['billing_reason'] == 'subscription_create'
+
+    # Find entity by Stripe customer ID
+    entity = Entity.find_by(stripe_customer_id: customer_id)
+    return unless entity
+
+    # Get amount (in cents, convert to dollars)
+    amount = invoice['amount_paid'] ? invoice['amount_paid'] / 100.0 : 0
+
+    return if amount.zero?
+
+    # Create recurring commission if within 12 months
+    AffiliateCommissionService.create_for_recurring_payment(
+      entity,
+      amount,
+      stripe_event_id: event['id']
+    )
+
+    Rails.logger.info "Processed invoice.payment_succeeded for entity #{entity.id}"
+  rescue => e
+    Rails.logger.error "Error handling invoice payment: #{e.message}"
   end
 
   def process_shopify_webhook
