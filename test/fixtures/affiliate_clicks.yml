@@ -1,0 +1,40 @@
+# Affiliate Clicks fixtures
+recent_click:
+  affiliate: active_affiliate
+  referral_code: ACTIVE123
+  ip_address: 192.168.1.100
+  user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+  referrer: https://google.com
+  landed_at: <%= 1.hour.ago %>
+  session_id: session_123
+  metadata: { "utm_source": "twitter", "utm_medium": "social", "utm_campaign": "spring_promo" }
+
+old_click:
+  affiliate: active_affiliate
+  referral_code: ACTIVE123
+  ip_address: 192.168.1.101
+  user_agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+  referrer: https://facebook.com
+  landed_at: <%= 30.days.ago %>
+  session_id: session_456
+  metadata: { "utm_source": "facebook", "utm_medium": "paid", "utm_campaign": "brand_awareness" }
+
+silver_click:
+  affiliate: silver_affiliate
+  referral_code: SILVER99
+  ip_address: 192.168.1.102
+  user_agent: Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X)
+  referrer: https://linkedin.com
+  landed_at: <%= 2.days.ago %>
+  session_id: session_789
+  metadata: { "utm_source": "linkedin", "utm_medium": "organic" }
+
+suspended_click:
+  affiliate: suspended_affiliate
+  referral_code: SUSPEND1
+  ip_address: 192.168.1.103
+  user_agent: Mozilla/5.0 (X11; Linux x86_64)
+  referrer: null
+  landed_at: <%= 60.days.ago %>
+  session_id: session_101
+  metadata: {}

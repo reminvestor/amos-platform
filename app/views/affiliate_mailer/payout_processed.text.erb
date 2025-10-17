@@ -1,0 +1,29 @@
+AMOS Affiliate Program - Payout Processed!
+
+Hi <%= @user.first_name %>,
+
+Great news! Your payout has been processed and is on its way to you.
+
+PAYOUT AMOUNT: $<%= @amount.round(2) %>
+
+PAYOUT DETAILS:
+- Amount: $<%= @amount.round(2) %>
+- Payment Method: <%= @payment_method %>
+<% if @payment_reference.present? %>- Reference: <%= @payment_reference %><% end %>
+- Status: Completed
+
+WHAT'S NEXT?
+- Funds should arrive in your account within 3-5 business days
+- You can view this transaction in your payout history
+- Continue promoting AMOS to earn more commissions!
+
+View your payout history: <%= @payouts_url %>
+
+Thank you for being a valued AMOS affiliate partner!
+
+Best regards,
+The AMOS Team
+
+---
+AMOS Affiliate Program
+View all payouts at <%= @payouts_url %>

@@ -1,0 +1,278 @@
+<% content_for :title, "Payout History - AMOS Affiliate" %>
+
+<div class="container-fluid py-4">
+  <!-- Page Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="display-5 mb-2">
+        <i class="bi bi-wallet2 text-primary"></i>
+        Payout History
+      </h1>
+      <p class="text-muted">Track your commission payments and payout history</p>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <p class="text-muted mb-1 small">Total Paid Out</p>
+              <h2 class="mb-0 text-success">$<%= number_with_precision(@total_paid, precision: 2) %></h2>
+              <small class="text-muted">All-time earnings paid</small>
+            </div>
+            <div class="bg-success bg-opacity-10 p-3 rounded">
+              <i class="bi bi-cash-stack text-success fs-3"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <p class="text-muted mb-1 small">Pending Payout</p>
+              <h2 class="mb-0 text-warning">$<%= number_with_precision(@total_pending, precision: 2) %></h2>
+              <small class="text-muted">Processing & pending</small>
+            </div>
+            <div class="bg-warning bg-opacity-10 p-3 rounded">
+              <i class="bi bi-hourglass-split text-warning fs-3"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payout Information -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="alert alert-info">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <strong>Payout Schedule:</strong> Payments are processed monthly when your balance reaches $50.
+            <br>
+            <small class="text-muted">
+              Payment Method: PayPal (<%= @affiliate.payment_email %>)
+            </small>
+          </div>
+          <div class="col-md-4 text-md-end mt-2 mt-md-0">
+            <%= link_to affiliate_dashboard_path, class: "btn btn-sm btn-outline-primary" do %>
+              <i class="bi bi-speedometer2 me-1"></i>View Dashboard
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <%= form_with url: affiliate_payouts_path, method: :get, class: "row g-3 align-items-end" do |f| %>
+        <div class="col-md-4">
+          <label class="form-label">Filter by Status</label>
+          <%= select_tag :status,
+              options_for_select(
+                [
+                  ['All Statuses', ''],
+                  ['Pending', 'pending'],
+                  ['Processing', 'processing'],
+                  ['Completed', 'completed'],
+                  ['Failed', 'failed']
+                ],
+                params[:status]
+              ),
+              class: 'form-select' %>
+        </div>
+
+        <div class="col-md-4">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-funnel-fill me-2"></i>Apply Filter
+          </button>
+          <%= link_to affiliate_payouts_path, class: "btn btn-outline-secondary" do %>
+            <i class="bi bi-x-circle me-2"></i>Clear
+          <% end %>
+        </div>
+
+        <div class="col-md-4 text-end">
+          <button type="button" class="btn btn-outline-success" disabled>
+            <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export CSV
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Payouts Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">
+        <i class="bi bi-table me-2"></i>
+        Payout Transactions
+      </h5>
+    </div>
+    <div class="card-body p-0">
+      <% if @payouts.any? %>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Payment Method</th>
+                <th>Status</th>
+                <th>Reference</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @payouts.each do |payout| %>
+                <tr>
+                  <td>
+                    <strong><%= payout.created_at.strftime("%b %d, %Y") %></strong>
+                    <br>
+                    <small class="text-muted"><%= payout.created_at.strftime("%I:%M %p") %></small>
+                  </td>
+                  <td>
+                    <strong class="text-success">$<%= number_with_precision(payout.amount, precision: 2) %></strong>
+                    <br>
+                    <small class="text-muted"><%= payout.currency %></small>
+                  </td>
+                  <td>
+                    <% case payout.payment_method %>
+                    <% when 'paypal' %>
+                      <i class="bi bi-paypal text-primary me-1"></i>PayPal
+                    <% when 'stripe' %>
+                      <i class="bi bi-credit-card text-info me-1"></i>Stripe
+                    <% when 'manual' %>
+                      <i class="bi bi-hand-thumbs-up text-secondary me-1"></i>Manual
+                    <% else %>
+                      <%= payout.payment_method&.titleize || 'N/A' %>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% case payout.status %>
+                    <% when 'completed' %>
+                      <span class="badge bg-success">
+                        <i class="bi bi-check-circle-fill me-1"></i>Completed
+                      </span>
+                    <% when 'processing' %>
+                      <span class="badge bg-info">
+                        <i class="bi bi-clock-fill me-1"></i>Processing
+                      </span>
+                    <% when 'pending' %>
+                      <span class="badge bg-warning text-dark">
+                        <i class="bi bi-hourglass-split me-1"></i>Pending
+                      </span>
+                    <% when 'failed' %>
+                      <span class="badge bg-danger">
+                        <i class="bi bi-x-circle-fill me-1"></i>Failed
+                      </span>
+                    <% else %>
+                      <span class="badge bg-secondary">
+                        <%= payout.status&.titleize || 'Unknown' %>
+                      </span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% if payout.payment_reference.present? %>
+                      <code class="small"><%= payout.payment_reference %></code>
+                    <% else %>
+                      <span class="text-muted">-</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% if payout.commission_ids.present? %>
+                      <small class="text-muted">
+                        <i class="bi bi-list-ul me-1"></i>
+                        <%= payout.commission_ids.size %> commission<%= 's' if payout.commission_ids.size != 1 %>
+                      </small>
+                    <% else %>
+                      <span class="text-muted">-</span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <% if @payouts.total_pages > 1 %>
+          <div class="card-footer bg-white border-top">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="text-muted small">
+                Showing <%= @payouts.offset_value + 1 %>-<%= [@payouts.offset_value + @payouts.length, @payouts.total_count].min %>
+                of <%= @payouts.total_count %> payouts
+              </div>
+              <%= paginate @payouts, theme: 'bootstrap-5' %>
+            </div>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="text-center py-5">
+          <i class="bi bi-inbox display-1 text-muted"></i>
+          <h4 class="mt-3 text-muted">No Payouts Yet</h4>
+          <p class="text-muted">
+            <% if params[:status].present? %>
+              No payouts found with status "<%= params[:status] %>".
+              <%= link_to "Clear filter", affiliate_payouts_path, class: "text-decoration-none" %> to see all payouts.
+            <% else %>
+              Keep sharing your referral link to start earning commissions!
+            <% end %>
+          </p>
+          <%= link_to affiliate_dashboard_path, class: "btn btn-primary" do %>
+            <i class="bi bi-speedometer2 me-2"></i>Go to Dashboard
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Payout Help Card -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card border-0 bg-light">
+        <div class="card-body">
+          <h6 class="mb-3">
+            <i class="bi bi-question-circle-fill me-2"></i>
+            Payout FAQs
+          </h6>
+          <div class="row">
+            <div class="col-md-6">
+              <p class="mb-2"><strong>When do I get paid?</strong></p>
+              <p class="text-muted small mb-3">
+                Payouts are processed monthly when your approved commission balance reaches the minimum threshold of $50.
+              </p>
+            </div>
+            <div class="col-md-6">
+              <p class="mb-2"><strong>How long does it take?</strong></p>
+              <p class="text-muted small mb-3">
+                PayPal payments typically arrive within 1-3 business days after processing.
+              </p>
+            </div>
+            <div class="col-md-6">
+              <p class="mb-2"><strong>Can I change my payment method?</strong></p>
+              <p class="text-muted small mb-3">
+                Contact our support team to update your PayPal email or discuss alternative payment methods.
+              </p>
+            </div>
+            <div class="col-md-6">
+              <p class="mb-2"><strong>What if a payout fails?</strong></p>
+              <p class="text-muted small mb-3">
+                If a payout fails, we'll contact you to resolve the issue and retry the payment.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

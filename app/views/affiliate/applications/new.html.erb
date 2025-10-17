@@ -1,0 +1,187 @@
+<% content_for :title, "Apply to Affiliate Program - AMOS" %>
+
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <!-- Header -->
+      <div class="text-center mb-5">
+        <h1 class="display-4 mb-3">
+          <i class="bi bi-people-fill text-primary"></i>
+          Join the AMOS Affiliate Program
+        </h1>
+        <p class="lead text-muted">
+          Earn commissions by referring customers to AMOS and help others discover the power of AI-driven marketing automation.
+        </p>
+      </div>
+
+      <!-- Benefits Section -->
+      <div class="row g-4 mb-5">
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center">
+              <div class="mb-3">
+                <i class="bi bi-currency-dollar display-4 text-success"></i>
+              </div>
+              <h5 class="card-title">Generous Commissions</h5>
+              <p class="card-text text-muted">
+                Earn 20% recurring commissions for 12 months on all referrals
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center">
+              <div class="mb-3">
+                <i class="bi bi-graph-up-arrow display-4 text-primary"></i>
+              </div>
+              <h5 class="card-title">Performance Tiers</h5>
+              <p class="card-text text-muted">
+                Unlock higher commission rates as you refer more customers
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center">
+              <div class="mb-3">
+                <i class="bi bi-tools display-4 text-info"></i>
+              </div>
+              <h5 class="card-title">Marketing Resources</h5>
+              <p class="card-text text-muted">
+                Access banners, logos, and pre-written content to promote AMOS
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Commission Structure -->
+      <div class="card mb-5 border-0 shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">
+            <i class="bi bi-trophy-fill me-2"></i>
+            Commission Tiers
+          </h4>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Tier</th>
+                  <th>Minimum Referrals</th>
+                  <th>Commission Rate</th>
+                  <th>Benefits</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <i class="bi bi-award-fill text-secondary"></i>
+                    <strong>Bronze</strong>
+                  </td>
+                  <td>0</td>
+                  <td><span class="badge bg-secondary">20%</span></td>
+                  <td>Standard marketing materials</td>
+                </tr>
+                <tr>
+                  <td>
+                    <i class="bi bi-award-fill text-info"></i>
+                    <strong>Silver</strong>
+                  </td>
+                  <td>5</td>
+                  <td><span class="badge bg-info">25%</span></td>
+                  <td>Priority support, early feature access</td>
+                </tr>
+                <tr>
+                  <td>
+                    <i class="bi bi-award-fill text-warning"></i>
+                    <strong>Gold</strong>
+                  </td>
+                  <td>20</td>
+                  <td><span class="badge bg-warning text-dark">30%</span></td>
+                  <td>Dedicated account manager, co-marketing opportunities</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Application Form -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h4 class="mb-0">
+            <i class="bi bi-file-text me-2"></i>
+            Application Form
+          </h4>
+        </div>
+        <div class="card-body">
+          <%= form_with(model: @affiliate_application, url: affiliate_apply_path, local: true, class: "needs-validation", novalidate: true) do |f| %>
+
+            <% if @affiliate_application.errors.any? %>
+              <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <h5 class="alert-heading">
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                  Please fix the following errors:
+                </h5>
+                <ul class="mb-0">
+                  <% @affiliate_application.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            <% end %>
+
+            <div class="mb-4">
+              <%= f.label :payment_email, "PayPal Email Address", class: "form-label fw-bold" %>
+              <%= f.email_field :payment_email, class: "form-control form-control-lg",
+                  placeholder: "your.email@example.com",
+                  required: true,
+                  autocomplete: "email" %>
+              <small class="form-text text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                We'll use this email for commission payouts via PayPal (minimum $50)
+              </small>
+            </div>
+
+            <div class="mb-4">
+              <%= f.label :application_notes, "Tell Us About Yourself", class: "form-label fw-bold" %>
+              <%= f.text_area :application_notes, class: "form-control",
+                  rows: 6,
+                  placeholder: "Please share:\n• Why you want to join our affiliate program\n• How you plan to promote AMOS\n• Your website, blog, or social media channels (if applicable)\n• Any relevant marketing experience",
+                  required: true %>
+              <small class="form-text text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                This helps us understand how you'll promote AMOS
+              </small>
+            </div>
+
+            <div class="alert alert-info" role="alert">
+              <i class="bi bi-clock-history me-2"></i>
+              <strong>Review Time:</strong> We typically review applications within 2 business days.
+              You'll receive an email once your application is processed.
+            </div>
+
+            <div class="d-grid gap-2">
+              <%= f.submit "Submit Application", class: "btn btn-primary btn-lg" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <p class="text-muted">
+          Have questions?
+          <%= link_to "Contact us", "#", class: "text-decoration-none" %> or
+          <%= link_to "learn more about the program", "#", class: "text-decoration-none" %>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

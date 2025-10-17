@@ -53,11 +53,11 @@ module Tools
           create_contact_group(data)
         when "email_templates"
           create_email_template(data)
-        when 'email_sequences'
+        when "email_sequences"
           create_email_sequence(data)
-        when 'sequence_steps'
+        when "sequence_steps"
           create_sequence_step(data)
-        when 'sequence_enrollments'
+        when "sequence_enrollments"
           create_sequence_enrollment(data)
         end
 
@@ -162,7 +162,7 @@ module Tools
       data = data.symbolize_keys
 
       # Ensure required fields
-      data[:status] ||= 'draft'
+      data[:status] ||= "draft"
       data[:enrolled_count] ||= 0
       data[:completed_count] ||= 0
       data[:active_count] ||= 0
@@ -219,7 +219,7 @@ module Tools
       data = data.symbolize_keys
 
       # Ensure required fields
-      data[:status] ||= 'pending'
+      data[:status] ||= "pending"
       data[:current_step_number] ||= 0
 
       # Verify email sequence exists

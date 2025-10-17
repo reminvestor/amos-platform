@@ -1,0 +1,34 @@
+AMOS Admin - Suspicious Affiliate Activity Detected
+
+ALERT: Our fraud detection system has flagged suspicious activity for the following affiliate.
+
+FRAUD FLAGS
+<% @flags.each_with_index do |flag, index| %>
+<%= index + 1 %>. <%= flag %>
+<% end %>
+
+AFFILIATE INFORMATION
+Affiliate: <%= @user.full_name %>
+Email: <%= @user.email %>
+Affiliate Code: <%= @affiliate.affiliate_code %>
+Status: <%= @affiliate.status.capitalize %>
+Tier: <%= @affiliate.tier.capitalize %>
+Member Since: <%= @affiliate.created_at.strftime('%B %d, %Y') %>
+
+RECENT ACTIVITY METRICS (Last 7 Days)
+Clicks: <%= @recent_clicks_count %>
+Referrals: <%= @recent_referrals_count %>
+Conversion Rate: <%= @conversion_rate %>%
+
+RECOMMENDED ACTIONS
+- INVESTIGATE: Review the affiliate's recent activity and referrals
+- CONTACT: Reach out to the affiliate for clarification if needed
+- SUSPEND: Consider suspending the affiliate if fraud is confirmed
+- MONITOR: Flag the account for closer monitoring going forward
+
+Review affiliate activity: <%= @review_url %>
+
+Note: This is an automated alert. Please investigate before taking action.
+
+---
+AMOS Admin Panel - Fraud Detection System

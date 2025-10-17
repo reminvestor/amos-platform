@@ -1,0 +1,36 @@
+# Referrals fixtures
+pending_referral:
+  affiliate: active_affiliate
+  referred_user: one
+  referred_entity: one
+  referral_code_used: ACTIVE123
+  status: 0  # pending
+  converted_at: null
+  cookie_data: { "ip": "192.168.1.100", "user_agent": "Mozilla/5.0" }
+
+converted_referral:
+  affiliate: active_affiliate
+  referred_user: two
+  referred_entity: two
+  referral_code_used: ACTIVE123
+  status: 1  # converted
+  converted_at: <%= 5.days.ago %>
+  cookie_data: { "ip": "192.168.1.101", "user_agent": "Mozilla/5.0" }
+
+cancelled_referral:
+  affiliate: suspended_affiliate
+  referred_user: one
+  referred_entity: one
+  referral_code_used: SUSPEND1
+  status: 2  # cancelled
+  converted_at: null
+  cookie_data: { "ip": "192.168.1.102", "user_agent": "Mozilla/5.0" }
+
+silver_referral:
+  affiliate: silver_affiliate
+  referred_user: two
+  referred_entity: two
+  referral_code_used: SILVER99
+  status: 1  # converted
+  converted_at: <%= 15.days.ago %>
+  cookie_data: { "ip": "192.168.1.103", "user_agent": "Mozilla/5.0" }

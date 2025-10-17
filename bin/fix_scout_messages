@@ -1,6 +1,9 @@
 #!/usr/bin/env ruby
 # Script to find and fix incorrectly saved Scout messages
 
+require_relative '../config/boot'
+require_relative '../config/environment'
+
 # Find all assistant messages that contain just "hello" or other simple greetings
 suspicious_messages = ScoutMessage.where(role: 'assistant').where("content ILIKE ?", "%hello%").where("LENGTH(content) < 20")
 
