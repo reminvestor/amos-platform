@@ -10,9 +10,10 @@ class RagStoreService
 
   def initialize
     # Configure Pinecone (modern API v1.2+)
+    # Uses host-based indexing for serverless indexes
     Pinecone.configure do |config|
       config.api_key = ENV["PINECONE_API_KEY"]
-      config.environment = "default"  # Not used by modern API, but required by gem
+      # environment is optional in v1.2+ when using host-based indexing
     end
 
     @pinecone = Pinecone::Client.new
@@ -98,8 +99,11 @@ class RagStoreService
     # Generate embedding for query
     query_embedding = generate_embedding(query)
 
-    # Query Pinecone
-    index = @pinecone.index(rag_store.pinecone_index)
+    # Get index host for modern Pinecone API
+    index_host = get_index_host(rag_store.pinecone_index)
+
+    # Query Pinecone using host-based method
+    index = @pinecone.index(host: index_host)
     results = index.query(
       vector: query_embedding,
       namespace: rag_store.pinecone_namespace,
@@ -259,6 +263,27 @@ class RagStoreService
       Rails.logger.info "⏳ Waiting for index #{index_name} to be ready (attempt #{attempts}/#{max_attempts})"
       sleep(2)
     end
+  end
+
+  # Get the host URL for a Pinecone index (required for modern serverless indexes)
+  def get_index_host(index_name)
+    # Check cache first to avoid repeated API calls
+    @index_hosts ||= {}
+    return @index_hosts[index_name] if @index_hosts[index_name]
+
+    # Fetch index description to get host
+    index_info = @pinecone.describe_index(index_name)
+    host = index_info["host"]
+
+    unless host
+      raise "No host found for index #{index_name}. Response: #{index_info.inspect}"
+    end
+
+    # Cache for this service instance
+    @index_hosts[index_name] = host
+    Rails.logger.debug "🔗 Index #{index_name} host: #{host}"
+
+    host
   end
 
   def generate_embeddings(chunks)
@@ -421,7 +446,9 @@ class RagStoreService
   def store_vectors(index_name, namespace, vectors)
     Rails.logger.info "📤 Storing #{vectors.length} vectors in Pinecone"
 
-    index = @pinecone.index(index_name)
+    # Get index host for modern Pinecone API
+    index_host = get_index_host(index_name)
+    index = @pinecone.index(host: index_host)
 
     # Upsert in batches of 100
     vectors.each_slice(100) do |batch|
