@@ -160,6 +160,4 @@ Use fixing-rubocop-offenses with commit=false
 
 ## Resources
 
-- [RuboCop Reference](resources/rubocop-commands.md) - All RuboCop flags and options
-- [Common Offenses](resources/common-offenses.md) - Frequently seen violations
-- [Manual Fixes Guide](resources/manual-fixes.md) - How to fix non-auto-correctable issues
+- [RuboCop Common Fixes](resources/rubocop-common-fixes.md) - Quick reference for fixing common offenses
