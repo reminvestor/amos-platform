@@ -4,16 +4,12 @@ class RagStoreServiceTest < ActiveSupport::TestCase
   def setup
     @entity_one = entities(:one)
     @entity_two = entities(:two)
-    @service = RagStoreService.new
 
-    # Skip Pinecone and OpenAI calls in tests
-    @service.stub(:ensure_index_exists, nil) do
-      @service.stub(:generate_embeddings, []) do
-        @service.stub(:store_vectors, nil) do
-          yield if block_given?
-        end
-      end
-    end
+    # Create service with API keys stubbed
+    ENV['PINECONE_API_KEY'] ||= 'test-key'
+    ENV['OPENAI_API_KEY'] ||= 'test-key'
+
+    @service = RagStoreService.new
   end
 
   test "create_rag_store should create system store without entity" do
