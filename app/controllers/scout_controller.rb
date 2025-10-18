@@ -1301,6 +1301,9 @@ class ScoutController < ApplicationController
     if rag_stores[:entity_stores].any?
       apps = rag_stores[:entity_stores].map { |s| s[:app_name] }.join(", ")
       info_parts << "🏢 **Your Knowledge**: #{apps}"
+    else
+      # Show helpful message when no custom data uploaded
+      info_parts << "💡 **Tip**: Upload documents or files to create your own custom knowledge base"
     end
 
     return "" if info_parts.empty?

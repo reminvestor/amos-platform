@@ -137,7 +137,7 @@ class ApplicationController < ActionController::Base
     return if ['active', 'trialing'].include?(entity.subscription_status)
 
     # Redirect to subscription page if no active subscription
-    redirect_to new_subscription_path, alert: "Please select a plan to continue."
+    redirect_to new_subscription_path
   end
 
   def check_onboarding_status
