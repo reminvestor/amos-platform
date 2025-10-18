@@ -9,6 +9,12 @@ class RagStoreService
   ENTITY_INDEX = "amos-entity-knowledge"  # Customer-specific data
 
   def initialize
+    # Configure Pinecone (modern API v1.2+)
+    Pinecone.configure do |config|
+      config.api_key = ENV["PINECONE_API_KEY"]
+      config.environment = "default"  # Not used by modern API, but required by gem
+    end
+
     @pinecone = Pinecone::Client.new
     @openai_client = OpenAI::Client.new(access_token: ENV["OPENAI_API_KEY"])
     @embedding_cache = EmbeddingCacheService.new
@@ -147,6 +153,15 @@ class RagStoreService
     { success: false, error: e.message }
   end
 
+  # Get cache statistics
+  def cache_stats
+    if @cache_enabled && @embedding_cache.available?
+      @embedding_cache.stats
+    else
+      { enabled: false }
+    end
+  end
+
   private
 
   # Generate namespace with entity isolation
@@ -202,9 +217,10 @@ class RagStoreService
   end
 
   def ensure_index_exists(index_name)
-    indexes = @pinecone.list_indexes
+    indexes_response = @pinecone.list_indexes
+    index_names = indexes_response['indexes']&.map { |i| i['name'] } || []
 
-    unless indexes.include?(index_name)
+    unless index_names.include?(index_name)
       Rails.logger.info "Creating new Pinecone index: #{index_name}"
 
       @pinecone.create_index(
@@ -420,18 +436,6 @@ class RagStoreService
 
   def extract_sources(chunks)
     chunks.map { |c| c[:metadata][:source] }.uniq
-  end
-
-  # Get cache statistics
-  def cache_stats
-    if @cache_enabled && @embedding_cache.available?
-      @embedding_cache.stats
-    else
-      {
-        enabled: false,
-        message: "Cache not enabled or Redis not available"
-      }
-    end
   end
 
   # Clear embedding cache

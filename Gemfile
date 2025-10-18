@@ -73,10 +73,10 @@ gem "aws-sdk-bedrockruntime", "~> 1.0"
 gem "aws-sdk-s3", "~> 1.0"
 
 # Vector storage and RAG
-gem "pinecone", "~> 0.1.0"
+gem "pinecone", "~> 1.2"
 
 # HTTP client for API calls (Serper, etc)
-gem "httparty", "~> 0.21.0"
+gem "httparty", "~> 0.22.0"
 
 # Document parsing
 gem "pdf-reader", "~> 2.12"
@@ -91,7 +91,6 @@ gem "instagram_basic_display", "~> 0.2.3" # Instagram Basic Display API
 gem "oauth2", "~> 2.0" # OAuth2 for LinkedIn and Twitter APIs
 gem "faraday", "~> 2.9" # HTTP client
 gem "faraday-multipart", "~> 1.0" # Multipart support for Faraday
-gem "httparty", "~> 0.21.0" # Simple HTTP client
 gem "csv" # Support for CSV, needed by HTTParty
 
 # Markdown rendering
