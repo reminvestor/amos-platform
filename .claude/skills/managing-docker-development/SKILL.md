@@ -233,3 +233,7 @@ Use managing-docker-development with action=clean
 - [Docker Compose Reference](resources/docker-compose-commands.md) - All docker-compose commands
 - [RAG Setup Guide](resources/rag-setup.md) - RAG system configuration
 - [Troubleshooting](resources/troubleshooting.md) - Common Docker issues
+
+## Resources
+
+- [Docker Commands Reference](resources/docker-commands.md) - Complete Docker and docker-compose command guide

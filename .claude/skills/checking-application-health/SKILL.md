@@ -231,3 +231,7 @@ Use health check as part of workflows:
 - [Running Tests](../running-tests/SKILL.md) - Detailed test execution
 - [Managing Docker Development](../managing-docker-development/SKILL.md) - Database operations
 - [Running Workflows](../running-workflows/SKILL.md) - Pre-commit/pre-deploy workflows
+
+## Resources
+
+- [Troubleshooting Guide](resources/troubleshooting-guide.md) - Comprehensive guide for common issues
