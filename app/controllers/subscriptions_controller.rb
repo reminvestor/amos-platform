@@ -35,6 +35,11 @@ class SubscriptionsController < ApplicationController
       entity.update!(stripe_customer_id: customer.id)
     end
 
+    # Build success URL manually to avoid URL encoding issues with Stripe template
+    base_url = request.base_url
+    success_url = "#{base_url}/subscriptions/success?session_id={CHECKOUT_SESSION_ID}"
+    cancel_url = "#{base_url}/subscriptions/cancel"
+
     # Create checkout session with 7-day trial
     session = Stripe::Checkout::Session.create(
       customer: entity.stripe_customer_id,
@@ -50,8 +55,8 @@ class SubscriptionsController < ApplicationController
           entity_id: entity.id
         }
       },
-      success_url: success_subscriptions_url(session_id: '{CHECKOUT_SESSION_ID}'),
-      cancel_url: cancel_subscriptions_url,
+      success_url: success_url,
+      cancel_url: cancel_url,
       allow_promotion_codes: true,
       billing_address_collection: 'required'
     )
@@ -64,6 +69,14 @@ class SubscriptionsController < ApplicationController
 
   def success
     session_id = params[:session_id]
+
+    # Handle case where Stripe doesn't replace the template variable
+    # This happens when user cancels checkout or session expires
+    if session_id.blank? || session_id == '{CHECKOUT_SESSION_ID}'
+      Rails.logger.warn "Invalid session_id received: #{session_id.inspect}"
+      redirect_to new_subscription_path, alert: "Checkout was cancelled or expired. Please try again."
+      return
+    end
 
     begin
       checkout_session = Stripe::Checkout::Session.retrieve(session_id)
@@ -93,7 +106,7 @@ class SubscriptionsController < ApplicationController
   end
 
   def cancel
-    redirect_to new_subscription_path, alert: "Checkout cancelled. Choose a plan to continue."
+    redirect_to new_subscription_path
   end
 
   private

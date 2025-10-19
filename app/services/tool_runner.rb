@@ -321,7 +321,8 @@ class ToolRunner
   def execute_landing_page_compilation(inputs)
     begin
       dsl = inputs[:dsl]
-      business_name = inputs[:business_name] || inputs.dig(:business_info, :business_name) || "Generated Page"
+      business_name = inputs[:business_name] || inputs.dig(:business_info, :business_name) rescue "Generated Page"
+      business_name ||= "Generated Page"
       user = inputs[:user]
       entity = inputs[:entity]
 

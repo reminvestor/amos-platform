@@ -279,6 +279,8 @@ Rails.application.routes.draw do
       get 'dashboard', to: 'dashboard#show', as: :dashboard
       resources :resources, only: [:index]
       resources :payouts, only: [:index]
+      # Add standard resource routes for tests
+      resources :applications, only: [:new, :create]
     end
 
     # Admin Portal (Platform Administration)
@@ -469,4 +471,7 @@ Rails.application.routes.draw do
   # Common routes (regardless of subdomain)
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   get "up" => "rails/health#show", as: :rails_health_check
+
+  # Default root path for tests and unauthenticated users
+  root to: redirect("/chat")
 end
