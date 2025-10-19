@@ -1,0 +1,16 @@
+# Docling - IBM's document parser for RAG
+# Using latest available version (2.57.0+)
+docling>=2.57.0
+docling-core
+docling-ibm-models
+docling-parse
+
+# Semantic Chunking (Optional - for token-aware chunking)
+# If these fail to install, semantic chunking will gracefully fallback to simple
+transformers>=4.30.0
+torch>=2.0.0
+
+# Supporting libraries
+pillow>=10.0.0
+pdfplumber>=0.10.0
+python-magic>=0.4.27

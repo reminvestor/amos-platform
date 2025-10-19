@@ -6,7 +6,7 @@ pending_affiliate:
   commission_rate: 0.20
   payment_email: pending@example.com
   application_notes: "I want to promote your product to my audience"
-  tier: 0  # bronze
+  tier: "bronze"
   approved_at: null
   approved_by: null
 
@@ -17,7 +17,7 @@ active_affiliate:
   commission_rate: 0.20
   payment_email: active@example.com
   application_notes: "Experienced affiliate marketer"
-  tier: 0  # bronze
+  tier: "bronze"
   approved_at: <%= 10.days.ago %>
   approved_by: null
 
@@ -28,7 +28,7 @@ silver_affiliate:
   commission_rate: 0.25
   payment_email: silver@example.com
   application_notes: "Pro marketer with 10+ referrals"
-  tier: 1  # silver
+  tier: "silver"
   approved_at: <%= 30.days.ago %>
   approved_by: null
 
@@ -39,6 +39,6 @@ suspended_affiliate:
   commission_rate: 0.20
   payment_email: suspended@example.com
   application_notes: "Had some issues"
-  tier: 0  # bronze
+  tier: "bronze"
   approved_at: <%= 60.days.ago %>
   approved_by: null

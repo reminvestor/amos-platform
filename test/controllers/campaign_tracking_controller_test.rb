@@ -1,13 +1,27 @@
 require "test_helper"
 
 class CampaignTrackingControllerTest < ActionDispatch::IntegrationTest
-  test "should get open" do
-    get campaign_tracking_open_url
+  fixtures :campaigns, :contacts, :entities, :users
+
+  test "should track email open" do
+    campaign = campaigns(:one)
+    contact = contacts(:one)
+
+    # Create a tracking token
+    token = Base64.urlsafe_encode64("#{campaign.id}:#{contact.id}")
+
+    get email_open_path(id: token)
     assert_response :success
   end
 
-  test "should get click" do
-    get campaign_tracking_click_url
-    assert_response :success
+  test "should track email click" do
+    campaign = campaigns(:one)
+    contact = contacts(:one)
+
+    # Create a tracking token
+    token = Base64.urlsafe_encode64("#{campaign.id}:#{contact.id}")
+
+    get email_click_path(id: token)
+    assert_response :redirect
   end
 end

@@ -5,9 +5,20 @@ class DocumentProcessorService
   require "yaml"
   require "json"
 
-  def initialize
+  def initialize(use_docling: true)
     @chunks = []
     @metadata = {}
+    @use_docling = use_docling && DoclingBridgeService.available?
+
+    if @use_docling
+      Rails.logger.info "✨ Docling enabled for enhanced document processing"
+      @docling_bridge = DoclingBridgeService.new
+    else
+      Rails.logger.info "📄 Using standard document processing (Docling not available)"
+    end
+  rescue => e
+    Rails.logger.warn "⚠️ Docling initialization failed, falling back to standard processing: #{e.message}"
+    @use_docling = false
   end
 
   def process_documents(documents)
@@ -33,6 +44,50 @@ class DocumentProcessorService
   rescue => e
     Rails.logger.error "Document processing failed: #{e.message}"
     { success: false, error: e.message, chunks: @chunks }
+  end
+
+  # Process file with Docling (enhanced parsing)
+  def process_with_docling(file_path, filename)
+    Rails.logger.info "✨ Processing with Docling: #{filename}"
+
+    result = @docling_bridge.process_file(file_path, {
+      chunk_size: 2000,
+      preserve_tables: true,
+      extract_images: false
+    })
+
+    if result[:success]
+      Rails.logger.info "✅ Docling extracted #{result[:chunks].length} chunks"
+
+      # Add chunks from Docling
+      result[:chunks].each do |chunk|
+        @chunks << {
+          content: chunk[:content],
+          metadata: chunk[:metadata].merge(
+            processor: "docling",
+            enhanced: true
+          )
+        }
+      end
+
+      # Store Docling metadata
+      @metadata[filename] = result[:metadata].merge(
+        processor: "docling"
+      )
+
+      true # Success
+    else
+      Rails.logger.warn "Docling processing failed: #{result[:error]}"
+      false # Fall back to standard processing
+    end
+  rescue => e
+    Rails.logger.error "Docling bridge error: #{e.message}"
+    false # Fall back to standard processing
+  end
+
+  # Check if file type is supported by Docling
+  def docling_supported?(extension)
+    DoclingBridgeService::SUPPORTED_EXTENSIONS.include?(extension)
   end
 
   private
@@ -77,6 +132,16 @@ class DocumentProcessorService
     Rails.logger.info "📁 Processing file: #{filename}"
 
     extension = File.extname(filename).downcase
+
+    # Try Docling first for supported file types
+    if @use_docling && docling_supported?(extension)
+      result = process_with_docling(file_path, filename)
+      return if result # Successfully processed with Docling
+
+      Rails.logger.info "⚠️ Docling processing failed, falling back to standard processing"
+    end
+
+    # Standard processing (fallback or non-Docling files)
     content = File.read(file_path)
 
     case extension

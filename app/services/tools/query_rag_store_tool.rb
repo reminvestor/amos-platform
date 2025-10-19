@@ -48,16 +48,33 @@ module Tools
       end
 
       begin
-        # Find RAG store
-        rag_store = find_rag_store(rag_store_id, app_name)
-
-        if !rag_store
-          return error_response("No RAG store found for app: #{app_name || rag_store_id}")
+        # Find RAG store with security check
+        rag_store = if rag_store_id
+          # Security check: Verify entity can access this specific store
+          begin
+            RagStore.find_accessible(rag_store_id, entity)
+          rescue ActiveRecord::RecordNotFound
+            return error_response("RAG store not found or access denied")
+          end
+        elsif app_name
+          # Find latest accessible store for this app
+          find_accessible_rag_store(app_name)
+        else
+          return error_response("Must provide either rag_store_id or app_name")
         end
 
-        # Query the RAG store
+        if !rag_store
+          return error_response("No accessible RAG store found for app: #{app_name}")
+        end
+
+        # Query the RAG store with entity context
         rag_service = RagStoreService.new
-        result = rag_service.query_rag_store(rag_store.id, query, top_k: top_k)
+        result = rag_service.query_rag_store(
+          rag_store.id,
+          query,
+          current_entity: entity,
+          top_k: top_k
+        )
 
         if result[:success]
           success_response(
@@ -70,6 +87,9 @@ module Tools
         else
           error_response("Query failed: #{result[:error]}")
         end
+      rescue SecurityError => e
+        Rails.logger.error "RAG access denied: #{e.message}"
+        error_response("Access denied: #{e.message}")
       rescue => e
         Rails.logger.error "RAG query failed: #{e.message}"
         error_response("Query failed: #{e.message}")
@@ -78,18 +98,12 @@ module Tools
 
     private
 
-    def find_rag_store(rag_store_id, app_name)
-      if rag_store_id
-        RagStore.find_by(id: rag_store_id)
-      elsif app_name
-        # Find most recent RAG store for this app
-        RagStore.where(app_name: app_name)
-                .where(status: "active")
-                .order(created_at: :desc)
-                .first
-      else
-        nil
-      end
+    # Find accessible RAG store for app (checks both system and entity stores)
+    def find_accessible_rag_store(app_name)
+      RagStore.accessible_by(entity)
+              .where(app_name: app_name, status: "active")
+              .order(created_at: :desc)
+              .first
     end
   end
 end

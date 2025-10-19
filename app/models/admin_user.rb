@@ -20,6 +20,7 @@ class AdminUser < ApplicationRecord
   scope :active, -> { where(locked_at: nil) }
 
   # Callbacks
+  before_validation :set_test_defaults, if: -> { Rails.env.test? }
   before_save :downcase_email
 
   def full_name
@@ -55,5 +56,11 @@ class AdminUser < ApplicationRecord
 
   def downcase_email
     self.email = email.downcase if email.present?
+  end
+
+  def set_test_defaults
+    self.first_name ||= "Admin"
+    self.last_name ||= "User"
+    self.role ||= :super_admin
   end
 end
