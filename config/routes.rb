@@ -334,6 +334,13 @@ Rails.application.routes.draw do
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
 
+  # Analytics routes
+  get "analytics", to: "analytics#index"
+  get "analytics/stream", to: "analytics#stream"
+  get "analytics/activity_feed", to: "analytics#activity_feed"
+  get "analytics/engagement_heatmap", to: "analytics#engagement_heatmap"
+  get "analytics/top_performers", to: "analytics#top_performers"
+
   # A/B Testing routes
   resources :ab_tests do
     member do

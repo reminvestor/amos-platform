@@ -1,11 +1,12 @@
 module Tools
   class BaseTool
-    attr_reader :user, :entity, :context
+    attr_reader :user, :entity, :context, :progress_callback
 
-    def initialize(user:, entity:, context: {})
+    def initialize(user:, entity:, context: {}, progress_callback: nil)
       @user = user
       @entity = entity
       @context = context
+      @progress_callback = progress_callback
     end
 
     # Each tool must define its metadata
@@ -74,6 +75,19 @@ module Tools
     # Get argument with symbol/string flexibility
     def get_arg(args, key, default = nil)
       args[key] || args[key.to_s] || default
+    end
+
+    # Stream progress update to user (if progress_callback is provided)
+    def stream_progress(message, percentage: nil)
+      return unless @progress_callback
+
+      @progress_callback.call({
+        type: "progress",
+        tool: self.class.tool_name,
+        message: message,
+        percentage: percentage,
+        timestamp: Time.current.iso8601
+      })
     end
   end
 end

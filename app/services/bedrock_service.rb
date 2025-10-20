@@ -2,7 +2,6 @@ require "aws-sdk-bedrockruntime"
 require "json"
 
 class BedrockService
-  class BedrockError < StandardError; end
 
   attr_reader :model_registry
 
@@ -171,12 +170,22 @@ class BedrockService
       end
 
       content
+    rescue Aws::BedrockRuntime::Errors::ThrottlingException => e
+      Rails.logger.error "Bedrock throttling: #{e.message}"
+      raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.request_id })
+    rescue Aws::BedrockRuntime::Errors::ServiceUnavailableException => e
+      Rails.logger.error "Bedrock unavailable: #{e.message}"
+      raise AmosErrors::BedrockUnavailableError.new(context: { request_id: e.context&.request_id })
+    rescue Timeout::Error, Seahorse::Client::NetworkingError => e
+      Rails.logger.error "Bedrock timeout: #{e.message}"
+      raise AmosErrors::BedrockTimeoutError.new(context: { error: e.class.name })
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock API Error: #{e.message}"
-      raise "Bedrock API Error: #{e.message}"
+      raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.request_id })
     rescue StandardError => e
       Rails.logger.error "Unexpected error from Bedrock: #{e.message}"
-      raise "Failed to get response from Bedrock: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      raise AmosErrors::BedrockError.new("Unexpected error: #{e.message}", context: { error_class: e.class.name })
     end
   end
 
@@ -362,13 +371,22 @@ class BedrockService
       Rails.logger.info "Bedrock converse response received: #{content.length} characters"
 
       content
+    rescue Aws::BedrockRuntime::Errors::ThrottlingException => e
+      Rails.logger.error "Bedrock throttling: #{e.message}"
+      raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.request_id })
+    rescue Aws::BedrockRuntime::Errors::ServiceUnavailableException => e
+      Rails.logger.error "Bedrock unavailable: #{e.message}"
+      raise AmosErrors::BedrockUnavailableError.new(context: { request_id: e.context&.request_id })
+    rescue Timeout::Error, Seahorse::Client::NetworkingError => e
+      Rails.logger.error "Bedrock timeout: #{e.message}"
+      raise AmosErrors::BedrockTimeoutError.new(context: { error: e.class.name })
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock API Error: #{e.message}"
-      raise "Bedrock API Error: #{e.message}"
+      raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.request_id })
     rescue StandardError => e
       Rails.logger.error "Unexpected error from Bedrock: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
-      raise "Failed to get response from Bedrock: #{e.message}"
+      raise AmosErrors::BedrockError.new("Unexpected error: #{e.message}", context: { error_class: e.class.name })
     end
   end
 
