@@ -2,24 +2,24 @@
 
 one:
   user: one
-  name: MyString
-  industry: MyString
-  description: MyText
-  founded_year: 1
-  website: MyString
-  values: MyText
-  target_audience: MyText
-  tone_of_voice: MyText
-  knowledge_base: 
+  name: Tech Solutions Inc
+  industry: Technology
+  description: B2B SaaS company providing business automation solutions
+  founded_year: 2020
+  website: https://techsolutions.example.com
+  values: Innovation, customer success, transparency
+  target_audience: Small to medium businesses looking to automate workflows
+  tone_of_voice: Professional yet friendly, helpful and solution-oriented
+  knowledge_base:
 
 two:
   user: two
-  name: MyString
-  industry: MyString
-  description: MyText
-  founded_year: 1
-  website: MyString
-  values: MyText
-  target_audience: MyText
-  tone_of_voice: MyText
+  name: Marketing Agency Pro
+  industry: Marketing
+  description: Full-service digital marketing agency specializing in content marketing
+  founded_year: 2018
+  website: https://marketingagencypro.example.com
+  values: Creativity, data-driven results, client partnerships
+  target_audience: E-commerce brands and startups seeking growth
+  tone_of_voice: Creative, energetic, and results-focused
   knowledge_base:

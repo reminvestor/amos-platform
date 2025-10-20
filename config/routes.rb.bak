@@ -334,13 +334,14 @@ Rails.application.routes.draw do
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
 
+<<<<<<< HEAD
   # Analytics routes
   get "analytics", to: "analytics#index"
   get "analytics/stream", to: "analytics#stream"
   get "analytics/activity_feed", to: "analytics#activity_feed"
   get "analytics/engagement_heatmap", to: "analytics#engagement_heatmap"
   get "analytics/top_performers", to: "analytics#top_performers"
-
+=======
   # A/B Testing routes
   resources :ab_tests do
     member do
@@ -351,6 +352,7 @@ Rails.application.routes.draw do
       post :complete
     end
   end
+>>>>>>> feature/ab-testing-framework
 
   # Integration management
   resources :integrations, only: [ :index ]
@@ -402,13 +404,6 @@ Rails.application.routes.draw do
 
     # Dashboard
     get "/", to: "dashboard#index", as: :dashboard
-    get "/services", to: "dashboard#services", as: :services
-
-    # Observability
-    get "/observability/ai_usage", to: "observability#ai_usage", as: :observability_ai_usage
-    get "/observability/workflows", to: "observability#workflows", as: :observability_workflows
-    get "/observability/performance", to: "observability#performance", as: :observability_performance
-    get "/observability/errors", to: "observability#errors", as: :observability_errors
 
     # Scout session management (Redis history)
     resources :scout_sessions, only: [:index, :show, :destroy] do
@@ -419,19 +414,12 @@ Rails.application.routes.draw do
 
     # Affiliate Management
     resources :affiliates do
-      collection do
-        get :analytics
-      end
       member do
         post :approve
         post :suspend
         patch :update_commission_rate
       end
     end
-
-    # Affiliate Settings
-    get "/settings/affiliate", to: "affiliates#settings", as: :settings_affiliate
-    patch "/settings/affiliate", to: "affiliates#update_settings"
 
     resources :commissions do
       collection do

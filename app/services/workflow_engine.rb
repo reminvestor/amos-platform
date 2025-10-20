@@ -1025,7 +1025,8 @@ class WorkflowEngine
         task_session: @task_session,
         workflow_execution: @workflow_execution,
         progress_callback: @progress_callback,
-        initial_inputs: initial_inputs
+        initial_inputs: initial_inputs,
+        user_message: @task_session.metadata["request_text"] # Include original user message
       }
 
       # Select and execute appropriate phase executor
@@ -1223,6 +1224,14 @@ class WorkflowEngine
     @workflow_execution.update!(
       status: "completed",
       completed_at: Time.current
+    )
+
+    # Mark task session as in post-workflow conversation mode
+    # This prevents the planner from being invoked for follow-up questions
+    @task_session.update_state(
+      workflow_status: "post_completion",
+      last_workflow_completed_at: Time.current,
+      workflow_context_active: true
     )
 
     @task_session.add_event("workflow_completed", {

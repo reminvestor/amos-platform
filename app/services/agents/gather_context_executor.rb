@@ -6,9 +6,11 @@ module Agents
 
       notify_progress("Gathering information intelligently...")
 
-      # Initialize gathered data
-      @gathered_data = {}
+      # Initialize gathered data - check if we're resuming
+      @gathered_data = load_previous_gathered_data || {}
       @conversation_turns = 0
+
+      Rails.logger.info "🔄 Starting with gathered data: #{@gathered_data.keys.inspect}"
 
       # Get context sources in priority order
       context_sources = @phase[:context_sources] || @phase["context_sources"]
@@ -39,7 +41,11 @@ module Agents
           @gathered_data.merge!(conversation_data)
 
           # Only ask if we STILL need input after checking conversation
-          return ask_user_conversationally if needs_user_input?
+          if needs_user_input?
+            # Store partial data before asking for more
+            store_phase_output(@gathered_data, "extracted_data")
+            return ask_user_conversationally
+          end
         end
 
         # Check if we have everything
@@ -506,6 +512,31 @@ module Agents
 
         Return clean, structured JSON. Be accurate.
       PROMPT
+    end
+
+    def load_previous_gathered_data
+      # Check if we have previous gathered data in workflow context
+      phase_id = @phase[:id] || @phase["id"]
+      workflow_execution = @context[:workflow_execution]
+
+      return nil unless workflow_execution
+
+      # Load all stored keys for this phase (they're stored individually)
+      prefix = "#{phase_id}_"
+      stored_contexts = workflow_execution.workflow_contexts.where("key LIKE ?", "#{prefix}%")
+
+      return nil if stored_contexts.empty?
+
+      # Reconstruct the gathered data hash
+      data = {}
+      stored_contexts.each do |context|
+        # Remove the phase_id prefix to get the original key
+        field_key = context.key.sub(prefix, '')
+        data[field_key] = context.value
+      end
+
+      Rails.logger.info "✅ Loaded previous gathered data: #{data.keys.inspect}"
+      data
     end
   end
 end

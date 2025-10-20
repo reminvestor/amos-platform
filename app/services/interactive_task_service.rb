@@ -36,6 +36,22 @@ class InteractiveTaskService
       return resume_v2_workflow_with_message(message)
     end
 
+    # Check if we're in post-workflow conversation mode (just completed a workflow)
+    # Stay in conversational mode for follow-up questions
+    state = @task_session.state || {}
+    if state["workflow_context_active"] == true
+      Rails.logger.info "InteractiveTaskService: In post-workflow conversation, staying conversational"
+
+      # Check if this is a new action request (not a follow-up)
+      # Keywords that indicate a NEW action should trigger planner
+      new_action_keywords = /\b(create|make|build|start|new|generate|set up another|add another)\b/i
+
+      if message.match?(new_action_keywords)
+        Rails.logger.info "InteractiveTaskService: Detected new action request, clearing post-workflow mode"
+        @task_session.update_state(workflow_context_active: false)
+      end
+    end
+
     # Always default to autonomous mode - let the AI decide if it needs planning
     Rails.logger.info "InteractiveTaskService: Processing message in autonomous mode (AI-driven)"
 
@@ -48,7 +64,7 @@ class InteractiveTaskService
         ai_driven: true
       )
     )
-    
+
     # Let the AI handle everything - it will delegate to planner if needed
     handle_autonomous_mode(message, conversation_history, current_canvas)
   end
@@ -547,17 +563,14 @@ class InteractiveTaskService
     # Pass task session context and any additional context (like files) so AI can delegate if needed
     generic_tools_service.set_context(task_session: @task_session, **@additional_context)
     
-    # Set up streaming callback if we have one
-    if @progress_callback
-      response = generic_tools_service.process_message_with_tools_streaming(
-        message, 
-        @progress_callback, 
-        conversation_history, 
-        current_canvas
-      )
-    else
-      response = generic_tools_service.process_message_with_tools(message, conversation_history, current_canvas)
-    end
+    # Use streaming version (required for V2) - provide no-op callback if none given
+    callback = @progress_callback || ->(event, data) { } # No-op callback for tests
+    response = generic_tools_service.process_message_with_tools_streaming(
+      message,
+      callback,
+      conversation_history,
+      current_canvas
+    )
     
     # Check if a workflow was delegated and needs execution
     if response && response[:workflow_approval_needed]

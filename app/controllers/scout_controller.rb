@@ -1334,7 +1334,7 @@ class ScoutController < ApplicationController
       end
     end
 
-    # Build RAG store info
+    # Build RAG store info (only show if there are actual knowledge bases)
     rag_info = build_rag_info
 
     welcome_message = if profile&.industry.present?
@@ -1352,31 +1352,10 @@ class ScoutController < ApplicationController
   end
 
   def build_rag_info
-    # Get RAG stores (use instance variable if already loaded)
-    rag_stores = @rag_stores || RagLoaderService.load_for_entity(current_entity)
-
-    return "" if rag_stores[:total_stores].zero?
-
-    info_parts = []
-
-    # System stores
-    if rag_stores[:system_stores].any?
-      apps = rag_stores[:system_stores].map { |s| s[:app_name] }.join(", ")
-      info_parts << "🌐 **System Knowledge**: #{apps}"
-    end
-
-    # Entity stores
-    if rag_stores[:entity_stores].any?
-      apps = rag_stores[:entity_stores].map { |s| s[:app_name] }.join(", ")
-      info_parts << "🏢 **Your Knowledge**: #{apps}"
-    else
-      # Show helpful message when no custom data uploaded
-      info_parts << "💡 **Tip**: Upload documents or files to create your own custom knowledge base"
-    end
-
-    return "" if info_parts.empty?
-
-    "\n\n📚 **Available Knowledge Bases**:\n" + info_parts.join("\n")
+    # RAG info is not shown in welcome message anymore
+    # The system handles RAG stores internally without displaying to user
+    # Users can check Admin > Services page for RAG system status
+    ""
   end
 
   # Canvas rendering methods
