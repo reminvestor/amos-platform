@@ -341,6 +341,17 @@ Rails.application.routes.draw do
   get "analytics/engagement_heatmap", to: "analytics#engagement_heatmap"
   get "analytics/top_performers", to: "analytics#top_performers"
 
+  # A/B Testing routes
+  resources :ab_tests do
+    member do
+      post :start
+      post :pause
+      post :resume
+      post :stop
+      post :complete
+    end
+  end
+
   # Integration management
   resources :integrations, only: [ :index ]
   get "integrations/connect/:slug", to: "integrations#connect", as: :connect_integration
