@@ -386,6 +386,8 @@ GEM
     raabro (1.4.0)
     racc (1.8.1)
     rack (3.1.11)
+    rack-attack (6.8.0)
+      rack (>= 1.0, < 4)
     rack-session (2.1.0)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -608,6 +610,7 @@ DEPENDENCIES
   pinecone (~> 1.2)
   propshaft
   puma (>= 5.0)
+  rack-attack (~> 6.7)
   rails (~> 8.0.1)
   redcarpet
   redis (~> 5.0)

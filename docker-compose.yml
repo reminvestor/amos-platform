@@ -5,8 +5,8 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: amos_development
+      POSTGRES_PASSWORD: 123password
+      POSTGRES_DB: agent_marketing_development
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -33,7 +33,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command: bash -c "bundle install && yarn install && yarn build && yarn build:css && rails db:prepare && bin/rails server -b 0.0.0.0"
+    command: bash -c "rm -f tmp/pids/server.pid && bundle install && yarn install && yarn build && yarn build:css && rails db:prepare && bin/rails server -b 0.0.0.0"
     volumes:
       - .:/rails
       - bundle_cache:/usr/local/bundle
@@ -41,23 +41,74 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/amos_development
+      - DB_HOST=db
+      - DB_NAME=agent_marketing_development
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=123password
       - REDIS_URL=redis://redis:6379/0
       - RAILS_ENV=development
+      - RAILS_MAX_THREADS=5
       # AWS Bedrock - Required (add your credentials)
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SES_SENDER=${AWS_SES_SENDER}
+      # RAG Configuration
+      - RAG_CHUNKING_STRATEGY=${RAG_CHUNKING_STRATEGY:-semantic}
+      - RAG_CHUNK_SIZE=${RAG_CHUNK_SIZE:-1000}
+      - RAG_CHUNK_OVERLAP=${RAG_CHUNK_OVERLAP:-200}
+      - RAG_EMBEDDING_CACHE_ENABLED=${RAG_EMBEDDING_CACHE_ENABLED:-true}
+      - RAG_EMBEDDING_BATCH_SIZE=${RAG_EMBEDDING_BATCH_SIZE:-100}
+      # OpenAI (for RAG embeddings)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-ada-002}
+      # Pinecone (for RAG)
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_REGION=${PINECONE_REGION:-us-east-1}
       # Optional services
       - MAILGUN_API_KEY=${MAILGUN_API_KEY}
       - MAILGUN_DOMAIN=${MAILGUN_DOMAIN}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - PINECONE_API_KEY=${PINECONE_API_KEY}
-      - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT}
       - SERPER_API_KEY=${SERPER_API_KEY}
       # Stripe
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: bash -c "bundle install && bundle exec rake solid_queue:start"
+    volumes:
+      - .:/rails
+      - bundle_cache:/usr/local/bundle
+    environment:
+      - DB_HOST=db
+      - DB_NAME=agent_marketing_development
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=123password
+      - REDIS_URL=redis://redis:6379/0
+      - RAILS_ENV=development
+      - RAILS_MAX_THREADS=5
+      # AWS Bedrock
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SES_SENDER=${AWS_SES_SENDER}
+      # OpenAI
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Pinecone
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_REGION=${PINECONE_REGION:-us-east-1}
+      # Optional services
+      - MAILGUN_API_KEY=${MAILGUN_API_KEY}
+      - MAILGUN_DOMAIN=${MAILGUN_DOMAIN}
     depends_on:
       db:
         condition: service_healthy

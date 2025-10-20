@@ -4,17 +4,17 @@ module Agents
     before_action :ensure_admin_access
 
     def index
-      @agents = AgentRegistry.instance.all_agents
-      @system_metrics = PerformanceMonitor.instance.system_metrics
-      @active_traces = DecisionTracer.instance.active_traces
+      @agents = Agents::Communication::AgentRegistry.instance.all_agents
+      @system_metrics = Agents::Observability::PerformanceMonitor.instance.system_metrics
+      @active_traces = Agents::Observability::DecisionTracer.instance.active_traces
     end
 
     def agent_details
       agent_id = params[:id]
 
-      @agent = AgentRegistry.instance.find(agent_id)
-      @metrics = PerformanceMonitor.instance.agent_metrics(agent_id)
-      @traces = DecisionTracer.instance.trace_history(agent_id: agent_id, time_range: 24.hours)
+      @agent = Agents::Communication::AgentRegistry.instance.find(agent_id)
+      @metrics = Agents::Observability::PerformanceMonitor.instance.agent_metrics(agent_id)
+      @traces = Agents::Observability::DecisionTracer.instance.trace_history(agent_id: agent_id, time_range: 24.hours)
       @memory_snapshot = @agent&.memory&.snapshot
 
       respond_to do |format|
@@ -27,10 +27,10 @@ module Agents
       time_range = params[:time_range]&.to_i&.hours || 1.hour
 
       metrics = {
-        system: PerformanceMonitor.instance.system_metrics(time_range),
+        system: Agents::Observability::PerformanceMonitor.instance.system_metrics(time_range),
         agents: agent_performance_data(time_range),
-        resources: ResourceManager.new(current_entity).usage_stats,
-        circuit_breakers: CircuitBreakerRegistry.instance.status
+        resources: Agents::Observability::ResourceManager.new(current_entity).usage_stats,
+        circuit_breakers: Agents::Observability::CircuitBreakerRegistry.instance.status
       }
 
       render json: metrics
@@ -44,7 +44,7 @@ module Agents
         outcome: params[:outcome]&.to_sym
       }.compact
 
-      traces = DecisionTracer.instance.trace_history(filters)
+      traces = Agents::Observability::DecisionTracer.instance.trace_history(filters)
 
       render json: {
         traces: traces,
@@ -53,7 +53,7 @@ module Agents
     end
 
     def collaboration_network
-      network = PerformanceMonitor.instance.collaboration_network
+      network = Agents::Observability::PerformanceMonitor.instance.collaboration_network
 
       # Convert to D3.js format
       nodes = network.keys.map { |id| { id: id, group: agent_group(id) } }
@@ -76,15 +76,15 @@ module Agents
     def learning_insights
       time_range = (params[:days]&.to_i || 7).days
 
-      insights = LearningEngine.instance.get_performance_analytics(time_range)
+      insights = Agents::Observability::LearningEngine.instance.get_performance_analytics(time_range)
 
       render json: insights
     end
 
     def resource_usage
-      @resource_stats = ResourceManager.new(current_entity).usage_stats
-      @token_usage = ResourceManager.new(current_entity).token_usage_stats(time_range: 24.hours)
-      @cost_breakdown = CostTracker.new(current_entity).current_totals
+      @resource_stats = Agents::Observability::ResourceManager.new(current_entity).usage_stats
+      @token_usage = Agents::Observability::ResourceManager.new(current_entity).token_usage_stats(time_range: 24.hours)
+      @cost_breakdown = Agents::Observability::CostTracker.new(current_entity).current_totals
 
       respond_to do |format|
         format.html
@@ -144,10 +144,10 @@ module Agents
     end
 
     def agent_performance_data(time_range)
-      agents = AgentRegistry.instance.all_agents
+      agents = Agents::Communication::AgentRegistry.instance.all_agents
 
       agents.map do |agent|
-        metrics = PerformanceMonitor.instance.agent_metrics(agent.id, time_range)
+        metrics = Agents::Observability::PerformanceMonitor.instance.agent_metrics(agent.id, time_range)
         {
           id: agent.id,
           role: agent.role,
@@ -166,13 +166,13 @@ module Agents
     end
 
     def agent_group(agent_id)
-      agent = AgentRegistry.instance.find(agent_id)
+      agent = Agents::Communication::AgentRegistry.instance.find(agent_id)
       agent&.role || "unknown"
     end
 
     def fetch_recent_alerts
       # Fetch from various sources
-      performance_alerts = PerformanceMonitor.instance.system_metrics[:alerts] || []
+      performance_alerts = Agents::Observability::PerformanceMonitor.instance.system_metrics[:alerts] || []
       resource_alerts = fetch_resource_alerts
       circuit_breaker_alerts = fetch_circuit_breaker_alerts
 
@@ -204,17 +204,17 @@ module Agents
     def generate_report(report_type, time_range)
       case report_type
       when "performance"
-        PerformanceReport.new(
-          PerformanceMonitor.instance.instance_variable_get(:@metrics),
+        Agents::Observability::PerformanceReport.new(
+          Agents::Observability::PerformanceMonitor.instance.instance_variable_get(:@metrics),
           time_range
         ).generate
       when "learning"
-        LearningEngine.instance.get_performance_analytics(time_range)
+        Agents::Observability::LearningEngine.instance.get_performance_analytics(time_range)
       when "full"
         {
           performance: generate_report("performance", time_range),
           learning: generate_report("learning", time_range),
-          resources: ResourceManager.new(current_entity).usage_stats,
+          resources: Agents::Observability::ResourceManager.new(current_entity).usage_stats,
           generated_at: Time.current
         }
       end

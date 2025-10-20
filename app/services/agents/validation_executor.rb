@@ -92,6 +92,8 @@ module Agents
         validate_images(rule)
       when "brand_consistent"
         validate_brand_consistency(rule)
+      when "context_check"
+        validate_context_exists(rule)
       when "tool_check"
         validate_with_tool(rule)
       when "ai_check"
@@ -268,6 +270,22 @@ module Agents
       }
     end
 
+    def validate_context_exists(rule)
+      context_key = rule["context_key"] || rule[:context_key]
+      check_description = rule["check"] || rule[:check]
+
+      # Check if the context key exists and has a value
+      context_value = get_workflow_context(context_key)
+      exists = context_value.present?
+
+      {
+        rule: "context_check",
+        check: check_description,
+        passed: exists,
+        message: exists ? "Context '#{context_key}' found with value: #{context_value}" : "Context '#{context_key}' not found"
+      }
+    end
+
     def validate_with_tool(rule)
       tool_name = rule["tool"] || rule[:tool]
       tool_args = rule["tool_args"] || rule[:tool_args] || {}
@@ -289,11 +307,14 @@ module Agents
       context_data = get_workflow_context
       html_content = find_html_in_context
 
+      # Limit context to first 20 items for readability
+      limited_context = context_data.is_a?(Hash) ? context_data.first(20).to_h : {}
+
       prompt = <<~PROMPT
         Validate this requirement: #{check_description}
 
         Available Context:
-        #{JSON.pretty_generate(context_data.slice(0, 20))}  # Limit context
+        #{JSON.pretty_generate(limited_context)}
 
         HTML Content (first 1000 chars):
         #{html_content&.first(1000)}
