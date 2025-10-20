@@ -86,7 +86,13 @@ module Tools
       Rails.logger.info "📄 Generating landing page: #{title}"
       Rails.logger.info "📝 Description: #{description[0..100]}..."
 
+      # Stream progress: Starting
+      stream_progress("🚀 Starting landing page generation...", percentage: 0)
+
       begin
+        # Stream progress: Analyzing requirements
+        stream_progress("📋 Analyzing your requirements and gathering context...", percentage: 10)
+
         # Extract all available context for rich page generation
         generation_context = {
           description: description,
@@ -107,6 +113,9 @@ module Tools
           layout_inspiration: get_arg(args, :layout_notes)
         }
 
+        # Stream progress: Creating record
+        stream_progress("💾 Creating landing page record...", percentage: 20)
+
         # Create the landing page record (without page_type field)
         landing_page = LandingPage.create!(
           user: user,
@@ -124,12 +133,21 @@ module Tools
           }
         )
 
+        # Stream progress: Generating HTML with AI
+        stream_progress("🎨 Generating page content with AI (this may take 2-3 minutes)...", percentage: 30)
+
         # Use AI to generate professional HTML
         html_content = generate_ai_html(title, description, generation_context)
+
+        # Stream progress: Compiling
+        stream_progress("🔨 Compiling final landing page...", percentage: 90)
 
         landing_page.update!(html_content: html_content)
 
         Rails.logger.info "✅ Landing page created with HTML: #{landing_page.id}"
+
+        # Stream progress: Complete!
+        stream_progress("✅ Done! Loading your new landing page...", percentage: 100)
 
         success_response(
           id: landing_page.id,

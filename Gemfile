@@ -112,6 +112,9 @@ gem "stripe", "~> 12.0"
 gem "openai", "~> 0.3.0"
 gem "anthropic", "~> 0.1.0"  # Add Anthropic gem for Claude
 
+# Rate limiting and API protection
+gem "rack-attack", "~> 6.7"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
