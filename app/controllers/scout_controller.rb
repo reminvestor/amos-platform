@@ -111,6 +111,34 @@ class ScoutController < ApplicationController
         canvas: response[:canvas]
       }
 
+    rescue AmosErrors::BedrockThrottlingError, AmosErrors::BedrockUnavailableError, AmosErrors::BedrockTimeoutError => e
+      Rails.logger.error "Scout Bedrock error: #{e.class.name} - #{e.message}"
+      save_scout_message("assistant", e.user_message)
+
+      render json: {
+        message: e.user_message,
+        error: true,
+        retry_after: e.retry_after,
+        error_type: e.class.name.demodulize
+      }, status: 503
+    rescue AmosErrors::BedrockError => e
+      Rails.logger.error "Scout Bedrock error: #{e.message}"
+      save_scout_message("assistant", e.user_message)
+
+      render json: {
+        message: e.user_message,
+        error: true,
+        retry_after: e.retry_after
+      }, status: 503
+    rescue AmosErrors::IntegrationError => e
+      Rails.logger.error "Scout integration error: #{e.integration_name} - #{e.message}"
+      save_scout_message("assistant", e.user_message)
+
+      render json: {
+        message: e.user_message,
+        error: true,
+        integration: e.integration_name
+      }, status: 422
     rescue StandardError => e
       Rails.logger.error "Scout chat error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
@@ -616,6 +644,26 @@ class ScoutController < ApplicationController
       # Stream final response and close
       stream_final_response(final_response)
 
+    rescue AmosErrors::BedrockThrottlingError, AmosErrors::BedrockUnavailableError => e
+      Rails.logger.error "Scout streaming Bedrock error: #{e.class.name} - #{e.message}"
+      stream_event("error", {
+        message: e.user_message,
+        retry_after: e.retry_after,
+        error_type: e.class.name.demodulize
+      })
+    rescue AmosErrors::BedrockTimeoutError => e
+      Rails.logger.error "Scout streaming timeout: #{e.message}"
+      stream_event("error", {
+        message: e.user_message,
+        retry_after: e.retry_after
+      })
+    rescue AmosErrors::IntegrationError => e
+      Rails.logger.error "Scout streaming integration error: #{e.integration_name} - #{e.message}"
+      stream_event("error", {
+        message: e.user_message,
+        integration: e.integration_name,
+        action: "Please check your #{e.integration_name} connection in Settings > Integrations."
+      })
     rescue StandardError => e
       Rails.logger.error "Scout streaming chat error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
@@ -1218,10 +1266,30 @@ class ScoutController < ApplicationController
     # Don't save empty messages
     return if message.blank?
 
+    # Validate role to prevent incorrect assignments
+    unless %w[user assistant system].include?(role.to_s)
+      Rails.logger.error "❌ Invalid role '#{role}' for message, defaulting to 'assistant'"
+      role = "assistant"
+    end
+
+    # Check for potential duplicate user messages being saved as assistant
+    if role == "assistant" && message.to_s.strip.length < 50
+      recent_user_msg = ScoutMessage.where(
+        session_id: session_id,
+        role: "user",
+        content: message
+      ).where("created_at > ?", 10.seconds.ago).first
+
+      if recent_user_msg
+        Rails.logger.warn "⚠️ Skipping potential duplicate: identical user message found within 10 seconds"
+        return
+      end
+    end
+
     # Log what we're about to save
     Rails.logger.info "💾 Saving #{role} message (#{message.class}): #{message.to_s.first(200)}..."
 
-    # Persist in DB (durable)
+    # Persist in DB (durable) with transaction safety
     ScoutMessage.create!(
       user_id: current_user.id,
       entity_id: current_entity&.id,

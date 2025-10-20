@@ -1,21 +1,4 @@
 class Contact < ApplicationRecord
-  # Log schema information to help with debugging
-  def self.debug_schema
-    begin
-      columns_info = connection.schema_cache.columns(table_name)
-      column_names = columns_info.map(&:name)
-      Rails.logger.info("CONTACT MODEL DEBUG: Available columns: #{column_names.join(', ')}")
-      column_names
-    rescue => e
-      Rails.logger.error("CONTACT MODEL DEBUG ERROR: Failed to get schema - #{e.class.name}: #{e.message}")
-      Rails.logger.error(e.backtrace.join("\n"))
-      []
-    end
-  end
-
-  # Call schema debug on load
-  debug_schema
-
   belongs_to :user
   belongs_to :entity
 
