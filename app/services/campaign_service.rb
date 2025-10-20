@@ -29,6 +29,14 @@ class CampaignService
     Rails.logger.info("Campaign #{@campaign.id}: Need to create #{missing_contact_ids.count} new deliveries")
     
     if missing_contact_ids.any?
+      # For very large campaigns, create deliveries in background to avoid timeouts
+      if missing_contact_ids.count > 50_000
+        Rails.logger.info("Campaign #{@campaign.id}: Large campaign detected (#{missing_contact_ids.count} contacts), creating deliveries in background")
+        # Create a job to handle the bulk insert
+        CreateEmailDeliveriesJob.perform_later(@campaign.id, missing_contact_ids)
+        return @campaign.email_deliveries.count
+      end
+      
       # Build delivery records for bulk insert
       timestamp = Time.current
       deliveries_data = missing_contact_ids.map do |contact_id|
@@ -42,10 +50,16 @@ class CampaignService
         }
       end
       
-      # Bulk insert in batches of 10,000 to avoid memory issues
-      deliveries_data.each_slice(10_000) do |batch|
+      # Bulk insert in smaller batches to avoid timeouts
+      batch_size = missing_contact_ids.count > 10_000 ? 1_000 : 10_000
+      deliveries_data.each_slice(batch_size) do |batch|
         EmailDelivery.insert_all(batch)
         Rails.logger.info("Campaign #{@campaign.id}: Inserted batch of #{batch.size} deliveries")
+        
+        # Add small delay for large campaigns to prevent timeouts
+        if missing_contact_ids.count > 10_000
+          sleep(0.1)
+        end
       end
       
       Rails.logger.info("Campaign #{@campaign.id}: ✅ Created #{missing_contact_ids.count} deliveries via BULK INSERT")
