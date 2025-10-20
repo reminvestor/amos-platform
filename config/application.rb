@@ -63,7 +63,7 @@ module AmosLabs
     # Set Solid::Queue as the queue adapter
     config.active_job.queue_adapter = :solid_queue
 
-    # We'll add the middleware in an initializer instead
-    # to ensure all classes are loaded first
+    # Enable Rack::Attack middleware for rate limiting (if gem is installed)
+    config.middleware.use Rack::Attack if defined?(Rack::Attack)
   end
 end
