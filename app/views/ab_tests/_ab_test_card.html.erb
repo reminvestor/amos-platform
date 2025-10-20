@@ -1,0 +1,40 @@
+<div class="card h-100">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+      <h5 class="card-title mb-0"><%= link_to test.name, ab_test_path(test) %></h5>
+      <%= render partial: 'status_badge', locals: { status: test.status } %>
+    </div>
+
+    <% if test.hypothesis.present? %>
+      <p class="text-muted small mb-3"><%= truncate(test.hypothesis, length: 100) %></p>
+    <% end %>
+
+    <div class="mb-3">
+      <div class="row g-2">
+        <% test.variants.order(created_at: :asc).each do |variant| %>
+          <div class="col-6">
+            <div class="border rounded p-2">
+              <div class="small fw-bold"><%= variant.name %></div>
+              <div class="small text-muted">
+                <%= number_with_delimiter(variant.impressions) %> views
+                <% if variant.impressions > 0 %>
+                  <br><%= number_to_percentage(variant.conversion_rate * 100, precision: 1) %> conv.
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center">
+      <small class="text-muted">
+        <i class="fas fa-clock me-1"></i>
+        <%= time_ago_in_words(test.started_at || test.created_at) %> ago
+      </small>
+      <%= link_to ab_test_path(test), class: "btn btn-sm btn-outline-primary" do %>
+        View Details <i class="fas fa-arrow-right ms-1"></i>
+      <% end %>
+    </div>
+  </div>
+</div>
