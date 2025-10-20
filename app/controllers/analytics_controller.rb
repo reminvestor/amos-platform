@@ -80,6 +80,12 @@ class AnalyticsController < ApplicationController
 
   private
 
+  def ensure_entity_exists
+    unless current_entity
+      redirect_to new_entity_path, alert: "You need to set up your business profile first."
+    end
+  end
+
   # SSE helper class
   class SSE
     def initialize(io, options = {})
