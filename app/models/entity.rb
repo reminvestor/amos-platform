@@ -35,6 +35,11 @@ class Entity < ApplicationRecord
 
   # Subscription tracking
   has_many :subscription_events, dependent: :destroy
+  
+  # Subscription status accessor
+  def subscription_status
+    read_attribute(:subscription_status) || 'inactive'
+  end
 
   # JSONB settings accessor
   store_accessor :settings, :timezone, :currency, :date_format, :logo_url, :primary_color
