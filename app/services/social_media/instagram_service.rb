@@ -1,15 +1,14 @@
 module SocialMedia
   class InstagramService < BaseService
-    def initialize(user)
-      super
-      @client = InstagramBasicDisplay::Client.new(
-        access_token: access_token,
-        client_id: ENV["INSTAGRAM_CLIENT_ID"],
-        client_secret: ENV["INSTAGRAM_CLIENT_SECRET"]
-      )
+    # Instagram posting via Facebook Graph API
+    # Requires Instagram Business Account linked to Facebook Page
+
+    def initialize(connection)
+      @connection = connection
+      validate_connection!
     end
 
-    def publish_post(post)
+    def publish_post(content:, image_url: nil, hashtags: [], post: nil)
       begin
         # Note: Instagram Basic Display API doesn't support direct posting
         # We'll need to use the Instagram Graph API (through Facebook) for posting
