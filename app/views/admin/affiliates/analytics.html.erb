@@ -1,0 +1,334 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">
+      <i class="fas fa-chart-line me-2"></i> Affiliate Program Analytics
+    </h1>
+
+    <div class="btn-group" role="group">
+      <%= link_to admin_analytics_affiliates_path(time_range: 7),
+                  class: "btn btn-sm #{params[:time_range] == '7' ? 'btn-primary' : 'btn-outline-primary'}" do %>
+        Last 7 Days
+      <% end %>
+      <%= link_to admin_analytics_affiliates_path(time_range: 30),
+                  class: "btn btn-sm #{params[:time_range] == '30' || params[:time_range].nil? ? 'btn-primary' : 'btn-outline-primary'}" do %>
+        Last 30 Days
+      <% end %>
+      <%= link_to admin_analytics_affiliates_path(time_range: 90),
+                  class: "btn btn-sm #{params[:time_range] == '90' ? 'btn-primary' : 'btn-outline-primary'}" do %>
+        Last 90 Days
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-3">
+      <div class="card border-primary">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <h6 class="text-muted mb-1">Total Affiliates</h6>
+              <h2 class="mb-0"><%= number_with_delimiter(@total_affiliates) %></h2>
+              <small class="text-success"><%= @active_affiliates %> active</small>
+            </div>
+            <div class="text-primary">
+              <i class="fas fa-users fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-success">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <h6 class="text-muted mb-1">Total Revenue</h6>
+              <h2 class="mb-0">$<%= number_with_delimiter(@total_commissions.round(2)) %></h2>
+              <small class="text-muted">All time</small>
+            </div>
+            <div class="text-success">
+              <i class="fas fa-dollar-sign fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-warning">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <h6 class="text-muted mb-1">This Month</h6>
+              <h2 class="mb-0">$<%= number_with_delimiter(@commissions_this_month.round(2)) %></h2>
+              <small class="text-muted">Commission earned</small>
+            </div>
+            <div class="text-warning">
+              <i class="fas fa-calendar-alt fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-info">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <h6 class="text-muted mb-1">Conversion Rate</h6>
+              <h2 class="mb-0"><%= @conversion_rate %>%</h2>
+              <small class="text-muted"><%= number_with_delimiter(@total_conversions) %> conversions</small>
+            </div>
+            <div class="text-info">
+              <i class="fas fa-percentage fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-chart-area me-2"></i> Commission Revenue Over Time
+          </h5>
+        </div>
+        <div class="card-body">
+          <canvas id="revenueChart" style="height: 300px;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-chart-line me-2"></i> Referrals Over Time
+          </h5>
+        </div>
+        <div class="card-body">
+          <canvas id="referralsChart" style="height: 300px;"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Performers -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-trophy me-2"></i> Top Affiliates by Revenue
+          </h5>
+        </div>
+        <div class="card-body">
+          <% if @top_affiliates_by_revenue.any? %>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Affiliate</th>
+                    <th class="text-end">Total Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @top_affiliates_by_revenue.each_with_index do |affiliate, index| %>
+                    <tr>
+                      <td>
+                        <% if index == 0 %>
+                          <i class="fas fa-trophy text-warning"></i>
+                        <% elsif index == 1 %>
+                          <i class="fas fa-medal text-secondary"></i>
+                        <% elsif index == 2 %>
+                          <i class="fas fa-medal text-warning"></i>
+                        <% else %>
+                          <%= index + 1 %>
+                        <% end %>
+                      </td>
+                      <td>
+                        <%= link_to admin_affiliate_path(affiliate), class: "text-decoration-none" do %>
+                          <%= affiliate.first_name %> <%= affiliate.last_name %>
+                        <% end %>
+                      </td>
+                      <td class="text-end">
+                        <strong>$<%= number_with_delimiter(affiliate.total_revenue.round(2)) %></strong>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <p class="text-muted mb-0">No revenue data available yet</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-user-plus me-2"></i> Top Affiliates by Referrals
+          </h5>
+        </div>
+        <div class="card-body">
+          <% if @top_affiliates_by_referrals.any? %>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Affiliate</th>
+                    <th class="text-end">Total Referrals</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @top_affiliates_by_referrals.each_with_index do |affiliate, index| %>
+                    <tr>
+                      <td><%= index + 1 %></td>
+                      <td>
+                        <%= link_to admin_affiliate_path(affiliate), class: "text-decoration-none" do %>
+                          <%= affiliate.user.full_name %>
+                        <% end %>
+                      </td>
+                      <td class="text-end">
+                        <strong><%= number_with_delimiter(affiliate.total_referrals) %></strong>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <p class="text-muted mb-0">No referral data available yet</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Additional Stats -->
+  <div class="row g-4">
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0">Affiliate Status Breakdown</h6>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-2">
+            <span>Active</span>
+            <strong class="text-success"><%= @active_affiliates %></strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span>Pending</span>
+            <strong class="text-warning"><%= @pending_affiliates %></strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>Suspended</span>
+            <strong class="text-danger"><%= @suspended_affiliates %></strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0">Commission Status</h6>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-2">
+            <span>Paid</span>
+            <strong class="text-success">$<%= number_with_delimiter(@paid_commissions.round(2)) %></strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>Pending</span>
+            <strong class="text-warning">$<%= number_with_delimiter(@pending_commissions.round(2)) %></strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0">Engagement Metrics</h6>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-2">
+            <span>Total Clicks</span>
+            <strong><%= number_with_delimiter(@total_clicks) %></strong>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span>Total Referrals</span>
+            <strong><%= number_with_delimiter(@total_referrals) %></strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>Conversions</span>
+            <strong class="text-success"><%= number_with_delimiter(@total_conversions) %></strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  // Revenue Chart
+  const revenueCtx = document.getElementById('revenueChart');
+  new Chart(revenueCtx, {
+    type: 'line',
+    data: <%= raw @revenue_chart.to_json %>,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) {
+              return '$' + value.toFixed(2);
+            }
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+
+  // Referrals Chart
+  const referralsCtx = document.getElementById('referralsChart');
+  new Chart(referralsCtx, {
+    type: 'line',
+    data: <%= raw @referrals_chart.to_json %>,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+</script>

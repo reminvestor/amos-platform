@@ -1,17 +1,17 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  name: MyString
-  description: MyText
-  status: MyString
+  name: Summer Sale Campaign
+  description: Promotional campaign for summer products and services
+  status: draft
   scheduled_at: 2025-03-10 15:30:53
   user: one
   entity: one
 
 two:
-  name: MyString
-  description: MyText
-  status: MyString
+  name: Newsletter March Edition
+  description: Monthly newsletter with company updates and industry news
+  status: scheduled
   scheduled_at: 2025-03-10 15:30:53
   user: two
   entity: one
