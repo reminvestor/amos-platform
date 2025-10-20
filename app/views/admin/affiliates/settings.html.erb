@@ -1,0 +1,164 @@
+<div class="container-fluid py-4">
+  <h1 class="mb-4">
+    <i class="fas fa-cog me-2"></i> Affiliate Program Settings
+  </h1>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Program Configuration</h5>
+        </div>
+        <div class="card-body">
+          <%= form_with model: @affiliate_settings, url: admin_settings_affiliate_path, method: :patch, local: true do |f| %>
+            <div class="mb-3">
+              <%= f.label :default_commission_rate, "Default Commission Rate (%)", class: "form-label" %>
+              <%= f.number_field :default_commission_rate,
+                                  class: "form-control",
+                                  step: "0.01",
+                                  min: "0",
+                                  max: "100",
+                                  placeholder: "e.g., 10.00" %>
+              <small class="form-text text-muted">
+                Default commission rate for new affiliates (percentage)
+              </small>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :min_payout_threshold, "Minimum Payout Threshold ($)", class: "form-label" %>
+              <%= f.number_field :min_payout_threshold,
+                                  class: "form-control",
+                                  step: "0.01",
+                                  min: "0",
+                                  placeholder: "e.g., 50.00" %>
+              <small class="form-text text-muted">
+                Minimum balance required before affiliates can request a payout
+              </small>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :cookie_duration_days, "Cookie Duration (days)", class: "form-label" %>
+              <%= f.number_field :cookie_duration_days,
+                                  class: "form-control",
+                                  min: "1",
+                                  placeholder: "e.g., 30" %>
+              <small class="form-text text-muted">
+                Number of days to track referrals after initial click
+              </small>
+            </div>
+
+            <div class="mb-3 form-check">
+              <%= f.check_box :auto_approve_affiliates, class: "form-check-input" %>
+              <%= f.label :auto_approve_affiliates, "Auto-approve new affiliate applications", class: "form-check-label" %>
+              <small class="form-text text-muted d-block">
+                If enabled, new affiliates will be automatically approved without manual review
+              </small>
+            </div>
+
+            <div class="mb-3 form-check">
+              <%= f.check_box :allow_self_referrals, class: "form-check-input" %>
+              <%= f.label :allow_self_referrals, "Allow self-referrals", class: "form-check-label" %>
+              <small class="form-text text-muted d-block">
+                If enabled, affiliates can earn commissions on their own purchases
+              </small>
+            </div>
+
+            <div class="mt-4">
+              <%= f.submit "Save Settings", class: "btn btn-primary" %>
+              <%= link_to "Cancel", admin_affiliates_path, class: "btn btn-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Program Statistics (Read-only) -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <h5 class="mb-0">Program Statistics</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <div class="border-start border-primary border-4 ps-3">
+                <h6 class="text-muted mb-1">Total Affiliates</h6>
+                <h3 class="mb-0"><%= Affiliate.count %></h3>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="border-start border-success border-4 ps-3">
+                <h6 class="text-muted mb-1">Active Affiliates</h6>
+                <h3 class="mb-0"><%= Affiliate.active.count %></h3>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="border-start border-warning border-4 ps-3">
+                <h6 class="text-muted mb-1">Total Commissions Paid</h6>
+                <h3 class="mb-0">$<%= number_with_delimiter(Commission.paid.sum(:amount).round(2)) %></h3>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="border-start border-info border-4 ps-3">
+                <h6 class="text-muted mb-1">Pending Commissions</h6>
+                <h3 class="mb-0">$<%= number_with_delimiter(Commission.pending.sum(:amount).round(2)) %></h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help Section -->
+    <div class="col-lg-4">
+      <div class="card bg-light">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-info-circle me-2"></i> Help & Guidelines
+          </h5>
+        </div>
+        <div class="card-body">
+          <h6>Commission Rate</h6>
+          <p class="small">
+            Set a competitive rate (typically 5-20%) that balances profitability with affiliate motivation.
+          </p>
+
+          <h6>Payout Threshold</h6>
+          <p class="small">
+            Common thresholds range from $25-$100. Lower thresholds may increase payout frequency but also processing costs.
+          </p>
+
+          <h6>Cookie Duration</h6>
+          <p class="small">
+            Industry standard is 30-90 days. Longer duration gives affiliates more time to earn commissions from their referrals.
+          </p>
+
+          <h6>Auto-approval</h6>
+          <p class="small">
+            Enable only if you're comfortable with minimal screening. Manual approval allows quality control but requires more time.
+          </p>
+
+          <h6>Self-referrals</h6>
+          <p class="small">
+            Typically disabled to prevent abuse, but can be enabled for loyalty programs where affiliates are also customers.
+          </p>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header">
+          <h6 class="mb-0">Quick Actions</h6>
+        </div>
+        <div class="card-body">
+          <%= link_to admin_affiliates_path, class: "btn btn-outline-primary w-100 mb-2" do %>
+            <i class="fas fa-users me-2"></i> View All Affiliates
+          <% end %>
+          <%= link_to admin_analytics_affiliates_path, class: "btn btn-outline-info w-100 mb-2" do %>
+            <i class="fas fa-chart-line me-2"></i> View Analytics
+          <% end %>
+          <%= link_to admin_commissions_path, class: "btn btn-outline-success w-100" do %>
+            <i class="fas fa-dollar-sign me-2"></i> Manage Commissions
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

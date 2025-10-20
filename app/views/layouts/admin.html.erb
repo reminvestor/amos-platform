@@ -31,6 +31,12 @@
                 <% end %>
               </li>
 
+              <li class="nav-item">
+                <%= link_to admin_services_path, class: "nav-link #{'active' if current_page?(admin_services_path)}" do %>
+                  <i class="fas fa-heartbeat"></i> Services Health
+                <% end %>
+              </li>
+
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle <%= 'active' if controller_path.start_with?('admin/affiliates') || controller_path.start_with?('admin/commissions') || controller_path.start_with?('admin/payouts') %>" href="#" data-bs-toggle="dropdown">
                   <i class="fas fa-users-cog"></i> Affiliates

@@ -10,10 +10,50 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_16_120000) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_19_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
+
+  create_table "ab_test_variants", force: :cascade do |t|
+    t.bigint "ab_test_id", null: false
+    t.string "name", null: false
+    t.float "traffic_percentage", default: 50.0, null: false
+    t.jsonb "configuration", default: {}
+    t.integer "impressions", default: 0
+    t.integer "conversions", default: 0
+    t.float "conversion_rate", default: 0.0
+    t.boolean "is_winner", default: false
+    t.boolean "is_control", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ab_test_id", "conversion_rate"], name: "index_ab_test_variants_on_ab_test_id_and_conversion_rate"
+    t.index ["ab_test_id"], name: "index_ab_test_variants_on_ab_test_id"
+    t.index ["is_winner"], name: "index_ab_test_variants_on_is_winner"
+  end
+
+  create_table "ab_tests", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "testable_type", null: false
+    t.bigint "testable_id", null: false
+    t.string "name", null: false
+    t.string "status", default: "draft", null: false
+    t.text "hypothesis"
+    t.string "metric", default: "conversion_rate"
+    t.float "confidence_level", default: 0.95
+    t.integer "minimum_sample_size", default: 100
+    t.datetime "started_at"
+    t.datetime "ended_at"
+    t.jsonb "results"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "status"], name: "index_ab_tests_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_ab_tests_on_entity_id"
+    t.index ["started_at"], name: "index_ab_tests_on_started_at"
+    t.index ["testable_type", "testable_id"], name: "index_ab_tests_on_testable"
+    t.index ["testable_type", "testable_id"], name: "index_ab_tests_on_testable_type_and_testable_id"
+  end
 
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.string "name", null: false
@@ -274,6 +314,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_120000) do
     t.jsonb "mailgun_stats"
     t.integer "opted_out_contacts_count", default: 0, null: false
     t.index ["email_template_id"], name: "index_campaigns_on_email_template_id"
+    t.index ["entity_id", "status"], name: "index_campaigns_on_entity_status"
     t.index ["entity_id"], name: "index_campaigns_on_entity_id"
     t.index ["user_id"], name: "index_campaigns_on_user_id"
   end
@@ -357,6 +398,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_120000) do
     t.boolean "opted_out", default: false
     t.datetime "opted_out_at"
     t.boolean "lead", default: true, null: false
+    t.index ["entity_id", "lead"], name: "index_contacts_on_entity_lead"
+    t.index ["entity_id", "status"], name: "index_contacts_on_entity_status"
     t.index ["entity_id"], name: "index_contacts_on_entity_id"
     t.index ["lead"], name: "index_contacts_on_lead"
     t.index ["opted_out"], name: "index_contacts_on_opted_out"
@@ -480,6 +523,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_120000) do
     t.string "mailgun_status"
     t.text "notes"
     t.index ["campaign_id", "id"], name: "index_email_deliveries_on_campaign_id_and_id"
+    t.index ["campaign_id", "status", "sent_at"], name: "index_email_deliveries_on_campaign_status_sent"
     t.index ["campaign_id", "status"], name: "index_email_deliveries_on_campaign_id_and_status"
     t.index ["campaign_id"], name: "index_email_deliveries_on_campaign_id"
     t.index ["contact_id"], name: "index_email_deliveries_on_contact_id"
@@ -613,9 +657,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_120000) do
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["connection_id", "created_at"], name: "index_integration_logs_on_connection_created"
     t.index ["connection_id"], name: "index_integration_logs_on_connection_id"
     t.index ["correlation_id"], name: "index_integration_logs_on_correlation_id"
     t.index ["integration_operation_id"], name: "index_integration_logs_on_integration_operation_id"
+    t.index ["response_status"], name: "index_integration_logs_on_response_status"
     t.index ["scout_message_id"], name: "index_integration_logs_on_scout_message_id"
     t.index ["user_id"], name: "index_integration_logs_on_user_id"
   end
@@ -731,6 +777,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_120000) do
     t.text "html_content"
     t.jsonb "metadata", default: {}, null: false
     t.index ["campaign_id"], name: "index_landing_pages_on_campaign_id"
+    t.index ["entity_id", "status"], name: "index_landing_pages_on_entity_status"
     t.index ["entity_id"], name: "index_landing_pages_on_entity_id"
     t.index ["metadata"], name: "index_landing_pages_on_metadata", using: :gin
     t.index ["slug"], name: "index_landing_pages_on_slug", unique: true
@@ -956,7 +1003,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["entity_id"], name: "index_scout_messages_on_entity_id"
+    t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_and_created"
     t.index ["session_id", "created_at"], name: "index_scout_messages_on_session_id_and_created_at"
+    t.index ["session_id", "role", "content", "created_at"], name: "index_scout_messages_duplicate_detection"
+    t.index ["session_id", "role"], name: "index_scout_messages_on_session_and_role"
+    t.index ["user_id", "session_id"], name: "index_scout_messages_on_user_and_session"
     t.index ["user_id"], name: "index_scout_messages_on_user_id"
   end
 
@@ -1043,6 +1094,40 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_120000) do
     t.index ["price"], name: "index_shared_plugins_on_price"
     t.index ["tags"], name: "index_shared_plugins_on_tags", using: :gin
     t.index ["user_id"], name: "index_shared_plugins_on_user_id"
+  end
+
+  create_table "sms_campaigns", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "name", null: false
+    t.text "message_body", null: false
+    t.string "from_number"
+    t.string "status", default: "draft"
+    t.integer "total_recipients", default: 0
+    t.integer "delivered_count", default: 0
+    t.integer "failed_count", default: 0
+    t.datetime "scheduled_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "status"], name: "index_sms_campaigns_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_sms_campaigns_on_entity_id"
+  end
+
+  create_table "sms_deliveries", force: :cascade do |t|
+    t.bigint "sms_campaign_id", null: false
+    t.bigint "contact_id", null: false
+    t.string "to_number", null: false
+    t.string "twilio_sid"
+    t.string "status"
+    t.text "error_message"
+    t.datetime "delivered_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contact_id"], name: "index_sms_deliveries_on_contact_id"
+    t.index ["sms_campaign_id", "status"], name: "index_sms_deliveries_on_sms_campaign_id_and_status"
+    t.index ["sms_campaign_id"], name: "index_sms_deliveries_on_sms_campaign_id"
+    t.index ["twilio_sid"], name: "index_sms_deliveries_on_twilio_sid", unique: true
   end
 
   create_table "social_media_accounts", force: :cascade do |t|
@@ -1423,6 +1508,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_120000) do
     t.index ["workflow_execution_id"], name: "index_workflow_variables_on_workflow_execution_id"
   end
 
+  add_foreign_key "ab_test_variants", "ab_tests"
+  add_foreign_key "ab_tests", "entities"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "admin_activities", "admin_users"
@@ -1529,6 +1616,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_16_120000) do
   add_foreign_key "shared_models", "entities"
   add_foreign_key "shared_plugins", "custom_plugins"
   add_foreign_key "shared_plugins", "users"
+  add_foreign_key "sms_campaigns", "entities"
+  add_foreign_key "sms_deliveries", "contacts"
+  add_foreign_key "sms_deliveries", "sms_campaigns"
   add_foreign_key "social_media_accounts", "entities"
   add_foreign_key "social_media_accounts", "users"
   add_foreign_key "social_post_analytics", "social_posts"

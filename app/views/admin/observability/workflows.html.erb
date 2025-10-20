@@ -1,0 +1,280 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">
+      <i class="fas fa-project-diagram me-2"></i> Workflow Monitoring
+    </h1>
+
+    <div class="btn-group" role="group">
+      <%= link_to admin_observability_workflows_path(time_range: 1),
+                  class: "btn btn-sm #{params[:time_range] == '1' ? 'btn-primary' : 'btn-outline-primary'}" do %>
+        Last 24 Hours
+      <% end %>
+      <%= link_to admin_observability_workflows_path(time_range: 7),
+                  class: "btn btn-sm #{params[:time_range] == '7' || params[:time_range].nil? ? 'btn-primary' : 'btn-outline-primary'}" do %>
+        Last 7 Days
+      <% end %>
+      <%= link_to admin_observability_workflows_path(time_range: 30),
+                  class: "btn btn-sm #{params[:time_range] == '30' ? 'btn-primary' : 'btn-outline-primary'}" do %>
+        Last 30 Days
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-3">
+      <div class="card border-primary">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <h6 class="text-muted mb-1">Total Workflows</h6>
+              <h2 class="mb-0"><%= number_with_delimiter(@total_workflows) %></h2>
+            </div>
+            <div class="text-primary">
+              <i class="fas fa-tasks fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-success">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <h6 class="text-muted mb-1">Completed</h6>
+              <h2 class="mb-0"><%= number_with_delimiter(@completed_workflows) %></h2>
+            </div>
+            <div class="text-success">
+              <i class="fas fa-check-circle fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-danger">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <h6 class="text-muted mb-1">Failed</h6>
+              <h2 class="mb-0"><%= number_with_delimiter(@failed_workflows) %></h2>
+            </div>
+            <div class="text-danger">
+              <i class="fas fa-times-circle fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-info">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-grow-1">
+              <h6 class="text-muted mb-1">Success Rate</h6>
+              <h2 class="mb-0"><%= @success_rate %>%</h2>
+            </div>
+            <div class="text-info">
+              <i class="fas fa-chart-line fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workflow Trend Chart -->
+  <div class="row g-4 mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-chart-bar me-2"></i> Workflow Execution Trend
+          </h5>
+        </div>
+        <div class="card-body">
+          <canvas id="workflowTrendChart" style="height: 300px;"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workflows by Template and Entity -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-file-alt me-2"></i> Top Workflow Templates
+          </h5>
+        </div>
+        <div class="card-body">
+          <% if @workflows_by_template.any? %>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Template Name</th>
+                    <th class="text-end">Executions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @workflows_by_template.each do |template_name, count| %>
+                    <tr>
+                      <td><%= template_name || "Unknown" %></td>
+                      <td class="text-end"><%= number_with_delimiter(count) %></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <p class="text-muted mb-0">No workflow data available</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-building me-2"></i> Top Entities by Usage
+          </h5>
+        </div>
+        <div class="card-body">
+          <% if @workflows_by_entity.any? %>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Entity Name</th>
+                    <th class="text-end">Workflows</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @workflows_by_entity.each do |entity_name, count| %>
+                    <tr>
+                      <td><%= entity_name %></td>
+                      <td class="text-end"><%= number_with_delimiter(count) %></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <p class="text-muted mb-0">No entity data available</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Workflows -->
+  <div class="row g-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            <i class="fas fa-history me-2"></i> Recent Workflow Executions
+          </h5>
+          <div class="btn-group btn-group-sm">
+            <%= link_to "All", admin_observability_workflows_path(time_range: params[:time_range]),
+                        class: "btn #{@status_filter.nil? ? 'btn-primary' : 'btn-outline-primary'}" %>
+            <%= link_to "Completed", admin_observability_workflows_path(time_range: params[:time_range], status: "completed"),
+                        class: "btn #{@status_filter == 'completed' ? 'btn-success' : 'btn-outline-success'}" %>
+            <%= link_to "Failed", admin_observability_workflows_path(time_range: params[:time_range], status: "failed"),
+                        class: "btn #{@status_filter == 'failed' ? 'btn-danger' : 'btn-outline-danger'}" %>
+            <%= link_to "In Progress", admin_observability_workflows_path(time_range: params[:time_range], status: "in_progress"),
+                        class: "btn #{@status_filter == 'in_progress' ? 'btn-info' : 'btn-outline-info'}" %>
+          </div>
+        </div>
+        <div class="card-body">
+          <% if @workflows.any? %>
+            <div class="table-responsive">
+              <table class="table table-hover table-sm">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Template</th>
+                    <th>Entity</th>
+                    <th>User</th>
+                    <th>Status</th>
+                    <th>Started</th>
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @workflows.each do |workflow| %>
+                    <tr>
+                      <td><code>#<%= workflow.id %></code></td>
+                      <td><%= workflow.workflow_template_name || "N/A" %></td>
+                      <td><%= workflow.entity&.name || "N/A" %></td>
+                      <td><%= workflow.user&.email || "System" %></td>
+                      <td>
+                        <% if workflow.status == "completed" %>
+                          <span class="badge bg-success">Completed</span>
+                        <% elsif workflow.status == "failed" %>
+                          <span class="badge bg-danger">Failed</span>
+                        <% elsif workflow.status == "in_progress" %>
+                          <span class="badge bg-info">In Progress</span>
+                        <% else %>
+                          <span class="badge bg-secondary"><%= workflow.status %></span>
+                        <% end %>
+                      </td>
+                      <td><%= time_ago_in_words(workflow.created_at) %> ago</td>
+                      <td>
+                        <% if workflow.updated_at && workflow.created_at %>
+                          <%= distance_of_time_in_words(workflow.created_at, workflow.updated_at) %>
+                        <% else %>
+                          N/A
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            <% if @workflows.count >= 100 %>
+              <p class="text-muted text-center mt-3 mb-0">
+                <small>Showing first 100 workflows. Use filters to narrow results.</small>
+              </p>
+            <% end %>
+          <% else %>
+            <p class="text-muted mb-0">No workflows found matching the selected filters</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  // Workflow Trend Chart
+  const workflowCtx = document.getElementById('workflowTrendChart');
+  new Chart(workflowCtx, {
+    type: 'bar',
+    data: <%= raw @workflow_trend_chart.to_json %>,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true },
+        y: {
+          stacked: true,
+          beginAtZero: true
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+</script>
