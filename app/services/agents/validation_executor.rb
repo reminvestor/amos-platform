@@ -66,9 +66,23 @@ module Agents
         notify_progress("Some validations failed", type: "phase_warning")
       end
 
+      # Check on_failure configuration
+      on_failure = @phase[:on_failure] || @phase["on_failure"] || {}
+      failure_action = on_failure[:action] || on_failure["action"] || "fail"
+
+      # If on_failure.action is "report_only", treat validation failures as warnings, not errors
+      final_status = if all_passed
+                       "completed"
+                     elsif failure_action == "report_only"
+                       Rails.logger.info "✓ ValidationExecutor: Validation failed but on_failure=report_only, marking as completed"
+                       "completed"
+                     else
+                       "failed"
+                     end
+
       {
-        success: all_passed,
-        status: all_passed ? "completed" : "failed",
+        success: all_passed || failure_action == "report_only",  # Success if passed OR report_only
+        status: final_status,
         validation_results: validation_results,
         phase: phase_id,
         message: all_passed ? (@phase["success_message"] || @phase[:success_message]) : nil

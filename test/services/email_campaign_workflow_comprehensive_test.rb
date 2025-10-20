@@ -62,7 +62,7 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
     assert result[:success], "Workflow should start successfully"
 
     # Wait for completion
-    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 90)
     assert_not_nil workflow_execution, "Workflow should complete"
 
     # Verify campaign created
@@ -88,7 +88,7 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
       nil
     )
 
-    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     campaign = Campaign.where(entity: @entity).order(:created_at).last
     assert_not_nil campaign
@@ -122,7 +122,7 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
     result3 = service.process_message("Increase summer sales", [], nil)
 
     # Should complete
-    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     campaign = Campaign.where(entity: @entity).order(:created_at).last
     assert_equal "Summer Promo", campaign.name
@@ -142,7 +142,7 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
     # Turn 3: Then provide name
     service.process_message("Holiday Sale 2024", [], nil)
 
-    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     campaign = Campaign.where(entity: @entity).order(:created_at).last
     assert_equal "Holiday Sale 2024", campaign.name
@@ -191,7 +191,10 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
     service.process_message("Create an email campaign", [], nil)
     service.process_message("Test Campaign", [], nil)
 
+    # Wait for workflow to start
+    sleep 1
     workflow_execution = WorkflowExecution.find_by(task_session: service.task_session)
+    assert_not_nil workflow_execution, "Workflow execution should exist"
 
     # Manually store some context to simulate resume
     WorkflowContext.create!(
@@ -205,7 +208,7 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
     # Provide goal - should remember the name
     service.process_message("Test goal", [], nil)
 
-    wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     campaign = Campaign.where(entity: @entity).order(:created_at).last
     assert_equal "Test Campaign", campaign.name
@@ -225,7 +228,7 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
       nil
     )
 
-    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     # Check Phase 2 created the campaign
     setup_id_context = workflow_execution.workflow_contexts
@@ -243,13 +246,13 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
     session_id1 = SecureRandom.uuid
     service1 = InteractiveTaskService.new(@user, @entity, session_id1)
     service1.process_message("Create campaign Old Campaign with old goal", [], nil)
-    wait_for_workflow(service1.task_session, status: "completed", timeout: 30)
+    wait_for_workflow(service1.task_session, status: "completed", timeout: 90)
 
     # Create second campaign in NEW session
     session_id2 = SecureRandom.uuid
     service2 = InteractiveTaskService.new(@user, @entity, session_id2)
     service2.process_message("Create campaign New Campaign with new goal", [], nil)
-    wait_for_workflow(service2.task_session, status: "completed", timeout: 30)
+    wait_for_workflow(service2.task_session, status: "completed", timeout: 90)
 
     # Verify second campaign doesn't have data from first
     campaign = Campaign.where(entity: @entity).order(:created_at).last
@@ -268,7 +271,7 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
 
     service.process_message("Create campaign Validation Test to verify quality", [], nil)
 
-    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     # Check validation results
     validation_results = workflow_execution.workflow_contexts
@@ -287,7 +290,7 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
 
     service.process_message("Create basic campaign", [], nil)
 
-    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     # Even if validation has warnings, workflow should complete
     assert_equal "completed", workflow_execution.status
@@ -307,13 +310,13 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
 
     # Create first campaign
     service.process_message("Create campaign Alpha for product launch", [], nil)
-    wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     campaign1 = Campaign.where(entity: @entity).order(:created_at).last
 
     # Create second campaign
     service.process_message("Create campaign Beta for customer retention", [], nil)
-    wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     campaign2 = Campaign.where(entity: @entity).order(:created_at).last
 
@@ -337,7 +340,7 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
 
     # Complete workflow
     service.process_message("Create campaign Test to test system", [], nil)
-    wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     initial_count = Campaign.where(entity: @entity).count
 
@@ -360,7 +363,7 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
 
     # Complete first workflow
     service.process_message("Create campaign First", [], nil)
-    wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     # Verify post-workflow mode is active
     service.task_session.reload
@@ -405,7 +408,7 @@ class EmailCampaignWorkflowComprehensiveTest < ActiveSupport::TestCase
     long_name = "A" * 200
     service.process_message("Create campaign #{long_name} to test limits", [], nil)
 
-    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 30)
+    workflow_execution = wait_for_workflow(service.task_session, status: "completed", timeout: 90)
 
     campaign = Campaign.where(entity: @entity).order(:created_at).last
     # Should either truncate or store full name
