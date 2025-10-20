@@ -11,7 +11,14 @@
           <div class="card h-100 shadow-sm">
             <% if asset.file.attached? %>
               <% if asset.file.content_type.start_with?('image/') %>
-                <%= image_tag asset.file.variant(resize_to_fill: [400, 250]).processed, class: 'card-img-top', alt: asset.display_title %>
+                <% begin %>
+                  <%= image_tag asset.file.variant(resize_to_fill: [400, 250]).processed, class: 'card-img-top', alt: asset.display_title %>
+                <% rescue ActiveStorage::FileNotFoundError => e %>
+                  <div class="card-img-top bg-warning bg-opacity-10 d-flex align-items-center justify-content-center" style="height: 250px;">
+                    <i class="fas fa-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
+                    <small class="text-muted ms-2">File not found</small>
+                  </div>
+                <% end %>
               <% elsif asset.file.content_type == 'application/pdf' %>
                 <div class="card-img-top bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="height: 250px;">
                   <i class="fas fa-file-pdf text-danger" style="font-size: 4rem;"></i>

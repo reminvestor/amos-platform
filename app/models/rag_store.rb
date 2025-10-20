@@ -6,7 +6,7 @@ class RagStore < ApplicationRecord
   enum :store_type, {
     system: 'system',  # AMOS's shared knowledge (integrations, help docs)
     entity: 'entity'   # Customer-specific isolated knowledge
-  }, prefix: true
+  }, prefix: true, _type: :string
 
   # Validations
   validates :name, presence: true
