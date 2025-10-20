@@ -334,6 +334,17 @@ Rails.application.routes.draw do
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
 
+  # A/B Testing routes
+  resources :ab_tests do
+    member do
+      post :start
+      post :pause
+      post :resume
+      post :stop
+      post :complete
+    end
+  end
+
   # Integration management
   resources :integrations, only: [ :index ]
   get "integrations/connect/:slug", to: "integrations#connect", as: :connect_integration
