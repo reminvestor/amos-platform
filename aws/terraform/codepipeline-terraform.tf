@@ -8,8 +8,8 @@ resource "aws_codebuild_project" "terraform" {
   }
 
   environment {
-    compute_type                = "BUILD_GENERAL1_SMALL"
-    image                      = "hashicorp/terraform:1.5"
+    compute_type                = "BUILD_GENERAL1_MEDIUM"
+    image                      = "hashicorp/terraform:1.6"
     type                       = "LINUX_CONTAINER"
     image_pull_credentials_type = "SERVICE_ROLE"
     privileged_mode            = false
