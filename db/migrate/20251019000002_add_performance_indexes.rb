@@ -6,10 +6,10 @@ class AddPerformanceIndexes < ActiveRecord::Migration[8.0]
                 name: 'index_email_deliveries_on_campaign_status_sent'
     end
 
-    # Workflow contexts - queried by execution and phase
-    unless index_exists?(:workflow_contexts, [:workflow_execution_id, :phase])
-      add_index :workflow_contexts, [:workflow_execution_id, :phase],
-                name: 'index_workflow_contexts_on_execution_phase'
+    # Workflow contexts - queried by execution and key
+    unless index_exists?(:workflow_contexts, [:workflow_execution_id, :key])
+      add_index :workflow_contexts, [:workflow_execution_id, :key],
+                name: 'index_workflow_contexts_on_execution_key'
     end
 
     # Affiliate clicks - frequently queried for analytics
@@ -55,9 +55,9 @@ class AddPerformanceIndexes < ActiveRecord::Migration[8.0]
                   name: 'index_integration_logs_on_connection_created'
       end
 
-      unless index_exists?(:integration_logs, [:status])
-        add_index :integration_logs, [:status],
-                  name: 'index_integration_logs_on_status'
+      unless index_exists?(:integration_logs, [:response_status])
+        add_index :integration_logs, [:response_status],
+                  name: 'index_integration_logs_on_response_status'
       end
     end
   end
