@@ -109,7 +109,7 @@
       "name": "solid-queue-worker",
       "image": "637423327454.dkr.ecr.us-east-1.amazonaws.com/agent-marketing:latest",
       "essential": true,
-      "command": ["bundle", "exec", "solid_queue", "start"],
+      "command": ["bundle", "exec", "rails", "solid_queue:start"],
       "environment": [
         {
           "name": "RAILS_ENV",
