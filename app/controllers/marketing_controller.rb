@@ -2,6 +2,8 @@ class MarketingController < ApplicationController
   include AffiliateTracking
 
   skip_before_action :authenticate_user!
+  skip_before_action :check_subscription_status
+  skip_before_action :check_onboarding_status
   layout "marketing"
 
   def index

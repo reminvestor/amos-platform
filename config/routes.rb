@@ -47,8 +47,7 @@ Rails.application.routes.draw do
   end
 
   # Routes with constraints on subdomain - application routes for 'app' subdomain
-  # TEMP: For local development without subdomain support
-  constraints(lambda { |req| req.subdomain.blank? || req.subdomain == "app" }) do
+  constraints(lambda { |req| req.subdomain == "app" }) do
     # Solid Queue Interface
     authenticate :user, lambda { |u| u.admin? } do
       mount SolidQueueInterface::Engine => "/solid_queue"
@@ -288,20 +287,16 @@ Rails.application.routes.draw do
   end
 
   # Routes for marketing site (no subdomain or www subdomain)
-  # TEMP: Disabled for local development - app routes take precedence
-  # constraints(lambda { |req| !req.subdomain.present? || req.subdomain == 'www' }) do
-  #   # Marketing site routes
-  #   get '/', to: 'marketing#index', as: :marketing_root
-  #   get '/features', to: 'marketing#features', as: :marketing_features
-  #   get '/pricing', to: 'marketing#pricing', as: :marketing_pricing
-  #   get '/about', to: 'marketing#about', as: :marketing_about
-  #   get '/contact', to: 'marketing#contact', as: :marketing_contact
-  #   get '/help', to: 'marketing#help', as: :marketing_help
-  #   post '/contact', to: 'marketing#contact_submit', as: :marketing_contact_submit
-  #
-  #   # Set the root path for marketing site
-  #   root 'marketing#index'
-  # end
+  constraints(lambda { |req| !req.subdomain.present? || req.subdomain == 'www' }) do
+    # Marketing site routes
+    get '/', to: 'marketing#index', as: :marketing_root
+    get '/features', to: 'marketing#features', as: :marketing_features
+    get '/pricing', to: 'marketing#pricing', as: :marketing_pricing
+    get '/about', to: 'marketing#about', as: :marketing_about
+    get '/contact', to: 'marketing#contact', as: :marketing_contact
+    post '/contact', to: 'marketing#contact_submit', as: :marketing_contact_submit
+    get '/help', to: 'marketing#help', as: :marketing_help
+  end
 
   # Debug routes for troubleshooting
   get "debug", to: "debug#index"
@@ -504,6 +499,6 @@ Rails.application.routes.draw do
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Default root path for tests and unauthenticated users
-  root to: redirect("/chat")
+  # Default root path for tests and unauthenticated users (only applies when no other root is defined)
+  # root to: redirect("/chat")
 end
