@@ -353,7 +353,7 @@ Rails.application.routes.draw do
   post "integrations/connect/:slug", to: "integrations#create_connection", as: :create_connection_integration
 
   # User-facing connections actions
-  resources :connections, only: [] do
+  resources :connections, only: [:destroy] do
     member do
       post :test
       get :operations

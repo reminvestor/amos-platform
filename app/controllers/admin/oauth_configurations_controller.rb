@@ -29,11 +29,30 @@ class Admin::OauthConfigurationsController < Admin::BaseController
     
     @oauth_configuration = OauthConfiguration.new(integration: @integration)
     
-    # Pre-fill with integration defaults
-    @oauth_configuration.redirect_uri = "https://app.agentmarketing.com/integrations/callback/#{@integration.slug}"
-    @oauth_configuration.authorize_url = @integration.auth_config["authorize_url"]
-    @oauth_configuration.token_url = @integration.auth_config["token_url"]
-    @oauth_configuration.scopes = @integration.auth_config["scopes"]&.join(", ")
+    # Pre-fill with integration defaults for OAuth
+    if @integration.oauth?
+      @oauth_configuration.redirect_uri = "https://app.agentmarketing.com/integrations/callback/#{@integration.slug}"
+      @oauth_configuration.authorize_url = @integration.auth_config["authorize_url"]
+      @oauth_configuration.token_url = @integration.auth_config["token_url"]
+      @oauth_configuration.scopes = @integration.auth_config["scopes"]&.join(", ")
+    else
+      # Pre-populate with legacy auth config if it exists
+      legacy_params = @integration.current_auth_params
+      
+      if legacy_params.any?
+        legacy_params.each_with_index do |param, index|
+          @oauth_configuration.auth_configs.build(
+            auth_key: param[:key],
+            auth_value: param[:value],
+            auth_placement: param[:placement],
+            position: index
+          )
+        end
+      else
+        # Build 3 empty auth_configs for manual entry
+        3.times { @oauth_configuration.auth_configs.build }
+      end
+    end
   end
 
   def create
@@ -42,7 +61,7 @@ class Admin::OauthConfigurationsController < Admin::BaseController
 
     if @oauth_configuration.save
       redirect_to admin_integration_path(@integration),
-                  notice: "OAuth configuration was successfully created for #{@integration.name}."
+                  notice: "Authentication configuration was successfully created for #{@integration.name}."
     else
       render :new, status: :unprocessable_entity
     end
@@ -50,6 +69,7 @@ class Admin::OauthConfigurationsController < Admin::BaseController
 
   def edit
     @integration = @oauth_configuration.integration
+    # Don't auto-create empty fields on edit - only show what exists
   end
 
   def update
@@ -82,7 +102,10 @@ class Admin::OauthConfigurationsController < Admin::BaseController
   def oauth_configuration_params
     params.require(:oauth_configuration).permit(
       :client_id, :client_secret, :redirect_uri, :scopes, :status,
-      :authorize_url, :token_url, credentials: {}, metadata: {}
+      :authorize_url, :token_url, 
+      credentials: {}, 
+      metadata: {},
+      auth_configs_attributes: [:id, :auth_key, :auth_value, :auth_placement, :position, :_destroy]
     )
   end
 

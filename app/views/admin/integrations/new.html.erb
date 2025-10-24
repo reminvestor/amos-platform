@@ -1,0 +1,130 @@
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col">
+      <h1><i class="fas fa-plus"></i> New Integration</h1>
+      <p class="text-muted">Add a new integration to the platform</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <%= form_with(model: [:admin, @integration], local: true) do |f| %>
+            <% if @integration.errors.any? %>
+              <div class="alert alert-danger">
+                <h5>Errors:</h5>
+                <ul class="mb-0">
+                  <% @integration.errors.full_messages.each do |msg| %>
+                    <li><%= msg %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <div class="mb-3">
+              <%= f.label :name, class: "form-label" %>
+              <%= f.text_field :name, class: "form-control", placeholder: "e.g., Google Sheets" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :slug, class: "form-label" %>
+              <%= f.text_field :slug, class: "form-control", placeholder: "e.g., google_sheets" %>
+              <div class="form-text">URL-friendly identifier (lowercase, underscores)</div>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :description, class: "form-label" %>
+              <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Brief description of the integration" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :category, class: "form-label" %>
+              <%= f.select :category, 
+                  options_for_select(['payment', 'ecommerce', 'crm', 'communication', 'productivity', 'marketing', 'analytics', 'custom']),
+                  { prompt: "Select a category" }, class: "form-select" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :auth_type, "Authentication Type", class: "form-label" %>
+              <%= f.select :auth_type, 
+                  options_for_select(Integration.auth_types.keys.map { |k| [k.humanize, k] }),
+                  { prompt: "Select auth type" }, class: "form-select" %>
+              <div class="form-text">
+                <strong>Auth Types:</strong><br>
+                • <strong>API Key</strong> - Simple API key authentication<br>
+                • <strong>Bearer Token</strong> - Token-based authentication<br>
+                • <strong>Basic Auth</strong> - Username/password (like Stripe)<br>
+                • <strong>OAuth2</strong> - OAuth 2.0 (configure after creation)<br>
+                • <strong>Custom</strong> - Special authentication methods
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :api_base_url, "API Base URL", class: "form-label" %>
+              <%= f.text_field :api_base_url, class: "form-control", placeholder: "https://api.example.com/v1" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :documentation_url, "Documentation URL (optional)", class: "form-label" %>
+              <%= f.text_field :documentation_url, class: "form-control", placeholder: "https://developer.example.com/docs" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :icon_url, "Icon URL (optional)", class: "form-label" %>
+              <%= f.text_field :icon_url, class: "form-control", placeholder: "https://example.com/icon.png" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.check_box :is_active, class: "form-check-input", checked: true %>
+              <%= f.label :is_active, "Active", class: "form-check-label" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.check_box :is_verified, class: "form-check-input" %>
+              <%= f.label :is_verified, "Verified", class: "form-check-label" %>
+              <div class="form-text">Mark as verified/official integration</div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <%= f.submit "Create Integration", class: "btn btn-primary" %>
+              <%= link_to "Cancel", admin_integrations_path, class: "btn btn-outline-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="alert alert-info mt-3">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Next Steps:</strong> After creating the integration, configure authentication details by clicking "Auth Config" button.
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Tips</h5>
+        </div>
+        <div class="card-body">
+          <p><strong>Slug Requirements:</strong></p>
+          <ul class="small">
+            <li>Lowercase letters and underscores only</li>
+            <li>Must be unique</li>
+            <li>Used in URLs and callbacks</li>
+          </ul>
+
+          <p class="mt-3"><strong>OAuth Integrations:</strong></p>
+          <p class="small">
+            After creating an OAuth2 integration, click "Auth Config" to set up client ID, client secret, and redirect URIs.
+          </p>
+
+          <p class="mt-3"><strong>Need Help?</strong></p>
+          <p class="small">
+            Check <code>docs/ADDING_INTEGRATIONS.md</code> for detailed instructions.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_24_161418) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_24_170748) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -255,6 +255,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_161418) do
     t.index ["operation_id"], name: "index_artifacts_on_operation_id"
     t.index ["storage_ref"], name: "index_artifacts_on_storage_ref"
     t.index ["user_id"], name: "index_artifacts_on_user_id"
+  end
+
+  create_table "auth_configs", force: :cascade do |t|
+    t.bigint "oauth_configuration_id", null: false
+    t.string "auth_key", null: false
+    t.string "auth_value"
+    t.string "auth_placement", default: "header", null: false
+    t.integer "position", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["oauth_configuration_id", "position"], name: "index_auth_configs_on_oauth_configuration_id_and_position"
+    t.index ["oauth_configuration_id"], name: "index_auth_configs_on_oauth_configuration_id"
   end
 
   create_table "business_insights", force: :cascade do |t|
@@ -835,9 +847,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_161418) do
 
   create_table "oauth_configurations", force: :cascade do |t|
     t.bigint "integration_id", null: false
-    t.string "client_id", null: false
-    t.string "client_secret", null: false
-    t.string "redirect_uri", null: false
+    t.string "client_id"
+    t.string "client_secret"
+    t.string "redirect_uri"
     t.text "scopes"
     t.jsonb "credentials", default: {}
     t.jsonb "metadata", default: {}
@@ -1558,6 +1570,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_161418) do
   add_foreign_key "analytics_query_logs", "users"
   add_foreign_key "artifacts", "entities"
   add_foreign_key "artifacts", "users"
+  add_foreign_key "auth_configs", "oauth_configurations"
   add_foreign_key "business_insights", "entities"
   add_foreign_key "business_insights", "scout_conversations", column: "source_conversation_id"
   add_foreign_key "business_profiles", "entities"

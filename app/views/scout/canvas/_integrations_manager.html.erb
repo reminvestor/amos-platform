@@ -54,6 +54,10 @@
                           onclick="loadOperationsCanvas(<%= connection[:id] %>, '<%= connection[:integration][:name] %>', '<%= connection[:name] %>')">
                     <i class="fas fa-cogs"></i> Operations
                   </button>
+                  <button class="btn btn-sm btn-outline-danger"
+                          onclick="disconnectIntegration(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')">
+                    <i class="bi bi-link-45deg"></i> Disconnect
+                  </button>
                 </div>
               </div>
             </div>
@@ -173,6 +177,9 @@ function loadConnectionCanvas(slug) {
     return;
   }
   
+  console.log('🔍 Loading connection canvas for:', integration.name);
+  console.log('🔍 Auth configs:', integration.auth_configs);
+  
   const canvasData = {
     integration: integration,
     user_email: '<%= current_user.email %>'
@@ -216,6 +223,39 @@ function testConnection(connectionId, integrationName) {
       console.error('Test connection error:', err)
       showNotification('error', `Failed to test ${integrationName} connection`)
       sendMessageToAI(`❌ Failed to test ${integrationName} connection (ID: ${connectionId}) - there was a network or server error. Please check the connection setup.`)
+    })
+}
+
+function disconnectIntegration(connectionId, integrationName) {
+  if (!confirm(`Disconnect from ${integrationName}? You can reconnect anytime.`)) {
+    return;
+  }
+  
+  fetch(`/connections/${connectionId}`, {
+    method: 'DELETE',
+    headers: {
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '<%= form_authenticity_token %>',
+      'Accept': 'application/json'
+    }
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        showNotification('success', `Disconnected from ${integrationName}`)
+        sendMessageToAI(`✅ Disconnected from ${integrationName}. Refreshing integrations list...`)
+        // Reload the integrations canvas
+        setTimeout(() => {
+          window.location.href = '/scout?load=integrations';
+        }, 1000);
+      } else {
+        showNotification('error', data.error || 'Failed to disconnect')
+        sendMessageToAI(`❌ Failed to disconnect from ${integrationName}: ${data.error || 'Unknown error'}`)
+      }
+    })
+    .catch(err => {
+      console.error('Disconnect error:', err)
+      showNotification('error', `Failed to disconnect from ${integrationName}`)
+      sendMessageToAI(`❌ Error disconnecting from ${integrationName}: ${err.message}`)
     })
 }
 

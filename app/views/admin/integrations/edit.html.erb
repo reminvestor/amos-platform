@@ -40,8 +40,31 @@
             <div class="mb-3">
               <%= f.label :category, class: "form-label" %>
               <%= f.select :category, 
-                  options_for_select(['payment', 'email', 'crm', 'analytics', 'social', 'other'], @integration.category),
+                  options_for_select(['payment', 'ecommerce', 'crm', 'communication', 'productivity', 'marketing', 'analytics', 'custom'], @integration.category),
                   {}, class: "form-select" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :auth_type, "Authentication Type", class: "form-label" %>
+              <%= f.select :auth_type, 
+                  options_for_select(Integration.auth_types.keys.map { |k| [k.humanize, k] }, @integration.auth_type),
+                  {}, class: "form-select", 
+                  data: { controller: "auth-type-warning" } %>
+              <% if @integration.connections.any? %>
+                <div class="alert alert-warning mt-2 mb-0">
+                  <i class="fas fa-exclamation-triangle me-2"></i>
+                  <strong>Warning:</strong> This integration has <%= @integration.connections.count %> active connection(s). 
+                  Changing the authentication type may break existing connections. Users will need to reconnect.
+                </div>
+              <% end %>
+              <div class="form-text">
+                <strong>Auth Types:</strong><br>
+                • <strong>API Key</strong> - Simple API key authentication<br>
+                • <strong>Bearer Token</strong> - Token-based authentication<br>
+                • <strong>Basic Auth</strong> - Username/password (like Stripe)<br>
+                • <strong>OAuth2</strong> - OAuth 2.0 (requires OAuth config)<br>
+                • <strong>Custom</strong> - Special authentication methods
+              </div>
             </div>
 
             <div class="mb-3">
