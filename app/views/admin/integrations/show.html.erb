@@ -123,8 +123,8 @@
 
     <!-- Sidebar -->
     <div class="col-lg-4">
-      <!-- OAuth Configurations (for oauth2_custom integrations) -->
-      <% if @integration.oauth2_custom? %>
+      <!-- OAuth Configurations (for OAuth integrations) -->
+      <% if @integration.oauth? %>
         <div class="card border-0 shadow-sm mb-3">
           <div class="card-header bg-white">
             <h5 class="mb-0"><i class="fas fa-key"></i> OAuth Configuration</h5>
