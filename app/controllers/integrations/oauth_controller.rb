@@ -97,9 +97,9 @@ class Integrations::OauthController < ApplicationController
         redirect_to integrations_path, alert: "Please configure OAuth credentials first"
         return
       end
-      oauth_config.credentials
+      oauth_config.oauth_credentials
     else
-      # Use pre-configured credentials
+      # Use pre-configured credentials from integration
       @integration.auth_config
     end
   end
