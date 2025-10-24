@@ -15,6 +15,13 @@ class ScoutController < ApplicationController
     # Load available RAG stores for the entity
     @rag_stores = RagLoaderService.load_for_entity(current_entity)
 
+    # Check if user recently created a landing page (within last 5 minutes)
+    # This helps users who missed the streaming response know their page was created
+    recent_landing_page = current_entity.landing_pages.where(created_at: 5.minutes.ago..Time.current).first
+    if recent_landing_page
+      flash.now[:success] = "🎉 Your landing page '#{recent_landing_page.title}' was created successfully! You can access it from the Landing Pages section."
+    end
+
     # If this is a fresh start, add Scout's welcome message and load default canvas
     if @conversation_history.empty?
       create_welcome_message
@@ -664,6 +671,24 @@ class ScoutController < ApplicationController
         integration: e.integration_name,
         action: "Please check your #{e.integration_name} connection in Settings > Integrations."
       })
+    rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
+      # Client disconnected - this is normal, not an error
+      Rails.logger.info "Client disconnected during chat stream: #{e.message}"
+      puts "ℹ️ Client disconnected (normal): #{e.message}"
+      STDOUT.flush
+      
+      # Check if a landing page was created successfully before disconnection
+      # This helps users know their request completed even if streaming failed
+      if @workflow_engine&.workflow_execution&.status == "completed"
+        Rails.logger.info "Workflow completed successfully before client disconnect"
+        
+        # Store a notification for the user about the successful completion
+        # This will be shown when they next access the interface
+        if @workflow_engine.workflow_execution.workflow_spec&.dig('name')&.downcase&.include?('landing page')
+          Rails.logger.info "Landing page workflow completed successfully"
+          # The landing page was created - user can access it through the normal interface
+        end
+      end
     rescue StandardError => e
       Rails.logger.error "Scout streaming chat error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
@@ -1044,6 +1069,11 @@ class ScoutController < ApplicationController
 
     puts "✅ Content chunk streamed successfully"
     STDOUT.flush
+  rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
+    # Client disconnected - this is normal, not an error
+    Rails.logger.info "Client disconnected during content streaming: #{e.message}"
+    puts "ℹ️ Client disconnected (normal): #{e.message}"
+    STDOUT.flush
   rescue => e
     Rails.logger.error "Stream content chunk error: #{e.message}"
     puts "❌ Stream content chunk error: #{e.message}"
@@ -1066,7 +1096,13 @@ class ScoutController < ApplicationController
 
     puts "✅ Update streamed successfully"
     STDOUT.flush
+  rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
+    # Client disconnected - this is normal, not an error
+    Rails.logger.info "Client disconnected during streaming: #{e.message}"
+    puts "ℹ️ Client disconnected (normal): #{e.message}"
+    STDOUT.flush
   rescue => e
+    Rails.logger.error "Stream update failed: #{e.message}"
     puts "❌ Stream update failed: #{e.message}"
     STDOUT.flush
   end
@@ -1159,6 +1195,9 @@ class ScoutController < ApplicationController
 
     Rails.logger.info "Streamed final response"
 
+  rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
+    # Client disconnected - this is normal, not an error
+    Rails.logger.info "Client disconnected during final response: #{e.message}"
   rescue => e
     Rails.logger.error "Stream final response error: #{e.message}"
   end
