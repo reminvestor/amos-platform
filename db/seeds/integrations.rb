@@ -764,9 +764,6 @@ quickbooks = Integration.find_or_create_by!(slug: 'quickbooks') do |i|
     authorize_url: 'https://appcenter.intuit.com/connect/oauth2',
     token_url: 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
     scopes: [ 'com.intuit.quickbooks.accounting' ],
-    client_id: ENV['QUICKBOOKS_CLIENT_ID'],
-    client_secret: ENV['QUICKBOOKS_CLIENT_SECRET'],
-    redirect_uri: 'https://app.agentmarketing.com/integrations/callback/quickbooks',
     use_basic_auth: true  # QuickBooks requires basic auth for token exchange
   }
   i.metadata = {

@@ -8,6 +8,12 @@ class Integrations::OauthController < ApplicationController
     
     # Validate credentials exist
     return if credentials.nil?
+    
+    # Debug logging
+    Rails.logger.info "🔍 OAuth authorize - Integration: #{@integration.slug}"
+    Rails.logger.info "🔍 Credentials keys: #{credentials.keys}"
+    Rails.logger.info "🔍 Client ID present: #{credentials['client_id'].present?}"
+    Rails.logger.info "🔍 Client ID value: #{credentials['client_id']&.first(10)}..."
 
     # Store state for security
     session[:oauth_state] = SecureRandom.hex(16)
@@ -15,6 +21,8 @@ class Integrations::OauthController < ApplicationController
 
     # Build authorization URL
     auth_url = build_authorization_url(credentials, session[:oauth_state])
+    
+    Rails.logger.info "🔍 Authorization URL: #{auth_url}"
 
     redirect_to auth_url, allow_other_host: true
   end
@@ -93,18 +101,15 @@ class Integrations::OauthController < ApplicationController
   end
 
   def build_oauth_credentials
-    if @integration.oauth2_custom?
-      # Get platform-wide OAuth configuration
-      oauth_config = OauthConfiguration.find_by(integration: @integration)
-      unless oauth_config
-        redirect_to integrations_path, alert: "OAuth configuration not found. Please contact support."
-        return
-      end
-      oauth_config.credentials
-    else
-      # Use pre-configured credentials from integration
-      @integration.auth_config
+    # Get platform-wide OAuth configuration from database
+    oauth_config = OauthConfiguration.find_by(integration: @integration)
+    
+    unless oauth_config
+      redirect_to integrations_path, alert: "#{@integration.name} OAuth has not been configured yet. Please contact support."
+      return nil
     end
+    
+    oauth_config.credentials
   end
 
   def build_authorization_url(credentials, state)

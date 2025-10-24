@@ -15,8 +15,7 @@ class Integration < ApplicationRecord
     bearer_token: 1,
     basic_auth: 2,
     oauth2: 3,
-    oauth2_custom: 4,
-    custom: 5
+    custom: 4  # Reserved for user-managed OAuth apps (future)
   }
 
   # Scopes
@@ -28,11 +27,12 @@ class Integration < ApplicationRecord
   after_initialize :set_defaults, if: :new_record?
 
   def oauth?
-    oauth2? || oauth2_custom?
+    oauth2?
   end
 
-  def requires_user_oauth_app?
-    oauth2_custom?
+  def requires_admin_config?
+    # All auth types can be configured by admin
+    true
   end
 
   def connected_for?(user)
