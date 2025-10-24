@@ -56,14 +56,23 @@ class Integrations::OauthController < ApplicationController
         name: "OAuth Token"
       )
 
+      # Build credentials hash
+      credentials_hash = {
+        access_token: token_response["access_token"],
+        refresh_token: token_response["refresh_token"],
+        token_type: token_response["token_type"],
+        expires_in: token_response["expires_in"],
+        scope: token_response["scope"]
+      }
+      
+      # For QuickBooks, store the realmId (company ID) from callback params
+      if @integration.slug == "quickbooks" && params[:realmId].present?
+        credentials_hash[:realm_id] = params[:realmId]
+        credentials_hash[:company_id] = params[:realmId] # Alias for compatibility
+      end
+
       credential.assign_attributes(
-        credentials: {
-          access_token: token_response["access_token"],
-          refresh_token: token_response["refresh_token"],
-          token_type: token_response["token_type"],
-          expires_in: token_response["expires_in"],
-          scope: token_response["scope"]
-        },
+        credentials: credentials_hash,
         auth_method: "bearer",
         expires_at: token_response["expires_in"] ? Time.current + token_response["expires_in"].seconds : nil,
         status: :active

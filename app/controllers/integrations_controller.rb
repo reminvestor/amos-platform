@@ -98,9 +98,15 @@ class IntegrationsController < ApplicationController
       # Build credentials from dynamic auth_configs
       credentials = {}
       oauth_config.auth_configs.each do |auth_config|
-        param_value = params[auth_config.auth_key]
-        if param_value.present?
-          credentials[auth_config.auth_key] = param_value
+        # Extract placeholder names from auth_value like {api_key}, {token}, etc.
+        placeholders = auth_config.auth_value.scan(/\{(\w+)\}/).flatten
+        
+        # Look for each placeholder in params
+        placeholders.each do |placeholder|
+          param_value = params[placeholder] || params[placeholder.to_sym]
+          if param_value.present?
+            credentials[placeholder] = param_value
+          end
         end
       end
       return credentials
