@@ -7,6 +7,13 @@ class LandingPagesController < ApplicationController
 
   def index
     @landing_pages = current_user.landing_pages.where(entity_id: current_entity.id).order(created_at: :desc)
+    
+    # Check if user recently created a landing page (within last 5 minutes)
+    # This helps users who missed the streaming response know their page was created
+    recent_landing_page = @landing_pages.where(created_at: 5.minutes.ago..Time.current).first
+    if recent_landing_page
+      flash.now[:success] = "🎉 Your landing page '#{recent_landing_page.title}' was created successfully! You can edit it below."
+    end
   end
 
   def show
