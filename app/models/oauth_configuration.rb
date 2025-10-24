@@ -1,9 +1,16 @@
 class OauthConfiguration < ApplicationRecord
   belongs_to :integration
+  has_many :auth_configs, dependent: :destroy
+  
+  accepts_nested_attributes_for :auth_configs, allow_destroy: true, reject_if: :all_blank
 
   # Validations
-  validates :client_id, :client_secret, :redirect_uri, presence: true
   validates :integration_id, uniqueness: { message: "already has an OAuth configuration" }
+  
+  # OAuth-specific validations
+  with_options if: -> { integration&.oauth? } do
+    validates :client_id, :client_secret, :redirect_uri, presence: true
+  end
 
   # Enums
   enum :status, {

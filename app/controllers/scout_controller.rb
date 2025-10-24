@@ -781,10 +781,13 @@ class ScoutController < ApplicationController
         canvas_title = "Campaign Editor"
       when "integrations_manager"
         # Always fetch integrations data for this canvas
-        integrations = Integration.where(is_active: true).order(:name)
+        integrations = Integration.includes(oauth_configurations: :auth_configs).where(is_active: true).order(:name)
         connections = current_user.connections.includes(:integration)
 
         canvas_data[:integrations] = integrations.map do |integration|
+          oauth_config = integration.oauth_configurations.first
+          auth_configs = oauth_config&.auth_configs&.order(:position) || []
+          
           {
             id: integration.id,
             name: integration.name,
@@ -795,7 +798,15 @@ class ScoutController < ApplicationController
             icon_url: integration.icon_url,
             is_verified: integration.is_verified,
             operations_count: integration.integration_operations.count,
-            is_connected: connections.any? { |c| c.integration_id == integration.id && c.status == "connected" }
+            is_connected: connections.any? { |c| c.integration_id == integration.id && c.status == "connected" },
+            auth_configs: auth_configs.map do |ac|
+              {
+                auth_key: ac.auth_key,
+                auth_value: ac.auth_value,
+                auth_placement: ac.auth_placement,
+                position: ac.position
+              }
+            end
           }
         end
 

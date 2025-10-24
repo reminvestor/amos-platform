@@ -8,6 +8,7 @@ class IntegrationsController < ApplicationController
 
   def connect
     @integration = Integration.find_by!(slug: params[:slug])
+    @oauth_config = OauthConfiguration.includes(:auth_configs).find_by(integration: @integration)
 
     case @integration.auth_type
     when "oauth2", "oauth2_custom"
@@ -90,6 +91,22 @@ class IntegrationsController < ApplicationController
   private
 
   def build_credentials_from_params
+    # Check if integration has database-configured auth_configs
+    oauth_config = OauthConfiguration.includes(:auth_configs).find_by(integration: @integration)
+    
+    if oauth_config && oauth_config.auth_configs.any?
+      # Build credentials from dynamic auth_configs
+      credentials = {}
+      oauth_config.auth_configs.each do |auth_config|
+        param_value = params[auth_config.auth_key]
+        if param_value.present?
+          credentials[auth_config.auth_key] = param_value
+        end
+      end
+      return credentials
+    end
+    
+    # Fallback to static auth type mapping
     case @integration.auth_type
     when "api_key"
       { "api_key" => params[:api_key] }
