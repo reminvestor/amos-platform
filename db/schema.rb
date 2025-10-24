@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_19_000005) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_24_032546) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -815,6 +815,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_19_000005) do
     t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
   end
 
+  create_table "o_auth_configurations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "integration_id", null: false
+    t.string "client_id", null: false
+    t.string "client_secret", null: false
+    t.string "redirect_uri", null: false
+    t.text "scopes"
+    t.string "authorize_url", null: false
+    t.string "token_url", null: false
+    t.text "credentials"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id"], name: "index_o_auth_configurations_on_client_id"
+    t.index ["entity_id", "integration_id"], name: "index_oauth_configs_on_entity_integration", unique: true
+    t.index ["entity_id"], name: "index_o_auth_configurations_on_entity_id"
+    t.index ["integration_id"], name: "index_o_auth_configurations_on_integration_id"
+  end
+
   create_table "payouts", force: :cascade do |t|
     t.bigint "affiliate_id", null: false
     t.decimal "amount", precision: 10, scale: 2, null: false
@@ -1583,6 +1601,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_19_000005) do
   add_foreign_key "landing_pages", "users"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
+  add_foreign_key "o_auth_configurations", "entities"
+  add_foreign_key "o_auth_configurations", "integrations"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
   add_foreign_key "plugin_permissions", "custom_plugins"
