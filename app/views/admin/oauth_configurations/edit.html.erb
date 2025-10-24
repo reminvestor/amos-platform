@@ -60,6 +60,34 @@
                 <%= f.label :scopes, "Scopes (comma-separated)", class: "form-label" %>
                 <%= f.text_area :scopes, class: "form-control", rows: 2 %>
               </div>
+
+              <div class="mb-3">
+                <%= f.label :callback_params, "OAuth Callback Parameters to Capture", class: "form-label" %>
+                <%= f.text_field :callback_params, 
+                    value: @oauth_configuration.callback_params&.join(', '), 
+                    class: "form-control", 
+                    placeholder: "e.g., realmId, instance_url, organization_id" %>
+                <div class="form-text">
+                  Comma-separated list of parameter names to capture from the OAuth callback URL.<br>
+                  <strong>Examples:</strong>
+                  <ul class="mb-0 mt-1">
+                    <li>QuickBooks: <code>realmId</code></li>
+                    <li>Salesforce: <code>instance_url</code></li>
+                    <li>Other: <code>organization_id, tenant_id</code></li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <%= f.label :test_endpoint, "Test Connection Endpoint", class: "form-label" %>
+                <%= f.text_field :test_endpoint, class: "form-control", 
+                    placeholder: "e.g., /v3/company/{company_id}/companyinfo/{company_id}" %>
+                <div class="form-text">
+                  The API endpoint to call when testing the connection. Use placeholders like <code>{company_id}</code> or <code>{realm_id}</code> 
+                  that will be replaced with values from the OAuth callback.<br>
+                  <strong>Example for QuickBooks:</strong> <code>/v3/company/{company_id}/companyinfo/{company_id}</code>
+                </div>
+              </div>
             <% else %>
               <!-- Non-OAuth auth types -->
               <div class="alert alert-info">

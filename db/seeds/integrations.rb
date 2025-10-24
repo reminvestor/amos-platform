@@ -950,3 +950,29 @@ quickbooks.integration_operations.find_or_create_by!(
 end
 
 puts "✅ Seeded #{Integration.count} integrations with #{IntegrationOperation.count} operations"
+
+# ================================
+# OAuth Configurations
+# ================================
+puts "\n🔐 Configuring OAuth integrations..."
+
+# QuickBooks OAuth Configuration
+quickbooks = Integration.find_by(slug: 'quickbooks')
+if quickbooks
+  OauthConfiguration.find_or_create_by!(integration: quickbooks) do |config|
+    config.status = :inactive  # Admin needs to add client_id and client_secret
+    config.authorize_url = 'https://appcenter.intuit.com/connect/oauth2'
+    config.token_url = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
+    config.redirect_uri = 'https://app.agentmarketing.com/integrations/callback/quickbooks'
+    config.scopes = 'com.intuit.quickbooks.accounting'
+    config.callback_params = ['realmId']  # Capture realmId from OAuth callback
+    config.test_endpoint = '/v3/company/{company_id}/companyinfo/{company_id}'  # Simple test endpoint
+    config.metadata = {
+      setup_instructions: 'Create an OAuth app at https://developer.intuit.com/app/developer/myapps',
+      requires_client_credentials: true
+    }
+  end
+  puts "  ✓ QuickBooks OAuth configured (callback_params: realmId)"
+end
+
+puts "\n✅ OAuth configurations ready"

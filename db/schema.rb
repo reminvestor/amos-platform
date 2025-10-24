@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_24_170748) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_24_200008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -858,6 +858,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_170748) do
     t.datetime "updated_at", null: false
     t.string "authorize_url"
     t.string "token_url"
+    t.jsonb "callback_params", default: [], null: false
+    t.text "test_endpoint"
+    t.index ["callback_params"], name: "index_oauth_configurations_on_callback_params", using: :gin
     t.index ["integration_id"], name: "index_oauth_configurations_on_integration_id", unique: true
   end
 

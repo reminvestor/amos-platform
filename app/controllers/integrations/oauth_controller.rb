@@ -65,10 +65,27 @@ class Integrations::OauthController < ApplicationController
         scope: token_response["scope"]
       }
       
-      # For QuickBooks, store the realmId (company ID) from callback params
-      if @integration.slug == "quickbooks" && params[:realmId].present?
-        credentials_hash[:realm_id] = params[:realmId]
-        credentials_hash[:company_id] = params[:realmId] # Alias for compatibility
+      # Dynamically capture OAuth callback parameters based on integration config
+      oauth_config = OauthConfiguration.find_by(integration: @integration)
+      if oauth_config && oauth_config.callback_param_names.any?
+        oauth_config.callback_param_names.each do |param_name|
+          if params[param_name].present?
+            # Store with original name and common aliases
+            credentials_hash[param_name.to_sym] = params[param_name]
+            
+            # Add common aliases for compatibility
+            case param_name
+            when "realmId"
+              credentials_hash[:realm_id] = params[param_name]
+              credentials_hash[:company_id] = params[param_name]
+            when "instance_url"
+              credentials_hash[:instance_url] = params[param_name]
+            when "organization_id"
+              credentials_hash[:organization_id] = params[param_name]
+              credentials_hash[:company_id] = params[param_name]
+            end
+          end
+        end
       end
 
       credential.assign_attributes(
