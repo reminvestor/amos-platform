@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_24_032546) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_24_044008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -833,6 +833,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_032546) do
     t.index ["integration_id"], name: "index_o_auth_configurations_on_integration_id"
   end
 
+  create_table "oauth_configurations", force: :cascade do |t|
+    t.bigint "integration_id", null: false
+    t.string "client_id", null: false
+    t.string "client_secret", null: false
+    t.string "redirect_uri", null: false
+    t.text "scopes"
+    t.jsonb "credentials", default: {}
+    t.jsonb "metadata", default: {}
+    t.integer "status", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "authorize_url"
+    t.string "token_url"
+    t.index ["integration_id"], name: "index_oauth_configurations_on_integration_id", unique: true
+  end
+
   create_table "payouts", force: :cascade do |t|
     t.bigint "affiliate_id", null: false
     t.decimal "amount", precision: 10, scale: 2, null: false
@@ -1603,6 +1619,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_032546) do
   add_foreign_key "model_permissions", "entities"
   add_foreign_key "o_auth_configurations", "entities"
   add_foreign_key "o_auth_configurations", "integrations"
+  add_foreign_key "oauth_configurations", "integrations"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
   add_foreign_key "plugin_permissions", "custom_plugins"

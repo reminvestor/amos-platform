@@ -5,6 +5,9 @@ class Integrations::OauthController < ApplicationController
   def authorize
     # Build OAuth authorization URL
     credentials = build_oauth_credentials
+    
+    # Validate credentials exist
+    return if credentials.nil?
 
     # Store state for security
     session[:oauth_state] = SecureRandom.hex(16)
@@ -13,7 +16,7 @@ class Integrations::OauthController < ApplicationController
     # Build authorization URL
     auth_url = build_authorization_url(credentials, session[:oauth_state])
 
-    redirect_to auth_url
+    redirect_to auth_url, allow_other_host: true
   end
 
   def callback
@@ -91,13 +94,13 @@ class Integrations::OauthController < ApplicationController
 
   def build_oauth_credentials
     if @integration.oauth2_custom?
-      # User must have configured OAuth app
-      oauth_config = current_entity.oauth_configurations.find_by(integration: @integration)
+      # Get platform-wide OAuth configuration
+      oauth_config = OauthConfiguration.find_by(integration: @integration)
       unless oauth_config
-        redirect_to integrations_path, alert: "Please configure OAuth credentials first"
+        redirect_to integrations_path, alert: "OAuth configuration not found. Please contact support."
         return
       end
-      oauth_config.oauth_credentials
+      oauth_config.credentials
     else
       # Use pre-configured credentials from integration
       @integration.auth_config
