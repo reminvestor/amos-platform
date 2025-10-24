@@ -111,9 +111,8 @@ class OnboardingController < ApplicationController
     end
     session.delete(:onboarding_session_id)
 
-    # Redirect to app subdomain for main application
-    app_url = root_url(subdomain: "app")
-    redirect_to app_url, notice: "Welcome to Amos! Your AI business automation assistant is ready to help you succeed."
+    # Redirect to Scout (main app)
+    redirect_to scout_path, notice: "Welcome to Amos! Your AI business automation assistant is ready to help you succeed."
   end
 
   def reset
