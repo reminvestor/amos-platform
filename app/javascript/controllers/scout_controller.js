@@ -943,6 +943,11 @@ export default class extends Controller {
     this.loadScoutCanvas("analytics_dashboard", {})
   }
 
+  loadIntegrationsCanvas() {
+    console.log("🔌 Loading integrations canvas")
+    this.loadScoutCanvas("integrations_manager", {})
+  }
+
   loadContactsCanvas() {
     console.log("👥 Loading contacts canvas")
     this.loadScoutCanvas("contact_viewer", {})

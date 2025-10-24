@@ -351,7 +351,7 @@ end
 google_sheets = Integration.find_or_create_by!(slug: 'google_sheets') do |i|
   i.name = 'Google Sheets'
   i.category = 'productivity'
-  i.auth_type = 'oauth2_custom'
+  i.auth_type = 'custom'  # User-managed OAuth app
   i.api_base_url = 'https://sheets.googleapis.com/v4'
   i.allowed_hosts = [ 'sheets.googleapis.com' ]
   i.documentation_url = 'https://developers.google.com/sheets/api/reference/rest'
@@ -960,7 +960,9 @@ puts "\n🔐 Configuring OAuth integrations..."
 quickbooks = Integration.find_by(slug: 'quickbooks')
 if quickbooks
   OauthConfiguration.find_or_create_by!(integration: quickbooks) do |config|
-    config.status = :inactive  # Admin needs to add client_id and client_secret
+    config.client_id = 'PLACEHOLDER_CLIENT_ID'  # Admin will replace this
+    config.client_secret = 'PLACEHOLDER_CLIENT_SECRET'  # Admin will replace this
+    config.status = :inactive  # Admin needs to add real client_id and client_secret
     config.authorize_url = 'https://appcenter.intuit.com/connect/oauth2'
     config.token_url = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
     config.redirect_uri = 'https://app.agentmarketing.com/integrations/callback/quickbooks'
