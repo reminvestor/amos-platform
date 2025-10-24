@@ -37,10 +37,16 @@ class IntegrationOperation < ApplicationRecord
     %w[POST PUT PATCH DELETE].include?(http_method)
   end
 
-  def build_path(params = {})
+  def build_path(params = {}, credentials = {})
     path = path_template.dup
 
-    # Replace path parameters
+    # First, replace parameters from credentials (OAuth callback params like company_id, realm_id)
+    credentials.each do |key, value|
+      path.gsub!("{#{key}}", value.to_s)
+      path.gsub!(":#{key}", value.to_s)
+    end
+
+    # Then, replace parameters from user-provided params
     params.each do |key, value|
       path.gsub!("{#{key}}", value.to_s)
       path.gsub!(":#{key}", value.to_s)

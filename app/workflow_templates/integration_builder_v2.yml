@@ -170,17 +170,39 @@ phases:
     
     ai_instructions: |
       1. Query the RAG store to understand authentication requirements
-      2. Use generate_integration_scaffold to create the integration record
-         - Creates Integration and Connection records in database
-         - NO code files generated (secure DB-only approach)
+      2. Determine the auth_type based on API documentation:
+         - oauth2: If API uses OAuth 2.0
+         - api_key: If API uses API keys
+         - bearer_token: If API uses Bearer tokens
+         - basic_auth: If API uses HTTP Basic Authentication
       
-      3. Use add_integration_endpoint to create one test endpoint
+      3. Use generate_integration_scaffold to create the integration:
+         - Creates Integration record in database
+         - For OAuth integrations, also creates OauthConfiguration (inactive status)
+         - Creates Connection for user's entity
+         - Creates pending IntegrationCredential
+         - NO code files generated (secure DB-only approach!)
+      
+      4. If auth_type is "oauth2":
+         Tell user: "I've created your integration! Before testing, you'll need to:
+         a) Register an OAuth app with [app_name]
+         b) Go to Admin → Integrations → [app_name] → Auth Config
+         c) Enter Client ID, Client Secret, Redirect URI, and OAuth URLs
+         d) Then click Connect to authorize access"
+      
+      5. If auth_type is NOT oauth2 (api_key, bearer_token, basic_auth):
+         Tell user: "I've created your integration! Before testing, you'll need to:
+         a) Go to Admin → Integrations → [app_name] → Auth Config
+         b) Configure the authentication parameters (what fields to collect)
+         c) Then click Connect and enter your credentials"
+      
+      6. Use add_integration_endpoint to create one test endpoint:
          - Choose a simple endpoint like "get_account" or "list_items"  
          - Creates IntegrationOperation record in database
          - NO code generation (secure!)
       
-      4. Tell user the integration is ready and stored securely in database
-      5. Tell them to use execute_integration to test it
+      7. Tell user the integration structure is ready and stored securely in database
+      8. WAIT for them to configure auth before proceeding to testing
 
   # Phase 6: Test the endpoint
   - id: "test_endpoint"

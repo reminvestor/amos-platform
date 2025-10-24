@@ -99,15 +99,23 @@ class Admin::OauthConfigurationsController < Admin::BaseController
     @oauth_configuration = OauthConfiguration.find(params[:id])
   end
 
-  def oauth_configuration_params
-    params.require(:oauth_configuration).permit(
-      :client_id, :client_secret, :redirect_uri, :scopes, :status,
-      :authorize_url, :token_url, 
-      credentials: {}, 
-      metadata: {},
-      auth_configs_attributes: [:id, :auth_key, :auth_value, :auth_placement, :position, :_destroy]
-    )
-  end
+      def oauth_configuration_params
+        params.require(:oauth_configuration).permit(
+          :client_id, :client_secret, :redirect_uri, :scopes, :status,
+          :authorize_url, :token_url, :callback_params, :test_endpoint,
+          credentials: {}, 
+          metadata: {},
+          auth_configs_attributes: [:id, :auth_key, :auth_value, :auth_placement, :position, :_destroy]
+        ).tap do |whitelisted|
+          # Convert callback_params from comma-separated string to array
+          if whitelisted[:callback_params].is_a?(String)
+            whitelisted[:callback_params] = whitelisted[:callback_params]
+              .split(',')
+              .map(&:strip)
+              .reject(&:blank?)
+          end
+        end
+      end
 
   def authorize_editor!
     authorize_admin!(:editor)

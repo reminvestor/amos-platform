@@ -59,12 +59,25 @@ module Tools
           auth_type: auth_type,
           api_base_url: base_url || "https://api.#{slug}.com",
           is_active: true,
-          is_custom: true,
           metadata: {
             created_by: "ai_integration_builder",
-            created_at: Time.current
+            created_at: Time.current,
+            owner_entity_id: @entity.id, # Track which entity created this
+            custom: true # Mark as user-created
           }
         )
+
+        # For OAuth integrations, create a pending OAuth configuration
+        if auth_type.to_s == "oauth2"
+          OauthConfiguration.create!(
+            integration: integration,
+            status: :inactive,
+            metadata: {
+              pending_setup: true,
+              setup_instructions: "Configure your OAuth app credentials to enable this integration"
+            }
+          )
+        end
 
         # Create connection for the user
         connection = Connection.create!(

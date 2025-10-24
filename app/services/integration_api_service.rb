@@ -10,10 +10,18 @@ class IntegrationApiService
   end
 
   def test_connection
-    # Find the test connection operation
+    # Check if there's a configured test_endpoint in oauth_configuration
+    oauth_config = @integration.oauth_configurations.first
+    
+    if oauth_config&.test_endpoint.present?
+      # Use the configured test endpoint
+      return test_with_endpoint(oauth_config.test_endpoint)
+    end
+    
+    # Fall back to finding the test connection operation
     test_operation = @integration.integration_operations
-                                 .where("operation_id LIKE ?", "%.test_connection.%")
-                                 .first
+                                .where("operation_id LIKE ?", "%.test_connection.%")
+                                .first
 
     return { success: false, error: "No test operation defined for this integration" } unless test_operation
 
@@ -128,6 +136,60 @@ class IntegrationApiService
 
   private
 
+  def test_with_endpoint(endpoint_path)
+    # Build URL with credential-based parameter replacement
+    base_url = @integration.api_base_url
+    
+    # Replace placeholders in endpoint path with credential values
+    path = endpoint_path.dup
+    @credential.credentials.each do |key, value|
+      path.gsub!("{#{key}}", value.to_s)
+      path.gsub!(":#{key}", value.to_s)
+    end
+    
+    # Check for unreplaced params
+    if path.include?("{") || path.include?(":")
+      missing = path.scan(/[{:](\w+)[}]?/).flatten
+      return {
+        success: false,
+        error: "Missing required path parameters for test endpoint: #{missing.join(', ')}"
+      }
+    end
+    
+    url = URI.join(base_url, path).to_s
+    headers = build_headers
+    
+    Rails.logger.info "Testing connection with endpoint: #{url}"
+    
+    begin
+      response = self.class.get(url, headers: headers)
+      
+      if response.success?
+        {
+          success: true,
+          status_code: response.code,
+          message: "Connection successful",
+          data: response.parsed_response
+        }
+      else
+        error_message = extract_error_message(response)
+        {
+          success: false,
+          status_code: response.code,
+          error: error_message || "API request failed with status #{response.code}",
+          data: response.parsed_response
+        }
+      end
+    rescue => e
+      status_code = e.respond_to?(:response) ? e.response&.code : nil
+      {
+        success: false,
+        error: e.message,
+        status_code: status_code
+      }
+    end
+  end
+
   def extract_error_message(response)
     return nil unless response&.parsed_response
 
@@ -152,7 +214,8 @@ class IntegrationApiService
     base_url = @integration.api_base_url
 
     # Build the path with parameter substitution
-    path = operation.build_path(params)
+    # Pass credentials so OAuth callback params (like company_id) can be auto-injected
+    path = operation.build_path(params, @credential.credentials)
 
     # Combine URL and path
     url = URI.join(base_url, path).to_s

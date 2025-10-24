@@ -25,6 +25,12 @@ class OauthConfiguration < ApplicationRecord
   # Default values
   after_initialize :set_defaults, if: :new_record?
 
+  # Get list of OAuth callback parameter names to capture
+  # e.g., ["realmId", "instance_url", "organization_id"]
+  def callback_param_names
+    callback_params || []
+  end
+
   # Return credentials in the format expected by OAuth controller
   def credentials
     base_credentials = {
@@ -54,11 +60,13 @@ class OauthConfiguration < ApplicationRecord
     self.status ||= :active
     self.credentials ||= {}
     self.metadata ||= {}
+    self.callback_params ||= []
     
     # Pre-fill URLs from integration if not set and integration is available
     if integration.present? && integration.auth_config.present?
       self.authorize_url ||= integration.auth_config["authorize_url"]
       self.token_url ||= integration.auth_config["token_url"]
+      self.test_endpoint ||= integration.auth_config["test_endpoint"]
     end
   end
 end
