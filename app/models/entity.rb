@@ -12,7 +12,6 @@ class Entity < ApplicationRecord
   # Integration relationships
   has_many :connections, dependent: :destroy
   has_many :integrations, through: :connections
-  has_many :oauth_configurations, dependent: :destroy
   has_many :policy_rules, dependent: :destroy
 
   # Direct relationships with main resources

@@ -352,9 +352,6 @@ Rails.application.routes.draw do
   get "integrations/connect/:slug", to: "integrations#connect", as: :connect_integration
   post "integrations/connect/:slug", to: "integrations#create_connection", as: :create_connection_integration
 
-  # OAuth configuration management
-  resources :oauth_configurations, except: [ :show ]
-
   # User-facing connections actions
   resources :connections, only: [] do
     member do
@@ -461,7 +458,11 @@ Rails.application.routes.draw do
         get :logs
       end
       resources :operations, controller: "integration_operations"
+      resources :oauth_configurations, except: [:index]
     end
+    
+    # OAuth Configurations management (standalone for listing all)
+    resources :oauth_configurations, only: [:index]
 
     # Connections management
     resources :connections do

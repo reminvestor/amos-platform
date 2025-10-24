@@ -10,17 +10,8 @@ class IntegrationsController < ApplicationController
     @integration = Integration.find_by!(slug: params[:slug])
 
     case @integration.auth_type
-    when "oauth2"
+    when "oauth2", "oauth2_custom"
       redirect_to integrations_oauth_authorize_path(@integration.slug)
-    when "oauth2_custom"
-      # Check if user has configured OAuth app
-      oauth_config = current_entity.oauth_configurations.find_by(integration: @integration)
-      if oauth_config
-        redirect_to integrations_oauth_authorize_path(@integration.slug)
-      else
-        redirect_to new_oauth_configuration_path(integration_id: @integration.id), 
-                    alert: "Please configure your OAuth app first"
-      end
     else
       # Show credentials form
       render :connect

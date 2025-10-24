@@ -111,6 +111,11 @@
                       <%= link_to admin_integration_operations_path(integration), class: "btn btn-outline-info" do %>
                         <i class="fas fa-cogs"></i> Operations
                       <% end %>
+                      <% if integration.oauth2_custom? %>
+                        <%= link_to new_admin_integration_oauth_configuration_path(integration), class: "btn btn-outline-warning" do %>
+                          <i class="fas fa-key"></i> OAuth Config
+                        <% end %>
+                      <% end %>
                     <% end %>
                   </div>
                 </td>

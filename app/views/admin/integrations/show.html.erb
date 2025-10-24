@@ -123,6 +123,43 @@
 
     <!-- Sidebar -->
     <div class="col-lg-4">
+      <!-- OAuth Configurations (for oauth2_custom integrations) -->
+      <% if @integration.oauth2_custom? %>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-key"></i> OAuth Configuration</h5>
+          </div>
+          <div class="card-body">
+            <% oauth_config = OauthConfiguration.find_by(integration: @integration) %>
+            <% if oauth_config %>
+              <dl class="row mb-3">
+                <dt class="col-sm-4">Client ID</dt>
+                <dd class="col-sm-8"><code><%= oauth_config.client_id[0..15] %>...</code></dd>
+                
+                <dt class="col-sm-4">Redirect URI</dt>
+                <dd class="col-sm-8"><small><%= oauth_config.redirect_uri %></small></dd>
+                
+                <dt class="col-sm-4">Status</dt>
+                <dd class="col-sm-8">
+                  <span class="badge bg-<%= oauth_config.active? ? 'success' : 'secondary' %>">
+                    <%= oauth_config.status.humanize %>
+                  </span>
+                </dd>
+              </dl>
+              <%= link_to edit_admin_integration_oauth_configuration_path(@integration, oauth_config), 
+                  class: "btn btn-warning btn-sm w-100" do %>
+                <i class="fas fa-edit me-1"></i> Edit OAuth Config
+              <% end %>
+            <% else %>
+              <p class="text-muted mb-3">No OAuth configuration yet</p>
+              <%= link_to new_admin_integration_oauth_configuration_path(@integration), class: "btn btn-warning btn-sm w-100" do %>
+                <i class="fas fa-plus me-1"></i> Add OAuth Config
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      
       <!-- Active Connections -->
       <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white">
