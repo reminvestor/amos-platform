@@ -29,6 +29,14 @@ class CampaignService
     Rails.logger.info("Campaign #{@campaign.id}: Need to create #{missing_contact_ids.count} new deliveries")
     
     if missing_contact_ids.any?
+      # For very large campaigns, create deliveries in background to avoid timeouts
+      if missing_contact_ids.count > 50_000
+        Rails.logger.info("Campaign #{@campaign.id}: Large campaign detected (#{missing_contact_ids.count} contacts), creating deliveries in background")
+        # Create a job to handle the bulk insert
+        CreateEmailDeliveriesJob.perform_later(@campaign.id, missing_contact_ids)
+        return @campaign.email_deliveries.count
+      end
+      
       # Build delivery records for bulk insert
       timestamp = Time.current
       deliveries_data = missing_contact_ids.map do |contact_id|
@@ -42,10 +50,16 @@ class CampaignService
         }
       end
       
-      # Bulk insert in batches of 10,000 to avoid memory issues
-      deliveries_data.each_slice(10_000) do |batch|
+      # Bulk insert in smaller batches to avoid timeouts
+      batch_size = missing_contact_ids.count > 10_000 ? 1_000 : 10_000
+      deliveries_data.each_slice(batch_size) do |batch|
         EmailDelivery.insert_all(batch)
         Rails.logger.info("Campaign #{@campaign.id}: Inserted batch of #{batch.size} deliveries")
+        
+        # Add small delay for large campaigns to prevent timeouts
+        if missing_contact_ids.count > 10_000
+          sleep(0.1)
+        end
       end
       
       Rails.logger.info("Campaign #{@campaign.id}: ✅ Created #{missing_contact_ids.count} deliveries via BULK INSERT")
@@ -162,12 +176,12 @@ class CampaignService
     # Log the current queue status
     begin
       # Check jobs table
-      job_count = Solid::Queue::Job.count
-      Rails.logger.info("Current Solid::Queue job count: #{job_count}")
+      job_count = SolidQueue::Job.count
+      Rails.logger.info("Current SolidQueue job count: #{job_count}")
 
       # Check if our specific job exists
       if job.provider_job_id
-        job_record = Solid::Queue::Job.find_by(id: job.provider_job_id)
+        job_record = SolidQueue::Job.find_by(id: job.provider_job_id)
         if job_record
           Rails.logger.info("Found job in database with status: #{job_record.status}")
         else
@@ -176,15 +190,15 @@ class CampaignService
       end
 
       # Check processes
-      process_count = Solid::Queue::Process.count
-      Rails.logger.info("Current Solid::Queue process count: #{process_count}")
+      process_count = SolidQueue::Process.count
+      Rails.logger.info("Current SolidQueue process count: #{process_count}")
 
       # Check dispatchers
-      dispatcher_count = Solid::Queue::Process.where(type: "Dispatcher").count
+      dispatcher_count = SolidQueue::Process.where(type: "Dispatcher").count
       Rails.logger.info("Current dispatcher count: #{dispatcher_count}")
 
       # Check workers
-      worker_count = Solid::Queue::Process.where(type: "Worker").count
+      worker_count = SolidQueue::Process.where(type: "Worker").count
       Rails.logger.info("Current worker count: #{worker_count}")
     rescue => e
       Rails.logger.error("Error checking queue status: #{e.message}")
@@ -219,13 +233,13 @@ class CampaignService
   end
 
   def cancel_scheduled_jobs
-    # Look for campaign jobs in Solid::Queue
+    # Look for campaign jobs in SolidQueue
     begin
       # Find jobs by campaign ID in the serialized parameters
-      campaign_jobs = Solid::Queue::Job.where("serialized_params LIKE ?", "%#{@campaign.id}%")
+      campaign_jobs = SolidQueue::Job.where("serialized_params LIKE ?", "%#{@campaign.id}%")
 
       # Find scheduled executions for these jobs
-      scheduled_executions = Solid::Queue::ScheduledExecution.where(job_id: campaign_jobs.select(:id))
+      scheduled_executions = SolidQueue::ScheduledExecution.where(job_id: campaign_jobs.select(:id))
 
       if scheduled_executions.any?
         count = scheduled_executions.count

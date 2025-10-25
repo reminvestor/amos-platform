@@ -13,58 +13,52 @@ class SubscriptionsController < ApplicationController
   end
 
   def create
-    # Create Stripe checkout session
+    # TESTING MODE: Skip Stripe and just set trial status
     entity = current_entity
     price_id = params[:price_id]
 
-    # Validate price_id
-    unless valid_price_id?(price_id)
-      redirect_to new_subscription_path, alert: "Invalid plan selected" and return
+    # Validate price_id - for testing, allow empty or any value
+    if price_id.blank?
+      # Default to starter plan for testing
+      price_id = 'starter'
     end
 
-    # Create or get Stripe customer
-    if entity.stripe_customer_id.blank?
-      customer = Stripe::Customer.create(
-        email: current_user.email,
-        metadata: {
-          entity_id: entity.id,
-          entity_name: entity.name,
-          user_id: current_user.id
-        }
-      )
-      entity.update!(stripe_customer_id: customer.id)
+    # TESTING: Set trial status directly without Stripe
+    plan_tier = case price_id
+    when 'starter', ENV['STRIPE_STARTER_PRICE_ID']
+      'starter'
+    when 'professional', ENV['STRIPE_PROFESSIONAL_PRICE_ID']
+      'professional'
+    when 'business', ENV['STRIPE_BUSINESS_PRICE_ID']
+      'business'
+    else
+      'starter'
     end
 
-    # Build success URL manually to avoid URL encoding issues with Stripe template
-    base_url = request.base_url
-    success_url = "#{base_url}/subscriptions/success?session_id={CHECKOUT_SESSION_ID}"
-    cancel_url = "#{base_url}/subscriptions/cancel"
+    token_limit = case plan_tier
+    when 'starter'
+      200_000
+    when 'professional'
+      1_000_000
+    when 'business'
+      2_000_000
+    else
+      200_000
+    end
 
-    # Create checkout session with 7-day trial
-    session = Stripe::Checkout::Session.create(
-      customer: entity.stripe_customer_id,
-      payment_method_types: ['card'],
-      line_items: [{
-        price: price_id,
-        quantity: 1
-      }],
-      mode: 'subscription',
-      subscription_data: {
-        trial_period_days: 7,
-        metadata: {
-          entity_id: entity.id
-        }
-      },
-      success_url: success_url,
-      cancel_url: cancel_url,
-      allow_promotion_codes: true,
-      billing_address_collection: 'required'
+    # Update entity with trial status
+    entity.update!(
+      subscription_status: 'trialing',
+      trial_ends_at: 7.days.from_now,
+      plan_tier: plan_tier,
+      token_limit: token_limit
     )
 
-    redirect_to session.url, allow_other_host: true
-  rescue Stripe::StripeError => e
-    Rails.logger.error "Stripe checkout error: #{e.message}"
-    redirect_to new_subscription_path, alert: "Payment setup failed. Please try again."
+    # Set session flag to show subscription confirmation in onboarding
+    session[:show_subscription_confirmation] = true
+
+    # Redirect to onboarding
+    redirect_to onboarding_path, notice: "Welcome! Your 7-day trial has started."
   end
 
   def success

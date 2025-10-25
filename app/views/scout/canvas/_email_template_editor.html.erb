@@ -29,9 +29,9 @@
   </div>
 
   <!-- Instructions -->
-  <div class="alert alert-info alert-dismissible fade show" role="alert">
+  <div class="alert alert-info alert-dismissible fade show" role="alert" style="background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460;">
     <strong><i class="fas fa-info-circle me-2"></i>Email Template Editor</strong>
-    <ul class="mb-0 mt-2 small">
+    <ul class="mb-0 mt-2 small" style="color: #0c5460;">
       <li>Edit the subject line and email content below</li>
       <li>Use <strong>{{first_name}}</strong>, <strong>{{last_name}}</strong>, <strong>{{email}}</strong> for personalization</li>
       <li>Click "Improve with AI" to enhance your content</li>
@@ -140,7 +140,7 @@
           </div>
 
           <!-- Variable Helper -->
-          <div class="alert alert-light">
+          <div class="alert alert-light" style="background-color: #f8f9fa; border-color: #dee2e6; color: #212529;">
             <strong>Quick Insert Variables:</strong>
             <div class="btn-group btn-group-sm mt-2" role="group">
               <button type="button" class="btn btn-outline-primary" onclick="insertVariable('{{first_name}}')">
@@ -173,11 +173,11 @@
           <!-- Email Preview -->
           <div class="email-preview">
             <div class="mb-3">
-              <small class="text-muted">Subject:</small>
-              <div class="fw-bold" id="previewSubject"></div>
+              <small class="text-muted" style="color: #6c757d !important;">Subject:</small>
+              <div class="fw-bold" id="previewSubject" style="color: #212529;"></div>
             </div>
             <hr>
-            <div id="previewBody" style="line-height: 1.6;"></div>
+            <div id="previewBody" style="line-height: 1.6; color: #212529;"></div>
           </div>
         </div>
       </div>
@@ -220,6 +220,7 @@
     border-radius: 0.375rem;
     padding: 1.5rem;
     min-height: 400px;
+    color: #212529;
   }
   
   #templateBody {

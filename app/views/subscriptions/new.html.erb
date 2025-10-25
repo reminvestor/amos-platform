@@ -42,7 +42,7 @@
               </ul>
             </div>
             <div class="card-footer bg-transparent text-center border-top-0 pb-4">
-              <%= button_to subscriptions_path, params: { price_id: ENV['STRIPE_STARTER_PRICE_ID'] }, method: :post, class: "btn btn-outline-primary btn-lg w-100", data: { turbo: false } do %>
+              <%= button_to subscriptions_path, params: { price_id: 'starter' }, method: :post, class: "btn btn-outline-primary btn-lg w-100", data: { turbo: false } do %>
                 Start 7-Day Trial
               <% end %>
             </div>
@@ -85,7 +85,7 @@
               </ul>
             </div>
             <div class="card-footer bg-transparent text-center border-top-0 pb-4">
-              <%= button_to subscriptions_path, params: { price_id: ENV['STRIPE_PROFESSIONAL_PRICE_ID'] }, method: :post, class: "btn btn-primary btn-lg w-100", data: { turbo: false } do %>
+              <%= button_to subscriptions_path, params: { price_id: 'professional' }, method: :post, class: "btn btn-primary btn-lg w-100", data: { turbo: false } do %>
                 Start 7-Day Trial
               <% end %>
             </div>
@@ -125,7 +125,7 @@
               </ul>
             </div>
             <div class="card-footer bg-transparent text-center border-top-0 pb-4">
-              <%= button_to subscriptions_path, params: { price_id: ENV['STRIPE_BUSINESS_PRICE_ID'] }, method: :post, class: "btn btn-outline-primary btn-lg w-100", data: { turbo: false } do %>
+              <%= button_to subscriptions_path, params: { price_id: 'business' }, method: :post, class: "btn btn-outline-primary btn-lg w-100", data: { turbo: false } do %>
                 Start 7-Day Trial
               <% end %>
             </div>

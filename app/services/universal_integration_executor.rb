@@ -102,9 +102,29 @@ class UniversalIntegrationExecutor
   end
   
   def find_operation(integration, operation_id)
-    integration.integration_operations
+    # Try exact match first
+    op = integration.integration_operations
                .where(is_enabled: true)
                .find_by(operation_id: operation_id)
+    
+    return op if op
+    
+    # If not found, try matching with integration slug prefix
+    # E.g., "get_company_info" or "quickbooks.get_company_info" matches "quickbooks.get_company_info.v3"
+    integration.integration_operations
+               .where(is_enabled: true)
+               .find do |o|
+                 # Extract base operation name without version (e.g., "quickbooks.get_company_info.v3" → "quickbooks.get_company_info")
+                 base_op_id = o.operation_id.sub(/\.v\d+$/, '')  # Remove version suffix like .v3
+                 
+                 # Match if:
+                 # 1. Input matches the base (e.g., "quickbooks.get_company_info")
+                 # 2. Input matches just the operation name (e.g., "get_company_info")
+                 # 3. Input with slug prefix matches (e.g., "quickbooks.get_company_info")
+                 base_op_id == operation_id ||
+                 base_op_id == "#{integration.slug}.#{operation_id}" ||
+                 base_op_id.end_with?(".#{operation_id}")
+               end
   end
   
   def load_service(integration, connection)

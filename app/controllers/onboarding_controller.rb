@@ -1,13 +1,22 @@
 class OnboardingController < ApplicationController
-  layout "application"
+  layout "onboarding"
 
   before_action :authenticate_user!
   before_action :check_if_already_onboarded, except: [ :complete ]
 
   def index
+    Rails.logger.info "🔍 Onboarding#index - User: #{current_user.id}, Onboarded: #{current_user.onboarded?}, Path: #{request.path}"
+    Rails.logger.info "🔍 Session flags - show_subscription_confirmation: #{session[:show_subscription_confirmation]}, subscription_confirmed: #{session[:subscription_confirmed]}"
+    
     # Get or create the user's first onboarding conversation
     @session_id = session[:onboarding_session_id] ||= SecureRandom.uuid
     @conversation_history = onboarding_conversation_history
+
+    # If user just subscribed and was previously onboarded, reset their onboarded status
+    if session[:show_subscription_confirmation] && current_user.onboarded?
+      Rails.logger.info "🔄 Resetting onboarded status for user #{current_user.id} after subscription"
+      current_user.update!(onboarded: false)
+    end
 
     # If this is a fresh start, add Scout's welcome message
     if @conversation_history.empty?
@@ -102,9 +111,8 @@ class OnboardingController < ApplicationController
     end
     session.delete(:onboarding_session_id)
 
-    # Redirect to app subdomain for main application
-    app_url = root_url(subdomain: "app")
-    redirect_to app_url, notice: "Welcome to Amos! Your AI business automation assistant is ready to help you succeed."
+    # Redirect to Scout (main app)
+    redirect_to scout_path, notice: "Welcome to Amos! Your AI business automation assistant is ready to help you succeed."
   end
 
   def reset
@@ -123,11 +131,15 @@ class OnboardingController < ApplicationController
       user_id: current_user.id,
       onboarded: current_user.onboarded?,
       entities_count: current_user.entity ? 1 : 0,
-      entity_users_count: current_user.entity_users.count,
       domain: request.domain,
       subdomain: request.subdomain,
       path: request.path,
-      has_business_profile: current_user.business_profile.present?
+      has_business_profile: current_user.business_profile.present?,
+      session_show_subscription_confirmation: session[:show_subscription_confirmation],
+      session_subscription_confirmed: session[:subscription_confirmed],
+      entity_subscription_status: current_user.entity&.subscription_status,
+      entity_trial_ends_at: current_user.entity&.trial_ends_at,
+      entity_name: current_user.entity&.name
     }
   end
 
@@ -148,8 +160,17 @@ class OnboardingController < ApplicationController
   def check_if_already_onboarded
     # Debug logging for production troubleshooting
     Rails.logger.info "🔍 Onboarding controller check - User: #{current_user.id}, Onboarded: #{current_user.onboarded?}, Path: #{request.path}, Domain: #{request.domain}"
+    Rails.logger.info "🔍 Session flags - show_subscription_confirmation: #{session[:show_subscription_confirmation]}, subscription_confirmed: #{session[:subscription_confirmed]}"
 
-    if current_user.onboarded?
+    # TEMPORARY FIX: Always allow onboarding for users with active subscription who haven't completed onboarding
+    entity = current_user.entity
+    if entity && ['active', 'trialing'].include?(entity.subscription_status) && !current_user.onboarded?
+      Rails.logger.info "🔄 User has active subscription but not onboarded, allowing onboarding - User: #{current_user.id}"
+      return # Allow onboarding to proceed
+    end
+
+    # Allow users to continue onboarding if they just subscribed (coming from Stripe)
+    if current_user.onboarded? && !session[:show_subscription_confirmation]
       Rails.logger.info "🔄 User already onboarded, redirecting to scout - User: #{current_user.id}"
       # Redirect to scout (main app) instead of root to avoid redirect loop
       redirect_to scout_path, notice: "You've already completed onboarding!"
