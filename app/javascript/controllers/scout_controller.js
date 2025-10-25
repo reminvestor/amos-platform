@@ -470,8 +470,8 @@ export default class extends Controller {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('✅ Tool completed:', data.name || data.tool_name)
                 } else if (data.type === 'cache_metrics') {
-                  // Display cache performance indicator
-                  this.showCacheIndicator(data)
+                  // Log cache metrics to console (no UI indicator)
+                  console.log('💾 CACHE METRICS:', data)
                 } else if (data.type === 'intermediate_message') {
                   // Explanatory assistant messages between tool calls
                   if (data.content) {
