@@ -785,36 +785,46 @@ class ScoutGenericToolsServiceV2
   end
 
   def format_conversation_for_ai(history, current_message)
-    Rails.logger.info "🔍 format_conversation_for_ai called with history: #{history.inspect}"
+    Rails.logger.info "🔍 format_conversation_for_ai called with #{history.length} history messages"
     Rails.logger.info "🔍 Current message: #{current_message}"
 
     messages = []
 
+    # Truncate to last 6 messages (3 exchanges) for performance
+    # This prevents token bloat as conversation grows
+    truncated_history = history.last(6)
+
+    if history.length > 6
+      Rails.logger.info "⚡ Truncated conversation history: #{history.length} → 6 messages (saved ~#{(history.length - 6) * 500} tokens)"
+    end
+
     # Add recent history, filtering out messages with nil content
-    history.last(10).each do |msg|
+    truncated_history.each do |msg|
       content = msg["content"] || msg[:content]
       role = msg["role"] || msg[:role]
 
       # Skip messages with nil or empty content
       next if content.nil? || content.to_s.strip.empty?
 
-      # Log suspicious messages for debugging
-      if role == "assistant" && content.to_s.downcase == "hello"
-        Rails.logger.warn "🚨 Found suspicious assistant message saying 'hello' - this might be incorrectly saved"
+      # Compress long tool-related messages to save tokens
+      if content.to_s.length > 1000
+        content_preview = content.to_s.first(500) + "... [truncated for performance]"
+        Rails.logger.info "⚡ Compressed long message: #{content.to_s.length} → 500 chars"
+      else
+        content_preview = content.to_s
       end
 
       formatted_message = {
         role: role == "user" ? "user" : "assistant",
-        content: [ { type: "text", text: content.to_s } ]
+        content: [ { type: "text", text: content_preview } ]
       }
 
-      Rails.logger.info "🔍 Adding history message: role=#{role}, formatted_role=#{formatted_message[:role]}, content=#{content.to_s.first(50)}"
+      Rails.logger.info "🔍 Adding history message: role=#{role}, content=#{content_preview.first(50)}..."
 
       messages << formatted_message
     end
 
     # Add current message only if it's not already in the history
-    # (This can happen when the controller adds the message to history before calling this service)
     last_user_message = messages.reverse.find { |m| m[:role] == "user" }
     if !last_user_message || last_user_message[:content].first[:text] != current_message
       Rails.logger.info "🔍 Adding current message as it's not in history"
@@ -826,7 +836,9 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "🔍 Current message already in history, not adding again"
     end
 
-    Rails.logger.info "🔍 Final messages array: #{messages.map { |m| "#{m[:role]}: #{m[:content].first[:text].to_s.first(30)}..." }}"
+    # Log final token estimate
+    estimated_tokens = messages.sum { |m| m[:content].first[:text].length / 4 }
+    Rails.logger.info "📊 Conversation messages: #{messages.length}, estimated ~#{estimated_tokens} tokens"
 
     messages
   end
