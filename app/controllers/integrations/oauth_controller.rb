@@ -70,20 +70,8 @@ class Integrations::OauthController < ApplicationController
       if oauth_config && oauth_config.callback_param_names.any?
         oauth_config.callback_param_names.each do |param_name|
           if params[param_name].present?
-            # Store with original name and common aliases
+            # Store with original name - the build_path method will handle case conversion
             credentials_hash[param_name.to_sym] = params[param_name]
-            
-            # Add common aliases for compatibility
-            case param_name
-            when "realmId"
-              credentials_hash[:realm_id] = params[param_name]
-              credentials_hash[:company_id] = params[param_name]
-            when "instance_url"
-              credentials_hash[:instance_url] = params[param_name]
-            when "organization_id"
-              credentials_hash[:organization_id] = params[param_name]
-              credentials_hash[:company_id] = params[param_name]
-            end
           end
         end
       end
