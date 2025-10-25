@@ -29,16 +29,22 @@ class BedrockService
   end
 
   # Main method to send messages to Claude via Bedrock
-  def send_message(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, stream: false, &block)
+  def send_message(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, stream: false, tools: nil, enable_prompt_caching: false, &block)
+    # Check for model override from request (e.g., voice assistant using Haiku for speed)
+    if defined?(RequestStore) && RequestStore.store[:model_override].present?
+      model = RequestStore.store[:model_override]
+      Rails.logger.info "🎯 Using model override: #{model} (e.g., for voice assistant)"
+    end
+
     # Use custom model if specified
     if @custom_model_id && @model_registry
       return send_via_platform(system_prompt, messages, model: @custom_model_id, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, stream: stream, &block)
     end
 
     if stream && block_given?
-      send_message_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, &block)
+      send_message_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, tools: tools, enable_prompt_caching: enable_prompt_caching, &block)
     else
-      send_message_non_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode)
+      send_message_non_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, tools: tools, enable_prompt_caching: enable_prompt_caching)
     end
   end
 
@@ -88,7 +94,7 @@ class BedrockService
 
   private
 
-  def send_message_non_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false)
+  def send_message_non_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: nil, enable_prompt_caching: false)
     # Map model names to Bedrock model IDs
     # Using global inference profiles for Claude Sonnet 4.5
     model_id = case model
@@ -127,8 +133,29 @@ class BedrockService
       temperature: temperature
     }
 
-    # Add system prompt if provided
-    request_body[:system] = final_system_prompt if final_system_prompt.present?
+    # Add system prompt with optional caching
+    if final_system_prompt.present?
+      if enable_prompt_caching
+        # Use array format with cache_control for prompt caching
+        request_body[:system] = [
+          {
+            type: "text",
+            text: final_system_prompt,
+            cache_control: { type: "ephemeral" }
+          }
+        ]
+        Rails.logger.info "💾 Prompt caching enabled for system prompt (#{final_system_prompt.length} chars)"
+      else
+        # Traditional string format (no caching)
+        request_body[:system] = final_system_prompt
+      end
+    end
+
+    # Add tools if provided
+    if tools.present?
+      request_body[:tools] = tools
+      Rails.logger.info "🔧 Added #{tools.size} tools to request"
+    end
 
     Rails.logger.info "Sending request to Bedrock Claude (#{model_id})"
 
@@ -151,11 +178,29 @@ class BedrockService
           output: response_body["usage"]["output_tokens"] || 0
         }
 
+        # Track cache performance metrics
+        cache_creation = response_body["usage"]["cache_creation_input_tokens"] || 0
+        cache_read = response_body["usage"]["cache_read_input_tokens"] || 0
+
+        if cache_creation > 0 || cache_read > 0
+          Rails.logger.info "💾 CACHE METRICS:"
+          Rails.logger.info "  Cache created: #{cache_creation} tokens" if cache_creation > 0
+          Rails.logger.info "  Cache read: #{cache_read} tokens (90% savings!)" if cache_read > 0
+          Rails.logger.info "  New processing: #{tokens[:input]} tokens"
+
+          if cache_read > 0
+            speedup = ((cache_read + tokens[:input]).to_f / tokens[:input]).round(1)
+            Rails.logger.info "  ⚡ Effective speedup: ~#{speedup}x faster"
+          end
+        end
+
         if @user && @entity && @resource_manager
           @resource_manager.track_tokens(@user, model_id, tokens, {
             stream: false,
             method: "invoke_model",
-            timestamp: Time.current
+            timestamp: Time.current,
+            cache_creation: cache_creation,
+            cache_read: cache_read
           })
         end
 
@@ -390,7 +435,7 @@ class BedrockService
     end
   end
 
-  def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], &block)
+  def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
     # Map model names to Bedrock model IDs
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
@@ -425,7 +470,21 @@ class BedrockService
       temperature: temperature
     }
 
-    request_body[:system] = system_prompt if system_prompt.present?
+    # Add system prompt with optional caching (same as non-streaming)
+    if system_prompt.present?
+      if enable_prompt_caching
+        request_body[:system] = [
+          {
+            type: "text",
+            text: system_prompt,
+            cache_control: { type: "ephemeral" }
+          }
+        ]
+        Rails.logger.info "💾 Streaming: Prompt caching enabled for system prompt (#{system_prompt.length} chars)"
+      else
+        request_body[:system] = system_prompt
+      end
+    end
 
     Rails.logger.info "Sending streaming request to Bedrock Claude (#{model_id}) using converse_stream"
 
@@ -557,16 +616,35 @@ class BedrockService
                 output: usage.output_tokens || 0
               }
 
+              # Extract cache metrics (Anthropic prompt caching)
+              cache_creation = usage.respond_to?(:cache_creation_input_tokens) ? (usage.cache_creation_input_tokens || 0) : 0
+              cache_read = usage.respond_to?(:cache_read_input_tokens) ? (usage.cache_read_input_tokens || 0) : 0
+
+              # Log cache metrics
+              if cache_creation > 0 || cache_read > 0
+                Rails.logger.info "💾 STREAMING CACHE METRICS:"
+                Rails.logger.info "  Cache created: #{cache_creation} tokens" if cache_creation > 0
+                Rails.logger.info "  Cache read: #{cache_read} tokens (90% savings!)" if cache_read > 0
+                Rails.logger.info "  New processing: #{tokens[:input]} tokens"
+
+                if cache_read > 0
+                  speedup = ((cache_read + tokens[:input]).to_f / tokens[:input]).round(1)
+                  Rails.logger.info "  ⚡ Effective speedup: ~#{speedup}x faster"
+                end
+              end
+
               # Track tokens if we have user and entity
               if @user && @entity && @resource_manager
                 @resource_manager.track_tokens(@user, model_id, tokens, {
                   stream: true,
-                  timestamp: Time.current
+                  timestamp: Time.current,
+                  cache_creation: cache_creation,
+                  cache_read: cache_read
                 })
               end
 
-              # Yield usage info
-              yield(type: :usage, tokens: tokens) if block_given?
+              # Yield usage info with cache metrics
+              yield(type: :usage, tokens: tokens, cache_creation: cache_creation, cache_read: cache_read) if block_given?
 
               Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
             end
