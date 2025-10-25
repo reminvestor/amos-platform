@@ -2,6 +2,12 @@ class RagStore < ApplicationRecord
   belongs_to :user, optional: true
   belongs_to :entity, optional: true
 
+  # New associations for enhanced storage
+  has_many :rag_documents, dependent: :destroy
+  has_many :rag_chunks, through: :rag_documents
+  has_many :rag_queries, dependent: :destroy
+  has_many :rag_processing_jobs, dependent: :destroy
+
   # Enums
   enum :store_type, {
     system: 'system',  # AMOS's shared knowledge (integrations, help docs)
@@ -14,7 +20,7 @@ class RagStore < ApplicationRecord
   validates :pinecone_index, presence: true
   validates :pinecone_namespace, presence: true
   validates :status, presence: true
-  validates :status, inclusion: { in: %w[building active failed archived] }
+  validates :status, inclusion: { in: %w[pending processing ready building active failed archived] }
   validates :store_type, presence: true
 
   # Multi-tenant security validations
@@ -95,10 +101,56 @@ class RagStore < ApplicationRecord
     end
   end
 
+  # S3 path helpers
+  def s3_key_prefix
+    if entity_id.present?
+      "entities/#{entity_id}"
+    else
+      "system/#{name.parameterize}"
+    end
+  end
+
+  def s3_raw_path
+    self[:s3_raw_path] || "#{s3_key_prefix}/raw_documents/#{id}"
+  end
+
+  def s3_processed_path
+    self[:s3_processed_path] || "#{s3_key_prefix}/processed/#{id}"
+  end
+
+  def s3_docling_output_path
+    self[:s3_docling_output_path] || "#{s3_key_prefix}/docling_output/#{id}"
+  end
+
+  # Check if all chunks are embedded
+  def all_chunks_embedded?
+    return false if rag_chunks.empty?
+    rag_chunks.where(embedding: nil).count == 0
+  end
+
+  # Track access for cache optimization
+  def track_access!
+    increment!(:access_count)
+    touch(:last_accessed_at)
+  end
+
+  # Status helpers for new states
+  def pending?
+    status == "pending"
+  end
+
+  def processing?
+    status == "processing"
+  end
+
+  def ready?
+    status == "ready" || status == "active"
+  end
+
   private
 
   def set_defaults
-    self.status ||= "building"
+    self.status ||= "pending"
     self.chunk_count ||= 0
     self.metadata ||= {}
     self.store_type ||= 'entity' if store_type.nil?
