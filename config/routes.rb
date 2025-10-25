@@ -284,6 +284,12 @@ Rails.application.routes.draw do
 
     # Admin Portal (Platform Administration)
     # Note: /admin routes are defined below in the admin namespace
+
+    # OAuth integrations (user-facing, inside app subdomain)
+    namespace :integrations do
+      get ":integration_slug/auth", to: "oauth#authorize", as: :oauth_authorize
+      get "callback/:slug", to: "oauth#callback", as: :oauth_callback
+    end
   end
 
   # Routes for marketing site (no subdomain or www subdomain)
@@ -359,12 +365,6 @@ Rails.application.routes.draw do
       get :operations
       patch :credentials, to: "connections#update_credentials"
     end
-  end
-
-  # OAuth integrations
-  namespace :integrations do
-    get ":integration_slug/auth", to: "oauth#authorize", as: :oauth_authorize
-    get "callback/:slug", to: "oauth#callback", as: :oauth_callback
   end
 
   # Webhook endpoints
