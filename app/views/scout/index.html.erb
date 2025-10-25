@@ -350,34 +350,47 @@
       
       <!-- Tool activity panel removed - now part of task progress canvas -->
       
-      <div class="chat-input-area">
+      <div class="chat-input-area" data-controller="voice-assistant">
         <form id="message-form" data-scout-target="chatForm" enctype="multipart/form-data">
+          <!-- Hidden field for model override (used by voice assistant) -->
+          <input type="hidden" id="model-override" name="model_override" value="">
+
           <div class="attached-files" id="attached-files" style="display: none;">
             <!-- Attached files will be shown here -->
           </div>
           <div class="input-group">
-            <input type="file" 
-              id="file-input" 
-              multiple 
+            <input type="file"
+              id="file-input"
+              multiple
               accept="image/*,.pdf,.doc,.docx,.txt,.csv"
               style="display: none;"
               data-scout-target="fileInput">
             <button type="button" class="attach-btn" id="attach-button" title="Attach files">
               <i class="fas fa-paperclip"></i>
             </button>
-            <textarea 
-              class="chat-input" 
+            <textarea
+              class="chat-input"
               id="message-input"
-              placeholder="Type your message..." 
+              placeholder="Type your message..."
               data-scout-target="chatInput"
               autocomplete="off"
               rows="1"
             ></textarea>
+            <button type="button"
+                    class="voice-btn"
+                    data-action="click->voice-assistant#toggleVoice"
+                    data-voice-assistant-target="button"
+                    title="Voice input">
+              <i class="fas fa-microphone"></i>
+            </button>
             <button type="submit" class="send-btn" id="send-button">
               <i class="fas fa-paper-plane"></i>
             </button>
           </div>
         </form>
+        <div data-voice-assistant-target="status"
+             class="voice-status"
+             style="display: none;"></div>
       </div>
     </section>
 
@@ -2241,24 +2254,37 @@ document.addEventListener('turbo:load', function() {
 window.pendingConfirmation = window.pendingConfirmation || null;
 
 // Global function for canvas actions to send messages
-window.scoutSendMessage = async function(message) {
-  console.log('📨 scoutSendMessage called with:', message);
-  
+// Optional model parameter allows overriding the default model (e.g., for voice assistant)
+window.scoutSendMessage = async function(message, options = {}) {
+  console.log('📨 scoutSendMessage called with:', message, options);
+
   // We need to wait for DOM to be ready
   const waitForDOM = () => {
     const messageInput = document.getElementById('message-input');
     const messageForm = document.getElementById('message-form');
-    
+    const modelOverride = document.getElementById('model-override');
+
     if (messageInput && messageForm) {
-      // Set the input value and submit the form
+      // Set the input value
       messageInput.value = message;
+
+      // Set model override if specified (e.g., "claude-3-haiku" for voice)
+      if (modelOverride && options.model) {
+        modelOverride.value = options.model;
+        console.log('🎯 Using model override:', options.model);
+      } else if (modelOverride) {
+        // Clear any previous override
+        modelOverride.value = '';
+      }
+
+      // Submit the form
       messageForm.dispatchEvent(new Event('submit'));
     } else {
       // If DOM not ready, try again in 100ms
       setTimeout(waitForDOM, 100);
     }
   };
-  
+
   waitForDOM();
 };
 

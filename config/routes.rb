@@ -21,6 +21,24 @@ Rails.application.routes.draw do
 
   # API routes
   namespace :api do
+    # Voice Assistant API
+    namespace :voice do
+      resources :sessions, only: [ :create, :show ], controller: "voice_sessions", param: :id do
+        member do
+          get :deepgram_key
+          get :polly_credentials
+          patch :pause
+          patch :resume
+          patch :end
+        end
+      end
+
+      # Webhooks
+      namespace :webhooks do
+        post :deepgram, to: "deepgram_webhooks#create"
+      end
+    end
+
     namespace :v1 do
       # Health check endpoint
       get "health", to: "health#index"
@@ -432,6 +450,25 @@ Rails.application.routes.draw do
     # Affiliate Settings
     get "/settings/affiliate", to: "affiliates#settings", as: :settings_affiliate
     patch "/settings/affiliate", to: "affiliates#update_settings"
+
+    # Voice Assistant Settings
+    resources :voice_settings, only: [:index, :update] do
+      collection do
+        patch :update_all
+        post :reset_defaults
+      end
+    end
+
+    # System Settings (API Keys, Infrastructure)
+    resources :system_settings, only: [:index, :update] do
+      collection do
+        patch :update_all
+        post :reset_defaults
+      end
+      member do
+        post :test_key
+      end
+    end
 
     resources :commissions do
       collection do
