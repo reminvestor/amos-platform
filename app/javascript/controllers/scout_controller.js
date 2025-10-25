@@ -469,6 +469,9 @@ export default class extends Controller {
                 } else if (data.type === 'tool_result' || data.type === 'tool_end') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('✅ Tool completed:', data.name || data.tool_name)
+                } else if (data.type === 'cache_metrics') {
+                  // Display cache performance indicator
+                  this.showCacheIndicator(data)
                 } else if (data.type === 'intermediate_message') {
                   // Explanatory assistant messages between tool calls
                   if (data.content) {
@@ -2217,5 +2220,56 @@ export default class extends Controller {
     });
     
     return false;
+  }
+
+  /**
+   * Show cache performance indicator
+   */
+  showCacheIndicator(data) {
+    const cacheRead = data.cache_read || 0
+    const cacheCreation = data.cache_creation || 0
+
+    // Only show if there's cache activity
+    if (cacheRead === 0 && cacheCreation === 0) {
+      return
+    }
+
+    // Create indicator element
+    const indicator = document.createElement('div')
+    indicator.className = 'cache-indicator'
+
+    if (cacheRead > 0) {
+      // Cache HIT - green indicator
+      indicator.innerHTML = `
+        <span class="cache-badge cache-hit">
+          💾 Cache Hit
+          <small>${cacheRead} tokens (90% savings)</small>
+        </span>
+      `
+      console.log(`💾 CACHE HIT: ${cacheRead} tokens read from cache (90% cheaper!)`)
+    } else if (cacheCreation > 0) {
+      // Cache MISS - yellow indicator
+      indicator.innerHTML = `
+        <span class="cache-badge cache-miss">
+          💾 Cache Created
+          <small>${cacheCreation} tokens cached</small>
+        </span>
+      `
+      console.log(`💾 CACHE CREATED: ${cacheCreation} tokens cached for 5 minutes`)
+    }
+
+    // Add to chat (append to last message or create new one)
+    const chatMessages = document.getElementById('chat-messages')
+    if (chatMessages) {
+      chatMessages.appendChild(indicator)
+
+      // Auto-fade after 5 seconds
+      setTimeout(() => {
+        indicator.style.opacity = '0'
+        setTimeout(() => indicator.remove(), 500)
+      }, 5000)
+
+      this.scrollChatToBottom()
+    }
   }
 } 
