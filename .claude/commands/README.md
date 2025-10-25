@@ -35,6 +35,52 @@ Complete setup of development environment from scratch.
 /prepare-dev-env
 ```
 
+**Uses skills:** running-tests (quick), fixing-rubocop-offenses, making-quick-commits
+
+#### `/finishing-feature-work`
+Full pre-commit workflow before creating PR.
+
+**What it does:**
+- Runs full test suite
+- Fixes all RuboCop offenses
+- Cleans up merged branches
+- Updates documentation
+- Optional auto-commit
+
+**Example:**
+```bash
+# Run all checks
+Use finishing-feature-work
+
+# Skip docs update during development
+Use finishing-feature-work with skip_docs=true
+
+# Auto-commit if all passes
+Use finishing-feature-work with auto_commit=true
+```
+
+**Uses skills:** running-tests, fixing-rubocop-offenses
+
+---
+
+### Testing
+
+#### `/test-feature [workflow_name]`
+Comprehensive testing workflow.
+
+**What it does:**
+- Tests Scout AI tools individually
+- Tests workflow end-to-end
+- Runs automated test suite
+- Generates summary report
+
+**Example:**
+```bash
+/test-feature create_campaign
+```
+
+**Uses skills:** testing-tools-manually, testing-workflows-manually, running-tests
+
 ---
 
 ### Feature Development
@@ -62,6 +108,24 @@ End-to-end feature development with mandatory UX review and testing.
 /complete-feature "subscription management"
 ```
 
+#### `/build-feature [description]`
+Complete end-to-end feature development workflow.
+
+**What it does:**
+- Creates feature branch with implementation plan
+- Builds workflow templates, tools, and integrations
+- Tests tools individually
+- Tests workflows end-to-end
+- Runs full test suite
+- Final quality checks
+
+**Example:**
+```bash
+/build-feature "Create a workflow that generates Instagram posts"
+```
+
+**Uses skills:** starting-features, testing-tools-manually, testing-workflows-manually, running-tests, finishing-feature-work
+
 ---
 
 ### Git & GitHub
@@ -87,6 +151,13 @@ Use these only when you need to work outside the standard feature workflow.
 #### `/add-tool [description]`
 Create a new Scout AI tool without building a full feature.
 
+**What it does:**
+- Designs tool functionality
+- Creates BaseTool class
+- Implements tool definition and execute method
+- Writes unit tests
+- Verifies tool catalog registration
+
 **When to use:**
 - Adding tools to existing features
 - Building tools independently
@@ -96,24 +167,37 @@ Create a new Scout AI tool without building a full feature.
 ```
 
 #### `/add-workflow [description]`
-Create a new V2 workflow template without building a full feature.
+Create new V2 workflow template.
+
+**What it does:**
+- Designs workflow phases
+- Creates V2 YAML template
+- Defines three-phase structure
+- Adds planner keywords
+- Identifies required tools
 
 **When to use:**
 - Adding workflows to existing features
 - Building workflows independently
 
 ```bash
-/add-workflow "Auto-renew subscriptions"
+/add-workflow "Create a workflow for generating blog posts"
 ```
 
 #### `/add-integration [service_name]`
-Set up a new external API integration.
+Add new external API integration.
+
+**What it does:**
+- Creates Integration and IntegrationOperation records
+- Implements authentication handlers
+- Sets up API transformations
+- Creates connection management UI
 
 **When to use:**
 - Connecting to external services (Stripe, Mailgun, etc.)
 
 ```bash
-/add-integration "Stripe"
+/add-integration "Shopify"
 ```
 
 #### `/add-entity [name]`
