@@ -27,7 +27,11 @@ class RagQuery < ApplicationRecord
   scope :for_rag_store, ->(rag_store) { where(rag_store: rag_store) }
   scope :cache_hits, -> { where(cache_hit: true) }
   scope :cache_misses, -> { where(cache_hit: false) }
-  scope :recent, -> { order(created_at: :desc) }
+  scope :fast, -> { where("response_time_ms < ?", 500) }
+  scope :slow, -> { where("response_time_ms >= ?", 500) }
+  scope :recent, -> { where("created_at > ?", 24.hours.ago) }
+  scope :with_results, -> { where("jsonb_array_length(chunks_retrieved) > 0") }
+  scope :no_results, -> { where("jsonb_array_length(chunks_retrieved) = 0 OR chunks_retrieved = '[]'::jsonb") }
   scope :slow_queries, ->(threshold_ms = 1000) { where("response_time_ms > ?", threshold_ms) }
   scope :today, -> { where("created_at >= ?", Time.zone.now.beginning_of_day) }
   scope :this_week, -> { where("created_at >= ?", 1.week.ago) }
@@ -68,6 +72,11 @@ class RagQuery < ApplicationRecord
       .limit(limit)
   end
 
+  def self.total_chunks_retrieved(entity = nil)
+    scope = entity ? for_entity(entity) : all
+    scope.sum("jsonb_array_length(chunks_retrieved)")
+  end
+
   # Performance classification
   def fast?
     response_time_ms.to_i < 500
@@ -96,6 +105,8 @@ class RagQuery < ApplicationRecord
     chunks_retrieved&.size || 0
   end
 
+  alias chunks_found chunks_retrieved_count
+
   def average_relevance_score
     return 0 if relevance_scores.blank?
 
@@ -105,6 +116,41 @@ class RagQuery < ApplicationRecord
     # Convert distance to similarity (1 - distance for cosine)
     similarities = scores.map { |d| 1 - d }
     (similarities.sum / similarities.size * 100).round(2)
+  end
+
+  def best_match_distance
+    return nil if relevance_scores.blank?
+
+    scores = relevance_scores.map { |s| s["distance"] || s[:distance] }
+    scores.compact.min
+  end
+
+  def query_normalized
+    query&.downcase&.strip
+  end
+
+  def similar_queries
+    return RagQuery.none unless query_hash.present?
+
+    RagQuery.where(query_hash: query_hash).where.not(id: id)
+  end
+
+  def performance_category
+    return "unknown" unless response_time_ms
+
+    case response_time_ms
+    when 0..200
+      "fast"
+    when 201..500
+      "medium"
+    else
+      "slow"
+    end
+  end
+
+  def was_effective?
+    return false if chunks_retrieved_count.zero?
+    average_relevance_score >= 70
   end
 
   # Human-readable response time
@@ -121,6 +167,7 @@ class RagQuery < ApplicationRecord
   private
 
   def generate_query_hash
+    return if query.blank?
     self.query_hash = Digest::SHA256.hexdigest(query.downcase.strip)
   end
 
