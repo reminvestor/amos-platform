@@ -3,6 +3,7 @@ class Integration < ApplicationRecord
   has_many :connections, dependent: :destroy
   has_many :integration_operations, dependent: :destroy
   has_many :entities, through: :connections
+  has_many :oauth_configurations, dependent: :destroy
 
   # Validations
   validates :name, :slug, presence: true, uniqueness: true
@@ -15,8 +16,7 @@ class Integration < ApplicationRecord
     bearer_token: 1,
     basic_auth: 2,
     oauth2: 3,
-    oauth2_custom: 4,
-    custom: 5
+    custom: 4  # Reserved for user-managed OAuth apps (future)
   }
 
   # Scopes
@@ -28,11 +28,27 @@ class Integration < ApplicationRecord
   after_initialize :set_defaults, if: :new_record?
 
   def oauth?
-    oauth2? || oauth2_custom?
+    oauth2?
   end
 
-  def requires_user_oauth_app?
-    oauth2_custom?
+  def requires_admin_config?
+    # All auth types can be configured by admin
+    true
+  end
+
+  # Get current auth configuration from database
+  def current_auth_params
+    oauth_config = OauthConfiguration.find_by(integration: self)
+    
+    return [] unless oauth_config
+    
+    oauth_config.auth_configs.order(:position).map do |ac|
+      {
+        key: ac.auth_key,
+        value: ac.auth_value,
+        placement: ac.auth_placement
+      }
+    end
   end
 
   def connected_for?(user)

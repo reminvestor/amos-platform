@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_20_221159) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_24_200008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -255,6 +255,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_20_221159) do
     t.index ["operation_id"], name: "index_artifacts_on_operation_id"
     t.index ["storage_ref"], name: "index_artifacts_on_storage_ref"
     t.index ["user_id"], name: "index_artifacts_on_user_id"
+  end
+
+  create_table "auth_configs", force: :cascade do |t|
+    t.bigint "oauth_configuration_id", null: false
+    t.string "auth_key", null: false
+    t.string "auth_value"
+    t.string "auth_placement", default: "header", null: false
+    t.integer "position", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["oauth_configuration_id", "position"], name: "index_auth_configs_on_oauth_configuration_id_and_position"
+    t.index ["oauth_configuration_id"], name: "index_auth_configs_on_oauth_configuration_id"
   end
 
   create_table "business_insights", force: :cascade do |t|
@@ -813,6 +825,43 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_20_221159) do
     t.index ["custom_model_id", "entity_id", "permission_type"], name: "idx_model_perms", unique: true
     t.index ["custom_model_id"], name: "index_model_permissions_on_custom_model_id"
     t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
+  end
+
+  create_table "o_auth_configurations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "integration_id", null: false
+    t.string "client_id", null: false
+    t.string "client_secret", null: false
+    t.string "redirect_uri", null: false
+    t.text "scopes"
+    t.string "authorize_url", null: false
+    t.string "token_url", null: false
+    t.text "credentials"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id"], name: "index_o_auth_configurations_on_client_id"
+    t.index ["entity_id", "integration_id"], name: "index_oauth_configs_on_entity_integration", unique: true
+    t.index ["entity_id"], name: "index_o_auth_configurations_on_entity_id"
+    t.index ["integration_id"], name: "index_o_auth_configurations_on_integration_id"
+  end
+
+  create_table "oauth_configurations", force: :cascade do |t|
+    t.bigint "integration_id", null: false
+    t.string "client_id"
+    t.string "client_secret"
+    t.string "redirect_uri"
+    t.text "scopes"
+    t.jsonb "credentials", default: {}
+    t.jsonb "metadata", default: {}
+    t.integer "status", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "authorize_url"
+    t.string "token_url"
+    t.jsonb "callback_params", default: [], null: false
+    t.text "test_endpoint"
+    t.index ["callback_params"], name: "index_oauth_configurations_on_callback_params", using: :gin
+    t.index ["integration_id"], name: "index_oauth_configurations_on_integration_id", unique: true
   end
 
   create_table "payouts", force: :cascade do |t|
@@ -1567,6 +1616,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_20_221159) do
   add_foreign_key "analytics_query_logs", "users"
   add_foreign_key "artifacts", "entities"
   add_foreign_key "artifacts", "users"
+  add_foreign_key "auth_configs", "oauth_configurations"
   add_foreign_key "business_insights", "entities"
   add_foreign_key "business_insights", "scout_conversations", column: "source_conversation_id"
   add_foreign_key "business_profiles", "entities"
@@ -1626,6 +1676,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_20_221159) do
   add_foreign_key "landing_pages", "users"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
+  add_foreign_key "o_auth_configurations", "entities"
+  add_foreign_key "o_auth_configurations", "integrations"
+  add_foreign_key "oauth_configurations", "integrations"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
   add_foreign_key "plugin_permissions", "custom_plugins"

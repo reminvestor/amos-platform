@@ -53,39 +53,45 @@ class ApplicationController < ActionController::Base
       return new_subscription_path
     end
 
-    # Check if we're on the app subdomain (or localhost without subdomain for testing)
-    if request.subdomain == "app" || request.subdomain.blank?
+    # Check if we're on the app subdomain
+    if request.subdomain == "app"
       # User is onboarded and has subscription, proceed with entity logic
       if resource.entity
-        # User has an entity, go to dashboard
-        root_path
+        # User has an entity, go to chat (default mode)
+        chat_mode_path
       else
         # User has no entity, redirect to entity creation
         new_entity_path
       end
     else
-      # Not on app subdomain, go to app subdomain root
-      app_url = root_url(subdomain: "app")
-      app_url
+      # Not on app subdomain, build URL with app subdomain
+      # In production: app.agentmarketing.com
+      # In development: app.localhost:5001
+      if Rails.env.production?
+        root_url(subdomain: "app")
+      else
+        # For development, manually construct to avoid subdomain doubling
+        port = request.port == 80 ? "" : ":#{request.port}"
+        "#{request.protocol}app.#{request.domain}#{port}/"
+      end
     end
   end
 
   # Override the default devise sign out redirect
   def after_sign_out_path_for(resource_or_scope)
-    # Check if we're on the app subdomain (or localhost without subdomain for testing)
-    if request.subdomain == "app" || request.subdomain.blank?
+    # Check if we're on the app subdomain
+    if request.subdomain == "app"
       # Redirect to login page on app subdomain
       new_user_session_path
     else
       # Not on app subdomain, redirect to marketing site
-      root_path
+      marketing_root_path
     end
   end
 
   # Helper to determine if we're on the app subdomain
   def app_subdomain?
-    # TEMP: For local testing without subdomains
-    request.subdomain == "app" || request.subdomain.blank?
+    request.subdomain == "app"
   end
 
   # Debug action to check user status without redirects (add this to routes as needed)
@@ -109,15 +115,14 @@ class ApplicationController < ActionController::Base
   private
 
   def handle_authentication_failure
-    # TEMP: For local testing without subdomains
-    if request.subdomain == "app" || request.subdomain.blank?
-      # On app subdomain or no subdomain (localhost), redirect to login
+    if request.subdomain == "app"
+      # On app subdomain, redirect to login
       Rails.logger.info "🔄 Redirecting to login page for app subdomain"
       redirect_to new_user_session_path
     else
-      # On other subdomains, redirect to marketing site
+      # On other subdomains or main domain, redirect to marketing site
       Rails.logger.info "🔄 Redirecting to marketing site for non-app subdomain"
-      redirect_to root_url(subdomain: false)
+      redirect_to marketing_root_path
     end
   end
 

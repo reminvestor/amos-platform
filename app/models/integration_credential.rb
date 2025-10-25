@@ -79,12 +79,38 @@ class IntegrationCredential < ApplicationRecord
   end
 
   def build_auth_header
+    headers = {}
+    
+    # Get auth_configs from integration's oauth_configuration
+    oauth_config = connection.integration.oauth_configurations.first
+    
+    if oauth_config && oauth_config.auth_configs.any?
+      # Use database-driven auth_configs
+      oauth_config.auth_configs.where(auth_placement: 'header').each do |auth_config|
+        # Replace placeholders in auth_value with actual credential values
+        value = auth_config.auth_value
+        
+        # Find all placeholders like {api_key}, {token}, etc.
+        placeholders = value.scan(/\{(\w+)\}/).flatten
+        
+        placeholders.each do |placeholder|
+          credential_value = credentials[placeholder] || credentials[placeholder.to_sym] || ''
+          value = value.gsub("{#{placeholder}}", credential_value)
+        end
+        
+        headers[auth_config.auth_key] = value
+      end
+      
+      return headers
+    end
+    
+    # Fallback to legacy auth_method logic if no auth_configs
     case auth_method
     when "bearer"
       { "Authorization" => "Bearer #{credentials['access_token'] || credentials['token']}" }
     when "basic"
       # For Stripe, the API key is the username, password is empty
-      username = credentials["username"] || ""
+      username = credentials["username"] || credentials["api_key"] || ""
       password = credentials["password"] || ""
 
       encoded = Base64.strict_encode64("#{username}:#{password}")

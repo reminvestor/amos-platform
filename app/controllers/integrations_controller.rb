@@ -8,10 +8,12 @@ class IntegrationsController < ApplicationController
 
   def connect
     @integration = Integration.find_by!(slug: params[:slug])
+    @oauth_config = OauthConfiguration.includes(:auth_configs).find_by(integration: @integration)
 
     case @integration.auth_type
     when "oauth2", "oauth2_custom"
-      redirect_to integrations_oauth_authorize_path(@integration.slug)
+      # Redirect to OAuth authorization - the route is namespaced as integrations/oauth
+      redirect_to "/integrations/#{@integration.slug}/auth"
     else
       # Show credentials form
       render :connect
@@ -90,6 +92,28 @@ class IntegrationsController < ApplicationController
   private
 
   def build_credentials_from_params
+    # Check if integration has database-configured auth_configs
+    oauth_config = OauthConfiguration.includes(:auth_configs).find_by(integration: @integration)
+    
+    if oauth_config && oauth_config.auth_configs.any?
+      # Build credentials from dynamic auth_configs
+      credentials = {}
+      oauth_config.auth_configs.each do |auth_config|
+        # Extract placeholder names from auth_value like {api_key}, {token}, etc.
+        placeholders = auth_config.auth_value.scan(/\{(\w+)\}/).flatten
+        
+        # Look for each placeholder in params
+        placeholders.each do |placeholder|
+          param_value = params[placeholder] || params[placeholder.to_sym]
+          if param_value.present?
+            credentials[placeholder] = param_value
+          end
+        end
+      end
+      return credentials
+    end
+    
+    # Fallback to static auth type mapping
     case @integration.auth_type
     when "api_key"
       { "api_key" => params[:api_key] }

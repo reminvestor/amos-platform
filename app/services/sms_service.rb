@@ -1,5 +1,3 @@
-require 'twilio-ruby'
-
 class SmsService
   def initialize(entity)
     @entity = entity
@@ -8,6 +6,7 @@ class SmsService
 
   # Send a single SMS
   def send_message(to:, body:, campaign: nil, contact: nil)
+    require 'twilio-ruby'
     validate_connection!
 
     client = Twilio::REST::Client.new(account_sid, auth_token)
@@ -31,8 +30,13 @@ class SmsService
     end
 
     { success: true, sid: message.sid, status: message.status }
-  rescue Twilio::REST::RestError => e
-    Rails.logger.error "[SmsService] Twilio error: #{e.message}"
+  rescue => e
+    require 'twilio-ruby'
+    if e.is_a?(Twilio::REST::RestError)
+      Rails.logger.error "[SmsService] Twilio error: #{e.message}"
+    else
+      Rails.logger.error "[SmsService] Error: #{e.message}"
+    end
 
     if campaign && contact
       SmsDelivery.create!(

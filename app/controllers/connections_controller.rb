@@ -82,6 +82,32 @@ class ConnectionsController < ApplicationController
     render json: { success: false, error: e.message }, status: :unprocessable_entity
   end
 
+  # DELETE /connections/:id
+  def destroy
+    connection = current_entity.connections.find_by(id: params[:id])
+    
+    unless connection
+      respond_to do |format|
+        format.html { redirect_to integrations_path, alert: "Connection not found" }
+        format.json { render json: { success: false, error: "Connection not found" }, status: :not_found }
+      end
+      return
+    end
+
+    integration_name = connection.integration.name
+    connection.destroy
+
+    respond_to do |format|
+      format.html { redirect_to integrations_path, notice: "Disconnected from #{integration_name}" }
+      format.json { render json: { success: true, message: "Disconnected from #{integration_name}" } }
+    end
+  rescue => e
+    respond_to do |format|
+      format.html { redirect_to integrations_path, alert: "Error disconnecting: #{e.message}" }
+      format.json { render json: { success: false, error: e.message }, status: :unprocessable_entity }
+    end
+  end
+
   private
 
   def determine_auth_method(integration)

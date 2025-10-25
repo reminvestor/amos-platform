@@ -5,6 +5,15 @@ class Integrations::OauthController < ApplicationController
   def authorize
     # Build OAuth authorization URL
     credentials = build_oauth_credentials
+    
+    # Validate credentials exist
+    return if credentials.nil?
+    
+    # Debug logging
+    Rails.logger.info "🔍 OAuth authorize - Integration: #{@integration.slug}"
+    Rails.logger.info "🔍 Credentials keys: #{credentials.keys}"
+    Rails.logger.info "🔍 Client ID present: #{credentials['client_id'].present?}"
+    Rails.logger.info "🔍 Client ID value: #{credentials['client_id']&.first(10)}..."
 
     # Store state for security
     session[:oauth_state] = SecureRandom.hex(16)
@@ -12,8 +21,10 @@ class Integrations::OauthController < ApplicationController
 
     # Build authorization URL
     auth_url = build_authorization_url(credentials, session[:oauth_state])
+    
+    Rails.logger.info "🔍 Authorization URL: #{auth_url}"
 
-    redirect_to auth_url
+    redirect_to auth_url, allow_other_host: true
   end
 
   def callback
@@ -45,14 +56,40 @@ class Integrations::OauthController < ApplicationController
         name: "OAuth Token"
       )
 
+      # Build credentials hash
+      credentials_hash = {
+        access_token: token_response["access_token"],
+        refresh_token: token_response["refresh_token"],
+        token_type: token_response["token_type"],
+        expires_in: token_response["expires_in"],
+        scope: token_response["scope"]
+      }
+      
+      # Dynamically capture OAuth callback parameters based on integration config
+      oauth_config = OauthConfiguration.find_by(integration: @integration)
+      if oauth_config && oauth_config.callback_param_names.any?
+        oauth_config.callback_param_names.each do |param_name|
+          if params[param_name].present?
+            # Store with original name and common aliases
+            credentials_hash[param_name.to_sym] = params[param_name]
+            
+            # Add common aliases for compatibility
+            case param_name
+            when "realmId"
+              credentials_hash[:realm_id] = params[param_name]
+              credentials_hash[:company_id] = params[param_name]
+            when "instance_url"
+              credentials_hash[:instance_url] = params[param_name]
+            when "organization_id"
+              credentials_hash[:organization_id] = params[param_name]
+              credentials_hash[:company_id] = params[param_name]
+            end
+          end
+        end
+      end
+
       credential.assign_attributes(
-        credentials: {
-          access_token: token_response["access_token"],
-          refresh_token: token_response["refresh_token"],
-          token_type: token_response["token_type"],
-          expires_in: token_response["expires_in"],
-          scope: token_response["scope"]
-        },
+        credentials: credentials_hash,
         auth_method: "bearer",
         expires_at: token_response["expires_in"] ? Time.current + token_response["expires_in"].seconds : nil,
         status: :active
@@ -90,18 +127,15 @@ class Integrations::OauthController < ApplicationController
   end
 
   def build_oauth_credentials
-    if @integration.oauth2_custom?
-      # User must have configured OAuth app
-      oauth_config = current_entity.oauth_configurations.find_by(integration: @integration)
-      unless oauth_config
-        redirect_to integrations_path, alert: "Please configure OAuth credentials first"
-        return
-      end
-      oauth_config.credentials
-    else
-      # Use pre-configured credentials
-      @integration.auth_config
+    # Get platform-wide OAuth configuration from database
+    oauth_config = OauthConfiguration.find_by(integration: @integration)
+    
+    unless oauth_config
+      redirect_to integrations_path, alert: "#{@integration.name} OAuth has not been configured yet. Please contact support."
+      return nil
     end
+    
+    oauth_config.credentials
   end
 
   def build_authorization_url(credentials, state)
@@ -127,19 +161,42 @@ class Integrations::OauthController < ApplicationController
   def exchange_code_for_token(code)
     credentials = build_oauth_credentials
 
+    Rails.logger.info "🔍 Token Exchange Request:"
+    Rails.logger.info "  Token URL: #{credentials['token_url']}"
+    Rails.logger.info "  Client ID: #{credentials['client_id']&.first(10)}..."
+    Rails.logger.info "  Client Secret present: #{credentials['client_secret'].present?}"
+    Rails.logger.info "  Client Secret length: #{credentials['client_secret']&.length}"
+    Rails.logger.info "  Redirect URI: #{credentials['redirect_uri']}"
+    Rails.logger.info "  Code: #{code&.first(20)}..."
+
+    # QuickBooks requires Basic Auth header (NOT credentials in body)
+    auth_string = Base64.strict_encode64("#{credentials['client_id']}:#{credentials['client_secret']}")
+    
+    Rails.logger.info "  Auth Header: Basic #{auth_string[0..20]}..."
+
+    # Build the request body
+    body_params = {
+      grant_type: "authorization_code",
+      code: code,
+      redirect_uri: credentials["redirect_uri"]
+    }
+    
+    Rails.logger.info "  Body params: #{body_params.inspect}"
+
     response = HTTParty.post(
       credentials["token_url"],
-      body: {
-        client_id: credentials["client_id"],
-        client_secret: credentials["client_secret"],
-        code: code,
-        grant_type: "authorization_code",
-        redirect_uri: credentials["redirect_uri"]
-      },
+      body: body_params,
       headers: {
-        "Content-Type" => "application/x-www-form-urlencoded"
+        "Content-Type" => "application/x-www-form-urlencoded",
+        "Accept" => "application/json",
+        "Authorization" => "Basic #{auth_string}"
       }
     )
+
+    Rails.logger.info "🔍 Token Exchange Response:"
+    Rails.logger.info "  Status: #{response.code}"
+    Rails.logger.info "  Body: #{response.body}"
+    Rails.logger.info "  Headers: #{response.headers.inspect}"
 
     unless response.success?
       raise "Token exchange failed: #{response.code} - #{response.body}"

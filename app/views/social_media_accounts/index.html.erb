@@ -52,9 +52,9 @@
                 <button class="btn btn-outline-primary" onclick="testConnection(<%= connection.id %>, '<%= connection.integration.name %>')">
                   <i class="fas fa-check"></i> Test
                 </button>
-                <%= link_to "#", class: "btn btn-outline-danger", 
-                    data: { turbo_method: :delete, turbo_confirm: "Disconnect from #{connection.integration.name}?" } do %>
-                  <i class="fas fa-unlink"></i> Disconnect
+                <%= link_to connection_path(connection), method: :delete, class: "btn btn-outline-danger", 
+                    data: { turbo_method: :delete, turbo_confirm: "Disconnect from #{connection.integration.name}? You can reconnect anytime." } do %>
+                  <i class="bi bi-link-45deg"></i> Disconnect
                 <% end %>
               </div>
             </div>
@@ -112,9 +112,9 @@
                     <% if is_connected %>
                       <span class="badge bg-success">Connected</span>
                     <% else %>
-                      <a href="/integrations/<%= integration.slug %>/auth" class="btn btn-sm btn-primary">
+                      <%= link_to connect_integration_path(integration.slug), class: "btn btn-sm btn-primary" do %>
                         <i class="fas fa-plug"></i> Connect
-                      </a>
+                      <% end %>
                     <% end %>
                   </div>
                 </div>
