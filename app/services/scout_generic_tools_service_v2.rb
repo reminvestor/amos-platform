@@ -50,7 +50,8 @@ class ScoutGenericToolsServiceV2
         max_tokens: 25000,
         temperature: 0.7,
         json_mode: false,
-        tools: tools
+        tools: tools,
+        enable_prompt_caching: true
       ) do |chunk|
         handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
         streaming_started = true if chunk[:type] == :content
@@ -168,8 +169,8 @@ class ScoutGenericToolsServiceV2
   private
 
   def get_filtered_tools
-    # Get tools filtered by agent loadout
-    tools = @tool_catalog.get_bedrock_tools(agent_loadout: @agent_loadout)
+    # Get tools filtered by agent loadout with prompt caching enabled
+    tools = @tool_catalog.get_bedrock_tools(agent_loadout: @agent_loadout, enable_caching: true)
 
     # Exclude tools that should only be used within workflows (not by main chat agent)
     # These are powerful tools that need the context and validation of a workflow
@@ -207,10 +208,6 @@ class ScoutGenericToolsServiceV2
       #{ai_identity}
 
       You have access to a comprehensive toolset for managing and automating business operations.
-
-      USER CONTEXT:
-      - User: #{@user.first_name} #{@user.last_name}
-      - Entity: #{@entity.name}
 
       CONVERSATION HISTORY:
       You have access to the last 20 messages in your active context window. If the user references
@@ -486,6 +483,14 @@ class ScoutGenericToolsServiceV2
           tool_calls.last[:arguments] += input
         end
       end
+    when :usage
+      # Token usage with cache metrics
+      progress_callback&.call({
+        type: "cache_metrics",
+        tokens: chunk[:tokens],
+        cache_creation: chunk[:cache_creation] || 0,
+        cache_read: chunk[:cache_read] || 0
+      })
     when :message_stop
       # Message complete
       if accumulated_content.present? && !@saved_message_content.include?(accumulated_content.hash)
@@ -581,7 +586,8 @@ class ScoutGenericToolsServiceV2
       max_tokens: 25000,
       temperature: 0.7,
       json_mode: false,
-      tools: tools
+      tools: tools,
+      enable_prompt_caching: true
     ) do |chunk|
       case chunk[:type]
       when :content
@@ -719,7 +725,13 @@ class ScoutGenericToolsServiceV2
   end
 
   def enhance_message_with_canvas_context(message, canvas)
-    return message unless canvas.present?
+    # Add user context to message (not in cached system prompt for better cache sharing)
+    user_name = @user.respond_to?(:first_name) ? "#{@user.first_name} #{@user.last_name}" : @user.to_s
+    entity_name = @entity.respond_to?(:name) ? @entity.name : @entity.to_s
+    user_context_prefix = "[User Context: #{user_name} from #{entity_name}]\n\n"
+
+    # If no canvas, just add user context
+    return user_context_prefix + message unless canvas.present?
 
     # Convert ActionController::Parameters to hash if needed
     if canvas.respond_to?(:to_unsafe_h)
@@ -765,8 +777,9 @@ class ScoutGenericToolsServiceV2
     hint = context_hints[canvas_type]
     hint_text = hint.is_a?(Proc) ? hint.call(canvas_data) : hint
 
-    enhanced = message + (hint_text || "")
-    Rails.logger.info "✅ Enhanced message: #{enhanced}"
+    # Add user context prefix + message + canvas hint
+    enhanced = user_context_prefix + message + (hint_text || "")
+    Rails.logger.info "✅ Enhanced message with user context: #{enhanced}"
 
     enhanced
   end
