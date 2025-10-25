@@ -178,8 +178,8 @@ class BedrockService
           output: response_body["usage"]["output_tokens"] || 0
         }
 
-        # Track cache performance metrics
-        cache_creation = response_body["usage"]["cache_creation_input_tokens"] || 0
+        # Track cache performance metrics (AWS Bedrock uses cache_write_input_tokens)
+        cache_creation = response_body["usage"]["cache_write_input_tokens"] || 0
         cache_read = response_body["usage"]["cache_read_input_tokens"] || 0
 
         if cache_creation > 0 || cache_read > 0
@@ -554,13 +554,30 @@ class BedrockService
 
       # Add system prompt if present
       if system_prompt.present?
-        payload[:system] = [ { text: system_prompt } ]
+        if enable_prompt_caching
+          # AWS Bedrock prompt caching - cache_point must be separate element
+          payload[:system] = [
+            { text: system_prompt },
+            { cache_point: { type: "default" } }
+          ]
+          Rails.logger.info "💾 Bedrock Prompt Caching ENABLED for system prompt"
+        else
+          payload[:system] = [ { text: system_prompt } ]
+        end
       end
 
       # Add tools if provided
       if tools.any?
+        bedrock_tools = format_tools_for_bedrock(tools)
+
+        if enable_prompt_caching && bedrock_tools.any?
+          # Append cache_point as separate element after all tools
+          bedrock_tools << { cache_point: { type: "default" } }
+          Rails.logger.info "💾 Bedrock Prompt Caching ENABLED for #{bedrock_tools.length - 1} tools"
+        end
+
         payload[:tool_config] = {
-          tools: format_tools_for_bedrock(tools),
+          tools: bedrock_tools,
           tool_choice: { auto: {} }
         }
       end
@@ -574,7 +591,7 @@ class BedrockService
       @client.converse_stream(payload) do |stream|
         stream.on_error_event do |event|
           Rails.logger.error "Bedrock stream error: #{event.inspect}"
-          raise BedrockError, "Streaming error: #{event.error_message || 'Unknown error'}"
+          raise StandardError, "Streaming error: #{event.error_message || 'Unknown error'}"
         end
 
         stream.on_event do |event|
@@ -616,8 +633,8 @@ class BedrockService
                 output: usage.output_tokens || 0
               }
 
-              # Extract cache metrics (Anthropic prompt caching)
-              cache_creation = usage.respond_to?(:cache_creation_input_tokens) ? (usage.cache_creation_input_tokens || 0) : 0
+              # Extract cache metrics (AWS Bedrock prompt caching)
+              cache_creation = usage.respond_to?(:cache_write_input_tokens) ? (usage.cache_write_input_tokens || 0) : 0
               cache_read = usage.respond_to?(:cache_read_input_tokens) ? (usage.cache_read_input_tokens || 0) : 0
 
               # Log cache metrics
@@ -657,11 +674,11 @@ class BedrockService
       buffer
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock streaming error: #{e.message}"
-      raise BedrockError, "Bedrock API Error: #{e.message}"
+      raise StandardError, "Bedrock API Error: #{e.message}"
     rescue => e
       Rails.logger.error "Unexpected Bedrock streaming error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
-      raise BedrockError, "Unexpected error: #{e.message}"
+      raise StandardError, "Unexpected error: #{e.message}"
     end
   end
 
