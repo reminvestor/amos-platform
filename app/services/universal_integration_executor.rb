@@ -50,9 +50,12 @@ class UniversalIntegrationExecutor
       return error_response("Service class not found for #{integration_record.name}") unless service
       
       # 7. Execute operation
-      result = service.execute_operation(operation_record.operation_id, params)
+      response = service.execute_operation(operation_record, params: params)
       
-      # 8. Log the execution
+      # 8. Convert HTTParty response to standardized format
+      result = standardize_response(response)
+      
+      # 9. Log the execution
       log_execution(
         connection: connection,
         operation: operation_record,
@@ -61,7 +64,7 @@ class UniversalIntegrationExecutor
         duration_ms: ((Time.current - start_time) * 1000).round
       )
       
-      # 9. Return standardized response
+      # 10. Return standardized response
       format_response(result, operation_record, connection)
       
     rescue => e
@@ -102,6 +105,9 @@ class UniversalIntegrationExecutor
   end
   
   def find_operation(integration, operation_id)
+    # After normalization, all operation_ids follow the format: slug.operation_name
+    # Support both full format (stripe.list_customers) and short format (list_customers)
+    
     # Try exact match first
     op = integration.integration_operations
                .where(is_enabled: true)
@@ -109,31 +115,24 @@ class UniversalIntegrationExecutor
     
     return op if op
     
-    # If not found, try matching with integration slug prefix
-    # E.g., "get_company_info" or "quickbooks.get_company_info" matches "quickbooks.get_company_info.v3"
-    integration.integration_operations
-               .where(is_enabled: true)
-               .find do |o|
-                 # Extract base operation name without version (e.g., "quickbooks.get_company_info.v3" → "quickbooks.get_company_info")
-                 base_op_id = o.operation_id.sub(/\.v\d+$/, '')  # Remove version suffix like .v3
-                 
-                 # Match if:
-                 # 1. Input matches the base (e.g., "quickbooks.get_company_info")
-                 # 2. Input matches just the operation name (e.g., "get_company_info")
-                 # 3. Input with slug prefix matches (e.g., "quickbooks.get_company_info")
-                 base_op_id == operation_id ||
-                 base_op_id == "#{integration.slug}.#{operation_id}" ||
-                 base_op_id.end_with?(".#{operation_id}")
-               end
+    # If not found and input doesn't include slug prefix, try adding it
+    unless operation_id.include?('.')
+      full_operation_id = "#{integration.slug}.#{operation_id}"
+      op = integration.integration_operations
+                 .where(is_enabled: true)
+                 .find_by(operation_id: full_operation_id)
+    end
+    
+    op
   end
   
   def load_service(integration, connection)
-    # Try to load service class
+    # Try to load integration-specific service class first
     service_class_name = "Integrations::#{integration.slug.camelize}::#{integration.slug.camelize}Service"
     
     begin
       service_class = service_class_name.constantize
-      service_class.new(connection)
+      return service_class.new(connection)
     rescue NameError
       # Try loading the file
       service_path = Rails.root.join('app', 'services', 'integrations', integration.slug, "#{integration.slug}_service.rb")
@@ -141,10 +140,42 @@ class UniversalIntegrationExecutor
       if File.exist?(service_path)
         load service_path
         service_class = service_class_name.constantize
-        service_class.new(connection)
-      else
-        nil
+        return service_class.new(connection)
       end
+    end
+    
+    # Fall back to generic IntegrationApiService for all integrations
+    # This is the standard service for REST API integrations
+    IntegrationApiService.new(connection)
+  end
+  
+  def standardize_response(response)
+    # Convert HTTParty response to standardized format
+    if response.success?
+      {
+        success: true,
+        data: response.parsed_response,
+        status_code: response.code,
+        message: "Operation completed successfully"
+      }
+    else
+      {
+        success: false,
+        error: response.message || "Request failed",
+        error_details: response.parsed_response,
+        status_code: response.code
+      }
+    end
+  rescue => e
+    # Handle non-HTTParty responses (already standardized)
+    if response.is_a?(Hash) && response.key?(:success)
+      response
+    else
+      {
+        success: false,
+        error: "Failed to parse response: #{e.message}",
+        status_code: 500
+      }
     end
   end
   
@@ -152,17 +183,16 @@ class UniversalIntegrationExecutor
     IntegrationLog.create!(
       connection: connection,
       integration_operation: operation,
+      user: @user,
       http_method: operation.http_method,
       endpoint: operation.path_template,
-      request_params: params,
       response_status: result[:success] ? 200 : 500,
-      response_body: result[:data] || result[:error],
+      response_body_encrypted: (result[:data] || result[:error]).to_json,
       duration_ms: duration_ms,
-      executed_by: user&.id,
-      executed_at: Time.current,
       metadata: {
         executed_via: 'universal_executor',
-        operation_id: operation.operation_id
+        operation_id: operation.operation_id,
+        params: params
       }
     )
   rescue => e
