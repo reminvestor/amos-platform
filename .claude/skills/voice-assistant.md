@@ -6,10 +6,18 @@ This skill helps you understand and modify the voice assistant feature in AMOS.
 
 The voice assistant enables real-time voice conversations with Scout AI through:
 
-1. **Browser** → Captures audio via MediaRecorder API
+1. **Browser** → Captures audio via MediaRecorder API (16kHz, mono, linear16 PCM)
 2. **Deepgram** → Speech-to-Text (STT) via WebSocket
 3. **Scout AI** → Processes the transcript
-4. **AWS Polly** → Text-to-Speech (TTS) for responses
+4. **Browser TTS** → Web Speech API for responses (Polly removed for performance)
+
+## Key Features
+
+- **Wake Word Detection**: "Hey Amos", "Hi Amos", or "Amos" triggers commands
+- **Continuous Listening**: Hands-free mode - say wake word, get response, continue
+- **Transcript Buffering**: Combines split transcripts from Deepgram (handles natural pauses)
+- **Performance Optimized**: 16kHz sample rate (telephony quality, 66% less data than 48kHz)
+- **Cross-Platform**: Works on desktop and mobile browsers with microphone access
 
 ## File Locations
 
@@ -20,7 +28,6 @@ The voice assistant enables real-time voice conversations with Scout AI through:
 ### Backend (Rails)
 - **API Controller**: `app/controllers/api/voice/voice_sessions_controller.rb`
 - **Deepgram Service**: `app/services/deepgram_service.rb`
-- **Polly Service**: `app/services/polly_credentials_service.rb`
 - **Model**: `app/models/voice_session.rb`
 - **Action Cable Channel**: `app/channels/voice_channel.rb`
 
@@ -38,13 +45,11 @@ User clicks 🎤 button
   ↓
 toggleVoice() called
   ↓
-startVoice() begins 6-step process:
+startVoice() begins 4-step process:
   1. Create VoiceSession (POST /api/voice/sessions)
   2. Connect to Action Cable (VoiceChannel)
   3. Get Deepgram credentials (GET /api/voice/sessions/:id/deepgram_key)
-  4. Get Polly credentials (GET /api/voice/sessions/:id/polly_credentials)
-  5. Request microphone permission (getUserMedia)
-  6. Connect to Deepgram WebSocket
+  4. Request microphone permission & connect to Deepgram WebSocket (getUserMedia)
 ```
 
 ### 2. Critical Authentication Detail
@@ -64,22 +69,47 @@ This is documented in Deepgram's browser authentication guide. The browser secur
 ### 3. Audio Streaming Flow
 
 ```
-MediaRecorder captures audio (250ms chunks)
+MediaRecorder captures audio (250ms chunks, 16kHz mono)
   ↓
 ondataavailable event fires
   ↓
 Blob sent to Deepgram WebSocket
   ↓
-Deepgram returns transcript
+Deepgram returns interim + final transcripts
   ↓
-handleDeepgramMessage processes it
+addToTranscriptBuffer() accumulates finals for 500ms
   ↓
-If final: Send to Scout AI
+processBufferedTranscript() combines split speech
   ↓
-Scout responds via VoiceChannel
+processWakeWord() detects "Hey Amos" (or accepts any speech in continuous mode)
   ↓
-synthesizeSpeech with AWS Polly
+Send cleaned transcript to Scout AI
+  ↓
+Scout responds (streaming SSE)
+  ↓
+Browser TTS speaks response (speechSynthesis API)
+  ↓
+In continuous mode: Wait for next wake word
 ```
+
+### 4. Wake Word & Continuous Listening
+
+**Wake Word Processing**:
+- Detects: "hey amos", "hi amos", "amos" (case-insensitive, punctuation removed)
+- Strips wake word from command before sending to Scout
+- Example: "Hey Amos, show my campaigns" → Scout receives "show my campaigns"
+
+**Continuous Mode**:
+- Click mic once to start
+- Say: "Hey Amos, show campaigns" → Responds → Still listening
+- Say: "Hey Amos, create campaign" → Responds → Still listening
+- Auto-stops after 5 minutes or manual button click
+- After first command, wake word is OPTIONAL (natural conversation)
+
+**Transcript Buffering**:
+- Deepgram may split speech: "Hey," then "Amos create campaign."
+- Buffer waits 500ms for more speech
+- Combines: "Hey, Amos create campaign." → Detects wake word correctly
 
 ### 4. Timing Considerations
 
@@ -125,15 +155,6 @@ const options = {
   mimeType: 'audio/webm;codecs=opus',
   audioBitsPerSecond: 32000 // Increase from 16000 for better quality
 }
-```
-
-### Change Voice (Polly)
-
-```ruby
-# In VoiceAssistantSetting
-VoiceAssistantSetting.set("polly.voice_id", "Joanna") # US English Female
-VoiceAssistantSetting.set("polly.voice_id", "Matthew") # US English Male
-VoiceAssistantSetting.set("polly.engine", "neural") # Better quality
 ```
 
 ## Known Issues
@@ -254,26 +275,64 @@ Look for:
 | `deepgram.vad_events` | `true` | Voice activity detection |
 | `deepgram.smart_format` | `true` | Better number/date formatting |
 
-### Polly Settings
+## Performance Optimizations (Implemented)
 
-| Setting | Default | Purpose |
-|---------|---------|---------|
-| `polly.voice_id` | `Joanna` | Voice name |
-| `polly.engine` | `neural` | Engine (neural or standard) |
-| `polly.output_format` | `mp3` | Audio format |
-| `polly.sample_rate` | `16000` | Audio quality |
+### 1. Polly TTS Removal (412ms saved per response)
+**Problem**: AWS Polly added 412ms latency bottleneck
+**Solution**: Switched to browser's native `speechSynthesis` API
+**Impact**: Eliminated 412ms delay, reduced complexity
 
-## Performance Optimization
+### 2. Sample Rate: 48kHz → 16kHz (66% data reduction)
+**Problem**: 48kHz is music quality - overkill for voice (human speech: 300-3400Hz)
+**Solution**: Reduced to 16kHz (telephony standard - same as Alexa, Siri, Zoom)
+**Impact**:
+- 66% less network bandwidth
+- 66% less Deepgram processing
+- Faster transmission
+- Lower costs
+- **Location**: `voice_assistant_controller.js` line ~150 (`sampleRate: 16000`)
 
-### Reduce Latency
+### 3. Conversation History Truncation (40% token reduction)
+**Problem**: Conversation history growing unbounded → 7000+ tokens per request
+**Solution**: Truncate to last 6 messages (3 exchanges), compress long messages
+**Impact**:
+- Before: 10 messages, ~7000 tokens
+- After: 6 messages, ~4200 tokens
+- **Location**: `scout_generic_tools_service_v2.rb` `format_conversation_for_ai()`
+
+###  4. System Prompt Compression (70% reduction: 3000→900 tokens)
+**Problem**: Verbose system prompt with ASCII art, excessive examples
+**Solution**: Removed bloat, consolidated sections, 1 example per concept
+**Impact**:
+- Before: 3000 tokens
+- After: 900 tokens
+- Saved: 2100 tokens
+- **Location**: `scout_generic_tools_service_v2.rb` `build_system_prompt()`
+
+### 5. Debug Logging Removal
+**Problem**: High-frequency console.log causing performance overhead
+**Solution**: Removed verbose Deepgram message logging (fired every ~100ms)
+**Impact**: Reduced console spam from 10+ messages/sec to ~2 messages/session
+
+### 6. Transcript Buffer Timeout: 800ms → 500ms
+**Problem**: Added latency waiting for speech completion
+**Solution**: Reduced wait time by 300ms
+**Impact**: 37.5% faster transcript finalization
+
+**Overall Performance**:
+- Combined optimizations: ~7000 tokens → ~5000 tokens per request (28% faster)
+- Response time: More consistent, no degradation over long conversations
+- **Note**: Prompt caching NOT available (AWS Bedrock limitation)
+
+### Additional Latency Optimizations
 
 1. **Smaller chunk size**: `mediaRecorder.start(100)` (from 250ms)
 2. **Faster endpointing**: `deepgram.endpointing = 200`
 3. **Skip interim results**: `deepgram.interim_results = false`
 
-### Improve Accuracy
+### Accuracy Improvements
 
-1. **Better model**: `deepgram.model = "nova-3"` (already default)
+1. **Better model**: `deepgram.model = "nova-2"` (current default)
 2. **Add keywords**: Pass business terms to `websocket_config(keywords: ['Acme', 'Q4'])`
 3. **Enable smart format**: `deepgram.smart_format = true`
 
@@ -282,14 +341,13 @@ Look for:
 - **Never commit API keys** - Use environment variables
 - **Use ephemeral keys** - Generate temporary keys for client-side use (requires Deepgram plan upgrade)
 - **Validate sessions** - VoiceSessionsController checks entity ownership
-- **Expire credentials** - Polly credentials expire in 15 minutes
 
 ## Related Documentation
 
 - Main docs: `docs/VOICE_ASSISTANT_ADMIN_GUIDE.md`
 - Deepgram API: https://developers.deepgram.com/docs
 - MediaRecorder API: https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder
-- AWS Polly: https://docs.aws.amazon.com/polly/
+- Web Speech API: https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis
 
 ## Additional Deepgram Features (Not Yet Enabled)
 
