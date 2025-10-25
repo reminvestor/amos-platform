@@ -35,12 +35,14 @@ class VoiceAgentService
     save_scout_message("user", transcript)
 
     # Process through Scout's generic tools service
+    # Use faster/cheaper Haiku model for voice (ENV['BEDROCK_VOICE_MODEL'] or 'claude-3-haiku')
     main_chat_loadout = AgentLoadout.new(agent_role: "main_chat")
     scout_service = ScoutGenericToolsServiceV2.new(
       user,
       entity,
       scout_session_id,
-      agent_loadout: main_chat_loadout
+      agent_loadout: main_chat_loadout,
+      model: ENV.fetch('BEDROCK_VOICE_MODEL', 'claude-3-haiku')
     )
 
     # Get conversation history from Scout

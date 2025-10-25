@@ -94,7 +94,10 @@ class BedrockService
 
   private
 
-  def send_message_non_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: nil, enable_prompt_caching: false)
+  def send_message_non_streaming(system_prompt, messages, model: nil, max_tokens: 10000, temperature: 0.7, json_mode: false, tools: nil, enable_prompt_caching: false)
+    # Use ENV variable if model not specified
+    model ||= ENV.fetch('BEDROCK_DEFAULT_MODEL', 'claude-sonnet-4-5')
+
     # Map model names to Bedrock model IDs
     # Using global inference profiles for Claude Sonnet 4.5
     model_id = case model
@@ -338,7 +341,10 @@ class BedrockService
   public
 
   # Non-streaming version using converse API (for tool continuation)
-  def send_message_converse(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, tools: [])
+  def send_message_converse(system_prompt, messages, model: nil, max_tokens: 10000, temperature: 0.7, tools: [])
+    # Use ENV variable if model not specified
+    model ||= ENV.fetch('BEDROCK_DEFAULT_MODEL', 'claude-sonnet-4-5')
+
     # Map model names to Bedrock model IDs
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
@@ -435,7 +441,10 @@ class BedrockService
     end
   end
 
-  def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
+  def send_message_streaming(system_prompt, messages, model: nil, max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
+    # Use ENV variable if model not specified
+    model ||= ENV.fetch('BEDROCK_DEFAULT_MODEL', 'claude-sonnet-4-5')
+
     # Map model names to Bedrock model IDs
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
