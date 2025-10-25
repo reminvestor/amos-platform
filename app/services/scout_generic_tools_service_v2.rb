@@ -1,12 +1,13 @@
 class ScoutGenericToolsServiceV2
-  attr_reader :user, :entity, :session_id, :agent_loadout
+  attr_reader :user, :entity, :session_id, :agent_loadout, :model
   attr_accessor :suggested_canvas, :canvas_data
 
-  def initialize(user, entity, session_id, agent_loadout: nil)
+  def initialize(user, entity, session_id, agent_loadout: nil, model: nil)
     @user = user
     @entity = entity
     @session_id = session_id
     @agent_loadout = agent_loadout
+    @model = model # Model to use (defaults to ENV['BEDROCK_DEFAULT_MODEL'] or 'claude-sonnet-4-5')
     @ai_service = BedrockService.new
     @ai_provider_name = Rails.application.config.ai_service.to_s.capitalize
     @tool_catalog = Tools::ToolCatalog.instance
@@ -47,6 +48,7 @@ class ScoutGenericToolsServiceV2
       @ai_service.send_message_streaming(
         system_prompt,
         conversation_messages,
+        model: @model,
         max_tokens: 25000,
         temperature: 0.7,
         json_mode: false,
@@ -583,6 +585,7 @@ class ScoutGenericToolsServiceV2
     @ai_service.send_message_streaming(
       system_prompt,
       conversation_messages,
+      model: @model,
       max_tokens: 25000,
       temperature: 0.7,
       json_mode: false,
