@@ -1,0 +1,63 @@
+# RagDocument fixtures for testing
+document_one:
+  rag_store: entity_one_custom
+  original_filename: "brand_guidelines.pdf"
+  content_type: "application/pdf"
+  file_size_bytes: 524288  # 512 KB
+  file_hash: "abc123def456789012345678901234567890abcdef1234567890abcdef123456"
+  docling_metadata:
+    num_pages: 15
+    processing_time: 2500
+    docling_version: "1.0.0"
+  extracted_tables: []
+  extracted_images: []
+  document_structure:
+    sections: ["Introduction", "Logo Usage", "Color Palette", "Typography"]
+  page_count: 15
+
+document_two:
+  rag_store: entity_one_custom
+  original_filename: "product_catalog.pdf"
+  content_type: "application/pdf"
+  file_size_bytes: 1048576  # 1 MB
+  file_hash: "def456789abc123456789012345678901234567890abcdef1234567890abc123"
+  docling_metadata:
+    num_pages: 42
+    processing_time: 5200
+    docling_version: "1.0.0"
+  extracted_tables:
+    - id: "table_1"
+      caption: "Product Pricing"
+      num_rows: 10
+      num_cols: 4
+  extracted_images:
+    - id: "img_1"
+      caption: "Product Photo"
+  document_structure:
+    sections: ["Overview", "Products", "Pricing"]
+  page_count: 42
+
+document_system:
+  rag_store: system_stripe
+  original_filename: "stripe_api_reference.md"
+  content_type: "text/markdown"
+  file_size_bytes: 204800  # 200 KB
+  file_hash: "789abc123def456789012345678901234567890abcdef1234567890def45678"
+  docling_metadata: {}
+  extracted_tables: []
+  extracted_images: []
+  document_structure:
+    sections: ["Authentication", "Customers", "Charges", "Subscriptions"]
+  page_count: null
+
+document_duplicate:
+  rag_store: entity_two_internal
+  original_filename: "brand_guidelines_copy.pdf"
+  content_type: "application/pdf"
+  file_size_bytes: 524288
+  file_hash: "abc123def456789012345678901234567890abcdef1234567890abcdef123456"  # Same hash as document_one
+  docling_metadata: {}
+  extracted_tables: []
+  extracted_images: []
+  document_structure: {}
+  page_count: 15

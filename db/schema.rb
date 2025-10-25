@@ -10,10 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_24_200008) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_25_165018) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
+  enable_extension "vector"
 
   create_table "ab_test_variants", force: :cascade do |t|
     t.bigint "ab_test_id", null: false
@@ -827,24 +828,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_200008) do
     t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
   end
 
-  create_table "o_auth_configurations", force: :cascade do |t|
-    t.bigint "entity_id", null: false
-    t.bigint "integration_id", null: false
-    t.string "client_id", null: false
-    t.string "client_secret", null: false
-    t.string "redirect_uri", null: false
-    t.text "scopes"
-    t.string "authorize_url", null: false
-    t.string "token_url", null: false
-    t.text "credentials"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["client_id"], name: "index_o_auth_configurations_on_client_id"
-    t.index ["entity_id", "integration_id"], name: "index_oauth_configs_on_entity_integration", unique: true
-    t.index ["entity_id"], name: "index_o_auth_configurations_on_entity_id"
-    t.index ["integration_id"], name: "index_o_auth_configurations_on_integration_id"
-  end
-
   create_table "oauth_configurations", force: :cascade do |t|
     t.bigint "integration_id", null: false
     t.string "client_id"
@@ -970,6 +953,77 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_200008) do
     t.index ["entity_id"], name: "index_policy_rules_on_entity_id"
   end
 
+  create_table "rag_chunks", force: :cascade do |t|
+    t.bigint "rag_document_id", null: false
+    t.text "content", null: false
+    t.vector "embedding", limit: 1536
+    t.string "pinecone_vector_id"
+    t.jsonb "metadata", default: {}
+    t.integer "chunk_index"
+    t.integer "token_count"
+    t.string "chunk_type"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "to_tsvector('english'::regconfig, content)", name: "index_rag_chunks_on_content_tsvector", using: :gin
+    t.index ["embedding"], name: "index_rag_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
+    t.index ["pinecone_vector_id"], name: "index_rag_chunks_on_pinecone_vector_id"
+    t.index ["rag_document_id", "chunk_index"], name: "index_rag_chunks_on_rag_document_id_and_chunk_index"
+    t.index ["rag_document_id"], name: "index_rag_chunks_on_rag_document_id"
+  end
+
+  create_table "rag_documents", force: :cascade do |t|
+    t.bigint "rag_store_id", null: false
+    t.string "original_filename", null: false
+    t.string "content_type"
+    t.integer "file_size_bytes"
+    t.string "file_hash"
+    t.jsonb "docling_metadata", default: {}
+    t.jsonb "extracted_tables", default: []
+    t.jsonb "extracted_images", default: []
+    t.jsonb "document_structure", default: {}
+    t.integer "page_count"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["file_hash"], name: "index_rag_documents_on_file_hash"
+    t.index ["rag_store_id", "file_hash"], name: "index_rag_documents_on_rag_store_id_and_file_hash"
+    t.index ["rag_store_id"], name: "index_rag_documents_on_rag_store_id"
+  end
+
+  create_table "rag_processing_jobs", force: :cascade do |t|
+    t.bigint "rag_store_id", null: false
+    t.string "job_id"
+    t.string "job_type"
+    t.integer "status", default: 0
+    t.text "error_message"
+    t.integer "retry_count", default: 0
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["job_id"], name: "index_rag_processing_jobs_on_job_id"
+    t.index ["job_type", "status"], name: "index_rag_processing_jobs_on_job_type_and_status"
+    t.index ["rag_store_id", "status"], name: "index_rag_processing_jobs_on_rag_store_id_and_status"
+    t.index ["rag_store_id"], name: "index_rag_processing_jobs_on_rag_store_id"
+  end
+
+  create_table "rag_queries", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "rag_store_id"
+    t.text "query", null: false
+    t.string "query_hash"
+    t.integer "response_time_ms"
+    t.jsonb "chunks_retrieved", default: []
+    t.jsonb "relevance_scores", default: []
+    t.boolean "cache_hit", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cache_hit"], name: "index_rag_queries_on_cache_hit"
+    t.index ["created_at"], name: "index_rag_queries_on_created_at"
+    t.index ["entity_id", "query_hash"], name: "index_rag_queries_on_entity_id_and_query_hash"
+    t.index ["entity_id"], name: "index_rag_queries_on_entity_id"
+    t.index ["rag_store_id"], name: "index_rag_queries_on_rag_store_id"
+  end
+
   create_table "rag_stores", force: :cascade do |t|
     t.string "name", null: false
     t.string "app_name", null: false
@@ -991,8 +1045,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_200008) do
     t.integer "chunks_with_pages", default: 0
     t.integer "chunks_with_headings", default: 0
     t.integer "chunks_with_tables", default: 0
+    t.string "s3_raw_path"
+    t.string "s3_processed_path"
+    t.string "s3_docling_output_path"
+    t.integer "token_count", default: 0
+    t.integer "processing_time_ms"
+    t.string "processing_method"
+    t.string "docling_version"
+    t.datetime "last_accessed_at"
+    t.integer "access_count", default: 0
+    t.datetime "expires_at"
     t.index ["app_name"], name: "index_rag_stores_on_app_name"
+    t.index ["entity_id", "status"], name: "index_rag_stores_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_rag_stores_on_entity_id"
+    t.index ["last_accessed_at"], name: "index_rag_stores_on_last_accessed_at"
     t.index ["pinecone_index", "pinecone_namespace"], name: "index_rag_stores_on_pinecone_index_and_pinecone_namespace", unique: true
     t.index ["status"], name: "index_rag_stores_on_status"
     t.index ["store_type"], name: "index_rag_stores_on_store_type"
@@ -1367,6 +1433,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_200008) do
     t.index ["stripe_event_id"], name: "index_subscription_events_on_stripe_event_id", unique: true, where: "(stripe_event_id IS NOT NULL)"
   end
 
+  create_table "system_settings", force: :cascade do |t|
+    t.string "key"
+    t.text "value"
+    t.text "encrypted_value"
+    t.string "category"
+    t.text "description"
+    t.boolean "is_sensitive"
+    t.integer "last_updated_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_system_settings_on_key", unique: true
+  end
+
   create_table "task_events", force: :cascade do |t|
     t.bigint "task_session_id", null: false
     t.string "event_type", null: false
@@ -1434,6 +1513,36 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_200008) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+  end
+
+  create_table "voice_assistant_settings", force: :cascade do |t|
+    t.string "key"
+    t.text "value"
+    t.string "setting_type"
+    t.text "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_voice_assistant_settings_on_key", unique: true
+  end
+
+  create_table "voice_sessions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "session_id", null: false
+    t.string "status", default: "active", null: false
+    t.jsonb "context", default: {}
+    t.jsonb "transcript_history", default: []
+    t.jsonb "metadata", default: {}
+    t.datetime "started_at"
+    t.datetime "ended_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "status"], name: "index_voice_sessions_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_voice_sessions_on_entity_id"
+    t.index ["session_id"], name: "index_voice_sessions_on_session_id", unique: true
+    t.index ["started_at"], name: "index_voice_sessions_on_started_at"
+    t.index ["status"], name: "index_voice_sessions_on_status"
+    t.index ["user_id"], name: "index_voice_sessions_on_user_id"
   end
 
   create_table "webhook_events", force: :cascade do |t|
@@ -1633,8 +1742,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_200008) do
   add_foreign_key "landing_pages", "users"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
-  add_foreign_key "o_auth_configurations", "entities"
-  add_foreign_key "o_auth_configurations", "integrations"
   add_foreign_key "oauth_configurations", "integrations"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
@@ -1650,6 +1757,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_200008) do
   add_foreign_key "plugin_usages", "entities"
   add_foreign_key "plugin_usages", "users"
   add_foreign_key "policy_rules", "entities"
+  add_foreign_key "rag_chunks", "rag_documents"
+  add_foreign_key "rag_documents", "rag_stores"
+  add_foreign_key "rag_processing_jobs", "rag_stores"
+  add_foreign_key "rag_queries", "entities"
+  add_foreign_key "rag_queries", "rag_stores"
   add_foreign_key "rag_stores", "entities"
   add_foreign_key "rag_stores", "users"
   add_foreign_key "referrals", "affiliates"
@@ -1688,6 +1800,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_24_200008) do
   add_foreign_key "task_sessions", "users"
   add_foreign_key "tenant_quotas", "entities"
   add_foreign_key "users", "entities"
+  add_foreign_key "voice_sessions", "entities"
+  add_foreign_key "voice_sessions", "users"
   add_foreign_key "webhook_events", "webhook_subscriptions"
   add_foreign_key "webhook_subscriptions", "connections"
   add_foreign_key "workflow_contexts", "task_sessions"

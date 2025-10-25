@@ -2,7 +2,7 @@
 
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123password
@@ -65,6 +65,11 @@ services:
       # Pinecone (for RAG)
       - PINECONE_API_KEY=${PINECONE_API_KEY}
       - PINECONE_REGION=${PINECONE_REGION:-us-east-1}
+      # S3 (for RAG document storage)
+      - RAG_BUCKET=${RAG_BUCKET}
+      - AWS_S3_ENDPOINT=${AWS_S3_ENDPOINT}
+      # Sidekiq (for RAG processing)
+      - SIDEKIQ_CONCURRENCY=${SIDEKIQ_CONCURRENCY:-10}
       # Optional services
       - MAILGUN_API_KEY=${MAILGUN_API_KEY}
       - MAILGUN_DOMAIN=${MAILGUN_DOMAIN}
@@ -106,6 +111,11 @@ services:
       # Pinecone
       - PINECONE_API_KEY=${PINECONE_API_KEY}
       - PINECONE_REGION=${PINECONE_REGION:-us-east-1}
+      # S3 (for RAG document storage)
+      - RAG_BUCKET=${RAG_BUCKET}
+      - AWS_S3_ENDPOINT=${AWS_S3_ENDPOINT}
+      # Sidekiq (for RAG processing)
+      - SIDEKIQ_CONCURRENCY=${SIDEKIQ_CONCURRENCY:-10}
       # Optional services
       - MAILGUN_API_KEY=${MAILGUN_API_KEY}
       - MAILGUN_DOMAIN=${MAILGUN_DOMAIN}
