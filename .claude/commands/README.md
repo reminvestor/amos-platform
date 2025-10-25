@@ -64,19 +64,19 @@ Use finishing-feature-work with skip_docs=true
 Use finishing-feature-work with auto_commit=true
 ```
 
-**Uses skills:** running-tests, fixing-rubocop-offenses, cleaning-up-git-branches, updating-documentation
+**Uses skills:** running-tests, fixing-rubocop-offenses
 
 ---
 
 ### Testing
 
 #### `/test-feature [workflow_name]`
-Comprehensive feature testing workflow.
+Comprehensive testing workflow.
 
 **What it does:**
-- Tests all Scout AI tools
-- Tests specific workflow (if provided)
-- Runs full test suite
+- Tests Scout AI tools individually
+- Tests workflow end-to-end
+- Runs automated test suite
 - Generates summary report
 
 **Example:**
@@ -90,68 +90,70 @@ Comprehensive feature testing workflow.
 
 ### Feature Development
 
-#### `/build-feature [feature_name]`
-Scaffold new feature with proper patterns.
+#### `/build-feature [description]`
+Complete end-to-end feature development workflow.
 
 **What it does:**
-- Creates model with entity scoping
-- Generates migration
-- Creates controller with authentication
-- Adds routes
-- Generates tests
-- Creates Scout AI tool (optional)
+- Creates feature branch with implementation plan
+- Builds workflow templates, tools, and integrations
+- Tests tools individually
+- Tests workflows end-to-end
+- Runs full test suite
+- Final quality checks
 
 **Example:**
 ```bash
-/build-feature "subscription"
+/build-feature "Create a workflow that generates Instagram posts"
 ```
 
-**Uses skills:** starting-features
+**Uses skills:** starting-features, testing-tools-manually, testing-workflows-manually, running-tests, finishing-feature-work
 
-#### `/add-tool [tool_name]`
+#### `/add-tool [description]`
 Create new Scout AI tool.
 
 **What it does:**
-- Generates tool file from template
-- Adds to tool catalog
-- Creates test file
-- Shows usage examples
+- Designs tool functionality
+- Creates BaseTool class
+- Implements tool definition and execute method
+- Writes unit tests
+- Verifies tool catalog registration
 
 **Example:**
 ```bash
-/add-tool "send_sms"
+/add-tool "Create a tool to export campaign analytics to CSV"
 ```
 
 **Uses skills:** starting-features
 
-#### `/add-workflow [workflow_name]`
+#### `/add-workflow [description]`
 Create new V2 workflow template.
 
 **What it does:**
-- Generates YAML template
-- Sets up three-phase structure
-- Adds keywords
-- Creates test script
+- Designs workflow phases
+- Creates V2 YAML template
+- Defines three-phase structure
+- Adds planner keywords
+- Identifies required tools
 
 **Example:**
 ```bash
-/add-workflow "create_landing_page"
+/add-workflow "Create a workflow for generating blog posts"
 ```
 
 **Uses skills:** starting-features
 
 #### `/add-integration [service_name]`
-Add new external integration.
+Add new external API integration.
 
 **What it does:**
-- Creates Integration record
-- Generates IntegrationOperation definitions
-- Adds authentication handling
-- Creates test suite
+- Creates Integration and IntegrationOperation records
+- Implements authentication handlers
+- Sets up API transformations
+- Creates connection management UI
 
 **Example:**
 ```bash
-/add-integration "Stripe"
+/add-integration "Shopify"
 ```
 
 **Uses skills:** starting-features

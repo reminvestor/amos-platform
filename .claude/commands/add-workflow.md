@@ -10,39 +10,48 @@ Create a new V2 workflow template with proper three-phase structure.
 
 ## What This Command Does
 
-Delegates to the **workflow-architect** agent to:
-1. Ask you about required vs optional data
-2. Determine execution strategy (structured vs adaptive)
-3. Design validation criteria
-4. Create the YAML workflow template
-5. Identify any missing tools needed
+Uses the **starting-features** skill to:
+1. Help you design the workflow phases
+2. Create the V2 YAML template structure
+3. Define gather_context, execute_goal, and validate_result phases
+4. Add workflow keywords for planner matching
+5. Identify required tools and integrations
 
-## Example
+## Examples
 
 ```
 /add-workflow Create a workflow for generating blog posts from topics
 ```
 
-## Agent Task
-
-Use the Task tool with subagent_type: "workflow-architect"
-
-Provide this prompt:
 ```
-The user wants to create a new V2 workflow: [description]
-
-Please:
-1. Ask the user what data needs to be gathered (required vs optional fields)
-2. Ask what the primary goal/outcome should be
-3. Ask if execution should be structured or adaptive
-4. Ask what validation criteria define success
-5. Design the three-phase workflow template
-6. Create the file in app/workflow_templates/
-7. Report what tools are needed for execution
-
-Return a summary of:
-- Template file created
-- Execution strategy chosen
-- Tools required (existing vs new)
-- Any integration needs identified
+/add-workflow Build a workflow that creates social media campaigns
 ```
+
+## Workflow Structure
+
+Creates a V2 workflow template with:
+- **template_version: 2** - Ensures V2 engine usage
+- **Gather Context Phase** - Data collection strategy
+- **Execute Goal Phase** - Structured or adaptive execution
+- **Validate Result Phase** - Quality checks and auto-fixes
+- **Keywords** - Planner matching phrases
+
+## Implementation
+
+This command uses the starting-features skill which:
+- Follows V2 workflow patterns (three-phase structure)
+- Creates template in `app/workflow_templates/`
+- Auto-discovered by WorkflowEngine
+- Provides testing guidance
+
+## Next Steps
+
+After running this command:
+1. Test the workflow with the `testing-workflows-manually` skill
+2. Run system tests with `running-tests` skill
+3. Verify planner matches keywords correctly
+4. Use `/quick-commit` to commit your changes
+
+## Uses Skills
+
+- **starting-features** - Workflow template scaffolding and design guidance
