@@ -161,19 +161,42 @@ class Integrations::OauthController < ApplicationController
   def exchange_code_for_token(code)
     credentials = build_oauth_credentials
 
+    Rails.logger.info "🔍 Token Exchange Request:"
+    Rails.logger.info "  Token URL: #{credentials['token_url']}"
+    Rails.logger.info "  Client ID: #{credentials['client_id']&.first(10)}..."
+    Rails.logger.info "  Client Secret present: #{credentials['client_secret'].present?}"
+    Rails.logger.info "  Client Secret length: #{credentials['client_secret']&.length}"
+    Rails.logger.info "  Redirect URI: #{credentials['redirect_uri']}"
+    Rails.logger.info "  Code: #{code&.first(20)}..."
+
+    # QuickBooks requires Basic Auth header (NOT credentials in body)
+    auth_string = Base64.strict_encode64("#{credentials['client_id']}:#{credentials['client_secret']}")
+    
+    Rails.logger.info "  Auth Header: Basic #{auth_string[0..20]}..."
+
+    # Build the request body
+    body_params = {
+      grant_type: "authorization_code",
+      code: code,
+      redirect_uri: credentials["redirect_uri"]
+    }
+    
+    Rails.logger.info "  Body params: #{body_params.inspect}"
+
     response = HTTParty.post(
       credentials["token_url"],
-      body: {
-        client_id: credentials["client_id"],
-        client_secret: credentials["client_secret"],
-        code: code,
-        grant_type: "authorization_code",
-        redirect_uri: credentials["redirect_uri"]
-      },
+      body: body_params,
       headers: {
-        "Content-Type" => "application/x-www-form-urlencoded"
+        "Content-Type" => "application/x-www-form-urlencoded",
+        "Accept" => "application/json",
+        "Authorization" => "Basic #{auth_string}"
       }
     )
+
+    Rails.logger.info "🔍 Token Exchange Response:"
+    Rails.logger.info "  Status: #{response.code}"
+    Rails.logger.info "  Body: #{response.body}"
+    Rails.logger.info "  Headers: #{response.headers.inspect}"
 
     unless response.success?
       raise "Token exchange failed: #{response.code} - #{response.body}"

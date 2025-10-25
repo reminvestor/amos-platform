@@ -12,7 +12,8 @@ class IntegrationsController < ApplicationController
 
     case @integration.auth_type
     when "oauth2", "oauth2_custom"
-      redirect_to integrations_oauth_authorize_path(@integration.slug)
+      # Redirect to OAuth authorization - the route is namespaced as integrations/oauth
+      redirect_to "/integrations/#{@integration.slug}/auth"
     else
       # Show credentials form
       render :connect

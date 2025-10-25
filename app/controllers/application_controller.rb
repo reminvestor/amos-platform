@@ -64,9 +64,16 @@ class ApplicationController < ActionController::Base
         new_entity_path
       end
     else
-      # Not on app subdomain, go to app subdomain root
-      app_url = root_url(subdomain: "app")
-      app_url
+      # Not on app subdomain, build URL with app subdomain
+      # In production: app.agentmarketing.com
+      # In development: app.localhost:5001
+      if Rails.env.production?
+        root_url(subdomain: "app")
+      else
+        # For development, manually construct to avoid subdomain doubling
+        port = request.port == 80 ? "" : ":#{request.port}"
+        "#{request.protocol}app.#{request.domain}#{port}/"
+      end
     end
   end
 
