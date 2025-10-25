@@ -34,7 +34,7 @@ end
 
 # Stripe - Test Connection
 stripe.integration_operations.find_or_create_by!(
-  operation_id: 'stripe.test_connection.v2020-08-27'
+  operation_id: 'stripe.test_connection'
 ) do |op|
   op.name = 'Test Connection'
   op.description = 'Test if your Stripe API key is valid'
@@ -52,7 +52,7 @@ end
 
 # Stripe Operations - List Customers
 stripe.integration_operations.find_or_create_by!(
-  operation_id: 'stripe.list_customers.v2020-08-27'
+  operation_id: 'stripe.list_customers'
 ) do |op|
   op.name = 'List Customers'
   op.description = 'Returns a list of your customers'
@@ -122,7 +122,7 @@ end
 
 # Stripe - Create Customer
 stripe.integration_operations.find_or_create_by!(
-  operation_id: 'stripe.create_customer.v2020-08-27'
+  operation_id: 'stripe.create_customer'
 ) do |op|
   op.name = 'Create Customer'
   op.description = 'Creates a new customer object'
@@ -200,7 +200,7 @@ end
 
 # Shopify - Test Connection
 shopify.integration_operations.find_or_create_by!(
-  operation_id: 'shopify.test_connection.v2024-01'
+  operation_id: 'shopify.test_connection'
 ) do |op|
   op.name = 'Test Connection'
   op.description = 'Test if your Shopify access token is valid'

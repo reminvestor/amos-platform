@@ -19,8 +19,11 @@ class IntegrationApiService
     end
     
     # Fall back to finding the test connection operation
+    # After normalization, operation_ids follow format: slug.operation_name (e.g., stripe.test_connection)
     test_operation = @integration.integration_operations
-                                .where("operation_id LIKE ?", "%.test_connection.%")
+                                .where("operation_id = ? OR operation_id LIKE ?", 
+                                       "#{@integration.slug}.test_connection",
+                                       "%.test_connection")
                                 .first
 
     return { success: false, error: "No test operation defined for this integration" } unless test_operation
