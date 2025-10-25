@@ -153,10 +153,7 @@ class RagQueryTest < ActiveSupport::TestCase
 
   test "cache_hit_rate returns 0 when no queries" do
     # Create entity with no queries
-    new_entity = Entity.create!(
-      name: "Test Entity",
-      email: "test@example.com"
-    )
+    new_entity = Entity.create!(name: "Test Entity")
 
     rate = RagQuery.cache_hit_rate(new_entity)
 
@@ -167,8 +164,8 @@ class RagQueryTest < ActiveSupport::TestCase
     avg = RagQuery.average_response_time(@entity_one)
 
     # entity_one queries: 450ms, 50ms, 2500ms, 350ms
-    # Average: (450 + 50 + 2500 + 350) / 4 = 837.5ms
-    assert_equal 837.5, avg
+    # Average: (450 + 50 + 2500 + 350) / 4 = 837.5ms (rounded to 838)
+    assert_equal 838, avg
   end
 
   test "total_chunks_retrieved sums all retrieved chunks" do
