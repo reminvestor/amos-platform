@@ -96,26 +96,44 @@
 
       <!-- Operations -->
       <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
           <h5 class="mb-0"><i class="fas fa-tasks"></i> Available Operations</h5>
+          <% if current_admin&.editor? || current_admin&.super_admin? %>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#discoverOperationsModal">
+              <i class="fas fa-magic me-1"></i> AI Discover
+            </button>
+          <% end %>
         </div>
         <div class="card-body">
           <% if @integration.integration_operations.any? %>
             <div class="list-group">
-              <% @integration.integration_operations.each do |operation| %>
-                <div class="list-group-item">
+              <% @integration.integration_operations.order(is_enabled: :desc, created_at: :desc).each do |operation| %>
+                <div class="list-group-item <%= 'bg-light' unless operation.is_enabled %>">
                   <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <h6 class="mb-1"><%= operation.name %></h6>
+                    <div class="flex-grow-1">
+                      <div class="d-flex align-items-center gap-2">
+                        <h6 class="mb-1"><%= operation.name %></h6>
+                        <% unless operation.is_enabled %>
+                          <span class="badge bg-warning text-dark">Disabled</span>
+                        <% end %>
+                        <% if operation.documentation&.include?("Auto-discovered by AI") %>
+                          <span class="badge bg-info">
+                            <i class="fas fa-magic"></i> AI Discovered
+                          </span>
+                        <% end %>
+                      </div>
                       <small class="text-muted"><%= operation.description %></small>
                     </div>
-                    <span class="badge bg-secondary"><%= operation.http_method.upcase %></span>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="badge bg-secondary"><%= operation.http_method.upcase %></span>
+                      <%= link_to "Edit", edit_admin_integration_operation_path(@integration, operation), class: "btn btn-sm btn-outline-primary" %>
+                    </div>
                   </div>
                 </div>
               <% end %>
             </div>
           <% else %>
-            <p class="text-muted mb-0">No operations defined yet</p>
+            <p class="text-muted mb-0">No operations defined yet. Click "AI Discover" to automatically find operations!</p>
           <% end %>
         </div>
       </div>
@@ -227,6 +245,72 @@
           <% end %>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI Operation Discovery Modal -->
+<div class="modal fade" id="discoverOperationsModal" tabindex="-1" aria-labelledby="discoverOperationsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <%= form_with url: discover_operations_admin_integration_path(@integration), method: :post, local: true do |form| %>
+        <div class="modal-header">
+          <h5 class="modal-title" id="discoverOperationsModalLabel">
+            <i class="fas fa-magic text-primary me-2"></i> AI Operation Discovery
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted">
+            Our AI will automatically research the <%= @integration.name %> API to discover useful operations that aren't currently implemented.
+          </p>
+          
+          <div class="alert alert-info mb-3">
+            <strong><i class="fas fa-brain me-2"></i> How it works:</strong>
+            <ol class="mb-0 mt-2">
+              <li>AI searches the web for <%= @integration.name %> API documentation</li>
+              <li>Analyzes your existing operations as templates</li>
+              <li>Identifies gaps and suggests 5-10 most useful missing operations</li>
+              <li>Creates operations (disabled) for your review</li>
+            </ol>
+          </div>
+          
+          <div class="card border-primary mb-3">
+            <div class="card-body py-2">
+              <small>
+                <i class="fas fa-lightbulb text-warning me-1"></i>
+                <strong>Current Operations:</strong> <%= @integration.integration_operations.count %> configured
+                <% if @integration.integration_operations.any? %>
+                  <br>
+                  <span class="text-muted">The AI will use these as templates to match your integration's style and patterns.</span>
+                <% end %>
+              </small>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="operation_spec" class="form-label">
+              <strong><i class="fas fa-bullseye me-1"></i> Target Specific Operations (Optional)</strong>
+            </label>
+            <%= form.text_area :operation_spec, 
+                class: "form-control", 
+                rows: 5,
+                placeholder: "Examples:\n- List all invoices\n- Create a new customer\n- Update payment method\n- Delete a subscription\n- Get transaction details\n\nLeave blank for AI to suggest the most commonly useful operations." %>
+            <small class="form-text text-muted">
+              Tell the AI what operations you need, or leave blank for automatic discovery.
+            </small>
+          </div>
+          
+          <div class="alert alert-warning mb-0">
+            <i class="fas fa-clock me-2"></i>
+            <strong>Processing time:</strong> 1-2 minutes. You'll receive a notification when new operations are ready for review.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <%= form.submit "Start Discovery", class: "btn btn-primary" %>
+        </div>
+      <% end %>
     </div>
   </div>
 </div>

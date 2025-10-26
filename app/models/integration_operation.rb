@@ -18,6 +18,8 @@ class IntegrationOperation < ApplicationRecord
 
   # Scopes
   scope :active, -> { where("deprecated_at IS NULL OR deprecated_at > ?", Time.current) }
+  scope :enabled, -> { where(is_enabled: true) }
+  scope :disabled, -> { where(is_enabled: false) }
   scope :reads, -> { where(http_method: "GET") }
   scope :writes, -> { where(http_method: %w[POST PUT PATCH DELETE]) }
   scope :confirmable, -> { where(requires_confirmation: true) }

@@ -1,6 +1,7 @@
 class Admin::IntegrationsController < Admin::BaseController
   before_action :authorize_editor!, except: [ :index, :show, :logs ]
-  before_action :set_integration, only: [ :show, :edit, :update, :destroy ]
+  before_action :set_integration, only: [ :show, :edit, :update, :destroy, :discover_operations ]
+  before_action :check_editor_for_discovery, only: [ :discover_operations ]
 
   def index
     @integrations = Integration.includes(:connections, :integration_operations)
@@ -98,6 +99,37 @@ class Admin::IntegrationsController < Admin::BaseController
 
     @logs = @logs.order(created_at: :desc).page(params[:page]).per(50)
   end
+  
+  def discover_operations
+    # AI-powered operation discovery with full operation details as templates
+    existing_operations = @integration.integration_operations.map do |op|
+      [op.operation_id, op.name, op.path_template]
+    end
+    
+    user_spec = params[:operation_spec] # Optional user-specified operations/endpoints
+    
+    # Start AI discovery job
+    job = OperationDiscoveryJob.perform_later(
+      @integration.id,
+      current_user.id,
+      existing_operations: existing_operations,
+      user_specification: user_spec
+    )
+    
+    respond_to do |format|
+      format.html do
+        redirect_to admin_integration_path(@integration), 
+                    notice: "AI operation discovery started! The AI will research #{@integration.name}'s API and suggest new operations. You'll be notified when complete."
+      end
+      format.json do
+        render json: { 
+          success: true, 
+          job_id: job.job_id,
+          message: "Discovery started"
+        }
+      end
+    end
+  end
 
   private
 
@@ -117,6 +149,10 @@ class Admin::IntegrationsController < Admin::BaseController
   end
 
   def authorize_editor!
+    authorize_admin!(:editor)
+  end
+  
+  def check_editor_for_discovery
     authorize_admin!(:editor)
   end
 

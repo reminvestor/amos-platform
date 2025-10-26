@@ -454,6 +454,9 @@ Rails.application.routes.draw do
 
     # Integrations management
     resources :integrations do
+      member do
+        post :discover_operations
+      end
       collection do
         get :logs
       end
