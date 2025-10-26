@@ -425,10 +425,23 @@ export default class extends Controller {
       }
     }
 
-    this.mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
-    this.audioContext = new AudioContext({ sampleRate: 16000 })
-
-    console.log("Audio capture started at 16kHz sample rate (telephony quality)")
+    try {
+      this.mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+    } catch (error) {
+      console.error("❌ Failed to get microphone access:", error)
+      throw new Error(`Microphone access denied: ${error.message}`)
+    }
+    
+    try {
+      // Try to create AudioContext with preferred sample rate
+      this.audioContext = new AudioContext({ sampleRate: 16000 })
+      console.log("✅ Audio capture started at 16kHz sample rate (telephony quality)")
+    } catch (error) {
+      console.warn("⚠️ Could not create 16kHz AudioContext, falling back to default:", error)
+      // Fallback to default sample rate
+      this.audioContext = new AudioContext()
+      console.log(`✅ Audio capture started at ${this.audioContext.sampleRate}Hz sample rate`)
+    }
   }
 
   /**
@@ -525,6 +538,11 @@ export default class extends Controller {
     const processor = this.audioContext.createScriptProcessor(4096, 1, 1)
 
     let audioChunkCount = 0
+    const needsResampling = this.audioContext.sampleRate !== 16000
+    
+    if (needsResampling) {
+      console.log(`🔄 Resampling from ${this.audioContext.sampleRate}Hz to 16000Hz for Deepgram`)
+    }
 
     processor.onaudioprocess = (e) => {
       if (!this.isListening || !this.deepgramSocket || this.deepgramSocket.readyState !== WebSocket.OPEN) {
@@ -533,19 +551,56 @@ export default class extends Controller {
 
       const inputData = e.inputBuffer.getChannelData(0)
 
+      let resampledData = inputData
+      
+      // Simple resampling if needed (not perfect but works for voice)
+      if (needsResampling) {
+        const resampleRatio = 16000 / this.audioContext.sampleRate
+        const newLength = Math.floor(inputData.length * resampleRatio)
+        resampledData = new Float32Array(newLength)
+        
+        for (let i = 0; i < newLength; i++) {
+          const srcIndex = i / resampleRatio
+          const srcIndexFloor = Math.floor(srcIndex)
+          const srcIndexCeil = Math.ceil(srcIndex)
+          const fraction = srcIndex - srcIndexFloor
+          
+          if (srcIndexCeil < inputData.length) {
+            resampledData[i] = inputData[srcIndexFloor] * (1 - fraction) + inputData[srcIndexCeil] * fraction
+          } else {
+            resampledData[i] = inputData[srcIndexFloor]
+          }
+        }
+      }
+      
       // Convert to 16-bit PCM
-      const pcmData = new Int16Array(inputData.length)
-      for (let i = 0; i < inputData.length; i++) {
-        pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768))
+      const pcmData = new Int16Array(resampledData.length)
+      for (let i = 0; i < resampledData.length; i++) {
+        pcmData[i] = Math.max(-32768, Math.min(32767, resampledData[i] * 32768))
       }
 
+      // Check if we have valid audio data
+      if (pcmData.byteLength === 0) {
+        console.warn("⚠️ Empty audio buffer, skipping")
+        return
+      }
+      
       // Send to Deepgram
-      this.deepgramSocket.send(pcmData.buffer)
-
-      // Log first few chunks to verify audio is flowing
-      audioChunkCount++
-      if (audioChunkCount <= 3) {
-        console.log(`📤 Sent audio chunk #${audioChunkCount}, size: ${pcmData.buffer.byteLength} bytes`)
+      try {
+        this.deepgramSocket.send(pcmData.buffer)
+        
+        // Log first few chunks to verify audio is flowing
+        audioChunkCount++
+        if (audioChunkCount <= 3) {
+          console.log(`📤 Sent audio chunk #${audioChunkCount}, size: ${pcmData.buffer.byteLength} bytes`)
+          // Also log if audio seems silent
+          const maxValue = Math.max(...Array.from(pcmData).slice(0, 100).map(Math.abs))
+          if (maxValue < 100) {
+            console.warn(`⚠️ Audio chunk ${audioChunkCount} appears to be silent (max value: ${maxValue})`)
+          }
+        }
+      } catch (error) {
+        console.error("❌ Failed to send audio to Deepgram:", error)
       }
 
       // Simple VAD - detect if user is speaking
@@ -553,9 +608,16 @@ export default class extends Controller {
       this.handleVAD(volume)
     }
 
-    source.connect(processor)
-    processor.connect(this.audioContext.destination)
-    console.log("🎙️ Audio processor connected and streaming to Deepgram")
+    try {
+      source.connect(processor)
+      processor.connect(this.audioContext.destination)
+      console.log("🎙️ Audio processor connected and streaming to Deepgram")
+    } catch (error) {
+      console.error("❌ Failed to connect audio processor:", error)
+      this.updateStatus("Audio error - please refresh and try again")
+      this.stopListening()
+      throw error
+    }
   }
 
   /**
@@ -643,6 +705,47 @@ export default class extends Controller {
 
     console.log(`🎯 Processing complete transcript: "${completeTranscript}"`)
 
+    // Check if TTS is currently playing and if the transcript matches what it's saying
+    if (window.ttsManager && window.ttsManager.isPlaying) {
+      const ttsText = window.ttsManager.currentlyPlayingText
+      console.log("🎵 TTS Check - Playing:", window.ttsManager.isPlaying, "Text:", ttsText?.substring(0, 50) + "...")
+      console.log("🎤 Transcript received:", completeTranscript)
+      
+      if (ttsText) {
+        // Normalize both texts for comparison
+        const normalizedTTS = ttsText.toLowerCase().replace(/[.,!?;:*\n]/g, '').trim()
+        const normalizedTranscript = completeTranscript.toLowerCase().replace(/[.,!?;:]/g, '').trim()
+        
+        console.log("🔍 Comparing - TTS:", normalizedTTS.substring(0, 50) + "...")
+        console.log("🔍 Comparing - Transcript:", normalizedTranscript)
+        
+        // Check if the transcript is part of what TTS is saying
+        if (normalizedTTS.includes(normalizedTranscript) || normalizedTranscript.includes(normalizedTTS.substring(0, 50))) {
+          console.log("🔇 Ignoring transcript - matches current TTS output")
+          return
+        }
+      }
+    }
+
+    // Also check recent AI responses even if TTS isn't playing
+    // This helps when TTS fails but we still want to prevent feedback
+    const recentMessages = document.querySelectorAll('.ai-message')
+    if (recentMessages.length > 0) {
+      const lastAIMessage = recentMessages[recentMessages.length - 1]?.textContent || ''
+      const normalizedAI = lastAIMessage.toLowerCase().replace(/[.,!?;:*\n]/g, '').trim()
+      const normalizedTranscript = completeTranscript.toLowerCase().replace(/[.,!?;:]/g, '').trim()
+      
+      // Check if this matches recent AI output (within last 10 seconds)
+      const messageElement = recentMessages[recentMessages.length - 1]
+      const messageTime = messageElement?.dataset?.timestamp || Date.now()
+      const timeDiff = Date.now() - parseInt(messageTime)
+      
+      if (timeDiff < 10000 && normalizedAI.includes(normalizedTranscript)) {
+        console.log("🔇 Ignoring transcript - matches recent AI message")
+        return
+      }
+    }
+
     // Process wake word if present
     const processedTranscript = this.processWakeWord(completeTranscript)
 
@@ -723,6 +826,31 @@ export default class extends Controller {
       console.log("🤖 Sending to Scout AI:", transcript)
       console.log(`⏱️ Send delay: ${sendDelay.toFixed(0)}ms`)
 
+      // Check if chat input is currently disabled (e.g., during planning mode or streaming)
+      const messageInput = document.getElementById('message-input')
+      if (messageInput && messageInput.disabled) {
+        console.warn("⚠️ Chat input is disabled (planning mode or streaming active)")
+        
+        // Check if there's an active stream - abort it for interruption
+        if (window.currentStreamAbortController) {
+          console.log("🛑 Aborting current stream for voice interruption")
+          window.currentStreamAbortController.abort()
+          window.currentStreamAbortController = null
+          
+          // Give a brief moment for cleanup
+          await new Promise(resolve => setTimeout(resolve, 100))
+          
+          // Force re-enable input
+          messageInput.disabled = false
+          const sendButton = document.getElementById('send-button')
+          if (sendButton) sendButton.disabled = false
+        } else {
+          // No active stream, but input is disabled (e.g., planning mode)
+          // Wait briefly for it to be re-enabled
+          await this.waitForChatReady(messageInput, 1000) // Reduced to 1 second
+        }
+      }
+
       // Use the global scoutSendMessage function to trigger Scout
       // Pass model override to use faster Haiku for voice responses
       if (window.scoutSendMessage && typeof window.scoutSendMessage === 'function') {
@@ -732,12 +860,18 @@ export default class extends Controller {
         console.warn("⚠️ scoutSendMessage not available, trying direct method")
 
         // Fallback: programmatically submit to chat form
-        const messageInput = document.getElementById('message-input')
         const messageForm = document.getElementById('message-form')
 
         if (messageInput && messageForm) {
+          // Temporarily enable input if disabled (to allow form submission)
+          const wasDisabled = messageInput.disabled
+          messageInput.disabled = false
+          const sendButton = document.getElementById('send-button')
+          if (sendButton) sendButton.disabled = false
+          
           messageInput.value = transcript
           messageForm.dispatchEvent(new Event('submit'))
+          
           console.log("✅ Submitted via chat form")
         } else {
           console.error("❌ Could not find chat form elements")
@@ -746,6 +880,25 @@ export default class extends Controller {
     } catch (error) {
       console.error("❌ Failed to send to Scout AI:", error)
       this.updateStatus("Error processing with AI")
+    }
+  }
+
+  /**
+   * Wait for chat input to become ready (not disabled)
+   */
+  async waitForChatReady(inputElement, maxWaitMs = 1000) { // Reduced default to 1 second
+    const startTime = Date.now()
+    const checkInterval = 50 // Check every 50ms
+
+    while (inputElement.disabled && (Date.now() - startTime) < maxWaitMs) {
+      console.log("⏳ Waiting for chat to be ready...")
+      await new Promise(resolve => setTimeout(resolve, checkInterval))
+    }
+
+    if (inputElement.disabled) {
+      console.warn("⚠️ Chat still disabled after waiting, will force enable for voice")
+    } else {
+      console.log("✅ Chat is now ready")
     }
   }
 
