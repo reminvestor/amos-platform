@@ -1,0 +1,94 @@
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white">
+    <h5 class="mb-0"><i class="fas fa-microphone me-2"></i>Voice Settings</h5>
+  </div>
+  <div class="card-body">
+    <%= form_with url: api_tts_preferences_path, method: :patch, local: false, data: { controller: "voice-settings", action: "ajax:success->voice-settings#onSaveSuccess ajax:error->voice-settings#onSaveError" } do |f| %>
+      
+      <div class="form-check form-switch mb-4">
+        <%= check_box_tag :enabled, "true", current_user.tts_preferences&.dig('enabled') != false, 
+            class: "form-check-input", 
+            id: "tts_enabled",
+            data: { action: "change->voice-settings#togglePreview" } %>
+        <label class="form-check-label" for="tts_enabled">
+          Enable text-to-speech for AI responses
+        </label>
+      </div>
+
+      <div class="row" data-voice-settings-target="settings">
+        <div class="col-md-6 mb-3">
+          <label for="voice_id" class="form-label">Voice</label>
+          <%= select_tag :voice_id, 
+              options_for_select([
+                ['Matthew (US Male)', 'Matthew'],
+                ['Joanna (US Female)', 'Joanna'],
+                ['Amy (UK Female)', 'Amy'],
+                ['Brian (UK Male)', 'Brian'],
+                ['Camila (Brazilian Portuguese)', 'Camila'],
+                ['Lupe (US Spanish)', 'Lupe'],
+                ['Takumi (Japanese Male)', 'Takumi']
+              ], current_user.tts_preferences&.dig('voice_id') || 'Matthew'),
+              class: "form-select",
+              id: "voice_id",
+              data: { action: "change->voice-settings#updatePreview" } %>
+          <small class="text-muted">Choose your preferred AI voice</small>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="engine" class="form-label">Voice Quality</label>
+          <%= select_tag :engine,
+              options_for_select([
+                ['Neural (Best quality)', 'neural'],
+                ['Standard (Faster)', 'standard']
+              ], current_user.tts_preferences&.dig('engine') || 'neural'),
+              class: "form-select",
+              id: "engine" %>
+          <small class="text-muted">Neural voices sound more natural but cost more</small>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="speed" class="form-label">Speaking Speed</label>
+          <div class="d-flex align-items-center gap-3">
+            <%= range_field_tag :speed, 
+                current_user.tts_preferences&.dig('speed') || 1.0,
+                min: 0.5, max: 2.0, step: 0.1,
+                class: "form-range flex-grow-1",
+                id: "speed",
+                data: { action: "input->voice-settings#updateSpeedLabel" } %>
+            <span class="badge bg-secondary" data-voice-settings-target="speedLabel">
+              <%= current_user.tts_preferences&.dig('speed') || '1.0' %>x
+            </span>
+          </div>
+          <small class="text-muted">Adjust how fast the AI speaks</small>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="volume" class="form-label">Volume</label>
+          <div class="d-flex align-items-center gap-3">
+            <%= range_field_tag :volume,
+                current_user.tts_preferences&.dig('volume') || 1.0,
+                min: 0, max: 1, step: 0.1,
+                class: "form-range flex-grow-1",
+                id: "volume",
+                data: { action: "input->voice-settings#updateVolumeLabel" } %>
+            <span class="badge bg-secondary" data-voice-settings-target="volumeLabel">
+              <%= ((current_user.tts_preferences&.dig('volume') || 1.0) * 100).to_i %>%
+            </span>
+          </div>
+          <small class="text-muted">Set the playback volume</small>
+        </div>
+      </div>
+
+      <div class="mt-4 d-flex justify-content-between align-items-center">
+        <button type="button" class="btn btn-outline-primary" data-action="click->voice-settings#testVoice">
+          <i class="fas fa-play me-2"></i>Test Voice
+        </button>
+        <%= f.submit "Save Settings", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+
+    <div class="alert alert-info mt-3 d-none" data-voice-settings-target="successMessage">
+      <i class="fas fa-check-circle me-2"></i>Voice settings saved successfully!
+    </div>
+  </div>
+</div>

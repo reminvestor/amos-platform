@@ -338,6 +338,9 @@
           </div>
               </div>
             </div>
+            <button class="icon-btn" id="tts-toggle-btn" title="Toggle voice output">
+              <i class="fas fa-volume-up"></i>
+            </button>
             <%= link_to advanced_mode_path, class: "icon-btn", title: "Switch to Advanced Mode", style: "text-decoration: none; color: inherit;" do %>
               <i class="fas fa-th-large"></i>
             <% end %>
@@ -354,7 +357,7 @@
       
       <!-- Tool activity panel removed - now part of task progress canvas -->
       
-      <div class="chat-input-area">
+      <div class="chat-input-area" data-controller="voice-assistant">
         <form id="message-form" data-scout-target="chatForm" enctype="multipart/form-data">
           <div class="attached-files" id="attached-files" style="display: none;">
             <!-- Attached files will be shown here -->
@@ -377,11 +380,19 @@
               autocomplete="off"
               rows="1"
             ></textarea>
+            <button type="button"
+                    class="voice-btn"
+                    data-action="click->voice-assistant#toggleVoice"
+                    data-voice-assistant-target="button"
+                    title="Voice input">
+              <i class="fas fa-microphone"></i>
+            </button>
             <button type="submit" class="send-btn" id="send-button">
               <i class="fas fa-paper-plane"></i>
             </button>
           </div>
         </form>
+        <div data-voice-assistant-target="status" class="voice-status"></div>
       </div>
     </section>
 
@@ -932,6 +943,67 @@ document.addEventListener('turbo:load', function() {
   const sendButton = document.getElementById('send-button');
   const toolActivity = document.getElementById('tool-activity');
   
+  // Initialize TTS
+  let ttsManager = null;
+  const ttsToggleBtn = document.getElementById('tts-toggle-btn');
+  
+  // Initialize TTS manager
+  function initTTS() {
+    console.log('🔍 initTTS called, checking window.TTSAudioManager:', !!window.TTSAudioManager);
+    if (!ttsManager && window.TTSAudioManager) {
+      console.log('📢 Creating new TTSAudioManager instance...');
+      ttsManager = new window.TTSAudioManager();
+      console.log('📢 TTSAudioManager created:', !!ttsManager);
+      
+      // Make it globally available for debugging
+      window.ttsManager = ttsManager;
+      
+      // Update button state
+      updateTTSButton();
+    }
+    return ttsManager;
+  }
+  
+  // Update TTS button appearance
+  function updateTTSButton() {
+    if (!ttsToggleBtn || !ttsManager) return;
+    
+    if (ttsManager.isEnabled) {
+      ttsToggleBtn.classList.remove('text-muted');
+      ttsToggleBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+      ttsToggleBtn.title = 'Voice output enabled (click to mute)';
+    } else {
+      ttsToggleBtn.classList.add('text-muted');
+      ttsToggleBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+      ttsToggleBtn.title = 'Voice output disabled (click to enable)';
+    }
+  }
+  
+  // Handle TTS toggle
+  if (ttsToggleBtn) {
+    ttsToggleBtn.addEventListener('click', function() {
+      const tts = initTTS();
+      if (tts) {
+        tts.toggle();
+        updateTTSButton();
+      }
+    });
+  }
+  
+  // Initialize TTS on page load
+  setTimeout(() => {
+    console.log('🎵 Initializing TTS...');
+    const tts = initTTS();
+    console.log('🎵 TTS initialized:', !!tts);
+    if (tts) {
+      console.log('🎵 TTS state:', {
+        enabled: tts.isEnabled,
+        voiceId: tts.voiceId,
+        volume: tts.volume
+      });
+    }
+  }, 100);
+  
   // Auto-resize textarea functionality
   function autoResizeTextarea() {
     if (!messageInput) return;
@@ -1376,6 +1448,28 @@ document.addEventListener('turbo:load', function() {
     // Track the content to prevent future duplicates
     streamedContent.add(messageContent.toString().trim());
     
+    // Speak AI messages with TTS if enabled
+    console.log('🔊 TTS Check:', {
+      role: role,
+      ttsManager: !!ttsManager,
+      isEnabled: ttsManager?.isEnabled,
+      messageLength: messageContent.toString().length
+    });
+    
+    if (role === 'assistant' && ttsManager && ttsManager.isEnabled) {
+      console.log('🎤 Speaking message:', messageContent.toString().substring(0, 50) + '...');
+      
+      // Give element an ID for highlighting
+      const messageId = `msg-${Date.now()}`;
+      el.id = messageId;
+      
+      // Speak the message
+      ttsManager.speak(messageContent.toString(), {
+        messageId: messageId,
+        immediate: false // Queue normally
+      });
+    }
+    
     // Dispatch event for other components to listen to
     document.dispatchEvent(new CustomEvent('scout:message-added', {
       detail: {
@@ -1712,6 +1806,17 @@ document.addEventListener('turbo:load', function() {
   async function handleStreamingChat(message, context = null) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
+    // Abort any existing stream before starting a new one
+    if (window.currentStreamAbortController) {
+      console.log('🛑 Aborting previous stream to handle new message');
+      window.currentStreamAbortController.abort();
+      window.currentStreamAbortController = null;
+    }
+    
+    // Create new abort controller for this request
+    window.currentStreamAbortController = new AbortController();
+    const signal = window.currentStreamAbortController.signal;
+    
     // Track streaming state
     let streamingMessage = null;
     let streamingContent = '';
@@ -1727,6 +1832,12 @@ document.addEventListener('turbo:load', function() {
       // toolActivity.style.display = 'none';
       hideStreamingStatus();
       hideTypingIndicator();
+      
+      // Clear abort controller
+      if (window.currentStreamAbortController) {
+        window.currentStreamAbortController.abort();
+        window.currentStreamAbortController = null;
+      }
     }, 120000); // 120 second timeout
     
     try {
@@ -1736,7 +1847,8 @@ document.addEventListener('turbo:load', function() {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken || ''
         },
-        body: JSON.stringify({ message: message, context: context })
+        body: JSON.stringify({ message: message, context: context }),
+        signal: signal // Pass abort signal to fetch
       });
 
       if (!response.body) {
@@ -1955,6 +2067,9 @@ document.addEventListener('turbo:load', function() {
                 // toolActivity.style.display = 'none';
                 hideStreamingStatus();
                 
+                // Clear abort controller - stream completed successfully
+                window.currentStreamAbortController = null;
+                
                 // Track the final streamed content to prevent duplicates
                 if (streamingContent.trim()) {
                   streamedContent.add(streamingContent.trim());
@@ -1976,7 +2091,17 @@ document.addEventListener('turbo:load', function() {
     } catch (error) {
       console.error('Streaming error:', error);
       clearTimeout(timeoutId); // Clear timeout on error
-      throw error; // Re-throw to fallback to regular chat
+      
+      // Clear abort controller on error
+      window.currentStreamAbortController = null;
+      
+      // Check if this was an intentional abort (interruption)
+      if (error.name === 'AbortError') {
+        console.log('🛑 Stream was aborted (likely due to interruption)');
+        return; // Don't throw, just return silently
+      }
+      
+      throw error; // Re-throw other errors to fallback to regular chat
     }
   }
 
@@ -2176,6 +2301,11 @@ document.addEventListener('turbo:load', function() {
     
     const message = messageInput.value.trim();
     if (!message) return;
+    
+    // Interrupt TTS if speaking
+    if (ttsManager && ttsManager.isPlaying) {
+      ttsManager.interrupt();
+    }
 
     // Add user message immediately
     addMessage(message, 'user');

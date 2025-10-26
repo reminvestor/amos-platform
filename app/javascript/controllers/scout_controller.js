@@ -29,6 +29,14 @@ export default class extends Controller {
       typographer: false 
     })
     
+    // Initialize streaming TTS state
+    this.ttsBuffer = ''
+    this.lastTTSPosition = 0
+    this.ttsSentenceQueue = []
+    this.ttsBufferTimeout = null
+    this.ttsMinBufferTime = 500 // Wait 500ms of silence before speaking
+    this.ttsLastChunkTime = 0
+    
     // Make controller globally accessible
     window.scoutController = this
     
@@ -362,6 +370,15 @@ export default class extends Controller {
     try {
       console.log("🔄 Processing message:", message)
       
+      // Interrupt any ongoing TTS when user sends a new message
+      if (window.ttsManager) {
+        console.log("🛑 Interrupting TTS for new message")
+        window.ttsManager.interrupt()
+      }
+      
+      // Clear any pending TTS buffer
+      this.clearTTSState()
+      
       // If there are files, we need to upload them first
       let fileUrls = [];
       if (files && files.length > 0) {
@@ -566,6 +583,9 @@ export default class extends Controller {
                     console.log("📝 Accumulated content:", this.currentStreamingContent.length, "chars")
                     console.log("🔍 Content preview:", JSON.stringify(this.currentStreamingContent.substring(this.currentStreamingContent.length - 50)))
                     
+                    // Check for streaming TTS
+                    this.handleStreamingTTS(data.content)
+                    
                     // Debug: Check for excessive newlines in accumulated content
                     const newlineMatches = this.currentStreamingContent.match(/\n/g)
                     if (newlineMatches && newlineMatches.length > 10) {
@@ -658,14 +678,17 @@ export default class extends Controller {
           // Apply markdown formatting to the completed message
           const messages = this.chatMessagesTarget.querySelectorAll('.message')
           const lastMessage = messages[messages.length - 1]
-          if (lastMessage && lastMessage.classList.contains('ai-message')) {
-            const messageBubble = lastMessage.querySelector('.message-bubble')
-            if (messageBubble && this.currentStreamingContent) {
-              // Apply final markdown parsing with markdown-it (consistent with streaming)
-              messageBubble.innerHTML = this.md.render(this.currentStreamingContent)
-              console.log("✅ Applied final markdown formatting")
+            if (lastMessage && lastMessage.classList.contains('ai-message')) {
+              const messageBubble = lastMessage.querySelector('.message-bubble')
+              if (messageBubble && this.currentStreamingContent) {
+                // Apply final markdown parsing with markdown-it (consistent with streaming)
+                messageBubble.innerHTML = this.md.render(this.currentStreamingContent)
+                console.log("✅ Applied final markdown formatting")
+                
+                // Finalize any remaining TTS content
+                this.finalizeStreamingTTS()
+              }
             }
-          }
         }
         
         // Clear streaming content for next message
@@ -2222,5 +2245,173 @@ export default class extends Controller {
     });
     
     return false;
+  }
+  
+  // Handle streaming TTS - speak completed thoughts with smart buffering
+  handleStreamingTTS(newContent) {
+    if (!window.ttsManager || !window.ttsManager.isEnabled) {
+      return
+    }
+    
+    // Add new content to buffer
+    this.ttsBuffer += newContent
+    this.ttsLastChunkTime = Date.now()
+    
+    // Clear any existing timeout
+    if (this.ttsBufferTimeout) {
+      clearTimeout(this.ttsBufferTimeout)
+    }
+    
+    // Process buffer for natural pause points
+    this.processTTSBuffer()
+    
+    // Set a timeout to speak whatever's left after a pause in streaming
+    this.ttsBufferTimeout = setTimeout(() => {
+      this.flushTTSBuffer()
+    }, this.ttsMinBufferTime)
+  }
+  
+  // Process the TTS buffer looking for natural pause points
+  processTTSBuffer() {
+    // Natural pause patterns to look for
+    const pausePatterns = [
+      // Complete sentences
+      /[.!?][\s\n]+/,
+      // Before lists or examples
+      /:\s*\n/,
+      // After "For example" type phrases
+      /(?:For example|Such as|Including|Like):\s*/i,
+      // Complete list items (with content after the marker)
+      /^[-*•]\s*.+$/m,
+      // After a paragraph break
+      /\n\n/
+    ]
+    
+    let speakableContent = ''
+    let remainingBuffer = this.ttsBuffer
+    
+    // Check each pattern
+    for (const pattern of pausePatterns) {
+      const match = remainingBuffer.match(pattern)
+      if (match) {
+        const pauseIndex = match.index + match[0].length
+        
+        // Check if we have enough content before the pause
+        const beforePause = remainingBuffer.substring(0, pauseIndex).trim()
+        
+        // Only speak if we have substantial content (not just fragments)
+        if (beforePause.length > 15 && this.isCompleteThought(beforePause)) {
+          speakableContent = beforePause
+          remainingBuffer = remainingBuffer.substring(pauseIndex)
+          break
+        }
+      }
+    }
+    
+    // If we found speakable content, speak it
+    if (speakableContent) {
+      // Clean up the text for speaking
+      const cleanedText = this.cleanTextForTTS(speakableContent)
+      
+      if (cleanedText.length > 0) {
+        console.log('🎤 Speaking natural pause:', cleanedText)
+        window.ttsManager.speak(cleanedText, {
+          messageId: `streaming-${Date.now()}`,
+          immediate: false
+        })
+      }
+      
+      // Update buffer with remaining content
+      this.ttsBuffer = remainingBuffer
+    }
+  }
+  
+  // Check if text appears to be a complete thought
+  isCompleteThought(text) {
+    // Incomplete if it ends with certain words
+    const incompleteEndings = /\b(the|a|an|to|for|with|and|or|but|of|in|on|at|by)\s*$/i
+    if (incompleteEndings.test(text)) {
+      return false
+    }
+    
+    // Incomplete if it has unmatched parentheses or quotes
+    const openParens = (text.match(/\(/g) || []).length
+    const closeParens = (text.match(/\)/g) || []).length
+    if (openParens !== closeParens) {
+      return false
+    }
+    
+    // Check for common incomplete patterns
+    if (text.endsWith('help me') || text.endsWith('can you')) {
+      return false
+    }
+    
+    return true
+  }
+  
+  // Clean text for TTS (remove markdown, etc.)
+  cleanTextForTTS(text) {
+    return text
+      // Remove markdown bold/italic
+      .replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
+      // Remove list markers
+      .replace(/^[-*•]\s*/gm, '')
+      // Remove extra whitespace
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+  
+  // Flush any remaining buffer content
+  flushTTSBuffer() {
+    if (this.ttsBuffer.trim().length > 0) {
+      const cleanedText = this.cleanTextForTTS(this.ttsBuffer)
+      
+      if (cleanedText.length > 0 && this.isCompleteThought(cleanedText)) {
+        console.log('🎤 Flushing TTS buffer:', cleanedText)
+        window.ttsManager.speak(cleanedText, {
+          messageId: `streaming-flush-${Date.now()}`,
+          immediate: false
+        })
+      }
+      
+      this.ttsBuffer = ''
+    }
+  }
+  
+  // Clean up any remaining TTS buffer when streaming completes
+  finalizeStreamingTTS() {
+    if (!window.ttsManager || !window.ttsManager.isEnabled) {
+      return
+    }
+    
+    // Clear any pending timeout
+    if (this.ttsBufferTimeout) {
+      clearTimeout(this.ttsBufferTimeout)
+      this.ttsBufferTimeout = null
+    }
+    
+    // Flush any remaining content
+    this.flushTTSBuffer()
+    
+    // Reset all TTS state
+    this.ttsBuffer = ''
+    this.lastTTSPosition = 0
+    this.ttsLastChunkTime = 0
+  }
+  
+  // Clear all TTS state (used when interrupting)
+  clearTTSState() {
+    // Clear any pending timeout
+    if (this.ttsBufferTimeout) {
+      clearTimeout(this.ttsBufferTimeout)
+      this.ttsBufferTimeout = null
+    }
+    
+    // Reset all buffers
+    this.ttsBuffer = ''
+    this.lastTTSPosition = 0
+    this.ttsLastChunkTime = 0
+    
+    console.log("🧹 Cleared TTS state")
   }
 } 
