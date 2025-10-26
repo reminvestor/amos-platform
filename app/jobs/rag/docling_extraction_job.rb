@@ -15,6 +15,9 @@ module Rag
   class DoclingExtractionJob < ApplicationJob
     queue_as :docling
 
+    # Custom error class
+    class DoclingError < StandardError; end
+
     # Docling can fail for various reasons - retry twice then fallback
     retry_on StandardError, wait: 30.seconds, attempts: 2
     retry_on DoclingError, wait: 1.minute, attempts: 1
@@ -23,8 +26,6 @@ module Rag
 
     # Docling timeout (large documents can take minutes)
     DOCLING_TIMEOUT = 10.minutes
-
-    class DoclingError < StandardError; end
 
     def perform(rag_document_id)
       rag_document = RagDocument.includes(:rag_store).find(rag_document_id)

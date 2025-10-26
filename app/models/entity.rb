@@ -38,6 +38,7 @@ class Entity < ApplicationRecord
   has_many :rag_stores, dependent: :destroy
   has_many :rag_documents, through: :rag_stores
   has_many :rag_chunks, through: :rag_documents
+  has_many :rag_queries, dependent: :destroy
 
   # Subscription tracking
   has_many :subscription_events, dependent: :destroy
