@@ -4,6 +4,7 @@ export default class extends Controller {
   static targets = ["settings", "speedLabel", "volumeLabel", "successMessage"]
   
   connect() {
+    console.log('🎛️ Voice settings controller connected')
     this.updateUI()
   }
   
@@ -28,6 +29,8 @@ export default class extends Controller {
   async testVoice(event) {
     event.preventDefault()
     
+    console.log('🎤 Test voice clicked')
+    
     const button = event.currentTarget
     const originalText = button.innerHTML
     button.disabled = true
@@ -38,57 +41,99 @@ export default class extends Controller {
     const speed = parseFloat(document.getElementById('speed').value)
     const volume = parseFloat(document.getElementById('volume').value)
     
+    console.log('🎤 Test settings:', { voiceId, engine, speed, volume })
+    
     // Test text in the selected language
     const testTexts = {
+      // US English
       'Matthew': "Hello! I'm Matthew, your AI assistant. How can I help you today?",
       'Joanna': "Hi there! I'm Joanna, ready to assist you with any questions.",
-      'Amy': "Good day! I'm Amy, your British AI assistant. How may I be of service?",
-      'Brian': "Hello! I'm Brian. Pleased to assist you today.",
-      'Camila': "Olá! Eu sou Camila, sua assistente de IA. Como posso ajudar?",
+      'Ivy': "Hi! I'm Ivy. I'm here to help you learn new things!",
+      'Kendra': "Hello! I'm Kendra, your friendly AI assistant.",
+      'Kimberly': "Hi there! I'm Kimberly. Let me know how I can assist you.",
+      'Salli': "Hello! I'm Salli, happy to help with whatever you need.",
+      'Joey': "Hey there! I'm Joey, your AI assistant. What can I do for you?",
+      'Justin': "Hello! I'm Justin. How may I assist you today?",
+      'Kevin': "Hi! I'm Kevin. I'm excited to help you!",
+      'Ruth': "Hello! I'm Ruth, your AI assistant. I'm here to make things easier for you.",
+      'Stephen': "Good day! I'm Stephen, ready to assist with any task.",
+      'Olivia': "Hi there! I'm Olivia, your friendly AI companion.",
+      // Spanish - US
       'Lupe': "¡Hola! Soy Lupe, tu asistente de IA. ¿En qué puedo ayudarte?",
-      'Takumi': "こんにちは！タクミです。今日はどのようなご用件でしょうか？"
+      'Pedro': "¡Hola! Soy Pedro, tu asistente virtual. ¿Cómo puedo servirte?",
+      // Spanish - Spain
+      'Lucia': "¡Hola! Soy Lucía, tu asistente de inteligencia artificial. ¿En qué puedo ayudarte?",
+      'Sergio': "¡Hola! Soy Sergio, tu asistente virtual. ¿Qué necesitas?",
+      // Spanish - Mexico
+      'Mia': "¡Hola! Soy Mía, tu asistente de IA. ¿En qué te puedo ayudar?",
+      'Andres': "¡Hola! Soy Andrés, tu asistente virtual. ¿Cómo te puedo servir?",
+      // Portuguese - Portugal
+      'Ines': "Olá! Eu sou Inês, a sua assistente de IA. Como posso ajudar?",
+      // Portuguese - Brazil
+      'Camila': "Olá! Eu sou Camila, sua assistente de IA. Como posso ajudar?",
+      'Vitoria': "Olá! Eu sou Vitória, sua assistente virtual. Em que posso ajudar?",
+      'Thiago': "Olá! Eu sou Thiago, seu assistente de IA. Como posso ajudar você?"
     }
     
     const text = testTexts[voiceId] || testTexts['Matthew']
     
     try {
-      // Call TTS API
-      const response = await fetch('/api/tts/synthesize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
-        },
-        body: JSON.stringify({
-          text: text,
-          voice_id: voiceId,
-          speech_marks: false
-        })
+      // Call TTS API - use query params for GET-style parameters
+      const params = new URLSearchParams({
+        text: text,
+        voice_id: voiceId,
+        engine: engine,
+        speech_marks: 'false'
       })
       
-      if (!response.ok) throw new Error('Failed to synthesize speech')
+      const response = await fetch(`/api/tts/synthesize?${params}`, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        }
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('🔴 TTS API error:', response.status, errorText)
+        throw new Error(`Failed to synthesize speech: ${response.status}`)
+      }
+      
+      console.log('✅ TTS API response OK, creating audio...')
       
       // Play audio
       const audioBlob = await response.blob()
+      console.log('🎵 Audio blob created:', audioBlob.size, 'bytes, type:', audioBlob.type)
+      
       const audioUrl = URL.createObjectURL(audioBlob)
       const audio = new Audio(audioUrl)
       audio.playbackRate = speed
       audio.volume = volume
       
+      console.log('🔊 Playing audio with speed:', speed, 'volume:', volume)
+      
       audio.onended = () => {
+        console.log('✅ Audio playback ended')
         URL.revokeObjectURL(audioUrl)
         button.disabled = false
         button.innerHTML = originalText
       }
       
-      audio.onerror = () => {
+      audio.onerror = (err) => {
+        console.error('🔴 Audio playback error:', err)
         URL.revokeObjectURL(audioUrl)
         button.disabled = false
         button.innerHTML = originalText
         alert('Failed to play audio. Please try again.')
       }
       
-      await audio.play()
+      try {
+        await audio.play()
+        console.log('🎤 Audio playing...')
+      } catch (playError) {
+        console.error('🔴 Play failed:', playError)
+        throw playError
+      }
       
     } catch (error) {
       console.error('Test voice error:', error)
@@ -98,37 +143,76 @@ export default class extends Controller {
     }
   }
   
-  onSaveSuccess(event) {
-    // Show success message
-    this.successMessageTarget.classList.remove('d-none')
+  async saveSettings(event) {
+    event.preventDefault()
     
-    // Update TTS manager if it exists
-    if (window.ttsManager) {
-      const data = JSON.parse(event.detail.fetchResponse.response.text)
-      const prefs = data.preferences
+    console.log('💾 Saving voice settings...')
+    
+    const form = event.target
+    const formData = new FormData(form)
+    
+    // Log what we're sending
+    console.log('💾 Form data:', Object.fromEntries(formData))
+    
+    try {
+      const response = await fetch(form.action, {
+        method: 'PATCH',
+        headers: {
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: formData
+      })
       
-      if (prefs.enabled !== undefined) {
-        window.ttsManager.isEnabled = prefs.enabled
+      console.log('💾 Save response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('💾 Save failed:', response.status, errorText)
+        throw new Error(`Save failed: ${response.status}`)
       }
-      if (prefs.voice_id) {
-        window.ttsManager.setVoice(prefs.voice_id)
+      
+      const data = await response.json()
+      console.log('💾 Saved preferences:', data)
+      
+      // Show success message
+      this.successMessageTarget.classList.remove('d-none')
+      
+      // Update TTS manager if it exists
+      if (window.ttsManager && data.preferences) {
+        console.log('💾 Updating TTS manager with new preferences')
+        const prefs = data.preferences
+        
+        try {
+          if (prefs.enabled !== undefined) {
+            window.ttsManager.isEnabled = prefs.enabled
+            console.log('💾 Updated enabled:', prefs.enabled)
+          }
+          if (prefs.voice_id) {
+            window.ttsManager.setVoice(prefs.voice_id)
+            console.log('💾 Updated voice:', prefs.voice_id)
+          }
+          if (prefs.speed !== undefined) {
+            window.ttsManager.setSpeed(prefs.speed)
+            console.log('💾 Updated speed:', prefs.speed)
+          }
+          if (prefs.volume !== undefined) {
+            window.ttsManager.setVolume(prefs.volume)
+            console.log('💾 Updated volume:', prefs.volume)
+          }
+        } catch (ttsError) {
+          console.error('💾 Error updating TTS manager:', ttsError)
+        }
       }
-      if (prefs.speed !== undefined) {
-        window.ttsManager.setSpeed(prefs.speed)
-      }
-      if (prefs.volume !== undefined) {
-        window.ttsManager.setVolume(prefs.volume)
-      }
+      
+      // Hide message after 3 seconds
+      setTimeout(() => {
+        this.successMessageTarget.classList.add('d-none')
+      }, 3000)
+      
+    } catch (error) {
+      console.error('Save settings error:', error)
+      alert('Failed to save voice settings. Please try again.')
     }
-    
-    // Hide message after 3 seconds
-    setTimeout(() => {
-      this.successMessageTarget.classList.add('d-none')
-    }, 3000)
-  }
-  
-  onSaveError(event) {
-    alert('Failed to save voice settings. Please try again.')
   }
   
   updateUI() {

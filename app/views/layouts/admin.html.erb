@@ -47,7 +47,6 @@
                   <li><%= link_to "Payouts", admin_payouts_path, class: "dropdown-item" %></li>
                   <li><hr class="dropdown-divider"></li>
                   <li><%= link_to "Analytics", admin_analytics_affiliates_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Settings", admin_settings_affiliate_path, class: "dropdown-item" %></li>
                 </ul>
               </li>
 
@@ -63,18 +62,6 @@
                 <% end %>
               </li>
 
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                  <i class="fas fa-chart-line"></i> Observability
-                </a>
-                <ul class="dropdown-menu dropdown-menu-dark">
-                  <li><%= link_to "AI Usage", admin_observability_ai_usage_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Workflows", admin_observability_workflows_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Errors", admin_observability_errors_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Performance", admin_observability_performance_path, class: "dropdown-item" %></li>
-                </ul>
-              </li>
-
               <li class="nav-item">
                 <%= link_to admin_users_path, class: "nav-link #{'active' if controller_name == 'users'}" do %>
                   <i class="fas fa-users"></i> Users
@@ -87,10 +74,16 @@
                 <% end %>
               </li>
 
-              <li class="nav-item">
-                <%= link_to admin_voice_settings_path, class: "nav-link #{'active' if controller_name == 'voice_settings'}" do %>
-                  <i class="fas fa-microphone"></i> Voice Settings
-                <% end %>
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle #{'active' if controller_name == 'observability'}" href="#" data-bs-toggle="dropdown">
+                  <i class="fas fa-chart-line"></i> Observability
+                </a>
+                <ul class="dropdown-menu dropdown-menu-dark">
+                  <li><%= link_to "AI Usage", admin_observability_ai_usage_path, class: "dropdown-item" %></li>
+                  <li><%= link_to "Workflows", admin_observability_workflows_path, class: "dropdown-item" %></li>
+                  <li><%= link_to "Errors", admin_observability_errors_path, class: "dropdown-item" %></li>
+                  <li><%= link_to "Performance", admin_observability_performance_path, class: "dropdown-item" %></li>
+                </ul>
               </li>
 
               <li class="nav-item">
