@@ -68,9 +68,9 @@ class Connection < ApplicationRecord
   end
 
   def available_operations
-    # Get operations that this connection is allowed to use
+    # Get operations that this connection is allowed to use (and are enabled)
     operation_ids = allowed_operations.presence || integration.integration_operations.pluck(:operation_id)
-    integration.integration_operations.where(operation_id: operation_ids)
+    integration.integration_operations.where(operation_id: operation_ids, is_enabled: true)
   end
 
   def update_health_status!
