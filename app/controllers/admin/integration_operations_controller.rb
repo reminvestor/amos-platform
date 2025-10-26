@@ -52,7 +52,7 @@ class Admin::IntegrationOperationsController < Admin::BaseController
   def operation_params
     params.require(:integration_operation).permit(
       :name, :operation_id, :description, :http_method, :path_template,
-      :pagination_strategy, :is_idempotent, :requires_confirmation, :max_limit,
+      :pagination_strategy, :is_idempotent, :is_enabled, :requires_confirmation, :max_limit,
       :documentation, :examples, :version, :request_schema, :response_schema
     )
   end
