@@ -21,6 +21,26 @@ Rails.application.routes.draw do
 
   # API routes
   namespace :api do
+    # Voice Assistant API
+    namespace :voice do
+      resources :sessions, only: [:create, :show], controller: "voice_sessions", param: :id do
+        member do
+          get :deepgram_key
+          patch :end
+        end
+      end
+    end
+    
+    # Text-to-Speech API
+    namespace :tts do
+      post :synthesize
+      get :voices
+      post :presigned_url
+      get :preferences
+      patch :preferences
+      get :test
+    end
+    
     namespace :v1 do
       # Health check endpoint
       get "health", to: "health#index"

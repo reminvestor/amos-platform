@@ -10,7 +10,8 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_25_155234) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1367,6 +1368,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_155234) do
     t.index ["stripe_event_id"], name: "index_subscription_events_on_stripe_event_id", unique: true, where: "(stripe_event_id IS NOT NULL)"
   end
 
+  create_table "system_settings", force: :cascade do |t|
+    t.string "key"
+    t.text "value"
+    t.text "encrypted_value"
+    t.string "category"
+    t.text "description"
+    t.boolean "is_sensitive"
+    t.integer "last_updated_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_system_settings_on_key", unique: true
+  end
+
   create_table "task_events", force: :cascade do |t|
     t.bigint "task_session_id", null: false
     t.string "event_type", null: false
@@ -1408,6 +1422,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_155234) do
     t.index ["entity_id"], name: "index_tenant_quotas_on_entity_id"
   end
 
+  create_table "tts_usage_logs", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.integer "character_count"
+    t.string "voice_id"
+    t.float "cost_cents"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_tts_usage_logs_on_entity_id"
+    t.index ["user_id"], name: "index_tts_usage_logs_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -1430,10 +1456,42 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_155234) do
     t.string "api_key_encrypted"
     t.boolean "plugin_development_enabled", default: false
     t.bigint "entity_id", null: false
+    t.jsonb "tts_preferences", default: {}, null: false
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["tts_preferences"], name: "index_users_on_tts_preferences", using: :gin
+  end
+
+  create_table "voice_assistant_settings", force: :cascade do |t|
+    t.string "key"
+    t.text "value"
+    t.string "setting_type"
+    t.text "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_voice_assistant_settings_on_key", unique: true
+  end
+
+  create_table "voice_sessions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "session_id", null: false
+    t.string "status", default: "active", null: false
+    t.jsonb "context", default: {}
+    t.jsonb "transcript_history", default: []
+    t.jsonb "metadata", default: {}
+    t.datetime "started_at"
+    t.datetime "ended_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "status"], name: "index_voice_sessions_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_voice_sessions_on_entity_id"
+    t.index ["session_id"], name: "index_voice_sessions_on_session_id", unique: true
+    t.index ["started_at"], name: "index_voice_sessions_on_started_at"
+    t.index ["status"], name: "index_voice_sessions_on_status"
+    t.index ["user_id"], name: "index_voice_sessions_on_user_id"
   end
 
   create_table "webhook_events", force: :cascade do |t|
@@ -1687,7 +1745,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_155234) do
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
   add_foreign_key "tenant_quotas", "entities"
+  add_foreign_key "tts_usage_logs", "entities"
+  add_foreign_key "tts_usage_logs", "users"
   add_foreign_key "users", "entities"
+  add_foreign_key "voice_sessions", "entities"
+  add_foreign_key "voice_sessions", "users"
   add_foreign_key "webhook_events", "webhook_subscriptions"
   add_foreign_key "webhook_subscriptions", "connections"
   add_foreign_key "workflow_contexts", "task_sessions"

@@ -1,12 +1,13 @@
 class ScoutGenericToolsServiceV2
-  attr_reader :user, :entity, :session_id, :agent_loadout
+  attr_reader :user, :entity, :session_id, :agent_loadout, :model
   attr_accessor :suggested_canvas, :canvas_data
 
-  def initialize(user, entity, session_id, agent_loadout: nil)
+  def initialize(user, entity, session_id, agent_loadout: nil, model: nil)
     @user = user
     @entity = entity
     @session_id = session_id
     @agent_loadout = agent_loadout
+    @model = model # Model to use (defaults to ENV['BEDROCK_DEFAULT_MODEL'] or 'claude-sonnet-4-5')
     @ai_service = BedrockService.new
     @ai_provider_name = Rails.application.config.ai_service.to_s.capitalize
     @tool_catalog = Tools::ToolCatalog.instance
@@ -47,10 +48,12 @@ class ScoutGenericToolsServiceV2
       @ai_service.send_message_streaming(
         system_prompt,
         conversation_messages,
+        model: @model,
         max_tokens: 25000,
         temperature: 0.7,
         json_mode: false,
-        tools: tools
+        tools: tools,
+        enable_prompt_caching: true
       ) do |chunk|
         handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
         streaming_started = true if chunk[:type] == :content
@@ -168,8 +171,8 @@ class ScoutGenericToolsServiceV2
   private
 
   def get_filtered_tools
-    # Get tools filtered by agent loadout
-    tools = @tool_catalog.get_bedrock_tools(agent_loadout: @agent_loadout)
+    # Get tools filtered by agent loadout with prompt caching enabled
+    tools = @tool_catalog.get_bedrock_tools(agent_loadout: @agent_loadout, enable_caching: true)
 
     # Exclude tools that should only be used within workflows (not by main chat agent)
     # These are powerful tools that need the context and validation of a workflow
@@ -207,10 +210,6 @@ class ScoutGenericToolsServiceV2
       #{ai_identity}
 
       You have access to a comprehensive toolset for managing and automating business operations.
-
-      USER CONTEXT:
-      - User: #{@user.first_name} #{@user.last_name}
-      - Entity: #{@entity.name}
 
       CONVERSATION HISTORY:
       You have access to the last 20 messages in your active context window. If the user references
@@ -266,25 +265,25 @@ class ScoutGenericToolsServiceV2
       - "show campaigns" or "campaigns" → load_canvas with canvas_name: "campaign_viewer"
       - "show landing pages" or "landing pages" → load_canvas with canvas_name: "landing_page_viewer"
       - "show contacts" or "contacts" → load_canvas with canvas_name: "contact_viewer"
-      
+
       DOCUMENT HANDLING (CRITICAL):
       When user uploads a file (PDF, DOCX, etc.) and asks about it:
-      
+
       STEP 1: ALWAYS read the document first!
       - Use read_document tool with the asset_id from attached files
       - This extracts the actual text content
-      
+
       STEP 2: Then perform the requested task
       - Translate: Read document → translate the extracted text
       - Summarize: Read document → summarize the content
       - Analyze: Read document → analyze the content
       - Answer questions: Read document → answer based on content
-      
+
       FILE INFO: Check for attached_files in context - they have asset_id and filename
-      
+
       WRONG: Searching web based on filename ❌
       RIGHT: read_document to get actual content ✅
-      
+
       Examples:
       - User uploads "document.pdf" and says "Translate this"
         → read_document(asset_id: X) → Got Portuguese text → Translate to English
@@ -292,7 +291,7 @@ class ScoutGenericToolsServiceV2
         → read_document(asset_id: X) → Got content → Provide summary
       - User uploads "invoice.pdf" and says "What's the total?"
         → read_document(asset_id: X) → Got content → Find total amount
-      
+
       LANDING PAGE EDITING:
       CRITICAL: Detect if user wants to EDIT existing page vs CREATE new:
       - Phrases like "update", "change", "modify", "edit" = UPDATE existing
@@ -334,7 +333,7 @@ class ScoutGenericToolsServiceV2
       1. Call get_schema(object_type: "contact") to see valid fields
       2. Read the creation_notes carefully - shows metadata field usage
       3. Then call create_object with only valid fields
-      
+
       Example:
       - get_schema(object_type: "contact")
       - See that address/company go in metadata
@@ -486,6 +485,14 @@ class ScoutGenericToolsServiceV2
           tool_calls.last[:arguments] += input
         end
       end
+    when :usage
+      # Token usage with cache metrics
+      progress_callback&.call({
+        type: "cache_metrics",
+        tokens: chunk[:tokens],
+        cache_creation: chunk[:cache_creation] || 0,
+        cache_read: chunk[:cache_read] || 0
+      })
     when :message_stop
       # Message complete
       if accumulated_content.present? && !@saved_message_content.include?(accumulated_content.hash)
@@ -578,10 +585,12 @@ class ScoutGenericToolsServiceV2
     @ai_service.send_message_streaming(
       system_prompt,
       conversation_messages,
+      model: @model,
       max_tokens: 25000,
       temperature: 0.7,
       json_mode: false,
-      tools: tools
+      tools: tools,
+      enable_prompt_caching: true
     ) do |chunk|
       case chunk[:type]
       when :content
@@ -719,7 +728,13 @@ class ScoutGenericToolsServiceV2
   end
 
   def enhance_message_with_canvas_context(message, canvas)
-    return message unless canvas.present?
+    # Add user context to message (not in cached system prompt for better cache sharing)
+    user_name = @user.respond_to?(:first_name) ? "#{@user.first_name} #{@user.last_name}" : @user.to_s
+    entity_name = @entity.respond_to?(:name) ? @entity.name : @entity.to_s
+    user_context_prefix = "[User Context: #{user_name} from #{entity_name}]\n\n"
+
+    # If no canvas, just add user context
+    return user_context_prefix + message unless canvas.present?
 
     # Convert ActionController::Parameters to hash if needed
     if canvas.respond_to?(:to_unsafe_h)
@@ -765,43 +780,54 @@ class ScoutGenericToolsServiceV2
     hint = context_hints[canvas_type]
     hint_text = hint.is_a?(Proc) ? hint.call(canvas_data) : hint
 
-    enhanced = message + (hint_text || "")
-    Rails.logger.info "✅ Enhanced message: #{enhanced}"
+    # Add user context prefix + message + canvas hint
+    enhanced = user_context_prefix + message + (hint_text || "")
+    Rails.logger.info "✅ Enhanced message with user context: #{enhanced}"
 
     enhanced
   end
 
   def format_conversation_for_ai(history, current_message)
-    Rails.logger.info "🔍 format_conversation_for_ai called with history: #{history.inspect}"
+    Rails.logger.info "🔍 format_conversation_for_ai called with #{history.length} history messages"
     Rails.logger.info "🔍 Current message: #{current_message}"
 
     messages = []
 
+    # Truncate to last 6 messages (3 exchanges) for performance
+    # This prevents token bloat as conversation grows
+    truncated_history = history.last(6)
+
+    if history.length > 6
+      Rails.logger.info "⚡ Truncated conversation history: #{history.length} → 6 messages (saved ~#{(history.length - 6) * 500} tokens)"
+    end
+
     # Add recent history, filtering out messages with nil content
-    history.last(10).each do |msg|
+    truncated_history.each do |msg|
       content = msg["content"] || msg[:content]
       role = msg["role"] || msg[:role]
 
       # Skip messages with nil or empty content
       next if content.nil? || content.to_s.strip.empty?
 
-      # Log suspicious messages for debugging
-      if role == "assistant" && content.to_s.downcase == "hello"
-        Rails.logger.warn "🚨 Found suspicious assistant message saying 'hello' - this might be incorrectly saved"
+      # Compress long tool-related messages to save tokens
+      if content.to_s.length > 1000
+        content_preview = content.to_s.first(500) + "... [truncated for performance]"
+        Rails.logger.info "⚡ Compressed long message: #{content.to_s.length} → 500 chars"
+      else
+        content_preview = content.to_s
       end
 
       formatted_message = {
         role: role == "user" ? "user" : "assistant",
-        content: [ { type: "text", text: content.to_s } ]
+        content: [ { type: "text", text: content_preview } ]
       }
 
-      Rails.logger.info "🔍 Adding history message: role=#{role}, formatted_role=#{formatted_message[:role]}, content=#{content.to_s.first(50)}"
+      Rails.logger.info "🔍 Adding history message: role=#{role}, content=#{content_preview.first(50)}..."
 
       messages << formatted_message
     end
 
     # Add current message only if it's not already in the history
-    # (This can happen when the controller adds the message to history before calling this service)
     last_user_message = messages.reverse.find { |m| m[:role] == "user" }
     if !last_user_message || last_user_message[:content].first[:text] != current_message
       Rails.logger.info "🔍 Adding current message as it's not in history"
@@ -813,7 +839,9 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "🔍 Current message already in history, not adding again"
     end
 
-    Rails.logger.info "🔍 Final messages array: #{messages.map { |m| "#{m[:role]}: #{m[:content].first[:text].to_s.first(30)}..." }}"
+    # Log final token estimate
+    estimated_tokens = messages.sum { |m| m[:content].first[:text].length / 4 }
+    Rails.logger.info "📊 Conversation messages: #{messages.length}, estimated ~#{estimated_tokens} tokens"
 
     messages
   end
