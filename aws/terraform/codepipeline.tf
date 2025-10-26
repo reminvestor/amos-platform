@@ -113,7 +113,7 @@ resource "aws_codepipeline" "app" {
       output_artifacts = ["source_output"]
 
       configuration = {
-        ConnectionArn        = aws_codestarconnections_connection.github.arn
+        ConnectionArn        = data.aws_codestarconnections_connection.github.arn
         FullRepositoryId     = "NuvolaNetworks/agent_marketing"
         BranchName          = "prod"
         OutputArtifactFormat = "CODE_ZIP"
@@ -242,7 +242,7 @@ resource "aws_iam_role_policy" "codepipeline" {
         Action = [
           "codestar-connections:UseConnection"
         ]
-        Resource = aws_codestarconnections_connection.github.arn
+        Resource = data.aws_codestarconnections_connection.github.arn
       }
     ]
   })
