@@ -61,3 +61,20 @@ document_duplicate:
   extracted_images: []
   document_structure: {}
   page_count: 15
+
+# Test document for unit tests
+pdf_doc_one:
+  rag_store: entity_store_one
+  original_filename: "test_document.pdf"
+  content_type: "application/pdf"
+  file_size_bytes: 102400  # 100 KB
+  file_hash: "test123abc456def789012345678901234567890abcdef1234567890test1234"
+  docling_metadata:
+    num_pages: 10
+    processing_time: 1500
+    docling_version: "1.0.0"
+  extracted_tables: []
+  extracted_images: []
+  document_structure:
+    sections: ["Introduction", "Content", "Conclusion"]
+  page_count: 10

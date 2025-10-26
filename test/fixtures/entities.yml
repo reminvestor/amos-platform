@@ -44,3 +44,12 @@ another_entity:
   settings: {}
   subscription_status: "active"
   plan_tier: "starter"
+
+company_one:
+  name: "Test Company One"
+  subdomain: "company1"
+  slug: "company-one"
+  status: "active"
+  settings: {}
+  subscription_status: "active"
+  plan_tier: "professional"
