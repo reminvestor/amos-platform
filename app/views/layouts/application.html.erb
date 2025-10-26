@@ -172,7 +172,6 @@
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                 <li><a class="dropdown-item" href="<%= user_path(current_user) %>"><i class="fas fa-id-card me-2"></i>My Profile</a></li>
-                <li><a class="dropdown-item" href="<%= edit_user_registration_path %>"><i class="fas fa-cog me-2"></i>Account Settings</a></li>
                 
                 <% if current_user.admin? %>
                   <li><hr class="dropdown-divider"></li>

@@ -36,8 +36,8 @@ Rails.application.routes.draw do
       post :synthesize
       get :voices
       post :presigned_url
-      get :preferences
-      patch :preferences
+      get :preferences, action: :preferences
+      patch :preferences, action: :update_preferences
       get :test
     end
     
@@ -510,6 +510,14 @@ Rails.application.routes.draw do
     resources :admin_users do
       member do
         post :unlock
+      end
+    end
+
+    # System settings
+    resources :system_settings, only: [:index, :update] do
+      collection do
+        post :reset_defaults
+        patch :update_all
       end
     end
 

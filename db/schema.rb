@@ -10,8 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
-
+ActiveRecord::Schema[8.0].define(version: 2025_10_26_191733) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -201,6 +200,30 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
     t.index ["sender_id"], name: "index_agent_messages_on_sender_id"
     t.index ["task_session_id", "created_at"], name: "index_agent_messages_on_task_session_id_and_created_at"
     t.index ["task_session_id"], name: "index_agent_messages_on_task_session_id"
+  end
+
+  create_table "ai_usage_logs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "scout_message_id"
+    t.string "model", null: false
+    t.integer "input_tokens", default: 0
+    t.integer "output_tokens", default: 0
+    t.integer "total_tokens", default: 0
+    t.decimal "cost_cents", precision: 10, scale: 4, default: "0.0"
+    t.integer "duration_ms"
+    t.string "request_type", default: "chat"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_ai_usage_logs_on_created_at"
+    t.index ["entity_id", "created_at"], name: "index_ai_usage_logs_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_ai_usage_logs_on_entity_id"
+    t.index ["model"], name: "index_ai_usage_logs_on_model"
+    t.index ["request_type"], name: "index_ai_usage_logs_on_request_type"
+    t.index ["scout_message_id"], name: "index_ai_usage_logs_on_scout_message_id"
+    t.index ["user_id", "created_at"], name: "index_ai_usage_logs_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_ai_usage_logs_on_user_id"
   end
 
   create_table "analytics_connections", force: :cascade do |t|
@@ -863,6 +886,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
     t.text "test_endpoint"
     t.index ["callback_params"], name: "index_oauth_configurations_on_callback_params", using: :gin
     t.index ["integration_id"], name: "index_oauth_configurations_on_integration_id", unique: true
+  end
+
+  create_table "observability_events", force: :cascade do |t|
+    t.string "event_type", null: false
+    t.bigint "entity_id"
+    t.bigint "user_id"
+    t.string "resource_type"
+    t.bigint "resource_id"
+    t.jsonb "metadata", default: {}
+    t.integer "duration_ms"
+    t.string "status"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_observability_events_on_created_at"
+    t.index ["entity_id", "created_at"], name: "index_observability_events_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_observability_events_on_entity_id"
+    t.index ["event_type"], name: "index_observability_events_on_event_type"
+    t.index ["resource_type", "resource_id"], name: "index_observability_events_on_resource_type_and_resource_id"
+    t.index ["status"], name: "index_observability_events_on_status"
+    t.index ["user_id"], name: "index_observability_events_on_user_id"
   end
 
   create_table "payouts", force: :cascade do |t|
@@ -1625,6 +1669,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
   add_foreign_key "affiliates", "users"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
   add_foreign_key "agent_messages", "task_sessions"
+  add_foreign_key "ai_usage_logs", "entities"
+  add_foreign_key "ai_usage_logs", "scout_messages"
+  add_foreign_key "ai_usage_logs", "users"
   add_foreign_key "analytics_connections", "entities"
   add_foreign_key "analytics_query_logs", "entities"
   add_foreign_key "analytics_query_logs", "metric_definitions"
@@ -1694,6 +1741,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
   add_foreign_key "o_auth_configurations", "entities"
   add_foreign_key "o_auth_configurations", "integrations"
   add_foreign_key "oauth_configurations", "integrations"
+  add_foreign_key "observability_events", "entities"
+  add_foreign_key "observability_events", "users"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
   add_foreign_key "plugin_permissions", "custom_plugins"

@@ -1,0 +1,191 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-exclamation-triangle text-danger me-2"></i>Error Monitoring
+      </h1>
+      <p class="text-muted">Track and analyze system errors</p>
+    </div>
+    
+    <div class="btn-group" role="group">
+      <%= link_to admin_observability_errors_path(time_range: 1), class: "btn btn-sm btn-outline-primary #{'active' if params[:time_range] == '1'}" do %>
+        24h
+      <% end %>
+      <%= link_to admin_observability_errors_path(time_range: 7), class: "btn btn-sm btn-outline-primary #{'active' if params[:time_range].nil? || params[:time_range] == '7'}" do %>
+        7d
+      <% end %>
+      <%= link_to admin_observability_errors_path(time_range: 30), class: "btn btn-sm btn-outline-primary #{'active' if params[:time_range] == '30'}" do %>
+        30d
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Error Metrics -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">Total Errors</div>
+              <h3 class="mb-0"><%= number_with_delimiter(@total_errors) %></h3>
+            </div>
+            <div class="text-danger">
+              <i class="fas fa-exclamation-circle fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">Error Rate</div>
+              <h3 class="mb-0"><%= @error_rate %>%</h3>
+            </div>
+            <div class="text-warning">
+              <i class="fas fa-chart-line fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small mb-2">Errors by Type</div>
+          <% @errors_by_type.first(5).each do |type, count| %>
+            <div class="d-flex justify-content-between mb-1">
+              <span><%= type %></span>
+              <span class="badge bg-danger"><%= count %></span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Trend Chart -->
+  <% if @error_trend_chart && @error_trend_chart[:data]&.any? %>
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">Error Trend</h5>
+      </div>
+      <div class="card-body">
+        <canvas id="errorTrendChart" height="80"></canvas>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Recent Errors Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white">
+      <h5 class="mb-0">Recent Errors</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Entity</th>
+              <th>User</th>
+              <th>Message</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @recent_errors.any? %>
+              <% @recent_errors.each do |error| %>
+                <tr>
+                  <td><code>#<%= error.id %></code></td>
+                  <td>
+                    <% if error.is_a?(WorkflowExecution) %>
+                      <span class="badge bg-danger">Workflow</span>
+                    <% elsif error.is_a?(IntegrationLog) %>
+                      <span class="badge bg-warning">Integration</span>
+                    <% else %>
+                      <span class="badge bg-secondary">Unknown</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% if error.is_a?(WorkflowExecution) %>
+                      <%= error.entity&.name || "N/A" %>
+                    <% elsif error.is_a?(IntegrationLog) %>
+                      <%= error.connection&.entity&.name || "N/A" %>
+                    <% end %>
+                  </td>
+                  <td><%= error.user&.email || "System" %></td>
+                  <td>
+                    <% if error.is_a?(WorkflowExecution) && error.error_message.present? %>
+                      <small><%= truncate(error.error_message, length: 100) %></small>
+                    <% elsif error.is_a?(IntegrationLog) %>
+                      <small>HTTP <%= error.response_status %><%= error.error_message.present? ? " - #{truncate(error.error_message, length: 80)}" : "" %></small>
+                    <% else %>
+                      <small class="text-muted">No message</small>
+                    <% end %>
+                  </td>
+                  <td><%= time_ago_in_words(error.created_at) %> ago</td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr>
+                <td colspan="6" class="text-center text-muted py-4">
+                  <i class="fas fa-check-circle fa-3x mb-3 d-block text-success"></i>
+                  No errors in the selected time range
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if @error_trend_chart && @error_trend_chart[:data]&.any? %>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const ctx = document.getElementById('errorTrendChart');
+      if (ctx && window.Chart) {
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: <%= raw @error_trend_chart[:labels].to_json %>,
+            datasets: [{
+              label: 'Errors',
+              data: <%= raw @error_trend_chart[:data].to_json %>,
+              borderColor: 'rgb(220, 53, 69)',
+              backgroundColor: 'rgba(220, 53, 69, 0.1)',
+              tension: 0.4,
+              fill: true
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  precision: 0
+                }
+              }
+            }
+          }
+        });
+      }
+    });
+  </script>
+<% end %>
+

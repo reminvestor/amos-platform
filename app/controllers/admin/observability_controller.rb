@@ -5,7 +5,7 @@ class Admin::ObservabilityController < Admin::BaseController
 
     # Get workflow executions
     @workflows = WorkflowExecution
-                   .where("created_at > ?", @time_range.ago)
+                   .where("workflow_executions.created_at > ?", @time_range.ago)
                    .includes(:entity, :user)
                    .order(created_at: :desc)
 
@@ -16,7 +16,7 @@ class Admin::ObservabilityController < Admin::BaseController
     @workflows = @workflows.limit(100)
 
     # Calculate workflow stats
-    all_workflows = WorkflowExecution.where("created_at > ?", @time_range.ago)
+    all_workflows = WorkflowExecution.where("workflow_executions.created_at > ?", @time_range.ago)
     @total_workflows = all_workflows.count
     @completed_workflows = all_workflows.where(status: "completed").count
     @failed_workflows = all_workflows.where(status: "failed").count
@@ -25,7 +25,8 @@ class Admin::ObservabilityController < Admin::BaseController
 
     # Workflows by template
     @workflows_by_template = all_workflows
-                               .group(:workflow_template_name)
+                               .where.not(workflow_template_id: nil)
+                               .group(:workflow_template_id)
                                .count
                                .sort_by { |_, count| -count }
                                .first(10)
@@ -33,7 +34,7 @@ class Admin::ObservabilityController < Admin::BaseController
     # Workflows by entity
     @workflows_by_entity = all_workflows
                              .joins(:entity)
-                             .group("entities.name")
+                             .group(Arel.sql("entities.name"))
                              .count
                              .sort_by { |_, count| -count }
                              .first(10)
@@ -62,34 +63,40 @@ class Admin::ObservabilityController < Admin::BaseController
   def performance
     @time_range = params[:time_range]&.to_i&.days || 7.days
 
-    # Get performance events
-    @performance_events = ObservabilityEvent
-                            .where(event_type: ["workflow_execution", "phase_execution", "tool_execution"])
-                            .where("created_at > ?", @time_range.ago)
-                            .order(created_at: :desc)
+    # Use actual WorkflowExecution data instead of ObservabilityEvent
+    @workflows = WorkflowExecution
+                   .where("workflow_executions.created_at > ?", @time_range.ago)
+                   .includes(:entity, :user)
 
-    # Calculate performance metrics
-    @total_workflows = @performance_events.where(event_type: "workflow_execution").count
-    @successful_workflows = @performance_events.where(event_type: "workflow_execution")
-                                                .where("metadata->>'status' = ?", "completed").count
-    @failed_workflows = @performance_events.where(event_type: "workflow_execution")
-                                            .where("metadata->>'status' IN (?)", ["failed", "error"]).count
+    # Calculate performance metrics from WorkflowExecution
+    @total_workflows = @workflows.count
+    @successful_workflows = @workflows.where(status: "completed").count
+    @failed_workflows = @workflows.where(status: "failed").count
     @success_rate = @total_workflows > 0 ? ((@successful_workflows.to_f / @total_workflows) * 100).round(2) : 0
 
-    # Average execution times
-    @avg_workflow_duration = calculate_avg_duration("workflow_execution")
-    @avg_phase_duration = calculate_avg_duration("phase_execution")
-    @avg_tool_duration = calculate_avg_duration("tool_execution")
+    # Average execution times from WorkflowExecution
+    @avg_workflow_duration = calculate_avg_workflow_duration(@workflows)
+    @avg_phase_duration = 0 # Will calculate from workflow_spec if available
+    @avg_tool_duration = 0 # Will calculate from workflow_spec if available
 
     # Performance over time chart
     @performance_chart = generate_performance_chart
 
-    # Error rate chart
-    @error_rate_chart = generate_error_rate_chart
+    # Error rate data (simple calculation for doughnut chart)
+    @error_rate_chart = {
+      data: [@successful_workflows, @failed_workflows],
+      labels: ['Success', 'Errors']
+    }
 
-    # Slowest operations
-    @slowest_workflows = find_slowest_operations("workflow_execution", 10)
-    @slowest_tools = find_slowest_operations("tool_execution", 10)
+    # Slowest operations from WorkflowExecution
+    @slowest_workflows = @workflows
+                          .where(status: "completed")
+                          .where.not(started_at: nil, completed_at: nil)
+                          .sort_by { |w| w.completed_at - w.started_at }
+                          .reverse
+                          .first(10)
+    
+    @slowest_tools = [] # Will be empty until we track tool executions
 
     respond_to do |format|
       format.html
@@ -110,25 +117,40 @@ class Admin::ObservabilityController < Admin::BaseController
   def errors
     @time_range = params[:time_range]&.to_i&.days || 7.days
 
-    # Get error events
-    @error_events = ObservabilityEvent
-                      .where(event_type: ["error", "exception", "workflow_error"])
-                      .or(ObservabilityEvent.where("metadata->>'status' IN (?)", ["failed", "error"]))
-                      .where("created_at > ?", @time_range.ago)
-                      .order(created_at: :desc)
+    # Get errors from multiple sources
+    # 1. Failed workflows
+    @failed_workflows = WorkflowExecution
+                          .where(status: "failed")
+                          .where("workflow_executions.created_at > ?", @time_range.ago)
+                          .includes(:entity, :user)
+                          .order(created_at: :desc)
+    
+    # 2. Failed integration calls
+    @failed_integrations = IntegrationLog
+                             .failed
+                             .where("integration_logs.created_at > ?", @time_range.ago)
+                             .includes(:connection, :user)
+                             .order(created_at: :desc)
 
     # Calculate error metrics
-    @total_errors = @error_events.count
-    @error_rate = calculate_error_rate
-    @errors_by_type = @error_events.group_by { |e| e.metadata&.dig("error_type") || "Unknown" }
-                                    .transform_values(&:count)
-                                    .sort_by { |_, count| -count }
+    @total_errors = @failed_workflows.count + @failed_integrations.count
+    @workflow_errors = @failed_workflows.count
+    @integration_errors = @failed_integrations.count
+    
+    # Group errors by type
+    @errors_by_type = {
+      "Workflow Failures" => @workflow_errors,
+      "Integration Failures" => @integration_errors
+    }.select { |_, count| count > 0 }
 
-    # Recent errors
-    @recent_errors = @error_events.includes(:entity, :user).limit(50)
+    # Recent errors (combine both sources)
+    @recent_errors = (@failed_workflows.to_a + @failed_integrations.to_a)
+                       .sort_by(&:created_at)
+                       .reverse
+                       .first(50)
 
     # Error trend chart
-    @error_trend_chart = generate_error_trend_chart
+    @error_trend_chart = generate_error_trend_chart_from_real_data
 
     respond_to do |format|
       format.html
@@ -147,17 +169,27 @@ class Admin::ObservabilityController < Admin::BaseController
     @time_range = params[:time_range]&.to_i&.days || 7.days
     @group_by = params[:group_by] || "day"
 
-    # Get AI usage data from ObservabilityEvent
-    @ai_events = ObservabilityEvent
-                   .where(event_type: ["ai_request", "ai_response", "tool_call"])
-                   .where("created_at > ?", @time_range.ago)
-                   .order(created_at: :desc)
+    # Use actual ScoutMessage data for AI usage
+    @ai_messages = ScoutMessage
+                     .where("created_at > ?", @time_range.ago)
+                     .where(role: 'assistant') # AI responses
+                     .includes(:entity, :user)
+                     .order(created_at: :desc)
 
-    # Calculate aggregated stats
-    @total_requests = @ai_events.where(event_type: "ai_request").count
-    @total_tokens = calculate_total_tokens
-    @total_cost = calculate_total_cost
-    @average_latency = calculate_average_latency
+    # Calculate aggregated stats from AI usage logs (time-range specific)
+    @total_requests = @ai_messages.count
+    @total_tokens = AiUsageLog.total_tokens_in_range(@time_range)
+    
+    # Calculate total cost including AI + Voice costs
+    ai_cost = AiUsageLog.total_cost_in_range(@time_range)
+    tts_cost = TtsUsageLog.where("created_at > ?", @time_range.ago).sum(:cost_cents) / 100.0
+    @total_cost = (ai_cost + tts_cost).round(2)
+    
+    @average_latency = AiUsageLog.average_duration_in_range(@time_range)
+    
+    # Voice usage stats
+    @tts_requests = TtsUsageLog.where("created_at > ?", @time_range.ago).count
+    @tts_characters = TtsUsageLog.where("created_at > ?", @time_range.ago).sum(:character_count)
 
     # Usage by entity
     @usage_by_entity = calculate_usage_by_entity
@@ -171,21 +203,18 @@ class Admin::ObservabilityController < Admin::BaseController
     # Cost over time
     @cost_chart = generate_cost_chart
 
-    # Top entities by usage
+    # Top entities by usage from scout messages
     @top_entities = Entity
-                      .joins("LEFT JOIN observability_events ON observability_events.entity_id = entities.id")
-                      .where("observability_events.created_at > ?", @time_range.ago)
-                      .where("observability_events.event_type = ?", "ai_request")
-                      .group("entities.id", "entities.name")
-                      .select("entities.*, COUNT(observability_events.id) as request_count")
-                      .order("request_count DESC")
+                      .joins("LEFT JOIN scout_messages ON scout_messages.entity_id = entities.id")
+                      .where("scout_messages.created_at > ?", @time_range.ago)
+                      .where("scout_messages.role = ?", "assistant")
+                      .group(Arel.sql("entities.id, entities.name"))
+                      .select(Arel.sql("entities.*, COUNT(scout_messages.id) as request_count"))
+                      .order(Arel.sql("request_count DESC"))
                       .limit(10)
 
-    # Recent requests
-    @recent_requests = @ai_events
-                         .where(event_type: "ai_request")
-                         .includes(:entity, :user)
-                         .limit(50)
+    # Recent AI messages
+    @recent_requests = @ai_messages.limit(50)
 
     respond_to do |format|
       format.html
@@ -237,27 +266,38 @@ class Admin::ObservabilityController < Admin::BaseController
   def calculate_average_latency
     latencies = @ai_events.where(event_type: "ai_response")
                           .where.not("metadata->>'duration' IS NULL")
-                          .pluck("(metadata->>'duration')::float")
+                          .pluck(Arel.sql("(metadata->>'duration')::float"))
 
     return 0 if latencies.empty?
     (latencies.sum / latencies.size).round(2)
   end
 
   def calculate_usage_by_entity
-    ObservabilityEvent
+    ScoutMessage
       .joins(:entity)
-      .where(event_type: "ai_request")
-      .where("observability_events.created_at > ?", @time_range.ago)
-      .group("entities.name")
+      .where(role: 'assistant')
+      .where("scout_messages.created_at > ?", @time_range.ago)
+      .group(Arel.sql("entities.name"))
       .count
   end
 
   def calculate_usage_by_model
-    @ai_events
-      .where(event_type: "ai_response")
-      .where.not("metadata->>'model' IS NULL")
-      .group("metadata->>'model'")
-      .count
+    AiUsageLog
+      .within(@time_range)
+      .group(:model)
+      .sum(:total_tokens)
+  end
+  
+  def calculate_total_tokens_from_messages
+    @ai_messages.sum do |msg|
+      (msg.metadata&.dig('input_tokens').to_i + msg.metadata&.dig('output_tokens').to_i)
+    end
+  end
+  
+  def calculate_total_cost_from_messages
+    @ai_messages.sum do |msg|
+      msg.metadata&.dig('cost')&.to_f || 0
+    end.round(2)
   end
 
   def generate_token_usage_chart
@@ -270,10 +310,9 @@ class Admin::ObservabilityController < Admin::BaseController
       7.times.map { |d| d.days.ago.beginning_of_day }
     end
 
-    data_by_time = @ai_events
-                     .where(event_type: "ai_response")
-                     .where("created_at > ?", @time_range.ago)
-                     .group_by { |e| e.created_at.send("beginning_of_#{@group_by}") }
+    # Use AI usage logs for accurate token tracking
+    usage_logs = AiUsageLog.within(@time_range).to_a
+    data_by_time = usage_logs.group_by { |log| log.created_at.send("beginning_of_#{@group_by}") }
 
     {
       labels: time_groups.reverse.map { |t| format_time_label(t) },
@@ -281,16 +320,16 @@ class Admin::ObservabilityController < Admin::BaseController
         {
           label: "Input Tokens",
           data: time_groups.reverse.map do |time|
-            events = data_by_time[time] || []
-            events.sum { |e| (e.metadata || {})["input_tokens"] || 0 }
+            logs = data_by_time[time] || []
+            logs.sum(&:input_tokens)
           end,
           backgroundColor: "rgba(59, 130, 246, 0.5)"
         },
         {
           label: "Output Tokens",
           data: time_groups.reverse.map do |time|
-            events = data_by_time[time] || []
-            events.sum { |e| (e.metadata || {})["output_tokens"] || 0 }
+            logs = data_by_time[time] || []
+            logs.sum(&:output_tokens)
           end,
           backgroundColor: "rgba(16, 185, 129, 0.5)"
         }
@@ -308,32 +347,36 @@ class Admin::ObservabilityController < Admin::BaseController
       7.times.map { |d| d.days.ago.beginning_of_day }
     end
 
-    data_by_time = @ai_events
-                     .where(event_type: "ai_response")
-                     .where("created_at > ?", @time_range.ago)
-                     .group_by { |e| e.created_at.send("beginning_of_#{@group_by}") }
+    # Get both AI and TTS usage logs for cost tracking
+    ai_logs = AiUsageLog.within(@time_range).to_a
+    tts_logs = TtsUsageLog.where("created_at > ?", @time_range.ago).to_a
+    
+    ai_data_by_time = ai_logs.group_by { |log| log.created_at.send("beginning_of_#{@group_by}") }
+    tts_data_by_time = tts_logs.group_by { |log| log.created_at.send("beginning_of_#{@group_by}") }
 
     {
       labels: time_groups.reverse.map { |t| format_time_label(t) },
       datasets: [
         {
-          label: "Cost ($)",
+          label: "AI Cost ($)",
           data: time_groups.reverse.map do |time|
-            events = data_by_time[time] || []
-            cost = events.sum do |e|
-              metadata = e.metadata || {}
-              input_tokens = metadata["input_tokens"] || 0
-              output_tokens = metadata["output_tokens"] || 0
-              model = metadata["model"] || "claude-sonnet-4.5"
-              pricing = get_model_pricing(model)
-
-              (input_tokens / 1_000_000.0 * pricing[:input]) +
-                (output_tokens / 1_000_000.0 * pricing[:output])
-            end
+            logs = ai_data_by_time[time] || []
+            cost = logs.sum { |log| log.cost_cents / 100.0 }
             cost.round(2)
           end,
-          borderColor: "rgb(239, 68, 68)",
-          backgroundColor: "rgba(239, 68, 68, 0.1)",
+          borderColor: "rgb(59, 130, 246)",
+          backgroundColor: "rgba(59, 130, 246, 0.1)",
+          fill: true
+        },
+        {
+          label: "Voice Cost ($)",
+          data: time_groups.reverse.map do |time|
+            logs = tts_data_by_time[time] || []
+            cost = logs.sum { |log| (log.cost_cents || 0) / 100.0 }
+            cost.round(2)
+          end,
+          borderColor: "rgb(16, 185, 129)",
+          backgroundColor: "rgba(16, 185, 129, 0.1)",
           fill: true
         }
       ]
@@ -372,11 +415,23 @@ class Admin::ObservabilityController < Admin::BaseController
   end
 
   # Performance tracking helpers
+  def calculate_avg_workflow_duration(workflows)
+    completed = workflows.where(status: "completed").where.not(started_at: nil, completed_at: nil)
+    
+    return 0 if completed.empty?
+    
+    durations = completed.map do |w|
+      ((w.completed_at - w.started_at) * 1000).round # Convert to milliseconds
+    end
+    
+    (durations.sum.to_f / durations.size).round(2)
+  end
+  
   def calculate_avg_duration(event_type)
     durations = @performance_events
                   .where(event_type: event_type)
                   .where.not("metadata->>'duration' IS NULL")
-                  .pluck("(metadata->>'duration')::float")
+                  .pluck(Arel.sql("(metadata->>'duration')::float"))
 
     return 0 if durations.empty?
     (durations.sum / durations.size).round(2)
@@ -394,62 +449,51 @@ class Admin::ObservabilityController < Admin::BaseController
   def generate_performance_chart
     time_groups = (@time_range.to_i / 1.day.to_i).times.map { |d| d.days.ago.beginning_of_day }
 
-    data_by_time = @performance_events
-                     .where(event_type: "workflow_execution")
-                     .where("created_at > ?", @time_range.ago)
-                     .group_by { |e| e.created_at.beginning_of_day }
+    # Use WorkflowExecution instead of ObservabilityEvent
+    data_by_time = @workflows.group_by { |w| w.created_at.beginning_of_day }
 
     {
       labels: time_groups.reverse.map { |t| t.strftime("%b %-d") },
-      datasets: [
-        {
-          label: "Successful",
-          data: time_groups.reverse.map do |time|
-            events = data_by_time[time] || []
-            events.count { |e| e.metadata&.dig("status") == "completed" }
-          end,
-          backgroundColor: "rgba(16, 185, 129, 0.5)"
-        },
-        {
-          label: "Failed",
-          data: time_groups.reverse.map do |time|
-            events = data_by_time[time] || []
-            events.count { |e| ["failed", "error"].include?(e.metadata&.dig("status")) }
-          end,
-          backgroundColor: "rgba(239, 68, 68, 0.5)"
-        }
-      ]
+      data: time_groups.reverse.map do |time|
+        workflows = data_by_time[time] || []
+        if workflows.any?
+          # Calculate average duration for workflows completed that day
+          completed = workflows.select { |w| w.status == "completed" && w.started_at && w.completed_at }
+          if completed.any?
+            durations = completed.map { |w| ((w.completed_at - w.started_at) * 1000).round }
+            (durations.sum.to_f / durations.size).round(2)
+          else
+            0
+          end
+        else
+          0
+        end
+      end
     }
   end
 
   # Error tracking helpers
   def calculate_error_rate
-    total_events = ObservabilityEvent.where("created_at > ?", @time_range.ago).count
-    return 0 if total_events == 0
-    ((@total_errors.to_f / total_events) * 100).round(2)
+    # Calculate error rate from workflows
+    total_workflows = WorkflowExecution.where("workflow_executions.created_at > ?", @time_range.ago).count
+    return 0 if total_workflows == 0
+    ((@workflow_errors.to_f / total_workflows) * 100).round(2)
   end
 
-  def generate_error_trend_chart
+  def generate_error_trend_chart_from_real_data
     time_groups = (@time_range.to_i / 1.day.to_i).times.map { |d| d.days.ago.beginning_of_day }
 
-    data_by_time = @error_events
-                     .where("created_at > ?", @time_range.ago)
-                     .group_by { |e| e.created_at.beginning_of_day }
+    # Combine workflow and integration errors by day
+    workflow_data = @failed_workflows.group_by { |w| w.created_at.beginning_of_day }
+    integration_data = @failed_integrations.group_by { |i| i.created_at.beginning_of_day }
 
     {
       labels: time_groups.reverse.map { |t| t.strftime("%b %-d") },
-      datasets: [
-        {
-          label: "Errors",
-          data: time_groups.reverse.map do |time|
-            events = data_by_time[time] || []
-            events.count
-          end,
-          borderColor: "rgb(239, 68, 68)",
-          backgroundColor: "rgba(239, 68, 68, 0.1)",
-          fill: true
-        }
-      ]
+      data: time_groups.reverse.map do |time|
+        workflow_count = (workflow_data[time] || []).count
+        integration_count = (integration_data[time] || []).count
+        workflow_count + integration_count
+      end
     }
   end
 
