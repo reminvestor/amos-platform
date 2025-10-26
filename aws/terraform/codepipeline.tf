@@ -1,7 +1,6 @@
-# GitHub connection for CodePipeline
-resource "aws_codestarconnections_connection" "github" {
-  name          = "github-connection"
-  provider_type = "GitHub"
+# GitHub connection for CodePipeline (use existing connection)
+data "aws_codestarconnections_connection" "github" {
+  arn = "arn:aws:codestar-connections:us-east-1:637423327454:connection/0fb46e9c-d207-477d-9ea9-38bdfa7b6591"
 }
 
 # S3 bucket for CodePipeline artifacts
