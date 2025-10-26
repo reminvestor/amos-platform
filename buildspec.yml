@@ -20,8 +20,14 @@ phases:
       - echo Pushing the Docker images...
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo Updating task definition with latest image...
+      - sed -i "s|637423327454.dkr.ecr.us-east-1.amazonaws.com/agent-marketing:latest|$REPOSITORY_URI:$IMAGE_TAG|g" aws/task-definition.json
+      - echo Registering new task definition...
+      - aws ecs register-task-definition --cli-input-json file://aws/task-definition.json --region $AWS_DEFAULT_REGION
       - echo Writing image definitions file...
       - printf '[{"name":"agent-marketing","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 
 artifacts:
-  files: imagedefinitions.json
+  files: 
+    - imagedefinitions.json
+    - aws/task-definition.json
