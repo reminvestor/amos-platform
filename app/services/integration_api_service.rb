@@ -65,6 +65,9 @@ class IntegrationApiService
   end
 
   def execute_operation(operation, params: {}, body: nil)
+    # Refresh OAuth token if needed
+    refresh_oauth_token_if_needed
+    
     # Build the request
     url = build_url(operation, params)
     headers = build_headers
@@ -138,6 +141,26 @@ class IntegrationApiService
   end
 
   private
+
+  def refresh_oauth_token_if_needed
+    # Only refresh for OAuth credentials
+    return unless @credential.auth_method == "bearer"
+    return unless @credential.expires_at.present?
+    
+    # Check if we have a refresh token
+    refresh_token = @credential.credentials["refresh_token"] || @credential.credentials[:refresh_token]
+    return unless refresh_token
+    
+    # Use the refresh service
+    refresh_service = OauthTokenRefreshService.new(@credential)
+    refresh_service.refresh_if_needed!
+    
+    # Reload credential to get updated tokens
+    @credential.reload
+  rescue => e
+    Rails.logger.error "Failed to refresh OAuth token: #{e.message}"
+    # Don't raise - let the API call proceed and fail naturally if token is invalid
+  end
 
   def test_with_endpoint(endpoint_path)
     # Build URL with credential-based parameter replacement using smart matching
