@@ -1,3 +1,9 @@
+# GitHub connection for CodePipeline
+resource "aws_codestarconnections_connection" "github" {
+  name          = "github-connection"
+  provider_type = "GitHub"
+}
+
 # S3 bucket for CodePipeline artifacts
 resource "aws_s3_bucket" "codepipeline_artifacts" {
   bucket = "${var.app_name}-codepipeline-artifacts-${data.aws_caller_identity.current.account_id}"
@@ -103,13 +109,15 @@ resource "aws_codepipeline" "app" {
       name             = "Source"
       category         = "Source"
       owner            = "AWS"
-      provider         = "S3"
+      provider         = "CodeStarSourceConnection"
       version          = "1"
       output_artifacts = ["source_output"]
 
       configuration = {
-        S3Bucket    = aws_s3_bucket.source.bucket
-        S3ObjectKey = "source.zip"
+        ConnectionArn        = aws_codestarconnections_connection.github.arn
+        FullRepositoryId     = "NuvolaNetworks/agent_marketing"
+        BranchName          = "prod"
+        OutputArtifactFormat = "CODE_ZIP"
       }
     }
   }
@@ -229,6 +237,13 @@ resource "aws_iam_role_policy" "codepipeline" {
           "iam:PassRole"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "codestar-connections:UseConnection"
+        ]
+        Resource = aws_codestarconnections_connection.github.arn
       }
     ]
   })
