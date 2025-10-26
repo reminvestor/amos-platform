@@ -21,6 +21,14 @@ class NullRedis
     true # Pretend we set expiration
   end
 
+  def hset(key, field, value)
+    true # Pretend we saved it
+  end
+
+  def hgetall(key)
+    {} # Return empty hash
+  end
+
   def method_missing(method, *args, &block)
     nil # Return nil for any other method
   end

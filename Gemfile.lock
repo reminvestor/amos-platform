@@ -122,6 +122,7 @@ GEM
       rack-test (>= 0.6.3)
       regexp_parser (>= 1.5, < 3.0)
       xpath (~> 3.2)
+    chunky_png (1.4.0)
     clockwork (3.0.2)
       activesupport
       tzinfo
@@ -355,6 +356,7 @@ GEM
     parser (3.3.7.1)
       ast (~> 2.4.1)
       racc
+    pdf-core (0.10.0)
     pdf-reader (2.15.0)
       Ascii85 (>= 1.0, < 3.0, != 2.0.0)
       afm (>= 0.2.1, < 2)
@@ -373,6 +375,10 @@ GEM
       httparty (~> 0.22.0)
     pp (0.6.2)
       prettyprint
+    prawn (2.5.0)
+      matrix (~> 0.4)
+      pdf-core (~> 0.10.0)
+      ttfunk (~> 1.8)
     prettyprint (0.2.0)
     propshaft (1.1.0)
       actionpack (>= 7.0.0)
@@ -579,6 +585,7 @@ DEPENDENCIES
   bootsnap
   brakeman (~> 7.1.0)
   capybara
+  chunky_png (~> 1.4)
   clockwork
   cssbundling-rails
   csv
@@ -611,6 +618,7 @@ DEPENDENCIES
   pdf-reader (~> 2.12)
   pg (~> 1.1)
   pinecone (~> 1.2)
+  prawn (~> 2.4)
   propshaft
   puma (>= 5.0)
   rack-attack (~> 6.7)

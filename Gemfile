@@ -138,6 +138,9 @@ group :test do
   gem "selenium-webdriver"
   # Mocking and stubbing [https://github.com/freerange/mocha]
   gem "mocha"
+  # Test file generation
+  gem "prawn", "~> 2.4" # PDF generation for tests
+  gem "chunky_png", "~> 1.4" # PNG image generation for tests
 end
 
 gem "down", "~> 5.4"

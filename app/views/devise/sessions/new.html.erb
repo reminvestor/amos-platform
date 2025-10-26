@@ -46,22 +46,49 @@
         <p class="text-muted">Enter your credentials to access your marketing dashboard</p>
       </div>
       
-      <%= form_for(resource, as: resource_name, url: session_path(resource_name), local: true, html: { class: "auth-form" }) do |f| %>
+      <%= form_for(resource, as: resource_name, url: session_path(resource_name), local: true, html: { class: "auth-form", id: "login-form" }) do |f| %>
+        <% if Rails.env.development? || Rails.env.test? %>
+          <div class="form-group">
+            <label class="form-label">
+              <i class="fas fa-flask text-warning"></i> Quick Login (Dev Only)
+            </label>
+            <select id="quick-login-selector" class="form-control">
+              <option value="">-- Select a test user --</option>
+              <% User.includes(:entity).limit(10).each do |user| %>
+                <option value="<%= user.email %>"
+                        data-password="password123"
+                        data-entity="<%= user.entity&.name %>">
+                  <%= user.email %> (<%= user.entity&.name || 'No Entity' %>)
+                </option>
+              <% end %>
+            </select>
+            <small class="form-text text-muted">
+              All test users have password: <code>password123</code>
+            </small>
+          </div>
+
+          <div class="auth-divider">
+            <span>or enter manually</span>
+          </div>
+        <% end %>
+
         <div class="form-group">
           <%= f.label :email, "Email Address", class: "form-label" %>
-          <%= f.email_field :email, 
-              autofocus: true, 
-              autocomplete: "email", 
+          <%= f.email_field :email,
+              autofocus: true,
+              autocomplete: "email",
               class: "form-control",
-              placeholder: "Enter your email address" %>
+              placeholder: "Enter your email address",
+              id: "user_email_field" %>
         </div>
 
         <div class="form-group">
           <%= f.label :password, "Password", class: "form-label" %>
-          <%= f.password_field :password, 
-              autocomplete: "current-password", 
+          <%= f.password_field :password,
+              autocomplete: "current-password",
               class: "form-control",
-              placeholder: "Enter your password" %>
+              placeholder: "Enter your password",
+              id: "user_password" %>
         </div>
 
         <% if devise_mapping.rememberable? %>
@@ -321,18 +348,68 @@
   .auth-workspace {
     flex-direction: column;
   }
-  
+
   .auth-sidebar {
     width: 100%;
     padding: 1.5rem;
   }
-  
+
   .auth-features {
     display: none;
   }
-  
+
   .auth-content {
     padding: 1.5rem;
   }
 }
+
+/* Dev Quick Login */
+#quick-login-selector {
+  background-color: #2c3034;
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.1);
+}
+
+code {
+  background: #404448;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  color: #fbbf24;
+  font-size: 0.875rem;
+}
 </style>
+
+<% if Rails.env.development? || Rails.env.test? %>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const selector = document.getElementById('quick-login-selector');
+  const emailField = document.getElementById('user_email_field');
+  const passwordField = document.getElementById('user_password');
+
+  if (selector && emailField && passwordField) {
+    selector.addEventListener('change', function() {
+      const selectedOption = this.options[this.selectedIndex];
+
+      if (selectedOption.value) {
+        // Auto-fill email and password
+        emailField.value = selectedOption.value;
+        passwordField.value = selectedOption.dataset.password || 'password123';
+
+        // Visual feedback
+        emailField.style.borderColor = '#10b981';
+        passwordField.style.borderColor = '#10b981';
+
+        setTimeout(() => {
+          emailField.style.borderColor = '';
+          passwordField.style.borderColor = '';
+        }, 1000);
+      } else {
+        // Clear fields if "Select a test user" is chosen
+        emailField.value = '';
+        passwordField.value = '';
+      }
+    });
+  }
+});
+</script>
+<% end %>

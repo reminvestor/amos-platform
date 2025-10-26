@@ -1,0 +1,73 @@
+# Demo Users for Development
+# This ensures demo users always exist with correct passwords
+
+puts "🔧 Setting up demo users..."
+
+# Create Demo Company entity
+demo_entity = Entity.find_or_create_by!(name: 'Demo Company') do |entity|
+  entity.subdomain = 'demo'
+  entity.subscription_status = 'active'
+  entity.trial_ends_at = 30.days.from_now
+end
+
+# Define demo users for each role
+demo_users = [
+  {
+    email: 'admin@demo.com',
+    first_name: 'Admin',
+    last_name: 'User',
+    role: 'admin'
+  },
+  {
+    email: 'marketer@demo.com',
+    first_name: 'Marketing',
+    last_name: 'User',
+    role: 'marketer'
+  },
+  {
+    email: 'viewer@demo.com',
+    first_name: 'Viewer',
+    last_name: 'User',
+    role: 'viewer'
+  }
+]
+
+demo_users.each do |user_data|
+  user = User.find_or_initialize_by(email: user_data[:email])
+  user.assign_attributes(
+    entity: demo_entity,
+    first_name: user_data[:first_name],
+    last_name: user_data[:last_name],
+    password: 'password123',
+    password_confirmation: 'password123',
+    onboarded: true,
+    role: user_data[:role]
+  )
+
+  if user.new_record?
+    user.save!
+    puts "✅ Created #{user_data[:email]} (#{user_data[:role]})"
+  else
+    # Always reset password to ensure it's correct
+    user.save!
+    puts "✅ Updated #{user_data[:email]} (#{user_data[:role]}, password reset)"
+  end
+end
+
+puts "
+📝 Demo Login Credentials (all use password123):
+
+   🔑 Admin User:
+      Email: admin@demo.com
+      Role: Full access
+
+   📊 Marketer User:
+      Email: marketer@demo.com
+      Role: Marketing features
+
+   👁️  Viewer User:
+      Email: viewer@demo.com
+      Role: Read-only access
+
+   URL: http://localhost:3000
+"
