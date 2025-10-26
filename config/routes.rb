@@ -324,6 +324,8 @@ Rails.application.routes.draw do
   post "scout/continue_workflow", to: "scout#continue_workflow"
   post "scout/approve_workflow", to: "scout#approve_workflow"
   post "scout/upload_files", to: "scout#upload_files"
+  post "scout/move_to_long_term", to: "scout#move_to_long_term"
+  delete "scout/delete_document", to: "scout#delete_document"
   get "scout/history", to: "scout#history" # paginated history
   delete "scout/conversation", to: "scout#clear_conversation"
   get "scout/export", to: "scout#conversation_export"
