@@ -82,6 +82,14 @@ module Rag
     end
 
     test "moves S3 documents to Glacier" do
+      ENV['RAG_BUCKET'] = 'test-bucket'
+
+      # Clean up any existing stale stores to isolate test
+      RagStore.where('last_accessed_at < ? OR last_accessed_at IS NULL', 60.days.ago)
+              .where(store_type: 'entity')
+              .where.not(status: 'archived')
+              .destroy_all
+
       store = create_stale_store_with_document
 
       # Mock S3 client
@@ -99,6 +107,8 @@ module Rag
         # Verify S3 operations were called
         s3_mock.verify
       end
+
+      ENV['RAG_BUCKET'] = nil
     end
 
     test "handles missing S3 objects gracefully" do

@@ -19,6 +19,9 @@ module Rag
     end
 
     test "collects processing metrics" do
+      # Clean up existing docling jobs to isolate test
+      RagProcessingJob.where(job_type: 'docling_extraction').destroy_all
+
       # Create some test data
       store = RagStore.create!(
         name: "Test Store",
@@ -52,6 +55,9 @@ module Rag
     end
 
     test "collects usage metrics" do
+      # Clean up existing queries to isolate test
+      RagQuery.delete_all
+
       # Create query records
       RagQuery.create!(
         entity: @entity,
@@ -109,6 +115,9 @@ module Rag
     end
 
     test "calculates success rate correctly with no jobs" do
+      # Clean up existing docling jobs to test the "no jobs" scenario
+      RagProcessingJob.where(job_type: 'docling_extraction').destroy_all
+
       result = @job.perform
 
       # Should return 100% when no jobs exist
@@ -116,6 +125,9 @@ module Rag
     end
 
     test "calculates fallback rate" do
+      # Clean up existing stores with processing_method to isolate test
+      RagStore.where.not(processing_method: nil).destroy_all
+
       store1 = RagStore.create!(
         name: "Docling Store",
         app_name: "test",

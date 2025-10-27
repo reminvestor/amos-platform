@@ -76,6 +76,9 @@ module Rag
     end
 
     test "warms cache for popular query" do
+      # Clean up existing queries from fixtures first
+      RagQuery.delete_all
+
       # Create RAG store and chunks for testing
       store = RagStore.create!(
         name: "Test Store",
@@ -116,21 +119,18 @@ module Rag
       end
 
       # Stub HybridRagQueryService to avoid actual query execution
-      mock_service = Minitest::Mock.new
-      mock_service.expect :query, { chunks: [{ content: "test", score: 0.9 }] }, [query_text, { top_k: 5 }]
+      mock_result = { chunks: [{ content: "test", score: 0.9 }] }
 
-      HybridRagQueryService.stub :new, mock_service do
-        result = @job.perform
+      HybridRagQueryService.any_instance.stubs(:query).returns(mock_result)
 
-        assert result[:cache_warmed_count] > 0
-      end
+      result = @job.perform
+
+      assert result[:cache_warmed_count] > 0
 
       # Verify cache was written
       cache_key = "rag:query:#{@entity.id}:#{query_hash}"
       cached_result = Rails.cache.read(cache_key)
       assert cached_result.present?
-
-      mock_service.verify
     end
 
     test "handles errors gracefully" do
