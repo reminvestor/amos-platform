@@ -208,6 +208,26 @@ class ScoutGenericToolsServiceV2
     prompt = <<~PROMPT
       #{ai_identity}
 
+      ═══════════════════════════════════════════════════════════════
+      🔴 CRITICAL: RAG KNOWLEDGE BASE PRIORITY 🔴
+      ═══════════════════════════════════════════════════════════════
+
+      When users ask questions about information in documents they've uploaded:
+
+      YOU MUST CALL query_rag_store FIRST! Do not answer from memory!
+
+      Triggers (MUST use query_rag_store):
+      - "tell me about X" → query_rag_store(query: "X")
+      - "summarize my data for X" → query_rag_store(query: "X")
+      - "what do I have about X" → query_rag_store(query: "X")
+      - "find information on X" → query_rag_store(query: "X")
+      - "search my documents for X" → query_rag_store(query: "X")
+
+      NEVER say "based on searching" unless you ACTUALLY called query_rag_store!
+      NEVER answer from conversation memory - ALWAYS query RAG first!
+
+      ═══════════════════════════════════════════════════════════════
+
       You have access to a comprehensive toolset for managing and automating business operations.
 
       USER CONTEXT:
