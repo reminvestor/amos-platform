@@ -78,11 +78,9 @@ module Rag
         job_id: job_id,
         job_type: 'embedding_batch',
         status: :processing,
-        started_at: Time.current,
-        metadata: {
-          chunk_ids: chunk_ids,
-          chunk_count: chunk_ids.length
-        }
+        started_at: Time.current
+        # Note: RagProcessingJob doesn't have a metadata column
+        # Chunk info can be retrieved via chunk_ids if needed
       )
     end
 
