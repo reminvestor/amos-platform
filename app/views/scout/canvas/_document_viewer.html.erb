@@ -47,8 +47,8 @@
                       </button>
                     <% end %>
                   </div>
-                  <div class="d-flex align-items-start flex-grow-1">
-                    <div class="document-icon me-2">
+                  <div class="d-flex align-items-start flex-grow-1" style="min-width: 0;">
+                    <div class="document-icon me-2" style="flex-shrink: 0;">
                       <% if doc[:content_type]&.start_with?('image/') %>
                         <i class="fas fa-image text-info"></i>
                       <% elsif doc[:content_type] == 'application/pdf' %>
@@ -57,7 +57,7 @@
                         <i class="fas fa-file text-secondary"></i>
                       <% end %>
                     </div>
-                    <div class="flex-grow-1" style="min-width: 0;">
+                    <div class="flex-grow-1" style="min-width: 0; overflow: hidden;">
                       <div class="document-name"><%= doc[:filename] %></div>
                       <div class="document-meta">
                         <small class="text-muted">

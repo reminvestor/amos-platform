@@ -286,7 +286,7 @@ class ScoutGenericToolsServiceV2
       
       WRONG: Searching web based on filename ❌
       RIGHT: read_document to get actual content ✅
-      
+
       Examples:
       - User uploads "document.pdf" and says "Translate this"
         → read_document(asset_id: X) → Got Portuguese text → Translate to English
@@ -294,7 +294,42 @@ class ScoutGenericToolsServiceV2
         → read_document(asset_id: X) → Got content → Provide summary
       - User uploads "invoice.pdf" and says "What's the total?"
         → read_document(asset_id: X) → Got content → Find total amount
-      
+
+      RAG KNOWLEDGE BASE (CRITICAL):
+      When users ask questions about information in their uploaded documents (that have been processed and stored):
+
+      ALWAYS use query_rag_store tool to search the knowledge base FIRST!
+
+      Detection Patterns:
+      - "tell me about X" → query_rag_store(query: "X")
+      - "summarize my data for X" → query_rag_store(query: "X")
+      - "what do I have about X" → query_rag_store(query: "X")
+      - "find information on X" → query_rag_store(query: "X")
+      - "what's in my documents about X" → query_rag_store(query: "X")
+
+      Process:
+      1. ALWAYS query RAG first when user asks about document content
+      2. If results found → Use that information in your response
+      3. If no results → Inform user no documents contain that information
+      4. NEVER say "I don't have information" without checking RAG first!
+
+      Examples:
+      - User: "tell me about tires"
+        → query_rag_store(query: "tires", top_k: 5)
+        → If found: "Based on your documents, here's what I found about tires..."
+        → If empty: "I searched your uploaded documents but found no information about tires."
+
+      - User: "summarize my wheel data"
+        → query_rag_store(query: "wheels", top_k: 10)
+        → Return summary of what's in the RAG results
+
+      - User: "what do you know about service tickets?"
+        → query_rag_store(query: "service tickets", top_k: 5)
+        → Answer based on RAG results
+
+      IMPORTANT: The query_rag_store tool automatically searches ALL your uploaded documents.
+      You don't need to specify which document - it searches everything and returns relevant chunks.
+
       LANDING PAGE EDITING:
       CRITICAL: Detect if user wants to EDIT existing page vs CREATE new:
       - Phrases like "update", "change", "modify", "edit" = UPDATE existing
