@@ -43,7 +43,7 @@ module Rag
     # ===== Successful Chunking =====
 
     test "successfully creates chunks from Docling output" do
-      DoclingChunkingService.stub :chunk_document, sample_chunks do
+      with_mocked_chunking_service(sample_chunks) do
         assert_difference 'RagChunk.count', 3 do
           ChunkingJob.perform_now(@rag_document.id)
         end
@@ -51,7 +51,7 @@ module Rag
     end
 
     test "queues EmbeddingBatchJob after chunking" do
-      DoclingChunkingService.stub :chunk_document, sample_chunks do
+      with_mocked_chunking_service(sample_chunks) do
         assert_enqueued_with(job: Rag::EmbeddingBatchJob) do
           ChunkingJob.perform_now(@rag_document.id)
         end
@@ -59,7 +59,7 @@ module Rag
     end
 
     test "creates processing job record" do
-      DoclingChunkingService.stub :chunk_document, sample_chunks do
+      with_mocked_chunking_service(sample_chunks) do
         assert_difference 'RagProcessingJob.count', 1 do
           ChunkingJob.perform_now(@rag_document.id)
         end
@@ -71,7 +71,7 @@ module Rag
     end
 
     test "stores chunk metadata correctly" do
-      DoclingChunkingService.stub :chunk_document, sample_chunks do
+      with_mocked_chunking_service(sample_chunks) do
         ChunkingJob.perform_now(@rag_document.id)
       end
 
@@ -87,7 +87,7 @@ module Rag
       expected_content = "This is a test chunk content"
       chunks = [{ content: expected_content, chunk_index: 0, metadata: {} }]
 
-      DoclingChunkingService.stub :chunk_document, chunks do
+      with_mocked_chunking_service(chunks) do
         ChunkingJob.perform_now(@rag_document.id)
       end
 
@@ -96,7 +96,7 @@ module Rag
     end
 
     test "assigns sequential chunk indices" do
-      DoclingChunkingService.stub :chunk_document, sample_chunks do
+      with_mocked_chunking_service(sample_chunks) do
         ChunkingJob.perform_now(@rag_document.id)
       end
 
@@ -105,7 +105,7 @@ module Rag
     end
 
     test "estimates token count for each chunk" do
-      DoclingChunkingService.stub :chunk_document, sample_chunks do
+      with_mocked_chunking_service(sample_chunks) do
         ChunkingJob.perform_now(@rag_document.id)
       end
 
@@ -121,7 +121,7 @@ module Rag
     test "handles text chunks" do
       chunks = [{ content: 'Text content', chunk_type: 'text', chunk_index: 0, metadata: {} }]
 
-      DoclingChunkingService.stub :chunk_document, chunks do
+      with_mocked_chunking_service(chunks) do
         ChunkingJob.perform_now(@rag_document.id)
       end
 
@@ -132,7 +132,7 @@ module Rag
     test "handles table chunks" do
       chunks = [{ content: '| H1 | H2 |', chunk_type: 'table', chunk_index: 0, metadata: { page: 3 } }]
 
-      DoclingChunkingService.stub :chunk_document, chunks do
+      with_mocked_chunking_service(chunks) do
         ChunkingJob.perform_now(@rag_document.id)
       end
 
@@ -143,7 +143,7 @@ module Rag
     test "handles heading chunks" do
       chunks = [{ content: 'Introduction', chunk_type: 'heading', chunk_index: 0, metadata: { level: 1 } }]
 
-      DoclingChunkingService.stub :chunk_document, chunks do
+      with_mocked_chunking_service(chunks) do
         ChunkingJob.perform_now(@rag_document.id)
       end
 
@@ -160,7 +160,7 @@ module Rag
         { content: "Chunk #{i}", chunk_index: i, metadata: {} }
       end
 
-      DoclingChunkingService.stub :chunk_document, large_chunk_set do
+      with_mocked_chunking_service(large_chunk_set) do
         # Should enqueue 3 embedding jobs (10, 10, 5)
         assert_enqueued_jobs 3, only: Rag::EmbeddingBatchJob do
           ChunkingJob.perform_now(@rag_document.id)
@@ -173,7 +173,7 @@ module Rag
         { content: "Chunk #{i}", chunk_index: i, metadata: {} }
       end
 
-      DoclingChunkingService.stub :chunk_document, small_chunk_set do
+      with_mocked_chunking_service(small_chunk_set) do
         assert_enqueued_jobs 1, only: Rag::EmbeddingBatchJob do
           ChunkingJob.perform_now(@rag_document.id)
         end
@@ -200,15 +200,14 @@ module Rag
       }
       @rag_document.update!(docling_metadata: long_section)
 
+      # Simulate chunking service splitting long content
+      chunks = []
+      long_content.scan(/.{1,1000}/).each_with_index do |chunk_text, i|
+        chunks << { content: chunk_text, chunk_index: i, metadata: {} }
+      end
+
       # Should split into multiple chunks
-      DoclingChunkingService.stub :chunk_document, proc {
-        # Simulate chunking service splitting long content
-        chunks = []
-        long_content.scan(/.{1,1000}/).each_with_index do |chunk_text, i|
-          chunks << { content: chunk_text, chunk_index: i, metadata: {} }
-        end
-        chunks
-      } do
+      with_mocked_chunking_service(chunks) do
         assert_difference 'RagChunk.count', 10 do
           ChunkingJob.perform_now(@rag_document.id)
         end
@@ -219,7 +218,7 @@ module Rag
       special_content = "Content with émojis 🔥 and spëcial çharacters"
       chunks = [{ content: special_content, chunk_index: 0, metadata: {} }]
 
-      DoclingChunkingService.stub :chunk_document, chunks do
+      with_mocked_chunking_service(chunks) do
         ChunkingJob.perform_now(@rag_document.id)
       end
 
@@ -230,7 +229,7 @@ module Rag
     # ===== Error Handling =====
 
     test "marks processing job as failed on error" do
-      DoclingChunkingService.stub :chunk_document, proc { raise StandardError, 'Chunking failed' } do
+      with_mocked_chunking_service(proc { raise StandardError, 'Chunking failed' }) do
         assert_raises(StandardError) do
           ChunkingJob.perform_now(@rag_document.id)
         end
@@ -285,7 +284,7 @@ module Rag
     test "processes fresh document without chunks" do
       assert_equal 0, @rag_document.rag_chunks.count
 
-      DoclingChunkingService.stub :chunk_document, sample_chunks do
+      with_mocked_chunking_service(sample_chunks) do
         assert_difference 'RagChunk.count', 3 do
           ChunkingJob.perform_now(@rag_document.id)
         end
@@ -311,7 +310,7 @@ module Rag
     end
 
     test "passes RAG document ID to embedding jobs" do
-      DoclingChunkingService.stub :chunk_document, sample_chunks do
+      with_mocked_chunking_service(sample_chunks) do
         ChunkingJob.perform_now(@rag_document.id)
       end
 
@@ -328,7 +327,7 @@ module Rag
         { content: 'Page 2 content', chunk_index: 1, metadata: { page: 2 } }
       ]
 
-      DoclingChunkingService.stub :chunk_document, chunks do
+      with_mocked_chunking_service(chunks) do
         ChunkingJob.perform_now(@rag_document.id)
       end
 
@@ -341,7 +340,7 @@ module Rag
         { content: 'Intro', chunk_index: 0, metadata: { section_title: 'Introduction' } }
       ]
 
-      DoclingChunkingService.stub :chunk_document, chunks do
+      with_mocked_chunking_service(chunks) do
         ChunkingJob.perform_now(@rag_document.id)
       end
 
@@ -372,6 +371,12 @@ module Rag
           metadata: { page: 3 }
         }
       ]
+    end
+
+    # Helper method for stubbing DoclingChunkingService
+    def with_mocked_chunking_service(chunks)
+      DoclingChunkingService.any_instance.stubs(:chunk).returns(chunks)
+      yield
     end
   end
 end
