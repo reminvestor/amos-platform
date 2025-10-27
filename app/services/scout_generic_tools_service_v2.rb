@@ -15,6 +15,7 @@ class ScoutGenericToolsServiceV2
     @saved_message_content = Set.new
     @messages_saved_during_streaming = false
     @context = {}
+    @sources = [] # Track sources from tool responses
   end
 
   def set_context(context = {})
@@ -107,7 +108,8 @@ class ScoutGenericToolsServiceV2
           },
           canvas_type: @suggested_canvas || "conversation",
           canvas_data: @canvas_data,
-          tools_used: []
+          tools_used: [],
+          sources: @sources
         }
       end
     rescue => e
@@ -525,6 +527,9 @@ class ScoutGenericToolsServiceV2
           @delegated_workflow_spec = result[:workflow_spec]
         end
 
+        # Extract sources from tool results
+        extract_sources_from_result(tool_call[:name], result)
+
         progress_callback&.call({
           type: "tool_complete",
           name: tool_call[:name],
@@ -669,7 +674,8 @@ class ScoutGenericToolsServiceV2
       },
       canvas_type: @suggested_canvas || "conversation",
       canvas_data: @canvas_data,
-      tools_used: tool_calls.map { |tc| tc[:name] }
+      tools_used: tool_calls.map { |tc| tc[:name] },
+      sources: @sources
     }
 
     # Add workflow approval data if delegation happened
@@ -816,5 +822,82 @@ class ScoutGenericToolsServiceV2
     Rails.logger.info "🔍 Final messages array: #{messages.map { |m| "#{m[:role]}: #{m[:content].first[:text].to_s.first(30)}..." }}"
 
     messages
+  end
+
+  # Extract source information from tool results
+  def extract_sources_from_result(tool_name, result)
+    return unless result[:success]
+
+    case tool_name
+    when "query_rag_store"
+      # RAG query tool returns sources array
+      if result[:sources].present?
+        result[:sources].each do |filename|
+          add_source({
+            type: "rag_document",
+            filename: filename,
+            tool: "query_rag_store"
+          })
+        end
+      end
+
+      # Also extract chunk-level details if available
+      if result[:results].is_a?(Array)
+        result[:results].each do |chunk|
+          if chunk[:metadata] && chunk[:metadata][:filename]
+            add_source({
+              type: "rag_document",
+              filename: chunk[:metadata][:filename],
+              page: chunk[:metadata][:page],
+              section: chunk[:metadata][:section],
+              similarity_score: chunk[:similarity_score],
+              tool: "query_rag_store"
+            })
+          end
+        end
+      end
+
+    when "read_document"
+      # Document read tool
+      if result[:filename].present?
+        add_source({
+          type: "document",
+          filename: result[:filename],
+          asset_id: result[:asset_id],
+          content_type: result[:content_type],
+          tool: "read_document"
+        })
+      end
+
+    when "get_data"
+      # Data retrieval tool - track what data was fetched
+      if result[:records].present?
+        add_source({
+          type: "database",
+          object_type: result[:object_type],
+          record_count: result[:record_count],
+          tool: "get_data"
+        })
+      end
+    end
+  rescue => e
+    Rails.logger.error "Error extracting sources: #{e.message}"
+  end
+
+  # Add a source to the accumulated sources list
+  def add_source(source_data)
+    # Deduplicate by filename (for RAG docs) or object_type (for database)
+    key = source_data[:filename] || source_data[:object_type]
+    existing = @sources.find { |s| (s[:filename] || s[:object_type]) == key }
+
+    if existing
+      # Merge additional details (like page numbers)
+      if source_data[:page] && !existing[:pages]&.include?(source_data[:page])
+        existing[:pages] ||= []
+        existing[:pages] << source_data[:page]
+      end
+    else
+      @sources << source_data
+    end
   end
 end
