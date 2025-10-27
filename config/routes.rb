@@ -71,8 +71,7 @@ Rails.application.routes.draw do
   
   # Routes with constraints on subdomain - application routes for 'app' or 'dev' subdomain
   constraints(lambda { |req| 
-    SubdomainConfig.app_subdomains.include?(req.subdomain) || 
-    (req.subdomain == "dev" && ENV['APPLICATION_HOST'] == "amoslabs.com")
+    SubdomainConfig.app_subdomains.include?(req.subdomain)
   }) do
     # Solid Queue Interface
     authenticate :user, lambda { |u| u.admin? } do
