@@ -168,6 +168,15 @@ module Scout
 
       Rails.logger.info "✅ Created RagStore ##{rag_store.id} with #{chunks_created} chunks"
 
+      # Enqueue embedding generation job for all chunks
+      if chunks_created > 0
+        chunk_ids = rag_document.rag_chunks.pluck(:id)
+        Rails.logger.info "📊 Enqueuing embedding job for #{chunk_ids.length} chunks"
+
+        # Enqueue EmbeddingBatchJob to generate embeddings
+        Rag::EmbeddingBatchJob.perform_later(chunk_ids, rag_store.id)
+      end
+
       {
         success: true,
         url: asset_url(image_asset),
