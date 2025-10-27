@@ -409,7 +409,7 @@ class BedrockService
     end
   end
 
-  def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], &block)
+  def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
     # Map model names to Bedrock model IDs
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
