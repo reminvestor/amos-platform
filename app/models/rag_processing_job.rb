@@ -40,6 +40,7 @@ class RagProcessingJob < ApplicationRecord
   scope :docling_jobs, -> { where(job_type: "docling_extraction") }
   scope :chunking_jobs, -> { where(job_type: "chunking") }
   scope :embedding_jobs, -> { where(job_type: "embedding_batch") }
+  scope :needs_retry, -> { where(status: :failed).where("retry_count < ?", 3) }
 
   # Performance metrics
   def duration_ms
@@ -89,6 +90,22 @@ class RagProcessingJob < ApplicationRecord
     end
   end
 
+  def pipeline_job?
+    job_type == "pipeline"
+  end
+
+  def docling_job?
+    job_type == "docling_extraction"
+  end
+
+  def chunking_job?
+    job_type == "chunking"
+  end
+
+  def embedding_job?
+    job_type == "embedding_batch"
+  end
+
   # Analytics methods
   def self.success_rate(job_type: nil, timeframe: 1.day)
     scope = where("created_at > ?", timeframe.ago)
@@ -134,6 +151,12 @@ class RagProcessingJob < ApplicationRecord
     "#{error_message[0...length]}..."
   end
 
+  def error_type
+    return nil unless error_message
+    # Extract error class name from message (e.g., "RuntimeError: something went wrong")
+    error_message.split(':').first&.strip
+  end
+
   # Job lifecycle tracking
   def mark_started!
     update!(
@@ -141,6 +164,7 @@ class RagProcessingJob < ApplicationRecord
       started_at: Time.current
     )
   end
+  alias_method :mark_as_started!, :mark_started!
 
   def mark_completed!
     update!(
@@ -156,5 +180,9 @@ class RagProcessingJob < ApplicationRecord
       error_message: error.to_s,
       retry_count: retry_count + 1
     )
+  end
+
+  def processing?
+    status_processing?
   end
 end

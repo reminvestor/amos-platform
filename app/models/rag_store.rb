@@ -152,6 +152,37 @@ class RagStore < ApplicationRecord
     status == "ready" || status == "active"
   end
 
+  # Document counters
+  def document_count
+    rag_documents.count
+  end
+
+  def has_documents?
+    rag_documents.exists?
+  end
+
+  def embedding_complete?
+    return false unless has_documents?
+    all_chunks_embedded?
+  end
+
+  # Query analytics
+  def cache_hit_rate
+    queries = rag_queries.where('created_at > ?', 24.hours.ago)
+    return 0.0 if queries.count.zero?
+
+    hits = queries.where(cache_hit: true).count
+    (hits.to_f / queries.count * 100).round(2)
+  end
+
+  def avg_response_time
+    rag_queries.where('created_at > ?', 24.hours.ago).average(:response_time_ms)&.to_i || 0
+  end
+
+  def recently_accessed?
+    last_accessed_at.present? && last_accessed_at > 7.days.ago
+  end
+
   private
 
   def set_defaults
