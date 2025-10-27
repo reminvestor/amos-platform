@@ -14,7 +14,7 @@ module Rag
   class ChunkingJob < ApplicationJob
     queue_as :documents
 
-    retry_on StandardError, wait: :exponentially_longer, attempts: 3
+    retry_on StandardError, wait: :polynomially_longer, attempts: 3
     discard_on ActiveRecord::RecordNotFound
 
     # Batch size for embedding jobs

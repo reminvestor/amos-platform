@@ -244,7 +244,7 @@ class HybridRagQueryServiceTest < ActiveSupport::TestCase
       @service.query("test")
 
       query_record = @entity.rag_queries.last
-      assert query_record.chunks_retrieved_count >= 0
+      assert query_record.chunks_retrieved >= 0
     end
   end
 
