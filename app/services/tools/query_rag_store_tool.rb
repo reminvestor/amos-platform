@@ -60,7 +60,8 @@ module Tools
           # Find latest accessible store for this app
           find_accessible_rag_store(app_name)
         else
-          return error_response("Must provide either rag_store_id or app_name")
+          # If neither provided, query ALL entity RAG stores
+          return query_all_entity_stores(query, top_k)
         end
 
         if !rag_store
@@ -104,6 +105,36 @@ module Tools
               .where(app_name: app_name, status: "active")
               .order(created_at: :desc)
               .first
+    end
+
+    # Query all entity RAG stores using HybridRagQueryService
+    def query_all_entity_stores(query, top_k)
+      begin
+        service = HybridRagQueryService.new(entity)
+        result = service.query(query, top_k: top_k)
+
+        if result[:chunks].any?
+          success_response(
+            query: query,
+            results: result[:chunks],
+            count: result[:chunks].length,
+            response_time_ms: result[:response_time_ms],
+            sources: result[:chunks].map { |c| c[:filename] }.uniq,
+            message: "Found #{result[:chunks].length} relevant results across all your documents"
+          )
+        else
+          success_response(
+            query: query,
+            results: [],
+            count: 0,
+            message: "No relevant documents found for this query"
+          )
+        end
+      rescue => e
+        Rails.logger.error "HybridRagQueryService error: #{e.message}"
+        Rails.logger.error e.backtrace.join("\n")
+        error_response("Query failed: #{e.message}")
+      end
     end
   end
 end
