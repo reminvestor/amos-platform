@@ -186,12 +186,39 @@ class ScoutController < ApplicationController
       metadata = {}
 
       if file_urls.any?
-        # Include asset_id so AMOS can use read_document tool
-        file_details = file_urls.map do |f|
-          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
-        end.join(", ")
+        # Check if any files are in RAG storage
+        rag_files = file_urls.select { |f| f['rag_store_id'].present? }
+        non_rag_files = file_urls.reject { |f| f['rag_store_id'].present? }
 
-        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
+        file_details = []
+
+        # Build message based on storage type
+        if rag_files.any?
+          rag_details = rag_files.map do |f|
+            "📎 #{f['filename']} (rag_store_id: #{f['rag_store_id']}, asset_id: #{f['asset_id']}, chunks: #{f['chunks_created']})"
+          end
+          file_details.concat(rag_details)
+        end
+
+        if non_rag_files.any?
+          non_rag_details = non_rag_files.map do |f|
+            "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+          end
+          file_details.concat(non_rag_details)
+        end
+
+        storage_context = []
+        if rag_files.any?
+          storage_context << "IMPORTANT: #{rag_files.length} document(s) have been uploaded and ALREADY STORED in your RAG knowledge base with vector embeddings. These are permanently available for querying."
+          storage_context << "- To query these documents, use the query_rag_store tool (no app_name needed - it will search all your documents)"
+          storage_context << "- You do NOT need to store these documents again - they are already indexed"
+        end
+
+        if non_rag_files.any?
+          storage_context << "- For images/non-document files, use the read_document tool with the asset_id to view them"
+        end
+
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details.join(', ')}]\n\n#{storage_context.join("\n")}"
         metadata[:file_urls] = file_urls
       end
 
@@ -669,12 +696,39 @@ class ScoutController < ApplicationController
       metadata = {}
 
       if file_urls.any?
-        # Include asset_id so AMOS can use read_document tool
-        file_details = file_urls.map do |f|
-          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
-        end.join(", ")
+        # Check if any files are in RAG storage
+        rag_files = file_urls.select { |f| f['rag_store_id'].present? }
+        non_rag_files = file_urls.reject { |f| f['rag_store_id'].present? }
 
-        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
+        file_details = []
+
+        # Build message based on storage type
+        if rag_files.any?
+          rag_details = rag_files.map do |f|
+            "📎 #{f['filename']} (rag_store_id: #{f['rag_store_id']}, asset_id: #{f['asset_id']}, chunks: #{f['chunks_created']})"
+          end
+          file_details.concat(rag_details)
+        end
+
+        if non_rag_files.any?
+          non_rag_details = non_rag_files.map do |f|
+            "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+          end
+          file_details.concat(non_rag_details)
+        end
+
+        storage_context = []
+        if rag_files.any?
+          storage_context << "IMPORTANT: #{rag_files.length} document(s) have been uploaded and ALREADY STORED in your RAG knowledge base with vector embeddings. These are permanently available for querying."
+          storage_context << "- To query these documents, use the query_rag_store tool (no app_name needed - it will search all your documents)"
+          storage_context << "- You do NOT need to store these documents again - they are already indexed"
+        end
+
+        if non_rag_files.any?
+          storage_context << "- For images/non-document files, use the read_document tool with the asset_id to view them"
+        end
+
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details.join(', ')}]\n\n#{storage_context.join("\n")}"
         metadata[:file_urls] = file_urls
       end
 
