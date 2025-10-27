@@ -523,21 +523,12 @@ module Rag
       bedrock = Minitest::Mock.new
 
       # Allow multiple calls
-      bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
-      bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
-      bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
-      bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
-      bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
-      bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
-      bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
-      bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
-      bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
-      bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
-      bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
-
-      EmbeddingBatchJob.any_instance.stub :bedrock_client, bedrock do
-        yield bedrock if block_given?
+      11.times do
+        bedrock.expect :invoke_model, mock_bedrock_response, [Hash]
       end
+
+      EmbeddingBatchJob.any_instance.stubs(:bedrock_client).returns(bedrock)
+      yield bedrock if block_given?
     end
 
     def mock_bedrock_response(dimensions: 1536)
@@ -550,15 +541,9 @@ module Rag
     end
 
     def stub_pinecone_configured(value)
-      ENV.stub :[], proc { |key|
-        case key
-        when 'PINECONE_API_KEY' then value ? 'test-key' : nil
-        when 'PINECONE_ENVIRONMENT' then value ? 'test-env' : nil
-        else ENV.fetch(key, nil)
-        end
-      } do
-        yield
-      end
+      ENV.stubs(:[]).with('PINECONE_API_KEY').returns(value ? 'test-key' : nil)
+      ENV.stubs(:[]).with('PINECONE_ENVIRONMENT').returns(value ? 'test-env' : nil)
+      yield
     end
   end
 end
