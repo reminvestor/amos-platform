@@ -2054,10 +2054,12 @@ document.addEventListener('turbo:load', function() {
 
   // Initial fetch of recent history when page loads
   loadMoreHistory(true).then(() => {
-    // Try to restore canvas state first
-    const canvasRestored = restoreCanvasState();
-    
-    // If no canvas was restored, add buttons to the first welcome message
+    // Don't auto-restore canvas state on login - let user choose what to do
+    // Clear any stale canvas state from previous sessions
+    localStorage.removeItem('scout_canvas_state');
+    const canvasRestored = false;
+
+    // Add buttons to the first welcome message
     if (!canvasRestored) {
       setTimeout(() => {
         const messages = chatMessages.querySelectorAll('.message.ai-message');

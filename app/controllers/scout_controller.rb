@@ -23,11 +23,12 @@ class ScoutController < ApplicationController
       flash.now[:success] = "🎉 Your landing page '#{recent_landing_page.title}' was created successfully! You can access it from the Landing Pages section."
     end
 
-    # If this is a fresh start, add Scout's welcome message and load default canvas
+    # If this is a fresh start, add Scout's welcome message
     if @conversation_history.empty?
       create_welcome_message
       @conversation_history = persisted_history_last_k(10)
-      @auto_load_canvas = "default" unless params[:load].present?
+      # Don't auto-load any canvas - let user interact naturally
+      # @auto_load_canvas = "default" unless params[:load].present?
     end
 
     # Business context for display
