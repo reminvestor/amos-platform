@@ -22,19 +22,18 @@ module Rag
       # Mock S3 upload
       s3_client = Minitest::Mock.new
       s3_client.expect :put_object, nil, [Hash]
-      Aws::S3::Client.stub :new, s3_client do
+
+      with_mocked_s3_client(s3_client) do
         assert_enqueued_with(job: Rag::DoclingExtractionJob) do
           DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s)
         end
       end
-
-      s3_client.verify
     end
 
     test "creates RagDocument record with correct attributes" do
       s3_client = mock_s3_upload
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         assert_difference 'RagDocument.count', 1 do
           DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s)
         end
@@ -49,7 +48,7 @@ module Rag
     test "creates RagProcessingJob record to track progress" do
       s3_client = mock_s3_upload
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         assert_difference 'RagProcessingJob.count', 1 do
           DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s)
         end
@@ -73,11 +72,10 @@ module Rag
         args[:server_side_encryption] == 'AES256'
       end
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s)
       end
 
-      s3_client.verify
     end
 
     test "updates RAG store status to processing" do
@@ -85,7 +83,7 @@ module Rag
 
       @rag_store.update!(status: 'building')
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s)
       end
 
@@ -107,7 +105,7 @@ module Rag
         file_size_bytes: 1000
       )
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         # Should NOT create new document
         assert_no_difference 'RagDocument.count' do
           DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s)
@@ -137,7 +135,7 @@ module Rag
       s3_client = Minitest::Mock.new
       s3_client.expect :put_object, proc { raise Aws::S3::Errors::ServiceError.new(nil, 'S3 Error') }
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         assert_raises(Aws::S3::Errors::ServiceError) do
           DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s)
         end
@@ -156,7 +154,7 @@ module Rag
       s3_client = Minitest::Mock.new
       s3_client.expect :put_object, proc { raise Aws::S3::Errors::ServiceError.new(nil, 'S3 Error') }
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         assert_raises(Aws::S3::Errors::ServiceError) do
           DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s)
         end
@@ -174,11 +172,10 @@ module Rag
         args[:key].start_with?("entities/#{@rag_store.entity_id}/raw_documents/#{@rag_store.id}/")
       end
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s)
       end
 
-      s3_client.verify
     end
 
     test "generates correct S3 path for system documents" do
@@ -191,11 +188,10 @@ module Rag
         args[:key].start_with?("system/#{system_store.app_name}/raw_documents/#{system_store.id}/")
       end
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         DocumentPipelineJob.perform_now(system_store.id, @test_file_path.to_s)
       end
 
-      s3_client.verify
     end
 
     # ===== Content Type Detection =====
@@ -203,7 +199,7 @@ module Rag
     test "detects PDF content type" do
       s3_client = mock_s3_upload
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s)
       end
 
@@ -225,7 +221,7 @@ module Rag
 
         s3_client = mock_s3_upload
 
-        Aws::S3::Client.stub :new, s3_client do
+        with_mocked_s3_client(s3_client) do
           DocumentPipelineJob.perform_now(@rag_store.id, file_path.to_s)
         end
 
@@ -242,7 +238,7 @@ module Rag
       s3_client = mock_s3_upload
       custom_metadata = { 'source' => 'user_upload', 'category' => 'guide' }
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s, metadata: custom_metadata)
       end
 
@@ -261,11 +257,10 @@ module Rag
         metadata.key?('uploaded-at')
       end
 
-      Aws::S3::Client.stub :new, s3_client do
+      with_mocked_s3_client(s3_client) do
         DocumentPipelineJob.perform_now(@rag_store.id, @test_file_path.to_s)
       end
 
-      s3_client.verify
     end
 
     private
@@ -274,6 +269,13 @@ module Rag
       s3_client = Minitest::Mock.new
       s3_client.expect :put_object, nil, [Hash]
       s3_client
+    end
+
+    def with_mocked_s3_client(s3_client = nil)
+      s3_client ||= mock_s3_upload
+      Aws::S3::Client.stubs(:new).returns(s3_client)
+      yield
+      s3_client.verify if s3_client.respond_to?(:verify)
     end
   end
 end
