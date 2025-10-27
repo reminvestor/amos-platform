@@ -134,6 +134,11 @@ class RagStore < ApplicationRecord
     touch(:last_accessed_at)
   end
 
+  # Complete processing and mark as ready
+  def complete_processing!
+    update!(status: 'ready')
+  end
+
   # Status helpers for new states
   def pending?
     status == "pending"

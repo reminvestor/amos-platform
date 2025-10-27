@@ -13,7 +13,7 @@ module Rag
     queue_as :embeddings
 
     # Retry on transient errors
-    retry_on StandardError, wait: :exponentially_longer, attempts: 5
+    retry_on StandardError, wait: :polynomially_longer, attempts: 5
     retry_on Aws::BedrockRuntime::Errors::ThrottlingException, wait: 30.seconds, attempts: 10
 
     # Discard on permanent errors

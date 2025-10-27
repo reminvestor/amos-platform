@@ -106,7 +106,7 @@ class HybridRagQueryService
   def update_query_tracking(rag_query, result, cache_hit:)
     rag_query.update!(
       response_time_ms: result[:response_time_ms],
-      chunks_retrieved_count: result[:chunks]&.length || 0,
+      chunks_retrieved: result[:chunks]&.length || 0,
       relevance_scores: extract_relevance_scores(result[:chunks]),
       cache_hit: cache_hit
     )
