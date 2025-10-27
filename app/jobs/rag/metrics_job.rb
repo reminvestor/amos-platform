@@ -81,7 +81,7 @@ module Rag
         redis: check_redis_health,
         s3: check_s3_health,
         bedrock: check_bedrock_health,
-        queue_health: check_queue_health
+        queues: check_queue_health
       }
 
       {
@@ -213,7 +213,7 @@ module Rag
       end
 
       # Alert on backed up queues
-      metrics[:health][:checks][:queue_health][:queue_sizes]&.each do |queue, size|
+      metrics[:health][:checks][:queues][:queue_sizes]&.each do |queue, size|
         if size > 100
           alerts << "⚠️ Queue #{queue} backing up: #{size} jobs"
         end

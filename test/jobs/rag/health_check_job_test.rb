@@ -152,19 +152,7 @@ module Rag
       assert result[:checks][:redis][:healthy]
     end
 
-    test "retries on transient failures" do
-      attempt_count = 0
-
-      @job.stub :check_database, -> {
-        attempt_count += 1
-        raise StandardError, "Transient error" if attempt_count == 1
-        { healthy: true, message: "OK" }
-      } do
-        # Job should retry and succeed
-        assert_nothing_raised do
-          @job.perform
-        end
-      end
-    end
+    # ActiveJob retry behavior test removed - retry_on only works with enqueued jobs,
+    # not when calling @job.perform directly. Framework behavior tested by Rails.
   end
 end
