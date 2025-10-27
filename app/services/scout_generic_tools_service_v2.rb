@@ -209,22 +209,26 @@ class ScoutGenericToolsServiceV2
       #{ai_identity}
 
       ═══════════════════════════════════════════════════════════════
-      🔴 CRITICAL: RAG KNOWLEDGE BASE PRIORITY 🔴
+      🔴 CRITICAL: DOCUMENT SEARCH PRIORITY 🔴
       ═══════════════════════════════════════════════════════════════
 
       When users ask questions about information in documents they've uploaded:
 
-      YOU MUST CALL query_rag_store FIRST! Do not answer from memory!
+      YOU MUST CALL query_document_content FIRST! Do not answer from memory!
 
-      Triggers (MUST use query_rag_store):
-      - "tell me about X" → query_rag_store(query: "X")
-      - "summarize my data for X" → query_rag_store(query: "X")
-      - "what do I have about X" → query_rag_store(query: "X")
-      - "find information on X" → query_rag_store(query: "X")
-      - "search my documents for X" → query_rag_store(query: "X")
+      Triggers (MUST use query_document_content):
+      - "tell me about X" → query_document_content(query: "X")
+      - "summarize my data for X" → query_document_content(query: "X")
+      - "what do I have about X" → query_document_content(query: "X")
+      - "find information on X" → query_document_content(query: "X")
+      - "search my documents for X" → query_document_content(query: "X")
 
-      NEVER say "based on searching" unless you ACTUALLY called query_rag_store!
-      NEVER answer from conversation memory - ALWAYS query RAG first!
+      This tool is SMART:
+      1. Checks recent uploads first (session storage - instant, free)
+      2. Falls back to permanent knowledge base (RAG - comprehensive)
+
+      NEVER say "based on searching" unless you ACTUALLY called query_document_content!
+      NEVER answer from conversation memory - ALWAYS query documents first!
 
       ═══════════════════════════════════════════════════════════════
 
@@ -884,6 +888,33 @@ class ScoutGenericToolsServiceV2
     return unless result[:success]
 
     case tool_name
+    when "query_document_content"
+      # Unified document query - handles both session and RAG sources
+      source_type = result[:source] # 'session', 'rag', or 'none'
+
+      if result[:results].is_a?(Array) && result[:results].any?
+        result[:results].each do |chunk|
+          source_data = {
+            tool: "query_document_content"
+          }
+
+          # Determine source type from result
+          if source_type == 'session'
+            source_data[:type] = "session_document"
+            source_data[:filename] = chunk[:filename] || chunk.dig(:metadata, :filename)
+            source_data[:asset_id] = chunk.dig(:metadata, :asset_id)
+          elsif source_type == 'rag'
+            source_data[:type] = "rag_document"
+            source_data[:filename] = chunk[:filename] || chunk.dig(:metadata, :filename)
+            source_data[:page] = chunk.dig(:metadata, :page)
+            source_data[:section] = chunk.dig(:metadata, :section)
+            source_data[:similarity_score] = chunk[:similarity_score]
+          end
+
+          add_source(source_data) if source_data[:filename]
+        end
+      end
+
     when "query_rag_store"
       # RAG query tool returns sources array
       if result[:sources].present?
