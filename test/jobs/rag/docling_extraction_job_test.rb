@@ -48,13 +48,11 @@ module Rag
         args[:key].include?('docling_output') && args[:body].is_a?(String)
       end
 
-      Aws::S3::Client.stub :new, s3_client do
-        DoclingBridgeService.stub :available?, true do
-          DoclingBridgeService.stub :extract_document, sample_docling_json do
-            DoclingExtractionJob.perform_now(@rag_document.id)
-          end
-        end
-      end
+      Aws::S3::Client.stubs(:new).returns(s3_client)
+      DoclingBridgeService.stubs(:available?).returns(true)
+      DoclingBridgeService.stubs(:extract_document).returns(sample_docling_json)
+
+      DoclingExtractionJob.perform_now(@rag_document.id)
 
       s3_client.verify
     end
@@ -88,10 +86,10 @@ module Rag
     # ===== Fallback to FallbackProcessorJob =====
 
     test "falls back to FallbackProcessorJob when Docling unavailable" do
-      DoclingBridgeService.stub :available?, false do
-        assert_enqueued_with(job: Rag::FallbackProcessorJob, args: [@rag_document.id]) do
-          DoclingExtractionJob.perform_now(@rag_document.id)
-        end
+      DoclingBridgeService.stubs(:available?).returns(false)
+
+      assert_enqueued_with(job: Rag::FallbackProcessorJob, args: [@rag_document.id]) do
+        DoclingExtractionJob.perform_now(@rag_document.id)
       end
     end
 
@@ -99,20 +97,19 @@ module Rag
       mock_docling_available(true)
       mock_s3_download(@mock_pdf_content)
 
-      DoclingBridgeService.stub :extract_document, proc { raise StandardError, 'Docling failed' } do
-        Aws::S3::Client.stub :new, mock_s3_client(@mock_pdf_content) do
-          assert_enqueued_with(job: Rag::FallbackProcessorJob) do
-            DoclingExtractionJob.perform_now(@rag_document.id)
-          end
-        end
+      DoclingBridgeService.stubs(:extract_document).raises(StandardError, 'Docling failed')
+      Aws::S3::Client.stubs(:new).returns(mock_s3_client(@mock_pdf_content))
+
+      assert_enqueued_with(job: Rag::FallbackProcessorJob) do
+        DoclingExtractionJob.perform_now(@rag_document.id)
       end
     end
 
     test "logs warning when falling back" do
-      DoclingBridgeService.stub :available?, false do
-        assert_changes -> { Rails.logger.warnings.any? { |w| w.include?('Fallback') } } do
-          DoclingExtractionJob.perform_now(@rag_document.id)
-        end
+      DoclingBridgeService.stubs(:available?).returns(false)
+
+      assert_changes -> { Rails.logger.warnings.any? { |w| w.include?('Fallback') } } do
+        DoclingExtractionJob.perform_now(@rag_document.id)
       end
     end
 
@@ -128,13 +125,11 @@ module Rag
       end
       s3_client.expect :put_object, nil, [Hash]
 
-      Aws::S3::Client.stub :new, s3_client do
-        DoclingBridgeService.stub :available?, true do
-          DoclingBridgeService.stub :extract_document, sample_docling_json do
-            DoclingExtractionJob.perform_now(@rag_document.id)
-          end
-        end
-      end
+      Aws::S3::Client.stubs(:new).returns(s3_client)
+      DoclingBridgeService.stubs(:available?).returns(true)
+      DoclingBridgeService.stubs(:extract_document).returns(sample_docling_json)
+
+      DoclingExtractionJob.perform_now(@rag_document.id)
 
       s3_client.verify
     end
@@ -151,13 +146,11 @@ module Rag
         args[:key].include?("docling_output/#{@rag_store.id}/#{@rag_document.id}_output.json")
       end
 
-      Aws::S3::Client.stub :new, s3_client do
-        DoclingBridgeService.stub :available?, true do
-          DoclingBridgeService.stub :extract_document, sample_docling_json do
-            DoclingExtractionJob.perform_now(@rag_document.id)
-          end
-        end
-      end
+      Aws::S3::Client.stubs(:new).returns(s3_client)
+      DoclingBridgeService.stubs(:available?).returns(true)
+      DoclingBridgeService.stubs(:extract_document).returns(sample_docling_json)
+
+      DoclingExtractionJob.perform_now(@rag_document.id)
 
       s3_client.verify
     end
@@ -166,12 +159,14 @@ module Rag
 
     test "marks processing job as failed when S3 download fails" do
       s3_client = Minitest::Mock.new
-      s3_client.expect :get_object, proc { raise Aws::S3::Errors::NoSuchKey.new(nil, 'Not found') }
+      s3_client.expect(:get_object, nil) do |params|
+        raise Aws::S3::Errors::NoSuchKey.new(nil, 'Not found')
+      end
 
-      Aws::S3::Client.stub :new, s3_client do
-        assert_raises(Aws::S3::Errors::NoSuchKey) do
-          DoclingExtractionJob.perform_now(@rag_document.id)
-        end
+      Aws::S3::Client.stubs(:new).returns(s3_client)
+
+      assert_raises(Aws::S3::Errors::NoSuchKey) do
+        DoclingExtractionJob.perform_now(@rag_document.id)
       end
 
       job_record = RagProcessingJob.last
@@ -183,29 +178,27 @@ module Rag
       retry_count = 0
 
       s3_client = Minitest::Mock.new
-      s3_client.expect :get_object, proc {
+      s3_client.expect(:get_object, nil) do |params|
         retry_count += 1
         if retry_count < 3
           raise Aws::S3::Errors::ServiceError.new(nil, 'Temporary error')
         else
-          mock_s3_response(@mock_pdf_content)
+          File.write(params[:response_target], @mock_pdf_content) if params[:response_target]
         end
-      }
-      s3_client.expect :put_object, nil, [Hash]
+      end
+      s3_client.expect(:put_object, nil, [Hash])
 
-      Aws::S3::Client.stub :new, s3_client do
-        DoclingBridgeService.stub :available?, true do
-          DoclingBridgeService.stub :extract_document, sample_docling_json do
-            # Simulate retry behavior
-            3.times do
-              begin
-                DoclingExtractionJob.perform_now(@rag_document.id)
-                break
-              rescue Aws::S3::Errors::ServiceError
-                # Retry
-              end
-            end
-          end
+      Aws::S3::Client.stubs(:new).returns(s3_client)
+      DoclingBridgeService.stubs(:available?).returns(true)
+      DoclingBridgeService.stubs(:extract_document).returns(sample_docling_json)
+
+      # Simulate retry behavior
+      3.times do
+        begin
+          DoclingExtractionJob.perform_now(@rag_document.id)
+          break
+        rescue Aws::S3::Errors::ServiceError
+          # Retry
         end
       end
 
@@ -220,13 +213,12 @@ module Rag
       mock_s3_upload
 
       # Simulate long-running Docling process
-      DoclingBridgeService.stub :extract_document, proc { sleep(15); sample_docling_json } do
-        Aws::S3::Client.stub :new, mock_s3_client(@mock_pdf_content) do
-          assert_raises(Timeout::Error) do
-            Timeout.timeout(1) do
-              DoclingExtractionJob.perform_now(@rag_document.id)
-            end
-          end
+      DoclingBridgeService.stubs(:extract_document) { sleep(15); sample_docling_json }
+      Aws::S3::Client.stubs(:new).returns(mock_s3_client(@mock_pdf_content))
+
+      assert_raises(Timeout::Error) do
+        Timeout.timeout(1) do
+          DoclingExtractionJob.perform_now(@rag_document.id)
         end
       end
     end
@@ -303,9 +295,8 @@ module Rag
     end
 
     def mock_docling_available(available)
-      DoclingBridgeService.stub :available?, available do
-        yield if block_given?
-      end
+      DoclingBridgeService.stubs(:available?).returns(available)
+      yield if block_given?
     end
 
     def mock_s3_download(content)
@@ -314,9 +305,8 @@ module Rag
     end
 
     def mock_docling_output(json_output)
-      DoclingBridgeService.stub :extract_document, json_output do
-        yield if block_given?
-      end
+      DoclingBridgeService.stubs(:extract_document).returns(json_output)
+      yield if block_given?
     end
 
     def mock_s3_upload
@@ -342,9 +332,8 @@ module Rag
       mock_docling_output(sample_docling_json)
       mock_s3_upload
 
-      Aws::S3::Client.stub :new, mock_s3_client(@mock_pdf_content) do
-        yield if block_given?
-      end
+      Aws::S3::Client.stubs(:new).returns(mock_s3_client(@mock_pdf_content))
+      yield if block_given?
     end
   end
 end
