@@ -1,0 +1,35 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/agent-marketing-dev
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=dev-${COMMIT_HASH:=latest}
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image for DEV...
+      - docker build --platform linux/amd64 -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo Updating task definition with new image...
+      - cat aws/task-definition-dev.json | jq --arg IMAGE "$REPOSITORY_URI:$IMAGE_TAG" '.containerDefinitions[].image = $IMAGE' > task-definition-new.json
+      - echo Registering new task definition with all secrets...
+      - NEW_TASK_DEF=$(aws ecs register-task-definition --cli-input-json file://task-definition-new.json --region $AWS_DEFAULT_REGION --query 'taskDefinition.taskDefinitionArn' --output text)
+      - echo New DEV task definition registered at $NEW_TASK_DEF
+      - echo Deploying to DEV ECS...
+      - aws ecs update-service --cluster agent-marketing-dev-cluster --service agent-marketing-dev --task-definition $NEW_TASK_DEF --force-new-deployment --region $AWS_DEFAULT_REGION
+      - echo Writing image definitions file for CodePipeline...
+      - printf '[{"name":"agent-marketing-dev","imageUri":"%s"},{"name":"solid-queue-worker-dev","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+
+artifacts:
+  files: imagedefinitions.json
+
