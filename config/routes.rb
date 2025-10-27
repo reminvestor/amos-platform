@@ -67,7 +67,7 @@ Rails.application.routes.draw do
   end
 
   # Routes with constraints on subdomain - application routes for 'app' subdomain
-  constraints(lambda { |req| req.subdomain == "app" }) do
+  constraints(lambda { |req| SubdomainConfig.app_subdomains.include?(req.subdomain) }) do
     # Solid Queue Interface
     authenticate :user, lambda { |u| u.admin? } do
       mount SolidQueueInterface::Engine => "/solid_queue"
