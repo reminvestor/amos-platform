@@ -67,7 +67,7 @@ Rails.application.routes.draw do
   end
 
   # Default root route for requests without subdomain (e.g., ALB health checks)
-  root to: redirect('/up'), constraints: lambda { |req| req.subdomain.blank? }
+  root to: redirect('/up'), constraints: lambda { |req| req.subdomain.blank? || req.subdomain == "www" }
   
   # Routes with constraints on subdomain - application routes for 'app' or 'dev' subdomain
   constraints(lambda { |req| 
