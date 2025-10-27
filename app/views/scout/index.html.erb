@@ -244,6 +244,86 @@
     align-items: flex-start;
     gap: 12px;
   }
+
+  /* Source Citations Styles */
+  .source-citations {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .sources-container {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 0.9rem;
+  }
+
+  .sources-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .sources-header i {
+    color: #667eea;
+    font-size: 0.9rem;
+  }
+
+  .sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .source-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .source-item:hover {
+    border-color: #667eea;
+    background: #f0f4ff;
+    transform: translateX(2px);
+  }
+
+  .source-item i {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .source-details {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .source-filename {
+    font-weight: 500;
+    color: #212529;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.9rem;
+  }
+
+  .source-meta {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 2px;
+  }
 </style>
 
 <div id="workspace" class="workspace conversation-mode" data-controller="scout">
@@ -1400,6 +1480,129 @@ document.addEventListener('turbo:load', function() {
     // No-op: typing is now shown in unified chat messages
   }
 
+  // Add source citations to the last assistant message
+  function addSourceCitations(sources) {
+    console.log('📚 addSourceCitations called with:', sources);
+
+    // Find the last assistant message
+    const messages = chatMessages.querySelectorAll('.message.assistant');
+    const lastMessage = messages[messages.length - 1];
+
+    if (!lastMessage) {
+      console.warn('⚠️ No assistant message found to attach sources');
+      return;
+    }
+
+    // Check if sources already exist (prevent duplicates)
+    if (lastMessage.querySelector('.source-citations')) {
+      console.log('ℹ️ Sources already attached to this message');
+      return;
+    }
+
+    // Build sources HTML
+    const sourcesHtml = buildSourcesHtml(sources);
+
+    // Find the message content div and append sources
+    const messageContent = lastMessage.querySelector('.message-content') || lastMessage;
+    const sourcesDiv = document.createElement('div');
+    sourcesDiv.className = 'source-citations';
+    sourcesDiv.innerHTML = sourcesHtml;
+    messageContent.appendChild(sourcesDiv);
+
+    console.log('✅ Sources added to message');
+  }
+
+  // Build HTML for source citations
+  function buildSourcesHtml(sources) {
+    // Group sources by type
+    const ragDocs = sources.filter(s => s.type === 'rag_document');
+    const docs = sources.filter(s => s.type === 'document');
+    const dbSources = sources.filter(s => s.type === 'database');
+
+    let html = '<div class="sources-container">';
+    html += '<div class="sources-header">';
+    html += '<i class="fas fa-book-open"></i>';
+    html += `<span>Sources (${sources.length})</span>`;
+    html += '</div>';
+    html += '<div class="sources-list">';
+
+    // RAG documents
+    ragDocs.forEach(source => {
+      const icon = getSourceIcon(source.filename);
+      const pages = source.pages ? ` • Pages: ${source.pages.join(', ')}` : '';
+      html += `
+        <div class="source-item" onclick="viewDocument('${source.filename}')">
+          <i class="${icon}"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.filename}</div>
+            <div class="source-meta">RAG Knowledge Base${pages}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Regular documents
+    docs.forEach(source => {
+      const icon = getSourceIcon(source.filename);
+      html += `
+        <div class="source-item" onclick="viewDocument('${source.filename}')">
+          <i class="${icon}"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.filename}</div>
+            <div class="source-meta">Session Document</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Database sources
+    dbSources.forEach(source => {
+      html += `
+        <div class="source-item">
+          <i class="fas fa-database"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.object_type}</div>
+            <div class="source-meta">${source.record_count} records</div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div></div>';
+    return html;
+  }
+
+  // Get icon for source based on filename
+  function getSourceIcon(filename) {
+    if (!filename) return 'fas fa-file';
+    const ext = filename.split('.').pop().toLowerCase();
+    const iconMap = {
+      'pdf': 'fas fa-file-pdf text-danger',
+      'doc': 'fas fa-file-word text-primary',
+      'docx': 'fas fa-file-word text-primary',
+      'xls': 'fas fa-file-excel text-success',
+      'xlsx': 'fas fa-file-excel text-success',
+      'ppt': 'fas fa-file-powerpoint text-warning',
+      'pptx': 'fas fa-file-powerpoint text-warning',
+      'txt': 'fas fa-file-alt',
+      'md': 'fas fa-file-alt',
+      'jpg': 'fas fa-file-image text-info',
+      'jpeg': 'fas fa-file-image text-info',
+      'png': 'fas fa-file-image text-info',
+      'gif': 'fas fa-file-image text-info'
+    };
+    return iconMap[ext] || 'fas fa-file';
+  }
+
+  // View document function
+  function viewDocument(filename) {
+    console.log('📄 View document:', filename);
+    // Load document viewer canvas with this document
+    if (window.scoutLoadCanvas) {
+      window.scoutLoadCanvas('document_viewer', { highlight_document: filename });
+    }
+  }
+
   // Tool call tracking
   const toolCalls = new Map();
   let toolActivityPanel = null;
@@ -1899,7 +2102,13 @@ document.addEventListener('turbo:load', function() {
                   } else if (streamingMessage) {
                     console.log('✅ Message was streamed, not adding duplicate');
                   }
-                  
+
+                  // Display source citations if available
+                  if (data.data.sources && data.data.sources.length > 0) {
+                    console.log('📚 Sources found:', data.data.sources);
+                    addSourceCitations(data.data.sources);
+                  }
+
                   // Show tool usage info
                   if (data.data.tools_used && data.data.tools_list?.length > 0) {
                     console.log('Tools used:', data.data.tools_list);
