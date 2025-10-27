@@ -143,6 +143,7 @@ Rails.application.configure do
   config.hosts << "amoslabs.com"
   config.hosts << "www.amoslabs.com"
   config.hosts << "app.amoslabs.com"
+  config.hosts << "dev.amoslabs.com"
 
   # Legacy everloom.ai domains (for migration period)
   config.hosts << "everloom.ai"
