@@ -1516,7 +1516,7 @@ document.addEventListener('turbo:load', function() {
   function buildSourcesHtml(sources) {
     // Group sources by type
     const ragDocs = sources.filter(s => s.type === 'rag_document');
-    const docs = sources.filter(s => s.type === 'document');
+    const sessionDocs = sources.filter(s => s.type === 'session_document' || s.type === 'document');
     const dbSources = sources.filter(s => s.type === 'database');
 
     let html = '<div class="sources-container">';
@@ -1541,15 +1541,15 @@ document.addEventListener('turbo:load', function() {
       `;
     });
 
-    // Regular documents
-    docs.forEach(source => {
+    // Session documents (recent uploads)
+    sessionDocs.forEach(source => {
       const icon = getSourceIcon(source.filename);
       html += `
         <div class="source-item" onclick="viewDocument('${source.filename}')">
           <i class="${icon}"></i>
           <div class="source-details">
             <div class="source-filename">${source.filename}</div>
-            <div class="source-meta">Session Document</div>
+            <div class="source-meta">Recent Upload (Session)</div>
           </div>
         </div>
       `;
