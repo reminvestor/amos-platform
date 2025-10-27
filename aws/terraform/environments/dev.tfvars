@@ -28,9 +28,12 @@ enable_deletion_protection = false  # Allow easy cleanup
 skip_final_snapshot = true  # Don't need snapshots in dev
 multi_az = false  # Single AZ for dev (cheaper)
 
-# Cost optimization
-enable_nat_gateway = true  # Still need NAT but could use single NAT
-nat_gateway_count = 1  # One NAT gateway instead of 2
+# Cost optimization - Skip SSL cert for dev (use ALB DNS directly)
+create_certificate = false
+
+# Skip NAT gateways to avoid EIP limit (dev can use public subnets)
+enable_nat_gateway = false
+single_nat_gateway = false
 
 # Auto-scaling (lighter for dev)
 ecs_desired_count = 1

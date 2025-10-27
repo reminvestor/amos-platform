@@ -61,6 +61,90 @@ variable "github_token" {
   default     = ""
 }
 
+variable "create_certificate" {
+  description = "Whether to create ACM certificate (requires DNS validation)"
+  type        = bool
+  default     = true
+}
+
+variable "skip_final_snapshot" {
+  description = "Skip final DB snapshot on destroy (useful for dev)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_nat_gateway" {
+  description = "Enable NAT Gateway for private subnets (expensive, disable for dev)"
+  type        = bool
+  default     = true
+}
+
+variable "enable_deletion_protection" {
+  description = "Enable deletion protection on database"
+  type        = bool
+  default     = true
+}
+
+variable "multi_az" {
+  description = "Enable Multi-AZ for RDS"
+  type        = bool
+  default     = true
+}
+
+variable "db_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.t3.small"
+}
+
+variable "db_allocated_storage" {
+  description = "RDS allocated storage in GB"
+  type        = number
+  default     = 50
+}
+
+variable "db_backup_retention_period" {
+  description = "RDS backup retention period in days"
+  type        = number
+  default     = 7
+}
+
+variable "redis_node_type" {
+  description = "ElastiCache node type"
+  type        = string
+  default     = "cache.t3.small"
+}
+
+variable "ecs_task_cpu" {
+  description = "ECS task CPU units"
+  type        = string
+  default     = "2048"
+}
+
+variable "ecs_task_memory" {
+  description = "ECS task memory in MB"
+  type        = string
+  default     = "4096"
+}
+
+variable "ecs_desired_count" {
+  description = "Desired number of ECS tasks"
+  type        = number
+  default     = 1
+}
+
+variable "ecs_min_count" {
+  description = "Minimum number of ECS tasks"
+  type        = number
+  default     = 1
+}
+
+variable "ecs_max_count" {
+  description = "Maximum number of ECS tasks"
+  type        = number
+  default     = 4
+}
+
 # VPC Configuration
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
@@ -73,7 +157,7 @@ module "vpc" {
   private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
   public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
 
-  enable_nat_gateway = true
+  enable_nat_gateway = var.enable_nat_gateway
   enable_dns_hostnames = true
 
   tags = {
@@ -114,23 +198,26 @@ resource "aws_db_instance" "postgres" {
   identifier     = "${var.app_name}-db"
   engine         = "postgres"
   engine_version = "15.12"
-  instance_class = "db.t3.micro"
+  instance_class = var.db_instance_class
   
-  allocated_storage     = 20
-  max_allocated_storage = 100
+  allocated_storage     = var.db_allocated_storage
+  max_allocated_storage = var.db_allocated_storage * 5
   storage_encrypted     = true
   
-  db_name  = "agent_marketing_production"
+  db_name  = "agent_marketing_${var.environment}"
   username = "postgres"
   password = random_password.db_password.result
   
   vpc_security_group_ids = [aws_security_group.rds.id]
   db_subnet_group_name   = aws_db_subnet_group.main.name
   
-  skip_final_snapshot = false
-  final_snapshot_identifier = "${var.app_name}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+  multi_az = var.multi_az
+  deletion_protection = var.enable_deletion_protection
   
-  backup_retention_period = 7
+  skip_final_snapshot = var.skip_final_snapshot
+  final_snapshot_identifier = var.skip_final_snapshot ? null : "${var.app_name}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+  
+  backup_retention_period = var.db_backup_retention_period
   backup_window          = "03:00-04:00"
   maintenance_window     = "sun:04:00-sun:05:00"
   
@@ -274,7 +361,7 @@ resource "aws_lb_target_group" "app" {
 # HTTP Listener (only)
 # ACM Certificate
 resource "aws_acm_certificate" "main" {
-  count = var.domain_name != "" ? 1 : 0
+  count = var.create_certificate && var.domain_name != "" ? 1 : 0
   
   domain_name       = var.domain_name
   validation_method = "DNS"
@@ -291,7 +378,7 @@ resource "aws_acm_certificate" "main" {
 }
 
 resource "aws_acm_certificate_validation" "main" {
-  count = var.domain_name != "" ? 1 : 0
+  count = var.create_certificate && var.domain_name != "" ? 1 : 0
   
   certificate_arn = aws_acm_certificate.main[0].arn
   
@@ -314,7 +401,7 @@ resource "aws_lb_listener" "http" {
 
 # ALB Listener - HTTPS (only created when certificate is validated)
 resource "aws_lb_listener" "https" {
-  count = var.domain_name != "" ? 1 : 0
+  count = var.create_certificate && var.domain_name != "" ? 1 : 0
   
   load_balancer_arn = aws_lb.main.arn
   port              = "443"
@@ -879,12 +966,12 @@ output "database_endpoint" {
 }
 
 output "certificate_arn" {
-  value       = var.domain_name != "" ? aws_acm_certificate.main[0].arn : ""
+  value       = var.create_certificate && var.domain_name != "" ? aws_acm_certificate.main[0].arn : ""
   description = "ARN of the ACM certificate"
 }
 
 output "certificate_validation_records" {
-  value = var.domain_name != "" ? {
+  value = var.create_certificate && var.domain_name != "" ? {
     for dvo in aws_acm_certificate.main[0].domain_validation_options : dvo.domain_name => {
       name  = dvo.resource_record_name
       value = dvo.resource_record_value
