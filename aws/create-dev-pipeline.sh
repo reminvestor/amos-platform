@@ -81,7 +81,7 @@ cat > /tmp/pipeline-dev.json << EOF
               "ConnectionArn": "${CONNECTION_ARN}",
               "FullRepositoryId": "NuvolaNetworks/agent_marketing",
               "BranchName": "dev",
-              "OutputArtifactFormat": "CODEPIPELINE_DEFAULT"
+              "OutputArtifactFormat": "CODE_ZIP"
             },
             "outputArtifacts": [
               {
