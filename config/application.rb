@@ -25,7 +25,7 @@ require "propshaft/railtie"
 module AmosLabs
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 7.1
+    config.load_defaults 8.0
 
     # Use Propshaft as the asset pipeline
     config.assets.enabled = true
