@@ -965,6 +965,71 @@ class ScoutGenericToolsServiceV2
           tool: "get_data"
         })
       end
+
+    when "web_search_tool"
+      # Web search results - track URLs and titles
+      if result[:results].is_a?(Array) && result[:results].any?
+        result[:results].each do |search_result|
+          add_source({
+            type: "web_search",
+            url: search_result[:url] || search_result["url"],
+            title: search_result[:title] || search_result["title"],
+            snippet: search_result[:snippet] || search_result["snippet"],
+            tool: "web_search_tool"
+          })
+        end
+      end
+
+    when "execute_integration", "invoke_operation"
+      # Integration API calls - track which services were used
+      add_source({
+        type: "integration",
+        integration_name: result[:integration_name] || result[:service_name],
+        operation: result[:operation] || result[:operation_name],
+        record_count: result[:record_count] || result[:results]&.length,
+        tool: tool_name
+      })
+
+    when "retrieve_history", "search_history"
+      # Conversation history - track how many messages were referenced
+      if result[:messages].is_a?(Array) && result[:messages].any?
+        add_source({
+          type: "conversation",
+          message_count: result[:messages].length,
+          time_range: result[:time_range],
+          tool: tool_name
+        })
+      end
+
+    when "query_metric", "aggregate_artifact_data"
+      # Analytics and metrics - track what data was analyzed
+      add_source({
+        type: "analytics",
+        metric_name: result[:metric_name] || result[:artifact_type],
+        data_points: result[:data_points]&.length || result[:record_count],
+        time_range: result[:time_range],
+        tool: tool_name
+      })
+
+    when "get_billing_info", "view_invoices"
+      # Billing and subscription data
+      add_source({
+        type: "billing",
+        data_type: tool_name == "get_billing_info" ? "Subscription Info" : "Invoices",
+        record_count: result[:invoices]&.length || 1,
+        tool: tool_name
+      })
+
+    when "get_workflow_context"
+      # Workflow context - files and data from current workflow
+      if result[:files].present? || result[:context_data].present?
+        add_source({
+          type: "workflow",
+          file_count: result[:files]&.length || 0,
+          context_keys: result[:context_data]&.keys&.length || 0,
+          tool: "get_workflow_context"
+        })
+      end
     end
   rescue => e
     Rails.logger.error "Error extracting sources: #{e.message}"
@@ -972,17 +1037,72 @@ class ScoutGenericToolsServiceV2
 
   # Add a source to the accumulated sources list
   def add_source(source_data)
-    # Deduplicate by filename (for RAG docs) or object_type (for database)
-    key = source_data[:filename] || source_data[:object_type]
-    existing = @sources.find { |s| (s[:filename] || s[:object_type]) == key }
+    # Deduplicate based on source type
+    case source_data[:type]
+    when "rag_document", "session_document", "document"
+      # For documents, deduplicate by filename
+      key = source_data[:filename]
+      existing = @sources.find { |s| s[:filename] == key }
 
-    if existing
-      # Merge additional details (like page numbers)
-      if source_data[:page] && !existing[:pages]&.include?(source_data[:page])
-        existing[:pages] ||= []
-        existing[:pages] << source_data[:page]
+      if existing
+        # Merge additional details (like page numbers)
+        if source_data[:page] && !existing[:pages]&.include?(source_data[:page])
+          existing[:pages] ||= []
+          existing[:pages] << source_data[:page]
+        end
+      else
+        @sources << source_data
       end
+
+    when "database"
+      # For database, deduplicate by object_type
+      key = source_data[:object_type]
+      existing = @sources.find { |s| s[:type] == "database" && s[:object_type] == key }
+
+      if existing
+        # Update record count if new data has more records
+        existing[:record_count] = [existing[:record_count], source_data[:record_count]].max
+      else
+        @sources << source_data
+      end
+
+    when "web_search"
+      # For web search, deduplicate by URL
+      key = source_data[:url]
+      existing = @sources.find { |s| s[:type] == "web_search" && s[:url] == key }
+      @sources << source_data unless existing
+
+    when "integration"
+      # For integrations, deduplicate by integration name + operation
+      key = "#{source_data[:integration_name]}_#{source_data[:operation]}"
+      existing = @sources.find { |s|
+        s[:type] == "integration" &&
+        "#{s[:integration_name]}_#{s[:operation]}" == key
+      }
+
+      if existing
+        # Update record count if available
+        existing[:record_count] = [existing[:record_count] || 0, source_data[:record_count] || 0].max
+      else
+        @sources << source_data
+      end
+
+    when "conversation", "analytics", "billing", "workflow"
+      # For these types, only add once per type (deduplicate by type)
+      existing = @sources.find { |s| s[:type] == source_data[:type] }
+
+      if existing
+        # Merge counts and update with latest data
+        existing[:message_count] = [existing[:message_count] || 0, source_data[:message_count] || 0].max
+        existing[:data_points] = [existing[:data_points] || 0, source_data[:data_points] || 0].max
+        existing[:record_count] = [existing[:record_count] || 0, source_data[:record_count] || 0].max
+        existing[:file_count] = [existing[:file_count] || 0, source_data[:file_count] || 0].max
+      else
+        @sources << source_data
+      end
+
     else
+      # Unknown type, just add without deduplication
       @sources << source_data
     end
   end

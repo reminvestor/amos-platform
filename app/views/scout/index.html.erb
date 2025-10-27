@@ -1518,6 +1518,12 @@ document.addEventListener('turbo:load', function() {
     const ragDocs = sources.filter(s => s.type === 'rag_document');
     const sessionDocs = sources.filter(s => s.type === 'session_document' || s.type === 'document');
     const dbSources = sources.filter(s => s.type === 'database');
+    const webSources = sources.filter(s => s.type === 'web_search');
+    const integrationSources = sources.filter(s => s.type === 'integration');
+    const conversationSources = sources.filter(s => s.type === 'conversation');
+    const analyticsSources = sources.filter(s => s.type === 'analytics');
+    const billingSources = sources.filter(s => s.type === 'billing');
+    const workflowSources = sources.filter(s => s.type === 'workflow');
 
     let html = '<div class="sources-container">';
     html += '<div class="sources-header">';
@@ -1563,6 +1569,94 @@ document.addEventListener('turbo:load', function() {
           <div class="source-details">
             <div class="source-filename">${source.object_type}</div>
             <div class="source-meta">${source.record_count} records</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Web search results
+    webSources.forEach(source => {
+      const truncatedUrl = source.url.length > 50 ? source.url.substring(0, 47) + '...' : source.url;
+      html += `
+        <div class="source-item" onclick="window.open('${source.url}', '_blank')">
+          <i class="fas fa-globe text-primary"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.title || 'Web Search Result'}</div>
+            <div class="source-meta">${truncatedUrl}</div>
+          </div>
+          <i class="fas fa-external-link-alt text-muted" style="font-size: 0.75rem; margin-left: 0.5rem;"></i>
+        </div>
+      `;
+    });
+
+    // Integration API sources
+    integrationSources.forEach(source => {
+      const recordInfo = source.record_count ? ` • ${source.record_count} records` : '';
+      html += `
+        <div class="source-item">
+          <i class="fas fa-plug text-warning"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.integration_name} API</div>
+            <div class="source-meta">${source.operation}${recordInfo}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Conversation history
+    conversationSources.forEach(source => {
+      const timeInfo = source.time_range ? ` • ${source.time_range}` : '';
+      html += `
+        <div class="source-item">
+          <i class="fas fa-comments text-info"></i>
+          <div class="source-details">
+            <div class="source-filename">Conversation History</div>
+            <div class="source-meta">${source.message_count} messages${timeInfo}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Analytics and metrics
+    analyticsSources.forEach(source => {
+      const dataInfo = source.data_points ? ` • ${source.data_points} data points` : '';
+      const timeInfo = source.time_range ? ` • ${source.time_range}` : '';
+      html += `
+        <div class="source-item">
+          <i class="fas fa-chart-line text-success"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.metric_name || 'Analytics Data'}</div>
+            <div class="source-meta">Analytics${dataInfo}${timeInfo}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Billing and subscription data
+    billingSources.forEach(source => {
+      const recordInfo = source.record_count > 1 ? ` • ${source.record_count} records` : '';
+      html += `
+        <div class="source-item">
+          <i class="fas fa-credit-card text-danger"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.data_type}</div>
+            <div class="source-meta">Billing Data${recordInfo}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Workflow context
+    workflowSources.forEach(source => {
+      const fileInfo = source.file_count ? `${source.file_count} files` : '';
+      const contextInfo = source.context_keys ? `${source.context_keys} context keys` : '';
+      const separator = fileInfo && contextInfo ? ' • ' : '';
+      html += `
+        <div class="source-item">
+          <i class="fas fa-project-diagram text-purple"></i>
+          <div class="source-details">
+            <div class="source-filename">Workflow Context</div>
+            <div class="source-meta">${fileInfo}${separator}${contextInfo}</div>
           </div>
         </div>
       `;
