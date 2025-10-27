@@ -57,8 +57,7 @@ module Rag
         queries_today: recent_queries.count,
         unique_entities_today: recent_queries.distinct.count(:entity_id),
         avg_response_time_ms: recent_queries.average(:response_time_ms)&.to_i || 0,
-        cache_hit_rate: calculate_cache_hit_rate(recent_queries),
-        avg_chunks_retrieved: recent_queries.average(:chunks_retrieved)&.to_i || 0
+        cache_hit_rate: calculate_cache_hit_rate(recent_queries)
       }
     end
 
