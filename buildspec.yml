@@ -20,14 +20,8 @@ phases:
       - echo Pushing the Docker images...
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Updating task definition with latest image using jq...
-      - jq --arg IMAGE "$REPOSITORY_URI:$IMAGE_TAG" '.containerDefinitions[0].image = $IMAGE | .containerDefinitions[1].image = $IMAGE' aws/task-definition.json > aws/task-definition-updated.json
-      - echo Registering new task definition...
-      - aws ecs register-task-definition --cli-input-json file://aws/task-definition-updated.json --region $AWS_DEFAULT_REGION
       - echo Writing image definitions file...
-      - printf '[{"name":"agent-marketing","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - printf '[{"name":"agent-marketing","imageUri":"%s"},{"name":"solid-queue-worker","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
 
 artifacts:
-  files: 
-    - imagedefinitions.json
-    - aws/task-definition.json
+  files: imagedefinitions.json
