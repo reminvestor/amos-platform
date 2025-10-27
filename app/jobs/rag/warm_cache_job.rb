@@ -51,7 +51,7 @@ module Rag
     private
 
     def find_popular_queries
-      # Find queries that have been run multiple times in the last 7 days
+      # Find queries that have been run multiple times in the last 7.days
       # Group by query_hash to handle identical queries
 
       RagQuery
@@ -59,7 +59,7 @@ module Rag
         .where('created_at > ?', 7.days.ago)
         .group(:query_hash, :query, :entity_id)
         .having("COUNT(*) >= ?", MIN_QUERY_FREQUENCY)
-        .order('COUNT(*) DESC')
+        .order(Arel.sql('COUNT(*) DESC'))
         .limit(CACHE_LIMIT)
     end
 

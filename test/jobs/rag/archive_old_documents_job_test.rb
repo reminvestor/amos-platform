@@ -192,7 +192,7 @@ module Rag
         store_type: "entity",
         entity: @entity,
         status: "active",
-        last_accessed_at: (ArchiveOldDocumentsJobSTALE_THRESHOLD - 1.day).ago
+        last_accessed_at: (Rag::ArchiveOldDocumentsJob::STALE_THRESHOLD - 1.day).ago
       )
 
       result = @job.perform(dry_run: true)
