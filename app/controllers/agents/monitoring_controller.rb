@@ -1,10 +1,12 @@
 module Agents
   class MonitoringController < ApplicationController
+    layout 'admin'
     before_action :authenticate_user!
     before_action :ensure_admin_access
+    before_action :set_current_admin
 
     def index
-      @agents = Agents::Communication::AgentRegistry.instance.all_agents
+      @agents = Agents::Communication::AgentRegistry.instance.active_agents
       @system_metrics = Agents::Observability::PerformanceMonitor.instance.system_metrics
       @active_traces = Agents::Observability::DecisionTracer.instance.active_traces
     end
@@ -29,7 +31,7 @@ module Agents
       metrics = {
         system: Agents::Observability::PerformanceMonitor.instance.system_metrics(time_range),
         agents: agent_performance_data(time_range),
-        resources: Agents::Observability::ResourceManager.new(current_entity).usage_stats,
+        resources: current_entity ? ResourceManager.new(current_entity).resource_usage_summary : {},
         circuit_breakers: Agents::Observability::CircuitBreakerRegistry.instance.status
       }
 
@@ -82,9 +84,20 @@ module Agents
     end
 
     def resource_usage
-      @resource_stats = Agents::Observability::ResourceManager.new(current_entity).usage_stats
-      @token_usage = Agents::Observability::ResourceManager.new(current_entity).token_usage_stats(time_range: 24.hours)
-      @cost_breakdown = Agents::Observability::CostTracker.new(current_entity).current_totals
+      if current_entity
+        resource_manager = ResourceManager.new(current_entity)
+        @resource_stats = resource_manager.resource_usage_summary
+        @token_usage = {
+          current: current_entity.token_usage,
+          limit: current_entity.token_limit,
+          percentage: current_entity.token_limit ? ((current_entity.token_usage.to_f / current_entity.token_limit) * 100).round(2) : 0
+        }
+        @cost_breakdown = AiUsageLog.for_entity(current_entity.id).within(30.days).sum(:cost_cents) / 100.0
+      else
+        @resource_stats = {}
+        @token_usage = {}
+        @cost_breakdown = 0
+      end
 
       respond_to do |format|
         format.html
@@ -125,7 +138,24 @@ module Agents
 
     def ensure_admin_access
       unless current_user.admin? || current_user.developer_mode?
-        redirect_to root_path, alert: "Access denied"
+        redirect_to scout_path, alert: "Access denied"
+      end
+    end
+    
+    def set_current_admin
+      # Find or create admin user for the current user
+      @current_admin = AdminUser.find_by(email: current_user.email) || 
+                       AdminUser.find_by(user_id: current_user.id)
+      
+      # If no admin exists but user is admin, show message
+      unless @current_admin
+        Rails.logger.warn "User #{current_user.email} is admin but has no AdminUser record"
+        @current_admin = OpenStruct.new(
+          id: current_user.id,
+          full_name: current_user.full_name,
+          email: current_user.email,
+          role: 'viewer'
+        )
       end
     end
 
@@ -144,7 +174,7 @@ module Agents
     end
 
     def agent_performance_data(time_range)
-      agents = Agents::Communication::AgentRegistry.instance.all_agents
+      agents = Agents::Communication::AgentRegistry.instance.active_agents
 
       agents.map do |agent|
         metrics = Agents::Observability::PerformanceMonitor.instance.agent_metrics(agent.id, time_range)
@@ -210,11 +240,11 @@ module Agents
         ).generate
       when "learning"
         Agents::Observability::LearningEngine.instance.get_performance_analytics(time_range)
-      when "full"
+        when "full"
         {
           performance: generate_report("performance", time_range),
           learning: generate_report("learning", time_range),
-          resources: Agents::Observability::ResourceManager.new(current_entity).usage_stats,
+          resources: current_entity ? ResourceManager.new(current_entity).resource_usage_summary : {},
           generated_at: Time.current
         }
       end

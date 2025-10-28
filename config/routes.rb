@@ -21,6 +21,26 @@ Rails.application.routes.draw do
 
   # API routes
   namespace :api do
+    # Voice Assistant API
+    namespace :voice do
+      resources :sessions, only: [:create, :show], controller: "voice_sessions", param: :id do
+        member do
+          get :deepgram_key
+          patch :end
+        end
+      end
+    end
+    
+    # Text-to-Speech API
+    namespace :tts do
+      post :synthesize
+      get :voices
+      post :presigned_url
+      get :preferences, action: :preferences
+      patch :preferences, action: :update_preferences
+      get :test
+    end
+    
     namespace :v1 do
       # Health check endpoints
       get "health", to: "health#index"
@@ -47,8 +67,13 @@ Rails.application.routes.draw do
     end
   end
 
-  # Routes with constraints on subdomain - application routes for 'app' subdomain
-  constraints(lambda { |req| req.subdomain == "app" }) do
+  # Default root route for requests without subdomain (e.g., ALB health checks)
+  root to: redirect('/up'), constraints: lambda { |req| req.subdomain.blank? || req.subdomain == "www" }
+  
+  # Routes with constraints on subdomain - application routes for 'app' or 'dev' subdomain
+  constraints(lambda { |req| 
+    SubdomainConfig.app_subdomains.include?(req.subdomain)
+  }) do
     # Solid Queue Interface
     authenticate :user, lambda { |u| u.admin? } do
       mount SolidQueueInterface::Engine => "/solid_queue"
@@ -457,6 +482,9 @@ Rails.application.routes.draw do
 
     # Integrations management
     resources :integrations do
+      member do
+        post :discover_operations
+      end
       collection do
         get :logs
       end
@@ -490,6 +518,14 @@ Rails.application.routes.draw do
     resources :admin_users do
       member do
         post :unlock
+      end
+    end
+
+    # System settings
+    resources :system_settings, only: [:index, :update] do
+      collection do
+        post :reset_defaults
+        patch :update_all
       end
     end
 

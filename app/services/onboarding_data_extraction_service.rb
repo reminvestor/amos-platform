@@ -1,7 +1,7 @@
 class OnboardingDataExtractionService
   def initialize(user)
     @user = user
-    @claude_service = ClaudeService.new
+    @claude_service = AiServiceHelper.get_service
   end
 
   def extract_and_save_business_data(user_message, conversation_context = [])

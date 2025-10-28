@@ -36,6 +36,10 @@ window.Chart = Chart
 import QRCode from 'qrcode'
 window.QRCode = QRCode
 
+// Import TTS Audio Manager and make it available for dynamic imports
+import TTSAudioManager from './tts_audio_manager'
+window.TTSAudioManager = TTSAudioManager
+
 // Import landing page module (using the index.js)
 
 // Simple reveal-on-scroll for elements with class .reveal

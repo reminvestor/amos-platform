@@ -17,7 +17,7 @@ class BugFixService
     end
 
     # Create a ClaudeService instance
-    @claude_client = ClaudeService.new
+    @claude_client = AiServiceHelper.get_service
   end
 
   def fix_runtime_bugs

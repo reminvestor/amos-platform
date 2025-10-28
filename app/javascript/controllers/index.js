@@ -33,3 +33,12 @@ application.register("scout", ScoutController)
 
 import TurboFormController from "./turbo_form_controller"
 application.register("turbo-form", TurboFormController)
+
+import VoiceAssistantController from "./voice_assistant_controller"
+application.register("voice-assistant", VoiceAssistantController)
+
+import VoiceSettingsController from "./voice_settings_controller"
+application.register("voice-settings", VoiceSettingsController)
+
+import ProfileEditorController from "./profile_editor_controller"
+application.register("profile-editor", ProfileEditorController)

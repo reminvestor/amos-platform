@@ -34,6 +34,8 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     command: bash -c "rm -f tmp/pids/server.pid && bundle install && yarn install && yarn build && yarn build:css && rails db:prepare && rails db:seed && bin/rails server -b 0.0.0.0"
+    env_file:
+      - .env
     volumes:
       - .:/rails
       - bundle_cache:/usr/local/bundle
@@ -77,6 +79,12 @@ services:
       # Stripe
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      # Deepgram (Voice Assistant)
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+      - DEEPGRAM_WEBHOOK_SECRET=${DEEPGRAM_WEBHOOK_SECRET}
+      - VOICE_ASSISTANT_ENABLED=${VOICE_ASSISTANT_ENABLED:-true}
+      - POLLY_VOICE_ID=${POLLY_VOICE_ID:-Matthew}
+      - POLLY_ENGINE=${POLLY_ENGINE:-neural}
     depends_on:
       db:
         condition: service_healthy

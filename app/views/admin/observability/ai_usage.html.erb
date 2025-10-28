@@ -249,17 +249,22 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <% @recent_requests.each do |event| %>
+                  <% @recent_requests.each do |message| %>
                     <tr>
-                      <td><%= time_ago_in_words(event.created_at) %> ago</td>
-                      <td><%= event.entity&.name || "N/A" %></td>
-                      <td><%= event.user&.email || "System" %></td>
-                      <td><span class="badge bg-primary"><%= event.event_type %></span></td>
+                      <td><%= time_ago_in_words(message.created_at) %> ago</td>
+                      <td><%= message.entity&.name || "N/A" %></td>
+                      <td><%= message.user&.email || "System" %></td>
+                      <td><span class="badge bg-primary">AI Response</span></td>
                       <td>
-                        <% if event.metadata.present? %>
+                        <% if message.metadata.present? %>
                           <small class="text-muted">
-                            <%= event.metadata["model"] || "N/A" %>
+                            <%= message.metadata["model"] || "claude-sonnet-4" %>
+                            <% if message.metadata["input_tokens"] || message.metadata["output_tokens"] %>
+                              - <%= (message.metadata["input_tokens"].to_i + message.metadata["output_tokens"].to_i) %> tokens
+                            <% end %>
                           </small>
+                        <% else %>
+                          <small class="text-muted">claude-sonnet-4</small>
                         <% end %>
                       </td>
                     </tr>
