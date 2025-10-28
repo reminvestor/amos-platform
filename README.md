@@ -245,6 +245,37 @@ cp .env.example .env
 bin/dev
 ```
 
+### Demo Login Credentials
+
+After running `db:seed`, you can log in with these demo accounts:
+
+| Email | Password | Role |
+|-------|----------|------|
+| admin@demo.com | password123 | Admin (full access) |
+| marketer@demo.com | password123 | Marketer (marketing features) |
+| viewer@demo.com | password123 | Viewer (read-only) |
+
+**Troubleshooting Login Issues:**
+
+If you can't log in, passwords may have been reset. Run:
+
+```bash
+# Show current login credentials
+rails dev:show_logins
+
+# Reset all demo user passwords to 'password123'
+rails dev:reset_passwords
+
+# Or do a full database reset
+rails dev:full_reset
+```
+
+**Docker Users:** Logins are automatically created on container startup. If you experience issues:
+
+```bash
+docker compose exec web rails dev:reset_passwords
+```
+
 ### Environment Variables
 
 ```bash
