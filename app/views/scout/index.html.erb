@@ -324,6 +324,34 @@
     color: #6c757d;
     margin-top: 2px;
   }
+
+  /* Model Watermark Styles */
+  .model-watermark-container {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  .model-watermark {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: #6c757d;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .model-watermark i {
+    font-size: 0.7rem;
+    opacity: 0.7;
+  }
+
+  .model-watermark span {
+    font-weight: 500;
+    opacity: 0.8;
+  }
 </style>
 
 <div id="workspace" class="workspace conversation-mode" data-controller="scout">
@@ -1821,6 +1849,50 @@ document.addEventListener('turbo:load', function() {
     return iconMap[ext] || 'fas fa-file';
   }
 
+  // Add model watermark to show which model was used
+  function addModelWatermark(modelUsed, modelName) {
+    console.log('🏷️ addModelWatermark called with:', { modelUsed, modelName });
+
+    if (!modelUsed && !modelName) {
+      console.log('ℹ️ No model info provided, skipping watermark');
+      return;
+    }
+
+    // Find the last assistant message
+    const messages = chatMessages.querySelectorAll('.message.assistant');
+    const lastMessage = messages[messages.length - 1];
+
+    if (!lastMessage) {
+      console.warn('⚠️ No assistant message found for watermark');
+      return;
+    }
+
+    // Check if watermark already exists
+    const existing = lastMessage.querySelector('.model-watermark');
+    if (existing) {
+      console.log('ℹ️ Watermark already exists');
+      return;
+    }
+
+    // Build watermark HTML
+    const displayName = modelName || modelUsed || 'AI Model';
+    const watermarkHtml = `
+      <div class="model-watermark">
+        <i class="fas fa-robot"></i>
+        <span>${displayName}</span>
+      </div>
+    `;
+
+    // Find the message content div and append watermark
+    const messageContent = lastMessage.querySelector('.message-content') || lastMessage;
+    const watermarkDiv = document.createElement('div');
+    watermarkDiv.className = 'model-watermark-container';
+    watermarkDiv.innerHTML = watermarkHtml;
+    messageContent.appendChild(watermarkDiv);
+
+    console.log('✅ Model watermark added:', displayName);
+  }
+
   // View document function
   function viewDocument(filename) {
     console.log('📄 View document:', filename);
@@ -2352,6 +2424,12 @@ document.addEventListener('turbo:load', function() {
                   if (data.data.sources && data.data.sources.length > 0) {
                     console.log('📚 Sources found:', data.data.sources);
                     addSourceCitations(data.data.sources);
+                  }
+
+                  // Display model watermark to show which model was used
+                  if (data.data.model_used || data.data.model_name) {
+                    console.log('🏷️ Model info found:', { used: data.data.model_used, name: data.data.model_name });
+                    addModelWatermark(data.data.model_used, data.data.model_name);
                   }
 
                   // Show tool usage info

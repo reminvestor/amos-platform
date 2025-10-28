@@ -17,6 +17,8 @@ class ScoutGenericToolsServiceV2
     @messages_saved_during_streaming = false
     @context = {}
     @sources = [] # Track sources from tool responses
+    @model_used = nil # Track actual model used (may differ from requested due to fallback)
+    @model_name = nil # Human-readable model name
   end
 
   def set_context(context = {})
@@ -112,7 +114,9 @@ class ScoutGenericToolsServiceV2
           canvas_type: @suggested_canvas || "conversation",
           canvas_data: @canvas_data,
           tools_used: [],
-          sources: @sources
+          sources: @sources,
+          model_used: @model_used,
+          model_name: @model_name
         }
       end
     rescue => e
@@ -548,12 +552,17 @@ class ScoutGenericToolsServiceV2
         end
       end
     when :usage
-      # Token usage with cache metrics
+      # Token usage with cache metrics and model used (for fallback transparency)
+      @model_used = chunk[:model_used] if chunk[:model_used]
+      @model_name = chunk[:model_name] if chunk[:model_name]
+
       progress_callback&.call({
         type: "cache_metrics",
         tokens: chunk[:tokens],
         cache_creation: chunk[:cache_creation] || 0,
-        cache_read: chunk[:cache_read] || 0
+        cache_read: chunk[:cache_read] || 0,
+        model_used: @model_used,
+        model_name: @model_name
       })
     when :message_stop
       # Message complete
@@ -744,7 +753,9 @@ class ScoutGenericToolsServiceV2
       canvas_type: @suggested_canvas || "conversation",
       canvas_data: @canvas_data,
       tools_used: tool_calls.map { |tc| tc[:name] },
-      sources: @sources
+      sources: @sources,
+      model_used: @model_used,
+      model_name: @model_name
     }
 
     # Add workflow approval data if delegation happened

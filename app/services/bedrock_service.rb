@@ -752,8 +752,15 @@ class BedrockService
                 )
               end
 
-              # Yield usage info including cache stats
-              yield(type: :usage, tokens: tokens, cache_write: cache_write, cache_read: cache_read) if block_given?
+              # Yield usage info including cache stats and model used (for fallback transparency)
+              yield(
+                type: :usage,
+                tokens: tokens,
+                cache_write: cache_write,
+                cache_read: cache_read,
+                model_used: normalized_model,
+                model_name: model_config[:name]
+              ) if block_given?
 
               # Enhanced logging with cache information
               if cache_write > 0 || cache_read > 0
