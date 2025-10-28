@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_26_191733) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_28_234031) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1072,8 +1072,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_191733) do
   create_table "rag_stores", force: :cascade do |t|
     t.string "name", null: false
     t.string "app_name", null: false
-    t.string "pinecone_index", null: false
-    t.string "pinecone_namespace", null: false
+    t.string "pinecone_index"
+    t.string "pinecone_namespace"
     t.integer "chunk_count", default: 0
     t.jsonb "metadata", default: {}
     t.string "status", default: "active"
