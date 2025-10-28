@@ -474,8 +474,8 @@
           <!-- Model Selector -->
           <div class="model-selector-container" style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border-radius: 8px 8px 0 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
             <div style="display: flex; align-items: center; gap: 12px;">
-              <label for="model-select" style="color: rgba(255, 255, 255, 0.8); font-size: 0.85rem; margin: 0; white-space: nowrap;">
-                <i class="fas fa-robot" style="margin-right: 6px;"></i>Model:
+              <label for="model-select" style="color: rgba(255, 255, 255, 0.8); font-size: 0.85rem; margin: 0; white-space: nowrap; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="bot" style="width: 16px; height: 16px;"></i>Model:
               </label>
               <select id="model-select" class="model-select" style="flex: 1; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.9rem; cursor: pointer;">
                 <option value="claude-sonnet-4-5">Claude Sonnet 4.5 - Latest, 25K tokens</option>
@@ -1064,6 +1064,12 @@ document.addEventListener('turbo:load', function() {
   window.scoutCleanup = function() {
     // This will be populated with cleanup tasks
   };
+
+  // Initialize Lucide icons on page load
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+
   const messageForm = document.getElementById('message-form');
   const messageInput = document.getElementById('message-input');
   const chatMessages = document.getElementById('chat-messages');
@@ -1527,7 +1533,7 @@ document.addEventListener('turbo:load', function() {
       processedContent = content.replace(/\n/g, '<br>');
     }
     
-    const avatar = role === 'assistant' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
+    const avatar = role === 'assistant' ? '<i data-lucide="bot" style="width: 18px; height: 18px;"></i>' : '<i class="fas fa-user"></i>';
     
     wrapper.innerHTML = `
       <div class="message-content">
@@ -1550,6 +1556,12 @@ document.addEventListener('turbo:load', function() {
   function appendMessage(content, role, timestamp = null, id = null, metadata = null) {
     const el = buildMessageElement({ id, content, role, timestamp, metadata });
     chatMessages.appendChild(el);
+
+    // Initialize Lucide icons for newly added message
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
     scrollToBottom();
   }
 
@@ -1878,7 +1890,7 @@ document.addEventListener('turbo:load', function() {
     const displayName = modelName || modelUsed || 'AI Model';
     const watermarkHtml = `
       <div class="model-watermark">
-        <i class="fas fa-robot"></i>
+        <i data-lucide="bot" style="width: 14px; height: 14px;"></i>
         <span>${displayName}</span>
       </div>
     `;
@@ -1889,6 +1901,11 @@ document.addEventListener('turbo:load', function() {
     watermarkDiv.className = 'model-watermark-container';
     watermarkDiv.innerHTML = watermarkHtml;
     messageContent.appendChild(watermarkDiv);
+
+    // Initialize Lucide icon for watermark
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
 
     console.log('✅ Model watermark added:', displayName);
   }
