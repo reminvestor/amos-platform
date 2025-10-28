@@ -500,10 +500,15 @@ class BedrockService
 
       # Add tools if provided
       if tools.any?
+        formatted_tools = format_tools_for_bedrock(tools)
         payload[:tool_config] = {
-          tools: format_tools_for_bedrock(tools),
+          tools: formatted_tools,
           tool_choice: { auto: {} }
         }
+
+        # DEBUG: Log tool names being sent
+        tool_names = formatted_tools.map { |t| t.dig(:tool_spec, :name) }
+        Rails.logger.info "🔧 Sending #{formatted_tools.length} tools to Claude: #{tool_names.join(', ')}"
       end
 
       # Buffer for accumulating content
