@@ -106,7 +106,8 @@ class ScoutGenericToolsServiceV2
         final_response
       else
         # No tools used, return the accumulated content
-        {
+        Rails.logger.info "🔍 NO-TOOLS PATH: @model_used=#{@model_used.inspect}, @model_name=#{@model_name.inspect}"
+        response = {
           final_response: {
             message: accumulated_content,
             message_already_saved: @messages_saved_during_streaming
@@ -118,6 +119,8 @@ class ScoutGenericToolsServiceV2
           model_used: @model_used,
           model_name: @model_name
         }
+        Rails.logger.info "🔍 NO-TOOLS PATH: Response built with model_used=#{response[:model_used].inspect}, model_name=#{response[:model_name].inspect}"
+        response
       end
     rescue => e
       Rails.logger.error "ScoutGenericToolsServiceV2 error: #{e.message}"
@@ -553,8 +556,10 @@ class ScoutGenericToolsServiceV2
       end
     when :usage
       # Token usage with cache metrics and model used (for fallback transparency)
+      Rails.logger.info "🔍 TOOLS_SERVICE: Received usage chunk: #{chunk.inspect}"
       @model_used = chunk[:model_used] if chunk[:model_used]
       @model_name = chunk[:model_name] if chunk[:model_name]
+      Rails.logger.info "🔍 TOOLS_SERVICE: Set @model_used=#{@model_used.inspect}, @model_name=#{@model_name.inspect}"
 
       progress_callback&.call({
         type: "cache_metrics",
@@ -691,8 +696,10 @@ class ScoutGenericToolsServiceV2
         end
       when :usage
         # Capture model info from continuation as well
+        Rails.logger.info "🔍 CONTINUATION: Received usage chunk: #{chunk.inspect}"
         @model_used = chunk[:model_used] if chunk[:model_used]
         @model_name = chunk[:model_name] if chunk[:model_name]
+        Rails.logger.info "🔍 CONTINUATION: Set @model_used=#{@model_used.inspect}, @model_name=#{@model_name.inspect}"
       end
     end
 
@@ -762,6 +769,8 @@ class ScoutGenericToolsServiceV2
       model_name: @model_name
     }
 
+    Rails.logger.info "🔍 RESPONSE BUILD: Building response with @model_used=#{@model_used.inspect}, @model_name=#{@model_name.inspect}"
+
     # Add workflow approval data if delegation happened
     if @workflow_delegated
       response[:workflow_approval_needed] = true
@@ -769,6 +778,7 @@ class ScoutGenericToolsServiceV2
       response[:workflow_spec] = @delegated_workflow_spec
     end
 
+    Rails.logger.info "🔍 RESPONSE BUILD: Final response: model_used=#{response[:model_used].inspect}, model_name=#{response[:model_name].inspect}"
     response
   end
 
