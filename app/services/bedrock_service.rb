@@ -493,14 +493,27 @@ class BedrockService
         }
       }
 
-      # Add system prompt if present
+      # Add system prompt if present (WITH PROMPT CACHING)
       if system_prompt.present?
-        payload[:system] = [ { text: system_prompt } ]
+        payload[:system] = [
+          {
+            text: system_prompt,
+            cache_control: { type: "ephemeral" }  # Cache system prompt (5min TTL, 90% discount)
+          }
+        ]
+        Rails.logger.info "💾 Prompt caching enabled for system prompt (~7000 tokens)"
       end
 
-      # Add tools if provided
+      # Add tools if provided (WITH PROMPT CACHING)
       if tools.any?
         formatted_tools = format_tools_for_bedrock(tools)
+
+        # Mark last tool with cache control to cache entire tool set
+        # AWS Bedrock caches everything up to and including the cache_control marker
+        if formatted_tools.any?
+          formatted_tools.last[:cache_control] = { type: "ephemeral" }
+        end
+
         payload[:tool_config] = {
           tools: formatted_tools,
           tool_choice: { auto: {} }
@@ -508,7 +521,7 @@ class BedrockService
 
         # DEBUG: Log tool names being sent
         tool_names = formatted_tools.map { |t| t.dig(:tool_spec, :name) }
-        Rails.logger.info "🔧 Sending #{formatted_tools.length} tools to Claude: #{tool_names.join(', ')}"
+        Rails.logger.info "🔧 Sending #{formatted_tools.length} tools to Claude (with caching): #{tool_names.join(', ')}"
       end
 
       # Buffer for accumulating content
@@ -562,18 +575,31 @@ class BedrockService
                 output: usage.output_tokens || 0
               }
 
+              # Extract cache statistics if available
+              cache_creation = usage.respond_to?(:cache_creation_input_tokens) ? usage.cache_creation_input_tokens : 0
+              cache_read = usage.respond_to?(:cache_read_input_tokens) ? usage.cache_read_input_tokens : 0
+
               # Track tokens if we have user and entity
               if @user && @entity && @resource_manager
                 @resource_manager.track_tokens(@user, model_id, tokens, {
                   stream: true,
-                  timestamp: Time.current
+                  timestamp: Time.current,
+                  cache_creation: cache_creation,
+                  cache_read: cache_read
                 })
               end
 
-              # Yield usage info
-              yield(type: :usage, tokens: tokens) if block_given?
+              # Yield usage info including cache stats
+              yield(type: :usage, tokens: tokens, cache_creation: cache_creation, cache_read: cache_read) if block_given?
 
-              Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
+              # Enhanced logging with cache information
+              if cache_creation > 0 || cache_read > 0
+                cache_hit_rate = tokens[:input] > 0 ? (cache_read.to_f / (tokens[:input] + cache_read) * 100).round(1) : 0
+                savings = (cache_read * 0.9).round(0)  # 90% discount on cached tokens
+                Rails.logger.info "💰 Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]} | Cache: #{cache_read} read (#{cache_hit_rate}% hit rate), #{cache_creation} created | Savings: ~#{savings} tokens ($#{(savings * 0.0000075).round(4)})"
+              else
+                Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
+              end
             end
 
             Rails.logger.debug "Bedrock metadata: #{event.inspect}"
