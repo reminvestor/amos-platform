@@ -493,24 +493,17 @@ class BedrockService
         }
       }
 
-      # Add system prompt if present (WITH PROMPT CACHING)
+      # Add system prompt if present
+      # NOTE: Prompt caching disabled - AWS Bedrock Converse API doesn't support it yet
+      # TODO: Re-enable when AWS adds cachePoint support to Converse API
       if system_prompt.present?
-        payload[:system] = [
-          { text: system_prompt },
-          { cachePoint: { type: "default" } }  # AWS Bedrock cache checkpoint (5min TTL, 90% discount)
-        ]
-        Rails.logger.info "💾 Prompt caching enabled for system prompt (~7000 tokens)"
+        payload[:system] = [ { text: system_prompt } ]
       end
 
-      # Add tools if provided (WITH PROMPT CACHING)
+      # Add tools if provided
+      # NOTE: Prompt caching disabled - AWS Bedrock Converse API doesn't support it yet
       if tools.any?
         formatted_tools = format_tools_for_bedrock(tools)
-
-        # Add cache checkpoint as separate element after all tools
-        # AWS Bedrock caches everything up to and including the cachePoint
-        if formatted_tools.any?
-          formatted_tools << { cachePoint: { type: "default" } }
-        end
 
         payload[:tool_config] = {
           tools: formatted_tools,
@@ -518,8 +511,8 @@ class BedrockService
         }
 
         # DEBUG: Log tool names being sent
-        tool_names = formatted_tools[0..-2].map { |t| t.dig(:tool_spec, :name) }  # Exclude cache marker
-        Rails.logger.info "🔧 Sending #{tool_names.length} tools to Claude (with caching): #{tool_names.join(', ')}"
+        tool_names = formatted_tools.map { |t| t.dig(:tool_spec, :name) }
+        Rails.logger.info "🔧 Sending #{formatted_tools.length} tools to Claude: #{tool_names.join(', ')}"
       end
 
       # Buffer for accumulating content
