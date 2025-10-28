@@ -293,7 +293,7 @@ class ScoutGenericToolsServiceV2
       - "show landing pages" or "landing pages" → load_canvas with canvas_name: "landing_page_viewer"
       - "show contacts" or "contacts" → load_canvas with canvas_name: "contact_viewer"
       
-      🔴 DOCUMENT HANDLING - TWO DIFFERENT TOOLS FOR TWO SITUATIONS:
+      🔴 DOCUMENT HANDLING - TWO DIFFERENT SITUATIONS:
 
       ═══════════════════════════════════════════════════════════════════════════════
       SITUATION 1: User JUST uploaded a file in THIS message (has asset_id in context)
@@ -309,75 +309,35 @@ class ScoutGenericToolsServiceV2
       ═══════════════════════════════════════════════════════════════════════════════
       SITUATION 2: User asks about PREVIOUSLY uploaded documents (NOT in current message)
       ═══════════════════════════════════════════════════════════════════════════════
-      → Use query_rag_store(query: "...") to search processed documents in RAG storage
+      → Use query_document_content(query: "...") - this is the SAME tool mentioned at the top!
 
-      Detection: User refers to past uploads WITHOUT attaching a new file
-      - "tell me about X" (no file attached now)
+      The query_document_content tool is smart and automatic:
+      1. Checks session storage first (recent uploads, instant)
+      2. Falls back to permanent RAG database (all documents, comprehensive)
+      3. Returns unified results from both sources
+
+      Detection: User refers to documents WITHOUT attaching a new file
+      - "tell me about X" (no file attached)
       - "what's in my documents about X"
       - "find my server error info"
       - "summarize my product data"
 
-      🔴 RULE: If NO file attached in current message → USE query_rag_store!
-
-      🔴🔴🔴 DOCUMENT SEARCH - TWO-STEP MANDATORY PROCESS 🔴🔴🔴:
-
-      When user asks "tell me about my X" or "what's my X", you MUST search BOTH locations:
-
-      ═══════════════════════════════════════════════════════════════════════════════
-      STEP 1: search_history(keywords: "X") → Searches conversation history (Redis)
-      STEP 2: query_rag_store(query: "X") → Searches RAG storage (PostgreSQL + Pinecone)
-      ═══════════════════════════════════════════════════════════════════════════════
-
-      Why BOTH?
-      - Conversation history (Redis) = Recent uploads in current/past sessions
-      - RAG storage (PostgreSQL + Pinecone) = ALL processed documents permanently stored
-
-      🚨 WRONG (what you did):
-      User: "tell me about my server error"
-      You: [calls search_history only] → nothing found → gives up
-      ❌ YOU NEVER SEARCHED RAG STORAGE!
-
-      ✅ CORRECT:
-      User: "tell me about my server error"
-      You: [calls search_history] → nothing in conversation
-      You: [calls query_rag_store(query: "server error")] → FOUND in RAG!
-      You: "Based on your uploaded documents, I found server error info..."
-
-      Detection Patterns (NO file attached right now):
-      - "tell me about X" → search_history + query_rag_store
-      - "tell me about my X" → search_history + query_rag_store
-      - "what's my X" → search_history + query_rag_store
-      - "find my X" → search_history + query_rag_store
-
-      Mandatory Process:
-      1. User asks "tell me about my X"
-      2. Call search_history(keywords: "X") → Check conversation
-      3. Call query_rag_store(query: "X") → Check RAG storage
-      4. Combine results from BOTH sources
-      5. If BOTH return empty → THEN say no documents found
-      6. NEVER say "no documents" without checking BOTH sources!
-
       Examples:
       - User: "tell me about my server error" (no file attached)
-        → query_rag_store(query: "server error", top_k: 5)
-        → Found: Activity ID 4d03d1ae... Session ID 66b77b1b...
-        → "Based on your uploaded documents, I found server error info with Activity ID 4d03d1ae..."
+        → query_document_content(query: "server error")
+        → Returns: Activity ID, Session ID, timestamps from uploaded PDF
 
       - User: "tell me about tires"
-        → query_rag_store(query: "tires", top_k: 5)
+        → query_document_content(query: "tires")
         → If found: "Based on your documents, here's what I found about tires..."
-        → If empty: "I searched your uploaded documents but found no information about tires."
+        → If empty: "No documents contain information about tires."
 
       - User: "summarize my wheel data"
-        → query_rag_store(query: "wheels", top_k: 10)
-        → Return summary of what's in the RAG results
+        → query_document_content(query: "wheels")
+        → Returns summary from all matching documents
 
-      - User: "what do you know about service tickets?"
-        → query_rag_store(query: "service tickets", top_k: 5)
-        → Answer based on RAG results
-
-      IMPORTANT: The query_rag_store tool automatically searches ALL your uploaded documents.
-      You don't need to specify which document - it searches everything and returns relevant chunks.
+      🔴 CRITICAL: Use query_document_content, NOT search_history, for document queries!
+      search_history only searches conversation text, NOT uploaded document content.
 
       LANDING PAGE EDITING:
       CRITICAL: Detect if user wants to EDIT existing page vs CREATE new:
