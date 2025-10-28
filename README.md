@@ -270,10 +270,19 @@ rails dev:reset_passwords
 rails dev:full_reset
 ```
 
-**Docker Users:** Logins are automatically created on container startup. If you experience issues:
+**Docker Users:** Logins are automatically created on container startup.
+
+**IMPORTANT:** `docker compose restart` does NOT re-run seeds. To ensure seeds run:
 
 ```bash
+# Full container recreation (runs db:seed)
+docker compose down && docker compose up -d
+
+# Quick password reset (if containers already running)
 docker compose exec web rails dev:reset_passwords
+
+# Or manually run seeds
+docker compose exec web rails db:seed
 ```
 
 ### Environment Variables
