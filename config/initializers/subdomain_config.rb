@@ -3,7 +3,7 @@ module SubdomainConfig
   def self.app_subdomains
     if Rails.env.production?
       # In production, check if we're running in dev environment (dev.amoslabs.com)
-      if ENV['ECS_CLUSTER']&.include?('dev') || ENV['RAILS_ENV_NAME'] == 'dev'
+      if ENV['APP_DOMAIN']&.start_with?('dev.')
         ["app", "dev"]
       else
         ["app"]
