@@ -104,6 +104,8 @@ module Scout
       Rails.logger.info "📝 Message length: #{response_data[:message]&.length} characters"
       Rails.logger.info "📝 Message preview: #{response_data[:message]&.first(100)}..."
       Rails.logger.info "📝 Message already saved: #{response_data[:message_already_saved]}"
+      Rails.logger.info "🤖 Model used: #{response_data[:model_used].inspect}"
+      Rails.logger.info "🤖 Model name: #{response_data[:model_name].inspect}"
 
       # Persist final assistant message as a safety net if not already saved
       if response_data[:message].present? && !response_data[:message_already_saved]
