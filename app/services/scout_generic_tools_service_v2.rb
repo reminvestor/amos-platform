@@ -689,6 +689,10 @@ class ScoutGenericToolsServiceV2
         if continuation_tool_calls.any? && chunk[:tool_use]
           continuation_tool_calls.last[:arguments] += chunk[:tool_use][:input] || ""
         end
+      when :usage
+        # Capture model info from continuation as well
+        @model_used = chunk[:model_used] if chunk[:model_used]
+        @model_name = chunk[:model_name] if chunk[:model_name]
       end
     end
 
