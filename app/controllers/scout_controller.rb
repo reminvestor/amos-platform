@@ -631,8 +631,10 @@ class ScoutController < ApplicationController
     current_canvas = params[:current_canvas]
     context = params[:context]
     file_urls = params[:file_urls] || []
+    selected_model = params[:model] || 'claude-sonnet-4-5'
 
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
+    Rails.logger.info "Selected model: #{selected_model}"
     puts "🚨 PRODUCTION DEBUG: Scout chat request received - #{Time.current}"
     STDOUT.flush
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
@@ -762,7 +764,7 @@ class ScoutController < ApplicationController
       # Use InteractiveTaskService with streaming updates
       stream_update("🧠 Analyzing your request...")
       stream_update("📋 Detecting task mode and preparing workflow...")
-      interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id])
+      interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id], model: selected_model)
 
       # Set up progress callback for streaming updates
       interactive_service.on_progress do |progress_data|

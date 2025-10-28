@@ -358,7 +358,7 @@ export default class extends Controller {
   }
 
   // Enhanced processMessage to handle canvas actions and file uploads
-  async processMessage(message, files = []) {
+  async processMessage(message, files = [], model = null) {
     try {
       console.log("🔄 Processing message:", message)
       console.log("📎 Files passed to processMessage:", files.length)
@@ -372,7 +372,11 @@ export default class extends Controller {
       } else {
         console.log("📎 No files to upload")
       }
-      
+
+      // Get selected model (from parameter or global function)
+      const selectedModel = model || (window.getSelectedModel ? window.getSelectedModel() : 'claude-sonnet-4-5');
+      console.log("🤖 Using model:", selectedModel);
+
       // Use streaming endpoint for better timeout handling
       const response = await fetch("/scout/chat_stream", {
         method: "POST",
@@ -380,10 +384,11 @@ export default class extends Controller {
           "Content-Type": "application/json",
           "X-CSRF-Token": this.getCSRFToken()
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: message,
           current_canvas: this.currentCanvas,
-          file_urls: fileUrls
+          file_urls: fileUrls,
+          model: selectedModel
         })
       })
 

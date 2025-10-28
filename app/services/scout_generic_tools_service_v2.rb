@@ -2,11 +2,12 @@ class ScoutGenericToolsServiceV2
   attr_reader :user, :entity, :session_id, :agent_loadout
   attr_accessor :suggested_canvas, :canvas_data
 
-  def initialize(user, entity, session_id, agent_loadout: nil)
+  def initialize(user, entity, session_id, agent_loadout: nil, model: 'claude-sonnet-4-5')
     @user = user
     @entity = entity
     @session_id = session_id
     @agent_loadout = agent_loadout
+    @model = model
     @ai_service = BedrockService.new
     @ai_provider_name = Rails.application.config.ai_service.to_s.capitalize
     @tool_catalog = Tools::ToolCatalog.instance
@@ -51,7 +52,8 @@ class ScoutGenericToolsServiceV2
         max_tokens: 25000,
         temperature: 0.7,
         json_mode: false,
-        tools: tools
+        tools: tools,
+        model: @model
       ) do |chunk|
         handle_streaming_chunk(chunk, accumulated_content, tool_calls, streaming_started, progress_callback)
         streaming_started = true if chunk[:type] == :content
@@ -630,7 +632,8 @@ class ScoutGenericToolsServiceV2
       max_tokens: 25000,
       temperature: 0.7,
       json_mode: false,
-      tools: tools
+      tools: tools,
+      model: @model
     ) do |chunk|
       case chunk[:type]
       when :content

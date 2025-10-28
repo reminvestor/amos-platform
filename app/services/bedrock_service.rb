@@ -5,6 +5,58 @@ class BedrockService
 
   attr_reader :model_registry
 
+  # Available Bedrock models with their characteristics
+  AVAILABLE_MODELS = {
+    'claude-sonnet-4-5' => {
+      id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0',
+      name: 'Claude Sonnet 4.5',
+      description: 'Latest model, best for complex tasks',
+      max_tokens: 25000,
+      cost_per_1m_input: 3.00,
+      cost_per_1m_output: 15.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: false,  # Global endpoint limitation
+      endpoint_type: 'global'
+    },
+    'claude-opus-4-1' => {
+      id: 'us.anthropic.claude-opus-4-1-20250805-v1:0',
+      name: 'Claude Opus 4.1',
+      description: 'Most capable, includes vision',
+      max_tokens: 25000,
+      cost_per_1m_input: 15.00,
+      cost_per_1m_output: 75.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    },
+    'claude-3-5-sonnet' => {
+      id: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
+      name: 'Claude 3.5 Sonnet',
+      description: 'Fast and capable, supports caching',
+      max_tokens: 25000,
+      cost_per_1m_input: 3.00,
+      cost_per_1m_output: 15.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    },
+    'claude-3-haiku' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+      name: 'Claude 3.5 Haiku',
+      description: 'Fastest, most affordable',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.80,
+      cost_per_1m_output: 4.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    }
+  }.freeze
+
   def initialize(custom_model_id: nil, user: nil, entity: nil)
     @client = Aws::BedrockRuntime::Client.new(
       region: ENV["AWS_REGION"] || "us-east-1",
@@ -394,29 +446,20 @@ class BedrockService
     # Check if prompt caching is enabled (default: true)
     caching_enabled = ENV.fetch('BEDROCK_PROMPT_CACHING_ENABLED', 'true') == 'true'
 
-    # Map model names to Bedrock model IDs
-    # Prompt caching requires regional endpoints (us.anthropic.*)
-    # Global endpoints have latest models but no caching support yet
-    model_id = case model
-    when "claude-sonnet-4-5", "claude-sonnet-4.5"
-      if caching_enabled
-        # Sonnet 4.5 not available on regional endpoints yet, fallback to 3.5 Sonnet v2
-        Rails.logger.info "⚠️  Sonnet 4.5 requested but caching enabled - using Sonnet 3.5 v2 for caching support"
-        "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
-      else
-        # Use global endpoint for Sonnet 4.5 (no caching)
-        Rails.logger.info "✅ Using Sonnet 4.5 (global endpoint, no caching)"
-        "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
-      end
-    when "claude-opus-4-1", "claude-opus-4-1-20250805"
-      caching_enabled ? "us.anthropic.claude-opus-4-1-20250805-v1:0" : "global.anthropic.claude-opus-4-1-20250805-v1:0"
-    when "claude-3-5-sonnet", "claude-3.5-sonnet"
-      caching_enabled ? "us.anthropic.claude-3-5-sonnet-20241022-v2:0" : "global.anthropic.claude-3-5-sonnet-20241022-v2:0"
-    when "claude-3-haiku"
-      caching_enabled ? "us.anthropic.claude-3-5-haiku-20241022-v1:0" : "global.anthropic.claude-3-5-haiku-20241022-v1:0"
+    # Normalize model name (handle variants like "claude-sonnet-4.5")
+    normalized_model = model.to_s.gsub('.', '-')
+
+    # Get model configuration
+    model_config = AVAILABLE_MODELS[normalized_model] || AVAILABLE_MODELS['claude-sonnet-4-5']
+    model_id = model_config[:id]
+
+    # Log model selection with caching status
+    if caching_enabled && !model_config[:supports_caching]
+      Rails.logger.info "⚠️  #{model_config[:name]} doesn't support caching (#{model_config[:endpoint_type]} endpoint)"
+    elsif caching_enabled && model_config[:supports_caching]
+      Rails.logger.info "💾 Using #{model_config[:name]} with caching enabled"
     else
-      # Default to Claude 3.5 Sonnet v2
-      caching_enabled ? "us.anthropic.claude-3-5-sonnet-20241022-v2:0" : "global.anthropic.claude-3-5-sonnet-20241022-v2:0"
+      Rails.logger.info "✅ Using #{model_config[:name]} (caching disabled)"
     end
 
     # Format messages for Claude
@@ -507,9 +550,12 @@ class BedrockService
         }
       }
 
+      # Determine if caching should be used (both enabled AND supported by model)
+      use_caching = caching_enabled && model_config[:supports_caching]
+
       # Add system prompt if present
       if system_prompt.present?
-        if caching_enabled
+        if use_caching
           # Add cache checkpoint after system prompt (requires 1024+ tokens)
           payload[:system] = [
             { text: system_prompt },
@@ -526,7 +572,7 @@ class BedrockService
       if tools.any?
         formatted_tools = format_tools_for_bedrock(tools)
 
-        if caching_enabled
+        if use_caching
           # Add cache checkpoint after all tools (Claude supports up to 4 checkpoints)
           formatted_tools << { cachePoint: { type: "default" } }
           Rails.logger.info "💾 Prompt caching enabled for tools (~2500 tokens)"
@@ -540,7 +586,7 @@ class BedrockService
         # DEBUG: Log tool names being sent (exclude cache checkpoint if present)
         tool_spec_tools = formatted_tools.select { |t| t.key?(:tool_spec) }
         tool_names = tool_spec_tools.map { |t| t.dig(:tool_spec, :name) }
-        caching_status = caching_enabled ? "with caching" : "no caching"
+        caching_status = use_caching ? "with caching" : "no caching"
         Rails.logger.info "🔧 Sending #{tool_names.length} tools to Claude (#{caching_status}): #{tool_names.join(', ')}"
       end
 
