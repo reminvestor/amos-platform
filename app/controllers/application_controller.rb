@@ -115,7 +115,7 @@ class ApplicationController < ActionController::Base
   private
 
   def handle_authentication_failure
-    if request.subdomain == "app"
+    if SubdomainConfig.app_subdomains.include?(request.subdomain)
       # On app subdomain, redirect to login
       Rails.logger.info "🔄 Redirecting to login page for app subdomain"
       redirect_to new_user_session_path
