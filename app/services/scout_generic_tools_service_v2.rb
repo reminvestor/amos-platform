@@ -319,25 +319,43 @@ class ScoutGenericToolsServiceV2
 
       🔴 RULE: If NO file attached in current message → USE query_rag_store!
 
-      RAG KNOWLEDGE BASE (CRITICAL):
-      When users ask questions about information in their uploaded documents (that have been processed and stored):
+      🔴🔴🔴 DOCUMENT SEARCH - TWO-STEP MANDATORY PROCESS 🔴🔴🔴:
 
-      ALWAYS use query_rag_store tool to search the knowledge base FIRST!
+      When user asks "tell me about my X" or "what's my X", you MUST search BOTH locations:
 
-      Detection Patterns (NO file attached in current message):
-      - "tell me about X" → query_rag_store(query: "X")
-      - "tell me about my X" → query_rag_store(query: "X")
-      - "what's my X info" → query_rag_store(query: "X")
-      - "summarize my data for X" → query_rag_store(query: "X")
-      - "what do I have about X" → query_rag_store(query: "X")
-      - "find information on X" → query_rag_store(query: "X")
-      - "what's in my documents about X" → query_rag_store(query: "X")
+      ═══════════════════════════════════════════════════════════════════════════════
+      STEP 1: search_history(keywords: "X") → Searches conversation history (Redis)
+      STEP 2: query_rag_store(query: "X") → Searches RAG storage (PostgreSQL + Pinecone)
+      ═══════════════════════════════════════════════════════════════════════════════
 
-      Process:
-      1. ALWAYS query RAG first when user asks about document content
-      2. If results found → Use that information in your response
-      3. If no results → Inform user no documents contain that information
-      4. NEVER say "I don't have information" without checking RAG first!
+      Why BOTH?
+      - Conversation history (Redis) = Recent uploads in current/past sessions
+      - RAG storage (PostgreSQL + Pinecone) = ALL processed documents permanently stored
+
+      🚨 WRONG (what you did):
+      User: "tell me about my server error"
+      You: [calls search_history only] → nothing found → gives up
+      ❌ YOU NEVER SEARCHED RAG STORAGE!
+
+      ✅ CORRECT:
+      User: "tell me about my server error"
+      You: [calls search_history] → nothing in conversation
+      You: [calls query_rag_store(query: "server error")] → FOUND in RAG!
+      You: "Based on your uploaded documents, I found server error info..."
+
+      Detection Patterns (NO file attached right now):
+      - "tell me about X" → search_history + query_rag_store
+      - "tell me about my X" → search_history + query_rag_store
+      - "what's my X" → search_history + query_rag_store
+      - "find my X" → search_history + query_rag_store
+
+      Mandatory Process:
+      1. User asks "tell me about my X"
+      2. Call search_history(keywords: "X") → Check conversation
+      3. Call query_rag_store(query: "X") → Check RAG storage
+      4. Combine results from BOTH sources
+      5. If BOTH return empty → THEN say no documents found
+      6. NEVER say "no documents" without checking BOTH sources!
 
       Examples:
       - User: "tell me about my server error" (no file attached)
