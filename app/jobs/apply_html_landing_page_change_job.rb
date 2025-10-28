@@ -97,7 +97,7 @@ class ApplyHtmlLandingPageChangeJob < ApplicationJob
 
     # Use Claude to modify the HTML
     # Use Claude Opus 4.1 for higher fidelity edits
-    response = ClaudeService.new.send_message(system_prompt, user_prompt, model: "claude-opus-4-1-20250805", max_tokens: 6000, temperature: 0.4)
+    response = AiServiceHelper.get_service.send_message(system_prompt, user_prompt, model: "claude-opus-4-1-20250805", max_tokens: 6000, temperature: 0.4)
 
     # Extract either full HTML or a partial snippet
     extracted = extract_full_or_partial_html(response)
