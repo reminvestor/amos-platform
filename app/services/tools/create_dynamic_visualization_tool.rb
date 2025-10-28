@@ -229,68 +229,68 @@ module Tools
         </div>
 
         <style>
-          /* Force all report text to be dark and readable */
+          /* Force all report text to be white on dark background */
           .report-visualization,
           .report-visualization * {
-            color: #212529 !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .report-header {
-            background: #f8f9fa;
+            background: rgba(255, 255, 255, 0.1);
             padding: 30px;
             border-radius: 8px;
             margin-bottom: 30px;
           }
         #{'  '}
           .report-header h1 {
-            color: #212529 !important;
-            font-weight: 600;
+            color: #FFFFFF !important;
+            font-weight: bold !important;
           }
         #{'  '}
           .report-meta {
             margin-top: 20px;
-            color: #6c757d !important;
+            color: rgba(255, 255, 255, 0.8) !important;
           }
         #{'  '}
           .report-meta p,
           .report-meta strong {
-            color: #6c757d !important;
+            color: rgba(255, 255, 255, 0.8) !important;
           }
         #{'  '}
           .report-section {
             margin: 30px 0;
             padding: 20px;
-            background: white;
-            border: 1px solid #e0e0e0;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
           }
         #{'  '}
           .section-title {
             font-size: 24px;
-            color: #212529 !important;
+            color: #FFFFFF !important;
             margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 2px solid #e0e0e0;
-            font-weight: 600;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            font-weight: bold !important;
           }
         #{'  '}
           .report-content {
-            color: #212529 !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .report-content * {
-            color: #212529 !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .report-footer {
             margin-top: 40px;
             padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
             text-align: center;
           }
         #{'  '}
           .report-footer .text-muted {
-            color: #6c757d !important;
+            color: rgba(255, 255, 255, 0.6) !important;
           }
         </style>
       HTML
@@ -601,7 +601,7 @@ module Tools
           .chart-label {
             min-width: 150px;
             font-weight: 500;
-            color: #212529 !important;
+            color: #FFFFFF !important;
             background: transparent !important;
           }
 
@@ -693,14 +693,14 @@ module Tools
         </div>
 
         <style>
-          /* Force dark text for all elements */
+          /* Force white text for all elements on dark background */
           .dynamic-content {
             padding: 20px;
-            color: #212529 !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .dynamic-content * {
-            color: #212529 !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .dynamic-content h1,
@@ -717,7 +717,7 @@ module Tools
           .dynamic-content li,
           .dynamic-content dt,
           .dynamic-content dd {
-            color: #212529 !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           /* Ensure all headings have transparent backgrounds */
@@ -729,6 +729,7 @@ module Tools
           .dynamic-content h6 {
             background: transparent !important;
             background-color: transparent !important;
+            font-weight: bold !important;
           }
         #{'  '}
           .metric-cards {
@@ -739,30 +740,30 @@ module Tools
           }
         #{'  '}
           .dynamic-metric-card {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            border: 1px solid #e0e0e0 !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
             border-radius: 8px !important;
             padding: 20px !important;
             text-align: center !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
             transition: transform 0.2s, box-shadow 0.2s;
-            color: #212529 !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .dynamic-metric-card * {
-            color: inherit !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .dynamic-metric-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5) !important;
           }
         #{'  '}
           .dynamic-metric-value {
             font-size: 36px !important;
             font-weight: 700 !important;
-            color: #212529 !important;
+            color: #FFFFFF !important;
             margin: 10px 0 !important;
             line-height: 1.2 !important;
             display: block !important;
@@ -770,7 +771,7 @@ module Tools
         #{'  '}
           .dynamic-metric-label {
             font-size: 14px !important;
-            color: #6c757d !important;
+            color: rgba(255, 255, 255, 0.8) !important;
             text-transform: capitalize !important;
             font-weight: 600 !important;
             letter-spacing: 0.5px !important;
