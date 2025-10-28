@@ -201,6 +201,13 @@ module Tools
       # Generate a structured report
       sections = data["sections"] || data[:sections] || []
 
+      # If no sections provided, generate content from the raw data
+      report_content = if sections.empty?
+        generate_dynamic_content(data, options)
+      else
+        generate_report_sections(sections)
+      end
+
       <<~HTML
         <div class="report-visualization">
           <div class="report-header">
@@ -212,7 +219,7 @@ module Tools
           </div>
         #{'  '}
           <div class="report-content">
-            #{generate_report_sections(sections)}
+            #{report_content}
           </div>
         #{'  '}
           <div class="report-footer">
