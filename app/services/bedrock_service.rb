@@ -391,18 +391,32 @@ class BedrockService
   end
 
   def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], &block)
+    # Check if prompt caching is enabled (default: true)
+    caching_enabled = ENV.fetch('BEDROCK_PROMPT_CACHING_ENABLED', 'true') == 'true'
+
     # Map model names to Bedrock model IDs
+    # Prompt caching requires regional endpoints (us.anthropic.*)
+    # Global endpoints have latest models but no caching support yet
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
-      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+      if caching_enabled
+        # Sonnet 4.5 not available on regional endpoints yet, fallback to 3.5 Sonnet v2
+        Rails.logger.info "⚠️  Sonnet 4.5 requested but caching enabled - using Sonnet 3.5 v2 for caching support"
+        "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+      else
+        # Use global endpoint for Sonnet 4.5 (no caching)
+        Rails.logger.info "✅ Using Sonnet 4.5 (global endpoint, no caching)"
+        "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+      end
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
-      "us.anthropic.claude-opus-4-1-20250805-v1:0"
+      caching_enabled ? "us.anthropic.claude-opus-4-1-20250805-v1:0" : "global.anthropic.claude-opus-4-1-20250805-v1:0"
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
-      "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+      caching_enabled ? "us.anthropic.claude-3-5-sonnet-20241022-v2:0" : "global.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
-      "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+      caching_enabled ? "us.anthropic.claude-3-5-haiku-20241022-v1:0" : "global.anthropic.claude-3-5-haiku-20241022-v1:0"
     else
-      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+      # Default to Claude 3.5 Sonnet v2
+      caching_enabled ? "us.anthropic.claude-3-5-sonnet-20241022-v2:0" : "global.anthropic.claude-3-5-sonnet-20241022-v2:0"
     end
 
     # Format messages for Claude
@@ -494,25 +508,40 @@ class BedrockService
       }
 
       # Add system prompt if present
-      # NOTE: Prompt caching disabled - AWS Bedrock Converse API doesn't support it yet
-      # TODO: Re-enable when AWS adds cachePoint support to Converse API
       if system_prompt.present?
-        payload[:system] = [ { text: system_prompt } ]
+        if caching_enabled
+          # Add cache checkpoint after system prompt (requires 1024+ tokens)
+          payload[:system] = [
+            { text: system_prompt },
+            { cachePoint: { type: "default" } }  # Cache everything up to here
+          ]
+          Rails.logger.info "💾 Prompt caching enabled for system prompt (~7000 tokens)"
+        else
+          # No caching - simple array with text
+          payload[:system] = [{ text: system_prompt }]
+        end
       end
 
       # Add tools if provided
-      # NOTE: Prompt caching disabled - AWS Bedrock Converse API doesn't support it yet
       if tools.any?
         formatted_tools = format_tools_for_bedrock(tools)
+
+        if caching_enabled
+          # Add cache checkpoint after all tools (Claude supports up to 4 checkpoints)
+          formatted_tools << { cachePoint: { type: "default" } }
+          Rails.logger.info "💾 Prompt caching enabled for tools (~2500 tokens)"
+        end
 
         payload[:tool_config] = {
           tools: formatted_tools,
           tool_choice: { auto: {} }
         }
 
-        # DEBUG: Log tool names being sent
-        tool_names = formatted_tools.map { |t| t.dig(:tool_spec, :name) }
-        Rails.logger.info "🔧 Sending #{formatted_tools.length} tools to Claude: #{tool_names.join(', ')}"
+        # DEBUG: Log tool names being sent (exclude cache checkpoint if present)
+        tool_spec_tools = formatted_tools.select { |t| t.key?(:tool_spec) }
+        tool_names = tool_spec_tools.map { |t| t.dig(:tool_spec, :name) }
+        caching_status = caching_enabled ? "with caching" : "no caching"
+        Rails.logger.info "🔧 Sending #{tool_names.length} tools to Claude (#{caching_status}): #{tool_names.join(', ')}"
       end
 
       # Buffer for accumulating content
@@ -566,28 +595,28 @@ class BedrockService
                 output: usage.output_tokens || 0
               }
 
-              # Extract cache statistics if available
-              cache_creation = usage.respond_to?(:cache_creation_input_tokens) ? usage.cache_creation_input_tokens : 0
-              cache_read = usage.respond_to?(:cache_read_input_tokens) ? usage.cache_read_input_tokens : 0
+              # Extract cache statistics (AWS Bedrock Converse API field names)
+              cache_write = usage.respond_to?(:cache_write_input_tokens_count) ? usage.cache_write_input_tokens_count : 0
+              cache_read = usage.respond_to?(:cache_read_input_tokens_count) ? usage.cache_read_input_tokens_count : 0
 
               # Track tokens if we have user and entity
               if @user && @entity && @resource_manager
                 @resource_manager.track_tokens(@user, model_id, tokens, {
                   stream: true,
                   timestamp: Time.current,
-                  cache_creation: cache_creation,
+                  cache_write: cache_write,
                   cache_read: cache_read
                 })
               end
 
               # Yield usage info including cache stats
-              yield(type: :usage, tokens: tokens, cache_creation: cache_creation, cache_read: cache_read) if block_given?
+              yield(type: :usage, tokens: tokens, cache_write: cache_write, cache_read: cache_read) if block_given?
 
               # Enhanced logging with cache information
-              if cache_creation > 0 || cache_read > 0
+              if cache_write > 0 || cache_read > 0
                 cache_hit_rate = tokens[:input] > 0 ? (cache_read.to_f / (tokens[:input] + cache_read) * 100).round(1) : 0
                 savings = (cache_read * 0.9).round(0)  # 90% discount on cached tokens
-                Rails.logger.info "💰 Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]} | Cache: #{cache_read} read (#{cache_hit_rate}% hit rate), #{cache_creation} created | Savings: ~#{savings} tokens ($#{(savings * 0.0000075).round(4)})"
+                Rails.logger.info "💰 Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]} | Cache: #{cache_read} read (#{cache_hit_rate}% hit rate), #{cache_write} written | Savings: ~#{savings} tokens ($#{(savings * 0.0000075).round(4)})"
               else
                 Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
               end
