@@ -553,7 +553,7 @@ class BedrockService
         model_id: model_id,
         messages: converse_messages,
         inference_config: {
-          max_tokens: max_tokens,
+          max_tokens: effective_max_tokens,
           temperature: temperature
         }
       }
