@@ -497,7 +497,7 @@ class BedrockService
       if system_prompt.present?
         payload[:system] = [
           { text: system_prompt },
-          { cache_control: { type: "ephemeral" } }  # Separate cache marker (5min TTL, 90% discount)
+          { cachePoint: { type: "default" } }  # AWS Bedrock cache checkpoint (5min TTL, 90% discount)
         ]
         Rails.logger.info "💾 Prompt caching enabled for system prompt (~7000 tokens)"
       end
@@ -506,10 +506,10 @@ class BedrockService
       if tools.any?
         formatted_tools = format_tools_for_bedrock(tools)
 
-        # Add cache control marker as separate element after all tools
-        # AWS Bedrock caches everything up to and including the cache_control marker
+        # Add cache checkpoint as separate element after all tools
+        # AWS Bedrock caches everything up to and including the cachePoint
         if formatted_tools.any?
-          formatted_tools << { cache_control: { type: "ephemeral" } }
+          formatted_tools << { cachePoint: { type: "default" } }
         end
 
         payload[:tool_config] = {
