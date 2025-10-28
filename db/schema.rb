@@ -1604,36 +1604,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_191733) do
     t.index ["user_id"], name: "index_voice_sessions_on_user_id"
   end
 
-  create_table "voice_assistant_settings", force: :cascade do |t|
-    t.string "key"
-    t.text "value"
-    t.string "setting_type"
-    t.text "description"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["key"], name: "index_voice_assistant_settings_on_key", unique: true
-  end
-
-  create_table "voice_sessions", force: :cascade do |t|
-    t.bigint "user_id", null: false
-    t.bigint "entity_id", null: false
-    t.string "session_id", null: false
-    t.string "status", default: "active", null: false
-    t.jsonb "context", default: {}
-    t.jsonb "transcript_history", default: []
-    t.jsonb "metadata", default: {}
-    t.datetime "started_at"
-    t.datetime "ended_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["entity_id", "status"], name: "index_voice_sessions_on_entity_id_and_status"
-    t.index ["entity_id"], name: "index_voice_sessions_on_entity_id"
-    t.index ["session_id"], name: "index_voice_sessions_on_session_id", unique: true
-    t.index ["started_at"], name: "index_voice_sessions_on_started_at"
-    t.index ["status"], name: "index_voice_sessions_on_status"
-    t.index ["user_id"], name: "index_voice_sessions_on_user_id"
-  end
-
   create_table "webhook_events", force: :cascade do |t|
     t.bigint "webhook_subscription_id", null: false
     t.string "event_type"

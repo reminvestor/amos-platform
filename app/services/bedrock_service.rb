@@ -753,7 +753,6 @@ class BedrockService
               end
 
               # Yield usage info including cache stats and model used (for fallback transparency)
-              Rails.logger.info "🔍 BEDROCK: About to yield usage chunk with model_used=#{normalized_model.inspect}, model_name=#{model_config[:name].inspect}"
               yield(
                 type: :usage,
                 tokens: tokens,
@@ -762,7 +761,6 @@ class BedrockService
                 model_used: normalized_model,
                 model_name: model_config[:name]
               ) if block_given?
-              Rails.logger.info "🔍 BEDROCK: Usage chunk yielded successfully"
 
               # Enhanced logging with cache information
               if cache_write > 0 || cache_read > 0
