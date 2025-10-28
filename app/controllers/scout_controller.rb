@@ -971,6 +971,8 @@ class ScoutController < ApplicationController
           canvas_data: result[:canvas_data] || {},
           tools_used: result[:tools_used] || [],
           sources: result[:sources] || [],
+          model_used: result[:model_used],
+          model_name: result[:model_name],
           success_count: (result[:tools_used].is_a?(Array) ? result[:tools_used].count : 0),
           error_count: 0
         }
