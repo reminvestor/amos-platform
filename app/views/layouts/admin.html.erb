@@ -47,7 +47,6 @@
                   <li><%= link_to "Payouts", admin_payouts_path, class: "dropdown-item" %></li>
                   <li><hr class="dropdown-divider"></li>
                   <li><%= link_to "Analytics", admin_analytics_affiliates_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Settings", admin_settings_affiliate_path, class: "dropdown-item" %></li>
                 </ul>
               </li>
 
@@ -63,8 +62,20 @@
                 <% end %>
               </li>
 
+              <li class="nav-item">
+                <%= link_to admin_users_path, class: "nav-link #{'active' if controller_name == 'users'}" do %>
+                  <i class="fas fa-users"></i> Users
+                <% end %>
+              </li>
+
+              <li class="nav-item">
+                <%= link_to "/agents/monitoring", class: "nav-link #{'active' if request.path.start_with?('/agents')}" do %>
+                  <i class="fas fa-robot"></i> Agent Monitoring
+                <% end %>
+              </li>
+
               <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                <a class="nav-link dropdown-toggle #{'active' if controller_name == 'observability'}" href="#" data-bs-toggle="dropdown">
                   <i class="fas fa-chart-line"></i> Observability
                 </a>
                 <ul class="dropdown-menu dropdown-menu-dark">
@@ -76,14 +87,8 @@
               </li>
 
               <li class="nav-item">
-                <%= link_to admin_users_path, class: "nav-link #{'active' if controller_name == 'users'}" do %>
-                  <i class="fas fa-users"></i> Users
-                <% end %>
-              </li>
-
-              <li class="nav-item">
-                <%= link_to "/agents/monitoring", class: "nav-link #{'active' if request.path.start_with?('/agents')}" do %>
-                  <i class="fas fa-robot"></i> Agent Monitoring
+                <%= link_to admin_system_settings_path, class: "nav-link #{'active' if controller_name == 'system_settings'}" do %>
+                  <i class="fas fa-key"></i> System Settings
                 <% end %>
               </li>
             </ul>

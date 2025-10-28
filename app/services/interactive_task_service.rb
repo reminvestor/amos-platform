@@ -25,6 +25,12 @@ class InteractiveTaskService
 
   # Process a message and determine if it should use interactive workflow
   def process_message(message, conversation_history = [], current_canvas = nil)
+    # Check if we're awaiting plan approval
+    if @task_session.metadata['awaiting_approval'] == true
+      Rails.logger.info "InteractiveTaskService: Plan awaiting approval, handling user response"
+      return handle_plan_response(message)
+    end
+
     # Check if we have an active workflow awaiting input
     if @task_session.workflow_spec && workflow_awaiting_input?
       Rails.logger.info "InteractiveTaskService: Active workflow awaiting input, continuing with user message"
@@ -74,6 +80,79 @@ class InteractiveTaskService
   def on_progress(&block)
     @progress_callback = block
     @workflow_engine.on_progress(&block)
+  end
+  
+  # Handle user response when plan is awaiting approval
+  def handle_plan_response(message)
+    Rails.logger.info "InteractiveTaskService: Processing user response during plan approval"
+    
+    # Normalize message for keyword detection
+    normalized_message = message.downcase.strip
+    
+    # Check for explicit approval keywords
+    approval_keywords = ['yes', 'approve', 'go ahead', 'proceed', 'sounds good', 'looks good', 'do it', 'yes please', 'yep', 'yeah', 'ok', 'okay']
+    rejection_keywords = ['no', 'cancel', 'stop', 'don\'t', 'nevermind', 'never mind']
+    modification_keywords = ['change', 'modify', 'adjust', 'different', 'instead']
+    
+    if approval_keywords.any? { |keyword| normalized_message.include?(keyword) } && !rejection_keywords.any? { |keyword| normalized_message.include?(keyword) }
+      # User is approving the plan
+      Rails.logger.info "InteractiveTaskService: User approved plan via conversational response"
+      return handle_plan_approval('approve')
+    elsif rejection_keywords.any? { |keyword| normalized_message.include?(keyword) }
+      # User is rejecting/cancelling the plan
+      Rails.logger.info "InteractiveTaskService: User cancelled plan via conversational response"
+      return handle_plan_approval('cancel')
+    elsif modification_keywords.any? { |keyword| normalized_message.include?(keyword) }
+      # User wants to modify the plan
+      Rails.logger.info "InteractiveTaskService: User requested modifications via conversational response"
+      
+      # Clear awaiting_approval and let AI handle the modification request
+      @task_session.update!(
+        metadata: @task_session.metadata.merge(
+          awaiting_approval: false,
+          modification_requested: true,
+          modification_feedback: message
+        )
+      )
+      
+      # Let the AI interpret the modification request and adjust the plan
+      @progress_callback&.call({
+        type: 'intermediate_message',
+        content: "I'll adjust the plan based on your feedback. Let me rethink this...",
+        role: 'assistant'
+      })
+      
+      # Delegate back to AI to handle the modification
+      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout)
+      
+      modification_context = "User provided feedback on the workflow plan: #{message}\n\nOriginal request: #{@task_session.metadata['request_text']}\n\nPlease create a revised plan incorporating their feedback."
+      
+      if @progress_callback
+        return generic_tools_service.process_message_with_tools_streaming(
+          modification_context,
+          @progress_callback,
+          [],
+          nil
+        )
+      else
+        return generic_tools_service.process_message_with_tools(modification_context, [], nil)
+      end
+    else
+      # Ambiguous response - ask for clarification
+      Rails.logger.info "InteractiveTaskService: Ambiguous response during plan approval, asking for clarification"
+      
+      {
+        success: true,
+        message: "I'm not sure if you want me to proceed with the plan or make changes. Could you please say:\n\n- \"Yes\" or \"Approve\" to start executing the plan\n- \"Modify\" or \"Change\" followed by your feedback if you want adjustments\n- \"Cancel\" if you don't want to proceed\n\nOr you can be more specific about what you'd like me to do!",
+        awaiting_approval: true,
+        canvas_type: 'task_progress',
+        canvas_data: {
+          workflow: @task_session.metadata['workflow_plan'],
+          awaiting_approval: true
+        }
+      }
+    end
   end
   
   # Continue an existing workflow with user input

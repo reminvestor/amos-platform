@@ -50,7 +50,7 @@ module Tools
     end
 
     # Get tools for Bedrock format
-    def get_bedrock_tools(allowlist: nil, agent_loadout: nil)
+    def get_bedrock_tools(allowlist: nil, agent_loadout: nil, enable_caching: false)
       tools = []
 
       # Add canvas loading tool (always available)
@@ -93,6 +93,12 @@ module Tools
             parameters: metadata[:input_schema] || metadata[:parameters]
           }
         end
+      end
+
+      # Add cache_control to the LAST tool (caches all tools + system prompt)
+      if enable_caching && tools.any?
+        tools.last[:cache_control] = { type: "ephemeral" }
+        Rails.logger.info "💾 Prompt caching enabled for #{tools.length} tools (cache_control on last tool)"
       end
 
       Rails.logger.info "🤖 Providing #{tools.length} tools to Bedrock (filtered from #{@tools.length} total)"

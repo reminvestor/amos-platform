@@ -2,48 +2,162 @@
   <div class="row mb-4">
     <div class="col">
       <h1><i class="fas fa-user text-primary"></i> My Profile</h1>
-      <p class="text-muted">View your account information</p>
-    </div>
-    <div class="col-auto">
-      <%= link_to edit_user_registration_path, class: "btn btn-primary" do %>
-        <i class="fas fa-edit me-1"></i> Edit Profile
-      <% end %>
+      <p class="text-muted">View and manage your account settings</p>
     </div>
   </div>
 
   <div class="row">
     <div class="col-lg-8">
       <!-- Profile Information -->
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white">
+      <div class="card border-0 shadow-sm mb-3" data-controller="profile-editor">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Profile Information</h5>
+          <button type="button" class="btn btn-sm btn-outline-primary" data-action="click->profile-editor#toggleEdit" data-profile-editor-target="editButton">
+            <i class="fas fa-edit me-1"></i><span data-profile-editor-target="editButtonText">Edit</span>
+          </button>
         </div>
         <div class="card-body">
-          <dl class="row mb-0">
-            <dt class="col-sm-3">Name</dt>
-            <dd class="col-sm-9"><%= current_user.full_name %></dd>
-            
-            <dt class="col-sm-3">Email</dt>
-            <dd class="col-sm-9"><%= current_user.email %></dd>
-            
-            <dt class="col-sm-3">Role</dt>
-            <dd class="col-sm-9">
-              <span class="badge bg-primary"><%= current_user.role.titleize %></span>
-            </dd>
-            
-            <dt class="col-sm-3">Member Since</dt>
-            <dd class="col-sm-9"><%= current_user.created_at.strftime("%B %d, %Y") %></dd>
-            
-            <% if current_user.entity %>
-              <dt class="col-sm-3">Entity</dt>
-              <dd class="col-sm-9">
-                <%= link_to current_user.entity.name, entities_path %>
-              </dd>
-            <% end %>
-          </dl>
+          <%= form_with model: current_user, url: user_path(current_user), method: :patch, local: true, data: { profile_editor_target: "form" } do |f| %>
+            <!-- View Mode -->
+            <div data-profile-editor-target="viewMode">
+              <dl class="row mb-0">
+                <dt class="col-sm-3">Name</dt>
+                <dd class="col-sm-9"><%= current_user.full_name %></dd>
+                
+                <dt class="col-sm-3">Email</dt>
+                <dd class="col-sm-9"><%= current_user.email %></dd>
+                
+                <dt class="col-sm-3">Role</dt>
+                <dd class="col-sm-9">
+                  <span class="badge bg-primary"><%= current_user.role.titleize %></span>
+                </dd>
+                
+                <dt class="col-sm-3">Member Since</dt>
+                <dd class="col-sm-9"><%= current_user.created_at.strftime("%B %d, %Y") %></dd>
+                
+                <% if current_user.entity %>
+                  <dt class="col-sm-3">Entity</dt>
+                  <dd class="col-sm-9">
+                    <%= link_to current_user.entity.name, entities_path %>
+                  </dd>
+                <% end %>
+              </dl>
+            </div>
+
+            <!-- Edit Mode -->
+            <div data-profile-editor-target="editMode" class="d-none">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <%= f.label :first_name, "First Name", class: "form-label" %>
+                  <%= f.text_field :first_name, class: "form-control", required: true %>
+                </div>
+                <div class="col-md-6">
+                  <%= f.label :last_name, "Last Name", class: "form-label" %>
+                  <%= f.text_field :last_name, class: "form-control", required: true %>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <%= f.label :email, class: "form-label" %>
+                <%= f.email_field :email, class: "form-control", required: true %>
+                <div class="form-text">
+                  <i class="fas fa-info-circle me-1"></i>Changing your email will require confirmation
+                </div>
+              </div>
+
+              <div class="d-flex gap-2">
+                <%= f.submit "Save Changes", class: "btn btn-primary" %>
+                <button type="button" class="btn btn-secondary" data-action="click->profile-editor#cancelEdit">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          <% end %>
         </div>
       </div>
 
+      <!-- Billing & Subscription -->
+      <% if current_user.entity %>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-credit-card me-2 text-success"></i>Billing & Subscription</h5>
+            <% if current_user.entity.stripe_customer_id.present? %>
+              <%= link_to "Manage Billing", "#", class: "btn btn-sm btn-outline-primary", data: { bs_toggle: "modal", bs_target: "#billingPortalModal" } %>
+            <% end %>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <h6 class="text-muted small mb-2">Current Plan</h6>
+                <div class="d-flex align-items-center">
+                  <% if current_user.entity.plan_tier.present? %>
+                    <span class="badge bg-primary fs-6"><%= current_user.entity.plan_tier.titleize %></span>
+                  <% else %>
+                    <span class="badge bg-secondary fs-6">Free</span>
+                  <% end %>
+                </div>
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <h6 class="text-muted small mb-2">Subscription Status</h6>
+                <% status = current_user.entity.subscription_status || 'inactive' %>
+                <% status_color = case status
+                     when 'active' then 'success'
+                     when 'trialing' then 'info'
+                     when 'past_due' then 'warning'
+                     when 'canceled', 'inactive' then 'secondary'
+                     else 'secondary'
+                   end %>
+                <span class="badge bg-<%= status_color %> fs-6"><%= status.titleize %></span>
+              </div>
+              
+              <% if current_user.entity.trial_ends_at.present? && current_user.entity.subscription_status == 'trialing' %>
+                <div class="col-md-6 mb-3">
+                  <h6 class="text-muted small mb-2">Trial Ends</h6>
+                  <div><%= current_user.entity.trial_ends_at.strftime("%B %d, %Y") %></div>
+                </div>
+              <% end %>
+              
+              <% if current_user.entity.current_period_end.present? %>
+                <div class="col-md-6 mb-3">
+                  <h6 class="text-muted small mb-2">Next Billing Date</h6>
+                  <div><%= current_user.entity.current_period_end.strftime("%B %d, %Y") %></div>
+                </div>
+              <% end %>
+              
+              <% if current_user.entity.token_limit.present? %>
+                <div class="col-md-12">
+                  <h6 class="text-muted small mb-2">AI Token Usage</h6>
+                  <div class="progress" style="height: 25px;">
+                    <% usage_percent = (current_user.entity.token_usage.to_f / current_user.entity.token_limit.to_f * 100).round(1) %>
+                    <div class="progress-bar <%= usage_percent > 80 ? 'bg-warning' : 'bg-success' %>" 
+                         role="progressbar" 
+                         style="width: <%= [usage_percent, 100].min %>%"
+                         aria-valuenow="<%= current_user.entity.token_usage %>" 
+                         aria-valuemin="0" 
+                         aria-valuemax="<%= current_user.entity.token_limit %>">
+                      <%= number_with_delimiter(current_user.entity.token_usage) %> / <%= number_with_delimiter(current_user.entity.token_limit) %> 
+                      (<%= usage_percent %>%)
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+            
+            <% unless current_user.entity.stripe_customer_id.present? %>
+              <div class="mt-3">
+                <%= link_to "#", class: "btn btn-success w-100" do %>
+                  <i class="fas fa-rocket me-2"></i>Upgrade Your Plan
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Voice Settings -->
+      <%= render 'voice_settings' %>
+      
       <!-- Activity Stats -->
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white">
@@ -74,7 +188,8 @@
 
     <!-- Sidebar -->
     <div class="col-lg-4">
-      <div class="card border-0 shadow-sm">
+      <!-- Account Security Card -->
+      <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white">
           <h5 class="mb-0"><i class="fas fa-key text-warning"></i> Account Security</h5>
         </div>
@@ -88,10 +203,101 @@
             <%= current_user.sign_in_count || 0 %> times
           </p>
           
-          <%= link_to edit_user_registration_path, class: "btn btn-outline-primary w-100" do %>
+          <!-- Change Password Button with Modal -->
+          <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
             <i class="fas fa-lock me-2"></i> Change Password
-          <% end %>
+          </button>
         </div>
+      </div>
+
+      <!-- Account Deletion Card -->
+      <div class="card border-0 shadow-sm border-danger">
+        <div class="card-header bg-danger bg-opacity-10">
+          <h5 class="mb-0 text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Danger Zone</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small">Once you delete your account, there is no going back. Please be certain.</p>
+          <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+            <i class="fas fa-trash me-2"></i> Delete My Account
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <%= form_for(current_user, url: registration_path(current_user), html: { method: :put }) do |f| %>
+        <div class="modal-header">
+          <h5 class="modal-title" id="changePasswordModalLabel">
+            <i class="fas fa-lock me-2"></i>Change Password
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <% if current_user.errors.any? %>
+            <div class="alert alert-danger">
+              <% current_user.errors.full_messages.each do |message| %>
+                <div><%= message %></div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <div class="mb-3">
+            <%= f.label :password, "New Password", class: "form-label" %>
+            <%= f.password_field :password, autocomplete: "new-password", class: "form-control", placeholder: "Leave blank to keep current password" %>
+            <div class="form-text"><i class="fas fa-info-circle me-1"></i>Minimum 6 characters</div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :password_confirmation, "Confirm New Password", class: "form-label" %>
+            <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "form-control", placeholder: "Re-enter new password" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :current_password, class: "form-label" %>
+            <%= f.password_field :current_password, autocomplete: "current-password", class: "form-control", required: true %>
+            <div class="form-text"><i class="fas fa-shield-alt me-1"></i>We need your current password to confirm your changes</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <%= f.submit "Update Password", class: "btn btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Account Modal -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-danger">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteAccountModalLabel">
+          <i class="fas fa-exclamation-triangle me-2"></i>Delete Account
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger">
+          <strong>Warning:</strong> This action cannot be undone!
+        </div>
+        <p>Once you delete your account:</p>
+        <ul>
+          <li>All your data will be permanently deleted</li>
+          <li>You will lose access to all campaigns and contacts</li>
+          <li>Your landing pages will be deactivated</li>
+          <li>This action is irreversible</li>
+        </ul>
+        <p class="mb-0"><strong>Are you absolutely sure you want to continue?</strong></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <%= button_to "Yes, Delete My Account", registration_path(current_user), method: :delete, data: { confirm: "Are you ABSOLUTELY SURE? Type 'DELETE' to confirm.", turbo: false }, class: "btn btn-danger" %>
       </div>
     </div>
   </div>

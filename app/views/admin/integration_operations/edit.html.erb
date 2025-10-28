@@ -54,21 +54,29 @@
             </div>
 
             <div class="row">
-              <div class="col-md-4 mb-3">
+              <div class="col-md-3 mb-3">
+                <div class="form-check form-switch">
+                  <%= f.check_box :is_enabled, class: "form-check-input", role: "switch" %>
+                  <%= f.label :is_enabled, "Enabled", class: "form-check-label" %>
+                  <small class="d-block text-muted">Allow this operation to be used</small>
+                </div>
+              </div>
+              
+              <div class="col-md-3 mb-3">
                 <div class="form-check">
                   <%= f.check_box :is_idempotent, class: "form-check-input" %>
                   <%= f.label :is_idempotent, "Idempotent", class: "form-check-label" %>
                 </div>
               </div>
               
-              <div class="col-md-4 mb-3">
+              <div class="col-md-3 mb-3">
                 <div class="form-check">
                   <%= f.check_box :requires_confirmation, class: "form-check-input" %>
                   <%= f.label :requires_confirmation, "Requires Confirmation", class: "form-check-label" %>
                 </div>
               </div>
               
-              <div class="col-md-4 mb-3">
+              <div class="col-md-3 mb-3">
                 <%= f.label :max_limit, class: "form-label" %>
                 <%= f.number_field :max_limit, class: "form-control", placeholder: "e.g., 100" %>
               </div>

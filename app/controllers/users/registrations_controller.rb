@@ -8,6 +8,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   before_action :configure_sign_up_params, only: [ :create ]
   before_action :configure_account_update_params, only: [ :update ]
+  before_action :redirect_to_profile, only: [ :edit ]
 
   # Override build_resource to parse full_name and create entity before user creation
   def build_resource(hash = {})
@@ -142,5 +143,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
     end
 
     subdomain
+  end
+
+  def redirect_to_profile
+    redirect_to user_path(current_user), notice: "Manage all your account settings here"
   end
 end

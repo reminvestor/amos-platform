@@ -204,11 +204,30 @@ class BedrockService
         }
 
         if @user && @entity && @resource_manager
+          # Track tokens in resource manager (updates entity total)
           @resource_manager.track_tokens(@user, model_id, tokens, {
             stream: false,
             method: "invoke_model",
             timestamp: Time.current
           })
+          
+          # Log AI usage for observability and billing
+          AiUsageLog.log_usage(
+            entity: @entity,
+            user: @user,
+            model: model_id,
+            input_tokens: tokens[:input],
+            output_tokens: tokens[:output],
+            duration_ms: nil, # Will add timing in next iteration
+            request_type: 'chat',
+            scout_message: nil, # Will link to scout_message if available
+            metadata: {
+              method: 'invoke_model',
+              stream: false,
+              cache_creation: response_body["usage"]["cache_write_input_tokens"] || 0,
+              cache_read: response_body["usage"]["cache_read_input_tokens"] || 0
+            }
+          )
         end
 
         Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
@@ -442,9 +461,10 @@ class BedrockService
     end
   end
 
-  def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], &block)
-    # Check if prompt caching is enabled (default: true)
-    caching_enabled = ENV.fetch('BEDROCK_PROMPT_CACHING_ENABLED', 'true') == 'true'
+  def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
+    # Check if prompt caching is enabled (default: false - disabled due to AWS API limitations)
+    # The enable_prompt_caching parameter is kept for API compatibility but currently ignored
+    caching_enabled = ENV.fetch('BEDROCK_PROMPT_CACHING_ENABLED', 'false') == 'true'
 
     # Normalize model name (handle variants like "claude-sonnet-4.5")
     normalized_model = model.to_s.gsub('.', '-')
@@ -655,12 +675,36 @@ class BedrockService
 
               # Track tokens if we have user and entity
               if @user && @entity && @resource_manager
+                # Track tokens in resource manager (updates entity total)
                 @resource_manager.track_tokens(@user, model_id, tokens, {
                   stream: true,
                   timestamp: Time.current,
                   cache_write: cache_write,
                   cache_read: cache_read
                 })
+                
+                # Log AI usage for observability and billing
+                duration_ms = ((Time.now - start_time) * 1000).round
+                cache_creation = usage.respond_to?(:cache_write_input_tokens) ? (usage.cache_write_input_tokens || 0) : 0
+                cache_read = usage.respond_to?(:cache_read_input_tokens) ? (usage.cache_read_input_tokens || 0) : 0
+                
+                AiUsageLog.log_usage(
+                  entity: @entity,
+                  user: @user,
+                  model: model_id,
+                  input_tokens: tokens[:input],
+                  output_tokens: tokens[:output],
+                  duration_ms: duration_ms,
+                  request_type: 'chat',
+                  scout_message: nil,
+                  metadata: {
+                    method: 'invoke_model_with_response_stream',
+                    stream: true,
+                    chunks: chunk_count,
+                    cache_creation: cache_creation,
+                    cache_read: cache_read
+                  }
+                )
               end
 
               # Yield usage info including cache stats

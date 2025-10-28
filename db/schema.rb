@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_25_165018) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_26_191733) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -201,6 +201,30 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_165018) do
     t.index ["sender_id"], name: "index_agent_messages_on_sender_id"
     t.index ["task_session_id", "created_at"], name: "index_agent_messages_on_task_session_id_and_created_at"
     t.index ["task_session_id"], name: "index_agent_messages_on_task_session_id"
+  end
+
+  create_table "ai_usage_logs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "scout_message_id"
+    t.string "model", null: false
+    t.integer "input_tokens", default: 0
+    t.integer "output_tokens", default: 0
+    t.integer "total_tokens", default: 0
+    t.decimal "cost_cents", precision: 10, scale: 4, default: "0.0"
+    t.integer "duration_ms"
+    t.string "request_type", default: "chat"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_ai_usage_logs_on_created_at"
+    t.index ["entity_id", "created_at"], name: "index_ai_usage_logs_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_ai_usage_logs_on_entity_id"
+    t.index ["model"], name: "index_ai_usage_logs_on_model"
+    t.index ["request_type"], name: "index_ai_usage_logs_on_request_type"
+    t.index ["scout_message_id"], name: "index_ai_usage_logs_on_scout_message_id"
+    t.index ["user_id", "created_at"], name: "index_ai_usage_logs_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_ai_usage_logs_on_user_id"
   end
 
   create_table "analytics_connections", force: :cascade do |t|
@@ -847,6 +871,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_165018) do
     t.index ["integration_id"], name: "index_oauth_configurations_on_integration_id", unique: true
   end
 
+  create_table "observability_events", force: :cascade do |t|
+    t.string "event_type", null: false
+    t.bigint "entity_id"
+    t.bigint "user_id"
+    t.string "resource_type"
+    t.bigint "resource_id"
+    t.jsonb "metadata", default: {}
+    t.integer "duration_ms"
+    t.string "status"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_observability_events_on_created_at"
+    t.index ["entity_id", "created_at"], name: "index_observability_events_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_observability_events_on_entity_id"
+    t.index ["event_type"], name: "index_observability_events_on_event_type"
+    t.index ["resource_type", "resource_id"], name: "index_observability_events_on_resource_type_and_resource_id"
+    t.index ["status"], name: "index_observability_events_on_status"
+    t.index ["user_id"], name: "index_observability_events_on_user_id"
+  end
+
   create_table "payouts", force: :cascade do |t|
     t.bigint "affiliate_id", null: false
     t.decimal "amount", precision: 10, scale: 2, null: false
@@ -1487,6 +1532,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_165018) do
     t.index ["entity_id"], name: "index_tenant_quotas_on_entity_id"
   end
 
+  create_table "tts_usage_logs", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.integer "character_count"
+    t.string "voice_id"
+    t.float "cost_cents"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_tts_usage_logs_on_entity_id"
+    t.index ["user_id"], name: "index_tts_usage_logs_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -1509,10 +1566,42 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_165018) do
     t.string "api_key_encrypted"
     t.boolean "plugin_development_enabled", default: false
     t.bigint "entity_id", null: false
+    t.jsonb "tts_preferences", default: {}, null: false
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["tts_preferences"], name: "index_users_on_tts_preferences", using: :gin
+  end
+
+  create_table "voice_assistant_settings", force: :cascade do |t|
+    t.string "key"
+    t.text "value"
+    t.string "setting_type"
+    t.text "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_voice_assistant_settings_on_key", unique: true
+  end
+
+  create_table "voice_sessions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "entity_id", null: false
+    t.string "session_id", null: false
+    t.string "status", default: "active", null: false
+    t.jsonb "context", default: {}
+    t.jsonb "transcript_history", default: []
+    t.jsonb "metadata", default: {}
+    t.datetime "started_at"
+    t.datetime "ended_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "status"], name: "index_voice_sessions_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_voice_sessions_on_entity_id"
+    t.index ["session_id"], name: "index_voice_sessions_on_session_id", unique: true
+    t.index ["started_at"], name: "index_voice_sessions_on_started_at"
+    t.index ["status"], name: "index_voice_sessions_on_status"
+    t.index ["user_id"], name: "index_voice_sessions_on_user_id"
   end
 
   create_table "voice_assistant_settings", force: :cascade do |t|
@@ -1676,6 +1765,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_165018) do
   add_foreign_key "affiliates", "users"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
   add_foreign_key "agent_messages", "task_sessions"
+  add_foreign_key "ai_usage_logs", "entities"
+  add_foreign_key "ai_usage_logs", "scout_messages"
+  add_foreign_key "ai_usage_logs", "users"
   add_foreign_key "analytics_connections", "entities"
   add_foreign_key "analytics_query_logs", "entities"
   add_foreign_key "analytics_query_logs", "metric_definitions"
@@ -1743,6 +1835,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_165018) do
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
   add_foreign_key "oauth_configurations", "integrations"
+  add_foreign_key "observability_events", "entities"
+  add_foreign_key "observability_events", "users"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
   add_foreign_key "plugin_permissions", "custom_plugins"
@@ -1799,6 +1893,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_25_165018) do
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
   add_foreign_key "tenant_quotas", "entities"
+  add_foreign_key "tts_usage_logs", "entities"
+  add_foreign_key "tts_usage_logs", "users"
   add_foreign_key "users", "entities"
   add_foreign_key "voice_sessions", "entities"
   add_foreign_key "voice_sessions", "users"
