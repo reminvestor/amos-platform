@@ -392,7 +392,7 @@ export default class extends Controller {
       }
 
       // Get selected model (from parameter or global function)
-      const selectedModel = model || (window.getSelectedModel ? window.getSelectedModel() : 'claude-sonnet-4-5');
+      const selectedModel = model || (window.getSelectedModel ? window.getSelectedModel() : 'claude-3-haiku');
       console.log("🤖 Using model:", selectedModel);
 
       // Use streaming endpoint for better timeout handling
