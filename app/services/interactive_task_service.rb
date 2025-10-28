@@ -774,6 +774,8 @@ class InteractiveTaskService
         canvas_data: response[:canvas_data],
         tools_used: response[:tools_used],
         sources: response[:sources] || [],
+        model_used: response[:model_used],
+        model_name: response[:model_name],
         mode: 'autonomous'
       }
     elsif response && response[:message]
@@ -786,6 +788,8 @@ class InteractiveTaskService
         canvas_data: response[:canvas_data],
         tools_used: response[:tools_used],
         sources: response[:sources] || [],
+        model_used: response[:model_used],
+        model_name: response[:model_name],
         mode: 'autonomous'
       }
     else
