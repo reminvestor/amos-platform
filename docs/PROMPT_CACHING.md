@@ -2,6 +2,37 @@
 
 This document explains how to configure and use prompt caching with AWS Bedrock to reduce token costs by up to 49%.
 
+## ⚠️ Current Status: Not Working Yet
+
+**As of October 2024, prompt caching is NOT working with AWS Bedrock Converse API**, despite being implemented correctly according to AWS documentation.
+
+**Error observed**:
+```
+Unexpected error: parameter validator found 2 errors:
+- unexpected value at params[:system][1][:cachePoint]
+- unexpected value at params[:tool_config][:tools][23][:cachePoint]
+```
+
+**What we tried**:
+- ✅ Regional endpoints (`us.anthropic.claude-3-5-sonnet-20241022-v2:0`)
+- ✅ Correct `cachePoint` format as separate array elements
+- ✅ Proper field names (`cache_write_input_tokens_count`, `cache_read_input_tokens_count`)
+- ❌ API still rejects the `cachePoint` parameter
+
+**Possible reasons**:
+1. Feature not yet available in all AWS regions/accounts
+2. Requires specific Bedrock API version or SDK version
+3. AWS documentation may be ahead of actual feature availability
+4. May only work with InvokeModel API, not Converse API
+
+**Current recommendation**:
+- Set `BEDROCK_PROMPT_CACHING_ENABLED=false` (default in code)
+- Use Claude Sonnet 4.5 without caching
+- Monitor AWS Bedrock release notes for Converse API prompt caching support
+- Code is ready to enable when AWS makes it available
+
+---
+
 ## What is Prompt Caching?
 
 Prompt caching allows you to cache static components of your prompts (system prompt and tool definitions) for up to 5 minutes. When cached content is reused, you get a **90% discount** on those tokens.
@@ -44,14 +75,16 @@ Prompt caching allows you to cache static components of your prompts (system pro
 In your `.env` file:
 
 ```bash
-# Enable prompt caching (default: true)
-BEDROCK_PROMPT_CACHING_ENABLED=true
-
-# Disable prompt caching (use latest models without caching)
+# Disable prompt caching (RECOMMENDED - current default)
 BEDROCK_PROMPT_CACHING_ENABLED=false
+
+# Enable prompt caching (not working yet as of Oct 2024)
+BEDROCK_PROMPT_CACHING_ENABLED=true
 ```
 
-**Default**: If not set, caching is **enabled** (true).
+**Default**: If not set, caching defaults to **enabled** (true) in code, but should be explicitly set to `false` until AWS Bedrock supports it.
+
+**Current recommendation**: Set `BEDROCK_PROMPT_CACHING_ENABLED=false` in your `.env` to avoid API errors.
 
 ## Model Endpoint Trade-off
 
@@ -215,18 +248,21 @@ Watch your logs for cache statistics:
 ## Troubleshooting
 
 **Error: "unexpected value at params[:system][1][:cachePoint]"**
-- You're using a global endpoint which doesn't support caching
-- Solution: Set `BEDROCK_PROMPT_CACHING_ENABLED=true` or verify regional endpoint
+- **Current issue**: API rejects `cachePoint` even with regional endpoints
+- **Why**: Feature appears not to be available yet in AWS Bedrock Converse API
+- **Solution**: Set `BEDROCK_PROMPT_CACHING_ENABLED=false` to use Sonnet 4.5 without caching
+- **Future**: When AWS adds support, change to `BEDROCK_PROMPT_CACHING_ENABLED=true`
 
-**Logs show 0 cache reads on second request**
+**Logs show 0 cache reads on second request** (when caching works):
 - Cache expired (5 minute TTL exceeded)
 - Different session (cache is per-content, not per-user)
 - Content changed (system prompt or tools modified)
 
-**Still seeing full token costs**
+**Still seeing full token costs** (when caching works):
 - Verify `BEDROCK_PROMPT_CACHING_ENABLED=true` in `.env`
 - Check logs for `💾 Prompt caching enabled` messages
 - Ensure using regional endpoints (`us.anthropic.*`)
+- Note: As of Oct 2024, caching doesn't work yet (see warning at top)
 
 ## References
 
