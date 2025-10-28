@@ -99,16 +99,16 @@ module Tools
           }
         #{'  '}
           .comparison-card {
-            background: white;
-            border: 1px solid #e0e0e0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
           }
         #{'  '}
           .comparison-card h4 {
             margin: 0 0 15px 0;
-            color: #333;
+            color: #FFFFFF;
           }
         #{'  '}
           .metric {
@@ -118,12 +118,12 @@ module Tools
           }
         #{'  '}
           .metric-label {
-            color: #666;
+            color: rgba(255, 255, 255, 0.8);
           }
         #{'  '}
           .metric-value {
             font-weight: bold;
-            color: #333;
+            color: #FFFFFF;
           }
         #{'  '}
           .metric-positive {
@@ -153,7 +153,7 @@ module Tools
           .dashboard-header {
             margin-bottom: 30px;
             padding-bottom: 20px;
-            border-bottom: 2px solid #e0e0e0;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
           }
         #{'  '}
           .dashboard-grid {
@@ -163,8 +163,8 @@ module Tools
           }
         #{'  '}
           .dashboard-widget {
-            background: white;
-            border: 1px solid #e0e0e0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
             padding: 20px;
             min-height: 200px;
@@ -180,14 +180,14 @@ module Tools
           .widget-title {
             font-size: 18px;
             font-weight: 600;
-            color: #212529 !important;
+            color: #FFFFFF !important;
             background: transparent !important;
           }
         #{'  '}
           .widget-value {
             font-size: 32px;
             font-weight: bold;
-            color: #1976d2;
+            color: #FFFFFF;
             margin: 20px 0;
           }
         #{'  '}
@@ -320,23 +320,25 @@ module Tools
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
+            background: rgba(255, 255, 255, 0.05);
           }
         #{'  '}
           .data-table th,
           .data-table td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            color: #FFFFFF;
           }
         #{'  '}
           .data-table th {
-            background-color: #f8f9fa;
+            background-color: rgba(255, 255, 255, 0.1);
             font-weight: 600;
-            color: #333;
+            color: #FFFFFF;
           }
         #{'  '}
           .data-table tr:hover {
-            background-color: #f8f9fa;
+            background-color: rgba(255, 255, 255, 0.15);
           }
         </style>
       HTML
@@ -586,9 +588,10 @@ module Tools
         <style>
           .simple-chart {
             margin: 20px 0;
-            background: white;
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
           }
 
           .chart-row {
@@ -607,7 +610,7 @@ module Tools
 
           .chart-bar-container {
             flex: 1;
-            background: #f0f0f0;
+            background: rgba(255, 255, 255, 0.15);
             border-radius: 4px;
             height: 32px;
             position: relative;
@@ -797,31 +800,31 @@ module Tools
           }
         #{'  '}
           .dynamic-content .ai-metric-card {
-            background: #ffffff !important;
-            color: #212529 !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .dynamic-content .ai-metric-card * {
-            color: inherit !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           /* Handle AI-generated metric-card classes (without dynamic- prefix) */
           .dynamic-content .metric-card {
-            background: #ffffff !important;
-            color: #212529 !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .dynamic-content .metric-card * {
-            color: #212529 !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .dynamic-content .metric-label {
-            color: #495057 !important;
+            color: rgba(255, 255, 255, 0.8) !important;
             font-weight: 600 !important;
           }
         #{'  '}
           .dynamic-content .metric-value {
-            color: #212529 !important;
+            color: #FFFFFF !important;
             font-weight: 700 !important;
           }
         #{'  '}
@@ -831,9 +834,9 @@ module Tools
         #{'  '}
           .data-section h3 {
             margin-bottom: 20px;
-            color: #212529 !important;
+            color: #FFFFFF !important;
             background: transparent !important;
-            border-bottom: 2px solid #e0e0e0;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
             padding-bottom: 10px;
             font-weight: 600;
           }
@@ -845,18 +848,18 @@ module Tools
           }
         #{'  '}
           .object-card {
-            background: white;
-            border: 1px solid #e0e0e0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
           }
         #{'  '}
           .object-card .card-title {
             font-weight: 600;
             font-size: 18px;
             margin-bottom: 10px;
-            color: #212529 !important;
+            color: #FFFFFF !important;
             background: transparent !important;
           }
         #{'  '}
@@ -869,13 +872,13 @@ module Tools
         #{'  '}
           .object-card .field-label {
             font-size: 14px;
-            color: #6c757d;
+            color: rgba(255, 255, 255, 0.8);
             text-transform: capitalize;
           }
         #{'  '}
           .object-card .field-value {
             font-size: 14px;
-            color: #212529;
+            color: #FFFFFF;
             font-weight: 500;
             text-align: right;
           }
@@ -888,27 +891,28 @@ module Tools
           .data-table {
             width: 100%;
             border-collapse: collapse;
-            background: white;
+            background: rgba(255, 255, 255, 0.05);
           }
         #{'  '}
           .data-table th,
           .data-table td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            color: #FFFFFF;
           }
         #{'  '}
           .data-table th {
-            background-color: #f8f9fa;
+            background-color: rgba(255, 255, 255, 0.1);
             font-weight: 600;
-            color: #333;
+            color: #FFFFFF;
             text-transform: capitalize;
             position: sticky;
             top: 0;
           }
         #{'  '}
           .data-table tr:hover {
-            background-color: #f8f9fa;
+            background-color: rgba(255, 255, 255, 0.15);
           }
         #{'  '}
           .data-list {
@@ -918,7 +922,8 @@ module Tools
         #{'  '}
           .data-list li {
             padding: 10px;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            color: #FFFFFF;
           }
         #{'  '}
           .data-list li:last-child {
@@ -926,7 +931,8 @@ module Tools
           }
         #{'  '}
           .key-value-display {
-            background: #f8f9fa;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
             padding: 20px;
           }
@@ -940,12 +946,12 @@ module Tools
         #{'  '}
           .key-value-key {
             font-weight: 500;
-            color: #6c757d;
+            color: rgba(255, 255, 255, 0.8);
             text-transform: capitalize;
           }
         #{'  '}
           .key-value-value {
-            color: #333;
+            color: #FFFFFF;
           }
         #{'  '}
           @media (max-width: 768px) {
