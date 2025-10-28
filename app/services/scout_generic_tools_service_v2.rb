@@ -293,39 +293,41 @@ class ScoutGenericToolsServiceV2
       - "show landing pages" or "landing pages" → load_canvas with canvas_name: "landing_page_viewer"
       - "show contacts" or "contacts" → load_canvas with canvas_name: "contact_viewer"
       
-      DOCUMENT HANDLING (CRITICAL):
-      When user uploads a file (PDF, DOCX, etc.) and asks about it:
-      
-      STEP 1: ALWAYS read the document first!
-      - Use read_document tool with the asset_id from attached files
-      - This extracts the actual text content
-      
-      STEP 2: Then perform the requested task
-      - Translate: Read document → translate the extracted text
-      - Summarize: Read document → summarize the content
-      - Analyze: Read document → analyze the content
-      - Answer questions: Read document → answer based on content
-      
-      FILE INFO: Check for attached_files in context - they have asset_id and filename
-      
-      WRONG: Searching web based on filename ❌
-      RIGHT: read_document to get actual content ✅
+      🔴 DOCUMENT HANDLING - TWO DIFFERENT TOOLS FOR TWO SITUATIONS:
+
+      ═══════════════════════════════════════════════════════════════════════════════
+      SITUATION 1: User JUST uploaded a file in THIS message (has asset_id in context)
+      ═══════════════════════════════════════════════════════════════════════════════
+      → Use read_document(asset_id: X) to read the NEWLY uploaded file
 
       Examples:
-      - User uploads "document.pdf" and says "Translate this"
-        → read_document(asset_id: X) → Got Portuguese text → Translate to English
-      - User uploads "report.pdf" and says "Summarize this"
-        → read_document(asset_id: X) → Got content → Provide summary
       - User uploads "invoice.pdf" and says "What's the total?"
-        → read_document(asset_id: X) → Got content → Find total amount
+        → read_document(asset_id: X) → Extract content → Answer
+      - User uploads "document.pdf" and says "Translate this"
+        → read_document(asset_id: X) → Get text → Translate
+
+      ═══════════════════════════════════════════════════════════════════════════════
+      SITUATION 2: User asks about PREVIOUSLY uploaded documents (NOT in current message)
+      ═══════════════════════════════════════════════════════════════════════════════
+      → Use query_rag_store(query: "...") to search processed documents in RAG storage
+
+      Detection: User refers to past uploads WITHOUT attaching a new file
+      - "tell me about X" (no file attached now)
+      - "what's in my documents about X"
+      - "find my server error info"
+      - "summarize my product data"
+
+      🔴 RULE: If NO file attached in current message → USE query_rag_store!
 
       RAG KNOWLEDGE BASE (CRITICAL):
       When users ask questions about information in their uploaded documents (that have been processed and stored):
 
       ALWAYS use query_rag_store tool to search the knowledge base FIRST!
 
-      Detection Patterns:
+      Detection Patterns (NO file attached in current message):
       - "tell me about X" → query_rag_store(query: "X")
+      - "tell me about my X" → query_rag_store(query: "X")
+      - "what's my X info" → query_rag_store(query: "X")
       - "summarize my data for X" → query_rag_store(query: "X")
       - "what do I have about X" → query_rag_store(query: "X")
       - "find information on X" → query_rag_store(query: "X")
@@ -338,6 +340,11 @@ class ScoutGenericToolsServiceV2
       4. NEVER say "I don't have information" without checking RAG first!
 
       Examples:
+      - User: "tell me about my server error" (no file attached)
+        → query_rag_store(query: "server error", top_k: 5)
+        → Found: Activity ID 4d03d1ae... Session ID 66b77b1b...
+        → "Based on your uploaded documents, I found server error info with Activity ID 4d03d1ae..."
+
       - User: "tell me about tires"
         → query_rag_store(query: "tires", top_k: 5)
         → If found: "Based on your documents, here's what I found about tires..."
