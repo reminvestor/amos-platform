@@ -180,7 +180,8 @@ module Tools
           .widget-title {
             font-size: 18px;
             font-weight: 600;
-            color: #333;
+            color: #212529 !important;
+            background: transparent !important;
           }
         #{'  '}
           .widget-value {
@@ -613,6 +614,17 @@ module Tools
             color: #212529 !important;
           }
         #{'  '}
+          /* Ensure all headings have transparent backgrounds */
+          .dynamic-content h1,
+          .dynamic-content h2,
+          .dynamic-content h3,
+          .dynamic-content h4,
+          .dynamic-content h5,
+          .dynamic-content h6 {
+            background: transparent !important;
+            background-color: transparent !important;
+          }
+        #{'  '}
           .metric-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -712,9 +724,11 @@ module Tools
         #{'  '}
           .data-section h3 {
             margin-bottom: 20px;
-            color: #333;
+            color: #212529 !important;
+            background: transparent !important;
             border-bottom: 2px solid #e0e0e0;
             padding-bottom: 10px;
+            font-weight: 600;
           }
         #{'  '}
           .object-cards {
@@ -735,7 +749,8 @@ module Tools
             font-weight: 600;
             font-size: 18px;
             margin-bottom: 10px;
-            color: #212529;
+            color: #212529 !important;
+            background: transparent !important;
           }
         #{'  '}
           .object-card .card-field {
