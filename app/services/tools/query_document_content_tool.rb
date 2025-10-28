@@ -7,14 +7,14 @@ module Tools
     def self.metadata
       {
         name: 'query_document_content',
-        description: 'Search for information across all your documents (session and permanent storage). Automatically checks recent uploads first (fast), then searches permanent knowledge base (comprehensive).',
+        description: 'REQUIRED when user asks about uploaded documents. Trigger phrases: "tell me about X", "what\'s in my X", "find X", "search my documents". Searches ALL documents (recent uploads + permanent storage) automatically. Use this instead of answering from memory when user asks about document content.',
         category: 'document',
         input_schema: {
           type: 'object',
           properties: {
             query: {
               type: 'string',
-              description: 'What to search for in the documents (e.g., "tires", "service ticket", "pricing")'
+              description: 'What to search for in the documents (e.g., "tires", "service ticket", "server error")'
             },
             top_k: {
               type: 'integer',
