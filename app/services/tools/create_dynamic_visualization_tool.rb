@@ -536,6 +536,104 @@ module Tools
       end
     end
 
+    def is_chart_data?(hash)
+      # Detect if this is chart data by looking for common patterns
+      keys = hash.keys.map(&:to_s).map(&:downcase)
+
+      # Chart data typically has categories/labels + counts/values
+      has_labels = (keys & ['categories', 'labels', 'sizes']).any?
+      has_values = (keys & ['counts', 'values', 'data']).any?
+
+      has_labels && has_values
+    end
+
+    def render_chart_as_table(chart_data, title)
+      # Extract labels and values from chart data
+      labels = chart_data['categories'] || chart_data['Categories'] ||
+               chart_data[:categories] || chart_data['labels'] ||
+               chart_data['Labels'] || chart_data[:labels] ||
+               chart_data['Sizes'] || chart_data[:sizes] || []
+
+      values = chart_data['counts'] || chart_data['Counts'] ||
+               chart_data[:counts] || chart_data['values'] ||
+               chart_data['Values'] || chart_data[:values] ||
+               chart_data['data'] || chart_data[:data] || []
+
+      return "<p>No data to display</p>" if labels.empty? || values.empty?
+
+      # Create a simple bar chart visualization using HTML/CSS
+      max_value = values.max.to_f
+
+      rows = labels.zip(values).map do |label, value|
+        percentage = (value.to_f / max_value * 100).round(1)
+        <<~HTML
+          <div class="chart-row">
+            <div class="chart-label">#{label}</div>
+            <div class="chart-bar-container">
+              <div class="chart-bar" style="width: #{percentage}%">
+                <span class="chart-value">#{value}</span>
+              </div>
+            </div>
+          </div>
+        HTML
+      end.join
+
+      <<~HTML
+        <div class="simple-chart">
+          #{rows}
+        </div>
+
+        <style>
+          .simple-chart {
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+          }
+
+          .chart-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 15px;
+          }
+
+          .chart-label {
+            min-width: 150px;
+            font-weight: 500;
+            color: #212529 !important;
+            background: transparent !important;
+          }
+
+          .chart-bar-container {
+            flex: 1;
+            background: #f0f0f0;
+            border-radius: 4px;
+            height: 32px;
+            position: relative;
+          }
+
+          .chart-bar {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            transition: width 0.3s ease;
+            min-width: 60px;
+          }
+
+          .chart-value {
+            color: white !important;
+            font-weight: 600;
+            font-size: 14px;
+          }
+        </style>
+      HTML
+    end
+
     def generate_dynamic_content(data, options = {})
       # Intelligently render any data structure
       content_parts = []
@@ -568,11 +666,19 @@ module Tools
 
           content_parts << "</div>"
         elsif value.is_a?(Hash) && !value.empty?
-          # Nested object - show as details
-          content_parts << "<div class='data-section'>"
-          content_parts << "<h3>#{key.to_s.humanize}</h3>"
-          content_parts << generate_key_value_display(value)
-          content_parts << "</div>"
+          # Check if this is chart data (has categories/counts or labels/data patterns)
+          if is_chart_data?(value)
+            content_parts << "<div class='data-section'>"
+            content_parts << "<h3>#{key.to_s.humanize}</h3>"
+            content_parts << render_chart_as_table(value, key.to_s.humanize)
+            content_parts << "</div>"
+          else
+            # Nested object - show as details
+            content_parts << "<div class='data-section'>"
+            content_parts << "<h3>#{key.to_s.humanize}</h3>"
+            content_parts << generate_key_value_display(value)
+            content_parts << "</div>"
+          end
         end
       end
 
