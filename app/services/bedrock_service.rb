@@ -496,10 +496,8 @@ class BedrockService
       # Add system prompt if present (WITH PROMPT CACHING)
       if system_prompt.present?
         payload[:system] = [
-          {
-            text: system_prompt,
-            cache_control: { type: "ephemeral" }  # Cache system prompt (5min TTL, 90% discount)
-          }
+          { text: system_prompt },
+          { cache_control: { type: "ephemeral" } }  # Separate cache marker (5min TTL, 90% discount)
         ]
         Rails.logger.info "💾 Prompt caching enabled for system prompt (~7000 tokens)"
       end
@@ -508,10 +506,10 @@ class BedrockService
       if tools.any?
         formatted_tools = format_tools_for_bedrock(tools)
 
-        # Mark last tool with cache control to cache entire tool set
+        # Add cache control marker as separate element after all tools
         # AWS Bedrock caches everything up to and including the cache_control marker
         if formatted_tools.any?
-          formatted_tools.last[:cache_control] = { type: "ephemeral" }
+          formatted_tools << { cache_control: { type: "ephemeral" } }
         end
 
         payload[:tool_config] = {
@@ -520,8 +518,8 @@ class BedrockService
         }
 
         # DEBUG: Log tool names being sent
-        tool_names = formatted_tools.map { |t| t.dig(:tool_spec, :name) }
-        Rails.logger.info "🔧 Sending #{formatted_tools.length} tools to Claude (with caching): #{tool_names.join(', ')}"
+        tool_names = formatted_tools[0..-2].map { |t| t.dig(:tool_spec, :name) }  # Exclude cache marker
+        Rails.logger.info "🔧 Sending #{tool_names.length} tools to Claude (with caching): #{tool_names.join(', ')}"
       end
 
       # Buffer for accumulating content
