@@ -358,6 +358,7 @@ class ScoutGenericToolsServiceV2
       Canvas Loading:
       - "show integrations" or "integrations" or "connections" → load_canvas with canvas_name: "integrations_manager"
       - "analytics" or "data" → load_canvas with canvas_name: "analytics_dashboard"
+      - "show me my documents" or "show documents" or "document library" or "my files" or "uploaded files" → load_canvas with canvas_name: "document_viewer"
 
       CRITICAL: Always load the canvas FIRST using the load_canvas tool, then explain what's shown.
 
