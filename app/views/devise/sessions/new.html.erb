@@ -56,14 +56,14 @@
               <option value="">-- Select a test user --</option>
               <% User.includes(:entity).limit(10).each do |user| %>
                 <option value="<%= user.email %>"
-                        data-password="password123"
+                        data-password="<%= Rails.application.credentials.dig(:dev_password) || 'password123' %>"
                         data-entity="<%= user.entity&.name %>">
                   <%= user.email %> (<%= user.entity&.name || 'No Entity' %>)
                 </option>
               <% end %>
             </select>
             <small class="form-text text-muted">
-              All test users have password: <code>password123</code>
+              Select a user to auto-fill login credentials
             </small>
           </div>
 
