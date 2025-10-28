@@ -228,6 +228,12 @@ module Tools
         </div>
 
         <style>
+          /* Force all report text to be dark and readable */
+          .report-visualization,
+          .report-visualization * {
+            color: #212529 !important;
+          }
+        #{'  '}
           .report-header {
             background: #f8f9fa;
             padding: 30px;
@@ -235,9 +241,19 @@ module Tools
             margin-bottom: 30px;
           }
         #{'  '}
+          .report-header h1 {
+            color: #212529 !important;
+            font-weight: 600;
+          }
+        #{'  '}
           .report-meta {
             margin-top: 20px;
-            color: #666;
+            color: #6c757d !important;
+          }
+        #{'  '}
+          .report-meta p,
+          .report-meta strong {
+            color: #6c757d !important;
           }
         #{'  '}
           .report-section {
@@ -250,10 +266,19 @@ module Tools
         #{'  '}
           .section-title {
             font-size: 24px;
-            color: #333;
+            color: #212529 !important;
             margin-bottom: 20px;
             padding-bottom: 10px;
             border-bottom: 2px solid #e0e0e0;
+            font-weight: 600;
+          }
+        #{'  '}
+          .report-content {
+            color: #212529 !important;
+          }
+        #{'  '}
+          .report-content * {
+            color: #212529 !important;
           }
         #{'  '}
           .report-footer {
@@ -261,6 +286,10 @@ module Tools
             padding-top: 20px;
             border-top: 1px solid #e0e0e0;
             text-align: center;
+          }
+        #{'  '}
+          .report-footer .text-muted {
+            color: #6c757d !important;
           }
         </style>
       HTML
@@ -557,13 +586,30 @@ module Tools
         </div>
 
         <style>
-          /* Reset any inherited styles */
-          .dynamic-content * {
-            color: inherit;
-          }
-        #{'  '}
+          /* Force dark text for all elements */
           .dynamic-content {
             padding: 20px;
+            color: #212529 !important;
+          }
+        #{'  '}
+          .dynamic-content * {
+            color: #212529 !important;
+          }
+        #{'  '}
+          .dynamic-content h1,
+          .dynamic-content h2,
+          .dynamic-content h3,
+          .dynamic-content h4,
+          .dynamic-content h5,
+          .dynamic-content h6,
+          .dynamic-content p,
+          .dynamic-content div,
+          .dynamic-content span,
+          .dynamic-content td,
+          .dynamic-content th,
+          .dynamic-content li,
+          .dynamic-content dt,
+          .dynamic-content dd {
             color: #212529 !important;
           }
         #{'  '}
@@ -606,7 +652,7 @@ module Tools
         #{'  '}
           .dynamic-metric-label {
             font-size: 14px !important;
-            color: #495057 !important;
+            color: #6c757d !important;
             text-transform: capitalize !important;
             font-weight: 600 !important;
             letter-spacing: 0.5px !important;
