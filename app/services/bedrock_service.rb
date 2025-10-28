@@ -533,7 +533,7 @@ class BedrockService
       @client.converse_stream(payload) do |stream|
         stream.on_error_event do |event|
           Rails.logger.error "Bedrock stream error: #{event.inspect}"
-          raise BedrockError, "Streaming error: #{event.error_message || 'Unknown error'}"
+          raise AmosErrors::BedrockError.new("Streaming error: #{event.error_message || 'Unknown error'}")
         end
 
         stream.on_event do |event|
@@ -610,11 +610,11 @@ class BedrockService
       buffer
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock streaming error: #{e.message}"
-      raise BedrockError, "Bedrock API Error: #{e.message}"
+      raise AmosErrors::BedrockError.new("Bedrock API Error: #{e.message}")
     rescue => e
       Rails.logger.error "Unexpected Bedrock streaming error: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
-      raise BedrockError, "Unexpected error: #{e.message}"
+      raise AmosErrors::BedrockError.new("Unexpected error: #{e.message}")
     end
   end
 
@@ -738,7 +738,7 @@ class BedrockService
     end
   rescue => e
     Rails.logger.error "Platform model invocation failed: #{e.message}"
-    raise BedrockError, "Platform model error: #{e.message}"
+    raise AmosErrors::BedrockError.new("Platform model error: #{e.message}")
   end
 
   # Format messages for platform models
