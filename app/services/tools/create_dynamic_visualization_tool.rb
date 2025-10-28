@@ -781,22 +781,22 @@ module Tools
             display: block !important;
           }
         #{'  '}
-          /* Override any bootstrap text color classes */
+          /* Override any bootstrap text color classes to ensure white text */
           .dynamic-content .text-white {
-            color: #212529 !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .dynamic-content .text-light {
-            color: #212529 !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
-          /* Override AI template default styles */
+          /* Override AI template default styles to ensure white text */
           .dynamic-content .ai-metric-value {
-            color: #212529 !important;
+            color: #FFFFFF !important;
           }
         #{'  '}
           .dynamic-content .ai-metric-label {
-            color: #495057 !important;
+            color: rgba(255, 255, 255, 0.8) !important;
           }
         #{'  '}
           .dynamic-content .ai-metric-card {
