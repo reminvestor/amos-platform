@@ -93,7 +93,7 @@ class BedrockService
     # Using global inference profiles for Claude Sonnet 4.5
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
-      "anthropic.claude-3-5-sonnet-20241022-v2:0"
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
@@ -102,7 +102,7 @@ class BedrockService
       "us.anthropic.claude-3-5-haiku-20241022-v1:0"
     else
       # Default to Claude Sonnet 4.5 (latest)
-      "anthropic.claude-3-5-sonnet-20241022-v2:0"
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     end
 
     # Format messages for Claude
@@ -316,7 +316,7 @@ class BedrockService
     # Map model names to Bedrock model IDs
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
-      "anthropic.claude-3-5-sonnet-20241022-v2:0"
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
@@ -324,7 +324,7 @@ class BedrockService
     when "claude-3-haiku"
       "us.anthropic.claude-3-5-haiku-20241022-v1:0"
     else
-      "anthropic.claude-3-5-sonnet-20241022-v2:0"
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     end
 
     # Messages are already in converse format from our formatting
@@ -413,7 +413,7 @@ class BedrockService
     # Map model names to Bedrock model IDs
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
-      "anthropic.claude-3-5-sonnet-20241022-v2:0"
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
@@ -421,7 +421,7 @@ class BedrockService
     when "claude-3-haiku"
       "us.anthropic.claude-3-5-haiku-20241022-v1:0"
     else
-      "anthropic.claude-3-5-sonnet-20241022-v2:0"
+      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     end
 
     # Format messages for Claude
