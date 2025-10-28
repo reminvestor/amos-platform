@@ -35,7 +35,7 @@ class BedrockService
       id: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
       name: 'Claude 3.5 Sonnet',
       description: 'Fast and capable, supports caching',
-      max_tokens: 25000,
+      max_tokens: 8192,
       cost_per_1m_input: 3.00,
       cost_per_1m_output: 15.00,
       supports_vision: true,
@@ -453,6 +453,10 @@ class BedrockService
     model_config = AVAILABLE_MODELS[normalized_model] || AVAILABLE_MODELS['claude-sonnet-4-5']
     model_id = model_config[:id]
 
+    # Cap max_tokens to the model's limit
+    model_max_tokens = model_config[:max_tokens] || 25000
+    effective_max_tokens = [max_tokens, model_max_tokens].min
+
     # Log model selection with caching status
     if caching_enabled && !model_config[:supports_caching]
       Rails.logger.info "⚠️  #{model_config[:name]} doesn't support caching (#{model_config[:endpoint_type]} endpoint)"
@@ -460,6 +464,10 @@ class BedrockService
       Rails.logger.info "💾 Using #{model_config[:name]} with caching enabled"
     else
       Rails.logger.info "✅ Using #{model_config[:name]} (caching disabled)"
+    end
+
+    if effective_max_tokens < max_tokens
+      Rails.logger.info "⚠️  Requested max_tokens (#{max_tokens}) exceeds model limit (#{model_max_tokens}), using #{effective_max_tokens}"
     end
 
     # Format messages for Claude
@@ -478,7 +486,7 @@ class BedrockService
     request_body = {
       anthropic_version: "bedrock-2023-05-31",
       messages: formatted_messages,
-      max_tokens: max_tokens,
+      max_tokens: effective_max_tokens,
       temperature: temperature
     }
 
