@@ -5,6 +5,7 @@ class ScoutConversationWithToolsService
     @conversation_context = conversation_context
     @claude_service = AiServiceHelper.get_service
     @universal_tools = ScoutUniversalTools.new(user, entity)
+    @rag_service = RagService.new(entity)
   end
 
   def process_message_with_tools(user_message)
@@ -130,7 +131,18 @@ class ScoutConversationWithToolsService
     # Add current user message (ensure it's not empty)
     user_content = user_message&.to_s&.strip
     if user_content.present?
-      messages << { role: "user", content: user_content }
+      # Search for relevant context using RAG
+      rag_context = get_rag_context(user_content)
+      
+      # Enhance user message with RAG context if available
+      if rag_context.present?
+        enhanced_content = "User question: #{user_content}\n\n"
+        enhanced_content += "Relevant context from knowledge base:\n"
+        enhanced_content += rag_context
+        messages << { role: "user", content: enhanced_content }
+      else
+        messages << { role: "user", content: user_content }
+      end
     end
 
     # Log the messages being sent for debugging
@@ -534,5 +546,29 @@ class ScoutConversationWithToolsService
     else
       "New Landing Page #{Time.current.strftime('%m/%d')}"
     end
+  end
+
+  def get_rag_context(query)
+    begin
+      # Search for relevant context
+      results = @rag_service.search(query, limit: 5)
+      return nil if results.empty?
+      
+      # Build context from results
+      context = @rag_service.build_context(results, max_tokens: 2000)
+      
+      Rails.logger.info "RAG: Found #{results.length} relevant results for query"
+      context
+    rescue => e
+      Rails.logger.error "RAG search error: #{e.message}"
+      nil
+    end
+  end
+  
+  # Store conversation in RAG for future context
+  def store_conversation_in_rag(message)
+    @rag_service.store_conversation(message) if message.persisted?
+  rescue => e
+    Rails.logger.error "RAG store error: #{e.message}"
   end
 end
