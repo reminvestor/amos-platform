@@ -17,11 +17,12 @@ class RagStore < ApplicationRecord
   # Validations
   validates :name, presence: true
   validates :app_name, presence: true
-  validates :pinecone_index, presence: true
-  validates :pinecone_namespace, presence: true
   validates :status, presence: true
   validates :status, inclusion: { in: %w[pending processing ready building active failed archived] }
   validates :store_type, presence: true
+
+  # Pinecone fields are optional - pgvector is primary storage for local and AWS
+  # Pinecone can be enabled later by setting PINECONE_API_KEY environment variable
 
   # Multi-tenant security validations
   validates :entity, presence: true, if: :store_type_entity?
