@@ -3,7 +3,7 @@ class OnboardingScoutService
     @user = user
     @session_id = session_id
     @conversation_history = conversation_history
-    @claude_service = ClaudeService.new
+    @claude_service = AiServiceHelper.get_service
     @data_extraction_service = OnboardingDataExtractionService.new(user)
   end
 
