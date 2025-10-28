@@ -3,7 +3,7 @@ class ScoutConversationWithToolsService
     @user = user
     @entity = entity
     @conversation_context = conversation_context
-    @claude_service = ClaudeService.new
+    @claude_service = AiServiceHelper.get_service
     @universal_tools = ScoutUniversalTools.new(user, entity)
   end
 

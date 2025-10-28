@@ -5,7 +5,7 @@ module AmosAI
     def initialize(user:, entity:)
       @user = user
       @entity = entity
-      @claude_service = ClaudeService.new # Now using Claude 4 for enhanced intelligence
+      @claude_service = AiServiceHelper.get_service # Now using Claude 4 for enhanced intelligence
     end
 
     def process(message:, history:, business_context:)
