@@ -55,7 +55,7 @@ demo_users.each do |user_data|
 end
 
 puts "
-📝 Demo Login Credentials (all use password123):
+📝 Demo Login Credentials:
 
    🔑 Admin User:
       Email: admin@demo.com
@@ -70,4 +70,5 @@ puts "
       Role: Read-only access
 
    URL: http://localhost:3000
+   Password: (See README for demo credentials)
 "
