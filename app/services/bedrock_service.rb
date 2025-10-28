@@ -57,6 +57,15 @@ class BedrockService
     }
   }.freeze
 
+  # Model fallback chain: Try models from fastest to most robust
+  # If a model fails due to throttling, timeout, or unavailability, automatically retry with the next model
+  MODEL_FALLBACK_CHAIN = [
+    'claude-3-haiku',      # Fastest, cheapest - try first
+    'claude-3-5-sonnet',   # Fast, capable - good backup
+    'claude-sonnet-4-5',   # Latest, powerful - reliable fallback
+    'claude-opus-4-1'      # Most robust - last resort
+  ].freeze
+
   def initialize(custom_model_id: nil, user: nil, entity: nil)
     @client = Aws::BedrockRuntime::Client.new(
       region: ENV["AWS_REGION"] || "us-east-1",
@@ -78,6 +87,32 @@ class BedrockService
     @user = user
     @entity = entity
     @resource_manager = ResourceManager.new(entity) if entity
+  end
+
+  # Get the next model in the fallback chain
+  # Returns nil if no more fallback options
+  def get_next_fallback_model(current_model, attempted_models = [])
+    # Normalize current model name
+    normalized_current = current_model.to_s.gsub('.', '-')
+
+    # Find current position in chain
+    current_index = MODEL_FALLBACK_CHAIN.index(normalized_current)
+
+    # If not in chain or at end of chain, start from beginning
+    if current_index.nil?
+      # Try to find first model not yet attempted
+      next_model = MODEL_FALLBACK_CHAIN.find { |m| !attempted_models.include?(m) }
+      return next_model
+    end
+
+    # Try next models in chain that haven't been attempted
+    ((current_index + 1)...MODEL_FALLBACK_CHAIN.length).each do |i|
+      candidate = MODEL_FALLBACK_CHAIN[i]
+      return candidate unless attempted_models.include?(candidate)
+    end
+
+    # No more fallback options
+    nil
   end
 
   # Main method to send messages to Claude via Bedrock
@@ -462,60 +497,70 @@ class BedrockService
   end
 
   def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
-    # Check if prompt caching is enabled (default: false - disabled due to AWS API limitations)
-    # The enable_prompt_caching parameter is kept for API compatibility but currently ignored
-    caching_enabled = ENV.fetch('BEDROCK_PROMPT_CACHING_ENABLED', 'false') == 'true'
+    # Track attempted models for fallback
+    attempted_models = []
+    current_model = model
+    last_error = nil
 
-    # Normalize model name (handle variants like "claude-sonnet-4.5")
-    normalized_model = model.to_s.gsub('.', '-')
+    # Retry loop with model fallback
+    loop do
+      begin
+        # Check if prompt caching is enabled (default: false - disabled due to AWS API limitations)
+        # The enable_prompt_caching parameter is kept for API compatibility but currently ignored
+        caching_enabled = ENV.fetch('BEDROCK_PROMPT_CACHING_ENABLED', 'false') == 'true'
 
-    # Get model configuration
-    model_config = AVAILABLE_MODELS[normalized_model] || AVAILABLE_MODELS['claude-sonnet-4-5']
-    model_id = model_config[:id]
+        # Normalize model name (handle variants like "claude-sonnet-4.5")
+        normalized_model = current_model.to_s.gsub('.', '-')
 
-    # Cap max_tokens to the model's limit
-    model_max_tokens = model_config[:max_tokens] || 25000
-    effective_max_tokens = [max_tokens, model_max_tokens].min
+        # Track this attempt
+        attempted_models << normalized_model unless attempted_models.include?(normalized_model)
 
-    # Log model selection with caching status
-    if caching_enabled && !model_config[:supports_caching]
-      Rails.logger.info "⚠️  #{model_config[:name]} doesn't support caching (#{model_config[:endpoint_type]} endpoint)"
-    elsif caching_enabled && model_config[:supports_caching]
-      Rails.logger.info "💾 Using #{model_config[:name]} with caching enabled"
-    else
-      Rails.logger.info "✅ Using #{model_config[:name]} (caching disabled)"
-    end
+        # Get model configuration
+        model_config = AVAILABLE_MODELS[normalized_model] || AVAILABLE_MODELS['claude-sonnet-4-5']
+        model_id = model_config[:id]
 
-    if effective_max_tokens < max_tokens
-      Rails.logger.info "⚠️  Requested max_tokens (#{max_tokens}) exceeds model limit (#{model_max_tokens}), using #{effective_max_tokens}"
-    end
+        # Cap max_tokens to the model's limit
+        model_max_tokens = model_config[:max_tokens] || 25000
+        effective_max_tokens = [max_tokens, model_max_tokens].min
 
-    # Format messages for Claude
-    formatted_messages = format_messages_for_claude(messages)
+        # Log model selection with caching status
+        if caching_enabled && !model_config[:supports_caching]
+          Rails.logger.info "⚠️  #{model_config[:name]} doesn't support caching (#{model_config[:endpoint_type]} endpoint)"
+        elsif caching_enabled && model_config[:supports_caching]
+          Rails.logger.info "💾 Using #{model_config[:name]} with caching enabled"
+        else
+          Rails.logger.info "✅ Using #{model_config[:name]} (caching disabled)"
+        end
 
-    # Filter out messages with empty content arrays
-    formatted_messages = formatted_messages.reject do |msg|
-      msg[:content].nil? || msg[:content].empty? ||
-      (msg[:content].is_a?(Array) && msg[:content].all? { |c|
-        # Check if this is a text block with empty text
-        c[:type] == "text" && c[:text].to_s.strip.empty?
-      })
-    end
+        if effective_max_tokens < max_tokens
+          Rails.logger.info "⚠️  Requested max_tokens (#{max_tokens}) exceeds model limit (#{model_max_tokens}), using #{effective_max_tokens}"
+        end
 
-    # Build the request body
-    request_body = {
-      anthropic_version: "bedrock-2023-05-31",
-      messages: formatted_messages,
-      max_tokens: effective_max_tokens,
-      temperature: temperature
-    }
+        # Format messages for Claude
+        formatted_messages = format_messages_for_claude(messages)
 
-    request_body[:system] = system_prompt if system_prompt.present?
+        # Filter out messages with empty content arrays
+        formatted_messages = formatted_messages.reject do |msg|
+          msg[:content].nil? || msg[:content].empty? ||
+          (msg[:content].is_a?(Array) && msg[:content].all? { |c|
+            # Check if this is a text block with empty text
+            c[:type] == "text" && c[:text].to_s.strip.empty?
+          })
+        end
 
-    Rails.logger.info "Sending streaming request to Bedrock Claude (#{model_id}) using converse_stream"
+        # Build the request body
+        request_body = {
+          anthropic_version: "bedrock-2023-05-31",
+          messages: formatted_messages,
+          max_tokens: effective_max_tokens,
+          temperature: temperature
+        }
 
-    begin
-      # Convert messages to converse API format
+        request_body[:system] = system_prompt if system_prompt.present?
+
+        Rails.logger.info "Sending streaming request to Bedrock Claude (#{model_id}) using converse_stream"
+
+        # Convert messages to converse API format
       # The converse API expects content to be an array of content blocks
       # where each block is directly the content type (text, image, etc)
       converse_messages = formatted_messages.reject { |msg|
@@ -726,13 +771,57 @@ class BedrockService
       end
 
       buffer
-    rescue Aws::BedrockRuntime::Errors::ServiceError => e
-      Rails.logger.error "Bedrock streaming error: #{e.message}"
-      raise AmosErrors::BedrockError.new("Bedrock API Error: #{e.message}")
-    rescue => e
-      Rails.logger.error "Unexpected Bedrock streaming error: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-      raise AmosErrors::BedrockError.new("Unexpected error: #{e.message}")
+
+        # Success! Return the buffer and exit the retry loop
+        return buffer
+
+      rescue Aws::BedrockRuntime::Errors::ThrottlingException,
+             Aws::BedrockRuntime::Errors::ServiceUnavailableException,
+             Timeout::Error,
+             Seahorse::Client::NetworkingError => e
+
+        # These are retryable errors - try to fallback to next model
+        last_error = e
+        error_type = e.class.name.split('::').last
+
+        Rails.logger.warn "🔄 #{model_config[:name]} #{error_type}: #{e.message}"
+
+        # Try to get next fallback model
+        next_model = get_next_fallback_model(current_model, attempted_models)
+
+        if next_model
+          current_model = next_model
+          next_model_config = AVAILABLE_MODELS[next_model]
+          Rails.logger.info "♻️  Falling back to #{next_model_config[:name]}..."
+          next  # Retry with new model
+        else
+          # No more fallback options
+          Rails.logger.error "❌ All models failed. Attempted: #{attempted_models.join(', ')}"
+
+          # Raise appropriate error based on last error type
+          case last_error
+          when Aws::BedrockRuntime::Errors::ThrottlingException
+            raise AmosErrors::BedrockThrottlingError.new(context: { attempted_models: attempted_models })
+          when Aws::BedrockRuntime::Errors::ServiceUnavailableException
+            raise AmosErrors::BedrockUnavailableError.new(context: { attempted_models: attempted_models })
+          when Timeout::Error, Seahorse::Client::NetworkingError
+            raise AmosErrors::BedrockTimeoutError.new(context: { attempted_models: attempted_models })
+          else
+            raise AmosErrors::BedrockError.new("All models failed: #{last_error.message}", context: { attempted_models: attempted_models })
+          end
+        end
+
+      rescue Aws::BedrockRuntime::Errors::ServiceError => e
+        # Non-retryable AWS error
+        Rails.logger.error "Bedrock streaming error: #{e.message}"
+        raise AmosErrors::BedrockError.new("Bedrock API Error: #{e.message}")
+
+      rescue StandardError => e
+        # Unexpected error - don't retry
+        Rails.logger.error "Unexpected Bedrock streaming error: #{e.message}"
+        Rails.logger.error e.backtrace.join("\n")
+        raise AmosErrors::BedrockError.new("Unexpected error: #{e.message}")
+      end
     end
   end
 
