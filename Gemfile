@@ -78,7 +78,10 @@ gem "aws-sdk-polly", "~> 1.0"
 
 # Vector storage and RAG
 gem "pinecone", "~> 1.2"
+<<<<<<< HEAD
 gem "neighbor", "~> 0.5" # pgvector integration for Rails
+=======
+>>>>>>> 894957a (updated)
 
 # HTTP client for API calls (Serper, etc)
 gem "httparty", "~> 0.22.0"
