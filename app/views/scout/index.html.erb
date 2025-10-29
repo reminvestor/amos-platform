@@ -150,7 +150,7 @@
     width: 40px;
     height: 40px;
     background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    border-radius: 50%;
+    border-radius: 0.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -331,46 +331,46 @@
   <nav class="side-nav collapsed" data-scout-target="sideNav">
     <div class="side-nav-header">
       <div class="brand">
-        <i class="fas fa-cube text-primary"></i>
+        <i data-lucide="box" class="text-primary"></i>
         <span class="brand-text">Amos</span>
       </div>
       <button class="nav-toggle" data-action="click->scout#toggleSideNav" data-scout-target="navToggle">
-        <i class="fas fa-bars"></i>
+        <i data-lucide="menu"></i>
       </button>
     </div>
-    
+
     <div class="nav-items">
       <div class="nav-section">
         <div class="nav-item active" data-action="click->scout#goToConversation">
-          <i class="fas fa-home"></i>
+          <i data-lucide="home"></i>
           <span class="nav-text">Dashboard</span>
         </div>
         <div class="nav-item" data-template-type="landing_page" data-action="click->scout#loadLandingPagesCanvas">
-          <i class="fas fa-globe"></i>
+          <i data-lucide="globe"></i>
           <span class="nav-text">Landing Pages</span>
         </div>
         <div class="nav-item" data-template-type="campaign" data-action="click->scout#loadCampaignsCanvas">
-          <i class="fas fa-envelope"></i>
+          <i data-lucide="mail"></i>
           <span class="nav-text">Campaigns</span>
         </div>
         <div class="nav-item" data-template-type="email_template" data-action="click->scout#loadEmailTemplatesCanvas">
-          <i class="fas fa-file-alt"></i>
+          <i data-lucide="file-text"></i>
           <span class="nav-text">Email Templates</span>
         </div>
         <div class="nav-item" data-template-type="contact" data-action="click->scout#loadContactsCanvas">
-          <i class="fas fa-users"></i>
+          <i data-lucide="users"></i>
           <span class="nav-text">Contacts</span>
         </div>
         <div class="nav-item" data-template-type="analytics" data-action="click->scout#loadAnalyticsCanvas">
-          <i class="fas fa-chart-bar"></i>
+          <i data-lucide="bar-chart-2"></i>
           <span class="nav-text">Analytics</span>
         </div>
         <div class="nav-item" data-template-type="integration" data-action="click->scout#loadIntegrationsCanvas">
-          <i class="fas fa-plug"></i>
+          <i data-lucide="plug"></i>
           <span class="nav-text">Integrations</span>
         </div>
       </div>
-      
+
       <div class="nav-section">
         <div class="nav-section-title">Templates</div>
         <div id="template-list" data-scout-target="templateList">
@@ -378,18 +378,18 @@
         </div>
       </div>
     </div>
-    
+
     <div class="nav-footer">
       <div class="nav-item" data-action="click->scout#openSettings">
-        <i class="fas fa-cog"></i>
+        <i data-lucide="settings"></i>
         <span class="nav-text">Settings</span>
       </div>
       <div class="nav-item" data-action="click->scout#openProfile">
-        <i class="fas fa-user"></i>
+        <i data-lucide="user"></i>
         <span class="nav-text">Profile</span>
       </div>
       <div class="nav-item" data-action="click->scout#logout">
-        <i class="fas fa-sign-out-alt"></i>
+        <i data-lucide="log-out"></i>
         <span class="nav-text">Logout</span>
       </div>
     </div>
@@ -400,36 +400,40 @@
     <!-- Chat Area (Full screen in conversation mode, sidebar in work mode) -->
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
-        <div class="conversation-controls">
-          <div class="header-title">
-            <h2>Amos AI</h2>
-        </div>
-          <div class="header-buttons">
-            <div class="conversation-info">
-              <button class="icon-btn" id="conversation-selector" title="Conversation history">
-                <i class="fas fa-history"></i>
-              </button>
-              <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
-                <div class="dropdown-header">
-                  <h4>Recent Conversations</h4>
-      </div>
-                <div class="conversation-list" id="conversation-list">
-                  <!-- Conversations will be loaded here -->
-          </div>
+        <div class="chat-header-content">
+          <h2 class="chat-header-title">Amos AI</h2>
+
+          <div class="chat-header-actions">
+            <div class="header-divider"></div>
+
+            <button class="header-icon-btn" id="new-conversation-btn" title="New conversation">
+              <i data-lucide="rotate-ccw"></i>
+            </button>
+
+            <button class="header-icon-btn" id="conversation-selector" title="Conversation history">
+              <i data-lucide="history"></i>
+            </button>
+
+            <button class="header-icon-btn" id="tts-toggle-btn" title="Toggle voice output">
+              <i data-lucide="volume-2"></i>
+            </button>
+
+            <button class="header-icon-btn" title="More options">
+              <i data-lucide="more-horizontal"></i>
+            </button>
+
+            <!-- Conversation dropdown (hidden by default) -->
+            <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
+              <div class="dropdown-header">
+                <h4>Recent Conversations</h4>
+              </div>
+              <div class="conversation-list" id="conversation-list">
+                <!-- Conversations will be loaded here -->
               </div>
             </div>
-            <button class="icon-btn" id="tts-toggle-btn" title="Toggle voice output">
-              <i class="fas fa-volume-up"></i>
-            </button>
-            <%= link_to advanced_mode_path, class: "icon-btn", title: "Switch to Advanced Mode", style: "text-decoration: none; color: inherit;" do %>
-              <i class="fas fa-th-large"></i>
-            <% end %>
-            <button class="icon-btn" id="new-conversation-btn" title="New conversation">
-              <i class="fas fa-plus"></i>
-              </button>
-            </div>
           </div>
         </div>
+      </div>
       
       <div class="chat-messages" id="chat-messages" data-scout-target="chatMessages">
         <!-- Messages will be loaded here from history -->
@@ -443,51 +447,112 @@
             <!-- Attached files will be shown here -->
           </div>
 
-          <!-- Model Selector -->
-          <div class="model-selector-container" style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border-radius: 8px 8px 0 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <label for="model-select" style="color: rgba(255, 255, 255, 0.8); font-size: 0.85rem; margin: 0; white-space: nowrap; display: flex; align-items: center; gap: 6px;">
-                <i data-lucide="bot" style="width: 16px; height: 16px;"></i>Model:
-              </label>
-              <select id="model-select" class="model-select" style="flex: 1; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.9rem; cursor: pointer;">
-                <option value="claude-sonnet-4-5">Claude Sonnet 4.5 - Latest, 25K tokens</option>
-                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet - Fast, 8K tokens</option>
-                <option value="claude-opus-4-1">Claude Opus 4.1 - Most capable, 25K tokens</option>
-                <option value="claude-3-haiku" selected>Claude 3.5 Haiku - Fastest, 8K tokens</option>
-              </select>
-              <span id="model-cost-info" style="color: rgba(255, 255, 255, 0.6); font-size: 0.75rem; white-space: nowrap;">
-                25K tokens
-              </span>
+          <!-- Model Selector with Brain Icon -->
+          <div class="model-selector-container">
+            <div class="model-selector-trigger">
+              <button id="model-selector-btn" class="model-brain-btn" title="Model Selection">
+                <div class="brain-icon-wrapper">
+                  <i data-lucide="brain" class="brain-outline"></i>
+                  <div class="brain-fill">
+                    <i data-lucide="brain" class="brain-filled"></i>
+                  </div>
+                </div>
+                <div class="power-dots">
+                  <div class="power-dot"></div>
+                  <div class="power-dot"></div>
+                </div>
+              </button>
+
+              <!-- Model Selector Popover -->
+              <div id="model-selector-popover" class="model-popover" style="display: none;">
+                <div class="model-popover-content">
+                  <div class="model-header">
+                    <div class="model-header-icon">
+                      <div class="brain-icon-wrapper">
+                        <i data-lucide="brain" class="brain-outline-lg"></i>
+                        <div class="brain-fill-lg">
+                          <i data-lucide="brain" class="brain-filled-lg"></i>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="model-header-text">
+                      <h3>Model Selection</h3>
+                      <p id="current-model-name">Claude 3.5 Sonnet</p>
+                    </div>
+                  </div>
+
+                  <div class="model-slider-section">
+                    <input type="range" id="model-power-slider" class="model-slider" min="0" max="100" value="50">
+                    <div class="slider-labels">
+                      <span>Faster</span>
+                      <span id="model-power-percent" class="power-percent">50%</span>
+                      <span>More Robust</span>
+                    </div>
+                  </div>
+
+                  <div class="model-presets">
+                    <button class="model-preset-btn" data-power="0">
+                      <span>Faster</span>
+                      <span class="preset-model">Claude 3.5 Haiku</span>
+                    </button>
+                    <button class="model-preset-btn active" data-power="50">
+                      <span>Balanced</span>
+                      <span class="preset-model">Claude 3.5 Sonnet</span>
+                    </button>
+                    <button class="model-preset-btn" data-power="100">
+                      <span>More Robust</span>
+                      <span class="preset-model">Claude Sonnet 4.5</span>
+                    </button>
+                  </div>
+
+                  <div class="model-info">
+                    <p>Higher model power provides more accurate and nuanced responses but may be slower.</p>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            <!-- Hidden select for backward compatibility -->
+            <select id="model-select" class="model-select" style="display: none;">
+              <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+              <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="claude-opus-4-1">Claude Opus 4.1</option>
+              <option value="claude-3-haiku" selected>Claude 3.5 Haiku</option>
+            </select>
           </div>
 
-          <div class="input-group">
-            <input type="file" 
-              id="file-input" 
-              multiple 
+          <!-- Input Container -->
+          <div class="input-container">
+            <input type="file"
+              id="file-input"
+              multiple
               accept="image/*,.pdf,.doc,.docx,.txt,.csv"
               style="display: none;"
               data-scout-target="fileInput">
+
             <button type="button" class="attach-btn" id="attach-button" title="Attach files">
-              <i class="fas fa-paperclip"></i>
+              <i data-lucide="paperclip"></i>
             </button>
-            <textarea 
-              class="chat-input" 
+
+            <textarea
+              class="chat-input"
               id="message-input"
-              placeholder="Type your message..." 
+              placeholder="Type your message..."
               data-scout-target="chatInput"
               autocomplete="off"
               rows="1"
             ></textarea>
+
             <button type="button"
                     class="voice-btn"
                     data-action="click->voice-assistant#toggleVoice"
                     data-voice-assistant-target="button"
                     title="Voice input">
-              <i class="fas fa-microphone"></i>
+              <i data-lucide="mic"></i>
             </button>
+
             <button type="submit" class="send-btn" id="send-button">
-              <i class="fas fa-paper-plane"></i>
+              <i data-lucide="send"></i>
             </button>
           </div>
         </form>
@@ -508,17 +573,17 @@
           <div class="layout-controls">
             <div class="layout-presets">
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="15" title="Compact Scout">
-                <i class="fas fa-compress-alt"></i>
+                <i data-lucide="minimize-2"></i>
               </button>
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="25" title="Balanced">
-                <i class="fas fa-columns"></i>
+                <i data-lucide="columns"></i>
               </button>
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="35" title="Wide Scout">
-                <i class="fas fa-expand-alt"></i>
+                <i data-lucide="maximize-2"></i>
               </button>
             </div>
             <button class="close-template" data-action="click->scout#closeTemplate">
-              <i class="fas fa-times"></i>
+              <i data-lucide="x"></i>
             </button>
           </div>
         </div>
@@ -527,7 +592,7 @@
       <div class="template-content" data-scout-target="templateContent">
         <div class="template-placeholder">
           <div class="placeholder-icon">
-            <i class="fas fa-cube"></i>
+            <i data-lucide="box"></i>
           </div>
           <p>No template loaded</p>
         </div>
@@ -646,7 +711,7 @@
 #workspace .message-avatar {
   width: 40px !important;
   height: 40px !important;
-  border-radius: 50% !important;
+  border-radius: 0.5rem !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -1020,9 +1085,40 @@
   justify-content: space-between;
   font-size: 0.85rem;
   color: #666;
-}
-
-</style>
+  }
+  
+  /* Fix for messages appearing side-by-side when loaded from DB */
+  #chat-messages {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+  
+  #chat-messages > .message {
+    display: flex !important;
+    width: 100% !important;
+    clear: both !important;
+    float: none !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  /* Ensure user messages align right */
+  #chat-messages > .message.user-message {
+    justify-content: flex-end !important;
+  }
+  
+  /* Ensure assistant messages align left */
+  #chat-messages > .message.ai-message {
+    justify-content: flex-start !important;
+  }
+  
+  /* Prevent any inline display */
+  #chat-messages > * {
+    float: none !important;
+    clear: both !important;
+  }
+  
+  </style>
 
 <!-- JavaScript for Scout Chat -->
 <script>
@@ -1038,33 +1134,139 @@ document.addEventListener('turbo:load', function() {
   };
 
   // Initialize Lucide icons on page load
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
+  function initializeLucideIcons() {
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+      console.log('🎨 Initializing Lucide icons...');
+      lucide.createIcons();
+      console.log('✅ Lucide icons initialized');
+    } else {
+      console.warn('⚠️ Lucide not available, retrying in 100ms...');
+      setTimeout(initializeLucideIcons, 100);
+    }
   }
+  initializeLucideIcons();
 
   const messageForm = document.getElementById('message-form');
   const messageInput = document.getElementById('message-input');
   const chatMessages = document.getElementById('chat-messages');
   const sendButton = document.getElementById('send-button');
 
-  // Model selection handling
+  // Brain Icon Model Selector
+  const modelSelectorBtn = document.getElementById('model-selector-btn');
+  const modelPopover = document.getElementById('model-selector-popover');
+  const modelSlider = document.getElementById('model-power-slider');
+  const powerPercent = document.getElementById('model-power-percent');
+  const currentModelName = document.getElementById('current-model-name');
+  const presetBtns = document.querySelectorAll('.model-preset-btn');
   const modelSelect = document.getElementById('model-select');
 
-  // Load saved model preference from localStorage
-  const savedModel = localStorage.getItem('scout_selected_model') || 'claude-3-haiku';
-  if (modelSelect) {
-    modelSelect.value = savedModel;
+  // Model power to Claude model mapping
+  const MODEL_MAP = {
+    0: { model: 'claude-3-haiku', name: 'Claude 3.5 Haiku' },
+    50: { model: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
+    100: { model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' }
+  };
 
-    // Save model preference when changed
-    modelSelect.addEventListener('change', function() {
-      localStorage.setItem('scout_selected_model', this.value);
-      console.log('💾 Model preference saved:', this.value);
+  // Get current model from power level
+  function getModelFromPower(power) {
+    if (power <= 25) return MODEL_MAP[0];
+    if (power <= 75) return MODEL_MAP[50];
+    return MODEL_MAP[100];
+  }
+
+  // Update brain fill based on power
+  function updateBrainFill(power) {
+    const fillPercent = 100 - power; // Invert for clip-path
+    const brainFills = document.querySelectorAll('.brain-fill, .brain-fill-lg');
+    brainFills.forEach(fill => {
+      fill.style.clipPath = `inset(${fillPercent}% 0 0 0)`;
+    });
+
+    // Update power dots
+    const dots = document.querySelectorAll('.power-dot');
+    dots[0].classList.toggle('active', power >= 33);
+    dots[1].classList.toggle('active', power >= 66);
+  }
+
+  // Load saved model power or default to 50%
+  let currentPower = parseInt(localStorage.getItem('scout_model_power') || '50');
+  updateBrainFill(currentPower);
+  if (modelSlider) modelSlider.value = currentPower;
+  if (powerPercent) powerPercent.textContent = `${currentPower}%`;
+
+  // Update model select and name
+  const currentModel = getModelFromPower(currentPower);
+  if (modelSelect) modelSelect.value = currentModel.model;
+  if (currentModelName) currentModelName.textContent = currentModel.name;
+
+  // Toggle popover
+  console.log('Model selector button found:', !!modelSelectorBtn);
+  console.log('Model popover found:', !!modelPopover);
+
+  if (modelSelectorBtn) {
+    modelSelectorBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      console.log('🧠 Model selector clicked');
+      const isOpen = modelPopover.style.display === 'block';
+      modelPopover.style.display = isOpen ? 'none' : 'block';
+      console.log('🧠 Popover display:', modelPopover.style.display);
+
+      // Re-initialize Lucide icons in popover
+      if (!isOpen && typeof lucide !== 'undefined') {
+        setTimeout(() => lucide.createIcons(), 10);
+      }
+    });
+  } else {
+    console.error('❌ Model selector button not found!');
+  }
+
+  // Close popover when clicking outside
+  document.addEventListener('click', (e) => {
+    if (modelPopover && !modelPopover.contains(e.target) && e.target !== modelSelectorBtn) {
+      modelPopover.style.display = 'none';
+    }
+  });
+
+  // Handle slider changes
+  if (modelSlider) {
+    modelSlider.addEventListener('input', (e) => {
+      const power = parseInt(e.target.value);
+      currentPower = power;
+
+      // Update UI
+      updateBrainFill(power);
+      powerPercent.textContent = `${power}%`;
+
+      // Update model
+      const model = getModelFromPower(power);
+      currentModelName.textContent = model.name;
+      if (modelSelect) modelSelect.value = model.model;
+
+      // Update active preset
+      presetBtns.forEach(btn => {
+        const presetPower = parseInt(btn.dataset.power);
+        const isActive = Math.abs(power - presetPower) < 26;
+        btn.classList.toggle('active', isActive);
+      });
+
+      // Save to localStorage
+      localStorage.setItem('scout_model_power', power.toString());
+      localStorage.setItem('scout_selected_model', model.model);
     });
   }
 
+  // Handle preset buttons
+  presetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const power = parseInt(btn.dataset.power);
+      modelSlider.value = power;
+      modelSlider.dispatchEvent(new Event('input'));
+    });
+  });
+
   // Helper function to get currently selected model
   window.getSelectedModel = function() {
-    return modelSelect ? modelSelect.value : 'claude-sonnet-4-5';
+    return modelSelect ? modelSelect.value : 'claude-3-haiku';
   };
   const toolActivity = document.getElementById('tool-activity');
   
@@ -1092,15 +1294,23 @@ document.addEventListener('turbo:load', function() {
   // Update TTS button appearance
   function updateTTSButton() {
     if (!ttsToggleBtn || !ttsManager) return;
-    
+
     if (ttsManager.isEnabled) {
       ttsToggleBtn.classList.remove('text-muted');
-      ttsToggleBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+      ttsToggleBtn.innerHTML = '<i data-lucide="volume-2"></i>';
       ttsToggleBtn.title = 'Voice output enabled (click to mute)';
+      // Re-initialize Lucide icon
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
     } else {
       ttsToggleBtn.classList.add('text-muted');
-      ttsToggleBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+      ttsToggleBtn.innerHTML = '<i data-lucide="volume-x"></i>';
       ttsToggleBtn.title = 'Voice output disabled (click to enable)';
+      // Re-initialize Lucide icon
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
     }
   }
   
@@ -1505,14 +1715,16 @@ document.addEventListener('turbo:load', function() {
       processedContent = content.replace(/\n/g, '<br>');
     }
     
-    const avatar = role === 'assistant' ? '<i data-lucide="bot" style="width: 18px; height: 18px;"></i>' : '<i class="fas fa-user"></i>';
-    
+    const avatar = role === 'assistant'
+      ? '<i data-lucide="bot"></i>'
+      : '<i data-lucide="user"></i>';
+
     wrapper.innerHTML = `
       <div class="message-content">
         <div class="message-avatar">
           ${avatar}
         </div>
-      <div class="message-bubble">
+        <div class="message-bubble">
           ${processedContent}
         </div>
       </div>
@@ -1545,6 +1757,11 @@ document.addEventListener('turbo:load', function() {
     chatMessages.insertBefore(fragment, chatMessages.firstChild);
     const newScrollHeight = chatMessages.scrollHeight;
     chatMessages.scrollTop = newScrollHeight - prevScrollHeight + chatMessages.scrollTop;
+
+    // Initialize Lucide icons for prepended messages
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
   }
 
   // Backward-compatible helper
@@ -1575,7 +1792,12 @@ document.addEventListener('turbo:load', function() {
     
     const el = buildMessageElement({ content: messageContent, role, timestamp, metadata: null });
     chatMessages.appendChild(el);
-    
+
+    // Initialize Lucide icons for newly added message
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
     // Track the content to prevent future duplicates
     streamedContent.add(messageContent.toString().trim());
     
@@ -1654,6 +1876,11 @@ document.addEventListener('turbo:load', function() {
     sourcesDiv.innerHTML = sourcesHtml;
     messageContent.appendChild(sourcesDiv);
 
+    // Initialize Lucide icons in sources
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
     console.log('✅ Sources added to message');
   }
 
@@ -1672,7 +1899,7 @@ document.addEventListener('turbo:load', function() {
 
     let html = '<div class="sources-container">';
     html += '<div class="sources-header">';
-    html += '<i class="fas fa-book-open"></i>';
+    html += '<i data-lucide="book-open"></i>';
     html += `<span>Sources (${sources.length})</span>`;
     html += '</div>';
     html += '<div class="sources-list">';
@@ -1683,7 +1910,7 @@ document.addEventListener('turbo:load', function() {
       const pages = source.pages ? ` • Pages: ${source.pages.join(', ')}` : '';
       html += `
         <div class="source-item" onclick="viewDocument('${source.filename}')">
-          <i class="${icon}"></i>
+          ${icon}
           <div class="source-details">
             <div class="source-filename">${source.filename}</div>
             <div class="source-meta">RAG Knowledge Base${pages}</div>
@@ -1697,7 +1924,7 @@ document.addEventListener('turbo:load', function() {
       const icon = getSourceIcon(source.filename);
       html += `
         <div class="source-item" onclick="viewDocument('${source.filename}')">
-          <i class="${icon}"></i>
+          ${icon}
           <div class="source-details">
             <div class="source-filename">${source.filename}</div>
             <div class="source-meta">Recent Upload (Session)</div>
@@ -1710,7 +1937,7 @@ document.addEventListener('turbo:load', function() {
     dbSources.forEach(source => {
       html += `
         <div class="source-item">
-          <i class="fas fa-database"></i>
+          <i data-lucide="database"></i>
           <div class="source-details">
             <div class="source-filename">${source.object_type}</div>
             <div class="source-meta">${source.record_count} records</div>
@@ -1724,12 +1951,12 @@ document.addEventListener('turbo:load', function() {
       const truncatedUrl = source.url.length > 50 ? source.url.substring(0, 47) + '...' : source.url;
       html += `
         <div class="source-item" onclick="window.open('${source.url}', '_blank')">
-          <i class="fas fa-globe text-primary"></i>
+          <i data-lucide="globe" class="text-primary"></i>
           <div class="source-details">
             <div class="source-filename">${source.title || 'Web Search Result'}</div>
             <div class="source-meta">${truncatedUrl}</div>
           </div>
-          <i class="fas fa-external-link-alt text-muted" style="font-size: 0.75rem; margin-left: 0.5rem;"></i>
+          <i data-lucide="external-link" class="text-muted" style="font-size: 0.75rem; margin-left: 0.5rem;"></i>
         </div>
       `;
     });
@@ -1739,7 +1966,7 @@ document.addEventListener('turbo:load', function() {
       const recordInfo = source.record_count ? ` • ${source.record_count} records` : '';
       html += `
         <div class="source-item">
-          <i class="fas fa-plug text-warning"></i>
+          <i data-lucide="plug" class="text-warning"></i>
           <div class="source-details">
             <div class="source-filename">${source.integration_name} API</div>
             <div class="source-meta">${source.operation}${recordInfo}</div>
@@ -1753,7 +1980,7 @@ document.addEventListener('turbo:load', function() {
       const timeInfo = source.time_range ? ` • ${source.time_range}` : '';
       html += `
         <div class="source-item">
-          <i class="fas fa-comments text-info"></i>
+          <i data-lucide="message-square" class="text-info"></i>
           <div class="source-details">
             <div class="source-filename">Conversation History</div>
             <div class="source-meta">${source.message_count} messages${timeInfo}</div>
@@ -1768,7 +1995,7 @@ document.addEventListener('turbo:load', function() {
       const timeInfo = source.time_range ? ` • ${source.time_range}` : '';
       html += `
         <div class="source-item">
-          <i class="fas fa-chart-line text-success"></i>
+          <i data-lucide="line-chart" class="text-success"></i>
           <div class="source-details">
             <div class="source-filename">${source.metric_name || 'Analytics Data'}</div>
             <div class="source-meta">Analytics${dataInfo}${timeInfo}</div>
@@ -1782,7 +2009,7 @@ document.addEventListener('turbo:load', function() {
       const recordInfo = source.record_count > 1 ? ` • ${source.record_count} records` : '';
       html += `
         <div class="source-item">
-          <i class="fas fa-credit-card text-danger"></i>
+          <i data-lucide="credit-card" class="text-danger"></i>
           <div class="source-details">
             <div class="source-filename">${source.data_type}</div>
             <div class="source-meta">Billing Data${recordInfo}</div>
@@ -1798,7 +2025,7 @@ document.addEventListener('turbo:load', function() {
       const separator = fileInfo && contextInfo ? ' • ' : '';
       html += `
         <div class="source-item">
-          <i class="fas fa-project-diagram text-purple"></i>
+          <i data-lucide="workflow" class="text-purple"></i>
           <div class="source-details">
             <div class="source-filename">Workflow Context</div>
             <div class="source-meta">${fileInfo}${separator}${contextInfo}</div>
@@ -1811,26 +2038,26 @@ document.addEventListener('turbo:load', function() {
     return html;
   }
 
-  // Get icon for source based on filename
+  // Get icon for source based on filename (returns Lucide icon HTML)
   function getSourceIcon(filename) {
-    if (!filename) return 'fas fa-file';
+    if (!filename) return '<i data-lucide="file"></i>';
     const ext = filename.split('.').pop().toLowerCase();
     const iconMap = {
-      'pdf': 'fas fa-file-pdf text-danger',
-      'doc': 'fas fa-file-word text-primary',
-      'docx': 'fas fa-file-word text-primary',
-      'xls': 'fas fa-file-excel text-success',
-      'xlsx': 'fas fa-file-excel text-success',
-      'ppt': 'fas fa-file-powerpoint text-warning',
-      'pptx': 'fas fa-file-powerpoint text-warning',
-      'txt': 'fas fa-file-alt',
-      'md': 'fas fa-file-alt',
-      'jpg': 'fas fa-file-image text-info',
-      'jpeg': 'fas fa-file-image text-info',
-      'png': 'fas fa-file-image text-info',
-      'gif': 'fas fa-file-image text-info'
+      'pdf': '<i data-lucide="file-text" class="text-danger"></i>',
+      'doc': '<i data-lucide="file-text" class="text-primary"></i>',
+      'docx': '<i data-lucide="file-text" class="text-primary"></i>',
+      'xls': '<i data-lucide="file-spreadsheet" class="text-success"></i>',
+      'xlsx': '<i data-lucide="file-spreadsheet" class="text-success"></i>',
+      'ppt': '<i data-lucide="presentation" class="text-warning"></i>',
+      'pptx': '<i data-lucide="presentation" class="text-warning"></i>',
+      'txt': '<i data-lucide="file-text"></i>',
+      'md': '<i data-lucide="file-text"></i>',
+      'jpg': '<i data-lucide="image" class="text-info"></i>',
+      'jpeg': '<i data-lucide="image" class="text-info"></i>',
+      'png': '<i data-lucide="image" class="text-info"></i>',
+      'gif': '<i data-lucide="image" class="text-info"></i>'
     };
-    return iconMap[ext] || 'fas fa-file';
+    return iconMap[ext] || '<i data-lucide="file"></i>';
   }
 
   // View document function
@@ -2283,6 +2510,12 @@ document.addEventListener('turbo:load', function() {
                   }
                 });
                 chatMessages.appendChild(toolMessage);
+
+                // Initialize Lucide icons for tool message
+                if (typeof lucide !== 'undefined') {
+                  lucide.createIcons();
+                }
+
                 scrollToBottom();
                 updateMessageCount();
                 
