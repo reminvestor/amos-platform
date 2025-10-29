@@ -444,47 +444,52 @@
           </div>
 
           <!-- Model Selector -->
-          <div class="model-selector-container" style="padding: 8px 12px; background: rgba(255, 255, 255, 0.05); border-radius: 8px 8px 0 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <label for="model-select" style="color: rgba(255, 255, 255, 0.8); font-size: 0.85rem; margin: 0; white-space: nowrap; display: flex; align-items: center; gap: 6px;">
-                <i data-lucide="bot" style="width: 16px; height: 16px;"></i>Model:
-              </label>
-              <select id="model-select" class="model-select" style="flex: 1; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.9rem; cursor: pointer;">
+          <div class="model-selector-container">
+            <div class="model-selector-inner">
+              <i data-lucide="cpu" class="model-icon"></i>
+              <span class="model-label">Model:</span>
+              <select id="model-select" class="model-select">
                 <option value="claude-sonnet-4-5">Claude Sonnet 4.5 - Latest, 25K tokens</option>
                 <option value="claude-3-5-sonnet">Claude 3.5 Sonnet - Fast, 8K tokens</option>
                 <option value="claude-opus-4-1">Claude Opus 4.1 - Most capable, 25K tokens</option>
                 <option value="claude-3-haiku" selected>Claude 3.5 Haiku - Fastest, 8K tokens</option>
               </select>
+              <i data-lucide="chevron-down" class="model-chevron"></i>
             </div>
           </div>
 
-          <div class="input-group">
-            <input type="file" 
-              id="file-input" 
-              multiple 
+          <!-- Input Container -->
+          <div class="input-container">
+            <input type="file"
+              id="file-input"
+              multiple
               accept="image/*,.pdf,.doc,.docx,.txt,.csv"
               style="display: none;"
               data-scout-target="fileInput">
+
             <button type="button" class="attach-btn" id="attach-button" title="Attach files">
-              <i class="fas fa-paperclip"></i>
+              <i data-lucide="paperclip"></i>
             </button>
-            <textarea 
-              class="chat-input" 
+
+            <textarea
+              class="chat-input"
               id="message-input"
-              placeholder="Type your message..." 
+              placeholder="Type your message..."
               data-scout-target="chatInput"
               autocomplete="off"
               rows="1"
             ></textarea>
+
             <button type="button"
                     class="voice-btn"
                     data-action="click->voice-assistant#toggleVoice"
                     data-voice-assistant-target="button"
                     title="Voice input">
-              <i class="fas fa-microphone"></i>
+              <i data-lucide="mic"></i>
             </button>
+
             <button type="submit" class="send-btn" id="send-button">
-              <i class="fas fa-paper-plane"></i>
+              <i data-lucide="send"></i>
             </button>
           </div>
         </form>
