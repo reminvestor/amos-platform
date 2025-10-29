@@ -38,6 +38,9 @@
 .env.*
 !.env.example
 
+# Ignore Redis dump files
+dump.rdb
+
 /app/assets/builds/*
 !/app/assets/builds/.keep
 
