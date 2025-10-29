@@ -441,35 +441,41 @@
 }
 
 .message-avatar {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  padding-top: 2px;
 
   svg, i {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
+    stroke-width: 2;
   }
 }
 
 .user-message .message-avatar {
   svg, i {
     color: #6366f1;
+    stroke-width: 2;
   }
 }
 
 .ai-message .message-avatar {
   svg, i {
     color: #9ca3af;
+    stroke-width: 1.5;
   }
 }
 
 .message-content {
   flex: 1;
   color: #e5e7eb;
-  line-height: 1.5;
+  line-height: 1.6;
+  min-width: 0;
+  word-wrap: break-word;
 }
 
 .message-content p {
