@@ -404,8 +404,69 @@
           <h2 class="chat-header-title">Amos AI</h2>
 
           <div class="chat-header-actions">
-            <!-- Model selector will be here via JavaScript -->
-            <div id="header-model-selector" class="header-model-selector"></div>
+            <!-- Model Selector with Brain Icon -->
+            <div class="model-selector-trigger">
+              <button id="model-selector-btn" class="model-brain-btn" title="Model Selection">
+                <div class="brain-icon-wrapper">
+                  <i data-lucide="brain" class="brain-outline"></i>
+                  <div class="brain-fill">
+                    <i data-lucide="brain" class="brain-filled"></i>
+                  </div>
+                </div>
+                <div class="power-dots">
+                  <div class="power-dot"></div>
+                  <div class="power-dot"></div>
+                </div>
+              </button>
+
+              <!-- Model Selector Popover -->
+              <div id="model-selector-popover" class="model-popover" style="display: none;">
+                <div class="model-popover-content">
+                  <div class="model-header">
+                    <div class="model-header-icon">
+                      <div class="brain-icon-wrapper">
+                        <i data-lucide="brain" class="brain-outline-lg"></i>
+                        <div class="brain-fill-lg">
+                          <i data-lucide="brain" class="brain-filled-lg"></i>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="model-header-text">
+                      <h3>Model Selection</h3>
+                      <p id="current-model-name">Claude 3.5 Sonnet</p>
+                    </div>
+                  </div>
+
+                  <div class="model-slider-section">
+                    <input type="range" id="model-power-slider" class="model-slider" min="0" max="100" value="50">
+                    <div class="slider-labels">
+                      <span>Faster</span>
+                      <span id="model-power-percent" class="power-percent">50%</span>
+                      <span>More Robust</span>
+                    </div>
+                  </div>
+
+                  <div class="model-presets">
+                    <button class="model-preset-btn" data-power="0">
+                      <span>Faster</span>
+                      <span class="preset-model">Claude 3.5 Haiku</span>
+                    </button>
+                    <button class="model-preset-btn active" data-power="50">
+                      <span>Balanced</span>
+                      <span class="preset-model">Claude 3.5 Sonnet</span>
+                    </button>
+                    <button class="model-preset-btn" data-power="100">
+                      <span>More Robust</span>
+                      <span class="preset-model">Claude Sonnet 4.5</span>
+                    </button>
+                  </div>
+
+                  <div class="model-info">
+                    <p>Higher model power provides more accurate and nuanced responses but may be slower.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div class="header-divider"></div>
 
@@ -1056,24 +1117,115 @@ document.addEventListener('turbo:load', function() {
   const chatMessages = document.getElementById('chat-messages');
   const sendButton = document.getElementById('send-button');
 
-  // Model selection handling
+  // Brain Icon Model Selector
+  const modelSelectorBtn = document.getElementById('model-selector-btn');
+  const modelPopover = document.getElementById('model-selector-popover');
+  const modelSlider = document.getElementById('model-power-slider');
+  const powerPercent = document.getElementById('model-power-percent');
+  const currentModelName = document.getElementById('current-model-name');
+  const presetBtns = document.querySelectorAll('.model-preset-btn');
   const modelSelect = document.getElementById('model-select');
 
-  // Load saved model preference from localStorage
-  const savedModel = localStorage.getItem('scout_selected_model') || 'claude-3-haiku';
-  if (modelSelect) {
-    modelSelect.value = savedModel;
+  // Model power to Claude model mapping
+  const MODEL_MAP = {
+    0: { model: 'claude-3-haiku', name: 'Claude 3.5 Haiku' },
+    50: { model: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
+    100: { model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' }
+  };
 
-    // Save model preference when changed
-    modelSelect.addEventListener('change', function() {
-      localStorage.setItem('scout_selected_model', this.value);
-      console.log('💾 Model preference saved:', this.value);
+  // Get current model from power level
+  function getModelFromPower(power) {
+    if (power <= 25) return MODEL_MAP[0];
+    if (power <= 75) return MODEL_MAP[50];
+    return MODEL_MAP[100];
+  }
+
+  // Update brain fill based on power
+  function updateBrainFill(power) {
+    const fillPercent = 100 - power; // Invert for clip-path
+    const brainFills = document.querySelectorAll('.brain-fill, .brain-fill-lg');
+    brainFills.forEach(fill => {
+      fill.style.clipPath = `inset(${fillPercent}% 0 0 0)`;
+    });
+
+    // Update power dots
+    const dots = document.querySelectorAll('.power-dot');
+    dots[0].classList.toggle('active', power >= 33);
+    dots[1].classList.toggle('active', power >= 66);
+  }
+
+  // Load saved model power or default to 50%
+  let currentPower = parseInt(localStorage.getItem('scout_model_power') || '50');
+  updateBrainFill(currentPower);
+  if (modelSlider) modelSlider.value = currentPower;
+  if (powerPercent) powerPercent.textContent = `${currentPower}%`;
+
+  // Update model select and name
+  const currentModel = getModelFromPower(currentPower);
+  if (modelSelect) modelSelect.value = currentModel.model;
+  if (currentModelName) currentModelName.textContent = currentModel.name;
+
+  // Toggle popover
+  if (modelSelectorBtn) {
+    modelSelectorBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = modelPopover.style.display === 'block';
+      modelPopover.style.display = isOpen ? 'none' : 'block';
+
+      // Re-initialize Lucide icons in popover
+      if (!isOpen && typeof lucide !== 'undefined') {
+        setTimeout(() => lucide.createIcons(), 10);
+      }
     });
   }
 
+  // Close popover when clicking outside
+  document.addEventListener('click', (e) => {
+    if (modelPopover && !modelPopover.contains(e.target) && e.target !== modelSelectorBtn) {
+      modelPopover.style.display = 'none';
+    }
+  });
+
+  // Handle slider changes
+  if (modelSlider) {
+    modelSlider.addEventListener('input', (e) => {
+      const power = parseInt(e.target.value);
+      currentPower = power;
+
+      // Update UI
+      updateBrainFill(power);
+      powerPercent.textContent = `${power}%`;
+
+      // Update model
+      const model = getModelFromPower(power);
+      currentModelName.textContent = model.name;
+      if (modelSelect) modelSelect.value = model.model;
+
+      // Update active preset
+      presetBtns.forEach(btn => {
+        const presetPower = parseInt(btn.dataset.power);
+        const isActive = Math.abs(power - presetPower) < 26;
+        btn.classList.toggle('active', isActive);
+      });
+
+      // Save to localStorage
+      localStorage.setItem('scout_model_power', power.toString());
+      localStorage.setItem('scout_selected_model', model.model);
+    });
+  }
+
+  // Handle preset buttons
+  presetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const power = parseInt(btn.dataset.power);
+      modelSlider.value = power;
+      modelSlider.dispatchEvent(new Event('input'));
+    });
+  });
+
   // Helper function to get currently selected model
   window.getSelectedModel = function() {
-    return modelSelect ? modelSelect.value : 'claude-sonnet-4-5';
+    return modelSelect ? modelSelect.value : 'claude-3-haiku';
   };
   const toolActivity = document.getElementById('tool-activity');
   
