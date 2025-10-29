@@ -2,9 +2,19 @@
 :timeout: 30
 
 :queues:
-  - default
-  - mailers
-  - active_storage
+  - [critical, 6]        # User-facing real-time queries
+  - [embeddings, 4]      # Bedrock embedding generation
+  - [docling, 3]         # Docling document processing (memory-intensive)
+  - [documents, 2]       # General document handling
+  - [default, 2]         # Default queue
+  - [mailers, 1]         # Email sending
+  - [active_storage, 1]  # File uploads
+  - [maintenance, 1]     # Cleanup, archival, reindexing
+
+# Queue limits (for memory-intensive operations)
+:limits:
+  docling: 3             # Max 3 concurrent docling processes
+  embeddings: 5          # API rate limit consideration
 
 development:
   :concurrency: 3

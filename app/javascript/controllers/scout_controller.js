@@ -366,26 +366,35 @@ export default class extends Controller {
   }
 
   // Enhanced processMessage to handle canvas actions and file uploads
-  async processMessage(message, files = []) {
+  async processMessage(message, files = [], model = null) {
     try {
       console.log("🔄 Processing message:", message)
-      
+      console.log("📎 Files passed to processMessage:", files.length)
+
       // Interrupt any ongoing TTS when user sends a new message
       if (window.ttsManager) {
         console.log("🛑 Interrupting TTS for new message")
         window.ttsManager.interrupt()
       }
-      
+
       // Clear any pending TTS buffer
       this.clearTTSState()
-      
+
+
       // If there are files, we need to upload them first
       let fileUrls = [];
       if (files && files.length > 0) {
         console.log("📎 Uploading files:", files.map(f => f.name))
         fileUrls = await this.uploadFiles(files);
+        console.log("📎 Upload complete, file URLs:", fileUrls)
+      } else {
+        console.log("📎 No files to upload")
       }
-      
+
+      // Get selected model (from parameter or global function)
+      const selectedModel = model || (window.getSelectedModel ? window.getSelectedModel() : 'claude-3-haiku');
+      console.log("🤖 Using model:", selectedModel);
+
       // Use streaming endpoint for better timeout handling
       const response = await fetch("/scout/chat_stream", {
         method: "POST",
@@ -393,10 +402,11 @@ export default class extends Controller {
           "Content-Type": "application/json",
           "X-CSRF-Token": this.getCSRFToken()
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: message,
           current_canvas: this.currentCanvas,
-          file_urls: fileUrls
+          file_urls: fileUrls,
+          model: selectedModel
         })
       })
 
@@ -1931,12 +1941,21 @@ export default class extends Controller {
   
   // Upload files to the server
   async uploadFiles(files) {
+    console.log('📎 uploadFiles called with', files.length, 'files')
+
     const formData = new FormData()
     files.forEach((file, index) => {
+      console.log(`📎 Appending file[${index}]:`, file.name, file.type, file.size)
       formData.append(`files[${index}]`, file)
     })
-    
+
+    // Add storage choice from modal
+    const storageChoice = window.documentStorageChoice || 'long-term'; // Default to long-term if not set
+    formData.append('storage_type', storageChoice);
+    console.log('📎 Storage type:', storageChoice);
+
     try {
+      console.log('📎 Sending POST to /scout/upload_files')
       const response = await fetch('/scout/upload_files', {
         method: 'POST',
         headers: {
@@ -1944,15 +1963,24 @@ export default class extends Controller {
         },
         body: formData
       })
-      
+
+      console.log('📎 Upload response status:', response.status)
+
       if (!response.ok) {
         throw new Error('File upload failed')
       }
-      
+
       const result = await response.json()
+      console.log('📎 Upload result:', result)
+
+      if (result.rag_stores_created && result.rag_stores_created.length > 0) {
+        console.log('✅ RAG stores created:', result.rag_stores_created)
+        console.log('✅ Message:', result.message)
+      }
+
       return result.urls || []
     } catch (error) {
-      console.error('File upload error:', error)
+      console.error('❌ File upload error:', error)
       this.addMessage('Failed to upload files. Please try again.', 'ai')
       return []
     }

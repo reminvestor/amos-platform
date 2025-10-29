@@ -55,3 +55,18 @@ entity_one_archived:
   chunk_count: 20
   status: "archived"
   metadata: {}
+
+# Test store for unit tests
+entity_store_one:
+  name: "Test RAG Store"
+  app_name: "TestApp"
+  store_type: entity
+  entity: company_one
+  pinecone_index: "amos-test-knowledge"
+  pinecone_namespace: "test_store_1"
+  chunk_count: 0
+  status: "processing"
+  s3_raw_path: "entities/company_one/raw/test_document.pdf"
+  s3_processed_path: "entities/company_one/processed/test_document.json"
+  processing_method: "docling"
+  metadata: {}

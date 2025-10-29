@@ -73,4 +73,21 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 tmp/create_admin.rb
+tmp/reset_passwords.rb
+tmp/reset_all_passwords.rb
+tmp/*.rb
 LOGIN_INFO.md
+docs/AI_PIPELINE_SPEC.md
+
+# IDE-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Personal notes and scratch files
+docs/scratch/
+docs/notes/
+NOTES.md
+TODO.md
