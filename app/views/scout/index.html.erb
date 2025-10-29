@@ -1547,6 +1547,11 @@ document.addEventListener('turbo:load', function() {
     chatMessages.insertBefore(fragment, chatMessages.firstChild);
     const newScrollHeight = chatMessages.scrollHeight;
     chatMessages.scrollTop = newScrollHeight - prevScrollHeight + chatMessages.scrollTop;
+
+    // Initialize Lucide icons for prepended messages
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
   }
 
   // Backward-compatible helper
@@ -1577,7 +1582,12 @@ document.addEventListener('turbo:load', function() {
     
     const el = buildMessageElement({ content: messageContent, role, timestamp, metadata: null });
     chatMessages.appendChild(el);
-    
+
+    // Initialize Lucide icons for newly added message
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
     // Track the content to prevent future duplicates
     streamedContent.add(messageContent.toString().trim());
     
@@ -2279,6 +2289,12 @@ document.addEventListener('turbo:load', function() {
                   }
                 });
                 chatMessages.appendChild(toolMessage);
+
+                // Initialize Lucide icons for tool message
+                if (typeof lucide !== 'undefined') {
+                  lucide.createIcons();
+                }
+
                 scrollToBottom();
                 updateMessageCount();
                 

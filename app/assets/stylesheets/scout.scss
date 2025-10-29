@@ -448,6 +448,12 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+
+  svg, i {
+    width: 16px;
+    height: 16px;
+    color: white;
+  }
 }
 
 .user-message .message-avatar {
