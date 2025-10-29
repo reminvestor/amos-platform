@@ -324,6 +324,8 @@ Rails.application.routes.draw do
     get '/contact', to: 'marketing#contact', as: :marketing_contact
     post '/contact', to: 'marketing#contact_submit', as: :marketing_contact_submit
     get '/help', to: 'marketing#help', as: :marketing_help
+    get '/terms', to: 'marketing#terms', as: :marketing_terms
+    get '/privacy', to: 'marketing#privacy', as: :marketing_privacy
   end
 
   # Debug routes for troubleshooting
