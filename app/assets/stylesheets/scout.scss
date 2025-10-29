@@ -441,29 +441,29 @@
 }
 
 .message-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 
   svg, i {
-    width: 16px;
-    height: 16px;
-    color: white;
+    width: 20px;
+    height: 20px;
   }
 }
 
 .user-message .message-avatar {
-  background: #6366f1;
-  color: white;
+  svg, i {
+    color: #6366f1;
+  }
 }
 
 .ai-message .message-avatar {
-  background: #374151;
-  color: white;
+  svg, i {
+    color: #9ca3af;
+  }
 }
 
 .message-content {
