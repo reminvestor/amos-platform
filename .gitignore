@@ -74,3 +74,4 @@ override.tf.json
 *_override.tf.json
 tmp/create_admin.rb
 LOGIN_INFO.md
+docs/AI_PIPELINE_SPEC.md
