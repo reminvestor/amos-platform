@@ -10,7 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
+<<<<<<< HEAD
 ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
+=======
+ActiveRecord::Schema[8.0].define(version: 2025_10_28_210435) do
+>>>>>>> 894957a (updated)
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -443,6 +447,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
     t.index ["user_id"], name: "index_contacts_on_user_id"
   end
 
+  create_table "conversation_embeddings", force: :cascade do |t|
+    t.bigint "scout_message_id"
+    t.bigint "entity_id", null: false
+    t.text "content"
+    t.vector "embedding", limit: 1536
+    t.string "role"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["embedding"], name: "index_conversation_embeddings_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
+    t.index ["entity_id", "created_at"], name: "index_conversation_embeddings_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_conversation_embeddings_on_entity_id"
+    t.index ["scout_message_id"], name: "index_conversation_embeddings_on_scout_message_id"
+  end
+
   create_table "crawler_conversations", force: :cascade do |t|
     t.bigint "crawler_job_id", null: false
     t.string "role"
@@ -527,6 +545,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "document_chunks", force: :cascade do |t|
+    t.bigint "knowledge_document_id", null: false
+    t.text "content", null: false
+    t.integer "chunk_index"
+    t.vector "embedding", limit: 1536
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["embedding"], name: "index_document_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
+    t.index ["knowledge_document_id", "chunk_index"], name: "index_document_chunks_on_knowledge_document_id_and_chunk_index"
+    t.index ["knowledge_document_id"], name: "index_document_chunks_on_knowledge_document_id"
   end
 
   create_table "dripped_campaigns", force: :cascade do |t|
@@ -670,6 +701,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
     t.index ["connection_id"], name: "index_integration_credentials_on_connection_id"
   end
 
+  create_table "integration_embeddings", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "integration_id", null: false
+    t.string "resource_type"
+    t.string "resource_id"
+    t.text "content"
+    t.vector "embedding", limit: 1536
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["embedding"], name: "index_integration_embeddings_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
+    t.index ["entity_id", "integration_id", "resource_type"], name: "idx_on_entity_id_integration_id_resource_type_3cebcacba6"
+    t.index ["entity_id"], name: "index_integration_embeddings_on_entity_id"
+    t.index ["integration_id"], name: "index_integration_embeddings_on_integration_id"
+  end
+
   create_table "integration_logs", force: :cascade do |t|
     t.bigint "connection_id", null: false
     t.bigint "user_id", null: false
@@ -746,6 +793,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_integrations_on_name", unique: true
     t.index ["slug"], name: "index_integrations_on_slug", unique: true
+  end
+
+  create_table "knowledge_documents", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "title", null: false
+    t.text "content", null: false
+    t.string "source_type"
+    t.string "source_url"
+    t.jsonb "metadata", default: {}
+    t.vector "embedding", limit: 1536
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["embedding"], name: "index_knowledge_documents_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
+    t.index ["entity_id", "created_at"], name: "index_knowledge_documents_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_knowledge_documents_on_entity_id"
   end
 
   create_table "landing_page_chat_messages", force: :cascade do |t|
@@ -850,6 +912,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
     t.index ["custom_model_id", "entity_id", "permission_type"], name: "idx_model_perms", unique: true
     t.index ["custom_model_id"], name: "index_model_permissions_on_custom_model_id"
     t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
+  end
+
+  create_table "o_auth_configurations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "integration_id", null: false
+    t.string "client_id", null: false
+    t.string "client_secret", null: false
+    t.string "redirect_uri", null: false
+    t.text "scopes"
+    t.string "authorize_url", null: false
+    t.string "token_url", null: false
+    t.text "credentials"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id"], name: "index_o_auth_configurations_on_client_id"
+    t.index ["entity_id", "integration_id"], name: "index_oauth_configs_on_entity_integration", unique: true
+    t.index ["entity_id"], name: "index_o_auth_configurations_on_entity_id"
+    t.index ["integration_id"], name: "index_o_auth_configurations_on_integration_id"
   end
 
   create_table "oauth_configurations", force: :cascade do |t|
@@ -1793,6 +1873,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
   add_foreign_key "contact_groups_contacts", "contacts"
   add_foreign_key "contacts", "entities"
   add_foreign_key "contacts", "users"
+  add_foreign_key "conversation_embeddings", "entities"
+  add_foreign_key "conversation_embeddings", "scout_messages"
   add_foreign_key "crawler_conversations", "crawler_jobs"
   add_foreign_key "crawler_job_logs", "crawler_jobs"
   add_foreign_key "crawler_jobs", "entities"
@@ -1801,6 +1883,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
   add_foreign_key "custom_models", "users"
   add_foreign_key "custom_plugins", "entities"
   add_foreign_key "custom_plugins", "users"
+  add_foreign_key "document_chunks", "knowledge_documents"
   add_foreign_key "dripped_campaigns", "campaigns", column: "follow_up_campaign_id"
   add_foreign_key "dripped_campaigns", "campaigns", column: "original_campaign_id"
   add_foreign_key "email_deliveries", "campaigns"
@@ -1815,11 +1898,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
   add_foreign_key "image_assets", "entities"
   add_foreign_key "image_assets", "users"
   add_foreign_key "integration_credentials", "connections"
+  add_foreign_key "integration_embeddings", "entities"
+  add_foreign_key "integration_embeddings", "integrations"
   add_foreign_key "integration_logs", "connections"
   add_foreign_key "integration_logs", "integration_operations"
   add_foreign_key "integration_logs", "scout_messages"
   add_foreign_key "integration_logs", "users"
   add_foreign_key "integration_operations", "integrations"
+  add_foreign_key "knowledge_documents", "entities"
   add_foreign_key "landing_page_chat_messages", "landing_pages"
   add_foreign_key "landing_page_chat_messages", "users"
   add_foreign_key "landing_page_submissions", "contacts"
@@ -1830,6 +1916,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
   add_foreign_key "landing_pages", "users"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
+  add_foreign_key "o_auth_configurations", "entities"
+  add_foreign_key "o_auth_configurations", "integrations"
   add_foreign_key "oauth_configurations", "integrations"
   add_foreign_key "observability_events", "entities"
   add_foreign_key "observability_events", "users"
