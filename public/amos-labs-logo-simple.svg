@@ -1,0 +1,27 @@
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#764ba2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1080" height="1080" fill="url(#bgGradient)"/>
+
+  <!-- Larger Cube Icon for profile pic -->
+  <g transform="translate(540, 440)">
+    <!-- 3D Cube (larger) -->
+    <!-- Top face -->
+    <path d="M 0,-120 L 150,0 L 0,120 L -150,0 Z" fill="#ffffff" opacity="0.95"/>
+    <!-- Left face -->
+    <path d="M -150,0 L 0,120 L 0,280 L -150,160 Z" fill="#ffffff" opacity="0.75"/>
+    <!-- Right face -->
+    <path d="M 150,0 L 0,120 L 0,280 L 150,160 Z" fill="#ffffff" opacity="0.85"/>
+  </g>
+
+  <!-- AMOS Labs Text (larger, better for small profile pic) -->
+  <text x="540" y="850" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="140" font-weight="700" fill="#ffffff" text-anchor="middle">AMOS</text>
+</svg>
