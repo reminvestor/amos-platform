@@ -499,7 +499,8 @@ module Agents
                     context_data["page_content"] ||
                     context_data[:page_content] ||
                     context_data["content"] ||
-                    context_data[:content]
+                    context_data[:content] ||
+                    context_data["execute_goal_html_content"] # Check phase-prefixed key
 
       # If not found directly, look in step outputs that might contain HTML
       if html_content.blank?
@@ -521,22 +522,35 @@ module Agents
         Rails.logger.info "🔍 All workflow context keys: #{context_data.keys.join(', ')}"
 
         # Try multiple ways to find the landing_page_id
-        landing_page_id = context_data["landing_page_id"] ||
-                         context_data[:landing_page_id] ||
-                         context_data["id"] ||  # Also try just 'id'
-                         context_data[:id] ||
-                         context_data["execute_goal_landing_page_id"] ||  # NEW - check this first!
+        # The tool returns landing_page_id in its response
+        landing_page_id = context_data["execute_goal_landing_page_id"] ||  # Check this first!
                          context_data["execute_goal_id"] ||
+                         context_data["landing_page_id"] ||
+                         context_data[:landing_page_id] ||
+                         context_data["id"] ||
+                         context_data[:id] ||
                          context_data.dig("step_output", "landing_page_id") ||
                          context_data.dig(:step_output, :landing_page_id)
 
-        # Also check in nested results
+        # Also check in nested results - look for the execute_goal phase output
         if landing_page_id.blank?
           context_data.each do |key, value|
-            if (key.to_s.include?("landing_page_id") || key.to_s.include?("_id")) && value.is_a?(Integer) && value.present?
-              landing_page_id = value
-              Rails.logger.info "🔍 Found ID in key: #{key} = #{value}"
-              break
+            if key.to_s.start_with?("execute_goal_") && value.is_a?(String)
+              # Try to parse as JSON if it looks like JSON
+              if value.strip.start_with?('{')
+                begin
+                  parsed = JSON.parse(value)
+                  landing_page_id = parsed["landing_page_id"] || parsed["id"]
+                  Rails.logger.info "🔍 Found landing_page_id in JSON: #{landing_page_id}" if landing_page_id
+                  break if landing_page_id
+                rescue JSON::ParserError
+                  # Not JSON, skip
+                end
+              elsif value.to_i > 0 && key.to_s.include?("landing_page_id")
+                landing_page_id = value.to_i
+                Rails.logger.info "🔍 Found ID in key: #{key} = #{value}"
+                break
+              end
             end
           end
         end
@@ -551,6 +565,7 @@ module Agents
           end
         else
           Rails.logger.warn "⚠️ No landing_page_id found in context. Available keys: #{context_data.keys.join(', ')}"
+          Rails.logger.warn "⚠️ Context sample: #{context_data.first(5).to_h.inspect}"
         end
       end
 
