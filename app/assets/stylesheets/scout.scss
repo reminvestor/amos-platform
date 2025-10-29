@@ -744,14 +744,15 @@
 .message-avatar {
   width: 40px;
   height: 40px;
+  border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 
   svg, i {
-    width: 40px;
-    height: 40px;
+    width: 24px;
+    height: 24px;
   }
 }
 
