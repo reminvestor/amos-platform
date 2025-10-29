@@ -24,6 +24,7 @@ class Entity < ApplicationRecord
   has_many :social_media_accounts, dependent: :destroy
   has_many :business_profiles, dependent: :destroy
   has_many :crawler_jobs, dependent: :destroy
+  has_many :image_assets, dependent: :destroy
 
   # Email sequence relationships
   has_many :email_sequences, dependent: :destroy
@@ -32,6 +33,12 @@ class Entity < ApplicationRecord
   # Scout AI Associations
   has_many :scout_conversations, dependent: :destroy
   has_many :business_insights, dependent: :destroy
+
+  # RAG Storage Associations
+  has_many :rag_stores, dependent: :destroy
+  has_many :rag_documents, through: :rag_stores
+  has_many :rag_chunks, through: :rag_documents
+  has_many :rag_queries, dependent: :destroy
 
   # Subscription tracking
   has_many :subscription_events, dependent: :destroy

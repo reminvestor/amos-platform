@@ -42,8 +42,9 @@ Rails.application.routes.draw do
     end
     
     namespace :v1 do
-      # Health check endpoint
+      # Health check endpoints
       get "health", to: "health#index"
+      get "health/rag", to: "health#rag"
       resources :contacts, only: [ :create ]
       resources :jobs, only: [ :show ]
       post "crawler_contacts", to: "crawler_contacts#create"
@@ -356,6 +357,8 @@ Rails.application.routes.draw do
   post "scout/continue_workflow", to: "scout#continue_workflow"
   post "scout/approve_workflow", to: "scout#approve_workflow"
   post "scout/upload_files", to: "scout#upload_files"
+  post "scout/move_to_long_term", to: "scout#move_to_long_term"
+  delete "scout/delete_document", to: "scout#delete_document"
   get "scout/history", to: "scout#history" # paginated history
   delete "scout/conversation", to: "scout#clear_conversation"
   get "scout/export", to: "scout#conversation_export"
@@ -441,6 +444,14 @@ Rails.application.routes.draw do
     resources :scout_sessions, only: [:index, :show, :destroy] do
       member do
         post :sync_redis
+      end
+    end
+
+    # System Document Library (System RAG)
+    resources :system_documents do
+      member do
+        post :reindex
+        get :download
       end
     end
 

@@ -198,32 +198,39 @@ resource "aws_db_instance" "postgres" {
   identifier     = "${var.app_name}-db"
   engine         = "postgres"
   engine_version = "15.12"
-  instance_class = var.db_instance_class
-  
+  instance_class = var.db_instance_class  # Consider upgrading to db.t3.small for RAG workload
+
   allocated_storage     = var.db_allocated_storage
   max_allocated_storage = var.db_allocated_storage * 5
   storage_encrypted     = true
-  
+
   db_name  = "agent_marketing_${var.environment}"
   username = "postgres"
   password = random_password.db_password.result
-  
+
+  # Use custom parameter group with pgvector enabled (defined in rds.tf)
+  parameter_group_name = aws_db_parameter_group.postgres_with_pgvector.name
+
   vpc_security_group_ids = [aws_security_group.rds.id]
   db_subnet_group_name   = aws_db_subnet_group.main.name
-  
+
   multi_az = var.multi_az
   deletion_protection = var.enable_deletion_protection
-  
+
   skip_final_snapshot = var.skip_final_snapshot
   final_snapshot_identifier = var.skip_final_snapshot ? null : "${var.app_name}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
-  
+
   backup_retention_period = var.db_backup_retention_period
   backup_window          = "03:00-04:00"
   maintenance_window     = "sun:04:00-sun:05:00"
-  
+
+  # Allow modifications (parameter group change requires restart)
+  apply_immediately = false
+
   tags = {
     Name        = "${var.app_name}-database"
     Environment = var.environment
+    Extensions  = "pgvector"
   }
 }
 
@@ -461,6 +468,10 @@ resource "aws_ecs_task_definition" "app" {
           value = aws_s3_bucket.storage.id
         },
         {
+          name  = "RAG_BUCKET"
+          value = aws_s3_bucket.rag_storage.id
+        },
+        {
           name  = "AI_PROVIDER"
           value = "bedrock"
         },
@@ -677,7 +688,7 @@ resource "aws_iam_role" "ecs_task_role" {
   })
 }
 
-# Task role policy for S3 access
+# Task role policy for S3 access (Active Storage + RAG Storage)
 resource "aws_iam_role_policy" "ecs_task_s3" {
   name = "${var.app_name}-ecs-task-s3"
   role = aws_iam_role.ecs_task_role.id
@@ -695,7 +706,9 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
         ]
         Resource = [
           aws_s3_bucket.storage.arn,
-          "${aws_s3_bucket.storage.arn}/*"
+          "${aws_s3_bucket.storage.arn}/*",
+          aws_s3_bucket.rag_storage.arn,
+          "${aws_s3_bucket.rag_storage.arn}/*"
         ]
       }
     ]

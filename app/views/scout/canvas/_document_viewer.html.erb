@@ -1,148 +1,580 @@
-<div class="scout-canvas document-viewer">
-  <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h4 class="mb-1">
-        <i class="fas fa-file-alt text-primary me-2"></i>
-        Document Viewer
-      </h4>
-      <p class="text-muted mb-0"><%= canvas_data[:filename] || 'Uploaded Document' %></p>
-    </div>
-    <div class="d-flex gap-2">
-      <% if canvas_data[:download_url] %>
-        <a href="<%= canvas_data[:download_url] %>" class="btn btn-outline-secondary" download>
-          <i class="fas fa-download me-1"></i>
-          Download
-        </a>
-      <% end %>
-      <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage?.('Summarize this document')">
-        <i class="fas fa-file-alt me-1"></i>
-        Summarize
-      </button>
-      <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage?.('Translate this document')">
-        <i class="fas fa-language me-1"></i>
-        Translate
-      </button>
-      <button class="btn btn-primary" onclick="window.scoutSendMessage?.('Extract data from this document')">
-        <i class="fas fa-database me-1"></i>
-        Extract Data
-      </button>
-    </div>
+<div class="scout-canvas document-viewer-enhanced">
+  <div class="canvas-header mb-3">
+    <h4 class="mb-1" style="color: #1f2937 !important;">
+      <i class="fas fa-file-alt text-primary me-2"></i>
+      Document Library
+    </h4>
+    <p class="text-muted mb-0 small" style="color: #6b7280 !important;">
+      <%= canvas_data[:document_count] || 0 %> document(s) available
+    </p>
   </div>
-  
-  <!-- Document Display -->
-  <div class="document-display card border-0 shadow-sm">
-    <div class="card-body p-0">
-      <% if canvas_data[:content_type]&.start_with?('image/') %>
-        <!-- Image Display -->
-        <div class="text-center p-4" style="background: #f8f9fa;">
-          <img src="<%= canvas_data[:url] %>" 
-               alt="<%= canvas_data[:filename] %>" 
-               class="img-fluid rounded shadow"
-               style="max-height: 600px; max-width: 100%;">
+
+  <div class="row g-3" style="height: calc(100vh - 250px);">
+    <!-- Document List Sidebar -->
+    <div class="col-md-4" style="height: 100%; overflow-y: auto;">
+      <div class="document-list">
+        <div class="mb-3">
+          <input type="text"
+                 class="form-control form-control-sm"
+                 id="documentSearch"
+                 placeholder="Search documents...">
         </div>
-        
-      <% elsif canvas_data[:content_type] == 'application/pdf' %>
-        <!-- PDF Display -->
-        <div class="pdf-viewer" style="height: 700px;">
-          <% if canvas_data[:url] %>
-            <iframe src="<%= canvas_data[:url] %>#toolbar=0&navpanes=0" 
-                    width="100%" 
-                    height="100%" 
-                    style="border: none;"
-                    title="<%= canvas_data[:filename] %>">
-            </iframe>
+
+        <div id="documentListContainer">
+          <% if canvas_data[:documents] && canvas_data[:documents].any? %>
+            <% canvas_data[:documents].each_with_index do |doc, index| %>
+              <div class="document-item <%= 'active' if index == 0 %>"
+                   data-document-index="<%= index %>"
+                   data-filename="<%= doc[:filename] %>"
+                   onclick="selectDocument(<%= index %>)">
+                <div class="d-flex align-items-start justify-content-between">
+                  <div class="document-actions me-2">
+                    <!-- Only show delete for RAG documents (not plain image assets) -->
+                    <% if doc[:storage_type] == 'short-term' || doc[:rag_document_id].present? %>
+                      <button class="btn btn-danger btn-sm delete-doc-btn"
+                              onclick="event.stopPropagation(); deleteDocument('<%= doc[:filename] %>', '<%= doc[:storage_type] %>', <%= doc[:rag_document_id] ? doc[:rag_document_id] : 'null' %>)"
+                              title="Delete this document"
+                              data-doc-id="<%= doc[:rag_document_id] %>">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    <% end %>
+
+                    <% if doc[:storage_type] == 'short-term' %>
+                      <button class="btn btn-success btn-sm save-doc-btn ms-1"
+                              onclick="event.stopPropagation(); moveToLongTerm('<%= doc[:filename] %>')"
+                              title="Save permanently to knowledge base">
+                        <i class="fas fa-save"></i>
+                      </button>
+                    <% end %>
+                  </div>
+                  <div class="d-flex align-items-start flex-grow-1" style="min-width: 0;">
+                    <div class="document-icon me-2" style="flex-shrink: 0;">
+                      <% if doc[:content_type]&.start_with?('image/') %>
+                        <i class="fas fa-image text-info"></i>
+                      <% elsif doc[:content_type] == 'application/pdf' %>
+                        <i class="fas fa-file-pdf text-danger"></i>
+                      <% else %>
+                        <i class="fas fa-file text-secondary"></i>
+                      <% end %>
+                    </div>
+                    <div class="flex-grow-1" style="min-width: 0; overflow: hidden;">
+                      <div class="document-name"><%= doc[:filename] %></div>
+                      <div class="document-meta">
+                        <small class="text-muted">
+                          <%= doc[:size] ? number_to_human_size(doc[:size]) : 'Unknown size' %>
+                          <% if doc[:storage_type] == 'short-term' %>
+                            <span class="badge bg-warning text-dark ms-1">Session</span>
+                          <% else %>
+                            <span class="badge bg-success ms-1">Saved</span>
+                          <% end %>
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           <% else %>
-            <div class="text-center p-5">
-              <i class="fas fa-file-pdf text-danger" style="font-size: 6rem;"></i>
-              <p class="text-muted mt-3">PDF Preview</p>
-              <p class="small"><%= canvas_data[:filename] %></p>
+            <div class="text-center text-muted py-5">
+              <i class="fas fa-inbox fa-3x mb-3"></i>
+              <p>No documents uploaded yet</p>
+              <small>Upload documents via the chat</small>
             </div>
           <% end %>
         </div>
-        
-      <% else %>
-        <!-- Generic File Display -->
-        <div class="text-center p-5">
-          <i class="fas fa-file text-secondary" style="font-size: 6rem;"></i>
-          <p class="text-muted mt-3"><%= canvas_data[:filename] %></p>
-          <p class="small text-muted">
-            Type: <%= canvas_data[:content_type] %><br>
-            Size: <%= number_to_human_size(canvas_data[:size]) if canvas_data[:size] %>
-          </p>
-        </div>
-      <% end %>
+      </div>
     </div>
-  </div>
-  
-  <!-- Document Info -->
-  <div class="document-info mt-3">
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <h6 class="mb-3 text-dark">
-          <i class="fas fa-info-circle text-primary me-2"></i>
-          Document Information
-        </h6>
-        <div class="row">
-          <div class="col-md-6">
-            <dl class="mb-0">
-              <dt class="small text-secondary">Filename</dt>
-              <dd class="text-dark fw-semibold"><%= canvas_data[:filename] %></dd>
-              
-              <dt class="small text-secondary">Type</dt>
-              <dd class="text-dark"><%= canvas_data[:content_type] %></dd>
-            </dl>
-          </div>
-          <div class="col-md-6">
-            <dl class="mb-0">
-              <% if canvas_data[:size] %>
-                <dt class="small text-secondary">Size</dt>
-                <dd class="text-dark"><%= number_to_human_size(canvas_data[:size]) %></dd>
-              <% end %>
-              
-              <% if canvas_data[:pages] %>
-                <dt class="small text-secondary">Pages</dt>
-                <dd class="text-dark"><%= canvas_data[:pages] %></dd>
-              <% end %>
-            </dl>
-          </div>
-        </div>
-        
-        <% if canvas_data[:extracted_text_preview] %>
-          <div class="mt-3">
-            <dt class="small text-secondary">Extracted Text Preview</dt>
-            <dd class="small font-monospace bg-light text-dark p-2 rounded" style="max-height: 100px; overflow-y: auto;">
-              <%= truncate(canvas_data[:extracted_text_preview], length: 500) %>
-            </dd>
+
+    <!-- Document Viewer -->
+    <div class="col-md-8" style="height: 100%; overflow-y: auto;">
+      <div id="documentViewerArea">
+        <% if canvas_data[:documents] && canvas_data[:documents].empty? %>
+          <div class="text-center text-muted py-5">
+            <i class="fas fa-file-alt fa-4x mb-3"></i>
+            <p>No documents uploaded yet</p>
+            <small>Upload documents via the chat to view them here</small>
           </div>
         <% end %>
+        <!-- Document content will be loaded by JavaScript selectDocument() -->
       </div>
     </div>
   </div>
 </div>
 
+<script>
+// Store all documents data for JavaScript access
+window.documentsData = <%= raw canvas_data[:documents].to_json %>;
+window.selectedDocumentIndex = 0;
+
+console.log('📚 Document viewer loaded with', window.documentsData.length, 'documents');
+console.log('📄 Documents data:', window.documentsData);
+
+function selectDocument(index) {
+  console.log('📄 Selecting document:', index);
+  window.selectedDocumentIndex = index;
+
+  // Update active state in list
+  document.querySelectorAll('.document-item').forEach((item, i) => {
+    if (i === index) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
+  });
+
+  // Load document viewer content
+  const doc = window.documentsData[index];
+  console.log('📄 Loading document:', doc);
+  loadDocumentContent(doc);
+}
+
+function loadDocumentContent(doc) {
+  console.log('📄 loadDocumentContent called with:', doc);
+
+  const viewerArea = document.getElementById('documentViewerArea');
+  console.log('📄 Viewer area element:', viewerArea);
+
+  if (!viewerArea) {
+    console.error('❌ Document viewer area not found!');
+    return;
+  }
+
+  if (!doc) {
+    console.error('❌ No document data provided!');
+    return;
+  }
+
+  console.log('📄 Building HTML for document:', doc.filename);
+
+  // Build the viewer HTML
+  let html = `
+    <div class="document-viewer-content">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">${doc.filename}</h5>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage?.('Summarize ${doc.filename}')">
+            <i class="fas fa-file-alt me-1"></i> Summarize
+          </button>
+          <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage?.('Extract data from ${doc.filename}')">
+            <i class="fas fa-database me-1"></i> Extract Data
+          </button>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+          <h6 class="mb-3"><i class="fas fa-info-circle text-primary me-2"></i>Document Information</h6>
+          <div class="row">
+            <div class="col-md-6">
+              <dl class="mb-0">
+                <dt class="small text-secondary">Filename</dt>
+                <dd class="text-dark fw-semibold">${doc.filename}</dd>
+                <dt class="small text-secondary">Type</dt>
+                <dd class="text-dark">${doc.content_type || 'Unknown'}</dd>
+              </dl>
+            </div>
+            <div class="col-md-6">
+              <dl class="mb-0">
+                <dt class="small text-secondary">Size</dt>
+                <dd class="text-dark">${doc.size_human || 'Unknown'}</dd>
+                <dt class="small text-secondary">Storage</dt>
+                <dd class="text-dark">${doc.storage_type === 'short-term' ? 'Session (Temporary)' : 'Knowledge Base (Permanent)'}</dd>
+              </dl>
+            </div>
+          </div>
+  `;
+
+  // Add "Save Permanently" button for session documents
+  if (doc.storage_type === 'short-term') {
+    html += `
+          <div class="mt-3 pt-3 border-top">
+            <button class="btn btn-success btn-sm w-100" onclick="moveToLongTerm('${doc.filename}')">
+              <i class="fas fa-save me-2"></i>
+              Save Permanently to Knowledge Base
+            </button>
+            <small class="text-muted d-block mt-2 text-center">
+              <i class="fas fa-clock me-1"></i> This document will be deleted in 24 hours unless saved
+            </small>
+          </div>
+    `;
+  }
+
+  html += `
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-0">
+  `;
+
+  // Add content based on type
+  if (doc.content_type && doc.content_type.startsWith('image/')) {
+    html += `
+      <div class="text-center p-4" style="background: #f8f9fa;">
+        <img src="${doc.url}" alt="${doc.filename}" class="img-fluid rounded shadow" style="max-height: 600px; max-width: 100%;">
+      </div>
+    `;
+  } else if (doc.content_type === 'application/pdf') {
+    html += `
+      <div class="pdf-viewer" style="height: 600px;">
+        <iframe src="${doc.url}#toolbar=0&navpanes=0" width="100%" height="100%" style="border: none;" title="${doc.filename}"></iframe>
+      </div>
+    `;
+  } else {
+    html += `
+      <div class="text-center p-5">
+        <i class="fas fa-file text-secondary" style="font-size: 4rem;"></i>
+        <p class="text-muted mt-3">${doc.filename}</p>
+      </div>
+    `;
+  }
+
+  html += `
+        </div>
+      </div>
+    </div>
+  `;
+
+  console.log('📄 Setting HTML content (length:', html.length, ')');
+  viewerArea.innerHTML = html;
+  console.log('✅ Document content loaded successfully');
+}
+
+// Move document from session to long-term storage
+async function moveToLongTerm(filename) {
+  const button = event.target.closest('button');
+  const originalHTML = button.innerHTML;
+
+  try {
+    // Show loading state
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+
+    const response = await fetch('/scout/move_to_long_term', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+      },
+      body: JSON.stringify({ filename: filename })
+    });
+
+    // Check if response is HTML (authentication redirect)
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('text/html')) {
+      throw new Error('Session expired. Please refresh the page and log in again.');
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Show success briefly
+      button.innerHTML = '<i class="fas fa-check me-2"></i>Saved!';
+      button.classList.remove('btn-success');
+      button.classList.add('btn-outline-success');
+      button.disabled = true;
+
+      // Remove the document from the session array (it's now in long-term storage)
+      const docIndex = window.documentsData.findIndex(d => d.filename === filename);
+      if (docIndex !== -1) {
+        window.documentsData.splice(docIndex, 1);
+      }
+
+      // Remove the document item from the sidebar with fade effect
+      const docItem = document.querySelector(`.document-item[data-filename="${filename}"]`);
+      if (docItem) {
+        docItem.style.opacity = '0';
+        docItem.style.transition = 'opacity 0.3s';
+        setTimeout(() => {
+          docItem.remove();
+        }, 300);
+      }
+
+      console.log('✅ Document saved permanently and removed from session:', data);
+
+      // Reload the canvas to show the document in long-term storage
+      setTimeout(() => {
+        window.scoutLoadCanvas?.('document_viewer', {});
+      }, 800);
+
+    } else {
+      throw new Error(data.error || 'Failed to save document');
+    }
+
+  } catch (error) {
+    console.error('Error saving document:', error);
+    button.disabled = false;
+    button.innerHTML = originalHTML;
+    alert('Failed to save document: ' + error.message);
+  }
+}
+
+// Delete document from session or long-term storage
+async function deleteDocument(filename, storageType, ragDocumentId) {
+  const button = event.target.closest('button');
+  const originalHTML = button.innerHTML;
+
+  // Confirmation dialog
+  const storageLabel = storageType === 'short-term' ? 'session' : 'knowledge base';
+  const confirmMessage = storageType === 'short-term'
+    ? `Delete "${filename}" from this session?\n\nThis will remove it from your current conversation.`
+    : `Permanently delete "${filename}" from your knowledge base?\n\nThis action cannot be undone and will delete all associated data.`;
+
+  if (!confirm(confirmMessage)) {
+    return;
+  }
+
+  try {
+    // Show loading state
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    const params = {
+      filename: filename,
+      storage_type: storageType
+    };
+
+    // Add rag_document_id for long-term storage
+    if (storageType === 'long-term' && ragDocumentId) {
+      params.rag_document_id = ragDocumentId;
+    }
+
+    const response = await fetch('/scout/delete_document', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+      },
+      body: JSON.stringify(params)
+    });
+
+    // Check if response is HTML (authentication redirect)
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('text/html')) {
+      throw new Error('Session expired. Please refresh the page and log in again.');
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      console.log('✅ Document deleted:', data);
+
+      // Remove from documents array
+      const docIndex = window.documentsData.findIndex(d => d.filename === filename);
+      if (docIndex !== -1) {
+        window.documentsData.splice(docIndex, 1);
+      }
+
+      // Remove the document item from sidebar
+      const docItem = document.querySelector(`.document-item[data-filename="${filename}"]`);
+      if (docItem) {
+        docItem.remove();
+      }
+
+      // If this was the active document, clear the viewer or select another
+      if (window.documentsData.length > 0) {
+        // Select the first available document
+        selectDocument(0);
+      } else {
+        // No documents left, show empty state
+        document.getElementById('documentViewerArea').innerHTML = `
+          <div class="text-center text-muted py-5">
+            <i class="fas fa-file-alt fa-4x mb-3"></i>
+            <p>No documents uploaded yet</p>
+            <small>Upload documents via the chat to view them here</small>
+          </div>
+        `;
+
+        // Update document list
+        document.getElementById('documentListContainer').innerHTML = `
+          <div class="text-center text-muted py-5">
+            <i class="fas fa-inbox fa-3x mb-3"></i>
+            <p>No documents uploaded yet</p>
+            <small>Upload documents via the chat</small>
+          </div>
+        `;
+      }
+
+      // Reload canvas after a short delay to sync state
+      setTimeout(() => {
+        window.scoutLoadCanvas?.('document_viewer', {});
+      }, 500);
+
+    } else {
+      throw new Error(data.error || 'Failed to delete document');
+    }
+
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    button.disabled = false;
+    button.innerHTML = originalHTML;
+    alert('Failed to delete document: ' + error.message);
+  }
+}
+
+// Document search
+document.getElementById('documentSearch')?.addEventListener('input', function(e) {
+  const searchTerm = e.target.value.toLowerCase();
+  document.querySelectorAll('.document-item').forEach(item => {
+    const filename = item.dataset.filename.toLowerCase();
+    if (filename.includes(searchTerm)) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+});
+
+// Auto-load first document
+if (window.documentsData && window.documentsData.length > 0) {
+  console.log('📄 Auto-loading first document:', window.documentsData[0].filename);
+  setTimeout(function() {
+    loadDocumentContent(window.documentsData[0]);
+  }, 100); // Small delay to ensure DOM is ready
+}
+</script>
+
 <style>
-.document-viewer {
+.document-viewer-enhanced {
   height: 100%;
+  background: #f9fafb !important;
+  color: #1f2937 !important;
+  padding: 1.5rem;
   overflow-y: auto;
 }
 
-.document-display {
-  background: white;
-}
-
-.pdf-viewer {
-  background: #f8f9fa;
-}
-
-/* Force dark text for document info */
-.document-viewer .card-body h6,
-.document-viewer .card-body dd,
-.document-viewer .card-body dt {
+.document-list {
+  background: white !important;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   color: #1f2937 !important;
 }
 
-.document-viewer .text-secondary {
+.document-item {
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white !important;
+  color: #1f2937 !important;
+}
+
+.document-item:hover {
+  border-color: #667eea;
+  background: #f9fafb !important;
+}
+
+.document-item.active {
+  border-color: #667eea;
+  background: #eef2ff !important;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+}
+
+.document-actions {
+  display: flex;
+  align-items: center;
+}
+
+.save-doc-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1;
+  border-radius: 4px;
+  transition: all 0.2s;
+  opacity: 0.8;
+}
+
+.save-doc-btn:hover {
+  opacity: 1;
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.save-doc-btn i {
+  font-size: 0.875rem;
+}
+
+.document-item:not(:hover) .save-doc-btn {
+  opacity: 0.6;
+}
+
+.delete-doc-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1;
+  border-radius: 4px;
+  transition: all 0.2s;
+  opacity: 0.8;
+}
+
+.delete-doc-btn:hover {
+  opacity: 1;
+  transform: scale(1.05);
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+}
+
+.delete-doc-btn i {
+  font-size: 0.875rem;
+}
+
+.document-item:not(:hover) .delete-doc-btn {
+  opacity: 0.6;
+}
+
+.document-icon {
+  font-size: 1.25rem;
+}
+
+.document-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #1f2937 !important;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  display: block;
+}
+
+.document-meta {
+  font-size: 0.75rem;
+}
+
+.document-viewer-content {
+  background: white !important;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  color: #1f2937 !important;
+}
+
+.document-viewer-content * {
+  color: #1f2937 !important;
+}
+
+/* Force dark text for all elements */
+.document-viewer-enhanced .text-dark,
+.document-viewer-enhanced dd,
+.document-viewer-enhanced dt,
+.document-viewer-enhanced h4,
+.document-viewer-enhanced h5,
+.document-viewer-enhanced h6,
+.document-viewer-enhanced p,
+.document-viewer-enhanced .document-name,
+.document-viewer-enhanced .card-body,
+.document-viewer-enhanced small {
+  color: #1f2937 !important;
+}
+
+.document-viewer-enhanced .text-secondary {
   color: #6b7280 !important;
 }
-</style>
 
+.document-viewer-enhanced .text-muted {
+  color: #9ca3af !important;
+}
+</style>

@@ -1,10 +1,43 @@
-# production:
-#   periodic_cleanup:
-#     class: CleanSoftDeletedRecordsJob
-#     queue: background
-#     args: [ 1000, { batch_size: 500 } ]
-#     schedule: every hour
-#   periodic_command:
-#     command: "SoftDeletedRecord.due.delete_all"
-#     priority: 2
-#     schedule: at 5am every day
+# RAG System Monitoring & Maintenance Jobs
+production:
+  # Daily metrics collection - comprehensive system statistics
+  rag_daily_metrics:
+    class: Rag::MetricsJob
+    queue: maintenance
+    schedule: at 2am every day
+
+  # Health checks every 15 minutes - ensure all systems operational
+  rag_health_check:
+    class: Rag::HealthCheckJob
+    queue: maintenance
+    schedule: every 15 minutes
+
+  # Cache warming every 6 hours - pre-compute popular queries
+  rag_cache_warming:
+    class: Rag::WarmCacheJob
+    queue: maintenance
+    schedule: every 6 hours
+
+  # Weekly archival - move old documents to Glacier storage
+  rag_weekly_archival:
+    class: Rag::ArchiveOldDocumentsJob
+    queue: maintenance
+    schedule: at 3am every sunday
+
+# Development environment - run less frequently to avoid noise
+development:
+  # Daily metrics in dev (just for testing)
+  rag_daily_metrics:
+    class: Rag::MetricsJob
+    queue: maintenance
+    schedule: at 2am every day
+
+  # Health check once per hour in dev
+  rag_health_check:
+    class: Rag::HealthCheckJob
+    queue: maintenance
+    schedule: every hour
+
+# Test environment - disable recurring jobs
+test:
+  # No recurring jobs in test environment

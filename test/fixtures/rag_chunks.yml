@@ -1,0 +1,69 @@
+# RagChunk fixtures for testing
+chunk_one:
+  rag_document: document_one
+  content: "Our brand uses blue (#0066CC) as the primary color and white (#FFFFFF) as the secondary color. These colors should be used consistently across all marketing materials."
+  embedding: null  # Will be populated in tests
+  pinecone_vector_id: "chunk_1_abc123"
+  metadata:
+    page: 3
+    section_title: "Color Palette"
+    chunk_type: "text"
+  chunk_index: 0
+  token_count: 45
+  chunk_type: "text"
+
+chunk_two:
+  rag_document: document_one
+  content: "The company logo must maintain a minimum clearspace of 2x the height of the logo mark on all sides. Never distort, rotate, or modify the logo colors."
+  embedding: null
+  pinecone_vector_id: "chunk_2_def456"
+  metadata:
+    page: 2
+    section_title: "Logo Usage"
+    chunk_type: "text"
+  chunk_index: 1
+  token_count: 38
+  chunk_type: "text"
+
+chunk_table:
+  rag_document: document_two
+  content: |
+    Product Pricing Table:
+    | Product | Basic | Pro | Enterprise |
+    |---------|-------|-----|------------|
+    | Starter | $10   | $25 | $100       |
+  embedding: null
+  pinecone_vector_id: "chunk_3_table"
+  metadata:
+    page: 10
+    section_title: "Pricing"
+    table_id: "table_1"
+    rows: 2
+    cols: 4
+  chunk_index: 5
+  token_count: 52
+  chunk_type: "table"
+
+chunk_system:
+  rag_document: document_system
+  content: "To authenticate with the Stripe API, include your API key in the Authorization header: Authorization: Bearer sk_test_..."
+  embedding: null
+  pinecone_vector_id: "chunk_system_1"
+  metadata:
+    section_title: "Authentication"
+    chunk_type: "text"
+  chunk_index: 0
+  token_count: 35
+  chunk_type: "text"
+
+chunk_no_embedding:
+  rag_document: document_two
+  content: "This chunk has not been embedded yet and is pending processing."
+  embedding: null
+  pinecone_vector_id: null
+  metadata:
+    page: 1
+    section_title: "Overview"
+  chunk_index: 0
+  token_count: 15
+  chunk_type: "text"

@@ -91,6 +91,12 @@
                   <i class="fas fa-key"></i> System Settings
                 <% end %>
               </li>
+
+              <li class="nav-item">
+                <%= link_to admin_system_documents_path, class: "nav-link #{'active' if controller_name == 'system_documents'}" do %>
+                  <i class="fas fa-database"></i> System Docs
+                <% end %>
+              </li>
             </ul>
 
             <ul class="navbar-nav">
