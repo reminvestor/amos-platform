@@ -1,3 +1,6 @@
+require 'tempfile'
+require 'open3'
+
 module Tools
   class ReadDocumentTool < BaseTool
     def self.read_only?
@@ -42,15 +45,33 @@ module Tools
         return error_response("Either file_url or asset_id is required")
       end
       
+      tempfile = nil
       begin
         # Find the file
         if asset_id
           asset = ImageAsset.find_by(id: asset_id, entity: @entity)
           return error_response("File not found or access denied") unless asset
           
-          file_path = ActiveStorage::Blob.service.path_for(asset.file.blob.key)
-          filename = asset.file.filename.to_s
-          content_type = asset.file.content_type
+          # Download the file to a temporary location for processing
+          # This ensures compatibility with tools like ImageMagick
+          begin
+            tempfile = asset.file.blob.open do |file|
+              # Create a temp file with the same extension
+              ext = File.extname(asset.file.filename.to_s)
+              temp = Tempfile.new(['document', ext])
+              temp.binmode
+              temp.write(file.read)
+              temp.rewind
+              temp
+            end
+            
+            file_path = tempfile.path
+            filename = asset.file.filename.to_s
+            content_type = asset.file.content_type
+          rescue => e
+            Rails.logger.error "Failed to create temp file: #{e.message}"
+            return error_response("Failed to access file: #{e.message}")
+          end
         elsif file_url
           # Download from URL (if it's an ActiveStorage URL)
           return error_response("Direct URL reading not yet implemented")
@@ -113,6 +134,9 @@ module Tools
         Rails.logger.error "Document reading failed: #{e.message}"
         Rails.logger.error e.backtrace.first(5).join("\n")
         error_response("Failed to read document: #{e.message}")
+      ensure
+        # Clean up tempfile if we created one
+        tempfile&.close! if defined?(tempfile) && tempfile
       end
     end
     
@@ -150,8 +174,30 @@ module Tools
       begin
         # For PDFs, convert first page to image
         if content_type == 'application/pdf'
-          image_data = convert_pdf_to_image(file_path)
-          media_type = 'image/png'
+          begin
+            image_data = convert_pdf_to_image(file_path)
+            media_type = 'image/png'
+          rescue => conv_error
+            Rails.logger.error "PDF conversion failed: #{conv_error.message}"
+            # Return a helpful message instead of crashing
+            return <<~MSG
+              📋 Document Information:
+              - File: #{File.basename(file_path)}
+              - Type: PDF Document
+              
+              ⚠️ Unable to extract text from this PDF using OCR.
+              
+              This appears to be a scanned PDF that requires special tools to read.
+              To enable PDF OCR, please ensure the following are installed on your system:
+              - ImageMagick: brew install imagemagick
+              - Ghostscript: brew install ghostscript
+              
+              Alternatively, you can:
+              1. Convert the PDF to text using an online tool
+              2. Upload a text-based PDF instead of a scanned image
+              3. Take a screenshot of the PDF and upload it as an image
+            MSG
+          end
         else
           # Read image file directly
           image_data = File.read(file_path)
@@ -183,40 +229,97 @@ module Tools
       # Keep under Claude's 5MB limit
       require 'mini_magick'
       
-      image = MiniMagick::Image.open("#{pdf_path}[0]")  # First page only
-      image.format 'png'
-      
-      # Start with good quality
-      image.resize '1600x1600>'  # Reasonable size for OCR
-      image.quality 85
-      
-      # Get blob
-      blob = image.to_blob
-      
-      # If still > 5MB, reduce further
-      if blob.bytesize > 5_000_000
-        Rails.logger.info "📦 Image too large (#{blob.bytesize} bytes), compressing..."
-        image.resize '1200x1200>'
-        image.quality 75
-        blob = image.to_blob
+      # Ensure the file exists
+      unless File.exist?(pdf_path)
+        raise "PDF file not found at path: #{pdf_path}"
       end
       
-      # If STILL > 5MB, aggressive compression
-      if blob.bytesize > 5_000_000
-        Rails.logger.info "📦 Still too large, aggressive compression..."
-        image.resize '800x800>'
-        image.quality 60
-        blob = image.to_blob
+      # Create a new tempfile for the output PNG
+      output_file = Tempfile.new(['pdf_page', '.png'])
+      output_path = output_file.path
+      
+      begin
+        # Check if we can use system commands
+        Rails.logger.info "🔍 Checking for PDF conversion tools..."
+        
+        # Try using Ghostscript directly first
+        gs_version = `gs --version 2>&1`.strip
+        if gs_version.match?(/\d+\.\d+/)
+          Rails.logger.info "✅ Using Ghostscript #{gs_version} for PDF conversion"
+          
+          # Convert PDF to PNG using Ghostscript directly
+          gs_cmd = [
+            "gs",
+            "-dNOPAUSE",
+            "-dBATCH",
+            "-sDEVICE=png16m",
+            "-r150",
+            "-dFirstPage=1",
+            "-dLastPage=1",
+            "-sOutputFile=#{output_path}",
+            pdf_path
+          ]
+          
+          # Execute the command and capture output
+          output, status = Open3.capture2e(*gs_cmd)
+          unless status.success?
+            Rails.logger.error "Ghostscript conversion failed: #{output}"
+            raise "Ghostscript conversion failed: #{output}"
+          end
+        else
+          # Fall back to ImageMagick
+          Rails.logger.info "⚠️ Ghostscript not found, trying ImageMagick..."
+          
+          # Use ImageMagick command directly to avoid MiniMagick issues
+          convert_cmd = [
+            "convert",
+            "-density", "150",
+            "-quality", "85",
+            "-resize", "1600x1600>",
+            "-background", "white",
+            "-alpha", "remove",
+            "#{pdf_path}[0]",
+            output_path
+          ]
+          
+          # Execute the command and capture output
+          output, status = Open3.capture2e(*convert_cmd)
+          unless status.success?
+            Rails.logger.error "ImageMagick conversion failed: #{output}"
+            raise "ImageMagick conversion failed: #{output}. Please ensure ImageMagick and Ghostscript are installed:\nbrew install imagemagick ghostscript"
+          end
+        end
+        
+        # Read the converted image
+        image_data = File.read(output_path)
+        
+        # If still > 5MB, reduce quality
+        if image_data.bytesize > 5_000_000
+          Rails.logger.info "📦 Image too large (#{image_data.bytesize} bytes), reducing quality..."
+          MiniMagick::Tool::Convert.new do |convert|
+            convert << "#{pdf_path}[0]"
+            convert.merge! ["-density", "100"] 
+            convert.merge! ["-quality", "75"]
+            convert.merge! ["-resize", "1200x1200>"]
+            convert.merge! ["-background", "white"]
+            convert.merge! ["-alpha", "remove"]
+            convert << output_path
+          end
+          image_data = File.read(output_path)
+        end
+        
+        Rails.logger.info "✅ Converted PDF to image: #{image_data.bytesize} bytes"
+        return image_data
+      ensure
+        output_file.close! if output_file
       end
-      
-      Rails.logger.info "✅ Final image size: #{blob.bytesize} bytes (#{(blob.bytesize / 1024.0 / 1024.0).round(2)} MB)"
-      
-      blob
     rescue LoadError
       # If MiniMagick not available, return error
       raise "MiniMagick gem required for scanned PDF processing. Install with: gem install mini_magick"
     rescue => e
-      raise "PDF to image conversion failed: #{e.message}"
+      Rails.logger.error "PDF conversion error: #{e.message}"
+      Rails.logger.error "Please install required tools with: brew install imagemagick ghostscript"
+      raise "PDF to image conversion failed: #{e.message}. Please ensure ImageMagick and Ghostscript are installed."
     end
   end
 end

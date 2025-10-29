@@ -2050,6 +2050,12 @@ document.addEventListener('turbo:load', function() {
       formData.append(`files[${index}]`, file);
     });
     
+    // Add storage choice if available
+    if (window.documentStorageChoice) {
+      formData.append('storage_type', window.documentStorageChoice);
+      console.log('📦 Including storage type:', window.documentStorageChoice);
+    }
+    
     try {
       const response = await fetch('/scout/upload_files', {
         method: 'POST',
