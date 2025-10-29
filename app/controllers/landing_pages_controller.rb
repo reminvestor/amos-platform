@@ -374,7 +374,7 @@ class LandingPagesController < ApplicationController
 
 Return only the title, nothing else. Make it clear, compelling, and action-oriented."
 
-      response = AiServiceHelper.get_service.send_message(system_prompt, user_message)
+      response = ClaudeService.new.send_message(system_prompt, user_message)
       title = response.strip.gsub(/["""]/, "")
 
       # Fallback if AI response is too long or empty
