@@ -1,7 +1,8 @@
 class ScoutController < ApplicationController
   include ActionController::Live  # Enable real-time streaming
   include ActionView::Helpers::NumberHelper  # For number formatting
-  include Scout::Streaming  # Streaming helpers extracted to concern
+  include Scout::Streaming  # Streaming helpers
+  include Scout::StreamingKeepalive  # Keep-alive for long operations
 
   before_action :authenticate_user!
   before_action :ensure_entity_exists
@@ -23,12 +24,11 @@ class ScoutController < ApplicationController
       flash.now[:success] = "🎉 Your landing page '#{recent_landing_page.title}' was created successfully! You can access it from the Landing Pages section."
     end
 
-    # If this is a fresh start, add Scout's welcome message
+    # If this is a fresh start, add Scout's welcome message and load default canvas
     if @conversation_history.empty?
       create_welcome_message
       @conversation_history = persisted_history_last_k(10)
-      # Don't auto-load any canvas - let user interact naturally
-      # @auto_load_canvas = "default" unless params[:load].present?
+      @auto_load_canvas = "default" unless params[:load].present?
     end
 
     # Business context for display
@@ -186,39 +186,12 @@ class ScoutController < ApplicationController
       metadata = {}
 
       if file_urls.any?
-        # Check if any files are in RAG storage
-        rag_files = file_urls.select { |f| f['rag_store_id'].present? }
-        non_rag_files = file_urls.reject { |f| f['rag_store_id'].present? }
+        # Include asset_id so AMOS can use read_document tool
+        file_details = file_urls.map do |f|
+          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+        end.join(", ")
 
-        file_details = []
-
-        # Build message based on storage type
-        if rag_files.any?
-          rag_details = rag_files.map do |f|
-            "📎 #{f['filename']} (rag_store_id: #{f['rag_store_id']}, asset_id: #{f['asset_id']}, chunks: #{f['chunks_created']})"
-          end
-          file_details.concat(rag_details)
-        end
-
-        if non_rag_files.any?
-          non_rag_details = non_rag_files.map do |f|
-            "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
-          end
-          file_details.concat(non_rag_details)
-        end
-
-        storage_context = []
-        if rag_files.any?
-          storage_context << "IMPORTANT: #{rag_files.length} document(s) have been uploaded and ALREADY STORED in your RAG knowledge base with vector embeddings. These are permanently available for querying."
-          storage_context << "- To query these documents, use the query_rag_store tool (no app_name needed - it will search all your documents)"
-          storage_context << "- You do NOT need to store these documents again - they are already indexed"
-        end
-
-        if non_rag_files.any?
-          storage_context << "- For images/non-document files, use the read_document tool with the asset_id to view them"
-        end
-
-        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details.join(', ')}]\n\n#{storage_context.join("\n")}"
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
         metadata[:file_urls] = file_urls
       end
 
@@ -325,258 +298,34 @@ class ScoutController < ApplicationController
   # Handle file uploads from chat
   def upload_files
     uploaded_urls = []
-    rag_stores_created = []
-    documents_processed = 0
-    storage_type = params[:storage_type] || 'long-term' # Default to long-term if not specified
-
-    Rails.logger.info "📎 Upload request - storage_type: #{storage_type}"
-
-    # Ensure scout_session_id exists for short-term storage
-    session[:scout_session_id] ||= SecureRandom.uuid if storage_type == 'short-term'
-
-    # Initialize document processor
-    document_processor = Scout::DocumentProcessor.new(
-      entity: current_entity,
-      user: current_user,
-      session_id: session[:scout_session_id],
-      url_generator: ->(file) { rails_blob_url(file) }
-    )
 
     if params[:files].present?
       params[:files].each do |index, file|
         if file.is_a?(ActionDispatch::Http::UploadedFile)
-          extension = File.extname(file.original_filename).downcase
-          is_document = Scout::DocumentProcessor.document_file?(extension)
+          # Create ImageAsset for each uploaded file
+          image_asset = ImageAsset.create!(
+            entity: current_entity,
+            user: current_user,
+            title: file.original_filename,
+            file: file,
+            source: "upload"
+          )
 
-          Rails.logger.info "📎 Processing file: #{file.original_filename}, extension: #{extension}, is_document: #{is_document}"
-
-          # Differentiate between documents and images
-          if is_document
-            Rails.logger.info "📄 Routing to RAG processing pipeline (storage: #{storage_type})"
-            # Process documents with Docling → RAG pipeline
-            result = document_processor.process_for_rag(file, storage_type: storage_type)
-
-            if result[:success]
-              uploaded_urls << {
-                url: result[:url],
-                filename: file.original_filename,
-                content_type: file.content_type,
-                size: file.size,
-                asset_id: result[:asset_id],
-                rag_store_id: result[:rag_store_id],
-                processed_with: result[:processor],
-                chunks_created: result[:chunks_count]
-              }
-              # Track document processing success
-              documents_processed += 1
-              # Only track rag_store_id for long-term storage
-              rag_stores_created << result[:rag_store_id] if result[:rag_store_id]
-            else
-              # Fallback to ImageAsset if RAG processing fails
-              Rails.logger.warn "RAG processing failed for #{file.original_filename}: #{result[:error]}"
-              image_asset = document_processor.create_image_asset(file)
-              uploaded_urls << document_processor.build_image_asset_response(image_asset, file)
-            end
-          else
-            # Keep images in Active Storage (existing behavior)
-            Rails.logger.info "🖼️ Routing to Active Storage (image/unsupported file)"
-            image_asset = document_processor.create_image_asset(file)
-            uploaded_urls << document_processor.build_image_asset_response(image_asset, file)
-          end
+          uploaded_urls << {
+            url: rails_blob_url(image_asset.file),
+            filename: file.original_filename,
+            content_type: file.content_type,
+            size: file.size,
+            asset_id: image_asset.id
+          }
         end
       end
     end
 
-    response_data = {
-      success: true,
-      urls: uploaded_urls
-    }
-
-    # Add RAG info if documents were processed
-    if documents_processed > 0
-      response_data[:rag_stores_created] = rag_stores_created if rag_stores_created.any?
-      if storage_type == 'short-term'
-        response_data[:message] = "#{documents_processed} document(s) processed for this conversation"
-      else
-        response_data[:message] = "#{documents_processed} document(s) processed and added to your knowledge base"
-      end
-    end
-
-    render json: response_data
+    render json: { success: true, urls: uploaded_urls }
   rescue => e
     Rails.logger.error "File upload error: #{e.message}"
-    Rails.logger.error e.backtrace.join("\n")
     render json: { success: false, error: e.message }, status: 500
-  end
-
-  # Delete document from session (Redis) or long-term (database) storage
-  def delete_document
-    filename = params[:filename]
-    storage_type = params[:storage_type]
-
-    unless filename
-      render json: { success: false, error: "Filename is required" }, status: 400
-      return
-    end
-
-    begin
-      if storage_type == 'short-term'
-        # Delete from Redis
-        scout_session_id = session[:scout_session_id]
-
-        unless scout_session_id
-          render json: { success: false, error: "No active session found" }, status: 400
-          return
-        end
-
-        session_key = "rag:session:#{scout_session_id}:documents"
-        deleted = $redis.hdel(session_key, filename)
-
-        if deleted > 0
-          Rails.logger.info "🗑️ Deleted session document: #{filename}"
-          render json: {
-            success: true,
-            message: "Document deleted from session"
-          }
-        else
-          render json: { success: false, error: "Document not found in session" }, status: 404
-        end
-
-      else
-        # Delete from database (long-term storage)
-        rag_document_id = params[:rag_document_id]
-
-        unless rag_document_id
-          render json: { success: false, error: "Document ID is required for long-term storage" }, status: 400
-          return
-        end
-
-        rag_document = RagDocument.joins(:rag_store)
-                                   .where(rag_stores: { entity_id: current_entity.id })
-                                   .find_by(id: rag_document_id)
-
-        unless rag_document
-          render json: { success: false, error: "Document not found or access denied" }, status: 404
-          return
-        end
-
-        rag_store = rag_document.rag_store
-        rag_document_filename = rag_document.original_filename
-
-        # Delete chunks first (cascade should handle this, but being explicit)
-        rag_document.rag_chunks.destroy_all
-
-        # Delete document
-        rag_document.destroy!
-
-        # If this was the last document in the RAG store, delete the store too
-        if rag_store.rag_documents.count == 0
-          rag_store.destroy!
-          Rails.logger.info "🗑️ Deleted RagStore #{rag_store.id} (was empty after deleting document)"
-        end
-
-        Rails.logger.info "🗑️ Deleted database document: #{rag_document_filename} (ID: #{rag_document_id})"
-
-        render json: {
-          success: true,
-          message: "Document permanently deleted from knowledge base"
-        }
-      end
-
-    rescue => e
-      Rails.logger.error "Delete document error: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-      render json: { success: false, error: e.message }, status: 500
-    end
-  end
-
-  # Move session document from Redis to long-term database storage
-  def move_to_long_term
-    filename = params[:filename]
-
-    unless filename
-      render json: { success: false, error: "Filename is required" }, status: 400
-      return
-    end
-
-    begin
-      scout_session_id = session[:scout_session_id]
-
-      unless scout_session_id
-        render json: { success: false, error: "No active session found" }, status: 400
-        return
-      end
-
-      session_key = "rag:session:#{scout_session_id}:documents"
-      doc_json = $redis.hget(session_key, filename)
-
-      unless doc_json
-        render json: { success: false, error: "Document not found in session" }, status: 404
-        return
-      end
-
-      # Parse document data from Redis
-      doc_data = JSON.parse(doc_json)
-
-      Rails.logger.info "📦 Moving '#{filename}' from session to long-term storage"
-
-      # Create RagStore for permanent storage
-      rag_store = RagStore.create!(
-        entity: current_entity,
-        name: "Saved: #{filename}",
-        app_name: "Scout Session Save - #{Time.current.strftime('%Y-%m-%d %H:%M')}",
-        store_type: "entity",
-        pinecone_index: "amos-rag-#{Rails.env}",
-        pinecone_namespace: "entity_#{current_entity.id}_#{SecureRandom.hex(4)}",
-        processing_method: "docling"
-      )
-
-      # Create RagDocument
-      rag_document = RagDocument.create!(
-        rag_store: rag_store,
-        original_filename: filename,
-        file_hash: doc_data['file_hash'] || Digest::SHA256.hexdigest(filename),
-        page_count: doc_data['page_count'],
-        docling_metadata: {
-          asset_id: doc_data['asset_id'],
-          asset_url: doc_data['asset_url'],
-          moved_from_session: true,
-          original_session_id: scout_session_id,
-          moved_at: Time.current.iso8601
-        }
-      )
-
-      # Create RagChunks
-      chunks_created = 0
-      doc_data['chunks']&.each do |chunk|
-        RagChunk.create!(
-          rag_document: rag_document,
-          content: chunk['content'],
-          chunk_index: chunk['index'],
-          chunk_type: chunk['type'] || 'text'
-        )
-        chunks_created += 1
-      end
-
-      Rails.logger.info "✅ Moved '#{filename}' to long-term storage (#{chunks_created} chunks, RagStore ID: #{rag_store.id})"
-
-      # Remove from Redis session storage (no longer needed in temporary storage)
-      deleted = $redis.hdel(session_key, filename)
-      Rails.logger.info "🗑️  Removed '#{filename}' from session storage" if deleted > 0
-
-      render json: {
-        success: true,
-        message: "Document saved permanently and removed from session",
-        rag_store_id: rag_store.id,
-        rag_document_id: rag_document.id,
-        chunks_count: chunks_created
-      }
-
-    rescue => e
-      Rails.logger.error "Move to long-term error: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-      render json: { success: false, error: e.message }, status: 500
-    end
   end
 
   def continue_workflow
@@ -631,13 +380,8 @@ class ScoutController < ApplicationController
     current_canvas = params[:current_canvas]
     context = params[:context]
     file_urls = params[:file_urls] || []
-    # Model selection: support both UI selection and voice assistant override
-    model_override = params[:model_override]&.strip # For voice assistant to use Haiku
-    selected_model = model_override || params[:model] || 'claude-sonnet-4-5'
 
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
-    Rails.logger.info "Selected model: #{selected_model}"
-    Rails.logger.info "Model override: #{model_override}" if model_override.present?
     puts "🚨 PRODUCTION DEBUG: Scout chat request received - #{Time.current}"
     STDOUT.flush
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
@@ -662,98 +406,24 @@ class ScoutController < ApplicationController
     response.status = 200
 
     begin
+      # Start keep-alive thread to prevent timeout during long operations
+      start_keepalive_thread
+      
       # Send immediate response to establish streaming
       stream_update("💬 Message received")
-
-      # Fetch session documents from Redis
-      session_documents = []
-      begin
-        session_key = "rag:session:#{session.id}:documents"
-        Rails.logger.info "🔍 Looking for session documents with key: #{session_key}"
-
-        redis_docs = $redis.hgetall(session_key)
-        Rails.logger.info "📦 Redis returned #{redis_docs.keys.length} documents"
-
-        redis_docs.each do |filename, doc_json|
-          doc_data = JSON.parse(doc_json)
-          session_documents << {
-            filename: doc_data['filename'],
-            chunks: doc_data['chunks'],
-            storage_type: 'session'
-          }
-        end
-
-        if session_documents.any?
-          Rails.logger.info "📚 Found #{session_documents.length} session document(s) for context"
-          session_documents.each do |doc|
-            Rails.logger.info "  📄 #{doc[:filename]} with #{doc[:chunks].length} chunks"
-          end
-        else
-          Rails.logger.warn "⚠️ No session documents found for session #{session.id}"
-        end
-      rescue => e
-        Rails.logger.error "Error fetching session documents: #{e.message}"
-        Rails.logger.error e.backtrace.join("\n")
-      end
 
       # Build enhanced message if files are attached
       enhanced_message = user_message
       metadata = {}
 
       if file_urls.any?
-        # Check if any files are in RAG storage
-        rag_files = file_urls.select { |f| f['rag_store_id'].present? }
-        non_rag_files = file_urls.reject { |f| f['rag_store_id'].present? }
+        # Include asset_id so AMOS can use read_document tool
+        file_details = file_urls.map do |f|
+          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+        end.join(", ")
 
-        file_details = []
-
-        # Build message based on storage type
-        if rag_files.any?
-          rag_details = rag_files.map do |f|
-            "📎 #{f['filename']} (rag_store_id: #{f['rag_store_id']}, asset_id: #{f['asset_id']}, chunks: #{f['chunks_created']})"
-          end
-          file_details.concat(rag_details)
-        end
-
-        if non_rag_files.any?
-          non_rag_details = non_rag_files.map do |f|
-            "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
-          end
-          file_details.concat(non_rag_details)
-        end
-
-        storage_context = []
-        if rag_files.any?
-          storage_context << "IMPORTANT: #{rag_files.length} document(s) have been uploaded and ALREADY STORED in your RAG knowledge base with vector embeddings. These are permanently available for querying."
-          storage_context << "- To query these documents, use the query_rag_store tool (no app_name needed - it will search all your documents)"
-          storage_context << "- You do NOT need to store these documents again - they are already indexed"
-        end
-
-        if non_rag_files.any?
-          storage_context << "- For images/non-document files, use the read_document tool with the asset_id to view them"
-        end
-
-        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details.join(', ')}]\n\n#{storage_context.join("\n")}"
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
         metadata[:file_urls] = file_urls
-      end
-
-      # Add session documents to the enhanced message if available
-      if session_documents.any?
-        session_doc_details = session_documents.map do |doc|
-          chunk_count = doc[:chunks].length
-          "📄 #{doc[:filename]} (#{chunk_count} text chunks available)"
-        end.join("\n")
-
-        # Include all chunks in the context
-        all_chunks_text = session_documents.map do |doc|
-          "=== Document: #{doc[:filename]} ===\n" +
-          doc[:chunks].map.with_index do |chunk, idx|
-            "[Chunk #{idx + 1}]\n#{chunk['content']}"
-          end.join("\n\n")
-        end.join("\n\n" + "="*50 + "\n\n")
-
-        enhanced_message = "#{enhanced_message}\n\n[Session Documents Available:]\n#{session_doc_details}\n\n[Document Content:]\n#{all_chunks_text}\n\nYou can use the information from these documents to answer questions."
-        metadata[:session_documents] = session_documents
       end
 
       # Save user message with file info
@@ -764,16 +434,10 @@ class ScoutController < ApplicationController
       conversation_history = persisted_history_last_k(20)
       stream_update("📚 Loading conversation history (#{conversation_history.length} messages)")
 
-      # Store model override for this request (voice assistant uses Haiku for speed)
-      if model_override.present?
-        RequestStore.store[:model_override] = model_override
-        Rails.logger.info "🎤 Voice assistant model override set: #{model_override}"
-      end
-
       # Use InteractiveTaskService with streaming updates
       stream_update("🧠 Analyzing your request...")
       stream_update("📋 Detecting task mode and preparing workflow...")
-      interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id], model: selected_model)
+      interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id])
 
       # Set up progress callback for streaming updates
       interactive_service.on_progress do |progress_data|
@@ -829,14 +493,6 @@ class ScoutController < ApplicationController
             tool_name = progress_data[:tool_name] || progress_data[:name]
             Rails.logger.info "Tool complete: #{tool_name}"
             # Don't show tool complete messages - too noisy
-          when 'cache_metrics'
-            # Stream cache performance metrics to frontend
-            stream_update({
-              type: 'cache_metrics',
-              cache_creation: progress_data[:cache_creation] || 0,
-              cache_read: progress_data[:cache_read] || 0,
-              tokens: progress_data[:tokens]
-            })
           when 'planner_progress'
             # Stream planner reasoning as transient messages
             Rails.logger.info "Planner: #{progress_data[:message]}"
@@ -929,7 +585,7 @@ class ScoutController < ApplicationController
       end
 
       # Check if this is a plan approval response
-      if current_canvas&.dig("data", "awaiting_approval") && is_approval_response?(user_message)
+      if current_canvas.dig("data", "awaiting_approval") && is_approval_response?(user_message)
         stream_update("📋 Processing your plan feedback...")
         approval_action = extract_approval_action(user_message)
         result = interactive_service.handle_plan_approval(approval_action, user_message)
@@ -970,9 +626,6 @@ class ScoutController < ApplicationController
           canvas_type: result[:canvas_type] || result[:canvas] || "conversation",
           canvas_data: result[:canvas_data] || {},
           tools_used: result[:tools_used] || [],
-          sources: result[:sources] || [],
-          model_used: result[:model_used],
-          model_name: result[:model_name],
           success_count: (result[:tools_used].is_a?(Array) ? result[:tools_used].count : 0),
           error_count: 0
         }
@@ -1061,6 +714,9 @@ class ScoutController < ApplicationController
         tools_used: false
       })
     ensure
+      # Stop keep-alive thread
+      stop_keepalive_thread
+      
       response.stream.close
     end
   end
@@ -1388,24 +1044,6 @@ class ScoutController < ApplicationController
 
   private
 
-  # Analytics service instance
-  def analytics_service
-    @analytics_service ||= Scout::Analytics.new(entity: current_entity, user: current_user)
-  end
-
-  # Job status checker instance
-  def job_status_checker
-    @job_status_checker ||= Scout::JobStatusChecker.new(user: current_user, stream: response.stream)
-  end
-
-  # Task progress loader instance
-  def task_progress_loader
-    @task_progress_loader ||= Scout::TaskProgressLoader.new(
-      user: current_user,
-      session_id: session[:scout_session_id]
-    )
-  end
-
   def is_approval_response?(message)
     approval_patterns = [
       /\b(approve|yes|go ahead|proceed|execute|looks good|lgtm)\b/i,
@@ -1430,15 +1068,216 @@ class ScoutController < ApplicationController
     end
   end
 
-  # Streaming methods moved to Scout::Streaming concern
-  # See app/controllers/concerns/scout/streaming.rb
+  def stream_content_chunk(content)
+    # Stream individual content chunks for real-time display
+    puts "🚨 PRODUCTION DEBUG: Streaming content chunk: #{content.inspect}"
+    puts "🔍 Content length: #{content.length}, newlines: #{content.count("\n")}"
+    STDOUT.flush
+
+    data = JSON.generate({ type: "content", content: content })
+    chunk = "data: #{data}\n\n"
+
+    response.stream.write(chunk)
+
+    # Try to flush
+    begin
+      response.stream.flush if response.stream.respond_to?(:flush)
+    rescue
+      # Ignore flush errors
+    end
+
+    puts "✅ Content chunk streamed successfully"
+    STDOUT.flush
+  rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
+    # Client disconnected - this is normal, not an error
+    Rails.logger.info "Client disconnected during content streaming: #{e.message}"
+    puts "ℹ️ Client disconnected (normal): #{e.message}"
+    STDOUT.flush
+  rescue => e
+    Rails.logger.error "Stream content chunk error: #{e.message}"
+    puts "❌ Stream content chunk error: #{e.message}"
+    STDOUT.flush
+  end
+
+  def stream_update(message)
+    puts "🚨 PRODUCTION DEBUG: Streaming update: #{message}"
+    STDOUT.flush
+    # Create the SSE (Server-Sent Events) format
+    # Handle both string and hash data
+    data = if message.is_a?(Hash)
+      JSON.generate(message.merge(type: message[:type] || "update"))
+    else
+      JSON.generate({ type: "update", message: message })
+    end
+    chunk = "data: #{data}\n\n"
+
+    response.stream.write(chunk)
+
+    puts "✅ Update streamed successfully"
+    STDOUT.flush
+  rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
+    # Client disconnected - this is normal, not an error
+    Rails.logger.info "Client disconnected during streaming: #{e.message}"
+    puts "ℹ️ Client disconnected (normal): #{e.message}"
+    STDOUT.flush
+  rescue => e
+    Rails.logger.error "Stream update failed: #{e.message}"
+    puts "❌ Stream update failed: #{e.message}"
+    STDOUT.flush
+  end
+
+  def stream_transient_update(message)
+    puts "🚨 PRODUCTION DEBUG: Streaming transient update: #{message}"
+    STDOUT.flush
+    # Create transient messages for progress/tool updates
+    data = JSON.generate({
+      type: "transient",
+      message: message,
+      timestamp: Time.current.to_f
+    })
+    chunk = "data: #{data}\n\n"
+
+    # Write and try to force immediate sending
+    response.stream.write(chunk)
+
+    # Try multiple methods to flush
+    begin
+      response.stream.flush if response.stream.respond_to?(:flush)
+    rescue
+      # Ignore flush errors
+    end
+
+    # Force Rails to send the response chunk immediately
+    begin
+      if defined?(ActionController::Live) && response.stream.is_a?(ActionController::Live::SSE)
+        response.stream.instance_variable_get(:@stream).flush rescue nil
+      end
+    rescue
+      # Ignore if this doesn't work
+    end
+
+    Rails.logger.info "Streamed update: #{message.to_s.lines.first&.strip.to_s[0..80]}..."
+
+  rescue => e
+    Rails.logger.error "Stream update error: #{e.message}"
+  end
+
+  def get_friendly_tool_name(tool_name)
+    friendly_names = {
+      'generate_ai_landing_page' => 'Generating landing page',
+      'execute_integration' => 'Calling integration API',
+      'get_data' => 'Fetching data',
+      'create_object' => 'Creating record',
+      'update_object' => 'Updating record',
+      'create_rag_store' => 'Building knowledge base',
+      'web_search' => 'Searching the web',
+      'query_rag_store' => 'Querying documentation',
+      'add_integration_endpoint' => 'Adding API endpoint',
+      'generate_integration_scaffold' => 'Creating integration',
+      'list_operations' => 'Listing available operations',
+      'list_connections' => 'Checking connections',
+      'aggregate_artifact_data' => 'Aggregating data',
+      'create_dynamic_visualization' => 'Creating visualization'
+    }
+    friendly_names[tool_name] || tool_name.titleize
+  end
+
+
+  def stream_final_response(response_data)
+    Rails.logger.info "🌊 stream_final_response called with data keys: #{response_data.keys}"
+    Rails.logger.info "📝 Message length: #{response_data[:message]&.length} characters"
+    Rails.logger.info "📝 Message preview: #{response_data[:message]&.first(100)}..."
+    Rails.logger.info "📝 Message already saved: #{response_data[:message_already_saved]}"
+
+    # Persist final assistant message as a safety net if not already saved
+    if response_data[:message].present? && !response_data[:message_already_saved]
+      begin
+        save_scout_message("assistant", response_data[:message])
+      rescue => e
+        Rails.logger.warn "Final message save skipped/failed: #{e.message}"
+      end
+    end
+
+    # Create the final SSE response
+    data = JSON.generate({ type: "response", data: response_data })
+    chunk = "data: #{data}\n\n"
+
+    # Write and try to force immediate sending
+    response.stream.write(chunk)
+
+    # Try to flush
+    begin
+      response.stream.flush if response.stream.respond_to?(:flush)
+    rescue
+      # Ignore flush errors
+    end
+
+    Rails.logger.info "Streamed final response"
+
+  rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
+    # Client disconnected - this is normal, not an error
+    Rails.logger.info "Client disconnected during final response: #{e.message}"
+  rescue => e
+    Rails.logger.error "Stream final response error: #{e.message}"
+  end
 
   def check_active_job_status(response_data)
-    job_status_checker.check_active_job_status(response_data)
+    Rails.logger.info "🔍 Checking active job status for response data: #{response_data.keys}"
+
+    # Only check for job status if the response includes canvas data with landing_page_id
+    unless response_data[:canvas_data]&.dig(:landing_page_id)
+      Rails.logger.info "❌ No canvas_data or landing_page_id found"
+      return nil
+    end
+
+    landing_page_id = response_data[:canvas_data][:landing_page_id]
+    job_status_key = "job_status_#{current_user.id}_#{landing_page_id}"
+
+    Rails.logger.info "🔍 Looking for job status with key: #{job_status_key}"
+
+    # Get job status from cache
+    job_status = Rails.cache.read(job_status_key)
+
+    if job_status
+      Rails.logger.info "📊 Found job status for LP #{landing_page_id}: #{job_status[:type]} (#{job_status[:status]})"
+
+      # Don't clear processing status, only clear completed/failed status
+      if job_status[:status].in?([ "completed", "failed" ])
+        Rails.cache.delete(job_status_key)
+        Rails.logger.info "🗑️ Cleared consumed job status from cache"
+      else
+        Rails.logger.info "⏳ Keeping processing job status in cache for future checks"
+      end
+
+      return job_status
+    else
+      Rails.logger.info "❌ No job status found in cache for key: #{job_status_key}"
+    end
+
+    nil
   end
 
   def send_job_started_status_if_exists(response_data)
-    job_status_checker.send_job_started_status_if_exists(response_data)
+    # Only check if there's a landing page job
+    return unless response_data[:canvas_data]&.dig(:landing_page_id)
+
+    landing_page_id = response_data[:canvas_data][:landing_page_id]
+    job_status_key = "job_status_#{current_user.id}_#{landing_page_id}"
+
+    # Get job status from cache
+    job_status = Rails.cache.read(job_status_key)
+
+    if job_status && job_status[:status] == "processing"
+      Rails.logger.info "📡 Sending job_started status via SSE: #{job_status[:type]}"
+
+      # Send job status through SSE
+      job_data = JSON.generate({ type: "job_status", data: job_status })
+      job_chunk = "data: #{job_data}\n\n"
+      response.stream.write(job_chunk)
+      response.stream.flush if response.stream.respond_to?(:flush)
+    else
+      Rails.logger.info "❌ No processing job status found to send"
+    end
   end
 
   def current_entity
@@ -1751,112 +1590,21 @@ class ScoutController < ApplicationController
   end
 
   def render_document_viewer_canvas(data = {})
-    documents = []
-
-    # Fetch short-term documents from Redis (session-based)
-    begin
-      # Use scout_session_id for consistency across requests
-      scout_session_id = session[:scout_session_id]
-      if scout_session_id
-        session_key = "rag:session:#{scout_session_id}:documents"
-        Rails.logger.info "📚 Fetching Redis documents with key: #{session_key}"
-        redis_docs = $redis.hgetall(session_key)
-        Rails.logger.info "📚 Found #{redis_docs.keys.length} documents in Redis"
-
-        redis_docs.each do |filename, doc_json|
-          doc_data = JSON.parse(doc_json)
-          documents << {
-            filename: doc_data['filename'],
-            url: doc_data['asset_url'],
-            content_type: 'application/pdf', # Assumed for RAG documents
-            size: nil,
-            size_human: 'Unknown',
-            storage_type: 'short-term',
-            chunks_count: doc_data['chunks']&.length || 0,
-            uploaded_at: doc_data['uploaded_at']
-          }
-        end
-      end
-    rescue => e
-      Rails.logger.error "Error fetching Redis documents: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-    end
-
-    # Fetch long-term documents from database (recent uploads for this entity)
-    rag_stores = current_entity.rag_stores
-                               .where(store_type: 'entity')
-                               .where('created_at > ?', 7.days.ago)
-                               .includes(rag_documents: :rag_chunks)
-                               .order(created_at: :desc)
-
-    rag_stores.each do |store|
-      store.rag_documents.each do |doc|
-        # Get the ImageAsset for the document
-        asset_id = doc.docling_metadata&.dig('asset_id')
-        asset = nil
-
-        if asset_id
-          asset = ImageAsset.find_by(id: asset_id, entity: current_entity)
-        end
-
-        # Fallback: try to find by filename if asset_id not found
-        unless asset
-          asset = current_entity.image_assets
-                                .where("title LIKE ?", "%#{doc.original_filename}%")
-                                .where("created_at >= ?", doc.created_at - 5.minutes)
-                                .order(created_at: :desc)
-                                .first
-        end
-
-        # Only include documents that have URLs
-        if asset && asset.file.attached?
-          documents << {
-            filename: doc.original_filename,
-            url: rails_blob_url(asset.file),
-            content_type: 'application/pdf',
-            size: asset.file.byte_size,
-            size_human: number_to_human_size(asset.file.byte_size),
-            storage_type: 'long-term',
-            chunks_count: doc.rag_chunks.count,
-            uploaded_at: doc.created_at.iso8601,
-            rag_document_id: doc.id,
-            rag_store_id: store.id
-          }
-        end
-      end
-    end
-
-    # If specific asset_id is requested, include it (for backward compatibility)
+    # Build document URL from asset_id
     if data[:asset_id]
       asset = ImageAsset.find_by(id: data[:asset_id], entity: current_entity)
       if asset && asset.file.attached?
-        # Check if already in documents array
-        unless documents.any? { |d| d[:filename] == asset.title }
-          documents << {
-            filename: asset.title || 'Uploaded File',
-            url: rails_blob_url(asset.file),
-            content_type: asset.file.content_type,
-            size: asset.file.byte_size,
-            size_human: number_to_human_size(asset.file.byte_size),
-            storage_type: 'long-term',
-            uploaded_at: asset.created_at.iso8601
-          }
-        end
+        data[:url] = rails_blob_url(asset.file)
+        data[:download_url] = rails_blob_url(asset.file, disposition: 'attachment')
       end
     end
-
-    # Prepare canvas data
-    canvas_data = {
-      documents: documents,
-      document_count: documents.length
-    }
-
+    
     render_to_string(
       partial: 'scout/canvas/document_viewer',
       locals: {
         entity: current_entity,
         user: current_user,
-        canvas_data: canvas_data
+        canvas_data: data
       }
     )
   end
@@ -1916,7 +1664,21 @@ class ScoutController < ApplicationController
   end
 
   def calculate_avg_open_rate
-    analytics_service.calculate_avg_open_rate
+    campaigns_with_stats = current_entity.campaigns.where.not(mailgun_stats: nil)
+    return 0 if campaigns_with_stats.empty?
+
+    total_sent = 0
+    total_opened = 0
+
+    campaigns_with_stats.each do |campaign|
+      sent = campaign.mailgun_stats&.dig("sent") || 0
+      opened = campaign.mailgun_stats&.dig("opened") || 0
+      total_sent += sent
+      total_opened += opened
+    end
+
+    return 0 if total_sent == 0
+    ((total_opened.to_f / total_sent) * 100).round(1)
   end
 
   def render_email_template_viewer(data = {})
@@ -2025,11 +1787,91 @@ class ScoutController < ApplicationController
   end
 
   def load_form_submissions_data(filters = {})
-    analytics_service.load_form_submissions_data(filters)
+    # Base query for submissions from user's landing pages
+    base_query = LandingPageSubmission.joins(:landing_page)
+                                      .where(landing_pages: { user: current_user, entity: current_entity })
+                                      .includes(:contact, :landing_page)
+
+    # Apply filters
+    if filters[:landing_page_id]
+      base_query = base_query.where(landing_page_id: filters[:landing_page_id])
+    end
+
+    if filters[:form_type].present?
+      base_query = base_query.where(form_type: filters[:form_type])
+    end
+
+    if filters[:status].present?
+      base_query = base_query.where(status: filters[:status])
+    end
+
+    case filters[:time_range]
+    when "today"
+      base_query = base_query.today
+    when "week"
+      base_query = base_query.this_week
+    when "month"
+      base_query = base_query.this_month
+    end
+
+    # Get submissions with pagination
+    submissions = base_query.recent.limit(50)
+
+    # Calculate stats
+    stats = calculate_submission_stats(base_query)
+
+    # Format submissions for display
+    formatted_submissions = submissions.map do |submission|
+      {
+        id: submission.id,
+        form_type: submission.form_type,
+        status: submission.status,
+        submitted_at: submission.submitted_at.iso8601,
+        processed_at: submission.processed_at&.iso8601,
+        contact_info: submission.contact_info,
+        utm_params: submission.utm_params,
+        source_ip: submission.source_ip,
+        referrer: submission.referrer,
+        landing_page: {
+          id: submission.landing_page.id,
+          title: submission.landing_page.title,
+          slug: submission.landing_page.slug
+        },
+        submission_data: submission.submission_data
+      }
+    end
+
+    {
+      submissions: formatted_submissions,
+      stats: stats,
+      landing_page: filters[:landing_page_id] ?
+        LandingPage.find_by(id: filters[:landing_page_id], user: current_user) : nil,
+      pagination: {
+        current_count: formatted_submissions.length,
+        total_count: base_query.count,
+        has_previous: false, # TODO: Implement pagination
+        has_next: formatted_submissions.length >= 50
+      }
+    }
   end
 
   def calculate_submission_stats(base_query)
-    analytics_service.calculate_submission_stats(base_query)
+    total = base_query.count
+    processed = base_query.where(status: [ "processed", "duplicate" ]).count
+    pending = base_query.where(status: "pending").count
+    failed = base_query.where(status: "failed").count
+    spam = base_query.where(status: "spam").count
+
+    conversion_rate = total > 0 ? (processed.to_f / total * 100).round(1) : 0.0
+
+    {
+      total: total,
+      processed: processed,
+      pending: pending,
+      failed: failed,
+      spam: spam,
+      conversion_rate: conversion_rate
+    }
   end
 
   def render_workflow_analytics_canvas(data = {})
@@ -2047,21 +1889,140 @@ class ScoutController < ApplicationController
   end
 
   def load_workflow_analytics_data(options = {})
-    analytics_service.load_workflow_analytics_data(options)
+    period = (options[:period] || 30).to_i.days
+
+    # Get analytics from ObservabilityService
+    observability = ObservabilityService.instance
+
+    {
+      workflow_analytics: observability.workflow_analytics(period),
+      tool_analytics: observability.tool_analytics(period),
+      user_analytics: observability.user_analytics(period),
+      ai_metrics: observability.ai_metrics(period),
+      performance_metrics: observability.performance_metrics(period),
+      period_days: period.to_i / 1.day,
+      generated_at: Time.current
+    }
   end
 
   def render_task_progress(data = {})
-    # Load task data using the task progress loader service
-    task_data = task_progress_loader.load_task_data(data)
+    # Handle both symbol and string keys
+    data = data.with_indifferent_access if data.is_a?(Hash)
 
-    # Render appropriate partial based on workflow approval status
-    if task_progress_loader.is_workflow_approval?(task_data)
+    # If we have progress data from workflow, use it
+    if data[:progress] && !data[:tasks]
+      Rails.logger.info "📋 Converting workflow progress to task list format"
+      # Use the task_session_id if provided
+      if data[:task_session_id]
+        task_session = TaskSession.find_by(id: data[:task_session_id])
+        if task_session
+          workflow_engine = WorkflowEngine.new(task_session)
+          workflow_progress = workflow_engine.progress
+          workflow = workflow_engine.instance_variable_get(:@workflow)
+
+          data = {
+            tasks: workflow.steps.map do |step|
+              {
+                id: step.id,
+                description: step.config[:description] || step.id.to_s.humanize,
+                status: step.status,
+                details: step.error,
+                completed_at: step.completed_at,
+                failed_at: step.status == "failed" ? step.completed_at : nil
+              }
+            end,
+            title: task_session.workflow_name || "Workflow Progress",
+            created_at: task_session.created_at
+          }
+        end
+      end
+    end
+
+    # If no data provided, try to load from TaskSession
+    # Skip loading if we have workflow approval data
+    if (data.empty? || data.nil? || data[:tasks].nil?) && !data[:awaiting_approval] && !data["awaiting_approval"]
+      session_id = session[:scout_session_id]
+
+      # If we have a specific task_session_id, load that regardless of status
+      if data[:task_session_id] || data["task_session_id"]
+        task_session_id = data[:task_session_id] || data["task_session_id"]
+        task_session = TaskSession.where(user: current_user, id: task_session_id).first
+      else
+        # Try to find active task session
+        task_session = TaskSession.active
+                                 .where(user: current_user)
+                                 .where("metadata->>'session_id' = ?", session_id)
+                                 .first
+      end
+
+      if task_session
+        # Check if we have a task list in state
+        if task_session.state&.dig("task_list")
+          data = task_session.state["task_list"]
+          Rails.logger.info "📋 Loaded task list from TaskSession state: #{data[:tasks]&.size} tasks"
+        elsif task_session.workflow_spec
+          # Convert workflow to task list format for display with proper state restoration
+          workflow_engine = WorkflowEngine.new(task_session)
+          workflow_progress = workflow_engine.progress
+
+          # Get workflow instance to access steps
+          workflow = workflow_engine.instance_variable_get(:@workflow)
+
+          # Try to get workflow execution for accurate step statuses
+          workflow_execution = task_session.workflow_execution
+
+          data = {
+            tasks: workflow.steps.map do |step|
+              step_name = step.name || step.config[:name] || step.description
+              step_details = step.config[:description] || step.description
+
+              # Get status from workflow execution if available
+              step_status = step.status
+              completed_at = step.completed_at
+
+              if workflow_execution
+                step_exec = workflow_execution.workflow_step_executions.find_by(step_id: step.id)
+                if step_exec
+                  step_status = step_exec.status
+                  completed_at = step_exec.completed_at
+                end
+              end
+
+              Rails.logger.info "📋 Step mapping: id=#{step.id}, name=#{step_name}, details=#{step_details}, status=#{step_status}"
+
+              {
+                id: step.id,
+                description: step_name,
+                details: step_details,
+                status: step_status,
+                completed_at: completed_at,
+                failed_at: step_status == "failed" ? completed_at : nil
+              }
+            end,
+            workflow_status: workflow_progress[:status],
+            progress: workflow_progress
+          }
+          Rails.logger.info "📋 Loaded task list from TaskSession workflow: #{data[:tasks]&.size} tasks"
+        else
+          Rails.logger.info "📋 TaskSession found but no task list or workflow"
+          data = { tasks: [] }
+        end
+      else
+        Rails.logger.info "📋 No active task session found for session: #{session_id}"
+        data = { tasks: [] }
+      end
+    else
+      Rails.logger.info "📋 Using provided task data: #{data[:tasks]&.size} tasks"
+    end
+
+    # Check if this is a workflow approval
+    if data[:awaiting_approval] || data["awaiting_approval"]
       render_to_string(
         partial: "scout/canvas/workflow_approval",
         locals: {
           entity: current_entity,
           user: current_user,
-          data: task_data
+          data: data
         }
       )
     else
@@ -2070,7 +2031,7 @@ class ScoutController < ApplicationController
         locals: {
           entity: current_entity,
           user: current_user,
-          task_list: task_data
+          task_list: data
         }
       )
     end
@@ -2112,10 +2073,4 @@ class ScoutController < ApplicationController
       }
     )
   end
-
-  # RAG Upload Helper Methods
-
-  # Check if file is a document that should be processed with Docling
-  # Document processing methods moved to Scout::DocumentProcessor service
-  # See app/services/scout/document_processor.rb
 end

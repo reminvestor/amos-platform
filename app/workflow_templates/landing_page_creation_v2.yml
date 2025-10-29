@@ -146,9 +146,15 @@ phases:
         requires_context: ["uploaded_brand_guide", "brand_colors"]
     
     on_failure:
-      action: "report_only"  # Don't attempt to fix, just report issues
-      # This prevents the workflow from failing if validation has minor issues
-      # The landing page is already created successfully at this point
+      action: "attempt_fix"
+      max_fix_attempts: 2
+      use_fixer_agent: true
+      allowed_fixes:
+        - add_missing_cta
+        - fix_responsive_issues
+        - optimize_images
+        - adjust_colors_to_brand
+        - fix_html_structure
 
 success_criteria:
   - landing_page_created: true
