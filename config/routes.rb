@@ -42,9 +42,8 @@ Rails.application.routes.draw do
     end
     
     namespace :v1 do
-      # Health check endpoints
+      # Health check endpoint
       get "health", to: "health#index"
-      get "health/rag", to: "health#rag"
       resources :contacts, only: [ :create ]
       resources :jobs, only: [ :show ]
       post "crawler_contacts", to: "crawler_contacts#create"
@@ -66,9 +65,6 @@ Rails.application.routes.draw do
       post "landing_pages/:landing_page_slug/submit", to: "landing_page_submissions#create"
     end
   end
-
-  # Default root route for requests without subdomain (e.g., ALB health checks)
-  root to: redirect('/up'), constraints: lambda { |req| req.subdomain.blank? || req.subdomain == "www" }
   
   # Routes with constraints on subdomain - application routes for 'app' or 'dev' subdomain
   constraints(lambda { |req| 
@@ -85,11 +81,6 @@ Rails.application.routes.draw do
       sessions: "users/sessions",
       passwords: "users/passwords"
     }
-
-    # Terms, Privacy, and Help (accessible from app subdomain)
-    get '/terms', to: 'marketing#terms', as: :app_terms
-    get '/privacy', to: 'marketing#privacy', as: :app_privacy
-    get '/help', to: 'marketing#help', as: :app_help
 
     # User management
     resources :users, only: [ :show, :edit, :update ]
@@ -333,8 +324,6 @@ Rails.application.routes.draw do
     get '/contact', to: 'marketing#contact', as: :marketing_contact
     post '/contact', to: 'marketing#contact_submit', as: :marketing_contact_submit
     get '/help', to: 'marketing#help', as: :marketing_help
-    get '/terms', to: 'marketing#terms', as: :marketing_terms
-    get '/privacy', to: 'marketing#privacy', as: :marketing_privacy
   end
 
   # Debug routes for troubleshooting
@@ -357,8 +346,6 @@ Rails.application.routes.draw do
   post "scout/continue_workflow", to: "scout#continue_workflow"
   post "scout/approve_workflow", to: "scout#approve_workflow"
   post "scout/upload_files", to: "scout#upload_files"
-  post "scout/move_to_long_term", to: "scout#move_to_long_term"
-  delete "scout/delete_document", to: "scout#delete_document"
   get "scout/history", to: "scout#history" # paginated history
   delete "scout/conversation", to: "scout#clear_conversation"
   get "scout/export", to: "scout#conversation_export"
@@ -444,14 +431,6 @@ Rails.application.routes.draw do
     resources :scout_sessions, only: [:index, :show, :destroy] do
       member do
         post :sync_redis
-      end
-    end
-
-    # System Document Library (System RAG)
-    resources :system_documents do
-      member do
-        post :reindex
-        get :download
       end
     end
 
