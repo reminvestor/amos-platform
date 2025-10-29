@@ -91,19 +91,26 @@ class Admin::SystemDocumentsControllerTest < ActionDispatch::IntegrationTest
   # === Create Action ===
 
   test "should create system_document with valid file" do
-    skip "S3 mocking required for integration test"
-
     file = fixture_file_upload('test_document.pdf', 'application/pdf')
 
+    # Mock S3 client
+    s3_client_mock = Minitest::Mock.new
+    s3_client_mock.expect :put_object, true, [Hash]
+
+    # Stub controller's s3_client method
+    Admin::SystemDocumentsController.any_instance.stubs(:s3_client).returns(s3_client_mock)
+
     assert_difference('SystemDocument.count') do
-      post admin_system_documents_path, params: {
-        system_document: {
-          category: 'api_docs',
-          subcategory: 'test',
-          description: 'Test document',
-          file: file
+      assert_enqueued_with(job: SystemDocumentIndexJob) do
+        post admin_system_documents_path, params: {
+          system_document: {
+            category: 'api_docs',
+            subcategory: 'test',
+            description: 'Test document',
+            file: file
+          }
         }
-      }
+      end
     end
 
     assert_redirected_to admin_system_documents_path
@@ -114,12 +121,17 @@ class Admin::SystemDocumentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 'test', doc.subcategory
     assert_equal 'pending', doc.status
     assert_equal @admin, doc.uploaded_by
+
+    s3_client_mock.verify
   end
 
   test "should enqueue SystemDocumentIndexJob after upload" do
-    skip "S3 mocking required for integration test"
-
     file = fixture_file_upload('test_document.pdf', 'application/pdf')
+
+    # Mock S3 client
+    s3_client_mock = Minitest::Mock.new
+    s3_client_mock.expect :put_object, true, [Hash]
+    Admin::SystemDocumentsController.any_instance.stubs(:s3_client).returns(s3_client_mock)
 
     assert_enqueued_with(job: SystemDocumentIndexJob) do
       post admin_system_documents_path, params: {
@@ -129,6 +141,8 @@ class Admin::SystemDocumentsControllerTest < ActionDispatch::IntegrationTest
         }
       }
     end
+
+    s3_client_mock.verify
   end
 
   test "should reject upload without file" do
@@ -147,7 +161,24 @@ class Admin::SystemDocumentsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should handle S3 upload failure gracefully" do
-    skip "S3 mocking required - test S3 error handling"
+    file = fixture_file_upload('test_document.pdf', 'application/pdf')
+
+    # Mock S3 client to raise error
+    s3_client_mock = Minitest::Mock.new
+    s3_client_mock.expect :put_object, -> { raise Aws::S3::Errors::ServiceError.new(nil, 'Connection timeout') }, [Hash]
+    Admin::SystemDocumentsController.any_instance.stubs(:s3_client).returns(s3_client_mock)
+
+    assert_no_difference('SystemDocument.count') do
+      post admin_system_documents_path, params: {
+        system_document: {
+          category: 'api_docs',
+          file: file
+        }
+      }
+    end
+
+    assert_redirected_to new_admin_system_document_path
+    assert_match /Upload failed/, flash[:alert]
   end
 
   # === Show Action ===
@@ -168,9 +199,12 @@ class Admin::SystemDocumentsControllerTest < ActionDispatch::IntegrationTest
   # === Destroy Action ===
 
   test "should destroy system_document" do
-    skip "S3 mocking required for integration test"
-
     doc = create_system_document
+
+    # Mock S3 client for deletion
+    s3_client_mock = Minitest::Mock.new
+    s3_client_mock.expect :delete_object, true, [Hash]
+    Admin::SystemDocumentsController.any_instance.stubs(:s3_client).returns(s3_client_mock)
 
     assert_difference('SystemDocument.count', -1) do
       delete admin_system_document_path(doc)
@@ -178,6 +212,8 @@ class Admin::SystemDocumentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to admin_system_documents_path
     assert_equal "Document deleted successfully", flash[:notice]
+
+    s3_client_mock.verify
   end
 
   test "should delete from S3 when destroying" do

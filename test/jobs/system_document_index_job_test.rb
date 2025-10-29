@@ -34,12 +34,27 @@ class SystemDocumentIndexJobTest < ActiveJob::TestCase
   # === Job Execution ===
 
   test "should mark document as processing when job starts" do
-    skip "S3 and RAG pipeline mocking required"
+    # Mock S3 download
+    s3_response = Aws::S3::Types::GetObjectOutput.new(body: StringIO.new('fake pdf content'))
+    s3_client_mock = Minitest::Mock.new
+    s3_client_mock.expect :get_object, s3_response, [Hash]
+
+    # Mock RAG pipeline
+    rag_store = rag_stores(:entity_store_one)
+    rag_document = rag_documents(:pdf_doc_one)
+    Rag::DocumentPipelineJob.stubs(:perform_now).returns(true)
+
+    # Stub S3 client creation in job
+    SystemDocumentIndexJob.any_instance.stubs(:s3_client).returns(s3_client_mock)
+    SystemDocumentIndexJob.any_instance.stubs(:create_rag_store_from_document).returns(rag_store)
 
     SystemDocumentIndexJob.perform_now(@system_doc.id)
 
     @system_doc.reload
-    assert @system_doc.status_processing?
+    assert @system_doc.status_indexed?
+    assert_not_nil @system_doc.rag_store
+
+    s3_client_mock.verify
   end
 
   test "should download document from S3" do
@@ -93,16 +108,53 @@ class SystemDocumentIndexJobTest < ActiveJob::TestCase
   end
 
   test "should mark document as indexed after successful processing" do
-    skip "S3 and RAG pipeline mocking required"
+    # Mock S3 download
+    s3_response = Aws::S3::Types::GetObjectOutput.new(body: StringIO.new('fake pdf content'))
+    s3_client_mock = Minitest::Mock.new
+    s3_client_mock.expect :get_object, s3_response, [Hash]
+
+    # Create a real RagStore with chunks for testing
+    rag_store = RagStore.create!(
+      name: 'Test RAG Store',
+      app_name: 'test',
+      entity: nil,
+      store_type: 'system',
+      status: 'active'
+    )
+
+    # Create test chunks
+    rag_doc = RagDocument.create!(
+      rag_store: rag_store,
+      original_filename: 'test.pdf',
+      file_size_bytes: 1024,
+      content_type: 'application/pdf',
+      file_hash: 'test_hash'
+    )
+
+    10.times do |i|
+      RagChunk.create!(
+        rag_store: rag_store,
+        rag_document: rag_doc,
+        content: "Test chunk #{i}",
+        chunk_index: i,
+        token_count: 100
+      )
+    end
+
+    # Stub methods
+    SystemDocumentIndexJob.any_instance.stubs(:s3_client).returns(s3_client_mock)
+    SystemDocumentIndexJob.any_instance.stubs(:create_rag_store_from_document).returns(rag_store)
 
     SystemDocumentIndexJob.perform_now(@system_doc.id)
 
     @system_doc.reload
     assert @system_doc.status_indexed?
     assert_not_nil @system_doc.indexed_at
-    assert_not_nil @system_doc.rag_store
-    assert @system_doc.chunk_count > 0
+    assert_equal rag_store, @system_doc.rag_store
+    assert_equal 10, @system_doc.chunk_count
     assert_nil @system_doc.error_message
+
+    s3_client_mock.verify
   end
 
   test "should link RagStore to SystemDocument" do
@@ -128,17 +180,20 @@ class SystemDocumentIndexJobTest < ActiveJob::TestCase
   # === Error Handling ===
 
   test "should mark document as failed on S3 error" do
-    skip "S3 mocking required - test S3 error handling"
+    # Mock S3 client to raise error
+    s3_client_mock = Minitest::Mock.new
+    s3_client_mock.expect :get_object, -> { raise Aws::S3::Errors::NoSuchKey.new(nil, 'File not found') }, [Hash]
 
-    # Mock S3 error
-    # Aws::S3::Errors::ServiceError
+    SystemDocumentIndexJob.any_instance.stubs(:s3_client).returns(s3_client_mock)
 
-    SystemDocumentIndexJob.perform_now(@system_doc.id)
+    assert_raises(Aws::S3::Errors::NoSuchKey) do
+      SystemDocumentIndexJob.perform_now(@system_doc.id)
+    end
 
     @system_doc.reload
     assert @system_doc.status_failed?
     assert_not_nil @system_doc.error_message
-    assert_match /S3/, @system_doc.error_message
+    assert_match /NoSuchKey|File not found/, @system_doc.error_message
   end
 
   test "should mark document as failed on Docling error" do
