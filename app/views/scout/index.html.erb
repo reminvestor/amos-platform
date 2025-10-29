@@ -404,7 +404,51 @@
           <h2 class="chat-header-title">Amos AI</h2>
 
           <div class="chat-header-actions">
-            <!-- Model Selector with Brain Icon -->
+            <div class="header-divider"></div>
+
+            <button class="header-icon-btn" id="new-conversation-btn" title="New conversation">
+              <i data-lucide="rotate-ccw"></i>
+            </button>
+
+            <button class="header-icon-btn" id="conversation-selector" title="Conversation history">
+              <i data-lucide="history"></i>
+            </button>
+
+            <button class="header-icon-btn" id="tts-toggle-btn" title="Toggle voice output">
+              <i data-lucide="volume-2"></i>
+            </button>
+
+            <button class="header-icon-btn" title="More options">
+              <i data-lucide="more-horizontal"></i>
+            </button>
+
+            <!-- Conversation dropdown (hidden by default) -->
+            <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
+              <div class="dropdown-header">
+                <h4>Recent Conversations</h4>
+              </div>
+              <div class="conversation-list" id="conversation-list">
+                <!-- Conversations will be loaded here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="chat-messages" id="chat-messages" data-scout-target="chatMessages">
+        <!-- Messages will be loaded here from history -->
+      </div>
+      
+      <!-- Tool activity panel removed - now part of task progress canvas -->
+      
+      <div class="chat-input-area" data-controller="voice-assistant">
+        <form id="message-form" data-scout-target="chatForm" enctype="multipart/form-data">
+          <div class="attached-files" id="attached-files" style="display: none;">
+            <!-- Attached files will be shown here -->
+          </div>
+
+          <!-- Model Selector with Brain Icon -->
+          <div class="model-selector-container">
             <div class="model-selector-trigger">
               <button id="model-selector-btn" class="model-brain-btn" title="Model Selection">
                 <div class="brain-icon-wrapper">
@@ -468,62 +512,13 @@
               </div>
             </div>
 
-            <div class="header-divider"></div>
-
-            <button class="header-icon-btn" id="new-conversation-btn" title="New conversation">
-              <i data-lucide="rotate-ccw"></i>
-            </button>
-
-            <button class="header-icon-btn" id="conversation-selector" title="Conversation history">
-              <i data-lucide="history"></i>
-            </button>
-
-            <button class="header-icon-btn" id="tts-toggle-btn" title="Toggle voice output">
-              <i data-lucide="volume-2"></i>
-            </button>
-
-            <button class="header-icon-btn" title="More options">
-              <i data-lucide="more-horizontal"></i>
-            </button>
-
-            <!-- Conversation dropdown (hidden by default) -->
-            <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
-              <div class="dropdown-header">
-                <h4>Recent Conversations</h4>
-              </div>
-              <div class="conversation-list" id="conversation-list">
-                <!-- Conversations will be loaded here -->
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="chat-messages" id="chat-messages" data-scout-target="chatMessages">
-        <!-- Messages will be loaded here from history -->
-      </div>
-      
-      <!-- Tool activity panel removed - now part of task progress canvas -->
-      
-      <div class="chat-input-area" data-controller="voice-assistant">
-        <form id="message-form" data-scout-target="chatForm" enctype="multipart/form-data">
-          <div class="attached-files" id="attached-files" style="display: none;">
-            <!-- Attached files will be shown here -->
-          </div>
-
-          <!-- Model Selector -->
-          <div class="model-selector-container">
-            <div class="model-selector-inner">
-              <i data-lucide="cpu" class="model-icon"></i>
-              <span class="model-label">Model:</span>
-              <select id="model-select" class="model-select">
-                <option value="claude-sonnet-4-5">Claude Sonnet 4.5 - Latest, 25K tokens</option>
-                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet - Fast, 8K tokens</option>
-                <option value="claude-opus-4-1">Claude Opus 4.1 - Most capable, 25K tokens</option>
-                <option value="claude-3-haiku" selected>Claude 3.5 Haiku - Fastest, 8K tokens</option>
-              </select>
-              <i data-lucide="chevron-down" class="model-chevron"></i>
-            </div>
+            <!-- Hidden select for backward compatibility -->
+            <select id="model-select" class="model-select" style="display: none;">
+              <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+              <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="claude-opus-4-1">Claude Opus 4.1</option>
+              <option value="claude-3-haiku" selected>Claude 3.5 Haiku</option>
+            </select>
           </div>
 
           <!-- Input Container -->

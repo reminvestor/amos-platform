@@ -516,8 +516,8 @@
 // Model Popover
 .model-popover {
   position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
+  bottom: calc(100% + 0.5rem);
+  left: 0;
   width: 20rem;
   background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(16px);
@@ -803,6 +803,7 @@
 
 /* Model Selector */
 .model-selector-container {
+  position: relative;
   margin-bottom: 0.75rem;
 }
 
