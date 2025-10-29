@@ -331,46 +331,46 @@
   <nav class="side-nav collapsed" data-scout-target="sideNav">
     <div class="side-nav-header">
       <div class="brand">
-        <i class="fas fa-cube text-primary"></i>
+        <i data-lucide="box" class="text-primary"></i>
         <span class="brand-text">Amos</span>
       </div>
       <button class="nav-toggle" data-action="click->scout#toggleSideNav" data-scout-target="navToggle">
-        <i class="fas fa-bars"></i>
+        <i data-lucide="menu"></i>
       </button>
     </div>
-    
+
     <div class="nav-items">
       <div class="nav-section">
         <div class="nav-item active" data-action="click->scout#goToConversation">
-          <i class="fas fa-home"></i>
+          <i data-lucide="home"></i>
           <span class="nav-text">Dashboard</span>
         </div>
         <div class="nav-item" data-template-type="landing_page" data-action="click->scout#loadLandingPagesCanvas">
-          <i class="fas fa-globe"></i>
+          <i data-lucide="globe"></i>
           <span class="nav-text">Landing Pages</span>
         </div>
         <div class="nav-item" data-template-type="campaign" data-action="click->scout#loadCampaignsCanvas">
-          <i class="fas fa-envelope"></i>
+          <i data-lucide="mail"></i>
           <span class="nav-text">Campaigns</span>
         </div>
         <div class="nav-item" data-template-type="email_template" data-action="click->scout#loadEmailTemplatesCanvas">
-          <i class="fas fa-file-alt"></i>
+          <i data-lucide="file-text"></i>
           <span class="nav-text">Email Templates</span>
         </div>
         <div class="nav-item" data-template-type="contact" data-action="click->scout#loadContactsCanvas">
-          <i class="fas fa-users"></i>
+          <i data-lucide="users"></i>
           <span class="nav-text">Contacts</span>
         </div>
         <div class="nav-item" data-template-type="analytics" data-action="click->scout#loadAnalyticsCanvas">
-          <i class="fas fa-chart-bar"></i>
+          <i data-lucide="bar-chart-2"></i>
           <span class="nav-text">Analytics</span>
         </div>
         <div class="nav-item" data-template-type="integration" data-action="click->scout#loadIntegrationsCanvas">
-          <i class="fas fa-plug"></i>
+          <i data-lucide="plug"></i>
           <span class="nav-text">Integrations</span>
         </div>
       </div>
-      
+
       <div class="nav-section">
         <div class="nav-section-title">Templates</div>
         <div id="template-list" data-scout-target="templateList">
@@ -378,18 +378,18 @@
         </div>
       </div>
     </div>
-    
+
     <div class="nav-footer">
       <div class="nav-item" data-action="click->scout#openSettings">
-        <i class="fas fa-cog"></i>
+        <i data-lucide="settings"></i>
         <span class="nav-text">Settings</span>
       </div>
       <div class="nav-item" data-action="click->scout#openProfile">
-        <i class="fas fa-user"></i>
+        <i data-lucide="user"></i>
         <span class="nav-text">Profile</span>
       </div>
       <div class="nav-item" data-action="click->scout#logout">
-        <i class="fas fa-sign-out-alt"></i>
+        <i data-lucide="log-out"></i>
         <span class="nav-text">Logout</span>
       </div>
     </div>
@@ -573,17 +573,17 @@
           <div class="layout-controls">
             <div class="layout-presets">
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="15" title="Compact Scout">
-                <i class="fas fa-compress-alt"></i>
+                <i data-lucide="minimize-2"></i>
               </button>
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="25" title="Balanced">
-                <i class="fas fa-columns"></i>
+                <i data-lucide="columns"></i>
               </button>
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="35" title="Wide Scout">
-                <i class="fas fa-expand-alt"></i>
+                <i data-lucide="maximize-2"></i>
               </button>
             </div>
             <button class="close-template" data-action="click->scout#closeTemplate">
-              <i class="fas fa-times"></i>
+              <i data-lucide="x"></i>
             </button>
           </div>
         </div>
@@ -592,7 +592,7 @@
       <div class="template-content" data-scout-target="templateContent">
         <div class="template-placeholder">
           <div class="placeholder-icon">
-            <i class="fas fa-cube"></i>
+            <i data-lucide="box"></i>
           </div>
           <p>No template loaded</p>
         </div>
@@ -1248,15 +1248,23 @@ document.addEventListener('turbo:load', function() {
   // Update TTS button appearance
   function updateTTSButton() {
     if (!ttsToggleBtn || !ttsManager) return;
-    
+
     if (ttsManager.isEnabled) {
       ttsToggleBtn.classList.remove('text-muted');
-      ttsToggleBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+      ttsToggleBtn.innerHTML = '<i data-lucide="volume-2"></i>';
       ttsToggleBtn.title = 'Voice output enabled (click to mute)';
+      // Re-initialize Lucide icon
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
     } else {
       ttsToggleBtn.classList.add('text-muted');
-      ttsToggleBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+      ttsToggleBtn.innerHTML = '<i data-lucide="volume-x"></i>';
       ttsToggleBtn.title = 'Voice output disabled (click to enable)';
+      // Re-initialize Lucide icon
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
     }
   }
   
