@@ -275,6 +275,12 @@
   visibility: hidden;
   width: 0;
   overflow: hidden;
+
+  i, svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
 }
 
 .side-nav.expanded .brand {
@@ -300,6 +306,12 @@
   transition: background 0.2s ease;
   position: absolute;
   right: 10px;
+
+  i, svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+  }
 }
 
 .side-nav.expanded .nav-toggle {
@@ -333,10 +345,13 @@
   background: var(--scout-primary);
 }
 
-.nav-item i {
+.nav-item i,
+.nav-item svg {
   width: 20px;
+  height: 20px;
   text-align: center;
   font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .nav-text {
