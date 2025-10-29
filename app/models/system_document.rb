@@ -58,7 +58,7 @@ class SystemDocument < ApplicationRecord
 
   # Callbacks
   before_validation :set_filename, if: -> { original_filename.present? && filename.blank? }
-  before_validation :set_s3_key, if: -> { category.present? && filename.blank? }
+  before_validation :set_s3_key, if: -> { category.present? && filename.present? && s3_key.blank? }
 
   # Class methods
   def self.categories_with_counts
