@@ -400,36 +400,43 @@
     <!-- Chat Area (Full screen in conversation mode, sidebar in work mode) -->
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
-        <div class="conversation-controls">
-          <div class="header-title">
-            <h2>Amos AI</h2>
-        </div>
-          <div class="header-buttons">
-            <div class="conversation-info">
-              <button class="icon-btn" id="conversation-selector" title="Conversation history">
-                <i class="fas fa-history"></i>
-              </button>
-              <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
-                <div class="dropdown-header">
-                  <h4>Recent Conversations</h4>
-      </div>
-                <div class="conversation-list" id="conversation-list">
-                  <!-- Conversations will be loaded here -->
-          </div>
+        <div class="chat-header-content">
+          <h2 class="chat-header-title">Amos AI</h2>
+
+          <div class="chat-header-actions">
+            <!-- Model selector will be here via JavaScript -->
+            <div id="header-model-selector" class="header-model-selector"></div>
+
+            <div class="header-divider"></div>
+
+            <button class="header-icon-btn" id="new-conversation-btn" title="New conversation">
+              <i data-lucide="rotate-ccw"></i>
+            </button>
+
+            <button class="header-icon-btn" id="conversation-selector" title="Conversation history">
+              <i data-lucide="history"></i>
+            </button>
+
+            <button class="header-icon-btn" id="tts-toggle-btn" title="Toggle voice output">
+              <i data-lucide="volume-2"></i>
+            </button>
+
+            <button class="header-icon-btn" title="More options">
+              <i data-lucide="more-horizontal"></i>
+            </button>
+
+            <!-- Conversation dropdown (hidden by default) -->
+            <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
+              <div class="dropdown-header">
+                <h4>Recent Conversations</h4>
+              </div>
+              <div class="conversation-list" id="conversation-list">
+                <!-- Conversations will be loaded here -->
               </div>
             </div>
-            <button class="icon-btn" id="tts-toggle-btn" title="Toggle voice output">
-              <i class="fas fa-volume-up"></i>
-            </button>
-            <%= link_to advanced_mode_path, class: "icon-btn", title: "Switch to Advanced Mode", style: "text-decoration: none; color: inherit;" do %>
-              <i class="fas fa-th-large"></i>
-            <% end %>
-            <button class="icon-btn" id="new-conversation-btn" title="New conversation">
-              <i class="fas fa-plus"></i>
-              </button>
-            </div>
           </div>
         </div>
+      </div>
       
       <div class="chat-messages" id="chat-messages" data-scout-target="chatMessages">
         <!-- Messages will be loaded here from history -->
