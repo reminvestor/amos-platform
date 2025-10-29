@@ -10,11 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-<<<<<<< HEAD
 ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
-=======
-ActiveRecord::Schema[8.0].define(version: 2025_10_28_210435) do
->>>>>>> 894957a (updated)
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
