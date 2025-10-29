@@ -433,6 +433,263 @@
   margin: 0 0.25rem;
 }
 
+// Model Selector with Brain Icon
+.model-selector-trigger {
+  position: relative;
+}
+
+.model-brain-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(30, 41, 59, 0.5);
+  }
+}
+
+.brain-icon-wrapper {
+  position: relative;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.brain-outline,
+.brain-filled {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #94a3b8;
+  transition: color 0.2s ease;
+}
+
+.model-brain-btn:hover .brain-outline {
+  color: #cbd5e1;
+}
+
+.brain-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  clip-path: inset(50% 0 0 0); // Default 50% fill
+  transition: clip-path 0.3s ease;
+}
+
+.brain-filled {
+  color: #a78bfa !important;
+}
+
+.model-brain-btn:hover .brain-filled {
+  color: #c4b5fd !important;
+}
+
+.power-dots {
+  position: absolute;
+  bottom: -0.25rem;
+  right: -0.25rem;
+  display: flex;
+  gap: 0.125rem;
+}
+
+.power-dot {
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 50%;
+  background: #334155;
+  transition: background 0.2s ease;
+
+  &.active {
+    background: #a78bfa;
+  }
+}
+
+// Model Popover
+.model-popover {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 20rem;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(51, 65, 85, 0.5);
+  border-radius: 0.75rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.model-popover-content {
+  padding: 1rem;
+}
+
+.model-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.model-header-icon {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brain-outline-lg,
+.brain-filled-lg {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #475569;
+}
+
+.brain-fill-lg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  clip-path: inset(50% 0 0 0);
+  transition: clip-path 0.3s ease;
+}
+
+.brain-filled-lg {
+  color: #a78bfa !important;
+}
+
+.model-header-text {
+  h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+}
+
+.model-slider-section {
+  margin-bottom: 1rem;
+}
+
+.model-slider {
+  width: 100%;
+  height: 0.5rem;
+  background: #1e293b;
+  border-radius: 0.25rem;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 1rem;
+    height: 1rem;
+    background: #a78bfa;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+    &:hover {
+      background: #c4b5fd;
+    }
+  }
+
+  &::-moz-range-thumb {
+    width: 1rem;
+    height: 1rem;
+    background: #a78bfa;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+    &:hover {
+      background: #c4b5fd;
+    }
+  }
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.power-percent {
+  color: #a78bfa !important;
+  font-weight: 600;
+}
+
+.model-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.model-preset-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+
+  &:hover {
+    background: rgba(30, 41, 59, 0.5);
+    color: #cbd5e1;
+  }
+
+  &.active {
+    background: rgba(167, 139, 250, 0.2);
+    color: #c4b5fd;
+  }
+
+  .preset-model {
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+}
+
+.model-info {
+  padding-top: 0.5rem;
+  border-top: 1px solid #1e293b;
+
+  p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.4;
+  }
+}
+
 .header-icon-btn {
   display: flex;
   align-items: center;
