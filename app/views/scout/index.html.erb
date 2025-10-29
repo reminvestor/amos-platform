@@ -1828,6 +1828,11 @@ document.addEventListener('turbo:load', function() {
     sourcesDiv.innerHTML = sourcesHtml;
     messageContent.appendChild(sourcesDiv);
 
+    // Initialize Lucide icons in sources
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
     console.log('✅ Sources added to message');
   }
 
@@ -1846,7 +1851,7 @@ document.addEventListener('turbo:load', function() {
 
     let html = '<div class="sources-container">';
     html += '<div class="sources-header">';
-    html += '<i class="fas fa-book-open"></i>';
+    html += '<i data-lucide="book-open"></i>';
     html += `<span>Sources (${sources.length})</span>`;
     html += '</div>';
     html += '<div class="sources-list">';
@@ -1884,7 +1889,7 @@ document.addEventListener('turbo:load', function() {
     dbSources.forEach(source => {
       html += `
         <div class="source-item">
-          <i class="fas fa-database"></i>
+          <i data-lucide="database"></i>
           <div class="source-details">
             <div class="source-filename">${source.object_type}</div>
             <div class="source-meta">${source.record_count} records</div>
@@ -1898,12 +1903,12 @@ document.addEventListener('turbo:load', function() {
       const truncatedUrl = source.url.length > 50 ? source.url.substring(0, 47) + '...' : source.url;
       html += `
         <div class="source-item" onclick="window.open('${source.url}', '_blank')">
-          <i class="fas fa-globe text-primary"></i>
+          <i data-lucide="globe" class="text-primary"></i>
           <div class="source-details">
             <div class="source-filename">${source.title || 'Web Search Result'}</div>
             <div class="source-meta">${truncatedUrl}</div>
           </div>
-          <i class="fas fa-external-link-alt text-muted" style="font-size: 0.75rem; margin-left: 0.5rem;"></i>
+          <i data-lucide="external-link" class="text-muted" style="font-size: 0.75rem; margin-left: 0.5rem;"></i>
         </div>
       `;
     });
@@ -1913,7 +1918,7 @@ document.addEventListener('turbo:load', function() {
       const recordInfo = source.record_count ? ` • ${source.record_count} records` : '';
       html += `
         <div class="source-item">
-          <i class="fas fa-plug text-warning"></i>
+          <i data-lucide="plug" class="text-warning"></i>
           <div class="source-details">
             <div class="source-filename">${source.integration_name} API</div>
             <div class="source-meta">${source.operation}${recordInfo}</div>
@@ -1927,7 +1932,7 @@ document.addEventListener('turbo:load', function() {
       const timeInfo = source.time_range ? ` • ${source.time_range}` : '';
       html += `
         <div class="source-item">
-          <i class="fas fa-comments text-info"></i>
+          <i data-lucide="message-square" class="text-info"></i>
           <div class="source-details">
             <div class="source-filename">Conversation History</div>
             <div class="source-meta">${source.message_count} messages${timeInfo}</div>
@@ -1942,7 +1947,7 @@ document.addEventListener('turbo:load', function() {
       const timeInfo = source.time_range ? ` • ${source.time_range}` : '';
       html += `
         <div class="source-item">
-          <i class="fas fa-chart-line text-success"></i>
+          <i data-lucide="line-chart" class="text-success"></i>
           <div class="source-details">
             <div class="source-filename">${source.metric_name || 'Analytics Data'}</div>
             <div class="source-meta">Analytics${dataInfo}${timeInfo}</div>
@@ -1956,7 +1961,7 @@ document.addEventListener('turbo:load', function() {
       const recordInfo = source.record_count > 1 ? ` • ${source.record_count} records` : '';
       html += `
         <div class="source-item">
-          <i class="fas fa-credit-card text-danger"></i>
+          <i data-lucide="credit-card" class="text-danger"></i>
           <div class="source-details">
             <div class="source-filename">${source.data_type}</div>
             <div class="source-meta">Billing Data${recordInfo}</div>
@@ -1972,7 +1977,7 @@ document.addEventListener('turbo:load', function() {
       const separator = fileInfo && contextInfo ? ' • ' : '';
       html += `
         <div class="source-item">
-          <i class="fas fa-project-diagram text-purple"></i>
+          <i data-lucide="workflow" class="text-purple"></i>
           <div class="source-details">
             <div class="source-filename">Workflow Context</div>
             <div class="source-meta">${fileInfo}${separator}${contextInfo}</div>
