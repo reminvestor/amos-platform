@@ -1085,9 +1085,40 @@
   justify-content: space-between;
   font-size: 0.85rem;
   color: #666;
-}
-
-</style>
+  }
+  
+  /* Fix for messages appearing side-by-side when loaded from DB */
+  #chat-messages {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+  
+  #chat-messages > .message {
+    display: flex !important;
+    width: 100% !important;
+    clear: both !important;
+    float: none !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  /* Ensure user messages align right */
+  #chat-messages > .message.user-message {
+    justify-content: flex-end !important;
+  }
+  
+  /* Ensure assistant messages align left */
+  #chat-messages > .message.ai-message {
+    justify-content: flex-start !important;
+  }
+  
+  /* Prevent any inline display */
+  #chat-messages > * {
+    float: none !important;
+    clear: both !important;
+  }
+  
+  </style>
 
 <!-- JavaScript for Scout Chat -->
 <script>
@@ -1689,11 +1720,13 @@ document.addEventListener('turbo:load', function() {
       : '<i data-lucide="user"></i>';
 
     wrapper.innerHTML = `
-      <div class="message-avatar">
-        ${avatar}
-      </div>
       <div class="message-content">
-        ${processedContent}
+        <div class="message-avatar">
+          ${avatar}
+        </div>
+        <div class="message-bubble">
+          ${processedContent}
+        </div>
       </div>
     `;
     return wrapper;
