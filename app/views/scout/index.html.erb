@@ -1169,17 +1169,24 @@ document.addEventListener('turbo:load', function() {
   if (currentModelName) currentModelName.textContent = currentModel.name;
 
   // Toggle popover
+  console.log('Model selector button found:', !!modelSelectorBtn);
+  console.log('Model popover found:', !!modelPopover);
+
   if (modelSelectorBtn) {
     modelSelectorBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      console.log('🧠 Model selector clicked');
       const isOpen = modelPopover.style.display === 'block';
       modelPopover.style.display = isOpen ? 'none' : 'block';
+      console.log('🧠 Popover display:', modelPopover.style.display);
 
       // Re-initialize Lucide icons in popover
       if (!isOpen && typeof lucide !== 'undefined') {
         setTimeout(() => lucide.createIcons(), 10);
       }
     });
+  } else {
+    console.error('❌ Model selector button not found!');
   }
 
   // Close popover when clicking outside
