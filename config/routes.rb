@@ -440,6 +440,14 @@ Rails.application.routes.draw do
       end
     end
 
+    # System Document Library (System RAG)
+    resources :system_documents do
+      member do
+        post :reindex
+        get :download
+      end
+    end
+
     # Affiliate Management
     resources :affiliates do
       collection do

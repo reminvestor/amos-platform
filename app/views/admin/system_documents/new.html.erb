@@ -1,0 +1,115 @@
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="mb-0"><i class="fas fa-upload"></i> Upload System Document</h4>
+        </div>
+        <div class="card-body">
+          <%= form_with model: @document, url: admin_system_documents_path, local: true, html: { multipart: true } do |f| %>
+            <% if @document.errors.any? %>
+              <div class="alert alert-danger">
+                <h6>Please fix the following errors:</h6>
+                <ul class="mb-0">
+                  <% @document.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <!-- File Upload -->
+            <div class="mb-4">
+              <label class="form-label required">Document File</label>
+              <input type="file" name="system_document[file]" class="form-control" accept=".pdf,.docx,.doc,.md,.txt,.pptx" required>
+              <div class="form-text">
+                Supported formats: PDF, DOCX, Markdown, TXT, PPTX (Max: 50MB)
+              </div>
+            </div>
+
+            <!-- Category -->
+            <div class="mb-4">
+              <label class="form-label required">Category</label>
+              <%= f.select :category,
+                  options_for_select([
+                    ['AMOS Platform Documentation', 'amos_platform'],
+                    ['Integration Documentation', 'integrations'],
+                    ['Help & Support', 'help_support'],
+                    ['API Documentation', 'api_docs']
+                  ]),
+                  { include_blank: '-- Select Category --' },
+                  { class: 'form-select', required: true, id: 'category-select' } %>
+              <div class="form-text">
+                Where this document belongs in the knowledge base
+              </div>
+            </div>
+
+            <!-- Subcategory -->
+            <div class="mb-4" id="subcategory-container" style="display: none;">
+              <label class="form-label">Subcategory</label>
+              <%= f.text_field :subcategory, class: 'form-control', placeholder: 'e.g., Stripe, HubSpot, Architecture' %>
+              <div class="form-text">
+                Optional: Further organize documents (e.g., "Stripe", "HubSpot", "Mailgun")
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-4">
+              <label class="form-label">Description</label>
+              <%= f.text_area :description, class: 'form-control', rows: 3, placeholder: 'Brief description of what this document contains...' %>
+              <div class="form-text">
+                Optional: Help others understand what this document is about
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex justify-content-between">
+              <%= link_to admin_system_documents_path, class: 'btn btn-secondary' do %>
+                <i class="fas fa-times"></i> Cancel
+              <% end %>
+              <%= f.submit 'Upload & Index Document', class: 'btn btn-primary' do %>
+                <i class="fas fa-upload"></i> Upload & Index Document
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Help Card -->
+      <div class="card mt-4 bg-light">
+        <div class="card-body">
+          <h6><i class="fas fa-info-circle"></i> What happens after upload?</h6>
+          <ol class="mb-0" style="font-size: 0.9em;">
+            <li>Document is uploaded to S3 storage</li>
+            <li>Background job processes the document (Docling extraction)</li>
+            <li>Text is chunked into semantic segments</li>
+            <li>Embeddings are generated (AWS Bedrock Titan)</li>
+            <li>Stored in pgvector for fast similarity search</li>
+            <li>Document becomes queryable by all entities via Scout</li>
+          </ol>
+          <div class="alert alert-info mt-3 mb-0">
+            <small><i class="fas fa-clock"></i> Processing time: 1-5 minutes depending on document size</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% content_for :javascript do %>
+<script>
+  // Show subcategory field for integrations and api_docs categories
+  document.getElementById('category-select').addEventListener('change', function() {
+    const subcategoryContainer = document.getElementById('subcategory-container');
+    const needsSubcategory = ['integrations', 'api_docs'].includes(this.value);
+    subcategoryContainer.style.display = needsSubcategory ? 'block' : 'none';
+  });
+</script>
+<% end %>
+
+<style>
+  .form-label.required::after {
+    content: ' *';
+    color: red;
+  }
+</style>

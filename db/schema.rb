@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_28_234031) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1478,6 +1478,32 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_234031) do
     t.index ["stripe_event_id"], name: "index_subscription_events_on_stripe_event_id", unique: true, where: "(stripe_event_id IS NOT NULL)"
   end
 
+  create_table "system_documents", force: :cascade do |t|
+    t.string "filename", null: false
+    t.string "original_filename", null: false
+    t.integer "file_size_bytes", null: false
+    t.string "content_type", null: false
+    t.string "category", null: false
+    t.string "subcategory"
+    t.text "description"
+    t.string "s3_key", null: false
+    t.string "status", default: "pending", null: false
+    t.text "error_message"
+    t.bigint "rag_store_id"
+    t.bigint "uploaded_by_id", null: false
+    t.datetime "indexed_at"
+    t.integer "chunk_count", default: 0
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category", "subcategory"], name: "index_system_documents_on_category_and_subcategory"
+    t.index ["category"], name: "index_system_documents_on_category"
+    t.index ["rag_store_id"], name: "index_system_documents_on_rag_store_id"
+    t.index ["s3_key"], name: "index_system_documents_on_s3_key", unique: true
+    t.index ["status"], name: "index_system_documents_on_status"
+    t.index ["uploaded_by_id"], name: "index_system_documents_on_uploaded_by_id"
+  end
+
   create_table "system_settings", force: :cascade do |t|
     t.string "key"
     t.text "value"
@@ -1860,6 +1886,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_28_234031) do
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "subscription_events", "entities"
+  add_foreign_key "system_documents", "rag_stores"
+  add_foreign_key "system_documents", "users", column: "uploaded_by_id"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
   add_foreign_key "tenant_quotas", "entities"
