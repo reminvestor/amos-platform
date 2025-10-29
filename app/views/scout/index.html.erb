@@ -1507,16 +1507,16 @@ document.addEventListener('turbo:load', function() {
       processedContent = content.replace(/\n/g, '<br>');
     }
     
-    const avatar = role === 'assistant' ? '<i data-lucide="bot" style="width: 18px; height: 18px;"></i>' : '<i class="fas fa-user"></i>';
-    
+    const avatar = role === 'assistant'
+      ? '<i data-lucide="bot" style="width: 16px; height: 16px;"></i>'
+      : '<i data-lucide="user" style="width: 16px; height: 16px;"></i>';
+
     wrapper.innerHTML = `
+      <div class="message-avatar">
+        ${avatar}
+      </div>
       <div class="message-content">
-        <div class="message-avatar">
-          ${avatar}
-        </div>
-      <div class="message-bubble">
-          ${processedContent}
-        </div>
+        ${processedContent}
       </div>
     `;
     return wrapper;
