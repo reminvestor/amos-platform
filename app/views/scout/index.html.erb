@@ -1103,9 +1103,17 @@ document.addEventListener('turbo:load', function() {
   };
 
   // Initialize Lucide icons on page load
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
+  function initializeLucideIcons() {
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+      console.log('🎨 Initializing Lucide icons...');
+      lucide.createIcons();
+      console.log('✅ Lucide icons initialized');
+    } else {
+      console.warn('⚠️ Lucide not available, retrying in 100ms...');
+      setTimeout(initializeLucideIcons, 100);
+    }
   }
+  initializeLucideIcons();
 
   const messageForm = document.getElementById('message-form');
   const messageInput = document.getElementById('message-input');
@@ -1862,7 +1870,7 @@ document.addEventListener('turbo:load', function() {
       const pages = source.pages ? ` • Pages: ${source.pages.join(', ')}` : '';
       html += `
         <div class="source-item" onclick="viewDocument('${source.filename}')">
-          <i class="${icon}"></i>
+          ${icon}
           <div class="source-details">
             <div class="source-filename">${source.filename}</div>
             <div class="source-meta">RAG Knowledge Base${pages}</div>
@@ -1876,7 +1884,7 @@ document.addEventListener('turbo:load', function() {
       const icon = getSourceIcon(source.filename);
       html += `
         <div class="source-item" onclick="viewDocument('${source.filename}')">
-          <i class="${icon}"></i>
+          ${icon}
           <div class="source-details">
             <div class="source-filename">${source.filename}</div>
             <div class="source-meta">Recent Upload (Session)</div>
@@ -1990,26 +1998,26 @@ document.addEventListener('turbo:load', function() {
     return html;
   }
 
-  // Get icon for source based on filename
+  // Get icon for source based on filename (returns Lucide icon HTML)
   function getSourceIcon(filename) {
-    if (!filename) return 'fas fa-file';
+    if (!filename) return '<i data-lucide="file"></i>';
     const ext = filename.split('.').pop().toLowerCase();
     const iconMap = {
-      'pdf': 'fas fa-file-pdf text-danger',
-      'doc': 'fas fa-file-word text-primary',
-      'docx': 'fas fa-file-word text-primary',
-      'xls': 'fas fa-file-excel text-success',
-      'xlsx': 'fas fa-file-excel text-success',
-      'ppt': 'fas fa-file-powerpoint text-warning',
-      'pptx': 'fas fa-file-powerpoint text-warning',
-      'txt': 'fas fa-file-alt',
-      'md': 'fas fa-file-alt',
-      'jpg': 'fas fa-file-image text-info',
-      'jpeg': 'fas fa-file-image text-info',
-      'png': 'fas fa-file-image text-info',
-      'gif': 'fas fa-file-image text-info'
+      'pdf': '<i data-lucide="file-text" class="text-danger"></i>',
+      'doc': '<i data-lucide="file-text" class="text-primary"></i>',
+      'docx': '<i data-lucide="file-text" class="text-primary"></i>',
+      'xls': '<i data-lucide="file-spreadsheet" class="text-success"></i>',
+      'xlsx': '<i data-lucide="file-spreadsheet" class="text-success"></i>',
+      'ppt': '<i data-lucide="presentation" class="text-warning"></i>',
+      'pptx': '<i data-lucide="presentation" class="text-warning"></i>',
+      'txt': '<i data-lucide="file-text"></i>',
+      'md': '<i data-lucide="file-text"></i>',
+      'jpg': '<i data-lucide="image" class="text-info"></i>',
+      'jpeg': '<i data-lucide="image" class="text-info"></i>',
+      'png': '<i data-lucide="image" class="text-info"></i>',
+      'gif': '<i data-lucide="image" class="text-info"></i>'
     };
-    return iconMap[ext] || 'fas fa-file';
+    return iconMap[ext] || '<i data-lucide="file"></i>';
   }
 
   // View document function
