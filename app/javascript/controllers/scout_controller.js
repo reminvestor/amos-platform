@@ -80,8 +80,8 @@ export default class extends Controller {
     // Initialize ActionCable subscription for job notifications
     this.setupJobNotifications()
     
-    // Don't automatically restore canvas state - let user start fresh
-    // this.restoreCanvasState()
+    // Restore canvas state if available
+    this.restoreCanvasState()
   }
   
   disconnect() {
@@ -366,21 +366,19 @@ export default class extends Controller {
   }
 
   // Enhanced processMessage to handle canvas actions and file uploads
-  async processMessage(message, files = [], model = null) {
+  async processMessage(message, files = []) {
     try {
       console.log("🔄 Processing message:", message)
-      console.log("📎 Files passed to processMessage:", files.length)
-
+      
       // Interrupt any ongoing TTS when user sends a new message
       if (window.ttsManager) {
         console.log("🛑 Interrupting TTS for new message")
         window.ttsManager.interrupt()
       }
-
+      
       // Clear any pending TTS buffer
       this.clearTTSState()
-
-
+      
       // If there are files, we need to upload them first
       let fileUrls = [];
       if (files && files.length > 0) {
@@ -390,11 +388,7 @@ export default class extends Controller {
       } else {
         console.log("📎 No files to upload")
       }
-
-      // Get selected model (from parameter or global function)
-      const selectedModel = model || (window.getSelectedModel ? window.getSelectedModel() : 'claude-3-haiku');
-      console.log("🤖 Using model:", selectedModel);
-
+      
       // Use streaming endpoint for better timeout handling
       const response = await fetch("/scout/chat_stream", {
         method: "POST",
@@ -402,11 +396,10 @@ export default class extends Controller {
           "Content-Type": "application/json",
           "X-CSRF-Token": this.getCSRFToken()
         },
-        body: JSON.stringify({
+        body: JSON.stringify({ 
           message: message,
           current_canvas: this.currentCanvas,
-          file_urls: fileUrls,
-          model: selectedModel
+          file_urls: fileUrls
         })
       })
 
