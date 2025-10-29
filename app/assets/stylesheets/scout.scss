@@ -460,13 +460,25 @@
   position: relative;
   width: 1.25rem;
   height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.brain-outline,
-.brain-filled {
+.brain-outline {
   width: 1.25rem;
   height: 1.25rem;
   color: #94a3b8;
+  transition: color 0.2s ease;
+}
+
+.brain-filled {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #a78bfa !important;
   transition: color 0.2s ease;
 }
 
@@ -483,10 +495,6 @@
   overflow: hidden;
   clip-path: inset(50% 0 0 0); // Default 50% fill
   transition: clip-path 0.3s ease;
-}
-
-.brain-filled {
-  color: #a78bfa !important;
 }
 
 .model-brain-btn:hover .brain-filled {
@@ -544,13 +552,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
-.brain-outline-lg,
-.brain-filled-lg {
+.brain-outline-lg {
   width: 1.5rem;
   height: 1.5rem;
   color: #475569;
+}
+
+.brain-filled-lg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #a78bfa !important;
 }
 
 .brain-fill-lg {
@@ -562,10 +580,6 @@
   overflow: hidden;
   clip-path: inset(50% 0 0 0);
   transition: clip-path 0.3s ease;
-}
-
-.brain-filled-lg {
-  color: #a78bfa !important;
 }
 
 .model-header-text {
