@@ -2,6 +2,7 @@ class WorkflowExecution < ApplicationRecord
   belongs_to :task_session
   belongs_to :user
   belongs_to :entity
+  belongs_to :workflow_template, optional: true
   has_many :workflow_step_executions, dependent: :destroy
   has_many :workflow_variables, dependent: :destroy
   has_many :workflow_contexts, dependent: :destroy
