@@ -23,12 +23,11 @@ class Admin::ObservabilityController < Admin::BaseController
     @in_progress_workflows = all_workflows.where(status: "in_progress").count
     @success_rate = @total_workflows > 0 ? ((@completed_workflows.to_f / @total_workflows) * 100).round(2) : 0
 
-    # Workflows by template
+    # Workflows by template (workflow_template_id is a string containing the template name)
     @workflows_by_template = all_workflows
-                               .left_joins(:workflow_template)
-                               .group("workflow_templates.name")
+                               .group(:workflow_template_id)
                                .count
-                               .reject { |name, _| name.nil? }
+                               .reject { |name, _| name.nil? || name.blank? }
                                .sort_by { |_, count| -count }
                                .first(10)
 
