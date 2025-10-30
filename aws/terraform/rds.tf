@@ -3,9 +3,9 @@
 
 # Custom parameter group with pgvector enabled
 resource "aws_db_parameter_group" "postgres_with_pgvector" {
-  name        = "${var.app_name}-postgres-pgvector-v2"  # Changed name to force new resource
+  name        = "${var.app_name}-postgres-pgvector-v3"  # Changed name again to force new resource
   family      = "postgres15"
-  description = "PostgreSQL parameter group with pgvector extension enabled for RAG system"
+  description = "PostgreSQL parameter group optimized for RAG system"
 
   # Note: pgvector is included natively in RDS PostgreSQL 15.2+ 
   # No need to add to shared_preload_libraries
@@ -15,23 +15,7 @@ resource "aws_db_parameter_group" "postgres_with_pgvector" {
     create_before_destroy = true
   }
 
-  # Optimize for vector operations
-  parameter {
-    name  = "max_connections"
-    value = "200"
-  }
-
-  parameter {
-    name  = "shared_buffers"
-    value = "{DBInstanceClassMemory/4096}" # 25% of RAM
-  }
-
-  parameter {
-    name  = "effective_cache_size"
-    value = "{DBInstanceClassMemory/2048}" # 50% of RAM
-  }
-
-  # Improve query performance for vector searches
+  # Only include dynamic parameters that don't require restart
   parameter {
     name  = "random_page_cost"
     value = "1.1" # Lower for SSD storage
