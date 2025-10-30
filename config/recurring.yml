@@ -1,9 +1,15 @@
-# AI Pipeline - Recurring Jobs for Ticket Polling and Workspace Cleanup
+# AI Pipeline - Recurring Jobs for Ticket Polling, Timeout Monitoring, and Workspace Cleanup
 production:
   # Poll JIRA/Azure DevOps for new tickets every 5 minutes
   ticket_watcher:
     class: TicketWatcherJob
     queue: pipeline
+    schedule: every 5 minutes
+
+  # Monitor for stuck/timed out pipelines every 5 minutes
+  pipeline_timeout_monitor:
+    class: PipelineTimeoutMonitorJob
+    queue: maintenance
     schedule: every 5 minutes
 
   # Cleanup old agent workspaces every hour
@@ -17,6 +23,11 @@ development:
   ticket_watcher:
     class: TicketWatcherJob
     queue: pipeline
+    schedule: every 5 minutes
+
+  pipeline_timeout_monitor:
+    class: PipelineTimeoutMonitorJob
+    queue: maintenance
     schedule: every 5 minutes
 
   workspace_cleanup:
