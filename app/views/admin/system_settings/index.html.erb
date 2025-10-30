@@ -47,13 +47,14 @@
                     <div class="input-group input-group-sm">
                       <%= password_field_tag "settings[#{setting.id}]",
                           setting.effective_value,
-                          class: "form-control font-monospace",
+                          class: "form-control font-monospace password-field",
                           placeholder: "Enter #{setting.key}",
                           autocomplete: "off",
-                          style: "font-size: 0.8rem;" %>
-                      <button class="btn btn-outline-secondary" type="button"
-                              onclick="togglePassword(this)" style="padding: 0.25rem 0.5rem;">
-                        <i class="bi bi-eye" style="font-size: 0.9rem;"></i>
+                          style: "font-size: 0.8rem;",
+                          id: "setting_#{setting.id}" %>
+                      <button class="btn btn-outline-secondary toggle-password" type="button"
+                              data-target="setting_#{setting.id}" style="padding: 0.25rem 0.5rem;">
+                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
                       </button>
                     </div>
                     <% if setting.effective_value.present? %>
@@ -104,20 +105,53 @@
 </div>
 
 <script>
-function togglePassword(button) {
-  const input = button.parentElement.querySelector('input');
-  const icon = button.querySelector('i');
+document.addEventListener('DOMContentLoaded', () => {
+  // Password toggle functionality
+  document.querySelectorAll('.toggle-password').forEach(button => {
+    button.addEventListener('click', function() {
+      const targetId = this.getAttribute('data-target');
+      const input = document.getElementById(targetId);
+      const icon = this.querySelector('i');
 
-  if (input.type === 'password') {
-    input.type = 'text';
-    icon.classList.remove('bi-eye');
-    icon.classList.add('bi-eye-slash');
-  } else {
-    input.type = 'password';
-    icon.classList.remove('bi-eye-slash');
-    icon.classList.add('bi-eye');
-  }
-}
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+      }
+
+      // Reinitialize the icon
+      lucide.createIcons();
+    });
+  });
+
+  lucide.createIcons();
+});
+
+document.addEventListener('turbo:load', () => {
+  // Password toggle functionality for Turbo navigation
+  document.querySelectorAll('.toggle-password').forEach(button => {
+    button.addEventListener('click', function() {
+      const targetId = this.getAttribute('data-target');
+      const input = document.getElementById(targetId);
+      const icon = this.querySelector('i');
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+      }
+
+      // Reinitialize the icon
+      lucide.createIcons();
+    });
+  });
+
+  lucide.createIcons();
+});
 
 function testKey(settingId) {
   const button = event.target.closest('button');

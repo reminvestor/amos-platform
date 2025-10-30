@@ -530,6 +530,24 @@ Rails.application.routes.draw do
       end
     end
 
+    # System Settings
+    resources :system_settings, only: [:index, :update] do
+      collection do
+        patch :update_all
+        post :reset_defaults
+      end
+      member do
+        post :test_key
+      end
+    end
+
+    # Voice Assistant Settings
+    resources :voice_settings, only: [:index] do
+      collection do
+        patch :update_all
+      end
+    end
+
   end
 
   # Common routes (regardless of subdomain)
