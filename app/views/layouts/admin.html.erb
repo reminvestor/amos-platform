@@ -8,6 +8,9 @@
 
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
   </head>
 
   <body class="bg-dark text-white">
@@ -81,22 +84,14 @@
                 <% end %>
               </li>
 
-              <li class="nav-item">
-                <%= link_to "/agents/monitoring", class: "nav-link #{'active' if request.path.start_with?('/agents')}" do %>
-                  <i class="fas fa-robot"></i> Agent Monitoring
-                <% end %>
-              </li>
-
-              <li class="nav-item">
-                <%= link_to admin_voice_settings_path, class: "nav-link #{'active' if controller_name == 'voice_settings'}" do %>
-                  <i class="fas fa-microphone"></i> Voice Settings
-                <% end %>
-              </li>
-
-              <li class="nav-item">
-                <%= link_to admin_system_settings_path, class: "nav-link #{'active' if controller_name == 'system_settings'}" do %>
-                  <i class="fas fa-key"></i> System Settings
-                <% end %>
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle #{'active' if request.path.start_with?('/admin/pipeline')}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i data-lucide="git-branch" style="width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom;"></i> AI Pipeline
+                </a>
+                <ul class="dropdown-menu dropdown-menu-dark">
+                  <li><%= link_to "Connections", admin_pipeline_connections_path, class: "dropdown-item" %></li>
+                  <li><%= link_to "Executions", admin_pipeline_executions_path, class: "dropdown-item" %></li>
+                </ul>
               </li>
             </ul>
 
@@ -152,5 +147,15 @@
       <!-- Login page content -->
       <%= yield %>
     <% end %>
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+      });
+      document.addEventListener('turbo:load', () => {
+        lucide.createIcons();
+      });
+    </script>
   </body>
 </html>
