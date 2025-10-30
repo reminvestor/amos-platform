@@ -8,7 +8,7 @@ resource "aws_s3_bucket" "rag_storage" {
   tags = {
     Name        = "${var.app_name} RAG Storage"
     Environment = var.environment
-    Purpose     = "RAG document storage (raw, processed, docling output)"
+    Purpose     = "RAG document storage - raw processed and docling output"
   }
 }
 
