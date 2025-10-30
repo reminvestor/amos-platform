@@ -25,6 +25,10 @@ class Entity < ApplicationRecord
   has_many :business_profiles, dependent: :destroy
   has_many :crawler_jobs, dependent: :destroy
 
+  # AI Pipeline relationships
+  has_many :mcp_connections, dependent: :destroy
+  has_many :pipeline_executions, dependent: :destroy
+
   # Email sequence relationships
   has_many :email_sequences, dependent: :destroy
   has_many :sequence_enrollments, dependent: :destroy

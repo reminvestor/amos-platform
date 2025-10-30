@@ -10,11 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
-
+ActiveRecord::Schema[8.0].define(version: 2025_10_29_231147) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
+  enable_extension "vector"
 
   create_table "ab_test_variants", force: :cascade do |t|
     t.bigint "ab_test_id", null: false
@@ -184,6 +184,29 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
     t.index ["conversation_id"], name: "index_agent_activities_on_conversation_id"
   end
 
+  create_table "agent_executions", force: :cascade do |t|
+    t.bigint "pipeline_execution_id", null: false
+    t.string "agent_id", null: false
+    t.integer "status", default: 0, null: false
+    t.string "workspace_path"
+    t.jsonb "inputs", default: {}
+    t.jsonb "outputs", default: {}
+    t.text "logs"
+    t.text "error_message"
+    t.integer "tokens_used", default: 0
+    t.decimal "cost", precision: 10, scale: 4, default: "0.0"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_id"], name: "index_agent_executions_on_agent_id"
+    t.index ["pipeline_execution_id", "agent_id"], name: "index_agent_executions_on_pipeline_execution_id_and_agent_id"
+    t.index ["pipeline_execution_id", "status"], name: "index_agent_executions_on_pipeline_execution_id_and_status"
+    t.index ["pipeline_execution_id"], name: "index_agent_executions_on_pipeline_execution_id"
+    t.index ["started_at"], name: "index_agent_executions_on_started_at"
+    t.index ["status"], name: "index_agent_executions_on_status"
+  end
+
   create_table "agent_messages", force: :cascade do |t|
     t.string "sender_id", null: false
     t.string "recipient_id", null: false
@@ -201,6 +224,30 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
     t.index ["sender_id"], name: "index_agent_messages_on_sender_id"
     t.index ["task_session_id", "created_at"], name: "index_agent_messages_on_task_session_id_and_created_at"
     t.index ["task_session_id"], name: "index_agent_messages_on_task_session_id"
+  end
+
+  create_table "ai_usage_logs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "scout_message_id"
+    t.string "model", null: false
+    t.integer "input_tokens", default: 0
+    t.integer "output_tokens", default: 0
+    t.integer "total_tokens", default: 0
+    t.decimal "cost_cents", precision: 10, scale: 4, default: "0.0"
+    t.integer "duration_ms"
+    t.string "request_type", default: "chat"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_ai_usage_logs_on_created_at"
+    t.index ["entity_id", "created_at"], name: "index_ai_usage_logs_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_ai_usage_logs_on_entity_id"
+    t.index ["model"], name: "index_ai_usage_logs_on_model"
+    t.index ["request_type"], name: "index_ai_usage_logs_on_request_type"
+    t.index ["scout_message_id"], name: "index_ai_usage_logs_on_scout_message_id"
+    t.index ["user_id", "created_at"], name: "index_ai_usage_logs_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_ai_usage_logs_on_user_id"
   end
 
   create_table "analytics_connections", force: :cascade do |t|
@@ -797,6 +844,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
     t.index ["user_id"], name: "index_landing_pages_on_user_id"
   end
 
+  create_table "mcp_connections", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "system_type", null: false
+    t.string "name", null: false
+    t.text "encrypted_config"
+    t.integer "status", default: 0, null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "last_sync_at"
+    t.datetime "last_health_check_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "system_type"], name: "index_mcp_connections_on_entity_id_and_system_type"
+    t.index ["entity_id"], name: "index_mcp_connections_on_entity_id"
+    t.index ["last_sync_at"], name: "index_mcp_connections_on_last_sync_at"
+    t.index ["status"], name: "index_mcp_connections_on_status"
+  end
+
   create_table "metric_definitions", force: :cascade do |t|
     t.string "name"
     t.string "version"
@@ -828,24 +892,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
     t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
   end
 
-  create_table "o_auth_configurations", force: :cascade do |t|
-    t.bigint "entity_id", null: false
-    t.bigint "integration_id", null: false
-    t.string "client_id", null: false
-    t.string "client_secret", null: false
-    t.string "redirect_uri", null: false
-    t.text "scopes"
-    t.string "authorize_url", null: false
-    t.string "token_url", null: false
-    t.text "credentials"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["client_id"], name: "index_o_auth_configurations_on_client_id"
-    t.index ["entity_id", "integration_id"], name: "index_oauth_configs_on_entity_integration", unique: true
-    t.index ["entity_id"], name: "index_o_auth_configurations_on_entity_id"
-    t.index ["integration_id"], name: "index_o_auth_configurations_on_integration_id"
-  end
-
   create_table "oauth_configurations", force: :cascade do |t|
     t.bigint "integration_id", null: false
     t.string "client_id"
@@ -863,6 +909,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
     t.text "test_endpoint"
     t.index ["callback_params"], name: "index_oauth_configurations_on_callback_params", using: :gin
     t.index ["integration_id"], name: "index_oauth_configurations_on_integration_id", unique: true
+  end
+
+  create_table "observability_events", force: :cascade do |t|
+    t.string "event_type", null: false
+    t.bigint "entity_id"
+    t.bigint "user_id"
+    t.string "resource_type"
+    t.bigint "resource_id"
+    t.jsonb "metadata", default: {}
+    t.integer "duration_ms"
+    t.string "status"
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_observability_events_on_created_at"
+    t.index ["entity_id", "created_at"], name: "index_observability_events_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_observability_events_on_entity_id"
+    t.index ["event_type"], name: "index_observability_events_on_event_type"
+    t.index ["resource_type", "resource_id"], name: "index_observability_events_on_resource_type_and_resource_id"
+    t.index ["status"], name: "index_observability_events_on_status"
+    t.index ["user_id"], name: "index_observability_events_on_user_id"
   end
 
   create_table "payouts", force: :cascade do |t|
@@ -883,6 +950,99 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
     t.index ["payout_date"], name: "index_payouts_on_payout_date"
     t.index ["processed_by_id"], name: "index_payouts_on_processed_by_id"
     t.index ["status"], name: "index_payouts_on_status"
+  end
+
+  create_table "pipeline_artifacts", force: :cascade do |t|
+    t.bigint "pipeline_execution_id", null: false
+    t.bigint "agent_execution_id"
+    t.string "artifact_type", null: false
+    t.string "file_name", null: false
+    t.text "content"
+    t.string "storage_path"
+    t.integer "file_size", default: 0
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_execution_id"], name: "index_pipeline_artifacts_on_agent_execution_id"
+    t.index ["artifact_type"], name: "index_pipeline_artifacts_on_artifact_type"
+    t.index ["pipeline_execution_id", "artifact_type"], name: "idx_on_pipeline_execution_id_artifact_type_b27a739ffc"
+    t.index ["pipeline_execution_id"], name: "index_pipeline_artifacts_on_pipeline_execution_id"
+  end
+
+  create_table "pipeline_events", force: :cascade do |t|
+    t.bigint "pipeline_execution_id", null: false
+    t.string "event_type", null: false
+    t.jsonb "payload", default: {}
+    t.string "source", null: false
+    t.boolean "processed", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_type"], name: "index_pipeline_events_on_event_type"
+    t.index ["pipeline_execution_id", "event_type"], name: "index_pipeline_events_on_pipeline_execution_id_and_event_type"
+    t.index ["pipeline_execution_id"], name: "index_pipeline_events_on_pipeline_execution_id"
+    t.index ["processed", "created_at"], name: "index_pipeline_events_on_processed_and_created_at"
+    t.index ["processed"], name: "index_pipeline_events_on_processed"
+    t.index ["source"], name: "index_pipeline_events_on_source"
+  end
+
+  create_table "pipeline_executions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "mcp_connection_id", null: false
+    t.string "ticket_id", null: false
+    t.string "ticket_system", null: false
+    t.string "ticket_url"
+    t.string "ticket_title", null: false
+    t.text "ticket_description"
+    t.integer "priority", default: 2
+    t.jsonb "ticket_metadata", default: {}
+    t.bigint "git_connection_id"
+    t.string "repository"
+    t.string "branch_name"
+    t.string "pr_id"
+    t.string "pr_url"
+    t.integer "status", default: 0, null: false
+    t.jsonb "state_history", default: []
+    t.datetime "state_changed_at"
+    t.integer "total_tokens_used", default: 0
+    t.decimal "total_cost", precision: 10, scale: 4, default: "0.0"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["completed_at"], name: "index_pipeline_executions_on_completed_at"
+    t.index ["entity_id", "status"], name: "index_pipeline_executions_on_entity_id_and_status"
+    t.index ["entity_id", "ticket_system"], name: "index_pipeline_executions_on_entity_id_and_ticket_system"
+    t.index ["entity_id"], name: "index_pipeline_executions_on_entity_id"
+    t.index ["git_connection_id"], name: "index_pipeline_executions_on_git_connection_id"
+    t.index ["mcp_connection_id"], name: "index_pipeline_executions_on_mcp_connection_id"
+    t.index ["priority"], name: "index_pipeline_executions_on_priority"
+    t.index ["started_at"], name: "index_pipeline_executions_on_started_at"
+    t.index ["status"], name: "index_pipeline_executions_on_status"
+    t.index ["ticket_id"], name: "index_pipeline_executions_on_ticket_id"
+    t.index ["ticket_system"], name: "index_pipeline_executions_on_ticket_system"
+  end
+
+  create_table "pipeline_interactions", force: :cascade do |t|
+    t.bigint "pipeline_execution_id", null: false
+    t.bigint "user_id"
+    t.string "interaction_type", null: false
+    t.string "channel", null: false
+    t.string "external_thread_id"
+    t.text "question", null: false
+    t.text "response"
+    t.integer "status", default: 0, null: false
+    t.datetime "asked_at", null: false
+    t.datetime "answered_at"
+    t.datetime "timeout_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["channel"], name: "index_pipeline_interactions_on_channel"
+    t.index ["external_thread_id"], name: "index_pipeline_interactions_on_external_thread_id"
+    t.index ["interaction_type"], name: "index_pipeline_interactions_on_interaction_type"
+    t.index ["pipeline_execution_id", "status"], name: "idx_on_pipeline_execution_id_status_6bd028d347"
+    t.index ["pipeline_execution_id"], name: "index_pipeline_interactions_on_pipeline_execution_id"
+    t.index ["status"], name: "index_pipeline_interactions_on_status"
+    t.index ["user_id"], name: "index_pipeline_interactions_on_user_id"
   end
 
   create_table "plugin_permissions", force: :cascade do |t|
@@ -971,11 +1131,68 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
     t.index ["entity_id"], name: "index_policy_rules_on_entity_id"
   end
 
+# Could not dump table "rag_chunks" because of following StandardError
+#   Unknown type 'vector(1536)' for column 'embedding'
+
+
+  create_table "rag_documents", force: :cascade do |t|
+    t.bigint "rag_store_id", null: false
+    t.string "original_filename", null: false
+    t.string "content_type"
+    t.integer "file_size_bytes"
+    t.string "file_hash"
+    t.jsonb "docling_metadata", default: {}
+    t.jsonb "extracted_tables", default: []
+    t.jsonb "extracted_images", default: []
+    t.jsonb "document_structure", default: {}
+    t.integer "page_count"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["file_hash"], name: "index_rag_documents_on_file_hash"
+    t.index ["rag_store_id", "file_hash"], name: "index_rag_documents_on_rag_store_id_and_file_hash"
+    t.index ["rag_store_id"], name: "index_rag_documents_on_rag_store_id"
+  end
+
+  create_table "rag_processing_jobs", force: :cascade do |t|
+    t.bigint "rag_store_id", null: false
+    t.string "job_id"
+    t.string "job_type"
+    t.integer "status", default: 0
+    t.text "error_message"
+    t.integer "retry_count", default: 0
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["job_id"], name: "index_rag_processing_jobs_on_job_id"
+    t.index ["job_type", "status"], name: "index_rag_processing_jobs_on_job_type_and_status"
+    t.index ["rag_store_id", "status"], name: "index_rag_processing_jobs_on_rag_store_id_and_status"
+    t.index ["rag_store_id"], name: "index_rag_processing_jobs_on_rag_store_id"
+  end
+
+  create_table "rag_queries", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "rag_store_id"
+    t.text "query", null: false
+    t.string "query_hash"
+    t.integer "response_time_ms"
+    t.jsonb "chunks_retrieved", default: []
+    t.jsonb "relevance_scores", default: []
+    t.boolean "cache_hit", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cache_hit"], name: "index_rag_queries_on_cache_hit"
+    t.index ["created_at"], name: "index_rag_queries_on_created_at"
+    t.index ["entity_id", "query_hash"], name: "index_rag_queries_on_entity_id_and_query_hash"
+    t.index ["entity_id"], name: "index_rag_queries_on_entity_id"
+    t.index ["rag_store_id"], name: "index_rag_queries_on_rag_store_id"
+  end
+
   create_table "rag_stores", force: :cascade do |t|
     t.string "name", null: false
     t.string "app_name", null: false
-    t.string "pinecone_index", null: false
-    t.string "pinecone_namespace", null: false
+    t.string "pinecone_index"
+    t.string "pinecone_namespace"
     t.integer "chunk_count", default: 0
     t.jsonb "metadata", default: {}
     t.string "status", default: "active"
@@ -992,8 +1209,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
     t.integer "chunks_with_pages", default: 0
     t.integer "chunks_with_headings", default: 0
     t.integer "chunks_with_tables", default: 0
+    t.string "s3_raw_path"
+    t.string "s3_processed_path"
+    t.string "s3_docling_output_path"
+    t.integer "token_count", default: 0
+    t.integer "processing_time_ms"
+    t.string "processing_method"
+    t.string "docling_version"
+    t.datetime "last_accessed_at"
+    t.integer "access_count", default: 0
+    t.datetime "expires_at"
     t.index ["app_name"], name: "index_rag_stores_on_app_name"
+    t.index ["entity_id", "status"], name: "index_rag_stores_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_rag_stores_on_entity_id"
+    t.index ["last_accessed_at"], name: "index_rag_stores_on_last_accessed_at"
     t.index ["pinecone_index", "pinecone_namespace"], name: "index_rag_stores_on_pinecone_index_and_pinecone_namespace", unique: true
     t.index ["status"], name: "index_rag_stores_on_status"
     t.index ["store_type"], name: "index_rag_stores_on_store_type"
@@ -1368,6 +1597,32 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
     t.index ["stripe_event_id"], name: "index_subscription_events_on_stripe_event_id", unique: true, where: "(stripe_event_id IS NOT NULL)"
   end
 
+  create_table "system_documents", force: :cascade do |t|
+    t.string "filename", null: false
+    t.string "original_filename", null: false
+    t.integer "file_size_bytes", null: false
+    t.string "content_type", null: false
+    t.string "category", null: false
+    t.string "subcategory"
+    t.text "description"
+    t.string "s3_key", null: false
+    t.string "status", default: "pending", null: false
+    t.text "error_message"
+    t.bigint "rag_store_id"
+    t.bigint "uploaded_by_id", null: false
+    t.datetime "indexed_at"
+    t.integer "chunk_count", default: 0
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category", "subcategory"], name: "index_system_documents_on_category_and_subcategory"
+    t.index ["category"], name: "index_system_documents_on_category"
+    t.index ["rag_store_id"], name: "index_system_documents_on_rag_store_id"
+    t.index ["s3_key"], name: "index_system_documents_on_s3_key", unique: true
+    t.index ["status"], name: "index_system_documents_on_status"
+    t.index ["uploaded_by_id"], name: "index_system_documents_on_uploaded_by_id"
+  end
+
   create_table "system_settings", force: :cascade do |t|
     t.string "key"
     t.text "value"
@@ -1624,7 +1879,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
   add_foreign_key "affiliates", "admin_users", column: "approved_by_id"
   add_foreign_key "affiliates", "users"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
+  add_foreign_key "agent_executions", "pipeline_executions"
   add_foreign_key "agent_messages", "task_sessions"
+  add_foreign_key "ai_usage_logs", "entities"
+  add_foreign_key "ai_usage_logs", "scout_messages"
+  add_foreign_key "ai_usage_logs", "users"
   add_foreign_key "analytics_connections", "entities"
   add_foreign_key "analytics_query_logs", "entities"
   add_foreign_key "analytics_query_logs", "metric_definitions"
@@ -1689,13 +1948,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
   add_foreign_key "landing_pages", "campaigns"
   add_foreign_key "landing_pages", "entities"
   add_foreign_key "landing_pages", "users"
+  add_foreign_key "mcp_connections", "entities"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
-  add_foreign_key "o_auth_configurations", "entities"
-  add_foreign_key "o_auth_configurations", "integrations"
   add_foreign_key "oauth_configurations", "integrations"
+  add_foreign_key "observability_events", "entities"
+  add_foreign_key "observability_events", "users"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
+  add_foreign_key "pipeline_artifacts", "agent_executions"
+  add_foreign_key "pipeline_artifacts", "pipeline_executions"
+  add_foreign_key "pipeline_events", "pipeline_executions"
+  add_foreign_key "pipeline_executions", "entities"
+  add_foreign_key "pipeline_executions", "mcp_connections"
+  add_foreign_key "pipeline_executions", "mcp_connections", column: "git_connection_id"
+  add_foreign_key "pipeline_interactions", "pipeline_executions"
+  add_foreign_key "pipeline_interactions", "users"
   add_foreign_key "plugin_permissions", "custom_plugins"
   add_foreign_key "plugin_permissions", "entities"
   add_foreign_key "plugin_permissions", "users"
@@ -1708,6 +1976,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
   add_foreign_key "plugin_usages", "entities"
   add_foreign_key "plugin_usages", "users"
   add_foreign_key "policy_rules", "entities"
+  add_foreign_key "rag_chunks", "rag_documents"
+  add_foreign_key "rag_documents", "rag_stores"
+  add_foreign_key "rag_processing_jobs", "rag_stores"
+  add_foreign_key "rag_queries", "entities"
+  add_foreign_key "rag_queries", "rag_stores"
   add_foreign_key "rag_stores", "entities"
   add_foreign_key "rag_stores", "users"
   add_foreign_key "referrals", "affiliates"
@@ -1742,6 +2015,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_26_025130) do
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "subscription_events", "entities"
+  add_foreign_key "system_documents", "rag_stores"
+  add_foreign_key "system_documents", "users", column: "uploaded_by_id"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
   add_foreign_key "tenant_quotas", "entities"
