@@ -530,13 +530,6 @@ Rails.application.routes.draw do
       end
     end
 
-    # Observability
-    namespace :observability do
-      get "ai_usage", to: "metrics#ai_usage"
-      get "workflows", to: "metrics#workflows"
-      get "errors", to: "metrics#errors"
-      get "performance", to: "metrics#performance"
-    end
   end
 
   # Common routes (regardless of subdomain)

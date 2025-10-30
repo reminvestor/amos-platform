@@ -8,7 +8,7 @@ module Git
     def initialize(connection)
       @connection = connection
       @config = connection.config
-      @mcp = MCP::Manager.instance
+      @mcp = AiAgents::Mcp::Manager.instance
     end
 
     # Test connection by searching for organization repositories
