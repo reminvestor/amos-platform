@@ -212,10 +212,23 @@
 
     // Password toggle functionality
     document.querySelectorAll('.toggle-password').forEach(button => {
-      button.addEventListener('click', function() {
+      // Remove old listeners by cloning
+      const newButton = button.cloneNode(true);
+      button.parentNode.replaceChild(newButton, button);
+
+      newButton.addEventListener('click', function(e) {
+        e.preventDefault();
+
         const targetId = this.getAttribute('data-target');
         const input = document.getElementById(targetId);
-        const icon = this.querySelector('i');
+
+        // Lucide replaces <i> with <svg>, so look for either
+        const icon = this.querySelector('i') || this.querySelector('svg') || this.querySelector('[data-lucide]');
+
+        if (!input || !icon) {
+          console.error('Toggle failed - input or icon not found');
+          return;
+        }
 
         if (input.type === 'password') {
           input.type = 'text';
@@ -226,15 +239,21 @@
         }
 
         // Reinitialize the icon
-        lucide.createIcons();
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
       });
     });
 
     // Reinitialize Lucide icons
-    lucide.createIcons();
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
   });
 
   document.addEventListener('turbo:load', () => {
-    lucide.createIcons();
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
   });
 </script>
