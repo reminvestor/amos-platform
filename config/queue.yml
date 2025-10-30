@@ -3,6 +3,31 @@ default: &default
     - polling_interval: 1
       batch_size: 500
   workers:
+    # Pipeline orchestration (highest priority)
+    - queues: pipeline
+      threads: 2
+      processes: 1
+      polling_interval: 0.1
+      priority: 10
+    # AI agent execution
+    - queues: agents
+      threads: 5
+      processes: <%= ENV.fetch("AGENT_CONCURRENCY", 2) %>
+      polling_interval: 0.1
+      priority: 8
+    # Notifications
+    - queues: notifications
+      threads: 3
+      processes: 1
+      polling_interval: 0.5
+      priority: 6
+    # Maintenance tasks
+    - queues: maintenance
+      threads: 1
+      processes: 1
+      polling_interval: 1
+      priority: 2
+    # Default queue for other jobs
     - queues: "*"
       threads: 3
       processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
