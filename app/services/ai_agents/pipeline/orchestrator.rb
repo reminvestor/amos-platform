@@ -1,4 +1,4 @@
-module Pipeline
+module AiAgents::Pipeline
   class Orchestrator
     attr_reader :pipeline_execution
 

@@ -1,6 +1,6 @@
 require 'faraday'
 
-module Notifiers
+module AiAgents::Notifiers
   class SlackNotifier
     # Slack Web API endpoint
     SLACK_API_URL = 'https://slack.com/api'

@@ -1,4 +1,4 @@
-module MCP
+module AiAgents::Mcp
   class Manager
     include Singleton
 

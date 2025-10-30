@@ -6,7 +6,7 @@ class ProcessPipelineJob < ApplicationJob
 
     Rails.logger.info "🔄 Processing pipeline #{pipeline_execution.id} in state: #{pipeline_execution.status}"
 
-    orchestrator = Pipeline::Orchestrator.new(pipeline_execution)
+    orchestrator = AiAgents::Pipeline::Orchestrator.new(pipeline_execution)
     orchestrator.process!
   rescue ActiveRecord::RecordNotFound => e
     Rails.logger.error "Pipeline execution not found: #{e.message}"

@@ -60,7 +60,7 @@ class PipelineExecution < ApplicationRecord
 
   # State machine transitions
   def can_transition_to?(new_state)
-    Pipeline::StateMachine.can_transition?(self.status, new_state.to_s)
+    AiAgents::Pipeline::StateMachine.can_transition?(self.status, new_state.to_s)
   end
 
   def transition_to!(new_state, event: nil, metadata: {})

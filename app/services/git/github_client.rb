@@ -1,3 +1,6 @@
+require 'net/http'
+require 'json'
+
 module Git
   class GithubClient
     attr_reader :connection
@@ -121,6 +124,77 @@ module Git
         { success: false, error: 'get_pull_request not yet implemented with MCP' }
       rescue => e
         { success: false, error: e.message }
+      end
+    end
+
+    # Get PR diff using GitHub API
+    def get_pr_diff(repo_full_name, pr_number)
+      begin
+        owner, repo = repo_full_name.split('/')
+        url = "https://api.github.com/repos/#{owner}/#{repo}/pulls/#{pr_number}"
+
+        # Make direct API call with diff format
+        response = Net::HTTP.start('api.github.com', 443, use_ssl: true) do |http|
+          request = Net::HTTP::Get.new(url)
+          request['Authorization'] = "token #{@config[:token]}"
+          request['Accept'] = 'application/vnd.github.v3.diff'
+          request['User-Agent'] = 'AMOS-Pipeline-Agent'
+
+          http.request(request)
+        end
+
+        if response.code.to_i == 200
+          {
+            success: true,
+            diff: response.body,
+            pr_number: pr_number
+          }
+        else
+          {
+            success: false,
+            error: "Failed to fetch PR diff: HTTP #{response.code} - #{response.message}"
+          }
+        end
+      rescue => e
+        { success: false, error: "Error fetching PR diff: #{e.message}" }
+      end
+    end
+
+    # Get PR files changed
+    def get_pr_files(repo_full_name, pr_number)
+      begin
+        owner, repo = repo_full_name.split('/')
+        url = "https://api.github.com/repos/#{owner}/#{repo}/pulls/#{pr_number}/files"
+
+        response = Net::HTTP.start('api.github.com', 443, use_ssl: true) do |http|
+          request = Net::HTTP::Get.new(url)
+          request['Authorization'] = "token #{@config[:token]}"
+          request['Accept'] = 'application/vnd.github.v3+json'
+          request['User-Agent'] = 'AMOS-Pipeline-Agent'
+
+          http.request(request)
+        end
+
+        if response.code.to_i == 200
+          files = JSON.parse(response.body)
+          {
+            success: true,
+            files: files.map { |f|
+              {
+                filename: f['filename'],
+                status: f['status'],
+                additions: f['additions'],
+                deletions: f['deletions'],
+                changes: f['changes'],
+                patch: f['patch']
+              }
+            }
+          }
+        else
+          { success: false, error: "Failed to fetch PR files: HTTP #{response.code}" }
+        end
+      rescue => e
+        { success: false, error: "Error fetching PR files: #{e.message}" }
       end
     end
 

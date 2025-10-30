@@ -1,4 +1,4 @@
-module Agents
+module AiAgents::Pipeline
   class CoderAgent < BaseAgent
     # 11-Step Workflow Implementation
     # Based on AI_PIPELINE_HOW_IT_WORKS.md lines 93-115

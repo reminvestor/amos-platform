@@ -1,7 +1,7 @@
 require 'open3'
 require 'json'
 
-module MCP
+module AiAgents::Mcp
   class Client
     attr_reader :server_name, :config, :process_stdin, :process_stdout, :process_stderr, :thread
 

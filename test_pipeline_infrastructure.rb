@@ -77,10 +77,10 @@ puts
 # Step 4: Test State Machine
 puts "4. Testing State Machine..."
 puts "   Current state: #{pipeline.status}"
-puts "   Valid next states: #{Pipeline::StateMachine.next_states(pipeline.status).join(', ')}"
-puts "   Can transition to clarifying? #{Pipeline::StateMachine.can_transition?(pipeline.status, 'clarifying')}"
-puts "   State label: #{Pipeline::StateMachine.state_label(pipeline.status)}"
-puts "   State color: #{Pipeline::StateMachine.state_color(pipeline.status)}"
+puts "   Valid next states: #{AiAgents::Pipeline::StateMachine.next_states(pipeline.status).join(', ')}"
+puts "   Can transition to clarifying? #{AiAgents::Pipeline::StateMachine.can_transition?(pipeline.status, 'clarifying')}"
+puts "   State label: #{AiAgents::Pipeline::StateMachine.state_label(pipeline.status)}"
+puts "   State color: #{AiAgents::Pipeline::StateMachine.state_color(pipeline.status)}"
 puts "   ✅ State machine working"
 puts
 
@@ -111,7 +111,7 @@ begin
     puts "   - artifacts: clarification_analysis.json, clarifications.md, requirements_checklist.yaml"
   else
     puts "   Executing ClarifierAgent..."
-    agent = Agents::ClarifierAgent.new(agent_execution)
+    agent = AiAgents::Pipeline::ClarifierAgent.new(agent_execution)
     agent.execute!
 
     puts "   ✅ Agent execution completed!"
@@ -140,10 +140,10 @@ puts
 
 # Step 6: Test Pipeline Orchestrator (without executing agents)
 puts "6. Testing Pipeline Orchestrator..."
-orchestrator = Pipeline::Orchestrator.new(pipeline)
+orchestrator = AiAgents::Pipeline::Orchestrator.new(pipeline)
 puts "   ✅ Orchestrator initialized"
 puts "   Pipeline status: #{pipeline.status}"
-puts "   Next agent for state: #{Pipeline::StateMachine.agent_for_state(pipeline.status)}"
+puts "   Next agent for state: #{AiAgents::Pipeline::StateMachine.agent_for_state(pipeline.status)}"
 puts
 
 # Step 7: Test event creation

@@ -1,7 +1,7 @@
 require 'faraday'
 require 'base64'
 
-module MCP
+module AiAgents::Mcp
   class AzureDevOpsClient
     attr_reader :connection
 

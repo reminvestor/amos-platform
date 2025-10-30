@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_29_231147) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_29_240000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1009,16 +1009,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_231147) do
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "slack_thread_ts"
     t.index ["completed_at"], name: "index_pipeline_executions_on_completed_at"
     t.index ["entity_id", "status"], name: "index_pipeline_executions_on_entity_id_and_status"
+    t.index ["entity_id", "ticket_id", "mcp_connection_id"], name: "index_pipeline_executions_on_unique_ticket", unique: true
     t.index ["entity_id", "ticket_system"], name: "index_pipeline_executions_on_entity_id_and_ticket_system"
     t.index ["entity_id"], name: "index_pipeline_executions_on_entity_id"
     t.index ["git_connection_id"], name: "index_pipeline_executions_on_git_connection_id"
     t.index ["mcp_connection_id"], name: "index_pipeline_executions_on_mcp_connection_id"
     t.index ["priority"], name: "index_pipeline_executions_on_priority"
+    t.index ["slack_thread_ts"], name: "index_pipeline_executions_on_slack_thread_ts"
     t.index ["started_at"], name: "index_pipeline_executions_on_started_at"
     t.index ["status"], name: "index_pipeline_executions_on_status"
-    t.index ["ticket_id"], name: "index_pipeline_executions_on_ticket_id"
     t.index ["ticket_system"], name: "index_pipeline_executions_on_ticket_system"
   end
 
