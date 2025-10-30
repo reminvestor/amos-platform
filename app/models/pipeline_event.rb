@@ -4,9 +4,9 @@ class PipelineEvent < ApplicationRecord
 
   # Validations
   validates :event_type, presence: true
-  validates :source, presence: true, inclusion: { in: %w[jira azure_devops github azure_repos agent human system] }
+  validates :source, presence: true, inclusion: { in: %w[jira azure_devops github azure_repos agent human system test_script] }
 
-  # Event types from spec
+  # Event types from spec (validation is lenient to allow custom events)
   EVENT_TYPES = %w[
     ticket.intake
     ticket.updated
@@ -29,9 +29,11 @@ class PipelineEvent < ApplicationRecord
     rollback.triggered
     human.approved
     human.rejected
+    test.run
   ].freeze
 
-  validates :event_type, inclusion: { in: EVENT_TYPES }
+  # Validate event_type format (category.action) but allow custom types
+  validates :event_type, format: { with: /\A[a-z_]+\.[a-z_]+\z/, message: "must be in format 'category.action'" }
 
   # Scopes
   scope :unprocessed, -> { where(processed: false) }
