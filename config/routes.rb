@@ -19,6 +19,9 @@ Rails.application.routes.draw do
   # ActionCable for real-time features
   mount ActionCable.server => "/cable"
 
+  # Letter Opener Web (Development only - view emails at /letter_opener)
+  mount LetterOpenerWeb::Engine, at: "/letter_opener" if Rails.env.development?
+
   # API routes
   namespace :api do
     # Voice Assistant API
@@ -96,6 +99,20 @@ Rails.application.routes.draw do
           post :add_missing_email_deliveries
           post :fix_campaign_entity_ids
           post :reprocess_drip_campaigns
+        end
+      end
+
+      # AI Development Pipeline
+      resources :pipeline_connections, path: 'pipeline/connections' do
+        member do
+          post :test
+        end
+      end
+
+      resources :pipeline_executions, path: 'pipeline/executions', only: [:index, :show] do
+        member do
+          post :retry
+          post :cancel
         end
       end
     end
