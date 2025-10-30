@@ -1,10 +1,25 @@
-# production:
-#   periodic_cleanup:
-#     class: CleanSoftDeletedRecordsJob
-#     queue: background
-#     args: [ 1000, { batch_size: 500 } ]
-#     schedule: every hour
-#   periodic_command:
-#     command: "SoftDeletedRecord.due.delete_all"
-#     priority: 2
-#     schedule: at 5am every day
+# AI Pipeline - Recurring Jobs for Ticket Polling and Workspace Cleanup
+production:
+  # Poll JIRA/Azure DevOps for new tickets every 5 minutes
+  ticket_watcher:
+    class: TicketWatcherJob
+    queue: pipeline
+    schedule: every 5 minutes
+
+  # Cleanup old agent workspaces every hour
+  workspace_cleanup:
+    class: CleanupWorkspacesJob
+    queue: maintenance
+    schedule: every hour
+
+development:
+  # Same schedule for development environment
+  ticket_watcher:
+    class: TicketWatcherJob
+    queue: pipeline
+    schedule: every 5 minutes
+
+  workspace_cleanup:
+    class: CleanupWorkspacesJob
+    queue: maintenance
+    schedule: every hour
