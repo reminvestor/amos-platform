@@ -82,10 +82,11 @@
                   <div>
                     <% if %w[OPENAI_API_KEY DEEPGRAM_API_KEY GITHUB_TOKEN].include?(setting.key) %>
                       <button type="button"
-                              class="btn btn-sm btn-outline-primary py-0 px-2"
-                              onclick="testKey(<%= setting.id %>)"
+                              class="btn btn-sm btn-outline-primary py-0 px-2 test-key-btn"
+                              data-setting-id="<%= setting.id %>"
                               style="font-size: 0.7rem;">
-                        <i class="bi bi-check-circle me-1"></i>Test
+                        <i data-lucide="check-circle" style="width: 12px; height: 12px;"></i>
+                        <span class="ms-1">Test</span>
                       </button>
                     <% end %>
                   </div>
@@ -125,7 +126,8 @@ function initPasswordToggles() {
         return;
       }
 
-      const icon = this.querySelector('i');
+      // Lucide replaces <i> with <svg>, so look for either
+      const icon = this.querySelector('i') || this.querySelector('svg') || this.querySelector('[data-lucide]');
       if (!icon) {
         console.error('Icon not found in button');
         return;
@@ -135,10 +137,12 @@ function initPasswordToggles() {
 
       if (input.type === 'password') {
         input.type = 'text';
+        // Replace the entire icon element
         icon.setAttribute('data-lucide', 'eye-off');
         console.log('Switched to text');
       } else {
         input.type = 'password';
+        // Replace the entire icon element
         icon.setAttribute('data-lucide', 'eye');
         console.log('Switched to password');
       }
@@ -162,39 +166,87 @@ function initPasswordToggles() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', initPasswordToggles);
-document.addEventListener('turbo:load', initPasswordToggles);
+function initTestButtons() {
+  console.log('Initializing test buttons...');
 
-function testKey(settingId) {
-  const button = event.target.closest('button');
-  const originalHTML = button.innerHTML;
-  button.disabled = true;
-  button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
+  document.querySelectorAll('.test-key-btn').forEach(button => {
+    // Remove old listeners by cloning
+    const newButton = button.cloneNode(true);
+    button.parentNode.replaceChild(newButton, button);
 
-  fetch(`/admin/system_settings/${settingId}/test_key`, {
-    method: 'POST',
-    headers: {
-      'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content,
-      'Accept': 'application/json'
-    }
-  })
-  .then(response => response.json())
-  .then(data => {
-    button.disabled = false;
-    button.innerHTML = originalHTML;
+    newButton.addEventListener('click', function(e) {
+      e.preventDefault();
 
-    if (data.success) {
-      alert('✓ ' + data.message);
-    } else {
-      alert('✗ ' + data.message);
-    }
-  })
-  .catch(error => {
-    button.disabled = false;
-    button.innerHTML = originalHTML;
-    alert('Error testing API key: ' + error);
+      const settingId = this.getAttribute('data-setting-id');
+      console.log('Test button clicked for setting:', settingId);
+
+      const originalHTML = this.innerHTML;
+      this.disabled = true;
+      this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
+
+      const csrfToken = document.querySelector('[name="csrf-token"]');
+      if (!csrfToken) {
+        console.error('CSRF token not found');
+        alert('Error: CSRF token not found');
+        this.disabled = false;
+        this.innerHTML = originalHTML;
+        return;
+      }
+
+      console.log('Fetching:', `/admin/system_settings/${settingId}/test_key`);
+
+      fetch(`/admin/system_settings/${settingId}/test_key`, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-Token': csrfToken.content,
+          'Accept': 'application/json'
+        }
+      })
+      .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+      })
+      .then(data => {
+        console.log('Response data:', data);
+        this.disabled = false;
+        this.innerHTML = originalHTML;
+
+        // Reinitialize icons
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+
+        if (data.success) {
+          alert('✓ ' + data.message);
+        } else {
+          alert('✗ ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error testing API key:', error);
+        this.disabled = false;
+        this.innerHTML = originalHTML;
+
+        // Reinitialize icons
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+
+        alert('Error testing API key: ' + error);
+      });
+    });
   });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  initPasswordToggles();
+  initTestButtons();
+});
+
+document.addEventListener('turbo:load', () => {
+  initPasswordToggles();
+  initTestButtons();
+});
 </script>
 
 <style>
