@@ -253,9 +253,41 @@ module AiAgents::Pipeline
 
       # Check if interactions have been resolved
       if pipeline_execution.pending_interactions.none?
-        # All interactions resolved, continue from where we left off
+        # All interactions resolved, determine appropriate next state
         Rails.logger.info "✅ All interactions resolved, continuing pipeline"
-        transition_to_next_state('clarifying')  # Or determine appropriate next state
+
+        # Derive next state from the last answered interaction
+        last_interaction = pipeline_execution.pipeline_interactions
+                                            .where(status: 'answered')
+                                            .order(answered_at: :desc)
+                                            .first
+
+        next_state = if last_interaction
+                      case last_interaction.interaction_type
+                      when 'clarification'
+                        # After clarification, proceed to planning
+                        'planning'
+                      when 'approval'
+                        # After approval, proceed to production
+                        'prod'
+                      when 'rejection'
+                        # After rejection, go back to implementing
+                        'implementing'
+                      else
+                        # Default fallback
+                        'clarifying'
+                      end
+                    else
+                      # No interaction found, check last event
+                      last_event = pipeline_execution.pipeline_events.order(created_at: :desc).first
+                      if last_event
+                        AiAgents::Pipeline::StateMachine.next_state_for_event(pipeline_execution.status, last_event.event_type) || 'clarifying'
+                      else
+                        'clarifying'
+                      end
+                    end
+
+        transition_to_next_state(next_state)
       else
         { success: true, message: 'Still blocked by pending interactions' }
       end

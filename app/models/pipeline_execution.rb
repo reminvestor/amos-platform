@@ -3,7 +3,7 @@ class PipelineExecution < ApplicationRecord
   belongs_to :entity
 
   # Relationships
-  belongs_to :mcp_connection
+  belongs_to :mcp_connection, optional: true
   belongs_to :git_connection, class_name: 'McpConnection', optional: true
   has_many :agent_executions, dependent: :destroy
   has_many :pipeline_artifacts, dependent: :destroy
@@ -14,10 +14,18 @@ class PipelineExecution < ApplicationRecord
   validates :ticket_id, presence: true
   validates :ticket_id, uniqueness: { scope: [:entity_id, :mcp_connection_id],
                                       message: 'pipeline already exists for this ticket' }
-  validates :ticket_system, presence: true, inclusion: { in: %w[jira azure_devops] }
+  validates :ticket_system, presence: true, inclusion: { in: %w[jira azure_devops manual] }
   validates :ticket_title, presence: true
   validates :status, presence: true
   validates :priority, presence: true
+  validate :mcp_connection_required_unless_manual
+
+  def mcp_connection_required_unless_manual
+    return if ticket_system == 'manual'
+    return if mcp_connection.present?
+
+    errors.add(:mcp_connection, 'is required unless ticket_system is manual')
+  end
 
   # Enums for status (14 states from spec)
   enum :status, {

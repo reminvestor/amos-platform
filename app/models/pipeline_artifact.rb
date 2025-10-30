@@ -54,7 +54,7 @@ class PipelineArtifact < ApplicationRecord
 
   # Store content (inline if small, S3 if large)
   def store_content(data)
-    if data.bytesize < 100.kilobytes
+    if data.bytesize < 10.megabytes
       self.content = data
       self.file_size = data.bytesize
     else
@@ -90,20 +90,72 @@ class PipelineArtifact < ApplicationRecord
   end
 
   def fetch_from_s3
-    # TODO: Implement S3 fetching when S3 storage is configured
-    # s3_client = Aws::S3::Client.new
-    # response = s3_client.get_object(bucket: ENV['AWS_S3_BUCKET'], key: storage_path)
-    # response.body.read
-    raise NotImplementedError, 'S3 storage not yet implemented'
+    return nil unless ENV['AWS_S3_BUCKET'].present?
+    return nil unless storage_path.present?
+
+    require 'aws-sdk-s3'
+
+    s3_client = Aws::S3::Client.new(
+      region: ENV['AWS_REGION'] || 'us-east-1',
+      access_key_id: ENV['AWS_ACCESS_KEY_ID'],
+      secret_access_key: ENV['AWS_SECRET_ACCESS_KEY']
+    )
+
+    response = s3_client.get_object(
+      bucket: ENV['AWS_S3_BUCKET'],
+      key: storage_path
+    )
+
+    response.body.read
+  rescue Aws::S3::Errors::ServiceError => e
+    Rails.logger.error "Failed to fetch from S3: #{e.message}"
+    nil
   end
 
   def upload_to_s3(data)
-    # TODO: Implement S3 upload when S3 storage is configured
-    # bucket = ENV['AWS_S3_BUCKET']
-    # key = "pipeline-artifacts/#{pipeline_execution_id}/#{file_name}"
-    # s3_client = Aws::S3::Client.new
-    # s3_client.put_object(bucket: bucket, key: key, body: data)
-    # self.storage_path = key
-    raise NotImplementedError, 'S3 storage not yet implemented'
+    unless ENV['AWS_S3_BUCKET'].present?
+      Rails.logger.warn "AWS_S3_BUCKET not configured - storing inline instead"
+      self.content = data
+      return
+    end
+
+    require 'aws-sdk-s3'
+
+    bucket = ENV['AWS_S3_BUCKET']
+    key = "pipeline-artifacts/#{pipeline_execution_id}/#{SecureRandom.hex(8)}/#{file_name}"
+
+    s3_client = Aws::S3::Client.new(
+      region: ENV['AWS_REGION'] || 'us-east-1',
+      access_key_id: ENV['AWS_ACCESS_KEY_ID'],
+      secret_access_key: ENV['AWS_SECRET_ACCESS_KEY']
+    )
+
+    s3_client.put_object(
+      bucket: bucket,
+      key: key,
+      body: data,
+      content_type: content_type_for_file(file_name)
+    )
+
+    self.storage_path = key
+    Rails.logger.info "Uploaded artifact to S3: s3://#{bucket}/#{key}"
+  rescue Aws::S3::Errors::ServiceError => e
+    Rails.logger.error "Failed to upload to S3: #{e.message}"
+    # Fallback to inline storage
+    self.content = data
+  end
+
+  def content_type_for_file(filename)
+    case File.extname(filename).downcase
+    when '.json' then 'application/json'
+    when '.txt', '.md' then 'text/plain'
+    when '.html' then 'text/html'
+    when '.xml' then 'application/xml'
+    when '.yaml', '.yml' then 'application/x-yaml'
+    when '.png' then 'image/png'
+    when '.jpg', '.jpeg' then 'image/jpeg'
+    when '.pdf' then 'application/pdf'
+    else 'application/octet-stream'
+    end
   end
 end
