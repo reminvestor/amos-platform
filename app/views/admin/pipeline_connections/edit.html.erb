@@ -1,0 +1,236 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Edit Pipeline Connection</h1>
+    <%= link_to admin_pipeline_connection_path(@pipeline_connection), class: 'btn btn-secondary' do %>
+      <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+      Back to Connection
+    <% end %>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body">
+          <%= form_with model: @pipeline_connection, url: admin_pipeline_connection_path(@pipeline_connection), method: :patch, local: true do |f| %>
+            <% if @pipeline_connection.errors.any? %>
+              <div class="alert alert-danger" role="alert">
+                <h5 class="alert-heading">
+                  <i data-lucide="alert-circle" style="width: 20px; height: 20px;"></i>
+                  <%= pluralize(@pipeline_connection.errors.count, "error") %> prohibited this connection from being saved:
+                </h5>
+                <ul class="mb-0">
+                  <% @pipeline_connection.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <div class="mb-3">
+              <%= f.label :system_type, "System Type", class: "form-label" %>
+              <%= f.select :system_type,
+                  options_for_select([
+                    ['JIRA', 'jira'],
+                    ['GitHub', 'github'],
+                    ['Azure DevOps', 'azure_devops'],
+                    ['Azure Repos', 'azure_repos']
+                  ], @pipeline_connection.system_type),
+                  {},
+                  class: 'form-select',
+                  disabled: true %>
+              <div class="form-text text-warning">System type cannot be changed after creation</div>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :name, "Connection Name", class: "form-label" %>
+              <%= f.text_field :name, class: 'form-control', placeholder: 'e.g., GitHub - Production' %>
+              <div class="form-text">A friendly name to identify this connection</div>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :status, "Status", class: "form-label" %>
+              <%= f.select :status,
+                  options_for_select([
+                    ['Active', 'active'],
+                    ['Inactive', 'inactive']
+                  ], @pipeline_connection.status),
+                  {},
+                  class: 'form-select' %>
+            </div>
+
+            <hr class="my-4">
+
+            <h5 class="mb-3">Configuration</h5>
+            <p class="text-muted mb-3">Update the credentials and settings for this connection.</p>
+
+            <% config = @pipeline_connection.config %>
+
+            <!-- JIRA Config -->
+            <% if @pipeline_connection.system_type == 'jira' %>
+              <div class="mb-3">
+                <label class="form-label">JIRA API URL</label>
+                <input type="text" name="mcp_connection[config][api_url]" class="form-control" value="<%= config[:api_url] %>" placeholder="https://your-domain.atlassian.net">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">JIRA API Token</label>
+                <div class="input-group">
+                  <input type="password" name="mcp_connection[config][api_token]" class="form-control password-field" value="<%= config[:api_token] %>" placeholder="Your JIRA API token" id="jira_token_edit">
+                  <button class="btn btn-outline-secondary toggle-password" type="button" data-target="jira_token_edit">
+                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </div>
+                <div class="form-text">Generate at: <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">id.atlassian.com/manage-profile/security/api-tokens</a></div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" name="mcp_connection[config][email]" class="form-control" value="<%= config[:email] %>" placeholder="your@email.com">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Project Key (Optional)</label>
+                <input type="text" name="mcp_connection[config][project_key]" class="form-control" value="<%= config[:project_key] %>" placeholder="e.g., PROJ">
+              </div>
+            <% end %>
+
+            <!-- GitHub Config -->
+            <% if @pipeline_connection.system_type == 'github' %>
+              <div class="mb-3">
+                <label class="form-label">GitHub API Token</label>
+                <div class="input-group">
+                  <input type="password" name="mcp_connection[config][token]" class="form-control password-field" value="<%= config[:token] %>" placeholder="ghp_..." id="github_token_edit">
+                  <button class="btn btn-outline-secondary toggle-password" type="button" data-target="github_token_edit">
+                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </div>
+                <div class="form-text">Generate at: <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a></div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Organization</label>
+                <input type="text" name="mcp_connection[config][organization]" class="form-control" value="<%= config[:organization] %>" placeholder="e.g., NuvolaNetworks">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Repository (Optional)</label>
+                <input type="text" name="mcp_connection[config][repository]" class="form-control" value="<%= config[:repository] %>" placeholder="e.g., agent_marketing">
+                <div class="form-text">Leave blank to access all repositories in the organization</div>
+              </div>
+            <% end %>
+
+            <!-- Azure DevOps Config -->
+            <% if @pipeline_connection.system_type == 'azure_devops' %>
+              <div class="mb-3">
+                <label class="form-label">Azure DevOps Organization</label>
+                <input type="text" name="mcp_connection[config][organization]" class="form-control" value="<%= config[:organization] %>" placeholder="Your organization name">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Personal Access Token (PAT)</label>
+                <div class="input-group">
+                  <input type="password" name="mcp_connection[config][pat]" class="form-control password-field" value="<%= config[:pat] %>" placeholder="Your Azure DevOps PAT" id="azure_devops_pat_edit">
+                  <button class="btn btn-outline-secondary toggle-password" type="button" data-target="azure_devops_pat_edit">
+                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Project (Optional)</label>
+                <input type="text" name="mcp_connection[config][project]" class="form-control" value="<%= config[:project] %>" placeholder="Project name">
+              </div>
+            <% end %>
+
+            <!-- Azure Repos Config -->
+            <% if @pipeline_connection.system_type == 'azure_repos' %>
+              <div class="mb-3">
+                <label class="form-label">Azure Repos Organization</label>
+                <input type="text" name="mcp_connection[config][organization]" class="form-control" value="<%= config[:organization] %>" placeholder="Your organization name">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Personal Access Token (PAT)</label>
+                <div class="input-group">
+                  <input type="password" name="mcp_connection[config][pat]" class="form-control password-field" value="<%= config[:pat] %>" placeholder="Your Azure Repos PAT" id="azure_repos_pat_edit">
+                  <button class="btn btn-outline-secondary toggle-password" type="button" data-target="azure_repos_pat_edit">
+                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </div>
+              </div>
+            <% end %>
+
+            <div class="d-flex gap-2 mt-4">
+              <%= f.submit "Update Connection", class: "btn btn-primary" %>
+              <%= link_to "Cancel", admin_pipeline_connection_path(@pipeline_connection), class: "btn btn-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card bg-light text-dark">
+        <div class="card-body">
+          <h5 class="card-title">
+            <i data-lucide="info" style="width: 20px; height: 20px;"></i>
+            Connection Info
+          </h5>
+          <dl class="row mb-0 small">
+            <dt class="col-sm-5">Created:</dt>
+            <dd class="col-sm-7"><%= @pipeline_connection.created_at.strftime('%b %d, %Y') %></dd>
+
+            <dt class="col-sm-5">Last Updated:</dt>
+            <dd class="col-sm-7"><%= @pipeline_connection.updated_at.strftime('%b %d, %Y') %></dd>
+
+            <dt class="col-sm-5">Last Sync:</dt>
+            <dd class="col-sm-7">
+              <% if @pipeline_connection.last_sync_at %>
+                <%= time_ago_in_words(@pipeline_connection.last_sync_at) %> ago
+              <% else %>
+                Never
+              <% end %>
+            </dd>
+
+            <dt class="col-sm-5">Executions:</dt>
+            <dd class="col-sm-7"><%= @pipeline_connection.pipeline_executions.count %></dd>
+          </dl>
+        </div>
+      </div>
+
+      <div class="card bg-light text-dark mt-3">
+        <div class="card-body">
+          <h5 class="card-title">
+            <i data-lucide="alert-triangle" style="width: 20px; height: 20px;"></i>
+            Security Note
+          </h5>
+          <p class="card-text small mb-0">
+            Credentials are encrypted in the database. Only update tokens if you need to rotate credentials or if the connection is experiencing authentication issues.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Password toggle functionality
+    document.querySelectorAll('.toggle-password').forEach(button => {
+      button.addEventListener('click', function() {
+        const targetId = this.getAttribute('data-target');
+        const input = document.getElementById(targetId);
+        const icon = this.querySelector('i');
+
+        if (input.type === 'password') {
+          input.type = 'text';
+          icon.setAttribute('data-lucide', 'eye-off');
+        } else {
+          input.type = 'password';
+          icon.setAttribute('data-lucide', 'eye');
+        }
+
+        // Reinitialize the icon
+        lucide.createIcons();
+      });
+    });
+
+    lucide.createIcons();
+  });
+
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>

@@ -1,0 +1,190 @@
+<div class="container-fluid py-4">
+  <h1 class="h3 mb-4">Pipeline Executions</h1>
+
+  <!-- Stats Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <i data-lucide="activity" class="text-primary" style="width: 32px; height: 32px;"></i>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-muted mb-1">Total Executions</h6>
+              <h3 class="mb-0"><%= @stats[:total] %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <i data-lucide="play-circle" class="text-info" style="width: 32px; height: 32px;"></i>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-muted mb-1">Active</h6>
+              <h3 class="mb-0"><%= @stats[:active] %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <i data-lucide="check-circle" class="text-success" style="width: 32px; height: 32px;"></i>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-muted mb-1">Completed</h6>
+              <h3 class="mb-0"><%= @stats[:completed] %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <i data-lucide="dollar-sign" class="text-warning" style="width: 32px; height: 32px;"></i>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-muted mb-1">Total Cost</h6>
+              <h3 class="mb-0">$<%= number_with_precision(@stats[:total_cost], precision: 2) %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <%= form_with url: admin_pipeline_executions_path, method: :get, class: 'row g-3' do %>
+        <div class="col-md-3">
+          <%= select_tag :status, options_for_select(
+            [['All Statuses', '']] + PipelineExecution.statuses.keys.map { |k| [k.titleize, k] },
+            params[:status]
+          ), class: 'form-select' %>
+        </div>
+        <div class="col-md-3">
+          <%= select_tag :priority, options_for_select(
+            [['All Priorities', '']] + PipelineExecution.priorities.keys.map { |k| [k.titleize, k] },
+            params[:priority]
+          ), class: 'form-select' %>
+        </div>
+        <div class="col-md-3">
+          <%= select_tag :ticket_system, options_for_select(
+            [['All Systems', ''], ['JIRA', 'jira'], ['Azure DevOps', 'azure_devops']],
+            params[:ticket_system]
+          ), class: 'form-select' %>
+        </div>
+        <div class="col-md-3">
+          <%= submit_tag 'Filter', class: 'btn btn-primary w-100' %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Executions Table -->
+  <% if @pipeline_executions.any? %>
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Ticket</th>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Priority</th>
+              <th>System</th>
+              <th>Started</th>
+              <th>Duration</th>
+              <th>Cost</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @pipeline_executions.each do |execution| %>
+              <tr>
+                <td>
+                  <%= link_to execution.ticket_id, admin_pipeline_execution_path(execution), class: 'text-decoration-none fw-semibold' %>
+                </td>
+                <td>
+                  <div class="text-truncate" style="max-width: 300px;" title="<%= execution.ticket_title %>">
+                    <%= execution.ticket_title %>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge bg-<%= Pipeline::StateMachine.state_color(execution.status) %>">
+                    <i data-lucide="<%= Pipeline::StateMachine.state_icon(execution.status).gsub('fa-', '') %>" class="me-1" style="width: 12px; height: 12px;"></i>
+                    <%= execution.status.titleize %>
+                  </span>
+                </td>
+                <td>
+                  <span class="badge bg-<%= execution.priority_critical? ? 'danger' : execution.priority_high? ? 'warning text-dark' : 'secondary' %>">
+                    <%= execution.priority.titleize %>
+                  </span>
+                </td>
+                <td>
+                  <small class="text-muted"><%= execution.ticket_system.upcase %></small>
+                </td>
+                <td>
+                  <% if execution.started_at %>
+                    <small class="text-muted"><%= time_ago_in_words(execution.started_at) %> ago</small>
+                  <% else %>
+                    <small class="text-muted">Not started</small>
+                  <% end %>
+                </td>
+                <td>
+                  <small class="text-muted"><%= execution.duration_human %></small>
+                </td>
+                <td>
+                  <small class="text-muted"><%= execution.cost_dollars %></small>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm" role="group" aria-label="Execution actions">
+                    <%= link_to admin_pipeline_execution_path(execution), class: 'btn btn-outline-primary', aria: { label: 'View execution' } do %>
+                      <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                    <% end %>
+                    <% if execution.status_failed? || execution.status_rolled_back? %>
+                      <%= button_to retry_admin_pipeline_execution_path(execution), method: :post, class: 'btn btn-outline-success', aria: { label: 'Retry execution' } do %>
+                        <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <%= paginate @pipeline_executions %>
+    </div>
+  <% else %>
+    <div class="alert alert-info" role="alert">
+      <i data-lucide="info" class="me-2" style="width: 20px; height: 20px;"></i>
+      No pipeline executions found matching the selected filters.
+    </div>
+  <% end %>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>
