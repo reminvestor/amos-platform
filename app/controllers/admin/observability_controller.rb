@@ -25,8 +25,10 @@ class Admin::ObservabilityController < Admin::BaseController
 
     # Workflows by template
     @workflows_by_template = all_workflows
-                               .group(:workflow_template_name)
+                               .left_joins(:workflow_template)
+                               .group("workflow_templates.name")
                                .count
+                               .reject { |name, _| name.nil? }
                                .sort_by { |_, count| -count }
                                .first(10)
 
