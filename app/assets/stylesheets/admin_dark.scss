@@ -1,0 +1,524 @@
+// Admin Dark Theme
+// Based on Figma design with dark backgrounds and gradient accents
+
+// Color Palette
+$admin-bg-primary: #0A0E1A;      // Main background
+$admin-bg-secondary: #1A1F35;    // Card backgrounds
+$admin-bg-tertiary: #0F172A;     // Sidebar background
+$admin-border: #1E293B;          // Borders
+$admin-text-primary: #FFFFFF;    // Primary text
+$admin-text-secondary: #94A3B8;  // Secondary text (slate-400)
+$admin-text-muted: #64748B;      // Muted text (slate-500)
+$admin-accent-start: #7C3AED;    // Purple gradient start
+$admin-accent-end: #A78BFA;      // Purple gradient end
+$admin-cyan: #22D3EE;            // Cyan accent
+$admin-element-bg: #2D3548;      // Button/badge backgrounds
+
+// Admin Layout
+.admin-dark {
+  background-color: $admin-bg-primary;
+  min-height: 100vh;
+  color: $admin-text-primary;
+
+  // Override Bootstrap defaults
+  .container-fluid {
+    background-color: transparent;
+  }
+}
+
+// Admin Sidebar
+.admin-sidebar {
+  width: 256px;
+  background-color: $admin-bg-tertiary;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  border-right: 1px solid $admin-border;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+
+  // Logo section
+  .sidebar-logo {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    .logo-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      background: linear-gradient(135deg, $admin-accent-start 0%, $admin-accent-end 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+
+    .logo-text {
+      color: $admin-text-primary;
+      font-weight: 500;
+    }
+  }
+
+  // Navigation
+  nav {
+    flex: 1;
+    padding: 0 0.75rem;
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 0.75rem;
+      margin-bottom: 0.25rem;
+      border-radius: 0.5rem;
+      color: $admin-text-secondary;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+
+      i, svg {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+
+      &:hover {
+        background-color: rgba($admin-border, 0.5);
+        color: $admin-text-primary;
+      }
+
+      &.active {
+        background-color: $admin-border;
+        color: $admin-text-primary;
+      }
+    }
+  }
+
+  // Bottom section
+  .sidebar-bottom {
+    padding: 0.75rem;
+    border-top: 1px solid $admin-border;
+
+    .nav-item {
+      margin-bottom: 0.25rem;
+    }
+  }
+}
+
+// Admin Main Content
+.admin-content {
+  margin-left: 256px;
+  background-color: $admin-bg-primary;
+  min-height: 100vh;
+}
+
+// Admin Cards
+.admin-card {
+  background-color: $admin-bg-secondary;
+  border: 1px solid $admin-border;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+
+  .card-title {
+    color: $admin-text-primary;
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-body {
+    background-color: transparent;
+  }
+}
+
+// Admin Buttons
+.admin-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+
+  i, svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &-primary {
+    background-color: $admin-cyan;
+    color: #000000;
+    border: none;
+
+    &:hover {
+      background-color: darken($admin-cyan, 10%);
+    }
+  }
+
+  &-outline {
+    background-color: transparent;
+    border-color: $admin-border;
+    color: $admin-text-primary;
+
+    &:hover {
+      background-color: $admin-border;
+    }
+  }
+
+  &-danger {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: rgb(248, 113, 113);
+    border-color: rgba(239, 68, 68, 0.2);
+
+    &:hover {
+      background-color: rgba(239, 68, 68, 0.2);
+    }
+  }
+
+  &-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+  }
+}
+
+// Admin Badges
+.admin-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
+
+  &-default {
+    background-color: $admin-element-bg;
+    color: $admin-text-primary;
+  }
+
+  &-offline {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: rgb(248, 113, 113);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  &-online {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: rgb(74, 222, 128);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+  }
+
+  &-warning {
+    background-color: rgba(251, 191, 36, 0.1);
+    color: rgb(252, 211, 77);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+  }
+}
+
+// Admin Page Header
+.admin-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    .header-icon {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 0.75rem;
+      background: linear-gradient(135deg, $admin-accent-start 0%, $admin-accent-end 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      i, svg {
+        width: 1.5rem;
+        height: 1.5rem;
+        color: white;
+      }
+    }
+
+    .header-text {
+      h1 {
+        color: $admin-text-primary;
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+
+      p {
+        color: $admin-text-secondary;
+        margin: 0;
+      }
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+}
+
+// Admin Alert Banner
+.admin-alert {
+  border-left: 4px solid;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid $admin-border;
+
+  &-error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-left-color: rgb(239, 68, 68);
+
+    .alert-content {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: rgb(248, 113, 113);
+
+      i, svg {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+    }
+
+    .alert-close {
+      background: transparent;
+      border: none;
+      color: rgb(248, 113, 113);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0;
+
+      &:hover {
+        color: rgb(252, 165, 165);
+      }
+    }
+  }
+
+  &-success {
+    background-color: rgba(34, 197, 94, 0.1);
+    border-left-color: rgb(34, 197, 94);
+
+    .alert-content {
+      color: rgb(74, 222, 128);
+    }
+  }
+}
+
+// Admin Detail List
+.admin-detail-list {
+  .detail-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba($admin-border, 0.5);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      color: $admin-text-secondary;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      i, svg {
+        width: 1rem;
+        height: 1rem;
+      }
+    }
+
+    .detail-value {
+      color: $admin-text-primary;
+    }
+  }
+}
+
+// Admin Code Block (for metadata)
+.admin-code-block {
+  background-color: $admin-bg-primary;
+  border: 1px solid $admin-border;
+  border-radius: 0.5rem;
+  padding: 1rem;
+
+  pre {
+    margin: 0;
+    color: $admin-text-secondary;
+    font-size: 0.875rem;
+    overflow-x: auto;
+  }
+}
+
+// Admin Empty State
+.admin-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+
+  .empty-icon {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    background-color: $admin-element-bg;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+
+    i, svg {
+      width: 2rem;
+      height: 2rem;
+      color: $admin-text-secondary;
+    }
+  }
+
+  .empty-title {
+    color: $admin-text-secondary;
+    margin-bottom: 0.25rem;
+  }
+
+  .empty-description {
+    color: $admin-text-muted;
+    font-size: 0.875rem;
+    text-align: center;
+    max-width: 400px;
+  }
+}
+
+// Admin Tabs
+.admin-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid $admin-border;
+  padding-bottom: 0;
+}
+
+.admin-tab {
+  padding: 0.75rem 1.25rem;
+  color: $admin-text-secondary;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  font-weight: 500;
+  margin-bottom: -1px;
+
+  &:hover {
+    color: $admin-text-primary;
+    border-bottom-color: $admin-border;
+  }
+
+  &-active {
+    color: $admin-cyan;
+    border-bottom-color: $admin-cyan;
+
+    &:hover {
+      color: $admin-cyan;
+      border-bottom-color: $admin-cyan;
+    }
+  }
+}
+
+// Admin Table
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  thead {
+    tr {
+      border-bottom: 1px solid $admin-border;
+    }
+
+    th {
+      padding: 0.75rem;
+      text-align: left;
+      color: $admin-text-secondary;
+      font-weight: 500;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+  }
+
+  tbody {
+    tr {
+      border-bottom: 1px solid $admin-border;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: rgba($admin-border, 0.3);
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    td {
+      padding: 0.75rem;
+      color: $admin-text-primary;
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .admin-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+
+    &.show {
+      transform: translateX(0);
+    }
+  }
+
+  .admin-content {
+    margin-left: 0;
+  }
+
+  .admin-page-header {
+    flex-direction: column;
+    gap: 1rem;
+
+    .header-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
+  .admin-tabs {
+    flex-wrap: wrap;
+  }
+
+  .admin-table {
+    font-size: 0.875rem;
+
+    thead th,
+    tbody td {
+      padding: 0.5rem;
+    }
+  }
+}
