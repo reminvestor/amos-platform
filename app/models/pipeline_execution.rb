@@ -156,6 +156,73 @@ class PipelineExecution < ApplicationRecord
     pending_interactions.any?
   end
 
+  # Check if pipeline is stuck (no state change for > timeout period)
+  def stuck?
+    return false if terminal_state?
+    return false unless state_changed_at || started_at
+
+    last_activity = state_changed_at || started_at
+    timeout_threshold = stuck_timeout_for_state(status)
+
+    last_activity < timeout_threshold.ago
+  end
+
+  # Get timeout threshold for current state (in minutes)
+  def stuck_timeout_for_state(state)
+    case state.to_s
+    when 'clarifying', 'planning'
+      15  # 15 minutes for AI analysis
+    when 'implementing'
+      30  # 30 minutes for code generation
+    when 'review'
+      10  # 10 minutes for review
+    when 'testing', 'dev', 'staging'
+      20  # 20 minutes for deployment
+    when 'awaiting_prod_approval'
+      240  # 4 hours for human approval
+    when 'blocked'
+      120  # 2 hours for human clarification
+    else
+      30  # Default 30 minutes
+    end
+  end
+
+  # Get running agent execution for current state
+  def running_agent_execution
+    return nil if terminal_state?
+
+    agent_id = AiAgents::Pipeline::StateMachine.agent_for_state(status)
+    return nil unless agent_id
+
+    agent_executions
+      .where(agent_id: agent_id)
+      .where('created_at > ?', state_changed_at || 1.hour.ago)
+      .where.not(status: [:completed, :failed])
+      .last
+  end
+
+  # Check if agent execution is stuck (running too long)
+  def agent_stuck?
+    agent = running_agent_execution
+    return false unless agent
+
+    # Agent has been running for > 15 minutes without completion
+    agent.created_at < 15.minutes.ago
+  end
+
+  # Cancel stuck pipeline with reason
+  def cancel_stuck!(reason)
+    Rails.logger.warn "Cancelling stuck pipeline #{id}: #{reason}"
+
+    pipeline_events.create!(
+      event_type: 'execution.timeout',
+      source: 'system',
+      payload: { reason: reason, stuck_at: state_changed_at, status: status }
+    )
+
+    fail!("Pipeline stuck: #{reason}")
+  end
+
   # Start execution
   def start!
     update!(started_at: Time.current) unless started_at
