@@ -23,38 +23,35 @@ class TicketWatcherJob < ApplicationJob
     tickets = client.fetch_recent_tickets(since: 10.minutes.ago)
 
     tickets.each do |ticket|
-      # Check if we already have a pipeline execution for this ticket
-      existing = PipelineExecution.find_by(
-        entity: connection.entity,
-        mcp_connection: connection,
-        ticket_id: ticket[:id]
-      )
-
-      next if existing
-
       # FILTERING: Skip tickets that aren't ready for AI development
       unless ticket_ready_for_pipeline?(ticket, connection)
         Rails.logger.info "⏭️  Skipping ticket #{ticket[:id]}: Not ready for AI pipeline"
         next
       end
 
-      # Create new pipeline execution
-      pipeline = PipelineExecution.create!(
+      # Use find_or_create_by to prevent race conditions
+      # The unique index ensures only one pipeline per ticket
+      pipeline = PipelineExecution.find_or_create_by!(
         entity: connection.entity,
         mcp_connection: connection,
-        ticket_id: ticket[:id],
-        ticket_system: connection.system_type,
-        ticket_url: ticket[:url],
-        ticket_title: ticket[:title],
-        ticket_description: ticket[:description],
-        priority: map_priority(ticket[:priority]),
-        ticket_metadata: ticket[:metadata] || {}
-      )
+        ticket_id: ticket[:id]
+      ) do |p|
+        # Only set these attributes on CREATE, not on FIND
+        p.ticket_system = connection.system_type
+        p.ticket_url = ticket[:url]
+        p.ticket_title = ticket[:title]
+        p.ticket_description = ticket[:description]
+        p.priority = map_priority(ticket[:priority])
+        p.ticket_metadata = ticket[:metadata] || {}
+      end
 
-      Rails.logger.info "📋 Created pipeline execution #{pipeline.id} for ticket #{ticket[:id]}"
-
-      # Start processing
-      ProcessPipelineJob.perform_later(pipeline.id)
+      # Only enqueue job if this is a newly created record
+      if pipeline.previously_new_record?
+        Rails.logger.info "📋 Created pipeline execution #{pipeline.id} for ticket #{ticket[:id]}"
+        ProcessPipelineJob.perform_later(pipeline.id)
+      else
+        Rails.logger.debug "⏭️  Pipeline #{pipeline.id} already exists for ticket #{ticket[:id]} (status: #{pipeline.status})"
+      end
     end
   rescue => e
     Rails.logger.error "Failed to check #{connection.name}: #{e.message}"
