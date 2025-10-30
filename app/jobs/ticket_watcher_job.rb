@@ -104,7 +104,8 @@ class TicketWatcherJob < ApplicationJob
   def status_matches?(status, allowed_statuses)
     return true if allowed_statuses.blank?  # No filtering if not configured
 
-    allowed_statuses.any? { |allowed| status&.downcase&.include?(allowed.downcase) }
+    normalized_status = status.to_s.strip.downcase
+    allowed_statuses.any? { |allowed| normalized_status == allowed.to_s.strip.downcase }
   end
 
   # Check if ticket has required label

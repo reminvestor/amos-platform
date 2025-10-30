@@ -117,7 +117,11 @@ module AiAgents::Pipeline
 
     ensure
       # STEP 11: Cleanup workspace
-      workspace_manager.cleanup_workspace! if workspace
+      begin
+        workspace_manager.cleanup_workspace! if workspace_manager && workspace_manager.respond_to?(:workspace_path) && workspace_manager.workspace_path.present?
+      rescue => e
+        log("Warning: workspace cleanup failed: #{e.message}")
+      end
     end
 
     private

@@ -266,9 +266,11 @@ module AiAgents::Pipeline
                       case last_interaction.interaction_type
                       when 'clarification'
                         # After clarification, proceed to planning
+                        create_event('clarification.provided', source: 'human', payload: { interaction_id: last_interaction.id })
                         'planning'
                       when 'approval'
                         # After approval, proceed to production
+                        create_event('human.approved', source: 'human', payload: { interaction_id: last_interaction.id })
                         'prod'
                       when 'rejection'
                         # After rejection, go back to implementing
