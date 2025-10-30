@@ -53,7 +53,7 @@
                           style: "font-size: 0.8rem;",
                           id: "setting_#{setting.id}" %>
                       <button class="btn btn-outline-secondary toggle-password" type="button"
-                              data-target="setting_#{setting.id}" style="padding: 0.25rem 0.5rem;">
+                              data-target="setting_<%= setting.id %>" style="padding: 0.25rem 0.5rem;">
                         <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
                       </button>
                     </div>
@@ -105,53 +105,65 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  // Password toggle functionality
+function initPasswordToggles() {
+  console.log('Initializing password toggles...');
+
   document.querySelectorAll('.toggle-password').forEach(button => {
-    button.addEventListener('click', function() {
+    // Remove old listeners by cloning
+    const newButton = button.cloneNode(true);
+    button.parentNode.replaceChild(newButton, button);
+
+    newButton.addEventListener('click', function(e) {
+      e.preventDefault();
+
       const targetId = this.getAttribute('data-target');
+      console.log('Toggle clicked, target:', targetId);
+
       const input = document.getElementById(targetId);
+      if (!input) {
+        console.error('Input not found:', targetId);
+        return;
+      }
+
       const icon = this.querySelector('i');
+      if (!icon) {
+        console.error('Icon not found in button');
+        return;
+      }
+
+      console.log('Current input type:', input.type);
 
       if (input.type === 'password') {
         input.type = 'text';
         icon.setAttribute('data-lucide', 'eye-off');
+        console.log('Switched to text');
       } else {
         input.type = 'password';
         icon.setAttribute('data-lucide', 'eye');
+        console.log('Switched to password');
       }
 
       // Reinitialize the icon
-      lucide.createIcons();
-    });
-  });
-
-  lucide.createIcons();
-});
-
-document.addEventListener('turbo:load', () => {
-  // Password toggle functionality for Turbo navigation
-  document.querySelectorAll('.toggle-password').forEach(button => {
-    button.addEventListener('click', function() {
-      const targetId = this.getAttribute('data-target');
-      const input = document.getElementById(targetId);
-      const icon = this.querySelector('i');
-
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.setAttribute('data-lucide', 'eye-off');
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+        console.log('Icons reinitialized');
       } else {
-        input.type = 'password';
-        icon.setAttribute('data-lucide', 'eye');
+        console.error('lucide is not defined');
       }
-
-      // Reinitialize the icon
-      lucide.createIcons();
     });
   });
 
-  lucide.createIcons();
-});
+  // Initialize lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+    console.log('Initial lucide icons created');
+  } else {
+    console.error('lucide library not loaded');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initPasswordToggles);
+document.addEventListener('turbo:load', initPasswordToggles);
 
 function testKey(settingId) {
   const button = event.target.closest('button');
