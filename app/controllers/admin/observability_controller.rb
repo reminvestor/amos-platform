@@ -5,9 +5,9 @@ class Admin::ObservabilityController < Admin::BaseController
 
     # Get workflow executions
     @workflows = WorkflowExecution
-                   .where("created_at > ?", @time_range.ago)
+                   .where("workflow_executions.created_at > ?", @time_range.ago)
                    .includes(:entity, :user)
-                   .order(created_at: :desc)
+                   .order("workflow_executions.created_at DESC")
 
     # Apply status filter if provided
     @workflows = @workflows.where(status: @status_filter) if @status_filter.present?
@@ -16,7 +16,7 @@ class Admin::ObservabilityController < Admin::BaseController
     @workflows = @workflows.limit(100)
 
     # Calculate workflow stats
-    all_workflows = WorkflowExecution.where("created_at > ?", @time_range.ago)
+    all_workflows = WorkflowExecution.where("workflow_executions.created_at > ?", @time_range.ago)
     @total_workflows = all_workflows.count
     @completed_workflows = all_workflows.where(status: "completed").count
     @failed_workflows = all_workflows.where(status: "failed").count
