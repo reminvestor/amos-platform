@@ -12,13 +12,17 @@ class AgentExecutionJob < ApplicationJob
     # Get appropriate agent class
     agent_class = case agent_execution.agent_id
                  when 'clarifier'
-                   Agents::ClarifierAgent
+                   AiAgents::Pipeline::ClarifierAgent
                  when 'planner'
-                   Agents::PlannerAgent
+                   AiAgents::Pipeline::PlannerAgent
                  when 'coder'
-                   Agents::CoderAgent
+                   AiAgents::Pipeline::CoderAgent
                  when 'reviewer'
-                   Agents::ReviewerAgent
+                   AiAgents::Pipeline::ReviewerAgent
+                 when 'cua_pack'
+                   AiAgents::Pipeline::CuaPackAgent
+                 when 'release_manager'
+                   AiAgents::Pipeline::ReleaseManagerAgent
                  else
                    raise "Unknown agent: #{agent_execution.agent_id}"
                  end

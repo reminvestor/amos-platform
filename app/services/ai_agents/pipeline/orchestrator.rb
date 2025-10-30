@@ -67,6 +67,9 @@ module AiAgents::Pipeline
       when 'awaiting_prod_approval'
         request_production_approval
 
+      when 'prod'
+        execute_agent('release_manager')
+
       when 'blocked'
         handle_blocked_state
 
