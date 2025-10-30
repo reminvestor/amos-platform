@@ -245,20 +245,24 @@ class Admin::ObservabilityController < Admin::BaseController
   end
 
   def calculate_usage_by_entity
-    ObservabilityEvent
-      .joins(:entity)
-      .where(event_type: "ai_request")
-      .where("observability_events.created_at > ?", @time_range.ago)
-      .group("entities.name")
-      .count
+    result = ObservabilityEvent
+               .joins(:entity)
+               .where(event_type: "ai_request")
+               .where("observability_events.created_at > ?", @time_range.ago)
+               .group("entities.name")
+               .count
+
+    result.is_a?(Hash) ? result : {}
   end
 
   def calculate_usage_by_model
-    @ai_events
-      .where(event_type: "ai_response")
-      .where.not("metadata->>'model' IS NULL")
-      .group("metadata->>'model'")
-      .count
+    result = @ai_events
+               .where(event_type: "ai_response")
+               .where.not("metadata->>'model' IS NULL")
+               .group("metadata->>'model'")
+               .count
+
+    result.is_a?(Hash) ? result : {}
   end
 
   def generate_token_usage_chart

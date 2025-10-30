@@ -11,19 +11,41 @@ module AiAgents::Mcp
     def initialize(connection)
       @connection = connection
       @config = connection.config
+
+      Rails.logger.info "🔧 JIRA Client Initializing..."
+      Rails.logger.info "  Config keys: #{@config.keys.inspect}"
+      Rails.logger.info "  api_url: #{@config['api_url']&.present? ? 'present' : 'missing'}"
+      Rails.logger.info "  email: #{@config['email']&.present? ? 'present' : 'missing'}"
+      Rails.logger.info "  api_token: #{@config['api_token']&.present? ? 'present' : 'missing'}"
+
       @base_url = @config['api_url'] || @config[:api_url] || @config['url'] || @config[:url]
       @email = @config['email'] || @config[:email]
       @api_token = @config['api_token'] || @config[:api_token]
       @project_key = @config['project_key'] || @config[:project_key]
 
+      Rails.logger.info "  Resolved base_url: #{@base_url}"
+      Rails.logger.info "  Resolved email: #{@email}"
+      Rails.logger.info "  Resolved api_token length: #{@api_token&.length || 0}"
+
       raise "JIRA URL not configured" unless @base_url
       raise "JIRA email not configured" unless @email
       raise "JIRA API token not configured" unless @api_token
+
+      Rails.logger.info "✅ JIRA Client initialized successfully"
     end
 
     # Test connection by fetching current user
     def test_connection
+      Rails.logger.info "JIRA connection test starting..."
+      Rails.logger.info "  Base URL: #{@base_url}"
+      Rails.logger.info "  Email present: #{@email.present?}"
+      Rails.logger.info "  API token present: #{@api_token.present?}"
+      Rails.logger.info "  Request URL: #{@base_url}#{API_VERSION}/myself"
+
       response = http_client.get("#{API_VERSION}/myself")
+
+      Rails.logger.info "  Response status: #{response.status}"
+      Rails.logger.info "  Response body: #{response.body[0..200]}" if response.status != 200
 
       if response.success?
         user_data = JSON.parse(response.body)
@@ -43,6 +65,8 @@ module AiAgents::Mcp
         }
       end
     rescue => e
+      Rails.logger.error "JIRA connection exception: #{e.class} - #{e.message}"
+      Rails.logger.error e.backtrace.first(3).join("\n")
       {
         success: false,
         error: "JIRA connection error: #{e.message}"

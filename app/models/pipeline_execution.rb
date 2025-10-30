@@ -301,4 +301,15 @@ class PipelineExecution < ApplicationRecord
     # This will be implemented by the Notifiers
     Rails.logger.info "Pipeline #{id} transitioned to #{new_state}: #{metadata.inspect}"
   end
+
+  # Public helper to create a pipeline event with consistent shape
+  # Accepts either payload: or legacy metadata: keyword for compatibility
+  def create_event!(event_type:, source:, payload: {}, metadata: nil)
+    event_payload = metadata || payload || {}
+    pipeline_events.create!(
+      event_type: event_type,
+      source: source,
+      payload: event_payload
+    )
+  end
 end

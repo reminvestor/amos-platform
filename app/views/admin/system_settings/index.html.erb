@@ -184,56 +184,81 @@ function initTestButtons() {
       this.disabled = true;
       this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
 
-      const csrfToken = document.querySelector('[name="csrf-token"]');
-      if (!csrfToken) {
-        console.error('CSRF token not found');
-        alert('Error: CSRF token not found');
-        this.disabled = false;
-        this.innerHTML = originalHTML;
+      // Get CSRF token from the form (form_with automatically includes it)
+      console.log('Looking for CSRF token...');
+      console.log('All forms:', document.querySelectorAll('form'));
+      console.log('All inputs with name authenticity_token:', document.querySelectorAll('input[name="authenticity_token"]'));
+      console.log('All hidden inputs:', document.querySelectorAll('input[type="hidden"]'));
+
+      let csrfTokenInput = document.querySelector('input[name="authenticity_token"]');
+
+      // If not found, try getting it from Rails directly via a data attribute
+      if (!csrfTokenInput) {
+        console.warn('Token not in form, trying to get from Rails...');
+        // Let's embed it directly in the page
+        const tokenValue = '<%= form_authenticity_token %>';
+        console.log('Using embedded token');
+
+        if (!tokenValue || tokenValue === '') {
+          console.error('CSRF token not available');
+          alert('Error: CSRF token not found. Please refresh the page.');
+          this.disabled = false;
+          this.innerHTML = originalHTML;
+          return;
+        }
+
+        // Continue with embedded token
+        makeRequest(tokenValue);
         return;
       }
 
-      console.log('Fetching:', `/admin/system_settings/${settingId}/test_key`);
+      const tokenValue = csrfTokenInput.value;
+      makeRequest(tokenValue);
 
-      fetch(`/admin/system_settings/${settingId}/test_key`, {
-        method: 'POST',
-        headers: {
-          'X-CSRF-Token': csrfToken.content,
-          'Accept': 'application/json'
-        }
-      })
-      .then(response => {
-        console.log('Response status:', response.status);
-        return response.json();
-      })
-      .then(data => {
-        console.log('Response data:', data);
-        this.disabled = false;
-        this.innerHTML = originalHTML;
+      function makeRequest(token) {
+        console.log('CSRF token found:', token ? 'Yes' : 'No');
+        console.log('Fetching:', `/admin/system_settings/${settingId}/test_key`);
 
-        // Reinitialize icons
-        if (typeof lucide !== 'undefined') {
-          lucide.createIcons();
-        }
+        fetch(`/admin/system_settings/${settingId}/test_key`, {
+          method: 'POST',
+          headers: {
+            'X-CSRF-Token': token,
+            'Accept': 'application/json'
+          }
+        })
+        .then(response => {
+          console.log('Response status:', response.status);
+          return response.json();
+        })
+        .then(data => {
+          console.log('Response data:', data);
+          newButton.disabled = false;
+          newButton.innerHTML = originalHTML;
 
-        if (data.success) {
-          alert('✓ ' + data.message);
-        } else {
-          alert('✗ ' + data.message);
-        }
-      })
-      .catch(error => {
-        console.error('Error testing API key:', error);
-        this.disabled = false;
-        this.innerHTML = originalHTML;
+          // Reinitialize icons
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+          }
 
-        // Reinitialize icons
-        if (typeof lucide !== 'undefined') {
-          lucide.createIcons();
-        }
+          if (data.success) {
+            alert('✓ ' + data.message);
+          } else {
+            alert('✗ ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error testing API key:', error);
+          newButton.disabled = false;
+          newButton.innerHTML = originalHTML;
 
-        alert('Error testing API key: ' + error);
-      });
+          // Reinitialize icons
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+          }
+
+          alert('Error testing API key: ' + error);
+        });
+      }
     });
   });
 }
