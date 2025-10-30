@@ -3,13 +3,17 @@
 
 # Custom parameter group with pgvector enabled
 resource "aws_db_parameter_group" "postgres_with_pgvector" {
-  name        = "${var.app_name}-postgres-pgvector"
+  name        = "${var.app_name}-postgres-pgvector-v2"  # Changed name to force new resource
   family      = "postgres15"
   description = "PostgreSQL parameter group with pgvector extension enabled for RAG system"
 
   # Note: pgvector is included natively in RDS PostgreSQL 15.2+ 
   # No need to add to shared_preload_libraries
   # Just CREATE EXTENSION vector; in the database
+  
+  lifecycle {
+    create_before_destroy = true
+  }
 
   # Optimize for vector operations
   parameter {

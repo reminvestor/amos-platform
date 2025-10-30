@@ -76,7 +76,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "rag_storage" {
       prefix = "system/"
     }
 
-    # No transitions or expiration - keep system docs forever
+    # Keep old versions for 30 days then delete (versioning cleanup)
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
   }
 
   # Clean up temporary files after 7 days
