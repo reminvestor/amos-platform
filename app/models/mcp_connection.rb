@@ -43,9 +43,9 @@ class McpConnection < ApplicationRecord
   def test_connection!
     case system_type
     when 'jira'
-      MCP::JiraClient.new(self).test_connection
+      AiAgents::Mcp::JiraClient.new(self).test_connection
     when 'azure_devops'
-      MCP::AzureDevOpsClient.new(self).test_connection
+      AiAgents::Mcp::AzureDevOpsClient.new(self).test_connection
     when 'github'
       Git::GithubClient.new(self).test_connection
     when 'azure_repos'
@@ -89,9 +89,9 @@ class McpConnection < ApplicationRecord
   def client
     case system_type
     when 'jira'
-      MCP::JiraClient.new(self)
+      AiAgents::Mcp::JiraClient.new(self)
     when 'azure_devops'
-      MCP::AzureDevOpsClient.new(self)
+      AiAgents::Mcp::AzureDevOpsClient.new(self)
     when 'github'
       Git::GithubClient.new(self)
     when 'azure_repos'

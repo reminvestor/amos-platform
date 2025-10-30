@@ -11,7 +11,7 @@ module AiAgents::Mcp
     def client_for(server_name)
       @mutex.synchronize do
         unless @clients[server_name]
-          @clients[server_name] = MCP::Client.new(server_name)
+          @clients[server_name] = AiAgents::Mcp::Client.new(server_name)
         end
 
         client = @clients[server_name]
@@ -134,7 +134,7 @@ module AiAgents::Mcp
           @clients.delete(server_name)
         end
 
-        client = MCP::Client.new(server_name)
+        client = AiAgents::Mcp::Client.new(server_name)
         client.connect!
         @clients[server_name] = client
       end

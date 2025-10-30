@@ -117,11 +117,11 @@ class PipelineInteraction < ApplicationRecord
     # Send notification via configured channel
     notifier = case channel
               when 'slack'
-                Notifiers::SlackNotifier.new
+                AiAgents::Notifiers::SlackNotifier.new
               when 'teams'
-                Notifiers::TeamsNotifier.new
+                AiAgents::Notifiers::TeamsNotifier.new
               when 'email'
-                Notifiers::EmailNotifier.new
+                AiAgents::Notifiers::EmailNotifier.new
               else
                 Rails.logger.error "Unknown notification channel: #{channel}"
                 return
