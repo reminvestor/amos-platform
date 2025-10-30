@@ -127,8 +127,8 @@
                   </div>
                 </td>
                 <td>
-                  <span class="badge bg-<%= Pipeline::StateMachine.state_color(execution.status) %>">
-                    <i data-lucide="<%= Pipeline::StateMachine.state_icon(execution.status).gsub('fa-', '') %>" class="me-1" style="width: 12px; height: 12px;"></i>
+                  <span class="badge bg-<%= AiAgents::Pipeline::StateMachine.state_color(execution.status) %>">
+                    <i data-lucide="<%= AiAgents::Pipeline::StateMachine.state_icon(execution.status).gsub('fa-', '') %>" class="me-1" style="width: 12px; height: 12px;"></i>
                     <%= execution.status.titleize %>
                   </span>
                 </td>
