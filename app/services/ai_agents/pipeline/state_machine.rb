@@ -1,4 +1,4 @@
-module Pipeline
+module AiAgents::Pipeline
   class StateMachine
     # State transition rules from spec
     TRANSITIONS = {

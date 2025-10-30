@@ -1,4 +1,4 @@
-module Agents
+module AiAgents::Pipeline
   class ClarifierAgent < BaseAgent
     def execute!
       log("Starting clarification analysis for ticket: #{pipeline_execution.ticket_id}")

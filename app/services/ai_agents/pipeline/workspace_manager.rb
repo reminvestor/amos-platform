@@ -1,4 +1,4 @@
-module Agents
+module AiAgents::Pipeline
   class WorkspaceManager
     attr_reader :pipeline_execution, :agent_id
 

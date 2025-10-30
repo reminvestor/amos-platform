@@ -1,6 +1,6 @@
 require 'faraday'
 
-module Notifiers
+module AiAgents::Notifiers
   class EmailNotifier
     # Mailgun API endpoint
     MAILGUN_API_URL = 'https://api.mailgun.net/v3'
