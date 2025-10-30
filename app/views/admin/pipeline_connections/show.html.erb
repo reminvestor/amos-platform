@@ -116,7 +116,7 @@
                   </td>
                   <td><%= execution.ticket_title %></td>
                   <td>
-                    <span class="badge bg-<%= Pipeline::StateMachine.state_color(execution.status) %>">
+                    <span class="badge bg-<%= AiAgents::Pipeline::StateMachine.state_color(execution.status) %>">
                       <%= execution.status.titleize %>
                     </span>
                   </td>
