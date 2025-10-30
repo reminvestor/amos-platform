@@ -101,20 +101,6 @@ Rails.application.routes.draw do
           post :reprocess_drip_campaigns
         end
       end
-
-      # AI Development Pipeline
-      resources :pipeline_connections, path: 'pipeline/connections' do
-        member do
-          post :test
-        end
-      end
-
-      resources :pipeline_executions, path: 'pipeline/executions', only: [:index, :show] do
-        member do
-          post :retry
-          post :cancel
-        end
-      end
     end
 
     # Entity management
@@ -527,6 +513,20 @@ Rails.application.routes.draw do
     resources :admin_users do
       member do
         post :unlock
+      end
+    end
+
+    # AI Development Pipeline
+    resources :pipeline_connections, path: 'pipeline/connections' do
+      member do
+        post :test
+      end
+    end
+
+    resources :pipeline_executions, path: 'pipeline/executions', only: [:index, :show] do
+      member do
+        post :retry
+        post :cancel
       end
     end
 
