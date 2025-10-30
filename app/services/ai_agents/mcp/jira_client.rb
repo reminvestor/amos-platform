@@ -11,7 +11,7 @@ module AiAgents::Mcp
     def initialize(connection)
       @connection = connection
       @config = connection.config
-      @base_url = @config['url'] || @config[:url]
+      @base_url = @config['api_url'] || @config[:api_url] || @config['url'] || @config[:url]
       @email = @config['email'] || @config[:email]
       @api_token = @config['api_token'] || @config[:api_token]
       @project_key = @config['project_key'] || @config[:project_key]
