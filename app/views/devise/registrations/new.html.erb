@@ -4,38 +4,38 @@
   <div class="auth-sidebar">
     <div class="auth-brand">
       <div class="brand-logo">
-        <i class="fas fa-cube text-primary"></i>
+        <i data-lucide="box" class="text-primary"></i>
         <span class="brand-text">Amos</span>
       </div>
       <p class="brand-tagline">Your AI Marketing Agent</p>
     </div>
-    
+
     <div class="auth-features">
       <h4 class="mb-4">Get started with Scout!</h4>
       <div class="feature-list">
         <div class="feature-item">
-          <i class="fas fa-robot text-primary"></i>
+          <i data-lucide="bot" class="text-primary"></i>
           <div>
             <strong>AI-Powered Marketing</strong>
             <p>Scout learns your business and creates campaigns that convert</p>
           </div>
         </div>
         <div class="feature-item">
-          <i class="fas fa-globe text-success"></i>
+          <i data-lucide="globe" class="text-success"></i>
           <div>
             <strong>Landing Pages</strong>
             <p>Create beautiful, high-converting landing pages in minutes</p>
           </div>
         </div>
         <div class="feature-item">
-          <i class="fas fa-envelope text-info"></i>
+          <i data-lucide="mail" class="text-info"></i>
           <div>
             <strong>Email Campaigns</strong>
             <p>Design and send targeted email campaigns that engage</p>
           </div>
         </div>
         <div class="feature-item">
-          <i class="fas fa-chart-bar text-warning"></i>
+          <i data-lucide="bar-chart" class="text-warning"></i>
           <div>
             <strong>Analytics Dashboard</strong>
             <p>Track performance and optimize your marketing strategy</p>
@@ -404,3 +404,13 @@
   }
 }
 </style>
+
+<!-- Initialize Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>

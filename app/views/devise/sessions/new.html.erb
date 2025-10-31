@@ -4,31 +4,31 @@
   <div class="auth-sidebar">
     <div class="auth-brand">
       <div class="brand-logo">
-        <i class="fas fa-cube text-primary"></i>
+        <i data-lucide="box" class="text-primary"></i>
         <span class="brand-text">AMOS Labs</span>
       </div>
       <p class="brand-tagline">Your AI Business Automation Platform</p>
     </div>
-    
+
     <div class="auth-features">
       <h4 class="mb-4">Welcome back!</h4>
       <div class="feature-list">
         <div class="feature-item">
-          <i class="fas fa-robot text-primary"></i>
+          <i data-lucide="bot" class="text-primary"></i>
           <div>
             <strong>Amos AI Assistant</strong>
             <p>Your intelligent business automation companion</p>
           </div>
         </div>
         <div class="feature-item">
-          <i class="fas fa-chart-line text-success"></i>
+          <i data-lucide="trending-up" class="text-success"></i>
           <div>
             <strong>Analytics & Insights</strong>
             <p>Track performance across all channels</p>
           </div>
         </div>
         <div class="feature-item">
-          <i class="fas fa-magic text-warning"></i>
+          <i data-lucide="wand-2" class="text-warning"></i>
           <div>
             <strong>Automated Campaigns</strong>
             <p>Create and manage campaigns effortlessly</p>
@@ -50,7 +50,7 @@
         <% if Rails.env.development? || Rails.env.test? %>
           <div class="form-group">
             <label class="form-label">
-              <i class="fas fa-flask text-warning"></i> Quick Login (Dev Only)
+              <i data-lucide="flask-conical" class="text-warning" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle;"></i> Quick Login (Dev Only)
             </label>
             <select id="quick-login-selector" class="form-control">
               <option value="">-- Select a test user --</option>
@@ -381,9 +381,14 @@ code {
 }
 </style>
 
-<% if Rails.env.development? || Rails.env.test? %>
+<!-- Initialize Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
   const selector = document.getElementById('quick-login-selector');
   const emailField = document.getElementById('user_email_field');
   const passwordField = document.getElementById('user_password');
@@ -414,4 +419,3 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
-<% end %>
