@@ -1,6 +1,35 @@
 /* Import theme system for light/dark mode support */
 @import 'themes';
 
+/* Lucide Icon Sizing Classes */
+/* Match Font Awesome sizing conventions for easy migration */
+i[data-lucide] {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1em;
+  height: 1em;
+}
+
+.icon-sm, i[data-lucide].icon-sm {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.icon-lg, i[data-lucide].icon-lg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.icon-2x, i[data-lucide].icon-2x {
+  width: 2rem;
+  height: 2rem;
+}
+
+.icon-3x, i[data-lucide].icon-3x {
+  width: 3rem;
+  height: 3rem;
+}
+
 /* Markdown content styling */
 .markdown-content {
   h1, h2, h3, h4, h5, h6 {
