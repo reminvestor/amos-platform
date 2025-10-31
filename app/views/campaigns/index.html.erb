@@ -48,7 +48,7 @@
         <h5 class="modal-title" id="scheduleModalLabel">Schedule Campaign</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <%= form_tag '', method: :post, id: "scheduleForm", class: "needs-validation", novalidate: true do %>
+      <%= form_tag '', method: :post, id: "scheduleForm", data: { controller: "form-validation", action: "submit->form-validation#submit" } do %>
         <div class="modal-body">
           <div class="mb-3">
             <label for="scheduled_at" class="form-label">Schedule Date and Time</label>
@@ -77,24 +77,17 @@
       lucide.createIcons();
     }
 
-    // Bootstrap form validation
-    const forms = document.querySelectorAll('.needs-validation');
-    Array.from(forms).forEach(form => {
-      form.addEventListener('submit', event => {
-        if (!form.checkValidity()) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        form.classList.add('was-validated');
-      }, false);
-    });
-
     // Setup for the schedule modal
     window.showScheduleModal = function(campaignId) {
       const form = document.getElementById('scheduleForm');
       if (form) {
         form.action = `/campaigns/${campaignId}/schedule`;
-        form.classList.remove('was-validated'); // Reset validation state
+
+        // Reset validation state using Stimulus controller
+        const controller = Stimulus.getControllerForElementAndIdentifier(form, 'form-validation');
+        if (controller) {
+          controller.clearValidation();
+        }
 
         // Set default date time to tomorrow, same time
         const tomorrow = new Date();
