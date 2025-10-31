@@ -19,8 +19,6 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/icon.png">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Lucide Icons for modern icon system -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -267,11 +265,11 @@
     <nav class="navbar navbar-expand navbar-dark bg-primary fixed-top">
       <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center" href="<%= advanced_mode_path %>">
-          <i class="fas fa-envelope-open-text me-2"></i>
+          <i data-lucide="mail-open" class="me-2"></i>
           AMOS Labs
         </a>
         <button class="btn btn-link text-light" id="sidebarToggle">
-          <i class="fas fa-bars"></i>
+          <i data-lucide="menu"></i>
         </button>
         
         <div class="ms-auto d-flex align-items-center gap-2">
@@ -283,16 +281,16 @@
           <% if user_signed_in? %>
             <div class="dropdown">
               <a class="nav-link dropdown-toggle text-white" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-user-circle fa-lg me-2"></i>
+                <i data-lucide="user-circle" class="me-2" style="width: 24px; height: 24px; display: inline-block; vertical-align: middle;"></i>
                 <%= current_user.full_name %>
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                <li><a class="dropdown-item" href="<%= user_path(current_user) %>"><i class="fas fa-id-card me-2"></i>My Profile</a></li>
-                
+                <li><a class="dropdown-item" href="<%= user_path(current_user) %>"><i data-lucide="id-card" class="me-2"></i>My Profile</a></li>
+
                 <% if current_user.admin? %>
                   <li><hr class="dropdown-divider"></li>
                   <li><h6 class="dropdown-header text-danger">Platform Admin</h6></li>
-                  <li><a class="dropdown-item" href="/admin"><i class="fas fa-shield-alt me-2 text-danger"></i>Admin Portal</a></li>
+                  <li><a class="dropdown-item" href="/admin"><i data-lucide="shield" class="me-2 text-danger"></i>Admin Portal</a></li>
                 <% end %>
                 
                 <% if current_user.entity %>
@@ -326,65 +324,65 @@
         <!-- Dashboard -->
         <li class="nav-item2">
           <a class="sidebar-link <%= current_page?(advanced_mode_path) ? 'active' : '' %>" href="<%= advanced_mode_path %>">
-            <i class="fas fa-tachometer-alt fa-fw me-2"></i>
+            <i data-lucide="layout-dashboard" class="fa-fw me-2"></i>
             <span class="nav-link-text">Dashboard</span>
           </a>
         </li>
-        
+
         <!-- Marketing Dropdown -->
         <li class="nav-item2">
           <a class="sidebar-toggle" data-bs-toggle="collapse" href="#marketingMenu" role="button" aria-expanded="false">
-            <i class="fas fa-bullhorn fa-fw me-2"></i>
+            <i data-lucide="megaphone" class="fa-fw me-2"></i>
             <span class="nav-link-text">Marketing</span>
-            <i class="fas fa-chevron-down ms-auto small"></i>
+            <i data-lucide="chevron-down" class="ms-auto small"></i>
           </a>
           <div class="collapse" id="marketingMenu">
             <ul class="nav flex-column ms-3">
               <li class="nav-item2">
                 <a class="sidebar-link small <%= current_page?(campaigns_path) ? 'active' : '' %>" href="<%= campaigns_path %>">
-                  <i class="fas fa-envelope fa-fw me-2"></i>
+                  <i data-lucide="mail" class="fa-fw me-2"></i>
                   <span class="nav-link-text">Campaigns</span>
                 </a>
               </li>
               <li class="nav-item2">
                 <a class="sidebar-link small <%= current_page?(landing_pages_path) ? 'active' : '' %>" href="<%= landing_pages_path %>">
-                  <i class="fas fa-globe fa-fw me-2"></i>
+                  <i data-lucide="globe" class="fa-fw me-2"></i>
                   <span class="nav-link-text">Landing Pages</span>
                 </a>
               </li>
               <li class="nav-item2">
                 <a class="sidebar-link small <%= current_page?(contacts_path) ? 'active' : '' %>" href="<%= contacts_path %>">
-                  <i class="fas fa-address-book fa-fw me-2"></i>
+                  <i data-lucide="contact" class="fa-fw me-2"></i>
                   <span class="nav-link-text">Contacts</span>
                 </a>
               </li>
               <li class="nav-item2">
                 <a class="sidebar-link small <%= current_page?(contact_groups_path) ? 'active' : '' %>" href="<%= contact_groups_path %>">
-                  <i class="fas fa-folder fa-fw me-2"></i>
+                  <i data-lucide="folder" class="fa-fw me-2"></i>
                   <span class="nav-link-text">Groups</span>
                 </a>
               </li>
               <li class="nav-item2">
                 <a class="sidebar-link small <%= current_page?(email_templates_path) ? 'active' : '' %>" href="<%= email_templates_path %>">
-                  <i class="fas fa-file-alt fa-fw me-2"></i>
+                  <i data-lucide="file-text" class="fa-fw me-2"></i>
                   <span class="nav-link-text">Templates</span>
                 </a>
               </li>
             </ul>
           </div>
         </li>
-        
+
         <!-- Content -->
         <li class="nav-item2">
           <a class="sidebar-link <%= current_page?(image_assets_path) ? 'active' : '' %>" href="<%= image_assets_path %>">
-            <i class="fas fa-images fa-fw me-2"></i>
+            <i data-lucide="images" class="fa-fw me-2"></i>
             <span class="nav-link-text">Images</span>
           </a>
         </li>
 
         <li class="nav-item2">
           <a class="sidebar-link <%= current_page?(social_posts_path) ? 'active' : '' %>" href="<%= social_posts_path %>">
-            <i class="fas fa-share-alt fa-fw me-2"></i>
+            <i data-lucide="share-2" class="fa-fw me-2"></i>
             <span class="nav-link-text">Social Media</span>
           </a>
         </li>
@@ -399,12 +397,12 @@
           <li class="nav-item2">
             <% if current_user.affiliate.present? %>
               <a class="sidebar-link <%= request.path.start_with?('/affiliate') ? 'active' : '' %>" href="<%= affiliate_dashboard_path %>">
-                <i class="fas fa-users fa-fw me-2"></i>
+                <i data-lucide="users" class="fa-fw me-2"></i>
                 <span class="nav-link-text">Affiliate Program</span>
               </a>
             <% else %>
               <a class="sidebar-link <%= request.path.start_with?('/affiliate') ? 'active' : '' %>" href="<%= affiliate_apply_path %>">
-                <i class="fas fa-user-plus fa-fw me-2"></i>
+                <i data-lucide="user-plus" class="fa-fw me-2"></i>
                 <span class="nav-link-text">Join Affiliates</span>
               </a>
             <% end %>
@@ -414,27 +412,27 @@
         <!-- Settings Dropdown -->
         <li class="nav-item2">
           <a class="sidebar-toggle" data-bs-toggle="collapse" href="#settingsMenu" role="button" aria-expanded="false">
-            <i class="fas fa-cog fa-fw me-2"></i>
+            <i data-lucide="settings" class="fa-fw me-2"></i>
             <span class="nav-link-text">Settings</span>
-            <i class="fas fa-chevron-down ms-auto small"></i>
+            <i data-lucide="chevron-down" class="ms-auto small"></i>
           </a>
           <div class="collapse" id="settingsMenu">
             <ul class="nav flex-column ms-3">
               <li class="nav-item2">
                 <a class="sidebar-link small <%= current_page?(social_media_accounts_path) ? 'active' : '' %>" href="<%= social_media_accounts_path %>">
-                  <i class="fas fa-plug fa-fw me-2"></i>
+                  <i data-lucide="plug" class="fa-fw me-2"></i>
                   <span class="nav-link-text">Integrations</span>
                 </a>
               </li>
               <li class="nav-item2">
                 <a class="sidebar-link small <%= current_page?(edit_business_profile_path) ? 'active' : '' %>" href="<%= edit_business_profile_path %>">
-                  <i class="fas fa-building fa-fw me-2"></i>
+                  <i data-lucide="building" class="fa-fw me-2"></i>
                   <span class="nav-link-text">Business Profile</span>
                 </a>
               </li>
               <li class="nav-item2">
                 <a class="sidebar-link small <%= current_page?(entities_path) ? 'active' : '' %>" href="<%= entities_path %>">
-                  <i class="fas fa-briefcase fa-fw me-2"></i>
+                  <i data-lucide="briefcase" class="fa-fw me-2"></i>
                   <span class="nav-link-text">Entity Info</span>
                 </a>
               </li>
@@ -450,25 +448,25 @@
           </li>
           <li class="nav-item2">
             <a class="sidebar-link <%= request.path.start_with?('/entity/users') ? 'active' : '' %>" href="<%= entity_users_path %>">
-              <i class="fas fa-user-friends fa-fw me-2"></i>
+              <i data-lucide="users" class="fa-fw me-2"></i>
               <span class="nav-link-text">Team Members</span>
             </a>
           </li>
           <li class="nav-item2">
             <a class="sidebar-link <%= request.path.start_with?('/entity/observability') ? 'active' : '' %>" href="<%= entity_observability_path %>">
-              <i class="fas fa-chart-bar fa-fw me-2"></i>
+              <i data-lucide="bar-chart" class="fa-fw me-2"></i>
               <span class="nav-link-text">Analytics</span>
             </a>
           </li>
           <li class="nav-item2">
             <a class="sidebar-link <%= request.path.start_with?('/entity/policies') ? 'active' : '' %>" href="<%= entity_policies_path %>">
-              <i class="fas fa-shield-alt fa-fw me-2"></i>
+              <i data-lucide="shield" class="fa-fw me-2"></i>
               <span class="nav-link-text">AI Policies</span>
             </a>
           </li>
           <li class="nav-item2">
             <a class="sidebar-link <%= request.path.start_with?('/entity/privacy') ? 'active' : '' %>" href="<%= entity_privacy_path %>">
-              <i class="fas fa-user-shield fa-fw me-2"></i>
+              <i data-lucide="shield-check" class="fa-fw me-2"></i>
               <span class="nav-link-text">Privacy Controls</span>
             </a>
           </li>
@@ -494,17 +492,17 @@
     <% if notice %>
       <div style="position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 1050; max-width: 600px; width: 90%;">
         <div class="alert alert-success alert-dismissible fade show shadow" role="alert">
-          <i class="fas fa-check-circle me-2"></i>
+          <i data-lucide="check-circle" class="me-2"></i>
           <%= notice %>
           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
       </div>
     <% end %>
-    
+
     <% if alert %>
       <div style="position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 1050; max-width: 600px; width: 90%;">
         <div class="alert alert-danger alert-dismissible fade show shadow" role="alert">
-          <i class="fas fa-exclamation-circle me-2"></i>
+          <i data-lucide="alert-circle" class="me-2"></i>
           <%= alert %>
           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -521,24 +519,32 @@
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
         const sidebarToggle = document.getElementById('sidebarToggle');
-        
+
         // Check if sidebar state is saved in localStorage
         const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
-        
+
         // Initialize sidebar state
         if (sidebarCollapsed) {
           sidebar.classList.add('sidebar-collapsed');
           mainContent.classList.add('main-content-expanded');
         }
-        
+
         // Toggle sidebar on button click
         sidebarToggle.addEventListener('click', function() {
           sidebar.classList.toggle('sidebar-collapsed');
           mainContent.classList.toggle('main-content-expanded');
-          
+
           // Save sidebar state to localStorage
           localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('sidebar-collapsed'));
         });
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+      });
+
+      // Re-initialize Lucide icons after Turbo navigation
+      document.addEventListener('turbo:load', () => {
+        lucide.createIcons();
       });
     </script>
 
