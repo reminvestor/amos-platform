@@ -234,15 +234,15 @@
           <div class="task-status-icon <%= task_status %>">
             <% case task_status %>
             <% when 'pending' %>
-              <i class="far fa-circle"></i>
+              <i data-lucide="circle" aria-hidden="true"></i>
             <% when 'in_progress' %>
-              <i class="fas fa-spinner fa-spin"></i>
+              <i data-lucide="loader-circle" class="icon-spin" aria-hidden="true"></i>
             <% when 'completed' %>
-              <i class="fas fa-check"></i>
+              <i data-lucide="check" aria-hidden="true"></i>
             <% when 'failed' %>
-              <i class="fas fa-times"></i>
+              <i data-lucide="x" aria-hidden="true"></i>
             <% when 'skipped' %>
-              <i class="fas fa-forward"></i>
+              <i data-lucide="skip-forward" aria-hidden="true"></i>
             <% end %>
           </div>
           
@@ -275,15 +275,31 @@
     
     <% if is_working %>
       <div class="working-status">
-        <i class="fas fa-cogs"></i>
+        <i data-lucide="settings" aria-hidden="true"></i>
         <span>Scout is working on your request...</span>
       </div>
     <% end %>
   <% else %>
     <div class="empty-state">
-      <i class="fas fa-tasks"></i>
+      <i data-lucide="list-checks" aria-hidden="true"></i>
       <h3>No Active Tasks</h3>
       <p>Task progress will appear here when Scout creates a task list for complex operations.</p>
     </div>
   <% end %>
 </div>
+
+<script>
+// Initialize Lucide icons when canvas loads
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+
+// Re-initialize icons when canvas is loaded via Turbo
+document.addEventListener('turbo:load', function() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>
