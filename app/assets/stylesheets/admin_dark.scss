@@ -85,7 +85,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
     gap: 0.75rem;
 
     .hamburger-toggle {
-      background: transparent;
+      background: transparent !important;
       border: none;
       color: $admin-text-secondary;
       padding: 0.5rem;
@@ -95,10 +95,22 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
       justify-content: center;
       border-radius: 0.375rem;
       transition: all 0.2s;
+      box-shadow: none !important;
+      outline: none;
 
       &:hover {
-        background-color: rgba($admin-border, 0.5);
+        background-color: rgba($admin-border, 0.5) !important;
         color: $admin-text-primary;
+      }
+
+      &:focus {
+        background-color: rgba($admin-border, 0.5) !important;
+        outline: none;
+        box-shadow: none !important;
+      }
+
+      &:active {
+        background-color: rgba($admin-border, 0.7) !important;
       }
 
       i, svg {
