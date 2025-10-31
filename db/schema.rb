@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_29_240000) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -609,6 +609,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_240000) do
     t.string "mailgun_message_id"
     t.string "mailgun_status"
     t.text "notes"
+    t.string "unsubscribe_token"
     t.index ["campaign_id", "id"], name: "index_email_deliveries_on_campaign_id_and_id"
     t.index ["campaign_id", "status", "sent_at"], name: "index_email_deliveries_on_campaign_status_sent"
     t.index ["campaign_id", "status"], name: "index_email_deliveries_on_campaign_id_and_status"
@@ -616,6 +617,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_240000) do
     t.index ["contact_id"], name: "index_email_deliveries_on_contact_id"
     t.index ["email_template_id"], name: "index_email_deliveries_on_email_template_id"
     t.index ["status"], name: "index_email_deliveries_on_status"
+    t.index ["unsubscribe_token"], name: "index_email_deliveries_on_unsubscribe_token", unique: true
   end
 
   create_table "email_sequences", force: :cascade do |t|
