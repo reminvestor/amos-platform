@@ -97,6 +97,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
       transition: all 0.2s;
       box-shadow: none !important;
       outline: none;
+      margin-left: auto; // Push to far right
 
       &:hover {
         background-color: rgba($admin-border, 0.5) !important;
