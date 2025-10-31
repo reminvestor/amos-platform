@@ -143,6 +143,7 @@ Rails.application.configure do
   config.hosts << "amoslabs.com"
   config.hosts << "www.amoslabs.com"
   config.hosts << "app.amoslabs.com"
+  config.hosts << "dev.amoslabs.com"
 
   # Legacy everloom.ai domains (for migration period)
   config.hosts << "everloom.ai"
@@ -156,6 +157,9 @@ Rails.application.configure do
 
   # Allow ALB DNS names
   config.hosts << /.*\.elb\.amazonaws\.com$/
+  
+  # Allow ALB health check IPs (AWS internal IPs)
+  config.hosts << /\A\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\z/
 
   # Skip host authorization for health checks
   config.host_authorization = {

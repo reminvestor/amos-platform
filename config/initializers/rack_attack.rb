@@ -4,6 +4,9 @@
 # Only configure if Rack::Attack is available (gem installed)
 return unless defined?(Rack::Attack)
 
+# Disable Rack::Attack in test environment
+return if Rails.env.test?
+
 class Rack::Attack
   ### Configure Cache ###
 
@@ -87,8 +90,9 @@ class Rack::Attack
   ### Custom Responses ###
 
   # Customize response for throttled requests
-  self.throttled_responder = lambda do |env|
-    retry_after = env["rack.attack.match_data"][:period]
+  self.throttled_responder = lambda do |request|
+    match_data = request.env['rack.attack.match_data']
+    retry_after = match_data ? match_data[:period] : 60
     [
       429, # Too Many Requests
       {

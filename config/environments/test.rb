@@ -15,6 +15,9 @@ Rails.application.configure do
   # loading is working properly before deploying your code.
   config.eager_load = ENV["CI"].present?
 
+  # Use test adapter for ActiveJob to enable assert_enqueued_jobs
+  config.active_job.queue_adapter = :test
+
   # Configure public file server for tests with cache-control for performance.
   config.public_file_server.headers = { "cache-control" => "public, max-age=3600" }
 

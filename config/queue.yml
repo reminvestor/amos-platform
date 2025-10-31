@@ -3,41 +3,59 @@ default: &default
     - polling_interval: 1
       batch_size: 500
   workers:
-    # Pipeline orchestration (highest priority)
-    - queues: pipeline
-      threads: 2
-      processes: 1
+    # Critical queue - highest priority (real-time user operations)
+    - queues: critical
+      threads: 5
+      processes: <%= ENV.fetch("CRITICAL_WORKERS", 1) %>
       polling_interval: 0.1
       priority: 10
-    # AI agent execution
-    - queues: agents
-      threads: 5
-      processes: <%= ENV.fetch("AGENT_CONCURRENCY", 2) %>
-      polling_interval: 0.1
-      priority: 8
-    # Notifications
-    - queues: notifications
+
+    # Embeddings queue - API rate limited (AWS Bedrock)
+    - queues: embeddings
       threads: 3
-      processes: 1
+      processes: <%= ENV.fetch("EMBEDDING_WORKERS", 1) %>
       polling_interval: 0.5
+      priority: 8
+
+    # Docling queue - memory intensive processing
+    - queues: docling
+      threads: 2
+      processes: <%= ENV.fetch("DOCLING_WORKERS", 1) %>
+      polling_interval: 1
       priority: 6
-    # Maintenance tasks
+
+    # Documents queue - general RAG processing
+    - queues: documents
+      threads: 3
+      processes: <%= ENV.fetch("DOCUMENT_WORKERS", 1) %>
+      polling_interval: 0.5
+      priority: 5
+
+    # Default queue - all other jobs
+    - queues: default
+      threads: 3
+      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+      polling_interval: 1
+      priority: 3
+
+    # Maintenance queue - background monitoring/cleanup (lowest priority)
     - queues: maintenance
       threads: 1
       processes: 1
-      polling_interval: 1
-      priority: 2
-    # Default queue for other jobs
-    - queues: "*"
-      threads: 3
-      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
-      polling_interval: 0.1
+      polling_interval: 5
+      priority: 1
 
 development:
   <<: *default
 
 test:
   <<: *default
+  # Reduce resources in test environment
+  workers:
+    - queues: "*"
+      threads: 1
+      processes: 1
+      polling_interval: 0.1
 
 production:
   <<: *default

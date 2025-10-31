@@ -1,0 +1,51 @@
+{
+  "family": "agent-marketing-dev",
+  "executionRoleArn": "arn:aws:iam::637423327454:role/agent-marketing-dev-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::637423327454:role/agent-marketing-dev-ecs-task-role",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "containerDefinitions": [
+    {
+      "name": "agent-marketing-dev",
+      "image": "637423327454.dkr.ecr.us-east-1.amazonaws.com/agent-marketing-dev:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {"name": "RAILS_ENV", "value": "production"},
+        {"name": "RAILS_LOG_TO_STDOUT", "value": "true"},
+        {"name": "PORT", "value": "3000"},
+        {"name": "APP_DOMAIN", "value": "dev.amoslabs.com"},
+        {"name": "AWS_REGION", "value": "us-east-1"},
+        {"name": "AI_PROVIDER", "value": "bedrock"}
+      ],
+      "secrets": [
+        {"name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-database-url"},
+        {"name": "RAILS_MASTER_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-rails-master-key"},
+        {"name": "REDIS_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-redis-url"},
+        {"name": "MAILGUN_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-mailgun-api-key"},
+        {"name": "MAILGUN_DOMAIN", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-mailgun-domain"},
+        {"name": "PINECONE_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-pinecone-api-key"},
+        {"name": "PINECONE_ENVIRONMENT", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-pinecone-environment"},
+        {"name": "PINECONE_INDEX_NAME", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-pinecone-index-name"},
+        {"name": "OPENAI_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-openai-api-key"},
+        {"name": "ANTHROPIC_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-anthropic-api-key"},
+        {"name": "DEEPGRAM_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-deepgram-api-key"}
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/agent-marketing-dev",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

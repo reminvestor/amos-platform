@@ -1,6 +1,8 @@
 class ScoutController < ApplicationController
   include ActionController::Live  # Enable real-time streaming
   include ActionView::Helpers::NumberHelper  # For number formatting
+  include Scout::Streaming  # Streaming helpers
+  include Scout::StreamingKeepalive  # Keep-alive for long operations
 
   before_action :authenticate_user!
   before_action :ensure_entity_exists
@@ -378,10 +380,8 @@ class ScoutController < ApplicationController
     current_canvas = params[:current_canvas]
     context = params[:context]
     file_urls = params[:file_urls] || []
-    model_override = params[:model_override]&.strip # For voice assistant to use Haiku
 
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
-    Rails.logger.info "Model override: #{model_override}" if model_override.present?
     puts "🚨 PRODUCTION DEBUG: Scout chat request received - #{Time.current}"
     STDOUT.flush
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
@@ -406,6 +406,9 @@ class ScoutController < ApplicationController
     response.status = 200
 
     begin
+      # Start keep-alive thread to prevent timeout during long operations
+      start_keepalive_thread
+      
       # Send immediate response to establish streaming
       stream_update("💬 Message received")
 
@@ -430,12 +433,6 @@ class ScoutController < ApplicationController
       # Get conversation history (last 20 messages for active window)
       conversation_history = persisted_history_last_k(20)
       stream_update("📚 Loading conversation history (#{conversation_history.length} messages)")
-
-      # Store model override for this request (voice assistant uses Haiku for speed)
-      if model_override.present?
-        RequestStore.store[:model_override] = model_override
-        Rails.logger.info "🎤 Voice assistant model override set: #{model_override}"
-      end
 
       # Use InteractiveTaskService with streaming updates
       stream_update("🧠 Analyzing your request...")
@@ -496,14 +493,6 @@ class ScoutController < ApplicationController
             tool_name = progress_data[:tool_name] || progress_data[:name]
             Rails.logger.info "Tool complete: #{tool_name}"
             # Don't show tool complete messages - too noisy
-          when 'cache_metrics'
-            # Stream cache performance metrics to frontend
-            stream_update({
-              type: 'cache_metrics',
-              cache_creation: progress_data[:cache_creation] || 0,
-              cache_read: progress_data[:cache_read] || 0,
-              tokens: progress_data[:tokens]
-            })
           when 'planner_progress'
             # Stream planner reasoning as transient messages
             Rails.logger.info "Planner: #{progress_data[:message]}"
@@ -725,6 +714,9 @@ class ScoutController < ApplicationController
         tools_used: false
       })
     ensure
+      # Stop keep-alive thread
+      stop_keepalive_thread
+      
       response.stream.close
     end
   end

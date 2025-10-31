@@ -1,0 +1,68 @@
+# RagQuery fixtures for testing
+query_one:
+  entity: one
+  rag_store: entity_one_custom
+  query: "What are our brand colors?"
+  query_hash: "<%= Digest::SHA256.hexdigest('what are our brand colors?') %>"
+  response_time_ms: 450
+  chunks_retrieved: [1, 2]
+  relevance_scores:
+    - chunk_id: 1
+      distance: 0.15
+    - chunk_id: 2
+      distance: 0.25
+  cache_hit: false
+
+query_two_cache_hit:
+  entity: one
+  rag_store: entity_one_custom
+  query: "What are our brand colors?"
+  query_hash: "<%= Digest::SHA256.hexdigest('what are our brand colors?') %>"
+  response_time_ms: 50
+  chunks_retrieved: [1, 2]
+  relevance_scores:
+    - chunk_id: 1
+      distance: 0.15
+    - chunk_id: 2
+      distance: 0.25
+  cache_hit: true
+
+query_slow:
+  entity: one
+  rag_store: entity_one_custom
+  query: "Tell me about all products and pricing"
+  query_hash: "<%= Digest::SHA256.hexdigest('tell me about all products and pricing') %>"
+  response_time_ms: 2500
+  chunks_retrieved: [3, 4, 5, 6]
+  relevance_scores:
+    - chunk_id: 3
+      distance: 0.10
+    - chunk_id: 4
+      distance: 0.18
+    - chunk_id: 5
+      distance: 0.22
+    - chunk_id: 6
+      distance: 0.30
+  cache_hit: false
+
+query_system:
+  entity: one
+  rag_store: system_stripe
+  query: "How do I authenticate with Stripe API?"
+  query_hash: "<%= Digest::SHA256.hexdigest('how do i authenticate with stripe api?') %>"
+  response_time_ms: 350
+  chunks_retrieved: [10]
+  relevance_scores:
+    - chunk_id: 10
+      distance: 0.08
+  cache_hit: false
+
+query_entity_two:
+  entity: two
+  rag_store: entity_two_internal
+  query: "What is the internal API endpoint?"
+  query_hash: "<%= Digest::SHA256.hexdigest('what is the internal api endpoint?') %>"
+  response_time_ms: 420
+  chunks_retrieved: []
+  relevance_scores: []
+  cache_hit: false

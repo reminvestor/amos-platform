@@ -47,7 +47,8 @@ export default class TTSAudioManager {
         const data = await response.json()
         const prefs = data.preferences || {}
         
-        this.isEnabled = prefs.enabled !== false
+        // Default to disabled if not explicitly set
+        this.isEnabled = prefs.enabled === true
         this.voiceId = prefs.voice_id || 'Matthew'
         this.playbackRate = prefs.speed || 1.0
         this.volume = prefs.volume || 1.0

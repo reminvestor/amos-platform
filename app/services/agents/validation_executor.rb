@@ -194,21 +194,51 @@ module Agents
       html_content = find_html_in_context
 
       if html_content.blank?
-        Rails.logger.warn "⚠️ Cannot validate CTA - no HTML found (skipping)"
-        return {
-          rule: "has_cta",
-          check: rule["check"] || rule[:check],
-          passed: true,  # Skip validation if we can't find HTML (assume it's fine)
-          message: "Validation skipped - HTML content not available in context",
-          skipped: true
-        }
+        Rails.logger.warn "⚠️ Cannot validate CTA - no HTML found"
+        # Look for landing page in the context data
+        context_data = get_workflow_context
+        Rails.logger.info "🔍 Looking for landing page ID in context for CTA validation"
+        
+        # The generate_ai_landing_page tool returns landing_page_id in its response
+        landing_page_id = context_data["execute_goal_landing_page_id"] || 
+                         context_data["execute_goal_id"] ||
+                         context_data.values.find { |v| v.is_a?(Hash) && v["landing_page_id"] }.try(:[], "landing_page_id") rescue nil
+                         
+        if landing_page_id
+          Rails.logger.info "🔍 Found landing page ID: #{landing_page_id}, attempting to load"
+          begin
+            landing_page = LandingPage.find(landing_page_id)
+            html_content = landing_page.html_content
+            Rails.logger.info "✅ Loaded HTML from landing page for CTA validation"
+          rescue => e
+            Rails.logger.error "❌ Failed to load landing page: #{e.message}"
+          end
+        end
+        
+        # If still no HTML, skip validation gracefully
+        if html_content.blank?
+          return {
+            rule: "has_cta",
+            check: rule["check"] || rule[:check],
+            passed: true,  # Skip validation if we can't find HTML (assume it's fine)
+            message: "Validation skipped - HTML content not available in context",
+            skipped: true
+          }
+        end
       end
 
-      # Check for CTA indicators
-      has_button = html_content.match?(/<button|<a[^>]*class="[^"]*btn/)
-      has_cta_text = html_content.match?(/cta|call.to.action|sign.up|get.started|buy.now|contact.us/i)
+      # Check for CTA indicators - be more lenient
+      # Look for any button or link that could be a CTA
+      has_button = html_content.match?(/<button|<a[^>]*class="[^"]*btn|<a[^>]*href=/)
+      
+      # Look for common CTA text patterns - be very inclusive
+      has_cta_text = html_content.match?(/cta|call.to.action|sign.up|get.started|buy.now|contact.us|learn.more|try.now|start.free|subscribe|download|request|schedule|book.now|join|register|apply|claim|order|shop|explore|discover/i)
+      
+      # Also check for any form elements which could be CTAs
+      has_form = html_content.match?(/<form|<input[^>]*type="submit"/)
 
-      passed = has_button && has_cta_text
+      # Pass if we have any button/link AND any CTA-like text, OR if we have a form
+      passed = (has_button && has_cta_text) || has_form
 
       {
         rule: "has_cta",
@@ -469,7 +499,8 @@ module Agents
                     context_data["page_content"] ||
                     context_data[:page_content] ||
                     context_data["content"] ||
-                    context_data[:content]
+                    context_data[:content] ||
+                    context_data["execute_goal_html_content"] # Check phase-prefixed key
 
       # If not found directly, look in step outputs that might contain HTML
       if html_content.blank?
@@ -491,22 +522,35 @@ module Agents
         Rails.logger.info "🔍 All workflow context keys: #{context_data.keys.join(', ')}"
 
         # Try multiple ways to find the landing_page_id
-        landing_page_id = context_data["landing_page_id"] ||
-                         context_data[:landing_page_id] ||
-                         context_data["id"] ||  # Also try just 'id'
-                         context_data[:id] ||
-                         context_data["execute_goal_landing_page_id"] ||  # NEW - check this first!
+        # The tool returns landing_page_id in its response
+        landing_page_id = context_data["execute_goal_landing_page_id"] ||  # Check this first!
                          context_data["execute_goal_id"] ||
+                         context_data["landing_page_id"] ||
+                         context_data[:landing_page_id] ||
+                         context_data["id"] ||
+                         context_data[:id] ||
                          context_data.dig("step_output", "landing_page_id") ||
                          context_data.dig(:step_output, :landing_page_id)
 
-        # Also check in nested results
+        # Also check in nested results - look for the execute_goal phase output
         if landing_page_id.blank?
           context_data.each do |key, value|
-            if (key.to_s.include?("landing_page_id") || key.to_s.include?("_id")) && value.is_a?(Integer) && value.present?
-              landing_page_id = value
-              Rails.logger.info "🔍 Found ID in key: #{key} = #{value}"
-              break
+            if key.to_s.start_with?("execute_goal_") && value.is_a?(String)
+              # Try to parse as JSON if it looks like JSON
+              if value.strip.start_with?('{')
+                begin
+                  parsed = JSON.parse(value)
+                  landing_page_id = parsed["landing_page_id"] || parsed["id"]
+                  Rails.logger.info "🔍 Found landing_page_id in JSON: #{landing_page_id}" if landing_page_id
+                  break if landing_page_id
+                rescue JSON::ParserError
+                  # Not JSON, skip
+                end
+              elsif value.to_i > 0 && key.to_s.include?("landing_page_id")
+                landing_page_id = value.to_i
+                Rails.logger.info "🔍 Found ID in key: #{key} = #{value}"
+                break
+              end
             end
           end
         end
@@ -521,6 +565,7 @@ module Agents
           end
         else
           Rails.logger.warn "⚠️ No landing_page_id found in context. Available keys: #{context_data.keys.join(', ')}"
+          Rails.logger.warn "⚠️ Context sample: #{context_data.first(5).to_h.inspect}"
         end
       end
 

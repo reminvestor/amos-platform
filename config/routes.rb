@@ -19,9 +19,6 @@ Rails.application.routes.draw do
   # ActionCable for real-time features
   mount ActionCable.server => "/cable"
 
-  # Letter Opener Web (Development only - view emails at /letter_opener)
-  mount LetterOpenerWeb::Engine, at: "/letter_opener" if Rails.env.development?
-
   # API routes
   namespace :api do
     # Voice Assistant API
@@ -39,8 +36,8 @@ Rails.application.routes.draw do
       post :synthesize
       get :voices
       post :presigned_url
-      get :preferences
-      patch :preferences
+      get :preferences, action: :preferences
+      patch :preferences, action: :update_preferences
       get :test
     end
     
@@ -68,9 +65,11 @@ Rails.application.routes.draw do
       post "landing_pages/:landing_page_slug/submit", to: "landing_page_submissions#create"
     end
   end
-
-  # Routes with constraints on subdomain - application routes for 'app' subdomain
-  constraints(lambda { |req| req.subdomain == "app" }) do
+  
+  # Routes with constraints on subdomain - application routes for 'app' or 'dev' subdomain
+  constraints(lambda { |req| 
+    SubdomainConfig.app_subdomains.include?(req.subdomain)
+  }) do
     # Solid Queue Interface
     authenticate :user, lambda { |u| u.admin? } do
       mount SolidQueueInterface::Engine => "/solid_queue"
@@ -325,6 +324,8 @@ Rails.application.routes.draw do
     get '/contact', to: 'marketing#contact', as: :marketing_contact
     post '/contact', to: 'marketing#contact_submit', as: :marketing_contact_submit
     get '/help', to: 'marketing#help', as: :marketing_help
+    get '/terms', to: 'marketing#terms', as: :marketing_terms
+    get '/privacy', to: 'marketing#privacy', as: :marketing_privacy
   end
 
   # Debug routes for troubleshooting
@@ -516,38 +517,21 @@ Rails.application.routes.draw do
       end
     end
 
-    # AI Development Pipeline
-    resources :pipeline_connections, path: 'pipeline/connections' do
-      member do
-        post :test
-      end
-    end
-
-    resources :pipeline_executions, path: 'pipeline/executions', only: [:index, :show] do
-      member do
-        post :retry
-        post :cancel
-      end
-    end
-
-    # System Settings
+    # System settings
     resources :system_settings, only: [:index, :update] do
       collection do
-        patch :update_all
         post :reset_defaults
-      end
-      member do
-        post :test_key
-      end
-    end
-
-    # Voice Assistant Settings
-    resources :voice_settings, only: [:index] do
-      collection do
         patch :update_all
       end
     end
 
+    # Observability
+    namespace :observability do
+      get "ai_usage", to: "metrics#ai_usage"
+      get "workflows", to: "metrics#workflows"
+      get "errors", to: "metrics#errors"
+      get "performance", to: "metrics#performance"
+    end
   end
 
   # Common routes (regardless of subdomain)

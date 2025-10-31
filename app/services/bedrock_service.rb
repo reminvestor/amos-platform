@@ -5,6 +5,67 @@ class BedrockService
 
   attr_reader :model_registry
 
+  # Available Bedrock models with their characteristics
+  AVAILABLE_MODELS = {
+    'claude-sonnet-4-5' => {
+      id: 'global.anthropic.claude-sonnet-4-5-20250929-v1:0',
+      name: 'Claude Sonnet 4.5',
+      description: 'Latest model, best for complex tasks',
+      max_tokens: 25000,
+      cost_per_1m_input: 3.00,
+      cost_per_1m_output: 15.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: false,  # Global endpoint limitation
+      endpoint_type: 'global'
+    },
+    'claude-opus-4-1' => {
+      id: 'us.anthropic.claude-opus-4-1-20250805-v1:0',
+      name: 'Claude Opus 4.1',
+      description: 'Most capable, includes vision',
+      max_tokens: 25000,
+      cost_per_1m_input: 15.00,
+      cost_per_1m_output: 75.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    },
+    'claude-3-5-sonnet' => {
+      id: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
+      name: 'Claude 3.5 Sonnet',
+      description: 'Fast and capable, supports caching',
+      max_tokens: 8192,
+      cost_per_1m_input: 3.00,
+      cost_per_1m_output: 15.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    },
+    'claude-3-haiku' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+      name: 'Claude 3.5 Haiku',
+      description: 'Fastest, most affordable',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.80,
+      cost_per_1m_output: 4.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    }
+  }.freeze
+
+  # Model fallback chain: Try models from fastest to most robust
+  # If a model fails due to throttling, timeout, or unavailability, automatically retry with the next model
+  MODEL_FALLBACK_CHAIN = [
+    'claude-3-haiku',      # Fastest, cheapest - try first
+    'claude-3-5-sonnet',   # Fast, capable - good backup
+    'claude-sonnet-4-5',   # Latest, powerful - reliable fallback
+    'claude-opus-4-1'      # Most robust - last resort
+  ].freeze
+
   def initialize(custom_model_id: nil, user: nil, entity: nil)
     @client = Aws::BedrockRuntime::Client.new(
       region: ENV["AWS_REGION"] || "us-east-1",
@@ -28,23 +89,43 @@ class BedrockService
     @resource_manager = ResourceManager.new(entity) if entity
   end
 
-  # Main method to send messages to Claude via Bedrock
-  def send_message(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, stream: false, tools: nil, enable_prompt_caching: false, &block)
-    # Check for model override from request (e.g., voice assistant using Haiku for speed)
-    if defined?(RequestStore) && RequestStore.store[:model_override].present?
-      model = RequestStore.store[:model_override]
-      Rails.logger.info "🎯 Using model override: #{model} (e.g., for voice assistant)"
+  # Get the next model in the fallback chain
+  # Returns nil if no more fallback options
+  def get_next_fallback_model(current_model, attempted_models = [])
+    # Normalize current model name
+    normalized_current = current_model.to_s.gsub('.', '-')
+
+    # Find current position in chain
+    current_index = MODEL_FALLBACK_CHAIN.index(normalized_current)
+
+    # If not in chain or at end of chain, start from beginning
+    if current_index.nil?
+      # Try to find first model not yet attempted
+      next_model = MODEL_FALLBACK_CHAIN.find { |m| !attempted_models.include?(m) }
+      return next_model
     end
 
+    # Try next models in chain that haven't been attempted
+    ((current_index + 1)...MODEL_FALLBACK_CHAIN.length).each do |i|
+      candidate = MODEL_FALLBACK_CHAIN[i]
+      return candidate unless attempted_models.include?(candidate)
+    end
+
+    # No more fallback options
+    nil
+  end
+
+  # Main method to send messages to Claude via Bedrock
+  def send_message(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, stream: false, &block)
     # Use custom model if specified
     if @custom_model_id && @model_registry
       return send_via_platform(system_prompt, messages, model: @custom_model_id, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, stream: stream, &block)
     end
 
     if stream && block_given?
-      send_message_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, tools: tools, enable_prompt_caching: enable_prompt_caching, &block)
+      send_message_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, &block)
     else
-      send_message_non_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode, tools: tools, enable_prompt_caching: enable_prompt_caching)
+      send_message_non_streaming(system_prompt, messages, model: model, max_tokens: max_tokens, temperature: temperature, json_mode: json_mode)
     end
   end
 
@@ -94,10 +175,7 @@ class BedrockService
 
   private
 
-  def send_message_non_streaming(system_prompt, messages, model: nil, max_tokens: 10000, temperature: 0.7, json_mode: false, tools: nil, enable_prompt_caching: false)
-    # Use ENV variable if model not specified
-    model ||= ENV.fetch('BEDROCK_DEFAULT_MODEL', 'claude-sonnet-4-5')
-
+  def send_message_non_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false)
     # Map model names to Bedrock model IDs
     # Using global inference profiles for Claude Sonnet 4.5
     model_id = case model
@@ -136,29 +214,8 @@ class BedrockService
       temperature: temperature
     }
 
-    # Add system prompt with optional caching
-    if final_system_prompt.present?
-      if enable_prompt_caching
-        # Use array format with cache_control for prompt caching
-        request_body[:system] = [
-          {
-            type: "text",
-            text: final_system_prompt,
-            cache_control: { type: "ephemeral" }
-          }
-        ]
-        Rails.logger.info "💾 Prompt caching enabled for system prompt (#{final_system_prompt.length} chars)"
-      else
-        # Traditional string format (no caching)
-        request_body[:system] = final_system_prompt
-      end
-    end
-
-    # Add tools if provided
-    if tools.present?
-      request_body[:tools] = tools
-      Rails.logger.info "🔧 Added #{tools.size} tools to request"
-    end
+    # Add system prompt if provided
+    request_body[:system] = final_system_prompt if final_system_prompt.present?
 
     Rails.logger.info "Sending request to Bedrock Claude (#{model_id})"
 
@@ -181,30 +238,31 @@ class BedrockService
           output: response_body["usage"]["output_tokens"] || 0
         }
 
-        # Track cache performance metrics (AWS Bedrock uses cache_write_input_tokens)
-        cache_creation = response_body["usage"]["cache_write_input_tokens"] || 0
-        cache_read = response_body["usage"]["cache_read_input_tokens"] || 0
-
-        if cache_creation > 0 || cache_read > 0
-          Rails.logger.info "💾 CACHE METRICS:"
-          Rails.logger.info "  Cache created: #{cache_creation} tokens" if cache_creation > 0
-          Rails.logger.info "  Cache read: #{cache_read} tokens (90% savings!)" if cache_read > 0
-          Rails.logger.info "  New processing: #{tokens[:input]} tokens"
-
-          if cache_read > 0
-            speedup = ((cache_read + tokens[:input]).to_f / tokens[:input]).round(1)
-            Rails.logger.info "  ⚡ Effective speedup: ~#{speedup}x faster"
-          end
-        end
-
         if @user && @entity && @resource_manager
+          # Track tokens in resource manager (updates entity total)
           @resource_manager.track_tokens(@user, model_id, tokens, {
             stream: false,
             method: "invoke_model",
-            timestamp: Time.current,
-            cache_creation: cache_creation,
-            cache_read: cache_read
+            timestamp: Time.current
           })
+          
+          # Log AI usage for observability and billing
+          AiUsageLog.log_usage(
+            entity: @entity,
+            user: @user,
+            model: model_id,
+            input_tokens: tokens[:input],
+            output_tokens: tokens[:output],
+            duration_ms: nil, # Will add timing in next iteration
+            request_type: 'chat',
+            scout_message: nil, # Will link to scout_message if available
+            metadata: {
+              method: 'invoke_model',
+              stream: false,
+              cache_creation: response_body["usage"]["cache_write_input_tokens"] || 0,
+              cache_read: response_body["usage"]["cache_read_input_tokens"] || 0
+            }
+          )
         end
 
         Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
@@ -341,10 +399,7 @@ class BedrockService
   public
 
   # Non-streaming version using converse API (for tool continuation)
-  def send_message_converse(system_prompt, messages, model: nil, max_tokens: 10000, temperature: 0.7, tools: [])
-    # Use ENV variable if model not specified
-    model ||= ENV.fetch('BEDROCK_DEFAULT_MODEL', 'claude-sonnet-4-5')
-
+  def send_message_converse(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, tools: [])
     # Map model names to Bedrock model IDs
     model_id = case model
     when "claude-sonnet-4-5", "claude-sonnet-4.5"
@@ -441,64 +496,71 @@ class BedrockService
     end
   end
 
-  def send_message_streaming(system_prompt, messages, model: nil, max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
-    # Use ENV variable if model not specified
-    model ||= ENV.fetch('BEDROCK_DEFAULT_MODEL', 'claude-sonnet-4-5')
+  def send_message_streaming(system_prompt, messages, model: "claude-sonnet-4-5", max_tokens: 10000, temperature: 0.7, json_mode: false, tools: [], enable_prompt_caching: false, &block)
+    # Track attempted models for fallback
+    attempted_models = []
+    current_model = model
+    last_error = nil
 
-    # Map model names to Bedrock model IDs
-    model_id = case model
-    when "claude-sonnet-4-5", "claude-sonnet-4.5"
-      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
-    when "claude-opus-4-1", "claude-opus-4-1-20250805"
-      "us.anthropic.claude-opus-4-1-20250805-v1:0"
-    when "claude-3-5-sonnet", "claude-3.5-sonnet"
-      "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
-    when "claude-3-haiku"
-      "us.anthropic.claude-3-5-haiku-20241022-v1:0"
-    else
-      "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
-    end
+    # Retry loop with model fallback
+    loop do
+      begin
+        # Check if prompt caching is enabled (default: false - disabled due to AWS API limitations)
+        # The enable_prompt_caching parameter is kept for API compatibility but currently ignored
+        caching_enabled = ENV.fetch('BEDROCK_PROMPT_CACHING_ENABLED', 'false') == 'true'
 
-    # Format messages for Claude
-    formatted_messages = format_messages_for_claude(messages)
+        # Normalize model name (handle variants like "claude-sonnet-4.5")
+        normalized_model = current_model.to_s.gsub('.', '-')
 
-    # Filter out messages with empty content arrays
-    formatted_messages = formatted_messages.reject do |msg|
-      msg[:content].nil? || msg[:content].empty? ||
-      (msg[:content].is_a?(Array) && msg[:content].all? { |c|
-        # Check if this is a text block with empty text
-        c[:type] == "text" && c[:text].to_s.strip.empty?
-      })
-    end
+        # Track this attempt
+        attempted_models << normalized_model unless attempted_models.include?(normalized_model)
 
-    # Build the request body
-    request_body = {
-      anthropic_version: "bedrock-2023-05-31",
-      messages: formatted_messages,
-      max_tokens: max_tokens,
-      temperature: temperature
-    }
+        # Get model configuration
+        model_config = AVAILABLE_MODELS[normalized_model] || AVAILABLE_MODELS['claude-sonnet-4-5']
+        model_id = model_config[:id]
 
-    # Add system prompt with optional caching (same as non-streaming)
-    if system_prompt.present?
-      if enable_prompt_caching
-        request_body[:system] = [
-          {
-            type: "text",
-            text: system_prompt,
-            cache_control: { type: "ephemeral" }
-          }
-        ]
-        Rails.logger.info "💾 Streaming: Prompt caching enabled for system prompt (#{system_prompt.length} chars)"
-      else
-        request_body[:system] = system_prompt
-      end
-    end
+        # Cap max_tokens to the model's limit
+        model_max_tokens = model_config[:max_tokens] || 25000
+        effective_max_tokens = [max_tokens, model_max_tokens].min
 
-    Rails.logger.info "Sending streaming request to Bedrock Claude (#{model_id}) using converse_stream"
+        # Log model selection with caching status
+        if caching_enabled && !model_config[:supports_caching]
+          Rails.logger.info "⚠️  #{model_config[:name]} doesn't support caching (#{model_config[:endpoint_type]} endpoint)"
+        elsif caching_enabled && model_config[:supports_caching]
+          Rails.logger.info "💾 Using #{model_config[:name]} with caching enabled"
+        else
+          Rails.logger.info "✅ Using #{model_config[:name]} (caching disabled)"
+        end
 
-    begin
-      # Convert messages to converse API format
+        if effective_max_tokens < max_tokens
+          Rails.logger.info "⚠️  Requested max_tokens (#{max_tokens}) exceeds model limit (#{model_max_tokens}), using #{effective_max_tokens}"
+        end
+
+        # Format messages for Claude
+        formatted_messages = format_messages_for_claude(messages)
+
+        # Filter out messages with empty content arrays
+        formatted_messages = formatted_messages.reject do |msg|
+          msg[:content].nil? || msg[:content].empty? ||
+          (msg[:content].is_a?(Array) && msg[:content].all? { |c|
+            # Check if this is a text block with empty text
+            c[:type] == "text" && c[:text].to_s.strip.empty?
+          })
+        end
+
+        # Build the request body
+        request_body = {
+          anthropic_version: "bedrock-2023-05-31",
+          messages: formatted_messages,
+          max_tokens: effective_max_tokens,
+          temperature: temperature
+        }
+
+        request_body[:system] = system_prompt if system_prompt.present?
+
+        Rails.logger.info "Sending streaming request to Bedrock Claude (#{model_id}) using converse_stream"
+
+        # Convert messages to converse API format
       # The converse API expects content to be an array of content blocks
       # where each block is directly the content type (text, image, etc)
       converse_messages = formatted_messages.reject { |msg|
@@ -556,39 +618,49 @@ class BedrockService
         model_id: model_id,
         messages: converse_messages,
         inference_config: {
-          max_tokens: max_tokens,
+          max_tokens: effective_max_tokens,
           temperature: temperature
         }
       }
 
+      # Determine if caching should be used (both enabled AND supported by model)
+      use_caching = caching_enabled && model_config[:supports_caching]
+
       # Add system prompt if present
       if system_prompt.present?
-        if enable_prompt_caching
-          # AWS Bedrock prompt caching - cache_point must be separate element
+        if use_caching
+          # Add cache checkpoint after system prompt (requires 1024+ tokens)
           payload[:system] = [
             { text: system_prompt },
-            { cache_point: { type: "default" } }
+            { cachePoint: { type: "default" } }  # Cache everything up to here
           ]
-          Rails.logger.info "💾 Bedrock Prompt Caching ENABLED for system prompt"
+          Rails.logger.info "💾 Prompt caching enabled for system prompt (~7000 tokens)"
         else
-          payload[:system] = [ { text: system_prompt } ]
+          # No caching - simple array with text
+          payload[:system] = [{ text: system_prompt }]
         end
       end
 
       # Add tools if provided
       if tools.any?
-        bedrock_tools = format_tools_for_bedrock(tools)
+        formatted_tools = format_tools_for_bedrock(tools)
 
-        if enable_prompt_caching && bedrock_tools.any?
-          # Append cache_point as separate element after all tools
-          bedrock_tools << { cache_point: { type: "default" } }
-          Rails.logger.info "💾 Bedrock Prompt Caching ENABLED for #{bedrock_tools.length - 1} tools"
+        if use_caching
+          # Add cache checkpoint after all tools (Claude supports up to 4 checkpoints)
+          formatted_tools << { cachePoint: { type: "default" } }
+          Rails.logger.info "💾 Prompt caching enabled for tools (~2500 tokens)"
         end
 
         payload[:tool_config] = {
-          tools: bedrock_tools,
+          tools: formatted_tools,
           tool_choice: { auto: {} }
         }
+
+        # DEBUG: Log tool names being sent (exclude cache checkpoint if present)
+        tool_spec_tools = formatted_tools.select { |t| t.key?(:tool_spec) }
+        tool_names = tool_spec_tools.map { |t| t.dig(:tool_spec, :name) }
+        caching_status = use_caching ? "with caching" : "no caching"
+        Rails.logger.info "🔧 Sending #{tool_names.length} tools to Claude (#{caching_status}): #{tool_names.join(', ')}"
       end
 
       # Buffer for accumulating content
@@ -600,7 +672,7 @@ class BedrockService
       @client.converse_stream(payload) do |stream|
         stream.on_error_event do |event|
           Rails.logger.error "Bedrock stream error: #{event.inspect}"
-          raise StandardError, "Streaming error: #{event.error_message || 'Unknown error'}"
+          raise AmosErrors::BedrockError.new("Streaming error: #{event.error_message || 'Unknown error'}")
         end
 
         stream.on_event do |event|
@@ -642,37 +714,62 @@ class BedrockService
                 output: usage.output_tokens || 0
               }
 
-              # Extract cache metrics (AWS Bedrock prompt caching)
-              cache_creation = usage.respond_to?(:cache_write_input_tokens) ? (usage.cache_write_input_tokens || 0) : 0
-              cache_read = usage.respond_to?(:cache_read_input_tokens) ? (usage.cache_read_input_tokens || 0) : 0
-
-              # Log cache metrics
-              if cache_creation > 0 || cache_read > 0
-                Rails.logger.info "💾 STREAMING CACHE METRICS:"
-                Rails.logger.info "  Cache created: #{cache_creation} tokens" if cache_creation > 0
-                Rails.logger.info "  Cache read: #{cache_read} tokens (90% savings!)" if cache_read > 0
-                Rails.logger.info "  New processing: #{tokens[:input]} tokens"
-
-                if cache_read > 0
-                  speedup = ((cache_read + tokens[:input]).to_f / tokens[:input]).round(1)
-                  Rails.logger.info "  ⚡ Effective speedup: ~#{speedup}x faster"
-                end
-              end
+              # Extract cache statistics (AWS Bedrock Converse API field names)
+              cache_write = usage.respond_to?(:cache_write_input_tokens_count) ? usage.cache_write_input_tokens_count : 0
+              cache_read = usage.respond_to?(:cache_read_input_tokens_count) ? usage.cache_read_input_tokens_count : 0
 
               # Track tokens if we have user and entity
               if @user && @entity && @resource_manager
+                # Track tokens in resource manager (updates entity total)
                 @resource_manager.track_tokens(@user, model_id, tokens, {
                   stream: true,
                   timestamp: Time.current,
-                  cache_creation: cache_creation,
+                  cache_write: cache_write,
                   cache_read: cache_read
                 })
+                
+                # Log AI usage for observability and billing
+                duration_ms = ((Time.now - start_time) * 1000).round
+                cache_creation = usage.respond_to?(:cache_write_input_tokens) ? (usage.cache_write_input_tokens || 0) : 0
+                cache_read = usage.respond_to?(:cache_read_input_tokens) ? (usage.cache_read_input_tokens || 0) : 0
+                
+                AiUsageLog.log_usage(
+                  entity: @entity,
+                  user: @user,
+                  model: model_id,
+                  input_tokens: tokens[:input],
+                  output_tokens: tokens[:output],
+                  duration_ms: duration_ms,
+                  request_type: 'chat',
+                  scout_message: nil,
+                  metadata: {
+                    method: 'invoke_model_with_response_stream',
+                    stream: true,
+                    chunks: chunk_count,
+                    cache_creation: cache_creation,
+                    cache_read: cache_read
+                  }
+                )
               end
 
-              # Yield usage info with cache metrics
-              yield(type: :usage, tokens: tokens, cache_creation: cache_creation, cache_read: cache_read) if block_given?
+              # Yield usage info including cache stats and model used (for fallback transparency)
+              yield(
+                type: :usage,
+                tokens: tokens,
+                cache_write: cache_write,
+                cache_read: cache_read,
+                model_used: normalized_model,
+                model_name: model_config[:name]
+              ) if block_given?
 
-              Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
+              # Enhanced logging with cache information
+              if cache_write > 0 || cache_read > 0
+                cache_hit_rate = tokens[:input] > 0 ? (cache_read.to_f / (tokens[:input] + cache_read) * 100).round(1) : 0
+                savings = (cache_read * 0.9).round(0)  # 90% discount on cached tokens
+                Rails.logger.info "💰 Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]} | Cache: #{cache_read} read (#{cache_hit_rate}% hit rate), #{cache_write} written | Savings: ~#{savings} tokens ($#{(savings * 0.0000075).round(4)})"
+              else
+                Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
+              end
             end
 
             Rails.logger.debug "Bedrock metadata: #{event.inspect}"
@@ -681,13 +778,57 @@ class BedrockService
       end
 
       buffer
-    rescue Aws::BedrockRuntime::Errors::ServiceError => e
-      Rails.logger.error "Bedrock streaming error: #{e.message}"
-      raise StandardError, "Bedrock API Error: #{e.message}"
-    rescue => e
-      Rails.logger.error "Unexpected Bedrock streaming error: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
-      raise StandardError, "Unexpected error: #{e.message}"
+
+        # Success! Return the buffer and exit the retry loop
+        return buffer
+
+      rescue Aws::BedrockRuntime::Errors::ThrottlingException,
+             Aws::BedrockRuntime::Errors::ServiceUnavailableException,
+             Timeout::Error,
+             Seahorse::Client::NetworkingError => e
+
+        # These are retryable errors - try to fallback to next model
+        last_error = e
+        error_type = e.class.name.split('::').last
+
+        Rails.logger.warn "🔄 #{model_config[:name]} #{error_type}: #{e.message}"
+
+        # Try to get next fallback model
+        next_model = get_next_fallback_model(current_model, attempted_models)
+
+        if next_model
+          current_model = next_model
+          next_model_config = AVAILABLE_MODELS[next_model]
+          Rails.logger.info "♻️  Falling back to #{next_model_config[:name]}..."
+          next  # Retry with new model
+        else
+          # No more fallback options
+          Rails.logger.error "❌ All models failed. Attempted: #{attempted_models.join(', ')}"
+
+          # Raise appropriate error based on last error type
+          case last_error
+          when Aws::BedrockRuntime::Errors::ThrottlingException
+            raise AmosErrors::BedrockThrottlingError.new(context: { attempted_models: attempted_models })
+          when Aws::BedrockRuntime::Errors::ServiceUnavailableException
+            raise AmosErrors::BedrockUnavailableError.new(context: { attempted_models: attempted_models })
+          when Timeout::Error, Seahorse::Client::NetworkingError
+            raise AmosErrors::BedrockTimeoutError.new(context: { attempted_models: attempted_models })
+          else
+            raise AmosErrors::BedrockError.new("All models failed: #{last_error.message}", context: { attempted_models: attempted_models })
+          end
+        end
+
+      rescue Aws::BedrockRuntime::Errors::ServiceError => e
+        # Non-retryable AWS error
+        Rails.logger.error "Bedrock streaming error: #{e.message}"
+        raise AmosErrors::BedrockError.new("Bedrock API Error: #{e.message}")
+
+      rescue StandardError => e
+        # Unexpected error - don't retry
+        Rails.logger.error "Unexpected Bedrock streaming error: #{e.message}"
+        Rails.logger.error e.backtrace.join("\n")
+        raise AmosErrors::BedrockError.new("Unexpected error: #{e.message}")
+      end
     end
   end
 
@@ -811,7 +952,7 @@ class BedrockService
     end
   rescue => e
     Rails.logger.error "Platform model invocation failed: #{e.message}"
-    raise BedrockError, "Platform model error: #{e.message}"
+    raise AmosErrors::BedrockError.new("Platform model error: #{e.message}")
   end
 
   # Format messages for platform models
