@@ -1,187 +1,208 @@
 <% content_for :title, "Apply to Affiliate Program - AMOS" %>
 
-<div class="container py-5">
-  <div class="row justify-content-center">
-    <div class="col-lg-10">
-      <!-- Header -->
-      <div class="text-center mb-5">
-        <h1 class="display-4 mb-3">
-          <i class="bi bi-people-fill text-primary"></i>
-          Join the AMOS Affiliate Program
-        </h1>
-        <p class="lead text-muted">
-          Earn commissions by referring customers to AMOS and help others discover the power of AI-driven marketing automation.
-        </p>
-      </div>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="/assets/admin_dark.css">
 
-      <!-- Benefits Section -->
-      <div class="row g-4 mb-5">
-        <div class="col-md-4">
-          <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center">
-              <div class="mb-3">
-                <i class="bi bi-currency-dollar display-4 text-success"></i>
-              </div>
-              <h5 class="card-title">Generous Commissions</h5>
-              <p class="card-text text-muted">
-                Earn 20% recurring commissions for 12 months on all referrals
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-4">
-          <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center">
-              <div class="mb-3">
-                <i class="bi bi-graph-up-arrow display-4 text-primary"></i>
-              </div>
-              <h5 class="card-title">Performance Tiers</h5>
-              <p class="card-text text-muted">
-                Unlock higher commission rates as you refer more customers
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-4">
-          <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center">
-              <div class="mb-3">
-                <i class="bi bi-tools display-4 text-info"></i>
-              </div>
-              <h5 class="card-title">Marketing Resources</h5>
-              <p class="card-text text-muted">
-                Access banners, logos, and pre-written content to promote AMOS
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Commission Structure -->
-      <div class="card mb-5 border-0 shadow-sm">
-        <div class="card-header bg-primary text-white">
-          <h4 class="mb-0">
-            <i class="bi bi-trophy-fill me-2"></i>
-            Commission Tiers
-          </h4>
-        </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover mb-0">
-              <thead>
-                <tr>
-                  <th>Tier</th>
-                  <th>Minimum Referrals</th>
-                  <th>Commission Rate</th>
-                  <th>Benefits</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <i class="bi bi-award-fill text-secondary"></i>
-                    <strong>Bronze</strong>
-                  </td>
-                  <td>0</td>
-                  <td><span class="badge bg-secondary">20%</span></td>
-                  <td>Standard marketing materials</td>
-                </tr>
-                <tr>
-                  <td>
-                    <i class="bi bi-award-fill text-info"></i>
-                    <strong>Silver</strong>
-                  </td>
-                  <td>5</td>
-                  <td><span class="badge bg-info">25%</span></td>
-                  <td>Priority support, early feature access</td>
-                </tr>
-                <tr>
-                  <td>
-                    <i class="bi bi-award-fill text-warning"></i>
-                    <strong>Gold</strong>
-                  </td>
-                  <td>20</td>
-                  <td><span class="badge bg-warning text-dark">30%</span></td>
-                  <td>Dedicated account manager, co-marketing opportunities</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Application Form -->
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h4 class="mb-0">
-            <i class="bi bi-file-text me-2"></i>
-            Application Form
-          </h4>
-        </div>
-        <div class="card-body">
-          <%= form_with(model: @affiliate_application, url: affiliate_apply_path, local: true, class: "needs-validation", novalidate: true) do |f| %>
-
-            <% if @affiliate_application.errors.any? %>
-              <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <h5 class="alert-heading">
-                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                  Please fix the following errors:
-                </h5>
-                <ul class="mb-0">
-                  <% @affiliate_application.errors.full_messages.each do |message| %>
-                    <li><%= message %></li>
-                  <% end %>
-                </ul>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              </div>
-            <% end %>
-
-            <div class="mb-4">
-              <%= f.label :payment_email, "PayPal Email Address", class: "form-label fw-bold" %>
-              <%= f.email_field :payment_email, class: "form-control form-control-lg",
-                  placeholder: "your.email@example.com",
-                  required: true,
-                  autocomplete: "email" %>
-              <small class="form-text text-muted">
-                <i class="bi bi-info-circle me-1"></i>
-                We'll use this email for commission payouts via PayPal (minimum $50)
-              </small>
-            </div>
-
-            <div class="mb-4">
-              <%= f.label :application_notes, "Tell Us About Yourself", class: "form-label fw-bold" %>
-              <%= f.text_area :application_notes, class: "form-control",
-                  rows: 6,
-                  placeholder: "Please share:\n• Why you want to join our affiliate program\n• How you plan to promote AMOS\n• Your website, blog, or social media channels (if applicable)\n• Any relevant marketing experience",
-                  required: true %>
-              <small class="form-text text-muted">
-                <i class="bi bi-info-circle me-1"></i>
-                This helps us understand how you'll promote AMOS
-              </small>
-            </div>
-
-            <div class="alert alert-info" role="alert">
-              <i class="bi bi-clock-history me-2"></i>
-              <strong>Review Time:</strong> We typically review applications within 2 business days.
-              You'll receive an email once your application is processed.
-            </div>
-
-            <div class="d-grid gap-2">
-              <%= f.submit "Submit Application", class: "btn btn-primary btn-lg" %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-
-      <div class="text-center mt-4">
-        <p class="text-muted">
-          Have questions?
-          <%= link_to "Contact us", "#", class: "text-decoration-none" %> or
-          <%= link_to "learn more about the program", "#", class: "text-decoration-none" %>
-        </p>
+<div class="container-fluid py-5" style="max-width: 1200px;">
+  <%# Header %>
+  <div style="text-center; margin-bottom: 3rem;">
+    <div style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+      <div style="width: 5rem; height: 5rem; border-radius: 1rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+        <i data-lucide="users" style="width: 3rem; height: 3rem; color: white;"></i>
       </div>
     </div>
+    <h1 style="color: white; font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem;">
+      Join the AMOS Affiliate Program
+    </h1>
+    <p style="color: #94A3B8; font-size: 1.125rem; max-width: 800px; margin: 0 auto;">
+      Earn commissions by referring customers to AMOS and help others discover the power of AI-driven marketing automation.
+    </p>
+  </div>
+
+  <%# Benefits Section %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+    <%# Generous Commissions %>
+    <div class="admin-card" style="text-align: center;">
+      <div style="width: 4rem; height: 4rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; border: 1px solid rgba(34, 197, 94, 0.2);">
+        <i data-lucide="dollar-sign" style="width: 2rem; height: 2rem; color: rgb(74, 222, 128);"></i>
+      </div>
+      <h5 style="color: white; font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Generous Commissions</h5>
+      <p style="color: #94A3B8; margin: 0;">
+        Earn 20% recurring commissions for 12 months on all referrals
+      </p>
+    </div>
+
+    <%# Performance Tiers %>
+    <div class="admin-card" style="text-align: center;">
+      <div style="width: 4rem; height: 4rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+        <i data-lucide="trending-up" style="width: 2rem; height: 2rem; color: white;"></i>
+      </div>
+      <h5 style="color: white; font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Performance Tiers</h5>
+      <p style="color: #94A3B8; margin: 0;">
+        Unlock higher commission rates as you refer more customers
+      </p>
+    </div>
+
+    <%# Marketing Resources %>
+    <div class="admin-card" style="text-align: center;">
+      <div style="width: 4rem; height: 4rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; border: 1px solid rgba(34, 211, 238, 0.2);">
+        <i data-lucide="briefcase" style="width: 2rem; height: 2rem; color: #22D3EE;"></i>
+      </div>
+      <h5 style="color: white; font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Marketing Resources</h5>
+      <p style="color: #94A3B8; margin: 0;">
+        Access banners, logos, and pre-written content to promote AMOS
+      </p>
+    </div>
+  </div>
+
+  <%# Commission Structure %>
+  <div class="admin-card" style="margin-bottom: 3rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; padding-bottom: 1rem; border-bottom: 1px solid #1E293B; margin-bottom: 1.5rem;">
+      <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(234, 179, 8, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(234, 179, 8, 0.2);">
+        <i data-lucide="trophy" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21);"></i>
+      </div>
+      <h4 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;">Commission Tiers</h4>
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Tier</th>
+            <th>Minimum Referrals</th>
+            <th>Commission Rate</th>
+            <th>Benefits</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="award" style="width: 1.25rem; height: 1.25rem; color: #94A3B8;"></i>
+                <span style="color: white; font-weight: 600;">Bronze</span>
+              </div>
+            </td>
+            <td style="color: #94A3B8;">0</td>
+            <td><span class="admin-badge admin-badge-default">20%</span></td>
+            <td style="color: #94A3B8;">Standard marketing materials</td>
+          </tr>
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="award" style="width: 1.25rem; height: 1.25rem; color: #22D3EE;"></i>
+                <span style="color: white; font-weight: 600;">Silver</span>
+              </div>
+            </td>
+            <td style="color: #94A3B8;">5</td>
+            <td><span class="admin-badge admin-badge-cyan">25%</span></td>
+            <td style="color: #94A3B8;">Priority support, early feature access</td>
+          </tr>
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="award" style="width: 1.25rem; height: 1.25rem; color: rgb(250, 204, 21);"></i>
+                <span style="color: white; font-weight: 600;">Gold</span>
+              </div>
+            </td>
+            <td style="color: #94A3B8;">20</td>
+            <td><span class="admin-badge admin-badge-warning">30%</span></td>
+            <td style="color: #94A3B8;">Dedicated account manager, co-marketing opportunities</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <%# Application Form %>
+  <div class="admin-card">
+    <div style="display: flex; align-items: center; gap: 0.75rem; padding-bottom: 1rem; border-bottom: 1px solid #1E293B; margin-bottom: 1.5rem;">
+      <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+        <i data-lucide="file-text" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+      </div>
+      <h4 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;">Application Form</h4>
+    </div>
+
+    <%= form_with(model: @affiliate_application, url: affiliate_apply_path, local: true) do |f| %>
+      <% if @affiliate_application.errors.any? %>
+        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+            <i data-lucide="alert-triangle" style="width: 1.25rem; height: 1.25rem; color: rgb(248, 113, 113);"></i>
+            <h5 style="color: rgb(248, 113, 113); font-weight: 600; margin: 0;">Please fix the following errors:</h5>
+          </div>
+          <ul style="color: rgb(248, 113, 113); margin: 0; padding-left: 1.5rem;">
+            <% @affiliate_application.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div style="margin-bottom: 1.5rem;">
+        <%= f.label :payment_email, "PayPal Email Address", style: "color: white; font-weight: 600; display: block; margin-bottom: 0.5rem;" %>
+        <%= f.email_field :payment_email,
+            style: "width: 100%; padding: 0.75rem 1rem; background-color: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem; color: white; font-size: 1rem;",
+            placeholder: "your.email@example.com",
+            required: true,
+            autocomplete: "email" %>
+        <small style="color: #64748B; font-size: 0.875rem; display: block; margin-top: 0.25rem;">
+          <i data-lucide="info" style="width: 0.875rem; height: 0.875rem; display: inline-block; vertical-align: middle;"></i>
+          We'll use this email for commission payouts via PayPal (minimum $50)
+        </small>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <%= f.label :application_notes, "Tell Us About Yourself", style: "color: white; font-weight: 600; display: block; margin-bottom: 0.5rem;" %>
+        <%= f.text_area :application_notes,
+            style: "width: 100%; padding: 0.75rem 1rem; background-color: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem; color: white; font-size: 1rem; min-height: 150px;",
+            placeholder: "Please share:\n• Why you want to join our affiliate program\n• How you plan to promote AMOS\n• Your website, blog, or social media channels (if applicable)\n• Any relevant marketing experience",
+            required: true %>
+        <small style="color: #64748B; font-size: 0.875rem; display: block; margin-top: 0.25rem;">
+          <i data-lucide="info" style="width: 0.875rem; height: 0.875rem; display: inline-block; vertical-align: middle;"></i>
+          This helps us understand how you'll promote AMOS
+        </small>
+      </div>
+
+      <div style="background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; color: #22D3EE;">
+          <i data-lucide="clock" style="width: 1.25rem; height: 1.25rem;"></i>
+          <strong>Review Time:</strong>
+          <span style="color: #94A3B8;">We typically review applications within 2 business days. You'll receive an email once your application is processed.</span>
+        </div>
+      </div>
+
+      <%= f.submit "Submit Application", class: "admin-btn admin-btn-primary", style: "width: 100%; font-size: 1.125rem; padding: 1rem;" %>
+    <% end %>
+  </div>
+
+  <div style="text-align: center; margin-top: 2rem;">
+    <p style="color: #64748B;">
+      Have questions?
+      <%= link_to "Contact us", "#", style: "color: #22D3EE; text-decoration: none;" %> or
+      <%= link_to "learn more about the program", "#", style: "color: #22D3EE; text-decoration: none;" %>
+    </p>
   </div>
 </div>
+
+<style>
+  /* Dark theme form inputs focus state */
+  input[type="email"]:focus,
+  textarea:focus {
+    outline: none;
+    border-color: #22D3EE !important;
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.1) !important;
+  }
+</style>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

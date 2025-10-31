@@ -1,74 +1,158 @@
 <%= turbo_stream_from "entity_#{current_entity.id}_email_templates" %>
 
-<div class="container mt-4">
-  <div class="row">
-    <div class="col-md-12">
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h2>Email Templates</h2>
-          <div>
-            <%= link_to new_ai_content_path, class: "btn btn-info me-2" do %>
-              <i class="fas fa-robot me-1"></i> Generate with AI
-            <% end %>
-            <%= link_to "New Template", new_email_template_path, class: "btn btn-primary" %>
-          </div>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="/assets/admin_dark.css">
+
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="file-text"></i>
+      </div>
+      <div class="header-text">
+        <h1>Email Templates</h1>
+        <p>Create and manage reusable email templates</p>
+      </div>
+    </div>
+
+    <div class="header-actions" style="display: flex; gap: 0.5rem;">
+      <%= link_to new_ai_content_path, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="sparkles"></i>
+        <span>Generate with AI</span>
+      <% end %>
+      <%= link_to new_email_template_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>New Template</span>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @email_templates.any? %>
+    <%# Templates Table %>
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="list" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        All Templates
+      </h3>
+
+      <%= turbo_frame_tag "email_templates_list", data: { turbo_action: "advance" } do %>
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Subject</th>
+                <th>Created</th>
+                <th style="width: 300px; text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="email-templates-tbody">
+              <% @email_templates.each do |template| %>
+                <tr id="email_template_<%= template.id %>" class="<%= 'highlight-row' if template.created_at > 10.seconds.ago %>">
+                  <td style="color: white; font-weight: 600;"><%= template.name %></td>
+                  <td style="color: #94A3B8;"><%= template.subject %></td>
+                  <td style="color: #64748B; font-size: 0.875rem;"><%= template.created_at.strftime("%b %d, %Y") %></td>
+                  <td style="text-align: right;">
+                    <div style="display: inline-flex; gap: 0.5rem;">
+                      <%= link_to email_template_path(template), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                        <i data-lucide="eye"></i>
+                        <span>View</span>
+                      <% end %>
+                      <%= link_to improve_ai_content_path(template), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                        <i data-lucide="sparkles"></i>
+                        <span>Improve</span>
+                      <% end %>
+                      <%= link_to edit_email_template_path(template), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                        <i data-lucide="pencil"></i>
+                        <span>Edit</span>
+                      <% end %>
+                      <%= button_to email_template_path(template), method: :delete,
+                          class: "admin-btn admin-btn-sm admin-btn-outline", style: "border-color: rgb(248, 113, 113); color: rgb(248, 113, 113);",
+                          data: { turbo_confirm: "Are you sure?" }, form_class: "d-inline" do %>
+                        <i data-lucide="trash-2"></i>
+                      <% end %>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
         </div>
-        <div class="card-body">
-          <% if @email_templates.any? %>
-            <%= turbo_frame_tag "email_templates_list", data: { turbo_action: "advance" } do %>
-              <div class="table-responsive">
-                <table class="table table-striped">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Subject</th>
-                      <th>Created</th>
-                      <th width="250">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="email-templates-tbody">
-                    <% @email_templates.each do |template| %>
-                      <tr id="email_template_<%= template.id %>" class="<%= 'table-success' if template.created_at > 10.seconds.ago %>">
-                        <td><%= template.name %></td>
-                        <td><%= template.subject %></td>
-                        <td><%= template.created_at.strftime("%b %d, %Y") %></td>
-                        <td>
-                          <%= link_to "View", email_template_path(template), class: "btn btn-sm btn-outline-primary" %>
-                          <%= link_to improve_ai_content_path(template), class: "btn btn-sm btn-outline-info" do %>
-                            <i class="fas fa-robot"></i> Improve
-                          <% end %>
-                          <%= link_to "Edit", edit_email_template_path(template), class: "btn btn-sm btn-outline-secondary" %>
-                          <%= button_to "Delete", email_template_path(template), method: :delete, data: { turbo_confirm: "Are you sure?" }, class: "btn btn-sm btn-outline-danger", form_class: "d-inline" %>
-                        </td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
-              </div>
-            <% end %>
-          <% else %>
-            <div class="alert alert-info">
-              <p class="mb-0">You don't have any email templates yet. You can <%= link_to "create a template manually", new_email_template_path %> or <%= link_to "generate one with AI", new_ai_content_path %>.</p>
-            </div>
+      <% end %>
+    </div>
+
+    <%# AI Content Generation Callout %>
+    <div class="admin-card" style="margin-top: 2rem; background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(167, 139, 250, 0.1) 100%); border: 1px solid rgba(124, 58, 237, 0.2);">
+      <div style="display: flex; align-items: flex-start; gap: 1.5rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i data-lucide="sparkles" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+        </div>
+        <div style="flex: 1;">
+          <h5 style="color: white; font-size: 1.125rem; font-weight: 600; margin: 0 0 0.5rem 0;">AI Content Generation</h5>
+          <p style="color: #94A3B8; margin: 0 0 1rem 0;">
+            Use our AI content generator to create professional, engaging email templates in seconds.
+            Simply specify your audience, purpose, and tone, and our AI will craft compelling content
+            tailored to your needs.
+          </p>
+          <%= link_to new_ai_content_path, class: "admin-btn admin-btn-primary" do %>
+            <i data-lucide="sparkles"></i>
+            <span>Try AI Content Generator</span>
           <% end %>
-          
-          <div class="card mt-4 bg-light">
-            <div class="card-body">
-              <h5><i class="fas fa-lightbulb me-2 text-warning"></i> AI Content Generation</h5>
-              <p class="mb-0">
-                Use our AI content generator to create professional, engaging email templates in seconds. 
-                Simply specify your audience, purpose, and tone, and our AI will craft compelling content 
-                tailored to your needs.
-              </p>
-              <div class="mt-3">
-                <%= link_to new_ai_content_path, class: "btn btn-info" do %>
-                  <i class="fas fa-robot me-1"></i> Try AI Content Generator
-                <% end %>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
-  </div>
+  <% else %>
+    <%# Empty State %>
+    <div class="admin-card">
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="file-text"></i>
+        </div>
+        <h3>No Email Templates Yet</h3>
+        <p>Create your first email template manually or generate one with AI</p>
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;">
+          <%= link_to new_email_template_path, class: "admin-btn admin-btn-outline" do %>
+            <i data-lucide="plus"></i>
+            <span>Create Template</span>
+          <% end %>
+          <%= link_to new_ai_content_path, class: "admin-btn admin-btn-primary" do %>
+            <i data-lucide="sparkles"></i>
+            <span>Generate with AI</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
 </div>
+
+<style>
+  /* Highlight newly created templates */
+  .highlight-row {
+    background-color: rgba(34, 211, 238, 0.1) !important;
+    animation: fadeHighlight 3s ease-out forwards;
+  }
+
+  @keyframes fadeHighlight {
+    from {
+      background-color: rgba(34, 211, 238, 0.1);
+    }
+    to {
+      background-color: transparent;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
