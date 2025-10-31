@@ -196,7 +196,7 @@
   
   <div class="workflow-header">
     <h2>
-      <i class="fas fa-route"></i>
+      <i data-lucide="workflow" aria-hidden="true"></i>
       <%= workflow[:name] || workflow['name'] || 'Workflow Plan' %>
     </h2>
     <% if workflow[:description] || workflow['description'] %>
@@ -222,16 +222,16 @@
             <% end %>
             <div class="step-details">
               <span>
-                <i class="fas fa-user"></i>
+                <i data-lucide="user" aria-hidden="true"></i>
                 <%= (step[:agent_role] || step['agent_role'] || 'executor').capitalize %>
               </span>
               <span>
-                <i class="fas fa-wrench"></i>
+                <i data-lucide="wrench" aria-hidden="true"></i>
                 <%= (step[:type] || step['type'] || 'tool_call').humanize %>
               </span>
               <% if step[:config] && (step[:config][:tool] || step[:config]['tool']) %>
                 <span>
-                  <i class="fas fa-toolbox"></i>
+                  <i data-lucide="hammer" aria-hidden="true"></i>
                   <%= step[:config][:tool] || step[:config]['tool'] %>
                 </span>
               <% end %>
@@ -249,15 +249,16 @@
       </div>
       <div class="approval-actions">
         <% actions.each do |action| %>
-          <button class="approval-btn <%= action[:style] || action['style'] || 'secondary' %>" 
-                  onclick="handleWorkflowApproval('<%= action[:id] || action['id'] %>')">
+          <button class="approval-btn <%= action[:style] || action['style'] || 'secondary' %>"
+                  onclick="handleWorkflowApproval('<%= action[:id] || action['id'] %>')"
+                  aria-label="<%= action[:label] || action['label'] %>">
             <% case action[:id] || action['id'] %>
             <% when 'approve' %>
-              <i class="fas fa-check"></i>
+              <i data-lucide="check" aria-hidden="true"></i>
             <% when 'modify' %>
-              <i class="fas fa-edit"></i>
+              <i data-lucide="pencil" aria-hidden="true"></i>
             <% when 'cancel' %>
-              <i class="fas fa-times"></i>
+              <i data-lucide="x" aria-hidden="true"></i>
             <% end %>
             <%= action[:label] || action['label'] %>
           </button>
