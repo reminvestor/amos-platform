@@ -2100,7 +2100,7 @@ document.addEventListener('turbo:load', function() {
       <div class="tool-call-header" onclick="toggleToolCallDetails('${toolCallId}')">
         <div class="tool-call-info">
           <div class="tool-call-icon ${toolCall.status}" id="${toolCallId}-icon">
-            <i class="fas fa-clock"></i>
+            <i data-lucide="clock"></i>
         </div>
           <div>
             <div class="tool-call-name">${getToolDisplayName(toolName)}</div>
@@ -2108,7 +2108,7 @@ document.addEventListener('turbo:load', function() {
           </div>
         </div>
         <div class="tool-call-toggle" id="${toolCallId}-toggle">
-          <i class="fas fa-chevron-down"></i>
+          <i data-lucide="chevron-down"></i>
         </div>
       </div>
       <div class="tool-call-details" id="${toolCallId}-details">
@@ -2137,16 +2137,16 @@ document.addEventListener('turbo:load', function() {
       icon.className = `tool-call-icon ${status}`;
       switch(status) {
         case 'running':
-          icon.innerHTML = '<i class="fas fa-sync-alt"></i>';
+          icon.innerHTML = '<i data-lucide="loader-circle"></i>'; lucide.createIcons();
           break;
         case 'success':
-          icon.innerHTML = '<i class="fas fa-check"></i>';
+          icon.innerHTML = '<i data-lucide="check"></i>'; lucide.createIcons();
           break;
         case 'error':
-          icon.innerHTML = '<i class="fas fa-times"></i>';
+          icon.innerHTML = '<i data-lucide="x"></i>'; lucide.createIcons();
           break;
         default:
-          icon.innerHTML = '<i class="fas fa-clock"></i>';
+          icon.innerHTML = '<i data-lucide="clock"></i>';
       }
     }
     
@@ -2199,19 +2199,19 @@ document.addEventListener('turbo:load', function() {
               const messagesContainer = document.getElementById('chat-messages');
               
               // Get appropriate icon for the tool
-              let icon = 'fa-cog'; // default
+              let icon = 'settings'; // default
               if (toolName === 'load_canvas') {
-                icon = 'fa-window-maximize';
+                icon = 'maximize';
               } else if (toolName === 'get_data') {
-                icon = 'fa-database';
+                icon = 'database';
               } else if (toolName === 'create_object') {
-                icon = 'fa-plus-circle';
+                icon = 'plus-circle';
               } else if (toolName === 'get_schema') {
-                icon = 'fa-list-alt';
+                icon = 'list';
               } else if (toolName === 'generate_ai_landing_page') {
-                icon = 'fa-file-code';
+                icon = 'file-code';
               } else if (toolName === 'link_template_to_campaign') {
-                icon = 'fa-link';
+                icon = 'link';
               }
 
               // Get display name
@@ -2892,10 +2892,10 @@ document.addEventListener('turbo:load', function() {
   }
   
   function getFileIcon(fileType) {
-    if (fileType.startsWith('image/')) return 'fas fa-image';
-    if (fileType === 'application/pdf') return 'fas fa-file-pdf';
-    if (fileType.includes('word') || fileType.includes('document')) return 'fas fa-file-word';
-    return 'fas fa-file';
+    if (fileType.startsWith('image/')) return 'image';
+    if (fileType === 'application/pdf') return 'file-text';
+    if (fileType.includes('word') || fileType.includes('document')) return 'file-text';
+    return 'file';
   }
   
   function removeFile(file, fileDiv) {
@@ -3177,7 +3177,7 @@ document.addEventListener('turbo:load', function() {
             <label class="form-check-label w-100" for="shortTermRadio" style="cursor: pointer;">
               <div class="d-flex align-items-start">
                 <div class="me-3 mt-1">
-                  <i class="fas fa-clock fa-2x text-primary"></i>
+                  <i data-lucide="clock" class="icon-2x text-primary"></i>
                 </div>
                 <div>
                   <h6 class="mb-1">Just for this conversation</h6>
@@ -3194,7 +3194,7 @@ document.addEventListener('turbo:load', function() {
             <label class="form-check-label w-100" for="longTermRadio" style="cursor: pointer;">
               <div class="d-flex align-items-start">
                 <div class="me-3 mt-1">
-                  <i class="fas fa-database fa-2x text-success"></i>
+                  <i data-lucide="database" class="icon-2x text-success"></i>
                 </div>
                 <div>
                   <h6 class="mb-1">Add to my knowledge base</h6>

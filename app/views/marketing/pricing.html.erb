@@ -1,7 +1,5 @@
 <% content_for :title, "Pricing - Agent Marketing" %>
 
-<!-- Lucide Icons -->
-<script src="https://unpkg.com/lucide@latest"></script>
 
 <!-- Hero Section -->
 <section class="py-5 bg-light">
@@ -211,39 +209,4 @@
   </div>
 </section>
 
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const toggle = document.getElementById('pricingToggle');
-    const priceElements = document.querySelectorAll('.price-value');
-
-    function formatPrice(value){ return `$${value}`; }
-
-    function updatePrices(){
-      priceElements.forEach((el) => {
-        const monthly = parseFloat(el.getAttribute('data-monthly'));
-        if (isNaN(monthly)) return; // skip 'Custom'
-        if (toggle.checked) {
-          // Annual pricing = 20% discount billed monthly equivalent
-          const annualMonthly = Math.round(monthly * 0.8);
-          el.textContent = formatPrice(annualMonthly);
-        } else {
-          el.textContent = formatPrice(monthly);
-        }
-      });
-    }
-
-    toggle.addEventListener('change', updatePrices);
-    updatePrices();
-  });
-</script>
-
-<!-- Initialize Lucide Icons -->
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    lucide.createIcons();
-  });
-
-  document.addEventListener('turbo:load', () => {
-    lucide.createIcons();
-  });
-</script> 
+ 
