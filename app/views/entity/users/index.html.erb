@@ -20,7 +20,7 @@
     <div class="admin-card">
       <div style="display: flex; align-items: center; gap: 1rem;">
         <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="users" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+          <i data-lucide="users" class="icon-xl text-white"></i>
         </div>
         <div>
           <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Users</p>
@@ -33,7 +33,7 @@
     <div class="admin-card">
       <div style="display: flex; align-items: center; gap: 1rem;">
         <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
-          <i data-lucide="user-check" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+          <i data-lucide="user-check" class="icon-xl text-success"></i>
         </div>
         <div>
           <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Onboarded</p>
@@ -46,7 +46,7 @@
     <div class="admin-card">
       <div style="display: flex; align-items: center; gap: 1rem;">
         <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
-          <i data-lucide="activity" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+          <i data-lucide="activity" class="icon-xl text-info"></i>
         </div>
         <div>
           <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Active This Week</p>
@@ -59,7 +59,7 @@
   <%# Users Table %>
   <div class="admin-card">
     <h3 class="card-title">
-      <i data-lucide="list" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+      <i data-lucide="list" class="icon-lg icon-with-spacing"></i>
       Team Members
     </h3>
 
@@ -94,12 +94,12 @@
               <td>
                 <% if user.onboarded? %>
                   <span style="color: rgb(74, 222, 128); display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="check-circle" style="width: 1rem; height: 1rem;"></i>
+                    <i data-lucide="check-circle" class="icon-md"></i>
                     <span>Yes</span>
                   </span>
                 <% else %>
                   <span style="color: #64748B; display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="x-circle" style="width: 1rem; height: 1rem;"></i>
+                    <i data-lucide="x-circle" class="icon-md"></i>
                     <span>No</span>
                   </span>
                 <% end %>
@@ -107,7 +107,7 @@
               <td style="color: #64748B; font-size: 0.875rem;">
                 <% if user.current_sign_in_at %>
                   <span style="display: inline-flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="clock" style="width: 0.875rem; height: 0.875rem;"></i>
+                    <i data-lucide="clock" class="icon-sm"></i>
                     <%= time_ago_in_words(user.current_sign_in_at) %> ago
                   </span>
                 <% else %>

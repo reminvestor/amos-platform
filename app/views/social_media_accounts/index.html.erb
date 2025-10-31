@@ -18,7 +18,7 @@
   <% if @connections.any? %>
     <div style="margin-bottom: 2.5rem;">
       <h5 style="color: #22D3EE; font-size: 1.125rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-        <i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem;"></i>
+        <i data-lucide="check-circle" class="icon-lg"></i>
         <span>Your Active Connections (<%= @connections.count %>)</span>
       </h5>
 
@@ -34,7 +34,7 @@
                        style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem;">
                 <% else %>
                   <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center;">
-                    <i data-lucide="box" style="width: 1.25rem; height: 1.25rem; color: #22D3EE;"></i>
+                    <i data-lucide="box" class="icon-lg text-info"></i>
                   </div>
                 <% end %>
                 <div style="flex: 1;">
@@ -46,12 +46,12 @@
               <%# Status Badges %>
               <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
                 <span class="admin-badge admin-badge-<%= connection.status == 'connected' ? 'success' : 'warning' %>">
-                  <i data-lucide="<%= connection.status == 'connected' ? 'check-circle' : 'alert-circle' %>" style="width: 0.875rem; height: 0.875rem;"></i>
+                  <i data-lucide="<%= connection.status == 'connected' ? 'check-circle' : 'alert-circle' %>" class="icon-sm"></i>
                   <span><%= connection.status.humanize %></span>
                 </span>
                 <% if connection.integration_credentials.present? %>
                   <span class="admin-badge admin-badge-info">
-                    <i data-lucide="key" style="width: 0.875rem; height: 0.875rem;"></i>
+                    <i data-lucide="key" class="icon-sm"></i>
                     <span>Authenticated</span>
                   </span>
                 <% end %>
@@ -60,13 +60,13 @@
               <%# Connection Details %>
               <div style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 1rem;">
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                  <i data-lucide="calendar-plus" style="width: 0.875rem; height: 0.875rem;"></i>
+                  <i data-lucide="calendar-plus" class="icon-sm"></i>
                   <span>Connected <%= time_ago_in_words(connection.created_at) %> ago</span>
                 </div>
                 <% last_log = connection.integration_logs.maximum(:created_at) %>
                 <% if last_log %>
                   <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <i data-lucide="clock" style="width: 0.875rem; height: 0.875rem;"></i>
+                    <i data-lucide="clock" class="icon-sm"></i>
                     <span>Last used <%= time_ago_in_words(last_log) %> ago</span>
                   </div>
                 <% end %>
@@ -95,14 +95,14 @@
   <%# Available Integrations %>
   <div>
     <h5 style="color: #22D3EE; font-size: 1.125rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-      <i data-lucide="grid-3x3" style="width: 1.25rem; height: 1.25rem;"></i>
+      <i data-lucide="grid-3x3" class="icon-lg"></i>
       <span>Available Integrations</span>
     </h5>
 
     <% @integrations.group_by(&:category).each do |category, integrations| %>
       <div style="margin-bottom: 2.5rem;">
         <h6 style="color: #A78BFA; font-size: 1rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-          <i data-lucide="folder" style="width: 1rem; height: 1rem;"></i>
+          <i data-lucide="folder" class="icon-md"></i>
           <span><%= category&.humanize || 'Other' %></span>
         </h6>
 
@@ -143,12 +143,12 @@
                 <%# Footer %>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                   <small style="color: #64748B; display: flex; align-items: center; gap: 0.25rem;">
-                    <i data-lucide="zap" style="width: 0.875rem; height: 0.875rem;"></i>
+                    <i data-lucide="zap" class="icon-sm"></i>
                     <%= pluralize(integration.integration_operations.count, 'operation') %>
                   </small>
                   <% if is_connected %>
                     <span class="admin-badge admin-badge-success">
-                      <i data-lucide="check" style="width: 0.875rem; height: 0.875rem;"></i>
+                      <i data-lucide="check" class="icon-sm"></i>
                       <span>Connected</span>
                     </span>
                   <% else %>
