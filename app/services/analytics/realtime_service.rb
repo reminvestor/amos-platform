@@ -60,7 +60,7 @@ module Analytics
         LandingPageSubmission.joins(:landing_page)
                             .where(landing_pages: { entity_id: entity.id })
                             .where(created_at: today_start..now)
-                            .where.not(email: nil)
+                            .where.not(contact_id: nil)
                             .count
       else
         0

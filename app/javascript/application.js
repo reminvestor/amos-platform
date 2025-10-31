@@ -40,6 +40,9 @@ window.QRCode = QRCode
 import TTSAudioManager from './tts_audio_manager'
 window.TTSAudioManager = TTSAudioManager
 
+// Import Theme Manager for light/dark mode switching
+import ThemeManager from './theme_manager'
+
 // Import landing page module (using the index.js)
 
 // Simple reveal-on-scroll for elements with class .reveal

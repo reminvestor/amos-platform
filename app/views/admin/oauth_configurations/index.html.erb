@@ -1,6 +1,8 @@
 <% content_for :title, "OAuth Configurations" %>
 
-<div class="container-fluid py-4">
+<div class="admin-content">
+  <div style="padding: 2rem;">
+    <div class="container-fluid py-4">
   <div class="row mb-4">
     <div class="col">
       <h1><i class="fas fa-key me-2"></i>OAuth Configurations</h1>
@@ -85,6 +87,8 @@
       
       <%= paginate @oauth_configurations if @oauth_configurations.respond_to?(:total_pages) %>
     </div>
+  </div>
+</div>
   </div>
 </div>
 

@@ -106,9 +106,48 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
   .sidebar-bottom {
     padding: 0.75rem;
     border-top: 1px solid $admin-border;
+    margin-top: auto; // Push to bottom of sidebar
 
     .nav-item {
-      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 0.75rem;
+      margin-bottom: 0.5rem;
+      border-radius: 0.5rem;
+      color: $admin-text-secondary;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+      font-size: 0.875rem;
+
+      i, svg {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+
+      // Return to App button - cyan accent
+      &:first-child {
+        &:hover {
+          background-color: rgba($admin-cyan, 0.1);
+          color: $admin-cyan;
+        }
+      }
+
+      // Sign Out button - red accent
+      &:last-child {
+        color: #EF4444; // Red-500
+        margin-bottom: 0; // Remove margin on last item
+
+        &:hover {
+          background-color: rgba(239, 68, 68, 0.1);
+          color: #F87171; // Red-400
+        }
+      }
     }
   }
 }
