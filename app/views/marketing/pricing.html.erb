@@ -1,5 +1,8 @@
 <% content_for :title, "Pricing - Agent Marketing" %>
 
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
 <!-- Hero Section -->
 <section class="py-5 bg-light">
   <div class="container text-center">
@@ -34,11 +37,11 @@
               </div>
               <div class="card-body">
                 <ul class="list-unstyled">
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> <strong>10,000</strong> Emails / month</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> <strong>10,000</strong> Emails / month</li>
                   
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> <strong>200k</strong> AI Credits</li>
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> <strong>Unlimited</strong> Landing Pages</li>
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> Access to full suite of tools</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> <strong>200k</strong> AI Credits</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> <strong>Unlimited</strong> Landing Pages</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> Access to full suite of tools</li>
                 </ul>
               </div>
               <div class="card-footer bg-transparent text-center border-top-0 pb-4">
@@ -58,11 +61,11 @@
               </div>
               <div class="card-body">
                 <ul class="list-unstyled">
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> <strong>40,000</strong> Emails / month</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> <strong>40,000</strong> Emails / month</li>
                   
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> <strong>1M</strong> AI Credits</li>
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> <strong>Unlimited</strong> Landing Pages</li>
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> Access to full suite of tools</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> <strong>1M</strong> AI Credits</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> <strong>Unlimited</strong> Landing Pages</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> Access to full suite of tools</li>
                 </ul>
               </div>
               <div class="card-footer bg-transparent text-center border-top-0 pb-4">
@@ -81,11 +84,11 @@
               </div>
               <div class="card-body">
                 <ul class="list-unstyled">
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> <strong>100,000</strong> Emails / month</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> <strong>100,000</strong> Emails / month</li>
                   
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> <strong>2M</strong> AI Credits</li>
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> <strong>Unlimited</strong> Landing Pages</li>
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> Access to full suite of tools</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> <strong>2M</strong> AI Credits</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> <strong>Unlimited</strong> Landing Pages</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> Access to full suite of tools</li>
                 </ul>
               </div>
               <div class="card-footer bg-transparent text-center border-top-0 pb-4">
@@ -104,10 +107,10 @@
               </div>
               <div class="card-body">
                 <ul class="list-unstyled">
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> Custom Emails & AI Credits</li>
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> Dedicated success & priority support</li>
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> Unlimited Landing Pages</li>
-                  <li class="mb-3"><i class="fas fa-check text-success me-2"></i> Access to full suite of tools</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> Custom Emails & AI Credits</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> Dedicated success & priority support</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> Unlimited Landing Pages</li>
+                  <li class="mb-3"><i data-lucide="check" class="text-success me-2"></i> Access to full suite of tools</li>
                 </ul>
               </div>
               <div class="card-footer bg-transparent text-center border-top-0 pb-4">
@@ -231,5 +234,16 @@
 
     toggle.addEventListener('change', updatePrices);
     updatePrices();
+  });
+</script>
+
+<!-- Initialize Lucide Icons -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+  });
+
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
   });
 </script> 
