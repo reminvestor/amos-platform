@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add -A)"
+      "Bash(git add -A)",
+      "Bash(git commit -m \"Move hamburger button to right side of admin logo\n\nRepositioned hamburger toggle button to appear after the logo and text,\naligned to the far right using margin-left: auto.\n\nChanges:\n- Reordered HTML: Logo icon → Logo text → Hamburger button\n- Added margin-left: auto to push hamburger to far right\n- Maintains all hover/focus/active states\n\nLayout now matches standard sidebar patterns with menu toggle on right.\n\nFiles:\n- app/views/layouts/admin.html.erb  \n- app/assets/stylesheets/admin_dark.scss\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\")"
     ],
     "deny": [],
     "ask": []
