@@ -2,7 +2,7 @@
   <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
     <div>
       <h4 class="mb-1" style="color: var(--scout-text);">
-        <i class="fas fa-magic me-2" style="color: var(--scout-primary);"></i>
+        <i data-lucide="wand-2" class="me-2" style="color: var(--scout-primary);" aria-hidden="true"></i>
         Landing Page Wizard
       </h4>
       <p class="mb-0" style="color: var(--scout-text-muted);">
@@ -10,9 +10,10 @@
       </p>
     </div>
     <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="scoutBackToLandingPages()" 
-              style="color: var(--scout-text); border-color: var(--scout-border);">
-        <i class="fas fa-arrow-left me-1"></i>
+      <button class="btn btn-outline-secondary" onclick="scoutBackToLandingPages()"
+              style="color: var(--scout-text); border-color: var(--scout-border);"
+              aria-label="Back to landing pages">
+        <i data-lucide="arrow-left" class="me-1" aria-hidden="true"></i>
         Back to Pages
       </button>
     </div>
@@ -52,7 +53,7 @@
         <div class="card border-0 shadow-sm" style="background: var(--scout-secondary); border: 1px solid var(--scout-border) !important;">
           <div class="card-header text-white text-center" style="background: var(--scout-primary); border-bottom: 1px solid var(--scout-border);">
             <h5 class="mb-0">
-              <i class="fas fa-edit me-2"></i>
+              <i data-lucide="pencil" class="me-2" aria-hidden="true"></i>
               Step 1: Page Details
             </h5>
           </div>
@@ -77,15 +78,15 @@
                           placeholder="Describe what this landing page should accomplish. For example: 'Generate leads for our marketing consultation service by highlighting our expertise and offering a free 30-minute strategy session. Target small business owners who need help with digital marketing.'"
                           required></textarea>
                 <small class="text-muted" style="color: var(--scout-text-muted);">
-                  <i class="fas fa-robot me-1"></i>
+                  <i data-lucide="bot" class="me-1" aria-hidden="true"></i>
                   This helps our AI understand your goals and create better content. Be specific about your target audience and desired outcomes.
                 </small>
               </div>
 
               <div class="d-grid">
-                <button type="button" class="btn btn-primary btn-lg" onclick="goToStep2()">
+                <button type="button" class="btn btn-primary btn-lg" onclick="goToStep2()" aria-label="Continue to form selection">
                   Continue to Form Selection
-                  <i class="fas fa-arrow-right ms-2"></i>
+                  <i data-lucide="arrow-right" class="ms-2" aria-hidden="true"></i>
                 </button>
               </div>
             </form>
@@ -102,7 +103,7 @@
         <div class="card border-0 shadow-sm" style="background: var(--scout-secondary); border: 1px solid var(--scout-border) !important;">
           <div class="card-header text-white text-center" style="background: #0d6efd; border-bottom: 1px solid var(--scout-border);">
             <h5 class="mb-0">
-              <i class="fas fa-image me-2"></i>
+              <i data-lucide="image" class="me-2" aria-hidden="true"></i>
               Step 2: Pictures
             </h5>
           </div>
@@ -111,17 +112,17 @@
               <div class="col-md-6">
                 <h6 class="mb-2">Hero Image</h6>
                 <div class="input-group mb-2">
-                  <input id="heroPrompt" type="text" class="form-control" placeholder="Describe a hero image to generate (optional)"/>
-                  <button class="btn btn-outline-primary" type="button" onclick="generateAiImage('heroPrompt','heroPreview','1200x600')">
-                    <i class="fas fa-wand-magic-sparkles"></i>
+                  <input id="heroPrompt" type="text" class="form-control" placeholder="Describe a hero image to generate (optional)" aria-label="Describe hero image for AI generation"/>
+                  <button class="btn btn-outline-primary" type="button" onclick="generateAiImage('heroPrompt','heroPreview','1200x600')" aria-label="Generate hero image with AI">
+                    <i data-lucide="sparkles" aria-hidden="true"></i>
                   </button>
                 </div>
                 <div class="mb-2 d-flex gap-2">
-                  <button class="btn btn-sm btn-outline-secondary" type="button" onclick="loadImageLibrary('heroPreview')">
-                    <i class="fas fa-photo-video me-1"></i>Select from Library
+                  <button class="btn btn-sm btn-outline-secondary" type="button" onclick="loadImageLibrary('heroPreview')" aria-label="Select hero image from library">
+                    <i data-lucide="images" class="me-1" aria-hidden="true"></i>Select from Library
                   </button>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" onclick="openImageFilePicker('heroPreview','heroFileInput')">
-                    <i class="fas fa-upload me-1"></i>Upload
+                  <button class="btn btn-sm btn-outline-secondary" type="button" onclick="openImageFilePicker('heroPreview','heroFileInput')" aria-label="Upload hero image">
+                    <i data-lucide="upload" class="me-1" aria-hidden="true"></i>Upload
                   </button>
                   <input id="heroFileInput" type="file" accept="image/*" class="d-none" />
                 </div>
@@ -134,8 +135,10 @@
                 <div class="row g-2">
                   <div class="col-6">
                     <div class="input-group input-group-sm mb-1">
-                      <input id="feature1Prompt" type="text" class="form-control" placeholder="Feature 1 prompt (optional)"/>
-                      <button class="btn btn-outline-primary" type="button" onclick="generateAiImage('feature1Prompt','feature1Preview','100x100')"><i class="fas fa-wand-magic-sparkles"></i></button>
+                      <input id="feature1Prompt" type="text" class="form-control" placeholder="Feature 1 prompt (optional)" aria-label="Describe feature 1 image for AI generation"/>
+                      <button class="btn btn-outline-primary" type="button" onclick="generateAiImage('feature1Prompt','feature1Preview','100x100')" aria-label="Generate feature 1 image with AI">
+                        <i data-lucide="sparkles" aria-hidden="true"></i>
+                      </button>
                     </div>
                     <div class="mb-1 d-flex gap-2">
                       <button class="btn btn-sm btn-outline-secondary" type="button" onclick="loadImageLibrary('feature1Preview')">Library</button>
@@ -146,8 +149,10 @@
                   </div>
                   <div class="col-6">
                     <div class="input-group input-group-sm mb-1">
-                      <input id="feature2Prompt" type="text" class="form-control" placeholder="Feature 2 prompt (optional)"/>
-                      <button class="btn btn-outline-primary" type="button" onclick="generateAiImage('feature2Prompt','feature2Preview','100x100')"><i class="fas fa-wand-magic-sparkles"></i></button>
+                      <input id="feature2Prompt" type="text" class="form-control" placeholder="Feature 2 prompt (optional)" aria-label="Describe feature 2 image for AI generation"/>
+                      <button class="btn btn-outline-primary" type="button" onclick="generateAiImage('feature2Prompt','feature2Preview','100x100')" aria-label="Generate feature 2 image with AI">
+                        <i data-lucide="sparkles" aria-hidden="true"></i>
+                      </button>
                     </div>
                     <div class="mb-1 d-flex gap-2">
                       <button class="btn btn-sm btn-outline-secondary" type="button" onclick="loadImageLibrary('feature2Preview')">Library</button>
@@ -163,13 +168,14 @@
             <div class="mt-4">
               <div class="d-flex gap-2">
                 <button type="button" class="btn btn-outline-secondary" onclick="goToStep1()"
-                        style="color: var(--scout-text); border-color: var(--scout-border);">
-                  <i class="fas fa-arrow-left me-1"></i>
+                        style="color: var(--scout-text); border-color: var(--scout-border);"
+                        aria-label="Back to page details">
+                  <i data-lucide="arrow-left" class="me-1" aria-hidden="true"></i>
                   Back
                 </button>
-                <button type="button" class="btn btn-primary" onclick="goToStep3()">
+                <button type="button" class="btn btn-primary" onclick="goToStep3()" aria-label="Continue to form selection">
                   Continue to Form Selection
-                  <i class="fas fa-arrow-right ms-2"></i>
+                  <i data-lucide="arrow-right" class="ms-2" aria-hidden="true"></i>
                 </button>
               </div>
             </div>
@@ -186,7 +192,7 @@
         <div class="card border-0 shadow-sm" style="background: var(--scout-secondary); border: 1px solid var(--scout-border) !important;">
           <div class="card-header text-white text-center" style="background: #198754; border-bottom: 1px solid var(--scout-border);">
             <h5 class="mb-0">
-              <i class="fas fa-wpforms me-2"></i>
+              <i data-lucide="form-input" class="me-2" aria-hidden="true"></i>
               Step 2: Choose a Contact Form
             </h5>
           </div>
@@ -200,7 +206,7 @@
               <div class="form-option" data-form-type="none">
                 <div class="form-option-card">
                   <div class="form-option-icon">
-                    <i class="fas fa-times-circle"></i>
+                    <i data-lucide="circle-x" aria-hidden="true"></i>
                   </div>
                   <h6>No Form</h6>
                   <small style="color: var(--scout-text-muted);">Just content, no contact collection</small>
@@ -211,7 +217,7 @@
               <div class="form-option" data-form-type="custom">
                 <div class="form-option-card">
                   <div class="form-option-icon">
-                    <i class="fas fa-paint-brush"></i>
+                    <i data-lucide="palette" aria-hidden="true"></i>
                   </div>
                   <h6>Custom Form</h6>
                   <small style="color: var(--scout-text-muted);">I'll describe what I need</small>
@@ -223,14 +229,14 @@
                 <div class="form-option" data-form-type="<%= template_key %>">
                   <div class="form-option-card">
                     <div class="form-option-icon">
-                      <i class="fas fa-<%= template_key == 'contact_form' ? 'envelope' : 
+                      <i data-lucide="<%= template_key == 'contact_form' ? 'mail' :
                                        template_key == 'newsletter_signup' ? 'newspaper' :
                                        template_key == 'lead_magnet' ? 'download' :
                                        template_key == 'demo_request' ? 'play-circle' :
                                        template_key == 'event_registration' ? 'calendar' :
                                        template_key == 'free_trial' ? 'gift' :
                                        template_key == 'quote_request' ? 'calculator' :
-                                       template_key == 'consultation_booking' ? 'handshake' : 'wpforms' %>"></i>
+                                       template_key == 'consultation_booking' ? 'handshake' : 'form-input' %>" aria-hidden="true"></i>
                     </div>
                     <h6><%= template_desc.split(' with ').first.split(' for ').first %></h6>
                     <small style="color: var(--scout-text-muted);"><%= template_desc %></small>
@@ -242,12 +248,13 @@
             <div class="mt-4">
               <div class="d-flex gap-2">
                 <button type="button" class="btn btn-outline-secondary" onclick="goToStep1()"
-                        style="color: var(--scout-text); border-color: var(--scout-border);">
-                  <i class="fas fa-arrow-left me-1"></i>
+                        style="color: var(--scout-text); border-color: var(--scout-border);"
+                        aria-label="Back to page details">
+                  <i data-lucide="arrow-left" class="me-1" aria-hidden="true"></i>
                   Back
                 </button>
-                <button type="button" class="btn btn-success flex-fill" id="createPageBtn" onclick="createLandingPage()" disabled>
-                  <i class="fas fa-magic me-1"></i>
+                <button type="button" class="btn btn-success flex-fill" id="createPageBtn" onclick="createLandingPage()" disabled aria-label="Create landing page">
+                  <i data-lucide="wand-2" class="me-1" aria-hidden="true"></i>
                   Create My Landing Page
                 </button>
               </div>
@@ -538,7 +545,9 @@ setTimeout(() => {
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content" style="background: var(--scout-secondary); color: var(--scout-text); border: 1px solid var(--scout-border)">
       <div class="modal-header" style="border-bottom: 1px solid var(--scout-border)">
-        <h5 class="modal-title" id="imageLibraryLabel"><i class="fas fa-photo-video me-2"></i>Select Image</h5>
+        <h5 class="modal-title" id="imageLibraryLabel">
+          <i data-lucide="images" class="me-2" aria-hidden="true"></i>Select Image
+        </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
