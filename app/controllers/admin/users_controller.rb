@@ -1,6 +1,6 @@
 class Admin::UsersController < Admin::BaseController
   before_action :set_user, only: [ :show, :edit, :update, :destroy, :make_admin ]
-  before_action :authorize_editor!, only: [ :edit, :update, :destroy, :make_admin ]
+  before_action -> { authorize_admin!(:editor) }, only: [ :edit, :update, :destroy, :make_admin ]
 
   def index
     @users = User.includes(:entity).order(created_at: :desc).page(params[:page])
