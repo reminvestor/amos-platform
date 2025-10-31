@@ -153,13 +153,13 @@
                   <div class="card h-100 feature-card">
                     <div class="card-body text-center">
                       <i class="fas fa-check-circle fa-3x text-primary mb-3"></i>
-                      <div><%= 
+                      <div><%=
                         if section['content'].is_a?(String)
-                          section['content'].html_safe
+                          safe_html(section['content'])
                         elsif section['content'].nil?
                           ""
                         else
-                          section['content'].to_s
+                          safe_html(section['content'].to_s)
                         end
                       %></div>
                     </div>
@@ -170,13 +170,13 @@
               <div class="row justify-content-center">
                 <div class="col-md-8">
                   <div class="p-4 bg-white shadow rounded testimonial">
-                    <%= 
+                    <%=
                       if section['content'].is_a?(String)
-                        section['content'].html_safe
+                        safe_html(section['content'])
                       elsif section['content'].nil?
                         ""
                       else
-                        section['content'].to_s
+                        safe_html(section['content'].to_s)
                       end
                     %>
                   </div>
@@ -187,13 +187,13 @@
                 <div class="col">
                   <div class="card h-100 shadow">
                     <div class="card-body">
-                      <%= 
+                      <%=
                         if section['content'].is_a?(String)
-                          section['content'].html_safe
+                          safe_html(section['content'])
                         elsif section['content'].nil?
                           ""
                         else
-                          section['content'].to_s
+                          safe_html(section['content'].to_s)
                         end
                       %>
                     </div>
@@ -268,7 +268,8 @@
     
     <!-- Optional: Add tracking scripts here -->
     <% if @landing_page.ai_settings&.dig('tracking_code').present? %>
-      <%= @landing_page.ai_settings&.dig('tracking_code').html_safe %>
+      <!-- SECURITY: Only allow script tags for Google Analytics/Tag Manager -->
+      <%= safe_html(@landing_page.ai_settings.dig('tracking_code')) %>
     <% end %>
   </body>
 </html> 
