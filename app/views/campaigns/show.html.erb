@@ -33,14 +33,14 @@
           <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="campaignActions" style="background-color: var(--bg-card); border: 1px solid var(--border-primary);">
             <li>
               <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#testEmailModal" style="color: var(--text-primary);">
-                <i data-lucide="send" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+                <i data-lucide="send" class="icon-md icon-with-spacing"></i>
                 Send Test Email
               </a>
             </li>
             <% if @campaign.status == 'draft' %>
               <li>
                 <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#scheduleModal" style="color: var(--text-primary);">
-                  <i data-lucide="calendar-clock" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+                  <i data-lucide="calendar-clock" class="icon-md icon-with-spacing"></i>
                   Schedule Campaign
                 </a>
               </li>
@@ -49,7 +49,7 @@
                     class: "dropdown-item",
                     style: "color: var(--text-primary);",
                     data: { confirm: "Are you sure you want to send this campaign immediately?" } do %>
-                  <i data-lucide="zap" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Send Now
+                  <i data-lucide="zap" class="icon-md icon-with-spacing"></i> Send Now
                 <% end %>
               </li>
             <% elsif @campaign.status == 'scheduled' || @campaign.status == 'in_progress' %>
@@ -63,7 +63,7 @@
                       class: "dropdown-item",
                       style: "color: #F87171;",
                       data: { confirm: "This will sync with Mailgun, retry failed emails, and resume sending. Continue?" } do %>
-                    <i data-lucide="alert-triangle" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Force Resume (Stalled)
+                    <i data-lucide="alert-triangle" class="icon-md icon-with-spacing"></i> Force Resume (Stalled)
                   <% end %>
                 </li>
               <% end %>
@@ -88,7 +88,7 @@
                     class: "dropdown-item",
                     style: "color: var(--text-primary);",
                     data: { confirm: "This will reactivate the campaign and set it to draft status. Proceed?" } do %>
-                  <i data-lucide="refresh-cw" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Reactivate to Draft
+                  <i data-lucide="refresh-cw" class="icon-md icon-with-spacing"></i> Reactivate to Draft
                 <% end %>
               </li>
             <% end %>
@@ -103,7 +103,7 @@
         <%# Alerts %>
         <% if @campaign.opted_out_contacts_count.to_i > 0 %>
           <div class="alert alert-warning" style="background-color: var(--status-warning-bg); border: 1px solid var(--status-warning-border); color: var(--status-warning-text); margin-bottom: 1.5rem;">
-            <i data-lucide="alert-triangle" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+            <i data-lucide="alert-triangle" class="icon-md icon-with-spacing"></i>
             <strong>Warning:</strong> <%= @campaign.opted_out_contacts_count %> contact(s) in your selected groups have unsubscribed and will not receive emails.
           </div>
         <% end %>
@@ -114,7 +114,7 @@
             <div style="display: flex; justify-content: space-between; align-items-start; gap: 1rem;">
               <div>
                 <div style="margin-bottom: 0.5rem;">
-                  <i data-lucide="alert-circle" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+                  <i data-lucide="alert-circle" class="icon-md icon-with-spacing"></i>
                   <strong>Campaign Appears Stalled!</strong>
                 </div>
                 <p style="margin-bottom: 0.5rem;">
@@ -178,7 +178,7 @@
           <% if @campaign.mailgun_tag.present? %>
             <div style="margin-top: 1.5rem; padding: 1rem; background-color: var(--status-info-bg); border: 1px solid var(--status-info-border); border-radius: 0.5rem;">
               <h6 style="color: white; margin-bottom: 0.75rem;">
-                <i data-lucide="refresh-cw" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+                <i data-lucide="refresh-cw" class="icon-md icon-with-spacing"></i>
                 Mailgun Integration
               </h6>
               <p style="margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.875rem;">
@@ -202,7 +202,7 @@
         <%# Email Deliveries Card %>
         <div class="admin-card">
           <h4 style="color: white; margin-bottom: 1.5rem;">
-            <i data-lucide="send" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+            <i data-lucide="send" class="icon-lg icon-with-spacing"></i>
             Email Deliveries
           </h4>
 
@@ -262,7 +262,7 @@
       <div class="col-md-4">
         <div class="admin-card">
           <h4 style="color: white; margin-bottom: 1.5rem;">
-            <i data-lucide="bar-chart-3" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+            <i data-lucide="bar-chart-3" class="icon-lg icon-with-spacing"></i>
             Campaign Statistics
           </h4>
 

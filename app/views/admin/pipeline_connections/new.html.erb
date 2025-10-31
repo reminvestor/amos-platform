@@ -4,7 +4,7 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3 mb-0">New Pipeline Connection</h1>
     <%= link_to admin_pipeline_connections_path, class: 'btn btn-secondary' do %>
-      <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+      <i data-lucide="arrow-left" class="icon-md"></i>
       Back to Connections
     <% end %>
   </div>
@@ -17,7 +17,7 @@
             <% if @pipeline_connection.errors.any? %>
               <div class="alert alert-danger" role="alert">
                 <h5 class="alert-heading">
-                  <i data-lucide="alert-circle" style="width: 20px; height: 20px;"></i>
+                  <i data-lucide="alert-circle" class="icon-lg"></i>
                   <%= pluralize(@pipeline_connection.errors.count, "error") %> prohibited this connection from being saved:
                 </h5>
                 <ul class="mb-0">
@@ -76,7 +76,7 @@
                 <div class="input-group">
                   <input type="password" name="mcp_connection[config][api_token]" class="form-control password-field" placeholder="Your JIRA API token" id="jira_token">
                   <button class="btn btn-outline-secondary toggle-password" type="button" data-target="jira_token">
-                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                    <i data-lucide="eye" class="icon-md"></i>
                   </button>
                 </div>
                 <div class="form-text">Generate at: <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">id.atlassian.com/manage-profile/security/api-tokens</a></div>
@@ -98,7 +98,7 @@
                 <div class="input-group">
                   <input type="password" name="mcp_connection[config][token]" class="form-control password-field" placeholder="ghp_..." id="github_token">
                   <button class="btn btn-outline-secondary toggle-password" type="button" data-target="github_token">
-                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                    <i data-lucide="eye" class="icon-md"></i>
                   </button>
                 </div>
                 <div class="form-text">Generate at: <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a></div>
@@ -125,7 +125,7 @@
                 <div class="input-group">
                   <input type="password" name="mcp_connection[config][pat]" class="form-control password-field" placeholder="Your Azure DevOps PAT" id="azure_devops_pat">
                   <button class="btn btn-outline-secondary toggle-password" type="button" data-target="azure_devops_pat">
-                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                    <i data-lucide="eye" class="icon-md"></i>
                   </button>
                 </div>
               </div>
@@ -146,7 +146,7 @@
                 <div class="input-group">
                   <input type="password" name="mcp_connection[config][pat]" class="form-control password-field" placeholder="Your Azure Repos PAT" id="azure_repos_pat">
                   <button class="btn btn-outline-secondary toggle-password" type="button" data-target="azure_repos_pat">
-                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                    <i data-lucide="eye" class="icon-md"></i>
                   </button>
                 </div>
               </div>
@@ -165,7 +165,7 @@
       <div class="card bg-light text-dark">
         <div class="card-body">
           <h5 class="card-title">
-            <i data-lucide="help-circle" style="width: 20px; height: 20px;"></i>
+            <i data-lucide="help-circle" class="icon-lg"></i>
             Help
           </h5>
           <p class="card-text">

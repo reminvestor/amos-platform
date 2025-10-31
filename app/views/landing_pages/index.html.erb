@@ -28,7 +28,7 @@
       <div class="admin-card">
         <div style="display: flex; align-items: center; gap: 1rem;">
           <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="layout" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+            <i data-lucide="layout" class="icon-xl text-white"></i>
           </div>
           <div>
             <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Pages</p>
@@ -41,7 +41,7 @@
       <div class="admin-card">
         <div style="display: flex; align-items: center; gap: 1rem;">
           <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
-            <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+            <i data-lucide="check-circle" class="icon-xl text-success"></i>
           </div>
           <div>
             <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Published</p>
@@ -54,7 +54,7 @@
       <div class="admin-card">
         <div style="display: flex; align-items: center; gap: 1rem;">
           <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(234, 179, 8, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(234, 179, 8, 0.2);">
-            <i data-lucide="file-edit" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21);"></i>
+            <i data-lucide="file-edit" class="icon-xl text-warning"></i>
           </div>
           <div>
             <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Drafts</p>
@@ -67,7 +67,7 @@
       <div class="admin-card">
         <div style="display: flex; align-items: center; gap: 1rem;">
           <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
-            <i data-lucide="calendar" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+            <i data-lucide="calendar" class="icon-xl text-info"></i>
           </div>
           <div>
             <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">This Week</p>
@@ -93,7 +93,7 @@
 
             <% if page.metadata&.dig('generated_from') == 'workflow' || page.metadata&.dig('ai_generated') %>
               <span class="admin-badge admin-badge-cyan">
-                <i data-lucide="bot" style="width: 0.75rem; height: 0.75rem; display: inline-block; vertical-align: middle;"></i> AI Generated
+                <i data-lucide="bot" class="icon-xs"></i> AI Generated
               </span>
             <% end %>
           </div>
@@ -112,7 +112,7 @@
 
             <div style="margin-bottom: 0.75rem;">
               <div style="display: flex; align-items: center; gap: 0.5rem; color: #64748B; font-size: 0.875rem;">
-                <i data-lucide="link" style="width: 1rem; height: 1rem;"></i>
+                <i data-lucide="link" class="icon-md"></i>
                 <code style="background: #0F172A; padding: 0.125rem 0.5rem; border-radius: 0.25rem; color: #22D3EE; font-size: 0.75rem;"><%= page.slug %></code>
               </div>
             </div>
@@ -120,14 +120,14 @@
             <% if page.campaign %>
               <div style="margin-bottom: 0.75rem;">
                 <div style="display: flex; align-items: center; gap: 0.5rem; color: #94A3B8; font-size: 0.875rem;">
-                  <i data-lucide="mail" style="width: 1rem; height: 1rem;"></i>
+                  <i data-lucide="mail" class="icon-md"></i>
                   Campaign: <%= page.campaign.name %>
                 </div>
               </div>
             <% end %>
 
             <div style="display: flex; align-items: center; gap: 0.5rem; color: #64748B; font-size: 0.875rem;">
-              <i data-lucide="calendar" style="width: 1rem; height: 1rem;"></i>
+              <i data-lucide="calendar" class="icon-md"></i>
               Created <%= time_ago_in_words(page.created_at) %> ago
             </div>
           </div>

@@ -41,7 +41,7 @@
     <% if @active_tests.any? %>
       <div style="margin-bottom: 2.5rem;">
         <h5 style="color: rgb(74, 222, 128); font-size: 1.125rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-          <i data-lucide="play-circle" style="width: 1.25rem; height: 1.25rem;"></i>
+          <i data-lucide="play-circle" class="icon-lg"></i>
           <span>Active Tests (<%= @active_tests.count %>)</span>
         </h5>
 
@@ -57,7 +57,7 @@
     <div class="admin-card">
       <div style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom: 1px solid #1E293B;">
         <h5 style="color: white; font-size: 1.125rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-          <i data-lucide="list" style="width: 1.25rem; height: 1.25rem;"></i>
+          <i data-lucide="list" class="icon-lg"></i>
           <span>All Tests</span>
         </h5>
       </div>
@@ -103,7 +103,7 @@
                 <td>
                   <% if test.winner %>
                     <span class="admin-badge admin-badge-success">
-                      <i data-lucide="trophy" style="width: 0.875rem; height: 0.875rem;"></i>
+                      <i data-lucide="trophy" class="icon-sm"></i>
                       <span>Winner Found</span>
                     </span>
                   <% elsif test.status == 'running' %>

@@ -220,17 +220,17 @@
       </div>
       <div class="d-flex align-items-center gap-2">
         <%= link_to chat_landing_page_path(@landing_page), class: "toolbar-btn" do %>
-          <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+          <i data-lucide="arrow-left" class="icon-md"></i>
           <span>Back to Chat</span>
         <% end %>
         <% if @landing_page.published? %>
           <%= link_to landing_page_public_path(@landing_page.slug), class: "toolbar-btn toolbar-btn-success", target: "_blank" do %>
-            <i data-lucide="external-link" style="width: 16px; height: 16px;"></i>
+            <i data-lucide="external-link" class="icon-md"></i>
             <span>View Live</span>
           <% end %>
         <% else %>
           <%= button_to publish_landing_page_path(@landing_page), method: :post, class: "toolbar-btn toolbar-btn-success" do %>
-            <i data-lucide="rocket" style="width: 16px; height: 16px;"></i>
+            <i data-lucide="rocket" class="icon-md"></i>
             <span>Publish</span>
           <% end %>
         <% end %>

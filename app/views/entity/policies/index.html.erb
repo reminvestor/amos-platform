@@ -27,7 +27,7 @@
     <div class="admin-card">
       <div style="display: flex; align-items: center; gap: 1rem;">
         <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="file-text" style="width: 1.5rem; height: 1.5rem; color: rgb(248, 113, 113);"></i>
+          <i data-lucide="file-text" class="icon-xl text-danger"></i>
         </div>
         <div>
           <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Policies</p>
@@ -40,7 +40,7 @@
     <div class="admin-card">
       <div style="display: flex; align-items: center; gap: 1rem;">
         <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+          <i data-lucide="check-circle" class="icon-xl text-success"></i>
         </div>
         <div>
           <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Active</p>
@@ -53,7 +53,7 @@
     <div class="admin-card">
       <div style="display: flex; align-items: center; gap: 1rem;">
         <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="dollar-sign" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+          <i data-lucide="dollar-sign" class="icon-xl text-info"></i>
         </div>
         <div>
           <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">With Budgets</p>
@@ -108,12 +108,12 @@
                 <td>
                   <% if policy.is_active %>
                     <span class="admin-badge admin-badge-success">
-                      <i data-lucide="check-circle" style="width: 0.875rem; height: 0.875rem;"></i>
+                      <i data-lucide="check-circle" class="icon-sm"></i>
                       <span>Active</span>
                     </span>
                   <% else %>
                     <span class="admin-badge admin-badge-secondary">
-                      <i data-lucide="circle" style="width: 0.875rem; height: 0.875rem;"></i>
+                      <i data-lucide="circle" class="icon-sm"></i>
                       <span>Inactive</span>
                     </span>
                   <% end %>
