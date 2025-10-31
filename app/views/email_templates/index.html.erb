@@ -14,13 +14,13 @@
       </div>
     </div>
 
-    <div class="header-actions" style="display: flex; gap: 0.5rem;">
+    <div class="header-actions d-flex gap-2">
       <%= link_to new_ai_content_path, class: "admin-btn admin-btn-outline" do %>
-        <i data-lucide="sparkles"></i>
+        <i data-lucide="sparkles" aria-hidden="true"></i>
         <span>Generate with AI</span>
       <% end %>
       <%= link_to new_email_template_path, class: "admin-btn admin-btn-primary" do %>
-        <i data-lucide="plus"></i>
+        <i data-lucide="plus" aria-hidden="true"></i>
         <span>New Template</span>
       <% end %>
     </div>
@@ -48,27 +48,28 @@
             <tbody id="email-templates-tbody">
               <% @email_templates.each do |template| %>
                 <tr id="email_template_<%= template.id %>" class="<%= 'highlight-row' if template.created_at > 10.seconds.ago %>">
-                  <td style="color: white; font-weight: 600;"><%= template.name %></td>
-                  <td style="color: #94A3B8;"><%= template.subject %></td>
-                  <td style="color: #64748B; font-size: 0.875rem;"><%= template.created_at.strftime("%b %d, %Y") %></td>
-                  <td style="text-align: right;">
-                    <div style="display: inline-flex; gap: 0.5rem;">
-                      <%= link_to email_template_path(template), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
-                        <i data-lucide="eye"></i>
+                  <td class="text-white fw-semibold"><%= template.name %></td>
+                  <td class="text-secondary"><%= template.subject %></td>
+                  <td class="text-muted small"><%= template.created_at.strftime("%b %d, %Y") %></td>
+                  <td class="text-end">
+                    <div class="d-inline-flex gap-2">
+                      <%= link_to email_template_path(template), class: "admin-btn admin-btn-sm admin-btn-outline", "aria-label": "View #{template.name}" do %>
+                        <i data-lucide="eye" aria-hidden="true"></i>
                         <span>View</span>
                       <% end %>
-                      <%= link_to improve_ai_content_path(template), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
-                        <i data-lucide="sparkles"></i>
+                      <%= link_to improve_ai_content_path(template), class: "admin-btn admin-btn-sm admin-btn-outline", "aria-label": "Improve #{template.name} with AI" do %>
+                        <i data-lucide="sparkles" aria-hidden="true"></i>
                         <span>Improve</span>
                       <% end %>
-                      <%= link_to edit_email_template_path(template), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
-                        <i data-lucide="pencil"></i>
+                      <%= link_to edit_email_template_path(template), class: "admin-btn admin-btn-sm admin-btn-outline", "aria-label": "Edit #{template.name}" do %>
+                        <i data-lucide="pencil" aria-hidden="true"></i>
                         <span>Edit</span>
                       <% end %>
                       <%= button_to email_template_path(template), method: :delete,
-                          class: "admin-btn admin-btn-sm admin-btn-outline", style: "border-color: rgb(248, 113, 113); color: rgb(248, 113, 113);",
+                          class: "admin-btn admin-btn-sm admin-btn-outline text-danger border-danger",
+                          "aria-label": "Delete #{template.name}",
                           data: { turbo_confirm: "Are you sure?" }, form_class: "d-inline" do %>
-                        <i data-lucide="trash-2"></i>
+                        <i data-lucide="trash-2" aria-hidden="true"></i>
                       <% end %>
                     </div>
                   </td>
@@ -81,20 +82,20 @@
     </div>
 
     <%# AI Content Generation Callout %>
-    <div class="admin-card" style="margin-top: 2rem; background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(167, 139, 250, 0.1) 100%); border: 1px solid rgba(124, 58, 237, 0.2);">
-      <div style="display: flex; align-items: flex-start; gap: 1.5rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <i data-lucide="sparkles" class="icon-xl text-white"></i>
+    <div class="admin-card mt-4" style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(167, 139, 250, 0.1) 100%); border-color: rgba(124, 58, 237, 0.2);">
+      <div class="d-flex align-items-start gap-4">
+        <div class="stat-icon stat-icon-gradient flex-shrink-0">
+          <i data-lucide="sparkles" class="icon-xl text-white" aria-hidden="true"></i>
         </div>
-        <div style="flex: 1;">
-          <h5 style="color: white; font-size: 1.125rem; font-weight: 600; margin: 0 0 0.5rem 0;">AI Content Generation</h5>
-          <p style="color: #94A3B8; margin: 0 0 1rem 0;">
+        <div class="flex-fill">
+          <h5 class="text-white fs-5 fw-semibold mb-2">AI Content Generation</h5>
+          <p class="text-secondary mb-3">
             Use our AI content generator to create professional, engaging email templates in seconds.
             Simply specify your audience, purpose, and tone, and our AI will craft compelling content
             tailored to your needs.
           </p>
           <%= link_to new_ai_content_path, class: "admin-btn admin-btn-primary" do %>
-            <i data-lucide="sparkles"></i>
+            <i data-lucide="sparkles" aria-hidden="true"></i>
             <span>Try AI Content Generator</span>
           <% end %>
         </div>
@@ -109,13 +110,13 @@
         </div>
         <h3>No Email Templates Yet</h3>
         <p>Create your first email template manually or generate one with AI</p>
-        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;">
+        <div class="d-flex gap-3 justify-content-center mt-4">
           <%= link_to new_email_template_path, class: "admin-btn admin-btn-outline" do %>
-            <i data-lucide="plus"></i>
+            <i data-lucide="plus" aria-hidden="true"></i>
             <span>Create Template</span>
           <% end %>
           <%= link_to new_ai_content_path, class: "admin-btn admin-btn-primary" do %>
-            <i data-lucide="sparkles"></i>
+            <i data-lucide="sparkles" aria-hidden="true"></i>
             <span>Generate with AI</span>
           <% end %>
         </div>
