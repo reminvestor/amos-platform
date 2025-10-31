@@ -58,6 +58,16 @@ i[data-lucide] {
   margin-right: 0.5rem;
 }
 
+/* Icon animations */
+.icon-spin {
+  animation: icon-spin 1s linear infinite;
+}
+
+@keyframes icon-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Markdown content styling */
 .markdown-content {
   h1, h2, h3, h4, h5, h6 {

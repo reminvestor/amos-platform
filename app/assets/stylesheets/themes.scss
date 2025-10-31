@@ -450,3 +450,120 @@ a {
     height: 1rem;
   }
 }
+
+/* Stat Card Component */
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stat-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &.stat-icon-gradient {
+    background: linear-gradient(135deg, var(--accent-purple-start) 0%, var(--accent-purple-end) 100%);
+  }
+
+  &.stat-icon-success {
+    background: var(--status-success-bg);
+    border: 1px solid var(--status-success-border);
+  }
+
+  &.stat-icon-warning {
+    background: var(--status-warning-bg);
+    border: 1px solid var(--status-warning-border);
+  }
+
+  &.stat-icon-info {
+    background: var(--status-info-bg);
+    border: 1px solid var(--status-info-border);
+  }
+}
+
+.stat-content {
+  .stat-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0;
+  }
+
+  .stat-value {
+    color: var(--text-primary);
+    font-size: 1.875rem;
+    font-weight: 600;
+    margin: 0;
+  }
+}
+
+/* Dropdown Theme Support */
+.dropdown-menu {
+  background-color: var(--bg-card);
+  border-color: var(--border-primary);
+
+  .dropdown-item {
+    color: var(--text-secondary);
+
+    &:hover,
+    &:focus {
+      background-color: var(--bg-hover);
+      color: var(--text-primary);
+    }
+  }
+
+  .dropdown-divider {
+    border-color: var(--border-primary);
+  }
+}
+
+/* Modal Theme Support */
+.modal-content {
+  background-color: var(--bg-card);
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.modal-header {
+  border-bottom-color: var(--border-primary);
+  background-color: var(--bg-card);
+
+  .modal-title {
+    color: var(--text-primary);
+  }
+
+  .btn-close {
+    filter: var(--text-primary) == #FFFFFF ? invert(1) : none;
+  }
+}
+
+.modal-body {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+
+  .form-label {
+    color: var(--text-secondary);
+  }
+
+  .form-control, .form-select {
+    background-color: var(--bg-input);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+
+    &:focus {
+      background-color: var(--bg-input);
+      border-color: var(--accent-cyan);
+      color: var(--text-primary);
+    }
+  }
+}
+
+.modal-footer {
+  border-top-color: var(--border-primary);
+  background-color: var(--bg-card);
+}

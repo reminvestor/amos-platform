@@ -31,8 +31,8 @@
         </div>
         <h3>No Campaigns Yet</h3>
         <p>Create your first email campaign to start connecting with your audience</p>
-        <%= link_to new_campaign_path, class: "admin-btn admin-btn-primary", style: "margin-top: 1rem;" do %>
-          <i data-lucide="plus"></i>
+        <%= link_to new_campaign_path, class: "admin-btn admin-btn-primary mt-3" do %>
+          <i data-lucide="plus" aria-hidden="true"></i>
           <span>Create Campaign</span>
         <% end %>
       </div>
@@ -40,27 +40,30 @@
   <% end %>
 </div>
 
-<%# Schedule Modal - Dark Theme %>
-<div class="modal fade" id="scheduleModal" tabindex="-1" aria-labelledby="scheduleModalLabel" aria-hidden="true" data-bs-theme="dark">
+<%# Schedule Modal - Uses Theme CSS Variables %>
+<div class="modal fade" id="scheduleModal" tabindex="-1" aria-labelledby="scheduleModalLabel" aria-hidden="true">
   <div class="modal-dialog">
-    <div class="modal-content" style="background-color: #1A1F35; border: 1px solid #1E293B;">
-      <div class="modal-header" style="border-bottom: 1px solid #1E293B;">
-        <h5 class="modal-title" id="scheduleModalLabel" style="color: white;">Schedule Campaign</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="scheduleModalLabel">Schedule Campaign</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <%= form_tag '', method: :post, id: "scheduleForm" do %>
+      <%= form_tag '', method: :post, id: "scheduleForm", class: "needs-validation", novalidate: true do %>
         <div class="modal-body">
           <div class="mb-3">
-            <label for="scheduled_at" class="form-label" style="color: #94A3B8;">Schedule Date and Time</label>
-            <input type="datetime-local" class="form-control" id="scheduled_at" name="scheduled_at" required
-                   style="background-color: #0F172A; border: 1px solid #1E293B; color: white;">
+            <label for="scheduled_at" class="form-label">Schedule Date and Time</label>
+            <input type="datetime-local" class="form-control" id="scheduled_at" name="scheduled_at" required>
+            <div class="invalid-feedback">
+              Please select a future date and time.
+            </div>
           </div>
         </div>
-        <div class="modal-footer" style="border-top: 1px solid #1E293B;">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
-                  style="background-color: #1E293B; border-color: #1E293B;">Cancel</button>
-          <button type="submit" class="btn btn-primary"
-                  style="background-color: #22D3EE; border-color: #22D3EE; color: #000;">Schedule</button>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i data-lucide="clock" class="icon-sm me-1" aria-hidden="true"></i>
+            Schedule
+          </button>
         </div>
       <% end %>
     </div>
@@ -74,11 +77,24 @@
       lucide.createIcons();
     }
 
+    // Bootstrap form validation
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+      form.addEventListener('submit', event => {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+
     // Setup for the schedule modal
     window.showScheduleModal = function(campaignId) {
       const form = document.getElementById('scheduleForm');
       if (form) {
         form.action = `/campaigns/${campaignId}/schedule`;
+        form.classList.remove('was-validated'); // Reset validation state
 
         // Set default date time to tomorrow, same time
         const tomorrow = new Date();
@@ -91,7 +107,13 @@
         const hours = String(tomorrow.getHours()).padStart(2, '0');
         const minutes = String(tomorrow.getMinutes()).padStart(2, '0');
 
-        document.getElementById('scheduled_at').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        const scheduledInput = document.getElementById('scheduled_at');
+        scheduledInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+        // Set minimum date to now (prevent scheduling in the past)
+        const now = new Date();
+        const minDateTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        scheduledInput.min = minDateTime;
 
         // Show the modal
         const modal = new bootstrap.Modal(document.getElementById('scheduleModal'));

@@ -14,7 +14,7 @@
 
     <div class="header-actions">
       <%= link_to new_landing_page_path, class: "admin-btn admin-btn-primary" do %>
-        <i data-lucide="plus"></i>
+        <i data-lucide="plus" aria-hidden="true"></i>
         <span>Create New Page</span>
       <% end %>
     </div>
@@ -22,55 +22,63 @@
 
   <% if @landing_pages.any? %>
     <%# Stats Cards %>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-4">
       <%# Total Pages - Purple Gradient %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="layout" class="icon-xl text-white"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Pages</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @landing_pages.count %></h3>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-gradient">
+              <i data-lucide="layout" class="icon-xl text-white" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Total Pages</p>
+              <h3 class="stat-value"><%= @landing_pages.count %></h3>
+            </div>
           </div>
         </div>
       </div>
 
       <%# Published - Green %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
-            <i data-lucide="check-circle" class="icon-xl text-success"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Published</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @landing_pages.where(status: 'published').count %></h3>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-success">
+              <i data-lucide="check-circle" class="icon-xl text-success" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Published</p>
+              <h3 class="stat-value"><%= @landing_pages.where(status: 'published').count %></h3>
+            </div>
           </div>
         </div>
       </div>
 
       <%# Drafts - Yellow %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(234, 179, 8, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(234, 179, 8, 0.2);">
-            <i data-lucide="file-edit" class="icon-xl text-warning"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Drafts</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @landing_pages.where(status: 'draft').count %></h3>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-warning">
+              <i data-lucide="file-edit" class="icon-xl text-warning" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Drafts</p>
+              <h3 class="stat-value"><%= @landing_pages.where(status: 'draft').count %></h3>
+            </div>
           </div>
         </div>
       </div>
 
       <%# This Week - Cyan %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
-            <i data-lucide="calendar" class="icon-xl text-info"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">This Week</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @landing_pages.where('created_at > ?', 7.days.ago).count %></h3>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-info">
+              <i data-lucide="calendar" class="icon-xl text-info" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">This Week</p>
+              <h3 class="stat-value"><%= @landing_pages.where('created_at > ?', 7.days.ago).count %></h3>
+            </div>
           </div>
         </div>
       </div>
@@ -92,7 +100,7 @@
 
             <% if page.metadata&.dig('generated_from') == 'workflow' || page.metadata&.dig('ai_generated') %>
               <span class="admin-badge admin-badge-cyan">
-                <i data-lucide="bot" class="icon-xs"></i> AI Generated
+                <i data-lucide="bot" class="icon-xs" aria-hidden="true"></i> AI Generated
               </span>
             <% end %>
           </div>
@@ -109,49 +117,51 @@
               </p>
             <% end %>
 
-            <div style="margin-bottom: 0.75rem;">
-              <div style="display: flex; align-items: center; gap: 0.5rem; color: #64748B; font-size: 0.875rem;">
-                <i data-lucide="link" class="icon-md"></i>
-                <code style="background: #0F172A; padding: 0.125rem 0.5rem; border-radius: 0.25rem; color: #22D3EE; font-size: 0.75rem;"><%= page.slug %></code>
+            <div class="mb-3">
+              <div class="d-flex align-items-center gap-2 text-muted small">
+                <i data-lucide="link" class="icon-md" aria-hidden="true"></i>
+                <code class="text-info" style="background: var(--bg-input); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;"><%= page.slug %></code>
               </div>
             </div>
 
             <% if page.campaign %>
-              <div style="margin-bottom: 0.75rem;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; color: #94A3B8; font-size: 0.875rem;">
-                  <i data-lucide="mail" class="icon-md"></i>
+              <div class="mb-3">
+                <div class="d-flex align-items-center gap-2 text-secondary small">
+                  <i data-lucide="mail" class="icon-md" aria-hidden="true"></i>
                   Campaign: <%= page.campaign.name %>
                 </div>
               </div>
             <% end %>
 
-            <div style="display: flex; align-items: center; gap: 0.5rem; color: #64748B; font-size: 0.875rem;">
-              <i data-lucide="calendar" class="icon-md"></i>
+            <div class="d-flex align-items-center gap-2 text-muted small">
+              <i data-lucide="calendar" class="icon-md" aria-hidden="true"></i>
               Created <%= time_ago_in_words(page.created_at) %> ago
             </div>
           </div>
 
           <%# Card Footer %>
-          <div style="display: flex; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid #1E293B;">
-            <%= link_to preview_landing_page_path(page), class: "admin-btn admin-btn-sm admin-btn-outline", target: "_blank", style: "flex: 1;" do %>
-              <i data-lucide="eye"></i>
+          <div class="d-flex gap-2 pt-3" style="border-top: 1px solid var(--border-primary);">
+            <%= link_to preview_landing_page_path(page), class: "admin-btn admin-btn-sm admin-btn-outline flex-fill", target: "_blank", "aria-label": "Preview #{page.title}" do %>
+              <i data-lucide="eye" aria-hidden="true"></i>
               <span>Preview</span>
             <% end %>
 
-            <%= link_to edit_landing_page_path(page), class: "admin-btn admin-btn-sm admin-btn-outline", style: "flex: 1;" do %>
-              <i data-lucide="pencil"></i>
+            <%= link_to edit_landing_page_path(page), class: "admin-btn admin-btn-sm admin-btn-outline flex-fill", "aria-label": "Edit #{page.title}" do %>
+              <i data-lucide="pencil" aria-hidden="true"></i>
               <span>Edit</span>
             <% end %>
 
             <% if page.status == 'published' %>
-              <%= button_to unpublish_landing_page_path(page), method: :patch, class: "admin-btn admin-btn-sm admin-btn-outline", style: "flex: 1;",
+              <%= button_to unpublish_landing_page_path(page), method: :patch, class: "admin-btn admin-btn-sm admin-btn-outline flex-fill",
+                  "aria-label": "Unpublish #{page.title}",
                   data: { turbo_confirm: "Unpublish this page?" } do %>
-                <i data-lucide="eye-off"></i>
+                <i data-lucide="eye-off" aria-hidden="true"></i>
                 <span>Unpublish</span>
               <% end %>
             <% else %>
-              <%= button_to publish_landing_page_path(page), method: :patch, class: "admin-btn admin-btn-sm admin-btn-primary", style: "flex: 1;" do %>
-                <i data-lucide="send"></i>
+              <%= button_to publish_landing_page_path(page), method: :patch, class: "admin-btn admin-btn-sm admin-btn-primary flex-fill",
+                  "aria-label": "Publish #{page.title}" do %>
+                <i data-lucide="send" aria-hidden="true"></i>
                 <span>Publish</span>
               <% end %>
             <% end %>
@@ -168,8 +178,8 @@
         </div>
         <h3>No Landing Pages Yet</h3>
         <p>Create your first AI-powered landing page to start converting visitors into customers</p>
-        <%= link_to new_landing_page_path, class: "admin-btn admin-btn-primary", style: "margin-top: 1rem;" do %>
-          <i data-lucide="plus"></i>
+        <%= link_to new_landing_page_path, class: "admin-btn admin-btn-primary mt-3" do %>
+          <i data-lucide="plus" aria-hidden="true"></i>
           <span>Create Your First Landing Page</span>
         <% end %>
       </div>

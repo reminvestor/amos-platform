@@ -169,32 +169,39 @@ export default class extends Controller {
       console.log("Skipping empty message for role:", role)
       return
     }
-    
+
     const messageDiv = document.createElement("div")
     messageDiv.className = `message ${role}-message`
-    
-    const avatar = role === "ai" ? "fas fa-robot" : "fas fa-user"
-    
+
+    // Use Lucide icons for avatars
+    const avatarIcon = role === "ai" ? "bot" : "user"
+    const avatarLabel = role === "ai" ? "AI Assistant" : "You"
+
     // Parse markdown for AI messages using markdown-it
     let formattedContent = role === "ai" ? this.md.render(content || '') : this.escapeHtml(content)
-    
+
     // Add loading indicator for empty AI messages
     if (role === "ai" && !content) {
       formattedContent = '<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>'
     }
-    
+
     messageDiv.innerHTML = `
       <div class="message-content">
-        <div class="message-avatar">
-          <i class="${avatar}"></i>
+        <div class="message-avatar" role="img" aria-label="${avatarLabel}">
+          <i data-lucide="${avatarIcon}" aria-hidden="true"></i>
         </div>
         <div class="message-bubble">
           ${formattedContent}
         </div>
       </div>
     `
-    
+
     this.chatMessagesTarget.appendChild(messageDiv)
+
+    // Initialize Lucide icons for the new message
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons()
+    }
     
     // If we are currently streaming another AI message, keep that bubble at the bottom
     if (this.currentStreamingContent !== undefined && this.streamingMessageElement) {
@@ -810,13 +817,13 @@ export default class extends Controller {
       </div>
       
       <div class="flex gap-3">
-        <button class="approve-workflow-btn px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors" 
+        <button class="approve-workflow-btn px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 data-task-session-id="${task_session_id}">
-          <i class="fas fa-check mr-2"></i>Approve & Start
+          <i data-lucide="check" class="mr-2" aria-hidden="true"></i>Approve & Start
         </button>
         <button class="reject-workflow-btn px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
                 data-task-session-id="${task_session_id}">
-          <i class="fas fa-times mr-2"></i>Cancel
+          <i data-lucide="x" class="mr-2" aria-hidden="true"></i>Cancel
         </button>
       </div>
     `
@@ -1292,8 +1299,13 @@ export default class extends Controller {
       // Show saving indicator
       const saveBtn = event.target;
       const originalText = saveBtn.innerHTML;
-      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+      saveBtn.innerHTML = '<i data-lucide="loader-circle" class="me-1 icon-spin" aria-hidden="true"></i> Saving...';
       saveBtn.disabled = true;
+
+      // Re-initialize Lucide icons
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons()
+      }
       
       console.log('Sending PATCH request to update landing page...');
       
@@ -1330,9 +1342,14 @@ export default class extends Controller {
       .then(response => response.json())
       .then(data => {
         if (data.success) {
-          saveBtn.innerHTML = '<i class="fas fa-check me-1"></i> Saved!';
+          saveBtn.innerHTML = '<i data-lucide="check" class="me-1" aria-hidden="true"></i> Saved!';
           saveBtn.classList.remove('btn-success');
           saveBtn.classList.add('btn-success');
+
+          // Re-initialize Lucide icons
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons()
+          }
           
           // Refresh visual preview if visible
           const visualPreview = document.getElementById('visual-preview');
@@ -1355,8 +1372,13 @@ export default class extends Controller {
       })
       .catch(error => {
         console.error('Save error:', error);
-        saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> Error';
+        saveBtn.innerHTML = '<i data-lucide="alert-triangle" class="me-1" aria-hidden="true"></i> Error';
         saveBtn.classList.add('btn-danger');
+
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons()
+        }
         
         setTimeout(() => {
           saveBtn.innerHTML = originalText;
@@ -2142,7 +2164,12 @@ export default class extends Controller {
     const submitBtn = form.querySelector('button[type="submit"]');
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+      submitBtn.innerHTML = '<i data-lucide="loader-circle" class="icon-spin" aria-hidden="true"></i> Saving...';
+
+      // Re-initialize Lucide icons
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons()
+      }
     }
     
     console.log("🌐 Making AJAX request to:", form.action);
@@ -2176,7 +2203,12 @@ export default class extends Controller {
       // Restore button state
       if (submitBtn) {
         submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+        submitBtn.innerHTML = '<i data-lucide="save" aria-hidden="true"></i> Save Changes';
+
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons()
+        }
       }
     });
     
@@ -2226,7 +2258,12 @@ export default class extends Controller {
     const originalBtnContent = submitBtn ? submitBtn.innerHTML : '';
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+      submitBtn.innerHTML = '<i data-lucide="loader-circle" class="icon-spin" aria-hidden="true"></i> Saving...';
+
+      // Re-initialize Lucide icons
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons()
+      }
     }
     
     console.log("🌐 Making AJAX request to:", form.action);
