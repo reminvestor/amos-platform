@@ -20,7 +20,9 @@
       <aside class="admin-sidebar">
         <%# Logo %>
         <div class="sidebar-logo">
-          <div class="logo-icon">A</div>
+          <div class="logo-icon">
+            <i data-lucide="box" style="width: 1.5rem; height: 1.5rem;"></i>
+          </div>
           <span class="logo-text">AMOS Admin</span>
         </div>
 
@@ -64,6 +66,11 @@
 
         <%# Bottom Actions %>
         <div class="sidebar-bottom">
+          <button data-theme-toggle class="nav-item w-100 text-start border-0" style="background: transparent;">
+            <i data-theme-icon data-lucide="moon"></i>
+            <span>Theme</span>
+          </button>
+
           <%= link_to chat_mode_path, class: "nav-item" do %>
             <i data-lucide="home"></i>
             <span>Return to App</span>

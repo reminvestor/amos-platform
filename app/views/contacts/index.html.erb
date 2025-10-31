@@ -1,67 +1,164 @@
-<div class="container mt-4">
-  <div class="row">
-    <div class="col-md-12">
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h2>Contacts</h2>
-          <%= link_to "New Contact", new_contact_path, class: "btn btn-primary" %>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="/assets/admin_dark.css">
+
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="users"></i>
+      </div>
+      <div class="header-text">
+        <h1>Contacts</h1>
+        <p>Manage your contact list and audience</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to new_contact_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>New Contact</span>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Stats Cards %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <%# Total Contacts %>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="users" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
         </div>
-        <div class="card-body">
-          <% if @contacts.any? %>
-            <div class="table-responsive">
-              <table class="table table-striped">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Status</th>
-                    <th>Tags</th>
-                    <th>Added</th>
-                    <th width="200">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @contacts.each do |contact| %>
-                    <tr>
-                      <td><%= contact.full_name %></td>
-                      <td><%= contact.email %></td>
-                      <td>
-                        <% if contact.status.present? %>
-                          <span class="badge bg-<%= contact.status == 'active' ? 'success' : (contact.status == 'inactive' ? 'warning' : 'danger') %>">
-                            <%= contact.status.humanize %>
-                          </span>
-                        <% else %>
-                          <span class="badge bg-secondary">Unknown</span>
-                        <% end %>
-                      </td>
-                      <td><%= contact.tags %></td>
-                      <td><%= contact.created_at.strftime("%b %d, %Y") %></td>
-                      <td>
-                        <%= link_to "View", contact_path(contact), class: "btn btn-sm btn-outline-primary" %>
-                        <%= link_to "Edit", edit_contact_path(contact), class: "btn btn-sm btn-outline-secondary" %>
-                        <%= button_to "Delete", contact_path(contact), method: :delete, data: { turbo_confirm: "Are you sure?" }, class: "btn btn-sm btn-outline-danger", form_class: "d-inline" %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-            
-            <div class="d-flex justify-content-between align-items-center mt-4">
-              <div class="pagination-info text-muted">
-                <%= page_entries_info @contacts %>
-              </div>
-              <div>
-                <%= paginate @contacts %>
-              </div>
-            </div>
-          <% else %>
-            <div class="alert alert-info">
-              <p class="mb-0">You don't have any contacts yet. <%= link_to "Add your first contact", new_contact_path %>.</p>
-            </div>
-          <% end %>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Contacts</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @contacts.total_count %></h3>
+        </div>
+      </div>
+    </div>
+
+    <%# Active Contacts %>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
+          <i data-lucide="user-check" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Active</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @contacts.where(status: 'active').count %></h3>
+        </div>
+      </div>
+    </div>
+
+    <%# This Month %>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
+          <i data-lucide="calendar" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">This Month</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @contacts.where('created_at >= ?', 1.month.ago).count %></h3>
         </div>
       </div>
     </div>
   </div>
+
+  <%# Contacts Table %>
+  <div class="admin-card">
+    <h3 class="card-title">
+      <i data-lucide="list" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+      All Contacts
+    </h3>
+
+    <% if @contacts.any? %>
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Tags</th>
+              <th>Added</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @contacts.each do |contact| %>
+              <tr>
+                <td>
+                  <%= link_to contact.full_name, contact_path(contact), style: 'color: #22D3EE; text-decoration: none; font-weight: 600;' %>
+                </td>
+                <td style="color: #94A3B8;"><%= contact.email %></td>
+                <td>
+                  <% if contact.status == 'active' %>
+                    <span class="admin-badge admin-badge-online">Active</span>
+                  <% elsif contact.status == 'inactive' %>
+                    <span class="admin-badge admin-badge-warning">Inactive</span>
+                  <% elsif contact.status == 'bounced' %>
+                    <span class="admin-badge admin-badge-offline">Bounced</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-default">Unknown</span>
+                  <% end %>
+                </td>
+                <td style="color: #94A3B8;"><%= contact.tags %></td>
+                <td style="color: #94A3B8;"><%= contact.created_at.strftime("%b %d, %Y") %></td>
+                <td style="text-align: right;">
+                  <div style="display: inline-flex; gap: 0.5rem;">
+                    <%= link_to contact_path(contact), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                      <i data-lucide="eye"></i>
+                    <% end %>
+                    <%= link_to edit_contact_path(contact), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                      <i data-lucide="pencil"></i>
+                    <% end %>
+                    <%= button_to contact_path(contact), method: :delete, data: { turbo_confirm: "Are you sure you want to delete this contact?" }, class: "admin-btn admin-btn-sm admin-btn-outline", style: "color: rgb(248, 113, 113); border-color: rgb(248, 113, 113);" do %>
+                      <i data-lucide="trash-2"></i>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <%# Pagination %>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
+        <div style="color: #94A3B8; font-size: 0.875rem;">
+          <%= page_entries_info @contacts %>
+        </div>
+        <div>
+          <%= paginate @contacts %>
+        </div>
+      </div>
+    <% else %>
+      <%# Empty State %>
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="users"></i>
+        </div>
+        <h3>No Contacts Yet</h3>
+        <p>Start building your audience by adding your first contact</p>
+        <%= link_to new_contact_path, class: "admin-btn admin-btn-primary", style: "margin-top: 1rem;" do %>
+          <i data-lucide="plus"></i>
+          <span>Add First Contact</span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
 </div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

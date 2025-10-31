@@ -1,0 +1,97 @@
+<div class="admin-content">
+  <div style="padding: 2rem;">
+    <div class="container-fluid">
+  <div class="d-flex align-items-center mb-3">
+    <h1 class="h3 mb-0">Observability • Errors</h1>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="text-muted small">Total Errors (last <%= (@time_range / 1.day).to_i %> days)</div>
+          <div class="fs-3 fw-semibold"><%= @total_errors || 0 %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="text-muted small">Error Rate %</div>
+          <div class="fs-3 fw-semibold"><%= @error_rate || 0 %>%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Errors by Type</span>
+    </div>
+    <div class="card-body">
+      <% if @errors_by_type.present? %>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th class="text-end">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @errors_by_type.each do |type, count| %>
+                <tr>
+                  <td><%= type %></td>
+                  <td class="text-end"><%= count %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="text-muted">No error data available for the selected range.</div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Recent Errors</span>
+    </div>
+    <div class="card-body">
+      <% if @recent_errors.respond_to?(:any?) ? @recent_errors.any? : @recent_errors.to_a.any? %>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Entity</th>
+                <th>User</th>
+                <th>Type</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @recent_errors.each do |e| %>
+                <% metadata = (e.respond_to?(:metadata) ? e.metadata : {}) || {} %>
+                <tr>
+                  <td class="text-nowrap"><%= e.respond_to?(:created_at) ? e.created_at&.strftime('%Y-%m-%d %H:%M') : '-' %></td>
+                  <td><%= e.respond_to?(:entity) ? e.entity&.name : '-' %></td>
+                  <td><%= e.respond_to?(:user) ? e.user&.email : '-' %></td>
+                  <td><%= metadata["error_type"] || metadata["type"] || "Unknown" %></td>
+                  <td class="text-truncate" style="max-width: 420px"><%= metadata["message"] || metadata["error"] || "" %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="text-muted">No recent errors.</div>
+      <% end %>
+    </div>
+  </div>
+</div>
+  </div>
+</div>
+
+

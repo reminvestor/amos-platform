@@ -1,223 +1,263 @@
-<div class="table-responsive">
-  <table class="table table-hover" id="campaignsTable">
-    <thead>
-      <tr>
-        <th style="width: 30px;"></th>
-        <th>Name</th>
-        <th>Status</th>
-        <th>Template</th>
-        <th>Contacts</th>
-        <th>Scheduled</th>
-        <th>Performance</th>
-        <th style="width: 200px;">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @parent_campaigns.each do |campaign| %>
-        <tr id="parent-campaign-<%= campaign.id %>" class="parent-row">
-          <td>
-            <% if @child_campaigns_by_parent[campaign.id].present? %>
-              <button class="btn btn-sm btn-outline-secondary toggle-children" 
-                      data-parent-id="<%= campaign.id %>"
-                      onclick="toggleChildRows('<%= campaign.id %>')">
-                <i class="fas fa-plus" id="toggle-icon-<%= campaign.id %>"></i>
-              </button>
-            <% end %>
-          </td>
-          <td>
-            <strong><%= link_to campaign.name, campaign_path(campaign), class: "text-decoration-none" %></strong>
-            <div class="small text-muted"><%= truncate(campaign.description, length: 50) if campaign.description.present? %></div>
-          </td>
-          <td>
-            <span class="badge bg-<%= campaign_status_color(campaign.status) %>"><%= campaign.status.humanize %></span>
-            <% if campaign.stalled? %>
-              <div class="mt-1">
-                <span class="badge bg-danger" title="Campaign appears to be stalled">
-                  <i class="fas fa-exclamation-triangle me-1"></i> Stalled
-                </span>
-              </div>
-            <% end %>
-          </td>
-          <td><%= campaign.email_template&.name || "—" %></td>
-          <td><%= campaign.contact_count %></td>
-          <td>
-            <% if campaign.scheduled_at.present? %>
-              <%= campaign.scheduled_at.strftime('%b %d, %Y') %>
-              <div class="small text-muted"><%= campaign.scheduled_at.strftime('%I:%M %p') %></div>
-            <% else %>
-              —
-            <% end %>
-          </td>
-          <td>
-            <% if campaign.sent_count > 0 %>
-              <div class="d-flex align-items-center mb-1">
-                <div class="me-2" style="width: 75px;">Open Rate:</div>
-                <div class="progress flex-grow-1" style="height: 6px;">
-                  <div class="progress-bar bg-success" role="progressbar" style="width: <%= [campaign.open_rate, 100].min %>%"></div>
-                </div>
-                <div class="ms-2 small"><%= campaign.open_rate %>%</div>
-              </div>
-              <div class="d-flex align-items-center">
-                <div class="me-2" style="width: 75px;">Click Rate:</div>
-                <div class="progress flex-grow-1" style="height: 6px;">
-                  <div class="progress-bar bg-info" role="progressbar" style="width: <%= [campaign.click_rate, 100].min %>%"></div>
-                </div>
-                <div class="ms-2 small"><%= campaign.click_rate %>%</div>
-              </div>
-            <% else %>
-              <span class="text-muted">No data yet</span>
-            <% end %>
-          </td>
-          <td>
-            <div class="btn-group">
-              <%= link_to campaign_path(campaign), class: "btn btn-sm btn-outline-primary" do %>
-                <i class="fas fa-eye"></i>
+<div class="admin-card">
+  <h3 class="card-title">
+    <i data-lucide="list" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+    All Campaigns
+  </h3>
+
+  <div style="overflow-x: auto;">
+    <table class="admin-table" id="campaignsTable">
+      <thead>
+        <tr>
+          <th style="width: 30px;"></th>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Template</th>
+          <th>Contacts</th>
+          <th>Scheduled</th>
+          <th>Performance</th>
+          <th style="width: 200px; text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @parent_campaigns.each do |campaign| %>
+          <tr id="parent-campaign-<%= campaign.id %>" class="parent-row">
+            <td>
+              <% if @child_campaigns_by_parent[campaign.id].present? %>
+                <button class="admin-btn admin-btn-sm admin-btn-outline toggle-children"
+                        data-parent-id="<%= campaign.id %>"
+                        onclick="toggleChildRows('<%= campaign.id %>')"
+                        style="padding: 0.25rem 0.5rem;">
+                  <i data-lucide="chevron-right" id="toggle-icon-<%= campaign.id %>" style="width: 1rem; height: 1rem;"></i>
+                </button>
               <% end %>
-              <%= link_to edit_campaign_path(campaign), class: "btn btn-sm btn-outline-secondary" do %>
-                <i class="fas fa-edit"></i>
+            </td>
+            <td>
+              <%= link_to campaign.name, campaign_path(campaign), style: 'color: #22D3EE; text-decoration: none; font-weight: 600;' %>
+              <% if campaign.description.present? %>
+                <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;"><%= truncate(campaign.description, length: 50) %></div>
               <% end %>
-              
-              <button type="button" class="btn btn-sm btn-outline-dark dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                <span class="visually-hidden">Toggle Dropdown</span>
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <% if campaign.status == 'draft' %>
-                  <li>
-                    <a href="#" class="dropdown-item" 
-                      onclick="showScheduleModal('<%= campaign.id %>')">
-                      <i class="fas fa-calendar-plus me-2"></i> Schedule
-                    </a>
-                  </li>
-                  <li>
-                    <%= button_to send_now_campaign_path(campaign), method: :post, 
-                        class: "dropdown-item",
-                        data: { turbo_confirm: "Are you sure you want to send this campaign immediately?" } do %>
-                      <i class="fas fa-paper-plane me-2"></i> Send Now
+            </td>
+            <td>
+              <% if campaign.status == 'active' %>
+                <span class="admin-badge admin-badge-online">Active</span>
+              <% elsif campaign.status == 'draft' %>
+                <span class="admin-badge admin-badge-default">Draft</span>
+              <% elsif campaign.status == 'scheduled' %>
+                <span class="admin-badge admin-badge-cyan">Scheduled</span>
+              <% elsif campaign.status == 'in_progress' %>
+                <span class="admin-badge admin-badge-cyan">In Progress</span>
+              <% elsif campaign.status == 'paused' %>
+                <span class="admin-badge admin-badge-warning">Paused</span>
+              <% elsif campaign.status == 'stopped' %>
+                <span class="admin-badge admin-badge-offline">Stopped</span>
+              <% elsif campaign.status == 'completed' %>
+                <span class="admin-badge admin-badge-online">Completed</span>
+              <% else %>
+                <span class="admin-badge admin-badge-default"><%= campaign.status.humanize %></span>
+              <% end %>
+
+              <% if campaign.stalled? %>
+                <div style="margin-top: 0.25rem;">
+                  <span class="admin-badge admin-badge-offline" title="Campaign appears to be stalled">
+                    <i data-lucide="alert-triangle" style="width: 0.75rem; height: 0.75rem; display: inline-block; vertical-align: middle;"></i> Stalled
+                  </span>
+                </div>
+              <% end %>
+            </td>
+            <td style="color: #94A3B8;"><%= campaign.email_template&.name || "—" %></td>
+            <td style="color: white;"><%= campaign.contact_count %></td>
+            <td style="color: #94A3B8;">
+              <% if campaign.scheduled_at.present? %>
+                <%= campaign.scheduled_at.strftime('%b %d, %Y') %>
+                <div style="color: #64748B; font-size: 0.75rem;"><%= campaign.scheduled_at.strftime('%I:%M %p') %></div>
+              <% else %>
+                —
+              <% end %>
+            </td>
+            <td>
+              <% if campaign.sent_count > 0 %>
+                <%# Open Rate %>
+                <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                  <div style="color: #94A3B8; font-size: 0.75rem; width: 75px;">Open Rate:</div>
+                  <div style="flex: 1; height: 6px; background-color: #1E293B; border-radius: 3px; overflow: hidden;">
+                    <div style="width: <%= [campaign.open_rate, 100].min %>%; height: 100%; background-color: rgb(74, 222, 128);"></div>
+                  </div>
+                  <div style="margin-left: 0.5rem; color: white; font-size: 0.75rem;"><%= campaign.open_rate %>%</div>
+                </div>
+                <%# Click Rate %>
+                <div style="display: flex; align-items: center;">
+                  <div style="color: #94A3B8; font-size: 0.75rem; width: 75px;">Click Rate:</div>
+                  <div style="flex: 1; height: 6px; background-color: #1E293B; border-radius: 3px; overflow: hidden;">
+                    <div style="width: <%= [campaign.click_rate, 100].min %>%; height: 100%; background-color: #22D3EE;"></div>
+                  </div>
+                  <div style="margin-left: 0.5rem; color: white; font-size: 0.75rem;"><%= campaign.click_rate %>%</div>
+                </div>
+              <% else %>
+                <span style="color: #64748B;">No data yet</span>
+              <% end %>
+            </td>
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 0.5rem;">
+                <%= link_to campaign_path(campaign), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                  <i data-lucide="eye"></i>
+                <% end %>
+                <%= link_to edit_campaign_path(campaign), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                  <i data-lucide="pencil"></i>
+                <% end %>
+
+                <div class="dropdown" style="display: inline-block;">
+                  <button type="button" class="admin-btn admin-btn-sm admin-btn-outline" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i data-lucide="more-vertical"></i>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end" style="background-color: #1A1F35; border: 1px solid #1E293B;" data-bs-theme="dark">
+                    <% if campaign.status == 'draft' %>
+                      <li>
+                        <a href="#" class="dropdown-item" style="color: #94A3B8;"
+                          onclick="showScheduleModal('<%= campaign.id %>')">
+                          <i data-lucide="calendar-plus" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Schedule
+                        </a>
+                      </li>
+                      <li>
+                        <%= button_to send_now_campaign_path(campaign), method: :post,
+                            class: "dropdown-item", style: "color: #94A3B8;",
+                            data: { turbo_confirm: "Are you sure you want to send this campaign immediately?" } do %>
+                          <i data-lucide="send" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Send Now
+                        <% end %>
+                      </li>
+                    <% elsif campaign.status == 'scheduled' || campaign.status == 'in_progress' %>
+                      <li>
+                        <%= button_to pause_campaign_path(campaign), method: :post, class: "dropdown-item", style: "color: #94A3B8;" do %>
+                          <i data-lucide="pause" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Pause
+                        <% end %>
+                      </li>
+                      <% if campaign.stalled? %>
+                        <li>
+                          <%= button_to force_resume_campaign_path(campaign), method: :post,
+                              class: "dropdown-item", style: "color: rgb(248, 113, 113);",
+                              data: {
+                                turbo_confirm: "This will sync with Mailgun, retry failed emails, and resume sending. Continue?"
+                              } do %>
+                            <i data-lucide="alert-triangle" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Force Resume (Stalled)
+                          <% end %>
+                        </li>
+                      <% end %>
+                    <% elsif campaign.status == 'paused' %>
+                      <li>
+                        <%= button_to resume_campaign_path(campaign), method: :post, class: "dropdown-item", style: "color: #94A3B8;" do %>
+                          <i data-lucide="play" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Resume
+                        <% end %>
+                      </li>
                     <% end %>
-                  </li>
-                <% elsif campaign.status == 'scheduled' || campaign.status == 'in_progress' %>
-                  <li>
-                    <%= button_to pause_campaign_path(campaign), method: :post, class: "dropdown-item" do %>
-                      <i class="fas fa-pause me-2"></i> Pause
+
+                    <% unless campaign.status == 'stopped' || campaign.status == 'completed' %>
+                      <li>
+                        <%= button_to stop_campaign_path(campaign), method: :post,
+                            class: "dropdown-item", style: "color: rgb(248, 113, 113);",
+                            data: { turbo_confirm: "Are you sure you want to stop this campaign? This action cannot be undone." } do %>
+                          <i data-lucide="stop-circle" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Stop
+                        <% end %>
+                      </li>
                     <% end %>
-                  </li>
-                  <% if campaign.stalled? %>
+
+                    <% if campaign.status == 'stopped' || campaign.status == 'completed' %>
+                      <li>
+                        <%= button_to reactivate_campaign_path(campaign), method: :post,
+                            class: "dropdown-item", style: "color: #94A3B8;",
+                            data: { turbo_confirm: "This will reactivate the campaign and set it to draft status. Proceed?" } do %>
+                          <i data-lucide="rotate-ccw" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Reactivate to Draft
+                        <% end %>
+                      </li>
+                    <% end %>
+
+                    <% if campaign.sent_count > 0 %>
+                      <li><hr class="dropdown-divider" style="border-color: #1E293B;"></li>
+                      <li>
+                        <%= link_to ai_analyze_campaign_path(campaign), class: "dropdown-item", style: "color: #94A3B8;" do %>
+                          <i data-lucide="brain" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> AI Analysis
+                        <% end %>
+                      </li>
+                    <% end %>
+
+                    <li><hr class="dropdown-divider" style="border-color: #1E293B;"></li>
                     <li>
-                      <%= button_to force_resume_campaign_path(campaign), method: :post, 
-                          class: "dropdown-item text-danger",
-                          data: { 
-                            turbo_confirm: "This will sync with Mailgun, retry failed emails, and resume sending. Continue?" 
-                          } do %>
-                        <i class="fas fa-exclamation-triangle me-2"></i> Force Resume (Stalled)
+                      <%= button_to campaign_path(campaign), method: :delete,
+                          class: "dropdown-item", style: "color: rgb(248, 113, 113);",
+                          data: { turbo_confirm: "Are you sure you want to delete this campaign?" } do %>
+                        <i data-lucide="trash-2" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Delete
                       <% end %>
                     </li>
-                  <% end %>
-                <% elsif campaign.status == 'paused' %>
-                  <li>
-                    <%= button_to resume_campaign_path(campaign), method: :post, class: "dropdown-item" do %>
-                      <i class="fas fa-play me-2"></i> Resume
-                    <% end %>
-                  </li>
-                <% end %>
-                
-                <% unless campaign.status == 'stopped' || campaign.status == 'completed' %>
-                  <li>
-                    <%= button_to stop_campaign_path(campaign), method: :post, 
-                        class: "dropdown-item text-danger",
-                        data: { turbo_confirm: "Are you sure you want to stop this campaign? This action cannot be undone." } do %>
-                      <i class="fas fa-stop-circle me-2"></i> Stop
-                    <% end %>
-                  </li>
-                <% end %>
-                
-                <% if campaign.status == 'stopped' || campaign.status == 'completed' %>
-                  <li>
-                    <%= button_to reactivate_campaign_path(campaign), method: :post, 
-                        class: "dropdown-item",
-                        data: { turbo_confirm: "This will reactivate the campaign and set it to draft status. Proceed?" } do %>
-                      <i class="fas fa-redo me-2"></i> Reactivate to Draft
-                    <% end %>
-                  </li>
-                <% end %>
-                
-                <% if campaign.sent_count > 0 %>
-                  <li><hr class="dropdown-divider"></li>
-                  <li>
-                    <%= link_to ai_analyze_campaign_path(campaign), class: "dropdown-item" do %>
-                      <i class="fas fa-robot me-2"></i> AI Analysis
-                    <% end %>
-                  </li>
-                <% end %>
-                
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                  <%= button_to campaign_path(campaign), method: :delete, 
-                      class: "dropdown-item text-danger",
-                      data: { turbo_confirm: "Are you sure you want to delete this campaign?" } do %>
-                    <i class="fas fa-trash me-2"></i> Delete
-                  <% end %>
-                </li>
-              </ul>
-            </div>
-          </td>
-        </tr>
-        
-        <% if @child_campaigns_by_parent[campaign.id].present? %>
-          <% @child_campaigns_by_parent[campaign.id].each do |child_campaign| %>
-            <tr id="child-of-<%= campaign.id %>-<%= child_campaign.id %>" class="child-row child-of-<%= campaign.id %>" style="display: none; background-color: #f8f9fa;">
-              <td></td>
-              <td style="padding-left: 2rem;">
-                <i class="fas fa-reply fa-rotate-180 text-muted me-2"></i>
-                <%= link_to child_campaign.name, campaign_path(child_campaign), class: "text-decoration-none" %>
-                <div class="small text-muted"><%= truncate(child_campaign.description, length: 50) if child_campaign.description.present? %></div>
-              </td>
-              <td>
-                <span class="badge bg-<%= campaign_status_color(child_campaign.status) %>"><%= child_campaign.status.humanize %></span>
-              </td>
-              <td><%= child_campaign.email_template&.name || "—" %></td>
-              <td><%= child_campaign.contact_count %></td>
-              <td>
-                <% if child_campaign.scheduled_at.present? %>
-                  <%= child_campaign.scheduled_at.strftime('%b %d, %Y') %>
-                  <div class="small text-muted"><%= child_campaign.scheduled_at.strftime('%I:%M %p') %></div>
-                <% else %>
-                  —
-                <% end %>
-              </td>
-              <td>
-                <% if child_campaign.sent_count > 0 %>
-                  <div class="d-flex align-items-center mb-1">
-                    <div class="me-2" style="width: 75px;">Open Rate:</div>
-                    <div class="progress flex-grow-1" style="height: 6px;">
-                      <div class="progress-bar bg-success" role="progressbar" style="width: <%= [child_campaign.open_rate, 100].min %>%"></div>
-                    </div>
-                    <div class="ms-2 small"><%= child_campaign.open_rate %>%</div>
-                  </div>
-                  <div class="d-flex align-items-center">
-                    <div class="me-2" style="width: 75px;">Click Rate:</div>
-                    <div class="progress flex-grow-1" style="height: 6px;">
-                      <div class="progress-bar bg-info" role="progressbar" style="width: <%= [child_campaign.click_rate, 100].min %>%"></div>
-                    </div>
-                    <div class="ms-2 small"><%= child_campaign.click_rate %>%</div>
-                  </div>
-                <% else %>
-                  <span class="text-muted">No data yet</span>
-                <% end %>
-              </td>
-              <td>
-                <div class="btn-group">
-                  <%= link_to campaign_path(child_campaign), class: "btn btn-sm btn-outline-primary" do %>
-                    <i class="fas fa-eye"></i>
-                  <% end %>
-                  <%= link_to edit_campaign_path(child_campaign), class: "btn btn-sm btn-outline-secondary" do %>
-                    <i class="fas fa-edit"></i>
-                  <% end %>
+                  </ul>
                 </div>
-              </td>
-            </tr>
+              </div>
+            </td>
+          </tr>
+
+          <%# Child Campaigns %>
+          <% if @child_campaigns_by_parent[campaign.id].present? %>
+            <% @child_campaigns_by_parent[campaign.id].each do |child_campaign| %>
+              <tr id="child-of-<%= campaign.id %>-<%= child_campaign.id %>" class="child-row child-of-<%= campaign.id %>" style="display: none; background-color: #0F172A;">
+                <td></td>
+                <td style="padding-left: 2rem;">
+                  <i data-lucide="corner-down-right" style="width: 1rem; height: 1rem; color: #64748B; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+                  <%= link_to child_campaign.name, campaign_path(child_campaign), style: 'color: #22D3EE; text-decoration: none; font-weight: 600;' %>
+                  <% if child_campaign.description.present? %>
+                    <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;"><%= truncate(child_campaign.description, length: 50) %></div>
+                  <% end %>
+                </td>
+                <td>
+                  <% if child_campaign.status == 'active' %>
+                    <span class="admin-badge admin-badge-online">Active</span>
+                  <% elsif child_campaign.status == 'completed' %>
+                    <span class="admin-badge admin-badge-online">Completed</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-default"><%= child_campaign.status.humanize %></span>
+                  <% end %>
+                </td>
+                <td style="color: #94A3B8;"><%= child_campaign.email_template&.name || "—" %></td>
+                <td style="color: white;"><%= child_campaign.contact_count %></td>
+                <td style="color: #94A3B8;">
+                  <% if child_campaign.scheduled_at.present? %>
+                    <%= child_campaign.scheduled_at.strftime('%b %d, %Y') %>
+                    <div style="color: #64748B; font-size: 0.75rem;"><%= child_campaign.scheduled_at.strftime('%I:%M %p') %></div>
+                  <% else %>
+                    —
+                  <% end %>
+                </td>
+                <td>
+                  <% if child_campaign.sent_count > 0 %>
+                    <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                      <div style="color: #94A3B8; font-size: 0.75rem; width: 75px;">Open Rate:</div>
+                      <div style="flex: 1; height: 6px; background-color: #1E293B; border-radius: 3px; overflow: hidden;">
+                        <div style="width: <%= [child_campaign.open_rate, 100].min %>%; height: 100%; background-color: rgb(74, 222, 128);"></div>
+                      </div>
+                      <div style="margin-left: 0.5rem; color: white; font-size: 0.75rem;"><%= child_campaign.open_rate %>%</div>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                      <div style="color: #94A3B8; font-size: 0.75rem; width: 75px;">Click Rate:</div>
+                      <div style="flex: 1; height: 6px; background-color: #1E293B; border-radius: 3px; overflow: hidden;">
+                        <div style="width: <%= [child_campaign.click_rate, 100].min %>%; height: 100%; background-color: #22D3EE;"></div>
+                      </div>
+                      <div style="margin-left: 0.5rem; color: white; font-size: 0.75rem;"><%= child_campaign.click_rate %>%</div>
+                    </div>
+                  <% else %>
+                    <span style="color: #64748B;">No data yet</span>
+                  <% end %>
+                </td>
+                <td style="text-align: right;">
+                  <div style="display: inline-flex; gap: 0.5rem;">
+                    <%= link_to campaign_path(child_campaign), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                      <i data-lucide="eye"></i>
+                    <% end %>
+                    <%= link_to edit_campaign_path(child_campaign), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                      <i data-lucide="pencil"></i>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
           <% end %>
         <% end %>
-      <% end %>
-    </tbody>
-  </table>
-</div> 
+      </tbody>
+    </table>
+  </div>
+</div>

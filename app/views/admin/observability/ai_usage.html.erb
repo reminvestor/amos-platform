@@ -1,329 +1,339 @@
-<div class="container-fluid py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">
-      <i class="fas fa-brain me-2"></i> AI Usage Metrics
-    </h1>
+<div class="admin-content" data-turbo-cache="false">
+  <div style="padding: 2rem;">
+    <%# Page Header %>
+    <div class="admin-page-header">
+      <div class="header-left">
+        <div class="header-icon">
+          <i data-lucide="brain"></i>
+        </div>
+        <div class="header-text">
+          <h1>AI Usage Metrics</h1>
+          <p>Monitor AI model usage, costs, and performance</p>
+        </div>
+      </div>
 
-    <div class="btn-group" role="group">
-      <%= link_to admin_observability_ai_usage_path(time_range: 1, group_by: "hour"),
-                  class: "btn btn-sm #{params[:time_range] == '1' ? 'btn-primary' : 'btn-outline-primary'}" do %>
-        Last 24 Hours
+      <div class="header-actions" style="display: flex; gap: 0.5rem;">
+        <%= link_to admin_observability_ai_usage_path(time_range: 1, group_by: "hour"),
+                    class: "admin-btn admin-btn-sm #{params[:time_range] == '1' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          Last 24 Hours
+        <% end %>
+        <%= link_to admin_observability_ai_usage_path(time_range: 7, group_by: "day"),
+                    class: "admin-btn admin-btn-sm #{params[:time_range] == '7' || params[:time_range].nil? ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          Last 7 Days
+        <% end %>
+        <%= link_to admin_observability_ai_usage_path(time_range: 30, group_by: "day"),
+                    class: "admin-btn admin-btn-sm #{params[:time_range] == '30' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          Last 30 Days
+        <% end %>
+      </div>
+    </div>
+
+    <%# Stats Cards %>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+      <%# Total Requests %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="cpu" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Requests</p>
+            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_requests) %></h3>
+          </div>
+        </div>
+      </div>
+
+      <%# Total Tokens %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
+            <i data-lucide="coins" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Tokens</p>
+            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_tokens) %></h3>
+          </div>
+        </div>
+      </div>
+
+      <%# Total Cost %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(239, 68, 68, 0.2);">
+            <i data-lucide="dollar-sign" style="width: 1.5rem; height: 1.5rem; color: rgb(248, 113, 113);"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Cost</p>
+            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;">$<%= number_with_precision(@total_cost, precision: 2) %></h3>
+          </div>
+        </div>
+      </div>
+
+      <%# Avg Latency %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
+            <i data-lucide="clock" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Avg Latency</p>
+            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @average_latency %>s</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Charts Row %>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+      <%# Token Usage Chart %>
+      <div class="admin-card">
+        <h3 class="card-title">
+          <i data-lucide="bar-chart-3" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+          Token Usage Over Time
+        </h3>
+        <canvas id="tokenUsageChart" style="height: 300px;"></canvas>
+      </div>
+
+      <%# Cost Chart %>
+      <div class="admin-card">
+        <h3 class="card-title">
+          <i data-lucide="trending-up" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+          Cost Over Time
+        </h3>
+        <canvas id="costChart" style="height: 300px;"></canvas>
+      </div>
+    </div>
+
+    <%# Usage Breakdown Row %>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+      <%# Usage by Entity %>
+      <div class="admin-card">
+        <h3 class="card-title">
+          <i data-lucide="building" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+          Usage by Entity
+        </h3>
+        <% if @usage_by_entity.any? %>
+          <div style="overflow-x: auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Entity</th>
+                  <th style="text-align: right;">Requests</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @usage_by_entity.sort_by { |_, count| -count }.first(10).each do |entity_name, count| %>
+                  <tr>
+                    <td style="color: white;"><%= entity_name %></td>
+                    <td style="color: #94A3B8; text-align: right;"><%= number_with_delimiter(count) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <p style="color: #94A3B8; margin: 0;">No usage data available</p>
+        <% end %>
+      </div>
+
+      <%# Usage by Model %>
+      <div class="admin-card">
+        <h3 class="card-title">
+          <i data-lucide="cpu" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+          Usage by Model
+        </h3>
+        <% if @usage_by_model.any? %>
+          <div style="overflow-x: auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th style="text-align: right;">Requests</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @usage_by_model.sort_by { |_, count| -count }.each do |model, count| %>
+                  <tr>
+                    <td>
+                      <code style="background: #0F172A; padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: #22D3EE; font-size: 0.875rem;"><%= model %></code>
+                    </td>
+                    <td style="color: #94A3B8; text-align: right;"><%= number_with_delimiter(count) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <p style="color: #94A3B8; margin: 0;">No model data available</p>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Top Entities %>
+    <div class="admin-card" style="margin-bottom: 2rem;">
+      <h3 class="card-title">
+        <i data-lucide="trophy" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Top Entities by Usage
+      </h3>
+      <% if @top_entities.any? %>
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Entity Name</th>
+                <th style="text-align: right;">Request Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @top_entities.each_with_index do |entity, index| %>
+                <tr>
+                  <td style="color: #94A3B8;"><%= index + 1 %></td>
+                  <td style="color: white; font-weight: 600;"><%= entity.name %></td>
+                  <td style="color: #94A3B8; text-align: right;"><%= number_with_delimiter(entity.request_count) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <p style="color: #94A3B8; margin: 0;">No entity data available</p>
       <% end %>
-      <%= link_to admin_observability_ai_usage_path(time_range: 7, group_by: "day"),
-                  class: "btn btn-sm #{params[:time_range] == '7' || params[:time_range].nil? ? 'btn-primary' : 'btn-outline-primary'}" do %>
-        Last 7 Days
+    </div>
+
+    <%# Recent Requests %>
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="clock" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Recent AI Requests
+      </h3>
+      <% if @recent_requests.any? %>
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Entity</th>
+                <th>User</th>
+                <th>Event</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @recent_requests.each do |event| %>
+                <tr>
+                  <td style="color: #94A3B8; font-size: 0.875rem;"><%= time_ago_in_words(event.created_at) %> ago</td>
+                  <td style="color: white;"><%= event.entity&.name || "N/A" %></td>
+                  <td style="color: #94A3B8;"><%= event.user&.email || "System" %></td>
+                  <td><span class="admin-badge admin-badge-default"><%= event.event_type.upcase %></span></td>
+                  <td style="color: #94A3B8; font-size: 0.875rem;">
+                    <% if event.metadata.present? %>
+                      <%= event.metadata["model"] || "N/A" %>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <p style="color: #94A3B8; margin: 0;">No recent requests</p>
       <% end %>
-      <%= link_to admin_observability_ai_usage_path(time_range: 30, group_by: "day"),
-                  class: "btn btn-sm #{params[:time_range] == '30' ? 'btn-primary' : 'btn-outline-primary'}" do %>
-        Last 30 Days
-      <% end %>
-    </div>
-  </div>
-
-  <!-- Summary Cards -->
-  <div class="row g-4 mb-4">
-    <div class="col-md-3">
-      <div class="card border-primary">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="flex-grow-1">
-              <h6 class="text-muted mb-1">Total Requests</h6>
-              <h2 class="mb-0"><%= number_with_delimiter(@total_requests) %></h2>
-            </div>
-            <div class="text-primary">
-              <i class="fas fa-robot fa-2x"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-3">
-      <div class="card border-success">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="flex-grow-1">
-              <h6 class="text-muted mb-1">Total Tokens</h6>
-              <h2 class="mb-0"><%= number_with_delimiter(@total_tokens) %></h2>
-            </div>
-            <div class="text-success">
-              <i class="fas fa-coins fa-2x"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-3">
-      <div class="card border-danger">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="flex-grow-1">
-              <h6 class="text-muted mb-1">Total Cost</h6>
-              <h2 class="mb-0">$<%= number_with_precision(@total_cost, precision: 2) %></h2>
-            </div>
-            <div class="text-danger">
-              <i class="fas fa-dollar-sign fa-2x"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-3">
-      <div class="card border-info">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="flex-grow-1">
-              <h6 class="text-muted mb-1">Avg Latency</h6>
-              <h2 class="mb-0"><%= @average_latency %>s</h2>
-            </div>
-            <div class="text-info">
-              <i class="fas fa-clock fa-2x"></i>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Charts -->
-  <div class="row g-4 mb-4">
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="fas fa-chart-area me-2"></i> Token Usage Over Time
-          </h5>
-        </div>
-        <div class="card-body">
-          <canvas id="tokenUsageChart" style="height: 300px;"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="fas fa-chart-line me-2"></i> Cost Over Time
-          </h5>
-        </div>
-        <div class="card-body">
-          <canvas id="costChart" style="height: 300px;"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Usage Breakdown -->
-  <div class="row g-4 mb-4">
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="fas fa-building me-2"></i> Usage by Entity
-          </h5>
-        </div>
-        <div class="card-body">
-          <% if @usage_by_entity.any? %>
-            <div class="table-responsive">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Entity</th>
-                    <th class="text-end">Requests</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @usage_by_entity.sort_by { |_, count| -count }.first(10).each do |entity_name, count| %>
-                    <tr>
-                      <td><%= entity_name %></td>
-                      <td class="text-end"><%= number_with_delimiter(count) %></td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <p class="text-muted mb-0">No usage data available</p>
-          <% end %>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="fas fa-microchip me-2"></i> Usage by Model
-          </h5>
-        </div>
-        <div class="card-body">
-          <% if @usage_by_model.any? %>
-            <div class="table-responsive">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Model</th>
-                    <th class="text-end">Requests</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @usage_by_model.sort_by { |_, count| -count }.each do |model, count| %>
-                    <tr>
-                      <td><code><%= model %></code></td>
-                      <td class="text-end"><%= number_with_delimiter(count) %></td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <p class="text-muted mb-0">No model data available</p>
-          <% end %>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Top Entities -->
-  <div class="row g-4 mb-4">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="fas fa-trophy me-2"></i> Top Entities by Usage
-          </h5>
-        </div>
-        <div class="card-body">
-          <% if @top_entities.any? %>
-            <div class="table-responsive">
-              <table class="table table-hover">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Entity Name</th>
-                    <th class="text-end">Request Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @top_entities.each_with_index do |entity, index| %>
-                    <tr>
-                      <td><%= index + 1 %></td>
-                      <td><%= entity.name %></td>
-                      <td class="text-end"><%= number_with_delimiter(entity.request_count) %></td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <p class="text-muted mb-0">No entity data available</p>
-          <% end %>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Recent Requests -->
-  <div class="row g-4">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="fas fa-history me-2"></i> Recent AI Requests
-          </h5>
-        </div>
-        <div class="card-body">
-          <% if @recent_requests.any? %>
-            <div class="table-responsive">
-              <table class="table table-hover table-sm">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Entity</th>
-                    <th>User</th>
-                    <th>Event</th>
-                    <th>Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @recent_requests.each do |event| %>
-                    <tr>
-                      <td><%= time_ago_in_words(event.created_at) %> ago</td>
-                      <td><%= event.entity&.name || "N/A" %></td>
-                      <td><%= event.user&.email || "System" %></td>
-                      <td><span class="badge bg-primary"><%= event.event_type %></span></td>
-                      <td>
-                        <% if event.metadata.present? %>
-                          <small class="text-muted">
-                            <%= event.metadata["model"] || "N/A" %>
-                          </small>
-                        <% end %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <p class="text-muted mb-0">No recent requests</p>
-          <% end %>
-        </div>
-      </div>
     </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-  // Token Usage Chart
-  const tokenCtx = document.getElementById('tokenUsageChart');
-  new Chart(tokenCtx, {
-    type: 'bar',
-    data: <%= raw @token_usage_chart.to_json %>,
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: { stacked: true },
-        y: {
-          stacked: true,
-          beginAtZero: true
-        }
-      },
-      plugins: {
-        legend: {
-          position: 'bottom'
-        }
-      }
-    }
-  });
+  // Initialize charts and icons only once
+  function initializeAIUsagePage() {
+    // Dark theme colors
+    Chart.defaults.color = '#94A3B8';
+    Chart.defaults.borderColor = '#1E293B';
 
-  // Cost Chart
-  const costCtx = document.getElementById('costChart');
-  new Chart(costCtx, {
-    type: 'line',
-    data: <%= raw @cost_chart.to_json %>,
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            callback: function(value) {
-              return '$' + value.toFixed(2);
+    // Get canvas elements
+    const tokenCanvas = document.getElementById('tokenUsageChart');
+    const costCanvas = document.getElementById('costChart');
+
+    // Destroy existing charts if they exist
+    if (tokenCanvas && Chart.getChart(tokenCanvas)) {
+      Chart.getChart(tokenCanvas).destroy();
+    }
+    if (costCanvas && Chart.getChart(costCanvas)) {
+      Chart.getChart(costCanvas).destroy();
+    }
+
+    // Token Usage Chart
+    if (tokenCanvas) {
+      new Chart(tokenCanvas, {
+        type: 'bar',
+        data: <%= raw @token_usage_chart.to_json %>,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              stacked: true,
+              grid: { color: '#1E293B' }
+            },
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              grid: { color: '#1E293B' }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#94A3B8' }
             }
           }
         }
-      },
-      plugins: {
-        legend: {
-          position: 'bottom'
-        }
-      }
+      });
     }
-  });
+
+    // Cost Chart
+    if (costCanvas) {
+      new Chart(costCanvas, {
+        type: 'line',
+        data: <%= raw @cost_chart.to_json %>,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: '#1E293B' } },
+            y: {
+              beginAtZero: true,
+              grid: { color: '#1E293B' },
+              ticks: {
+                callback: function(value) {
+                  return '$' + value.toFixed(2);
+                }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#94A3B8' }
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+
+  // Run on both DOMContentLoaded and turbo:load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeAIUsagePage);
+  } else {
+    initializeAIUsagePage();
+  }
+
+  document.addEventListener('turbo:load', initializeAIUsagePage);
 </script>
