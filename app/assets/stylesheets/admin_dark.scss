@@ -38,6 +38,44 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
   display: flex;
   flex-direction: column;
   z-index: 1000;
+  transition: width 0.3s ease;
+
+  // Collapsed state - icon-only view
+  &.collapsed {
+    width: 64px;
+
+    .sidebar-logo .logo-text,
+    nav .nav-item span,
+    .sidebar-bottom .nav-item span {
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .sidebar-logo {
+      justify-content: center;
+      padding: 1.5rem 0.5rem;
+
+      .hamburger-toggle {
+        margin: 0;
+      }
+
+      .logo-text {
+        display: none;
+      }
+    }
+
+    nav .nav-item,
+    .sidebar-bottom .nav-item {
+      justify-content: center;
+      padding: 0.75rem;
+
+      i, svg {
+        margin: 0;
+      }
+    }
+  }
 
   // Logo section
   .sidebar-logo {
@@ -45,6 +83,29 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
     display: flex;
     align-items: center;
     gap: 0.75rem;
+
+    .hamburger-toggle {
+      background: transparent;
+      border: none;
+      color: $admin-text-secondary;
+      padding: 0.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.375rem;
+      transition: all 0.2s;
+
+      &:hover {
+        background-color: rgba($admin-border, 0.5);
+        color: $admin-text-primary;
+      }
+
+      i, svg {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+    }
 
     .logo-icon {
       width: 2.5rem;
@@ -61,6 +122,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
     .logo-text {
       color: $admin-text-primary;
       font-weight: 500;
+      transition: opacity 0.3s ease;
     }
   }
 
@@ -157,6 +219,12 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
   margin-left: 256px;
   background-color: $admin-bg-primary;
   min-height: 100vh;
+  transition: margin-left 0.3s ease;
+}
+
+// When sidebar is collapsed
+.admin-sidebar.collapsed ~ .admin-content {
+  margin-left: 64px;
 }
 
 // Admin Cards
