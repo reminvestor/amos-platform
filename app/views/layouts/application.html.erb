@@ -278,7 +278,7 @@
         <div class="ms-auto d-flex align-items-center gap-2">
           <!-- Mode Toggle Button -->
           <%= link_to chat_mode_path, class: "btn btn-sm btn-light" do %>
-            <i class="fas fa-comments me-1"></i> Chat Mode
+            <i data-lucide="message-circle" class="me-1" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle;"></i> Chat Mode
           <% end %>
           
           <% if user_signed_in? %>

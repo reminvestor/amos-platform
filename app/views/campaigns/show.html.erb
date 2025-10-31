@@ -1,261 +1,213 @@
-<div class="container mt-4">
-  <div class="row">
-    <div class="col-md-12">
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h2><%= @campaign.name %></h2>
-          <div>
-            <%= link_to "Back", campaigns_path, class: "btn btn-outline-secondary me-2" %>
-            <%= link_to "Edit", edit_campaign_path(@campaign), class: "btn btn-outline-primary me-2" %>
-            <div class="dropdown d-inline-block">
-              <button class="btn btn-primary dropdown-toggle" type="button" id="campaignActions" data-bs-toggle="dropdown" aria-expanded="false">
-                Actions
-              </button>
-              <ul class="dropdown-menu" aria-labelledby="campaignActions">
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<div style="padding: 2rem; background-color: var(--bg-primary); min-height: 100vh;">
+  <div class="container-fluid">
+    <%# Page Header %>
+    <div class="admin-page-header" style="margin-bottom: 2rem;">
+      <div class="header-left">
+        <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+          <i data-lucide="mail"></i>
+        </div>
+        <div class="header-text">
+          <h1><%= @campaign.name %></h1>
+          <p><%= @campaign.description %></p>
+        </div>
+      </div>
+
+      <div class="header-actions" style="display: flex; gap: 0.75rem;">
+        <%= link_to campaigns_path, class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="arrow-left"></i>
+          <span>Back</span>
+        <% end %>
+
+        <%= link_to edit_campaign_path(@campaign), class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="pencil"></i>
+          <span>Edit</span>
+        <% end %>
+
+        <div class="dropdown d-inline-block">
+          <button class="admin-btn admin-btn-primary dropdown-toggle" type="button" id="campaignActions" data-bs-toggle="dropdown" aria-expanded="false">
+            <i data-lucide="more-vertical"></i>
+            <span>Actions</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="campaignActions" style="background-color: var(--bg-card); border: 1px solid var(--border-primary);">
+            <li>
+              <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#testEmailModal" style="color: var(--text-primary);">
+                <i data-lucide="send" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+                Send Test Email
+              </a>
+            </li>
+            <% if @campaign.status == 'draft' %>
+              <li>
+                <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#scheduleModal" style="color: var(--text-primary);">
+                  <i data-lucide="calendar-clock" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+                  Schedule Campaign
+                </a>
+              </li>
+              <li>
+                <%= button_to send_now_campaign_path(@campaign), method: :post,
+                    class: "dropdown-item",
+                    style: "color: var(--text-primary);",
+                    data: { confirm: "Are you sure you want to send this campaign immediately?" } do %>
+                  <i data-lucide="zap" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Send Now
+                <% end %>
+              </li>
+            <% elsif @campaign.status == 'scheduled' || @campaign.status == 'in_progress' %>
+              <li>
+                <%= button_to "Pause Campaign", pause_campaign_path(@campaign), method: :post, class: "dropdown-item", style: "color: var(--text-primary);" %>
+              </li>
+              <% if @campaign.stalled? %>
+                <li><hr class="dropdown-divider" style="border-color: var(--border-primary);"></li>
                 <li>
-                  <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#testEmailModal">Send Test Email</a>
-                </li>
-                <% if @campaign.status == 'draft' %>
-                  <li>
-                    <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#scheduleModal">Schedule Campaign</a>
-                  </li>
-                  <li>
-                    <%= button_to send_now_campaign_path(@campaign), method: :post, 
-                        class: "dropdown-item",
-                        data: { confirm: "Are you sure you want to send this campaign immediately?" } do %>
-                      <i class="fas fa-paper-plane me-2"></i> Send Now
-                    <% end %>
-                  </li>
-                <% elsif @campaign.status == 'scheduled' || @campaign.status == 'in_progress' %>
-                  <li>
-                    <%= button_to "Pause Campaign", pause_campaign_path(@campaign), method: :post, class: "dropdown-item" %>
-                  </li>
-                  <% if @campaign.stalled? %>
-                    <li><hr class="dropdown-divider"></li>
-                    <li>
-                      <%= button_to force_resume_campaign_path(@campaign), method: :post, 
-                          class: "dropdown-item text-danger",
-                          data: { 
-                            confirm: "This will sync with Mailgun, retry failed emails, and resume sending. Continue?" 
-                          } do %>
-                        <i class="fas fa-exclamation-triangle me-2"></i> Force Resume (Stalled)
-                      <% end %>
-                    </li>
+                  <%= button_to force_resume_campaign_path(@campaign), method: :post,
+                      class: "dropdown-item",
+                      style: "color: #F87171;",
+                      data: { confirm: "This will sync with Mailgun, retry failed emails, and resume sending. Continue?" } do %>
+                    <i data-lucide="alert-triangle" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Force Resume (Stalled)
                   <% end %>
-                <% elsif @campaign.status == 'paused' %>
-                  <li>
-                    <%= button_to "Resume Campaign", resume_campaign_path(@campaign), method: :post, class: "dropdown-item" %>
-                  </li>
+                </li>
+              <% end %>
+            <% elsif @campaign.status == 'paused' %>
+              <li>
+                <%= button_to "Resume Campaign", resume_campaign_path(@campaign), method: :post, class: "dropdown-item", style: "color: var(--text-primary);" %>
+              </li>
+            <% end %>
+            <% unless @campaign.status == 'stopped' || @campaign.status == 'completed' %>
+              <li>
+                <%= button_to "Stop Campaign", stop_campaign_path(@campaign), method: :post, class: "dropdown-item", style: "color: var(--text-primary);", data: { confirm: "Are you sure you want to stop this campaign? This action cannot be undone." } %>
+              </li>
+            <% end %>
+            <% if @campaign.status == 'completed' || @campaign.sent_count > 0 %>
+              <li>
+                <%= link_to "AI Analysis & Insights", ai_analyze_campaign_path(@campaign), class: "dropdown-item", style: "color: var(--text-primary);" %>
+              </li>
+            <% end %>
+            <% if @campaign.status == 'stopped' || @campaign.status == 'completed' %>
+              <li>
+                <%= button_to reactivate_campaign_path(@campaign), method: :post,
+                    class: "dropdown-item",
+                    style: "color: var(--text-primary);",
+                    data: { confirm: "This will reactivate the campaign and set it to draft status. Proceed?" } do %>
+                  <i data-lucide="refresh-cw" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i> Reactivate to Draft
                 <% end %>
-                <% unless @campaign.status == 'stopped' || @campaign.status == 'completed' %>
-                  <li>
-                    <%= button_to "Stop Campaign", stop_campaign_path(@campaign), method: :post, class: "dropdown-item", data: { confirm: "Are you sure you want to stop this campaign? This action cannot be undone." } %>
-                  </li>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <%# Main Content Column %>
+      <div class="col-md-8">
+        <%# Alerts %>
+        <% if @campaign.opted_out_contacts_count.to_i > 0 %>
+          <div class="alert alert-warning" style="background-color: var(--status-warning-bg); border: 1px solid var(--status-warning-border); color: var(--status-warning-text); margin-bottom: 1.5rem;">
+            <i data-lucide="alert-triangle" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+            <strong>Warning:</strong> <%= @campaign.opted_out_contacts_count %> contact(s) in your selected groups have unsubscribed and will not receive emails.
+          </div>
+        <% end %>
+
+        <% if @campaign.stalled? %>
+          <% stall_info = @campaign.stall_info %>
+          <div class="alert alert-danger" style="background-color: var(--status-error-bg); border: 1px solid var(--status-error-border); color: var(--status-error-text); margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items-start; gap: 1rem;">
+              <div>
+                <div style="margin-bottom: 0.5rem;">
+                  <i data-lucide="alert-circle" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+                  <strong>Campaign Appears Stalled!</strong>
+                </div>
+                <p style="margin-bottom: 0.5rem;">
+                  This campaign has been inactive for <%= time_ago_in_words(stall_info[:last_activity]) %>
+                  with <%= stall_info[:pending_count] %> emails still pending.
+                </p>
+                <small style="color: var(--text-muted);">
+                  Last activity: <%= stall_info[:last_activity]&.strftime('%b %d, %Y at %I:%M %p') %>
+                  <% if stall_info[:last_sent] %>
+                    | Last email sent: <%= stall_info[:last_sent]&.strftime('%b %d, %Y at %I:%M %p') %>
+                  <% end %>
+                </small>
+              </div>
+              <div>
+                <%= button_to force_resume_campaign_path(@campaign), method: :post,
+                    class: "admin-btn admin-btn-sm",
+                    style: "background-color: #DC2626; border-color: #DC2626;",
+                    data: { confirm: "This will sync with Mailgun, retry failed emails, and resume sending. Continue?" } do %>
+                  <i data-lucide="play"></i> Force Resume
                 <% end %>
-                <% if @campaign.status == 'completed' || @campaign.sent_count > 0 %>
-                  <li>
-                    <%= link_to "AI Analysis & Insights", ai_analyze_campaign_path(@campaign), class: "dropdown-item" %>
-                  </li>
-                <% end %>
-                <% if @campaign.status == 'stopped' || @campaign.status == 'completed' %>
-                  <li>
-                    <%= button_to reactivate_campaign_path(@campaign), method: :post, 
-                        class: "dropdown-item",
-                        data: { confirm: "This will reactivate the campaign and set it to draft status. Proceed?" } do %>
-                      <i class="fas fa-redo me-2"></i> Reactivate to Draft
-                    <% end %>
-                  </li>
-                <% end %>
-              </ul>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="card-body">
-          <div class="row mb-4">
-            <div class="col-md-8">
-              <h4>Campaign Details</h4>
-              
-              <% if @campaign.opted_out_contacts_count.to_i > 0 %>
-                <div class="alert alert-warning">
-                  <i class="fas fa-exclamation-triangle me-2"></i>
-                  <strong>Warning:</strong> <%= @campaign.opted_out_contacts_count %> contact(s) in your selected groups have unsubscribed and will not receive emails.
-                </div>
+        <% end %>
+
+        <%# Campaign Details Card %>
+        <div class="admin-card" style="margin-bottom: 1.5rem;">
+          <h4 style="color: white; margin-bottom: 1.5rem;">Campaign Details</h4>
+
+          <dl style="margin-bottom: 0;">
+            <dt style="color: var(--text-secondary); font-weight: 600; margin-bottom: 0.5rem;">Status:</dt>
+            <dd style="margin-bottom: 1.5rem;">
+              <span class="admin-badge admin-badge-<%= case @campaign.status
+                when 'draft' then 'default'
+                when 'scheduled' then 'warning'
+                when 'in_progress' then 'cyan'
+                when 'completed' then 'online'
+                when 'stopped', 'paused' then 'offline'
+                else 'default'
+              end %>"><%= @campaign.status.humanize %></span>
+            </dd>
+
+            <% if @campaign.scheduled_at.present? %>
+              <dt style="color: var(--text-secondary); font-weight: 600; margin-bottom: 0.5rem;">Scheduled for:</dt>
+              <dd style="color: white; margin-bottom: 1.5rem;"><%= @campaign.scheduled_at.strftime('%b %d, %Y at %I:%M %p') %></dd>
+            <% end %>
+
+            <dt style="color: var(--text-secondary); font-weight: 600; margin-bottom: 0.5rem;">Email Template:</dt>
+            <dd style="color: white; margin-bottom: 1.5rem;"><%= @campaign.email_template&.name || 'None' %></dd>
+
+            <dt style="color: var(--text-secondary); font-weight: 600; margin-bottom: 0.5rem;">Contact Groups:</dt>
+            <dd style="color: white; margin-bottom: 0;">
+              <% if @campaign.contact_groups.any? %>
+                <%= @campaign.contact_groups.map(&:name).join(', ') %>
+              <% else %>
+                None
               <% end %>
-              
-              <% if @campaign.stalled? %>
-                <% stall_info = @campaign.stall_info %>
-                <div class="alert alert-danger">
-                  <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                      <i class="fas fa-exclamation-circle me-2"></i>
-                      <strong>Campaign Appears Stalled!</strong>
-                      <p class="mb-2">
-                        This campaign has been inactive for <%= time_ago_in_words(stall_info[:last_activity]) %> 
-                        with <%= stall_info[:pending_count] %> emails still pending.
-                      </p>
-                      <small class="text-muted">
-                        Last activity: <%= stall_info[:last_activity]&.strftime('%b %d, %Y at %I:%M %p') %>
-                        <% if stall_info[:last_sent] %>
-                          | Last email sent: <%= stall_info[:last_sent]&.strftime('%b %d, %Y at %I:%M %p') %>
-                        <% end %>
-                      </small>
-                    </div>
-                    <div>
-                      <%= button_to force_resume_campaign_path(@campaign), method: :post, 
-                          class: "btn btn-danger btn-sm",
-                          data: { 
-                            confirm: "This will sync with Mailgun, retry failed emails, and resume sending. Continue?" 
-                          } do %>
-                        <i class="fas fa-play me-1"></i> Force Resume
-                      <% end %>
-                    </div>
-                  </div>
-                </div>
-              <% end %>
-              
-              <p><strong>Description:</strong> <%= @campaign.description %></p>
-              <p><strong>Status:</strong> <span class="badge bg-<%= campaign_status_color(@campaign.status) %>"><%= @campaign.status.humanize %></span></p>
-              <% if @campaign.scheduled_at.present? %>
-                <p><strong>Scheduled for:</strong> <%= @campaign.scheduled_at.strftime('%b %d, %Y at %I:%M %p') %></p>
-              <% end %>
-              <p><strong>Email Template:</strong> <%= @campaign.email_template&.name || 'None' %></p>
-              <p><strong>Contact Groups:</strong> 
-                <% if @campaign.contact_groups.any? %>
-                  <%= @campaign.contact_groups.map(&:name).join(', ') %>
+            </dd>
+          </dl>
+
+          <% if @campaign.mailgun_tag.present? %>
+            <div style="margin-top: 1.5rem; padding: 1rem; background-color: var(--status-info-bg); border: 1px solid var(--status-info-border); border-radius: 0.5rem;">
+              <h6 style="color: white; margin-bottom: 0.75rem;">
+                <i data-lucide="refresh-cw" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+                Mailgun Integration
+              </h6>
+              <p style="margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.875rem;">
+                <% if @campaign.last_synced_at.present? %>
+                  Last synced: <%= begin
+                                    @campaign.last_synced_at.strftime('%b %d, %Y at %I:%M %p')
+                                  rescue
+                                    @campaign.last_synced_at.to_s
+                                  end %>
                 <% else %>
-                  None
+                  <span style="color: var(--status-warning-text);">Not synced yet</span>
                 <% end %>
               </p>
-              
-              <% if @campaign.mailgun_tag.present? %>
-                <div class="card bg-light mt-3 mb-2">
-                  <div class="card-body">
-                    <h6><i class="fas fa-sync me-2"></i> Mailgun Integration</h6>
-                    <p class="mb-0">
-                      <small>
-                        <% if @campaign.last_synced_at.present? %>
-                          <span class="text-muted">Last synced: <%= begin
-                                                                      @campaign.last_synced_at.strftime('%b %d, %Y at %I:%M %p')
-                                                                    rescue
-                                                                      @campaign.last_synced_at.to_s
-                                                                    end %></span>
-                        <% else %>
-                          <span class="text-warning">Not synced yet</span>
-                        <% end %>
-                        <%= button_to sync_mailgun_campaign_path(@campaign), method: :post, class: "btn btn-sm btn-outline-primary mt-2" do %>
-                          <i class="fas fa-sync-alt me-1"></i> Sync with Mailgun
-                        <% end %>
-                      </small>
-                    </p>
-                  </div>
-                </div>
+              <%= button_to sync_mailgun_campaign_path(@campaign), method: :post, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                <i data-lucide="refresh-cw"></i> Sync with Mailgun
               <% end %>
             </div>
-            <div class="col-md-4">
-              <h4>Campaign Statistics</h4>
-              <div class="card bg-light">
-                <div class="card-body">
-                  <p><strong>Total Contacts:</strong> <%= @campaign.contact_count %></p>
-                  <p><strong>Emails Sent:</strong> <%= @campaign.sent_count %></p>
-                  <p><strong>Open Rate:</strong> <%= @campaign.open_rate %>%</p>
-                  <p><strong>Click Rate:</strong> <%= @campaign.click_rate %>%</p>
-                  
-                  <% if @campaign.sent_count > 0 %>
-                    <hr>
-                    <%= link_to ai_analyze_campaign_path(@campaign), class: "btn btn-sm btn-info w-100" do %>
-                      <i class="fas fa-robot me-1"></i> AI Analysis & Insights
-                    <% end %>
-                  <% end %>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Drip Campaigns Section -->
-          <% if @campaign.status == 'in_progress' || @campaign.status == 'completed' %>
-            <div class="row mb-4">
-              <div class="col-12">
-                <div class="card">
-                  <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0"><i class="fas fa-water me-2"></i> Drip Campaigns</h4>
-                    <% if !@campaign.has_follow_ups? && ['in_progress', 'completed'].include?(@campaign.status) %>
-                      <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#setupDripModal">
-                        <i class="fas fa-plus me-2"></i> Setup Drip Sequence
-                      </button>
-                    <% end %>
-                  </div>
-                  <div class="card-body">
-                    <% if @campaign.parent_drip_sequences.any? %>
-                      <h5>Follow-up Sequences</h5>
-                      <div class="table-responsive">
-                        <table class="table table-striped">
-                          <thead>
-                            <tr>
-                              <th>Sequence #</th>
-                              <th>Template Campaign</th>
-                              <th>Delay (Days)</th>
-                              <th>Condition</th>
-                              <th>Scheduled For</th>
-                              <th>Status</th>
-                              <th>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <% @campaign.parent_drip_sequences.order(sequence_position: :asc).each do |drip| %>
-                              <tr>
-                                <td><%= drip.sequence_position %></td>
-                                <td><%= link_to drip.follow_up_campaign.name, campaign_path(drip.follow_up_campaign) %></td>
-                                <td><%= drip.delay_days %></td>
-                                <td><span class="badge bg-info"><%= drip.condition.humanize %></span></td>
-                                <td><%= drip.scheduled_at&.strftime('%b %d, %Y at %I:%M %p') %></td>
-                                <td>
-                                  <% if drip.active? %>
-                                    <span class="badge bg-success">Active</span>
-                                  <% else %>
-                                    <span class="badge bg-secondary">Processed</span>
-                                  <% end %>
-                                </td>
-                                <td>
-                                  <% if drip.active? %>
-                                    <%= button_to trigger_drip_campaign_path(@campaign, drip_id: drip.id), method: :post, class: "btn btn-sm btn-primary" do %>
-                                      <i class="fas fa-play"></i> Run Now
-                                    <% end %>
-                                  <% end %>
-                                </td>
-                              </tr>
-                            <% end %>
-                          </tbody>
-                        </table>
-                      </div>
-                    <% elsif @campaign.is_follow_up? %>
-                      <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        This is a follow-up campaign created from a drip sequence.
-                        <% if @campaign.parent_campaigns.first %>
-                          Original campaign: <%= link_to @campaign.parent_campaigns.first.name, campaign_path(@campaign.parent_campaigns.first) %>
-                        <% end %>
-                      </div>
-                    <% else %>
-                      <p class="text-muted">No drip sequences have been set up for this campaign yet. Drip campaigns allow you to automatically send follow-up emails to recipients based on their interaction with the original email.</p>
-                      
-                      <div class="alert alert-light border">
-                        <h6><i class="fas fa-lightbulb me-2 text-warning"></i> How Drip Campaigns Work</h6>
-                        <ol class="mb-0">
-                          <li>Set up a follow-up email that will be sent after a specific delay</li>
-                          <li>Choose a condition for who receives the follow-up (e.g., only those who didn't open)</li>
-                          <li>The system will automatically create and send the follow-up campaign when the time comes</li>
-                        </ol>
-                      </div>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            </div>
           <% end %>
-          
-          <h4>Email Deliveries</h4>
-          <div class="table-responsive">
-            <table class="table table-striped">
+        </div>
+
+        <%# Email Deliveries Card %>
+        <div class="admin-card">
+          <h4 style="color: white; margin-bottom: 1.5rem;">
+            <i data-lucide="send" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+            Email Deliveries
+          </h4>
+
+          <div style="overflow-x: auto;">
+            <table class="admin-table">
               <thead>
                 <tr>
                   <th>Contact</th>
@@ -269,17 +221,24 @@
               <tbody>
                 <% @email_deliveries.each do |delivery| %>
                   <tr>
-                    <td><%= delivery.contact.full_name %></td>
-                    <td><%= delivery.contact.email %></td>
-                    <td><span class="badge bg-<%= delivery_status_color(delivery.status) %>"><%= delivery.status.humanize %></span></td>
-                    <td><%= delivery.sent_at&.strftime('%b %d, %Y %I:%M %p') %></td>
-                    <td><%= delivery.opened_at&.strftime('%b %d, %Y %I:%M %p') %></td>
-                    <td><%= delivery.clicked_at&.strftime('%b %d, %Y %I:%M %p') %></td>
+                    <td style="color: white;"><%= delivery.contact.full_name %></td>
+                    <td style="color: var(--text-secondary); font-size: 0.875rem;"><%= delivery.contact.email %></td>
+                    <td>
+                      <span class="admin-badge admin-badge-<%= case delivery.status
+                        when 'sent', 'delivered' then 'online'
+                        when 'failed', 'bounced' then 'offline'
+                        when 'pending', 'queued' then 'warning'
+                        else 'default'
+                      end %>"><%= delivery.status.humanize %></span>
+                    </td>
+                    <td style="color: var(--text-secondary); font-size: 0.875rem;"><%= delivery.sent_at&.strftime('%b %d, %Y %I:%M %p') %></td>
+                    <td style="color: var(--text-secondary); font-size: 0.875rem;"><%= delivery.opened_at&.strftime('%b %d, %Y %I:%M %p') %></td>
+                    <td style="color: var(--text-secondary); font-size: 0.875rem;"><%= delivery.clicked_at&.strftime('%b %d, %Y %I:%M %p') %></td>
                   </tr>
                 <% end %>
                 <% if @email_deliveries.empty? %>
                   <tr>
-                    <td colspan="6" class="text-center">No email deliveries yet.</td>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No email deliveries yet.</td>
                   </tr>
                 <% end %>
               </tbody>
@@ -287,8 +246,8 @@
           </div>
 
           <% if @email_deliveries.any? %>
-            <div class="d-flex justify-content-between align-items-center mt-4">
-              <div class="pagination-info text-muted">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-primary);">
+              <div style="color: var(--text-muted); font-size: 0.875rem;">
                 <%= page_entries_info @email_deliveries %>
               </div>
               <div>
@@ -298,52 +257,85 @@
           <% end %>
         </div>
       </div>
+
+      <%# Stats Sidebar %>
+      <div class="col-md-4">
+        <div class="admin-card">
+          <h4 style="color: white; margin-bottom: 1.5rem;">
+            <i data-lucide="bar-chart-3" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+            Campaign Statistics
+          </h4>
+
+          <div style="margin-bottom: 1rem;">
+            <dt style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.25rem;">Total Contacts:</dt>
+            <dd style="color: white; font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem;"><%= @campaign.contact_count %></dd>
+
+            <dt style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.25rem;">Emails Sent:</dt>
+            <dd style="color: white; font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem;"><%= @campaign.sent_count %></dd>
+
+            <dt style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.25rem;">Open Rate:</dt>
+            <dd style="color: rgb(74, 222, 128); font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem;"><%= @campaign.open_rate %>%</dd>
+
+            <dt style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.25rem;">Click Rate:</dt>
+            <dd style="color: #22D3EE; font-size: 1.5rem; font-weight: 600; margin-bottom: 0;"><%= @campaign.click_rate %>%</dd>
+          </div>
+
+          <% if @campaign.sent_count > 0 %>
+            <hr style="border-color: var(--border-primary); margin: 1.5rem 0;">
+            <%= link_to ai_analyze_campaign_path(@campaign), class: "admin-btn admin-btn-primary w-100" do %>
+              <i data-lucide="sparkles"></i> AI Analysis & Insights
+            <% end %>
+          <% end %>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Test Email Modal -->
+<%# Test Email Modal %>
 <div class="modal fade" id="testEmailModal" tabindex="-1" aria-labelledby="testEmailModalLabel" aria-hidden="true">
   <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="testEmailModalLabel">Send Test Email</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content" style="background-color: var(--bg-card); border: 1px solid var(--border-primary);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-primary);">
+        <h5 class="modal-title" id="testEmailModalLabel" style="color: white;">Send Test Email</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1);"></button>
       </div>
       <%= form_tag send_test_campaign_path(@campaign), method: :post do %>
         <div class="modal-body">
           <div class="mb-3">
-            <label for="email" class="form-label">Email Address</label>
-            <input type="email" class="form-control" id="email" name="email" placeholder="Enter email address" required>
+            <label for="email" class="form-label" style="color: white;">Email Address</label>
+            <input type="email" class="form-control" id="email" name="email" placeholder="Enter email address" required
+                style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary);">
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Send Test</button>
+        <div class="modal-footer" style="border-top: 1px solid var(--border-primary);">
+          <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="admin-btn admin-btn-primary">Send Test</button>
         </div>
       <% end %>
     </div>
   </div>
 </div>
 
-<!-- Schedule Modal -->
+<%# Schedule Modal %>
 <div class="modal fade" id="scheduleModal" tabindex="-1" aria-labelledby="scheduleModalLabel" aria-hidden="true">
   <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="scheduleModalLabel">Schedule Campaign</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-content" style="background-color: var(--bg-card); border: 1px solid var(--border-primary);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-primary);">
+        <h5 class="modal-title" id="scheduleModalLabel" style="color: white;">Schedule Campaign</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1);"></button>
       </div>
       <%= form_with url: schedule_campaign_path(@campaign), method: :post, local: true do |f| %>
         <div class="modal-body">
           <div class="mb-3">
-            <label for="scheduled_at" class="form-label">Schedule Date and Time</label>
-            <%= f.datetime_local_field :scheduled_at, class: "form-control", required: true %>
+            <label for="scheduled_at" class="form-label" style="color: white;">Schedule Date and Time</label>
+            <%= f.datetime_local_field :scheduled_at, class: "form-control", required: true,
+                style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary);" %>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <%= f.submit "Schedule", class: "btn btn-primary" %>
+        <div class="modal-footer" style="border-top: 1px solid var(--border-primary);">
+          <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <%= f.submit "Schedule", class: "admin-btn admin-btn-primary" %>
         </div>
       <% end %>
     </div>
@@ -352,80 +344,31 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
     // Set default date time for the schedule modal to tomorrow, same time
     const scheduleDateField = document.querySelector('#scheduleModal input[type="datetime-local"]');
     if (scheduleDateField) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
+
       // Format for datetime-local
       const year = tomorrow.getFullYear();
       const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
       const day = String(tomorrow.getDate()).padStart(2, '0');
       const hours = String(tomorrow.getHours()).padStart(2, '0');
       const minutes = String(tomorrow.getMinutes()).padStart(2, '0');
-      
+
       scheduleDateField.value = `${year}-${month}-${day}T${hours}:${minutes}`;
     }
   });
-</script>
 
-<!-- Setup Drip Campaign Modal -->
-<div class="modal fade" id="setupDripModal" tabindex="-1" aria-labelledby="setupDripModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="setupDripModalLabel">Setup Drip Campaign Sequence</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <%= form_with url: setup_drip_campaign_path(@campaign), method: :post, local: true do |f| %>
-        <div class="modal-body">
-          <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>
-            <strong>How it works:</strong> A drip campaign will automatically send follow-up emails to contacts based on their interaction with this campaign.
-          </div>
-          
-          <div class="mb-3">
-            <label class="form-label">Follow-up Subject Line Prefix</label>
-            <%= f.text_field :subject_prefix, class: "form-control", value: "[Reminder] ", required: true %>
-            <div class="form-text">This will be added before the original subject line.</div>
-          </div>
-          
-          <div class="row">
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label class="form-label">Delay (Days)</label>
-                <%= f.number_field :delay_days, class: "form-control", value: 3, min: 1, max: 30, required: true %>
-                <div class="form-text">Number of days to wait before sending the follow-up.</div>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label class="form-label">Condition</label>
-                <%= f.select :condition, 
-                    options_for_select([
-                      ['Contacts who haven\'t opened', 'not_opened'],
-                      ['Contacts who haven\'t clicked', 'not_clicked'],
-                      ['Contacts who opened (but didn\'t click)', 'opened'],
-                      ['Contacts who clicked', 'clicked'],
-                      ['All contacts from original campaign', 'always']
-                    ], 'not_opened'),
-                    {}, { class: "form-select", required: true } %>
-                <div class="form-text">Who should receive the follow-up email.</div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="alert alert-warning">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            <strong>Note:</strong> The follow-up will be created as a template initially and scheduled to run automatically. When the time comes, the system will create a new campaign targeting only the contacts matching your selected condition.
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <%= f.submit "Create Drip Sequence", class: "btn btn-primary" %>
-        </div>
-      <% end %>
-    </div>
-  </div>
-</div>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

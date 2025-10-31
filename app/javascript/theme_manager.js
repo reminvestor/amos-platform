@@ -6,9 +6,11 @@ class ThemeManager {
   }
 
   init() {
+    console.log('🎨 ThemeManager: Initializing...');
     // Load theme on page load
     const savedTheme = this.getSavedTheme();
     const theme = savedTheme || this.getSystemPreference();
+    console.log('🎨 ThemeManager: Applying theme:', theme);
     this.applyTheme(theme);
 
     // Listen for system preference changes
@@ -36,22 +38,28 @@ class ThemeManager {
   }
 
   applyTheme(theme) {
+    console.log('🎨 ThemeManager: Setting data-theme attribute to:', theme);
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(this.themeKey, theme);
     this.updateToggleButtons(theme);
+    console.log('🎨 ThemeManager: Theme applied. Current HTML attribute:', document.documentElement.getAttribute('data-theme'));
   }
 
   toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    console.log('🎨 ThemeManager: Toggling from', currentTheme, 'to', newTheme);
     this.applyTheme(newTheme);
   }
 
   initToggleButtons() {
     // Find all theme toggle buttons
-    document.querySelectorAll('[data-theme-toggle]').forEach(button => {
+    const buttons = document.querySelectorAll('[data-theme-toggle]');
+    console.log('🎨 ThemeManager: Found', buttons.length, 'toggle buttons');
+    buttons.forEach(button => {
       button.addEventListener('click', (e) => {
         e.preventDefault();
+        console.log('🎨 ThemeManager: Toggle button clicked!');
         this.toggleTheme();
       });
     });
