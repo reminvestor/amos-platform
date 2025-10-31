@@ -13,8 +13,8 @@
     </div>
 
     <div class="header-actions">
-      <%= link_to new_social_post_path, class: "admin-btn admin-btn-primary" do %>
-        <i data-lucide="plus"></i>
+      <%= link_to new_social_post_path, class: "admin-btn admin-btn-primary", "aria-label": "Create new social media post" do %>
+        <i data-lucide="plus" aria-hidden="true"></i>
         <span>New Post</span>
       <% end %>
     </div>
@@ -22,73 +22,82 @@
 
   <% if @social_posts.any? %>
     <%# Stats Cards %>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-4">
       <%# Total Posts - Purple Gradient %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="share-2" class="icon-xl text-white"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Posts</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @social_posts.count %></h3>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-gradient">
+              <i data-lucide="share-2" class="icon-xl text-white" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Total Posts</p>
+              <h3 class="stat-value"><%= @social_posts.count %></h3>
+            </div>
           </div>
         </div>
       </div>
 
       <%# Published - Green %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
-            <i data-lucide="check-circle" class="icon-xl text-success"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Published</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @social_posts.where(status: 'published').count %></h3>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-success">
+              <i data-lucide="check-circle" class="icon-xl text-success" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Published</p>
+              <h3 class="stat-value"><%= @social_posts.where(status: 'published').count %></h3>
+            </div>
           </div>
         </div>
       </div>
 
       <%# Scheduled - Cyan %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
-            <i data-lucide="calendar-clock" class="icon-xl text-info"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Scheduled</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @social_posts.where(status: 'scheduled').count %></h3>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-info">
+              <i data-lucide="calendar-clock" class="icon-xl text-info" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Scheduled</p>
+              <h3 class="stat-value"><%= @social_posts.where(status: 'scheduled').count %></h3>
+            </div>
           </div>
         </div>
       </div>
 
       <%# Drafts - Yellow %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(234, 179, 8, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(234, 179, 8, 0.2);">
-            <i data-lucide="file-edit" class="icon-xl text-warning"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Drafts</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @social_posts.where(status: 'draft').count %></h3>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-warning">
+              <i data-lucide="file-edit" class="icon-xl text-warning" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Drafts</p>
+              <h3 class="stat-value"><%= @social_posts.where(status: 'draft').count %></h3>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <%# Posts Grid %>
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem;">
+    <div class="row row-cols-1 row-cols-lg-2 row-cols-xl-3 g-4">
       <% @social_posts.each do |post| %>
-        <div class="admin-card" style="display: flex; flex-direction: column; height: 100%;">
-          <%# Post Image %>
-          <% if post.image? %>
-            <div style="width: 100%; height: 200px; overflow: hidden; border-radius: 0.5rem; margin-bottom: 1rem;">
-              <%= image_tag post.image_url, style: 'width: 100%; height: 100%; object-fit: cover;' %>
-            </div>
-          <% end %>
+        <div class="col">
+          <div class="admin-card d-flex flex-column h-100">
+            <%# Post Image %>
+            <% if post.image? %>
+              <div class="overflow-hidden rounded mb-3" style="height: 200px;">
+                <%= image_tag post.image_url, class: 'w-100 h-100', style: 'object-fit: cover;' %>
+              </div>
+            <% end %>
 
-          <%# Card Header %>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <%# Card Header %>
+            <div class="d-flex justify-content-between align-items-center mb-3">
             <% if post.status == 'published' %>
               <span class="admin-badge admin-badge-online">Published</span>
             <% elsif post.status == 'draft' %>
@@ -119,33 +128,33 @@
           </div>
 
           <%# Card Body %>
-          <div style="flex: 1;">
-            <h5 style="color: white; font-size: 1.125rem; font-weight: 600; margin: 0 0 0.75rem 0;"><%= post.title %></h5>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 1rem 0;">
+          <div class="flex-fill">
+            <h5 class="text-white fs-5 fw-semibold mb-3"><%= post.title %></h5>
+            <p class="text-secondary small mb-3">
               <%= truncate(post.content, length: 150) %>
             </p>
 
             <% if post.scheduled? && post.scheduled_at %>
-              <div style="display: flex; align-items: center; gap: 0.5rem; color: #64748B; font-size: 0.875rem; margin-bottom: 1rem;">
-                <i data-lucide="calendar-clock" class="icon-md"></i>
+              <div class="d-flex align-items-center gap-2 text-muted small mb-3">
+                <i data-lucide="calendar-clock" class="icon-md" aria-hidden="true"></i>
                 Scheduled for <%= post.scheduled_at.strftime("%B %d, %Y at %I:%M %p") %>
               </div>
             <% end %>
 
             <% if post.published? && post.latest_analytics %>
-              <div style="background: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 1rem;">
-                <div style="display: flex; gap: 1.5rem; justify-content: space-around;">
-                  <div style="text-align: center;">
-                    <div style="color: #94A3B8; font-size: 0.75rem;">Likes</div>
-                    <div style="color: white; font-weight: 600;"><%= number_with_delimiter(post.latest_analytics.likes) %></div>
+              <div class="border border-secondary rounded p-3 mb-3" style="background-color: var(--bg-secondary);">
+                <div class="d-flex gap-4 justify-content-around">
+                  <div class="text-center">
+                    <div class="text-secondary" style="font-size: 0.75rem;">Likes</div>
+                    <div class="text-white fw-semibold"><%= number_with_delimiter(post.latest_analytics.likes) %></div>
                   </div>
-                  <div style="text-align: center;">
-                    <div style="color: #94A3B8; font-size: 0.75rem;">Comments</div>
-                    <div style="color: white; font-weight: 600;"><%= number_with_delimiter(post.latest_analytics.comments) %></div>
+                  <div class="text-center">
+                    <div class="text-secondary" style="font-size: 0.75rem;">Comments</div>
+                    <div class="text-white fw-semibold"><%= number_with_delimiter(post.latest_analytics.comments) %></div>
                   </div>
-                  <div style="text-align: center;">
-                    <div style="color: #94A3B8; font-size: 0.75rem;">Engagement</div>
-                    <div style="color: #22D3EE; font-weight: 600;"><%= number_to_percentage(post.calculate_engagement_rate, precision: 1) %></div>
+                  <div class="text-center">
+                    <div class="text-secondary" style="font-size: 0.75rem;">Engagement</div>
+                    <div class="text-info fw-semibold"><%= number_to_percentage(post.calculate_engagement_rate, precision: 1) %></div>
                   </div>
                 </div>
               </div>
@@ -153,26 +162,30 @@
           </div>
 
           <%# Card Footer %>
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid #1E293B;">
-            <%= link_to social_post_path(post), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
-              <i data-lucide="eye"></i>
+          <div class="d-grid gap-2 pt-3 border-top border-secondary" style="grid-template-columns: 1fr 1fr 1fr;">
+            <%= link_to social_post_path(post), class: "admin-btn admin-btn-sm admin-btn-outline", "aria-label": "View #{post.title}" do %>
+              <i data-lucide="eye" aria-hidden="true"></i>
             <% end %>
-            <%= link_to edit_social_post_path(post), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
-              <i data-lucide="pencil"></i>
+            <%= link_to edit_social_post_path(post), class: "admin-btn admin-btn-sm admin-btn-outline", "aria-label": "Edit #{post.title}" do %>
+              <i data-lucide="pencil" aria-hidden="true"></i>
             <% end %>
-            <%= button_to social_post_path(post), method: :delete, class: "admin-btn admin-btn-sm admin-btn-outline",
-                style: "border-color: rgb(248, 113, 113); color: rgb(248, 113, 113);",
+            <%= button_to social_post_path(post), method: :delete,
+                class: "admin-btn admin-btn-sm admin-btn-outline text-danger border-danger",
+                "aria-label": "Delete #{post.title}",
                 data: { turbo_confirm: 'Are you sure?' } do %>
-              <i data-lucide="trash-2"></i>
+              <i data-lucide="trash-2" aria-hidden="true"></i>
             <% end %>
           </div>
 
           <% if post.draft? %>
-            <%= button_to publish_social_post_path(post), method: :post, class: "admin-btn admin-btn-sm admin-btn-primary", style: "margin-top: 0.5rem; width: 100%;" do %>
-              <i data-lucide="send"></i>
+            <%= button_to publish_social_post_path(post), method: :post,
+                class: "admin-btn admin-btn-sm admin-btn-primary w-100 mt-2",
+                "aria-label": "Publish #{post.title} now" do %>
+              <i data-lucide="send" aria-hidden="true"></i>
               <span>Publish Now</span>
             <% end %>
           <% end %>
+          </div>
         </div>
       <% end %>
     </div>
@@ -181,12 +194,12 @@
     <div class="admin-card">
       <div class="admin-empty-state">
         <div class="empty-icon">
-          <i data-lucide="share-2"></i>
+          <i data-lucide="share-2" aria-hidden="true"></i>
         </div>
         <h3>No Social Posts Yet</h3>
         <p>Create your first social media post and start engaging with your audience</p>
-        <%= link_to new_social_post_path, class: "admin-btn admin-btn-primary", style: "margin-top: 1rem;" do %>
-          <i data-lucide="plus"></i>
+        <%= link_to new_social_post_path, class: "admin-btn admin-btn-primary mt-3", "aria-label": "Create your first social media post" do %>
+          <i data-lucide="plus" aria-hidden="true"></i>
           <span>Create Your First Post</span>
         <% end %>
       </div>
