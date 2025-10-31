@@ -1,122 +1,162 @@
-<div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col-12">
-      <h1><i class="fas fa-plug"></i> Connected Accounts & Integrations</h1>
-      <p class="text-muted">Manage your external application connections - Stripe, Mailgun, social media, and more</p>
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%);">
+        <i data-lucide="plug"></i>
+      </div>
+      <div class="header-text">
+        <h1>Connected Accounts & Integrations</h1>
+        <p>Manage your external application connections - Stripe, Mailgun, social media, and more</p>
+      </div>
     </div>
   </div>
 
-  <!-- Active Connections -->
+  <%# Active Connections %>
   <% if @connections.any? %>
-    <div class="row mb-4">
-      <div class="col-12">
-        <h5 class="text-primary mb-3">Your Active Connections</h5>
-      </div>
-      <% @connections.each do |connection| %>
-        <div class="col-md-6 mb-3">
-          <div class="card">
-            <div class="card-body">
-              <div class="d-flex align-items-center mb-2">
+    <div style="margin-bottom: 2.5rem;">
+      <h5 style="color: #22D3EE; font-size: 1.125rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem;"></i>
+        <span>Your Active Connections (<%= @connections.count %>)</span>
+      </h5>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
+        <% @connections.each do |connection| %>
+          <div class="admin-card">
+            <div style="padding: 1.5rem;">
+              <%# Integration Header %>
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
                 <% if connection.integration.icon_url.present? %>
-                  <img src="<%= connection.integration.icon_url %>" 
-                       alt="<%= connection.integration.name %>" 
-                       class="rounded me-2" style="width: 32px; height: 32px;">
+                  <img src="<%= connection.integration.icon_url %>"
+                       alt="<%= connection.integration.name %>"
+                       style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem;">
                 <% else %>
-                  <i class="fas fa-cube fa-2x text-muted me-2"></i>
+                  <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center;">
+                    <i data-lucide="box" style="width: 1.25rem; height: 1.25rem; color: #22D3EE;"></i>
+                  </div>
                 <% end %>
-                <div>
-                  <h6 class="mb-0"><%= connection.integration.name %></h6>
-                  <small class="text-muted"><%= connection.name %></small>
+                <div style="flex: 1;">
+                  <h6 style="color: white; font-weight: 600; margin: 0;"><%= connection.integration.name %></h6>
+                  <small style="color: #94A3B8;"><%= connection.name %></small>
                 </div>
               </div>
-              
-              <div class="mb-2">
-                <span class="badge bg-<%= connection.status == 'connected' ? 'success' : 'warning' %>">
-                  <%= connection.status.humanize %>
+
+              <%# Status Badges %>
+              <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                <span class="admin-badge admin-badge-<%= connection.status == 'connected' ? 'success' : 'warning' %>">
+                  <i data-lucide="<%= connection.status == 'connected' ? 'check-circle' : 'alert-circle' %>" style="width: 0.875rem; height: 0.875rem;"></i>
+                  <span><%= connection.status.humanize %></span>
                 </span>
                 <% if connection.integration_credentials.present? %>
-                  <span class="badge bg-info">Authenticated</span>
+                  <span class="admin-badge admin-badge-info">
+                    <i data-lucide="key" style="width: 0.875rem; height: 0.875rem;"></i>
+                    <span>Authenticated</span>
+                  </span>
                 <% end %>
               </div>
-              
-              <small class="text-muted d-block mb-2">
-                <i class="fas fa-calendar-plus"></i>
-                Connected <%= time_ago_in_words(connection.created_at) %> ago
+
+              <%# Connection Details %>
+              <div style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                  <i data-lucide="calendar-plus" style="width: 0.875rem; height: 0.875rem;"></i>
+                  <span>Connected <%= time_ago_in_words(connection.created_at) %> ago</span>
+                </div>
                 <% last_log = connection.integration_logs.maximum(:created_at) %>
                 <% if last_log %>
-                  <br><i class="fas fa-clock"></i> Last used <%= time_ago_in_words(last_log) %> ago
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="clock" style="width: 0.875rem; height: 0.875rem;"></i>
+                    <span>Last used <%= time_ago_in_words(last_log) %> ago</span>
+                  </div>
                 <% end %>
-              </small>
-              
-              <div class="btn-group btn-group-sm">
-                <button class="btn btn-outline-primary" onclick="testConnection(<%= connection.id %>, '<%= connection.integration.name %>')">
-                  <i class="fas fa-check"></i> Test
+              </div>
+
+              <%# Action Buttons %>
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="admin-btn admin-btn-sm admin-btn-outline" onclick="testConnection(<%= connection.id %>, '<%= connection.integration.name %>')">
+                  <i data-lucide="check"></i>
+                  <span>Test</span>
                 </button>
-                <%= link_to connection_path(connection), method: :delete, class: "btn btn-outline-danger", 
+                <%= link_to connection_path(connection), method: :delete, class: "admin-btn admin-btn-sm admin-btn-outline",
+                    style: "border-color: #ef4444; color: #ef4444;",
                     data: { turbo_method: :delete, turbo_confirm: "Disconnect from #{connection.integration.name}? You can reconnect anytime." } do %>
-                  <i class="bi bi-link-45deg"></i> Disconnect
+                  <i data-lucide="link-2-off"></i>
+                  <span>Disconnect</span>
                 <% end %>
               </div>
             </div>
           </div>
-        </div>
-      <% end %>
+        <% end %>
+      </div>
     </div>
   <% end %>
 
-  <!-- Available Integrations -->
-  <div class="row">
-    <div class="col-12">
-      <h5 class="text-primary mb-3">Available Integrations</h5>
-    </div>
+  <%# Available Integrations %>
+  <div>
+    <h5 style="color: #22D3EE; font-size: 1.125rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+      <i data-lucide="grid-3x3" style="width: 1.25rem; height: 1.25rem;"></i>
+      <span>Available Integrations</span>
+    </h5>
+
     <% @integrations.group_by(&:category).each do |category, integrations| %>
-      <div class="col-12 mb-3">
-        <h6 class="text-warning mb-2">
-          <i class="fas fa-folder"></i> <%= category&.humanize || 'Other' %>
+      <div style="margin-bottom: 2.5rem;">
+        <h6 style="color: #A78BFA; font-size: 1rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="folder" style="width: 1rem; height: 1rem;"></i>
+          <span><%= category&.humanize || 'Other' %></span>
         </h6>
-        <div class="row">
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
           <% integrations.each do |integration| %>
             <% is_connected = @connections.any? { |c| c.integration_id == integration.id && c.status == 'connected' } %>
-            <div class="col-md-6 col-lg-4 mb-3">
-              <div class="card h-100 <%= 'border-success' if is_connected %>">
-                <div class="card-body">
-                  <div class="d-flex align-items-start mb-2">
-                    <% if integration.icon_url.present? %>
-                      <img src="<%= integration.icon_url %>" 
-                           alt="<%= integration.name %>" 
-                           class="rounded me-2" style="width: 24px; height: 24px;">
-                    <% else %>
-                      <i class="fas fa-puzzle-piece text-muted me-2"></i>
-                    <% end %>
-                    <div class="flex-grow-1">
-                      <h6 class="mb-0">
-                        <%= integration.name %>
-                        <% if integration.is_verified %>
-                          <i class="fas fa-check-circle text-success small" title="Verified"></i>
-                        <% end %>
-                      </h6>
-                      <small class="text-muted"><%= integration.auth_type&.humanize %></small>
+            <div class="admin-card" style="<%= 'border-color: rgb(74, 222, 128);' if is_connected %>">
+              <div style="padding: 1.5rem;">
+                <%# Integration Header %>
+                <div style="display: flex; align-items-start; gap: 0.75rem; margin-bottom: 1rem;">
+                  <% if integration.icon_url.present? %>
+                    <img src="<%= integration.icon_url %>"
+                         alt="<%= integration.name %>"
+                         style="width: 2rem; height: 2rem; border-radius: 0.375rem;">
+                  <% else %>
+                    <div style="width: 2rem; height: 2rem; border-radius: 0.375rem; background: rgba(168, 139, 250, 0.1); display: flex; align-items: center; justify-content: center;">
+                      <i data-lucide="puzzle" style="width: 1rem; height: 1rem; color: #A78BFA;"></i>
                     </div>
-                  </div>
-                  
-                  <% if integration.description.present? %>
-                    <p class="card-text small text-muted mb-2">
-                      <%= truncate(integration.description, length: 100) %>
-                    </p>
                   <% end %>
-                  
-                  <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted">
-                      <%= pluralize(integration.integration_operations.count, 'operation') %>
-                    </small>
-                    <% if is_connected %>
-                      <span class="badge bg-success">Connected</span>
-                    <% else %>
-                      <%= link_to connect_integration_path(integration.slug), class: "btn btn-sm btn-primary" do %>
-                        <i class="fas fa-plug"></i> Connect
+                  <div style="flex: 1;">
+                    <h6 style="color: white; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.25rem;">
+                      <span><%= integration.name %></span>
+                      <% if integration.is_verified %>
+                        <i data-lucide="badge-check" style="width: 1rem; height: 1rem; color: rgb(74, 222, 128);" title="Verified"></i>
                       <% end %>
-                    <% end %>
+                    </h6>
+                    <small style="color: #94A3B8;"><%= integration.auth_type&.humanize %></small>
                   </div>
+                </div>
+
+                <%# Description %>
+                <% if integration.description.present? %>
+                  <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 1rem; line-height: 1.5;">
+                    <%= truncate(integration.description, length: 100) %>
+                  </p>
+                <% end %>
+
+                <%# Footer %>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <small style="color: #64748B; display: flex; align-items: center; gap: 0.25rem;">
+                    <i data-lucide="zap" style="width: 0.875rem; height: 0.875rem;"></i>
+                    <%= pluralize(integration.integration_operations.count, 'operation') %>
+                  </small>
+                  <% if is_connected %>
+                    <span class="admin-badge admin-badge-success">
+                      <i data-lucide="check" style="width: 0.875rem; height: 0.875rem;"></i>
+                      <span>Connected</span>
+                    </span>
+                  <% else %>
+                    <%= link_to connect_integration_path(integration.slug), class: "admin-btn admin-btn-sm admin-btn-primary" do %>
+                      <i data-lucide="plug"></i>
+                      <span>Connect</span>
+                    <% end %>
+                  <% end %>
                 </div>
               </div>
             </div>
@@ -128,9 +168,21 @@
 </div>
 
 <script>
-function testConnection(connectionId, integrationName) {
-  console.log('Testing connection:', connectionId, integrationName);
-  alert('Testing connection to ' + integrationName + '...');
-  // TODO: Implement actual connection test
-}
+  function testConnection(connectionId, integrationName) {
+    console.log('Testing connection:', connectionId, integrationName);
+    alert('Testing connection to ' + integrationName + '...');
+    // TODO: Implement actual connection test
+  }
+
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
 </script>
