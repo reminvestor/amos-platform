@@ -36,8 +36,19 @@ Rails.application.configure do
   config.assume_ssl = true
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  # IMPORTANT: On Heroku, this MUST be false as Heroku handles SSL termination
+  # IMPORTANT: On Heroku, force_ssl must be false as Heroku handles SSL termination
+  # However, we still enforce HSTS and secure cookies
   config.force_ssl = false
+
+  # Enforce HSTS (HTTP Strict Transport Security) headers
+  # This tells browsers to always use HTTPS for future requests
+  config.ssl_options = {
+    hsts: {
+      expires: 1.year,
+      subdomains: true,
+      preload: true
+    }
+  }
 
   # Configure proxy settings for Heroku
   config.action_dispatch.trusted_proxies = ActionDispatch::RemoteIp::TRUSTED_PROXIES +
@@ -45,15 +56,6 @@ Rails.application.configure do
 
   # Add Heroku's proxy IPs as trusted
   config.action_dispatch.ip_spoofing_check = false
-
-  # Custom middleware to deal with SSL - disabled for now as it causes issues
-  # config.middleware.insert_before ActionDispatch::HostAuthorization, "ApiSslMiddleware"
-
-  # SSL options - comment out to let Heroku handle it
-  # config.ssl_options = {
-  #   redirect: { exclude: ->(request) { request.path == "/up" || request.path.start_with?("/api/") } },
-  #   hsts: { expires: 1.year }
-  # }
 
   # Disable forgery protection for API routes
   config.action_controller.allow_forgery_protection = false
