@@ -186,7 +186,7 @@
                   </td>
                   <td style="padding: 0.75rem; color: white;"><%= execution.ticket_title %></td>
                   <td style="padding: 0.75rem;">
-                    <span class="admin-badge admin-badge-<%= execution.status_completed? ? 'online' : execution.status_failed? ? 'offline' : 'warning' %>">
+                    <span class="admin-badge admin-badge-<%= execution.status_done? ? 'online' : execution.status_failed? ? 'offline' : 'warning' %>">
                       <%= execution.status.titleize %>
                     </span>
                   </td>

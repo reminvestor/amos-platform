@@ -17,9 +17,12 @@
   <body class="admin-dark">
     <% if @current_admin %>
       <%# Left Sidebar Navigation %>
-      <aside class="admin-sidebar">
-        <%# Logo %>
+      <aside class="admin-sidebar" id="adminSidebar">
+        <%# Logo with Hamburger %>
         <div class="sidebar-logo">
+          <button class="hamburger-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+            <i data-lucide="menu"></i>
+          </button>
           <div class="logo-icon">
             <i data-lucide="box" class="icon-xl"></i>
           </div>
@@ -95,11 +98,35 @@
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
+        initSidebarToggle();
       });
 
       document.addEventListener('turbo:load', () => {
         lucide.createIcons();
+        initSidebarToggle();
       });
+
+      function initSidebarToggle() {
+        const sidebar = document.getElementById('adminSidebar');
+        const toggle = document.getElementById('sidebarToggle');
+
+        if (!sidebar || !toggle) return;
+
+        // Check saved state
+        const isCollapsed = localStorage.getItem('adminSidebarCollapsed') === 'true';
+        if (isCollapsed) {
+          sidebar.classList.add('collapsed');
+        }
+
+        // Toggle on click
+        toggle.addEventListener('click', () => {
+          sidebar.classList.toggle('collapsed');
+          localStorage.setItem('adminSidebarCollapsed', sidebar.classList.contains('collapsed'));
+
+          // Re-initialize icons after DOM changes
+          setTimeout(() => lucide.createIcons(), 100);
+        });
+      }
     </script>
   </body>
 </html>
