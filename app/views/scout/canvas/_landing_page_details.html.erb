@@ -1,26 +1,26 @@
 <div class="scout-canvas landing-page-details">
   <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
     <div>
-      <button class="btn btn-outline-secondary me-3" onclick="window.scoutBackToLandingPages()">
-        <i class="fas fa-arrow-left me-1"></i>
+      <button class="btn btn-outline-secondary me-3" onclick="window.scoutBackToLandingPages()" aria-label="Back to landing pages">
+        <i data-lucide="arrow-left" class="me-1" aria-hidden="true"></i>
         Back to Landing Pages
       </button>
       <div class="d-inline-block">
         <h4 class="mb-1">
-          <i class="fas fa-globe text-primary me-2"></i>
+          <i data-lucide="globe" class="text-primary me-2" aria-hidden="true"></i>
           <%= landing_page.title.present? ? landing_page.title : "Untitled Landing Page" %>
         </h4>
         <p class="text-muted mb-0">Landing Page Details</p>
       </div>
     </div>
     <div class="btn-group" role="group">
-      <button class="btn btn-outline-success" onclick="scoutPreviewLandingPageInTab(<%= landing_page.id %>)">
-        <i class="fas fa-eye me-1"></i>
+      <button class="btn btn-outline-success" onclick="scoutPreviewLandingPageInTab(<%= landing_page.id %>)" aria-label="Preview landing page">
+        <i data-lucide="eye" class="me-1" aria-hidden="true"></i>
         Preview
       </button>
       <% if landing_page.status == 'published' %>
-        <a class="btn btn-outline-info" href="<%= landing_page.full_url(request.base_url) %>" target="_blank">
-          <i class="fas fa-external-link-alt me-1"></i>
+        <a class="btn btn-outline-info" href="<%= landing_page.full_url(request.base_url) %>" target="_blank" aria-label="View live landing page">
+          <i data-lucide="external-link" class="me-1" aria-hidden="true"></i>
           View Live
         </a>
       <% end %>
@@ -35,13 +35,13 @@
         <div class="card-header bg-light py-2" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#basicInfoCollapse">
           <div class="d-flex justify-content-between align-items-center">
             <h6 class="mb-0">
-              <i class="fas fa-info-circle me-2"></i>
+              <i data-lucide="info" class="me-2" aria-hidden="true"></i>
               Basic Information
               <span class="badge bg-<%= landing_page.status == 'published' ? 'success' : landing_page.status == 'draft' ? 'secondary' : 'warning' %> ms-2">
                 <%= landing_page.status.titleize %>
               </span>
             </h6>
-            <i class="fas fa-chevron-down"></i>
+            <i data-lucide="chevron-down" aria-hidden="true"></i>
           </div>
         </div>
         <div class="collapse" id="basicInfoCollapse">
@@ -82,15 +82,15 @@
                       <input type="text" class="form-control font-monospace small" 
                              value="<%= request.protocol + request.host_with_port.sub(/^www\./, '') + '/landing/' + landing_page.slug %>" 
                              readonly onclick="this.select()">
-                      <button class="btn btn-outline-secondary" type="button" 
+                      <button class="btn btn-outline-secondary" type="button"
                               onclick="window.open('<%= request.protocol + request.host_with_port.sub(/^www\./, '') + '/landing/' + landing_page.slug %>', '_blank')"
-                              title="Open public page">
-                        <i class="fas fa-external-link-alt"></i>
+                              aria-label="Open public page">
+                        <i data-lucide="external-link" aria-hidden="true"></i>
                       </button>
-                      <button class="btn btn-outline-secondary" type="button" 
+                      <button class="btn btn-outline-secondary" type="button"
                               onclick="copyPublicUrl(this)"
-                              title="Copy URL">
-                        <i class="fas fa-copy"></i>
+                              aria-label="Copy URL">
+                        <i data-lucide="copy" aria-hidden="true"></i>
                       </button>
                     </div>
                     <small class="text-muted">Public URL accessible without login</small>
@@ -123,10 +123,10 @@
         <div class="card-header bg-light py-2" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#technicalDetailsCollapse">
           <div class="d-flex justify-content-between align-items-center">
             <h6 class="mb-0">
-              <i class="fas fa-chart-line me-2"></i>
+              <i data-lucide="trending-up" class="me-2" aria-hidden="true"></i>
               Technical Details & Analytics
             </h6>
-            <i class="fas fa-chevron-down"></i>
+            <i data-lucide="chevron-down" aria-hidden="true"></i>
           </div>
         </div>
         <div class="collapse" id="technicalDetailsCollapse">
@@ -197,18 +197,18 @@
                             <br>
                             <span class="text-muted"><%= version.description&.truncate(50) || "Version backup" %></span>
                           </div>
-                          <button class="btn btn-sm btn-outline-warning" 
+                          <button class="btn btn-sm btn-outline-warning"
                                   onclick="revertToVersion(<%= landing_page.id %>, <%= version.id %>)"
-                                  title="Revert to this version">
-                            <i class="fas fa-undo me-1"></i>Revert
+                                  aria-label="Revert to version from <%= version.created_at.strftime('%m/%d %I:%M %p') %>">
+                            <i data-lucide="rotate-ccw" class="me-1" aria-hidden="true"></i>Revert
                           </button>
                         </div>
                       <% end %>
                       <div class="mt-2">
-                        <button class="btn btn-sm btn-outline-secondary" 
+                        <button class="btn btn-sm btn-outline-secondary"
                                 onclick="window.scoutSendMessage?.('Show me all versions for landing page <%= landing_page.id %>')"
-                                title="View all versions">
-                          <i class="fas fa-history me-1"></i>View All Versions
+                                aria-label="View all versions">
+                          <i data-lucide="history" class="me-1" aria-hidden="true"></i>View All Versions
                         </button>
                       </div>
                     <% else %>
@@ -238,17 +238,17 @@
       <div class="card border-0 shadow-sm h-100">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
           <h6 class="mb-0">
-            <i class="fas fa-code me-2"></i>
+            <i data-lucide="code" class="me-2" aria-hidden="true"></i>
             Content Preview
           </h6>
           <div class="btn-group btn-group-sm" role="group">
-            <button type="button" class="btn btn-primary" id="visual-mode-btn" onclick="switchToVisualMode()">
-              <i class="fas fa-eye me-1"></i>
+            <button type="button" class="btn btn-primary" id="visual-mode-btn" onclick="switchToVisualMode()" aria-label="Switch to visual mode">
+              <i data-lucide="eye" class="me-1" aria-hidden="true"></i>
               Visual
             </button>
-            
-            <button type="button" class="btn btn-outline-primary" id="html-mode-btn" onclick="switchToHtmlMode()">
-              <i class="fas fa-code me-1"></i>
+
+            <button type="button" class="btn btn-outline-primary" id="html-mode-btn" onclick="switchToHtmlMode()" aria-label="Switch to HTML mode">
+              <i data-lucide="code" class="me-1" aria-hidden="true"></i>
               HTML
             </button>
           </div>
@@ -265,8 +265,8 @@
             <div id="html-preview" class="flex-grow-1 d-none p-2">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <small class="text-muted">Edit HTML directly (changes are not automatically saved)</small>
-                <button class="btn btn-sm btn-success" onclick="saveHtmlChanges(<%= landing_page.id %>)">
-                  <i class="fas fa-save me-1"></i>
+                <button class="btn btn-sm btn-success" onclick="saveHtmlChanges(<%= landing_page.id %>)" aria-label="Save HTML changes">
+                  <i data-lucide="save" class="me-1" aria-hidden="true"></i>
                   Save Changes
                 </button>
               </div>
@@ -287,8 +287,8 @@
                 <div class="progress mb-3" style="height: 10px;">
                   <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 45%"></div>
                 </div>
-                <button class="btn btn-outline-primary" onclick="window.scoutRefreshCanvas()">
-                  <i class="fas fa-sync me-2"></i>
+                <button class="btn btn-outline-primary" onclick="window.scoutRefreshCanvas()" aria-label="Check generation progress">
+                  <i data-lucide="refresh-cw" class="me-2" aria-hidden="true"></i>
                   Check Progress
                 </button>
               </div>
@@ -329,23 +329,35 @@ function fallbackCopyText(input, button) {
     showCopySuccess(button);
   } catch (err) {
     console.error('Failed to copy text: ', err);
-    button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+    button.innerHTML = '<i data-lucide="alert-triangle" aria-hidden="true"></i> Error';
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
     setTimeout(() => {
-      button.innerHTML = '<i class="fas fa-copy"></i>';
+      button.innerHTML = '<i data-lucide="copy" aria-hidden="true"></i>';
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
     }, 2000);
   }
 }
 
 function showCopySuccess(button) {
   const originalHtml = button.innerHTML;
-  button.innerHTML = '<i class="fas fa-check text-success"></i> Copied!';
+  button.innerHTML = '<i data-lucide="check" class="text-success" aria-hidden="true"></i> Copied!';
   button.classList.add('btn-success');
   button.classList.remove('btn-outline-secondary');
-  
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+
   setTimeout(() => {
-    button.innerHTML = '<i class="fas fa-copy"></i>';
+    button.innerHTML = '<i data-lucide="copy" aria-hidden="true"></i>';
     button.classList.remove('btn-success');
     button.classList.add('btn-outline-secondary');
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
   }, 2000);
 }
 

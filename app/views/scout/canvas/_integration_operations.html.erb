@@ -2,11 +2,11 @@
   <div class="canvas-header mb-4">
     <div class="d-flex justify-content-between align-items-start flex-wrap">
       <div class="flex-grow-1 me-3">
-        <h3 class="text-white mb-1"><i class="fas fa-cogs"></i> <%= canvas_data[:integration_name] %> Operations</h3>
+        <h3 class="text-white mb-1"><i data-lucide="settings" aria-hidden="true"></i> <%= canvas_data[:integration_name] %> Operations</h3>
         <p class="text-light mb-0">Connection: <%= canvas_data[:connection_name] %></p>
       </div>
-      <button class="btn btn-outline-secondary flex-shrink-0" onclick="goBackToIntegrations()">
-        <i class="fas fa-arrow-left"></i> Back to Integrations
+      <button class="btn btn-outline-secondary flex-shrink-0" onclick="goBackToIntegrations()" aria-label="Back to integrations">
+        <i data-lucide="arrow-left" aria-hidden="true"></i> Back to Integrations
       </button>
     </div>
   </div>
@@ -17,10 +17,10 @@
       <div class="card-header">
         <div class="d-flex justify-content-between align-items-center flex-wrap">
           <h6 class="text-white mb-0 me-2">
-            <i class="fas fa-key"></i> Authentication Settings
+            <i data-lucide="key" aria-hidden="true"></i> Authentication Settings
           </h6>
-          <button class="btn btn-sm btn-outline-light flex-shrink-0" onclick="toggleAuthSection()">
-            <i class="fas fa-edit"></i> Update Credentials
+          <button class="btn btn-sm btn-outline-light flex-shrink-0" onclick="toggleAuthSection()" aria-label="Update credentials">
+            <i data-lucide="pencil" aria-hidden="true"></i> Update Credentials
           </button>
         </div>
       </div>
@@ -156,7 +156,7 @@ function loadAuthForm() {
     default:
       formHtml += `
         <div class="alert alert-warning">
-          <i class="fas fa-exclamation-triangle"></i>
+          <i data-lucide="alert-triangle" aria-hidden="true"></i>
           Unsupported auth type: ${integration.auth_type || 'unknown'}. Please contact support.
         </div>
       `;
@@ -166,14 +166,19 @@ function loadAuthForm() {
   formHtml += `
       <div class="d-grid gap-2 d-md-flex justify-content-md-end">
         <button type="button" class="btn btn-secondary me-md-2" onclick="toggleAuthSection()">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="updateCredsBtn">
-          <i class="fas fa-save"></i> Update Credentials
+        <button type="submit" class="btn btn-primary" id="updateCredsBtn" aria-label="Update credentials">
+          <i data-lucide="save" aria-hidden="true"></i> Update Credentials
         </button>
       </div>
     </form>
   `;
-  
+
   authForm.innerHTML = formHtml;
+
+  // Initialize Lucide icons in the dynamically created form
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 }
 
 function updateCredentials(event) {
@@ -186,7 +191,10 @@ function updateCredentials(event) {
   
   // Show loading state
   updateBtn.disabled = true;
-  updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+  updateBtn.innerHTML = '<i data-lucide="loader-circle" class="icon-spin" aria-hidden="true"></i> Updating...';
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
   
   const connectionData = <%= raw canvas_data.to_json %>;
   
@@ -237,11 +245,16 @@ function showNotification(type, message) {
   notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
   notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
   notification.innerHTML = `
-    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+    <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" aria-hidden="true"></i>
     ${message}
   `;
-  
+
   document.body.appendChild(notification);
+
+  // Initialize Lucide icon
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
   
   // Remove after 5 seconds
   setTimeout(() => {
