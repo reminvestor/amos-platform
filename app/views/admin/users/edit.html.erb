@@ -1,22 +1,40 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i class="fas fa-user-edit"></i> Edit User</h1>
-      <p class="text-muted">Update user account details</p>
-    </div>
-  </div>
+<script src="https://unpkg.com/lucide@latest"></script>
 
-  <div class="row">
-    <div class="col-lg-8">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
+<div class="admin-content" style="padding: 2rem;">
+  <div class="container-fluid">
+    <%# Page Header %>
+    <div class="admin-page-header" style="margin-bottom: 2rem;">
+      <div class="header-left">
+        <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+          <i data-lucide="user-pen"></i>
+        </div>
+        <div class="header-text">
+          <h1>Edit User</h1>
+          <p>Update <%= @user.full_name %>'s account details</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <%= link_to admin_user_path(@user), class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="arrow-left"></i>
+          <span>Back to User</span>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="row">
+      <%# Main Form Column %>
+      <div class="col-lg-8">
+        <div class="admin-card">
           <%= form_with(model: [:admin, @user], local: true) do |f| %>
+            <%# Error Messages %>
             <% if @user.errors.any? %>
-              <div class="alert alert-danger">
-                <h5>Errors:</h5>
-                <ul class="mb-0">
+              <div class="alert alert-danger" style="background-color: var(--status-error-bg); border-color: var(--status-error-border); color: var(--status-error-text); margin-bottom: 1.5rem;">
+                <h5 style="margin-bottom: 0.5rem;">
+                  <i data-lucide="alert-circle" style="width: 1rem; height: 1rem; display: inline; vertical-align: middle;"></i>
+                  Errors:
+                </h5>
+                <ul style="margin-bottom: 0;">
                   <% @user.errors.full_messages.each do |msg| %>
                     <li><%= msg %></li>
                   <% end %>
@@ -24,45 +42,117 @@
               </div>
             <% end %>
 
-            <div class="mb-3">
-              <%= f.label :first_name, class: "form-label" %>
-              <%= f.text_field :first_name, class: "form-control" %>
+            <%# First Name Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= f.label :first_name, "First Name", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= f.text_field :first_name, class: "form-control", placeholder: "Enter first name",
+                  style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
             </div>
 
-            <div class="mb-3">
-              <%= f.label :last_name, class: "form-label" %>
-              <%= f.text_field :last_name, class: "form-control" %>
+            <%# Last Name Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= f.label :last_name, "Last Name", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= f.text_field :last_name, class: "form-control", placeholder: "Enter last name",
+                  style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
             </div>
 
-            <div class="mb-3">
-              <%= f.label :email, class: "form-label" %>
-              <%= f.email_field :email, class: "form-control" %>
+            <%# Email Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= f.label :email, "Email Address", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= f.email_field :email, class: "form-control", placeholder: "user@example.com",
+                  style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
             </div>
 
-            <div class="mb-3">
-              <%= f.label :role, class: "form-label" %>
-              <%= f.select :role,
-                  options_for_select(User::ROLES.map { |r| [r.titleize, r] }, @user.role),
-                  {}, class: "form-select" %>
-            </div>
-
-            <div class="mb-3">
+            <%# Onboarded Checkbox %>
+            <div style="margin-bottom: 1.5rem;">
               <div class="form-check">
-                <%= f.check_box :onboarded, class: "form-check-input" %>
-                <%= f.label :onboarded, "Mark as Onboarded", class: "form-check-label" %>
+                <%= f.check_box :onboarded, checked: @user.onboarded?, style: "margin-right: 0.5rem;" %>
+                <%= f.label :onboarded, "Mark as Onboarded", style: "color: white;" %>
+                <small style="color: var(--text-muted); font-size: 0.875rem; display: block; margin-top: 0.25rem; margin-left: 1.5rem;">
+                  User has completed onboarding process
+                </small>
               </div>
             </div>
 
-            <div class="d-flex gap-2">
-              <%= f.submit "Save Changes", class: "btn btn-primary" %>
-              <%= link_to "Cancel", admin_user_path(@user), class: "btn btn-outline-secondary" %>
+            <%# Action Buttons %>
+            <div style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border-primary);">
+              <%= f.submit "Save Changes", class: "admin-btn admin-btn-primary" %>
+              <%= link_to admin_user_path(@user), class: "admin-btn admin-btn-outline" do %>
+                <i data-lucide="x"></i>
+                <span>Cancel</span>
+              <% end %>
             </div>
           <% end %>
+        </div>
+
+        <%# Info Alert %>
+        <div style="margin-top: 1.5rem; padding: 1rem; background-color: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 0.5rem;">
+          <div style="display: flex; align-items-start; gap: 0.75rem;">
+            <i data-lucide="info" style="width: 1.25rem; height: 1.25rem; color: #22D3EE; flex-shrink: 0; margin-top: 0.125rem;"></i>
+            <div>
+              <strong style="color: white;">Note:</strong>
+              <span style="color: var(--text-secondary);"> Role changes must be made from the user details page using the "Make Admin" button. You can update basic profile information here.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Tips Sidebar %>
+      <div class="col-lg-4">
+        <div class="admin-card">
+          <h5 style="color: white; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="lightbulb" style="width: 1.25rem; height: 1.25rem; color: #FACC15;"></i>
+            <span>User Management Tips</span>
+          </h5>
+
+          <div style="margin-bottom: 1.5rem;">
+            <p style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Changing Roles:</p>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
+              To promote a user to admin, use the "Make Admin" button on the user details page. This ensures proper permission tracking.
+            </p>
+          </div>
+
+          <div style="margin-bottom: 1.5rem;">
+            <p style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Onboarding Status:</p>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
+              Mark users as onboarded once they've completed the initial setup process. This helps track user engagement.
+            </p>
+          </div>
+
+          <div>
+            <p style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Email Changes:</p>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
+              Changing a user's email address may require them to verify the new address before they can log in again.
+            </p>
+          </div>
+        </div>
+
+        <%# Warning Card %>
+        <div class="admin-card" style="margin-top: 1.5rem;">
+          <div style="padding: 0.75rem; background-color: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); border-radius: 0.5rem;">
+            <div style="display: flex; align-items-start; gap: 0.5rem;">
+              <i data-lucide="alert-triangle" style="width: 1rem; height: 1rem; color: rgb(250, 204, 21); flex-shrink: 0; margin-top: 0.125rem;"></i>
+              <small style="color: var(--text-secondary); line-height: 1.5;">
+                <strong style="color: white;">Caution:</strong> Be careful when modifying user accounts. Changes may affect their ability to access the platform.
+              </small>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
-  </div>
-</div>
 
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
