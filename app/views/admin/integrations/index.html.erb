@@ -1,3 +1,5 @@
+<script src="https://unpkg.com/lucide@latest"></script>
+
 <div class="admin-content">
   <div style="padding: 2rem;">
     <%# Page Header %>
@@ -171,3 +173,17 @@
     </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
