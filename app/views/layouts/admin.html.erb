@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="/assets/admin_dark.css" data-turbo-track="reload">
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
 
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
   </head>
 
   <body class="admin-dark">
@@ -89,6 +91,15 @@
       <%= yield %>
     <% end %>
 
-    
+    <!-- Initialize Lucide Icons -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+      });
+
+      document.addEventListener('turbo:load', () => {
+        lucide.createIcons();
+      });
+    </script>
   </body>
 </html>
