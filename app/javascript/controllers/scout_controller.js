@@ -1103,7 +1103,12 @@ export default class extends Controller {
 
         // Execute any inline <script> tags from the injected canvas content
         this.executeInlineScripts(this.templateContentTarget)
-        
+
+        // Re-initialize Lucide icons for dynamically loaded canvas content
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons()
+        }
+
         // Store current canvas info
         this.currentCanvas = {
           type: canvasType,

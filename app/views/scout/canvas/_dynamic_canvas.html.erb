@@ -154,19 +154,3 @@
     color: #FFFFFF !important;
   }
 </style>
-
-<script>
-// Initialize Lucide icons when canvas loads
-document.addEventListener('DOMContentLoaded', function() {
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
-});
-
-// Re-initialize icons when canvas is loaded via Turbo
-document.addEventListener('turbo:load', function() {
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
-});
-</script>

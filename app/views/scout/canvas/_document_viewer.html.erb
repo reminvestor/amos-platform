@@ -113,11 +113,6 @@
 document.addEventListener('DOMContentLoaded', function() {
   console.log('📄 Document viewer loaded');
 
-  // Initialize Lucide icons
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
-
   // Handle PDF loading errors
   const embed = document.querySelector('.document-frame embed');
   if (embed) {
@@ -125,13 +120,6 @@ document.addEventListener('DOMContentLoaded', function() {
       console.error('Failed to load PDF');
       // Could show an error message here
     });
-  }
-});
-
-// Re-initialize icons when canvas is loaded via Turbo
-document.addEventListener('turbo:load', function() {
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
   }
 });
 </script>
