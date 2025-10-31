@@ -1,49 +1,145 @@
-<div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Image Library</h2>
-    <%= link_to 'Upload Image', new_image_asset_path, class: 'btn btn-primary' %>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="/assets/admin_dark.css">
+
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="image"></i>
+      </div>
+      <div class="header-text">
+        <h1>Image Library</h1>
+        <p>Manage your image assets and media files</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to new_image_asset_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="upload"></i>
+        <span>Upload Image</span>
+      <% end %>
+    </div>
   </div>
 
   <% if @image_assets.any? %>
-    <div class="row g-3">
+    <%# Stats Card %>
+    <div style="margin-bottom: 2rem;">
+      <div class="admin-card" style="max-width: 300px;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="image" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Images</p>
+            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @image_assets.count %></h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Image Grid %>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
       <% @image_assets.each do |asset| %>
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card h-100 shadow-sm">
-            <% if asset.file.attached? %>
+        <div class="admin-card" style="display: flex; flex-direction: column; height: 100%;">
+          <%# Image Preview %>
+          <% if asset.file.attached? %>
+            <div style="width: 100%; height: 250px; overflow: hidden; border-radius: 0.5rem; margin-bottom: 1rem; background-color: #0F172A;">
               <% if asset.file.content_type.start_with?('image/') %>
                 <% begin %>
-                  <%= image_tag asset.file.variant(resize_to_fill: [400, 250]).processed, class: 'card-img-top', alt: asset.display_title %>
-                <% rescue ActiveStorage::FileNotFoundError => e %>
-                  <div class="card-img-top bg-warning bg-opacity-10 d-flex align-items-center justify-content-center" style="height: 250px;">
-                    <i class="fas fa-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
-                    <small class="text-muted ms-2">File not found</small>
+                  <%= image_tag rails_blob_url(asset.file),
+                      style: 'width: 100%; height: 100%; object-fit: cover;',
+                      alt: asset.display_title,
+                      onerror: "this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='<div style=\"display: flex; align-items: center; justify-content: center; height: 100%; color: #64748B;\"><i data-lucide=\"alert-circle\" style=\"width: 3rem; height: 3rem;\"></i></div>';" %>
+                <% rescue => e %>
+                  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #64748B;">
+                    <i data-lucide="alert-circle" style="width: 3rem; height: 3rem; margin-bottom: 0.5rem;"></i>
+                    <span style="font-size: 0.875rem;">Image not available</span>
                   </div>
                 <% end %>
               <% elsif asset.file.content_type == 'application/pdf' %>
-                <div class="card-img-top bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="height: 250px;">
-                  <i class="fas fa-file-pdf text-danger" style="font-size: 4rem;"></i>
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: rgba(239, 68, 68, 0.1);">
+                  <i data-lucide="file-text" style="width: 4rem; height: 4rem; color: rgb(248, 113, 113);"></i>
+                  <span style="color: #94A3B8; font-size: 0.875rem; margin-top: 0.5rem;">PDF Document</span>
                 </div>
               <% else %>
-                <div class="card-img-top bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center" style="height: 250px;">
-                  <i class="fas fa-file text-secondary" style="font-size: 4rem;"></i>
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: rgba(100, 116, 139, 0.1);">
+                  <i data-lucide="file" style="width: 4rem; height: 4rem; color: #64748B;"></i>
+                  <span style="color: #94A3B8; font-size: 0.875rem; margin-top: 0.5rem;"><%= asset.file.content_type %></span>
                 </div>
               <% end %>
-            <% end %>
-            <div class="card-body">
-              <h6 class="card-title text-truncate" title="<%= asset.display_title %>"><%= asset.display_title %></h6>
-              <div class="d-flex gap-2">
-                <%= link_to 'View', image_asset_path(asset), class: 'btn btn-sm btn-outline-secondary' %>
-                <%= button_to 'Delete', image_asset_path(asset), method: :delete, data: { confirm: 'Delete this image?' }, class: 'btn btn-sm btn-outline-danger' %>
-              </div>
             </div>
+          <% else %>
+            <div style="width: 100%; height: 250px; border-radius: 0.5rem; margin-bottom: 1rem; background: rgba(100, 116, 139, 0.1); display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="image-off" style="width: 3rem; height: 3rem; color: #64748B;"></i>
+            </div>
+          <% end %>
+
+          <%# Card Body %>
+          <div style="flex: 1;">
+            <h6 style="color: white; font-size: 1rem; font-weight: 600; margin: 0 0 0.5rem 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= asset.display_title %>">
+              <%= asset.display_title %>
+            </h6>
+
+            <% if asset.file.attached? %>
+              <div style="display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1rem;">
+                <div style="color: #64748B; font-size: 0.75rem;">
+                  <span style="color: #94A3B8;">Type:</span> <%= asset.file.content_type %>
+                </div>
+                <div style="color: #64748B; font-size: 0.75rem;">
+                  <span style="color: #94A3B8;">Size:</span> <%= number_to_human_size(asset.file.byte_size) %>
+                </div>
+                <div style="color: #64748B; font-size: 0.75rem;">
+                  <span style="color: #94A3B8;">Uploaded:</span> <%= time_ago_in_words(asset.created_at) %> ago
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <%# Card Footer %>
+          <div style="display: flex; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid #1E293B;">
+            <%= link_to image_asset_path(asset), class: "admin-btn admin-btn-sm admin-btn-outline", style: "flex: 1;" do %>
+              <i data-lucide="eye"></i>
+              <span>View</span>
+            <% end %>
+            <%= button_to image_asset_path(asset), method: :delete,
+                class: "admin-btn admin-btn-sm admin-btn-outline", style: "flex: 1; border-color: rgb(248, 113, 113); color: rgb(248, 113, 113);",
+                data: { turbo_confirm: 'Delete this image?' } do %>
+              <i data-lucide="trash-2"></i>
+              <span>Delete</span>
+            <% end %>
           </div>
         </div>
       <% end %>
     </div>
   <% else %>
-    <div class="text-center text-muted py-5">No images yet. Upload your first image.</div>
+    <%# Empty State %>
+    <div class="admin-card">
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="image"></i>
+        </div>
+        <h3>No Images Yet</h3>
+        <p>Upload your first image to start building your media library</p>
+        <%= link_to new_image_asset_path, class: "admin-btn admin-btn-primary", style: "margin-top: 1rem;" do %>
+          <i data-lucide="upload"></i>
+          <span>Upload Your First Image</span>
+        <% end %>
+      </div>
+    </div>
   <% end %>
 </div>
 
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
 
-
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
