@@ -4,19 +4,19 @@
   <div class="settings-bar d-flex align-items-center justify-content-between mb-3">
     <ul class="nav nav-tabs settings-tabs mb-0" role="tablist">
       <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#tab-profile" type="button" role="tab">
-          <i class="fas fa-briefcase me-1"></i> Business Profile
+        <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#tab-profile" type="button" role="tab" aria-label="Business profile">
+          <i data-lucide="briefcase" class="me-1" aria-hidden="true"></i> Business Profile
         </button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="members-tab" data-bs-toggle="tab" data-bs-target="#tab-members" type="button" role="tab">
-          <i class="fas fa-users me-1"></i> Members
+        <button class="nav-link" id="members-tab" data-bs-toggle="tab" data-bs-target="#tab-members" type="button" role="tab" aria-label="Team members">
+          <i data-lucide="users" class="me-1" aria-hidden="true"></i> Members
         </button>
       </li>
     </ul>
     <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage('Please help me optimize my business profile')">
-        <i class="fas fa-magic"></i> AI Optimize
+      <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage('Please help me optimize my business profile')" aria-label="AI optimize business profile">
+        <i data-lucide="wand-2" aria-hidden="true"></i> AI Optimize
       </button>
     </div>
   </div>
@@ -59,7 +59,9 @@
         </div>
 
         <div class="text-end mt-3">
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Basic Info</button>
+          <button type="submit" class="btn btn-primary" aria-label="Save basic business information">
+            <i data-lucide="save" aria-hidden="true"></i> Save Basic Info
+          </button>
         </div>
       <% end %>
     </div>
@@ -84,7 +86,9 @@
         </div>
 
         <div class="text-end mt-1">
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Brand Info</button>
+          <button type="submit" class="btn btn-primary" aria-label="Save brand information">
+            <i data-lucide="save" aria-hidden="true"></i> Save Brand Info
+          </button>
         </div>
       <% end %>
     </div>
@@ -102,7 +106,9 @@
                 <div class="kb-saved-box d-flex justify-content-between align-items-center">
                   <div class="me-3" style="white-space: pre-wrap;"><%= content %></div>
                   <div>
-                    <button type="button" class="btn btn-outline-primary btn-sm kb-edit-btn" title="Edit" aria-label="Edit"><i class="fas fa-pen"></i></button>
+                    <button type="button" class="btn btn-outline-primary btn-sm kb-edit-btn" aria-label="Edit <%= section.humanize %> section">
+                      <i data-lucide="pencil" aria-hidden="true"></i>
+                    </button>
                   </div>
                 </div>
 
@@ -120,8 +126,10 @@
                     </div>
                   </div>
                   <div class="d-flex justify-content-end gap-2 mt-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm kb-cancel-edit">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Save</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm kb-cancel-edit" aria-label="Cancel editing">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm" aria-label="Save knowledge base section">
+                      <i data-lucide="save" aria-hidden="true"></i> Save
+                    </button>
                   </div>
                 <% end %>
               </div>
@@ -131,7 +139,9 @@
       <% end %>
 
       <div class="d-flex justify-content-end mb-2">
-        <button type="button" class="btn btn-add-section" id="kb-add-launch"><i class="fas fa-plus"></i> Add Section</button>
+        <button type="button" class="btn btn-add-section" id="kb-add-launch" aria-label="Add new knowledge base section">
+          <i data-lucide="plus" aria-hidden="true"></i> Add Section
+        </button>
       </div>
 
       <div class="kb-grid kb-add-form d-none" id="kb-add-form">
@@ -149,8 +159,10 @@
             </div>
           </div>
           <div class="d-flex justify-content-end gap-2 mt-2">
-            <button type="button" class="btn btn-outline-secondary kb-add-cancel">Cancel</button>
-            <button type="submit" class="btn btn-add-section"><i class="fas fa-save"></i> Save</button>
+            <button type="button" class="btn btn-outline-secondary kb-add-cancel" aria-label="Cancel adding section">Cancel</button>
+            <button type="submit" class="btn btn-add-section" aria-label="Save new knowledge base section">
+              <i data-lucide="save" aria-hidden="true"></i> Save
+            </button>
           </div>
         <% end %>
       </div>
@@ -194,8 +206,8 @@
         </div>
 
         <div class="d-flex justify-content-end mt-3">
-          <button class="btn btn-outline-primary" disabled title="Invite flow coming soon">
-            <i class="fas fa-user-plus"></i> Invite Member
+          <button class="btn btn-outline-primary" disabled aria-label="Invite team member (coming soon)">
+            <i data-lucide="user-plus" aria-hidden="true"></i> Invite Member
           </button>
         </div>
       </div>
