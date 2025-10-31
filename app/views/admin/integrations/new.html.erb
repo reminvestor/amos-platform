@@ -1,22 +1,33 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i class="fas fa-plus"></i> New Integration</h1>
-      <p class="text-muted">Add a new integration to the platform</p>
-    </div>
-  </div>
+<script src="https://unpkg.com/lucide@latest"></script>
 
-  <div class="row">
-    <div class="col-lg-8">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
+<div class="admin-content" style="padding: 2rem;">
+  <div class="container-fluid">
+    <%# Page Header %>
+    <div class="admin-page-header" style="margin-bottom: 2rem;">
+      <div class="header-left">
+        <div class="header-icon" style="background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%);">
+          <i data-lucide="plus"></i>
+        </div>
+        <div class="header-text">
+          <h1>New Integration</h1>
+          <p>Add a new integration to the platform</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <%# Main Form Column %>
+      <div class="col-lg-8">
+        <div class="admin-card">
           <%= form_with(model: [:admin, @integration], local: true) do |f| %>
+            <%# Error Messages %>
             <% if @integration.errors.any? %>
-              <div class="alert alert-danger">
-                <h5>Errors:</h5>
-                <ul class="mb-0">
+              <div class="alert alert-danger" style="background-color: var(--status-error-bg); border-color: var(--status-error-border); color: var(--status-error-text); margin-bottom: 1.5rem;">
+                <h5 style="margin-bottom: 0.5rem;">
+                  <i data-lucide="alert-circle" style="width: 1rem; height: 1rem; display: inline; vertical-align: middle;"></i>
+                  Errors:
+                </h5>
+                <ul style="margin-bottom: 0;">
                   <% @integration.errors.full_messages.each do |msg| %>
                     <li><%= msg %></li>
                   <% end %>
@@ -24,111 +35,166 @@
               </div>
             <% end %>
 
-            <div class="mb-3">
-              <%= f.label :name, class: "form-label" %>
-              <%= f.text_field :name, class: "form-control", placeholder: "e.g., Google Sheets" %>
+            <%# Name Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= f.label :name, "Integration Name", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= f.text_field :name, class: "form-control", placeholder: "e.g., Google Sheets",
+                  style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
             </div>
 
-            <div class="mb-3">
-              <%= f.label :slug, class: "form-label" %>
-              <%= f.text_field :slug, class: "form-control", placeholder: "e.g., google_sheets" %>
-              <div class="form-text">URL-friendly identifier (lowercase, underscores)</div>
+            <%# Slug Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= f.label :slug, "Slug", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= f.text_field :slug, class: "form-control", placeholder: "e.g., google_sheets",
+                  style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
+              <small style="color: var(--text-muted); font-size: 0.875rem; display: block; margin-top: 0.25rem;">
+                URL-friendly identifier (lowercase, underscores)
+              </small>
             </div>
 
-            <div class="mb-3">
-              <%= f.label :description, class: "form-label" %>
-              <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Brief description of the integration" %>
+            <%# Description Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= f.label :description, "Description", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= f.text_area :description, rows: 3, class: "form-control", placeholder: "Brief description of the integration",
+                  style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
             </div>
 
-            <div class="mb-3">
-              <%= f.label :category, class: "form-label" %>
-              <%= f.select :category, 
+            <%# Category Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= f.label :category, "Category", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= f.select :category,
                   options_for_select(['payment', 'ecommerce', 'crm', 'communication', 'productivity', 'marketing', 'analytics', 'custom']),
-                  { prompt: "Select a category" }, class: "form-select" %>
+                  { prompt: "Select a category" }, class: "form-select",
+                  style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
             </div>
 
-            <div class="mb-3">
-              <%= f.label :auth_type, "Authentication Type", class: "form-label" %>
-              <%= f.select :auth_type, 
+            <%# Auth Type Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= f.label :auth_type, "Authentication Type", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= f.select :auth_type,
                   options_for_select(Integration.auth_types.keys.map { |k| [k.humanize, k] }),
-                  { prompt: "Select auth type" }, class: "form-select" %>
-              <div class="form-text">
-                <strong>Auth Types:</strong><br>
-                • <strong>API Key</strong> - Simple API key authentication<br>
-                • <strong>Bearer Token</strong> - Token-based authentication<br>
-                • <strong>Basic Auth</strong> - Username/password (like Stripe)<br>
-                • <strong>OAuth2</strong> - OAuth 2.0 (configure after creation)<br>
-                • <strong>Custom</strong> - Special authentication methods
+                  { prompt: "Select auth type" }, class: "form-select",
+                  style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
+              <div style="margin-top: 0.5rem; padding: 0.75rem; background-color: rgba(34, 211, 238, 0.05); border: 1px solid rgba(34, 211, 238, 0.1); border-radius: 0.5rem;">
+                <small style="color: var(--text-secondary); line-height: 1.6;">
+                  <strong style="color: white;">Auth Types:</strong><br>
+                  • <strong>API Key</strong> - Simple API key authentication<br>
+                  • <strong>Bearer Token</strong> - Token-based authentication<br>
+                  • <strong>Basic Auth</strong> - Username/password (like Stripe)<br>
+                  • <strong>OAuth2</strong> - OAuth 2.0 (configure after creation)<br>
+                  • <strong>Custom</strong> - Special authentication methods
+                </small>
               </div>
             </div>
 
-            <div class="mb-3">
-              <%= f.label :api_base_url, "API Base URL", class: "form-label" %>
-              <%= f.text_field :api_base_url, class: "form-control", placeholder: "https://api.example.com/v1" %>
+            <%# API Base URL Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= f.label :api_base_url, "API Base URL", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= f.text_field :api_base_url, class: "form-control", placeholder: "https://api.example.com/v1",
+                  style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
             </div>
 
-            <div class="mb-3">
-              <%= f.label :documentation_url, "Documentation URL (optional)", class: "form-label" %>
-              <%= f.text_field :documentation_url, class: "form-control", placeholder: "https://developer.example.com/docs" %>
+            <%# Documentation URL Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= f.label :documentation_url, "Documentation URL (optional)", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= f.text_field :documentation_url, class: "form-control", placeholder: "https://developer.example.com/docs",
+                  style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
             </div>
 
-            <div class="mb-3">
-              <%= f.label :icon_url, "Icon URL (optional)", class: "form-label" %>
-              <%= f.text_field :icon_url, class: "form-control", placeholder: "https://example.com/icon.png" %>
+            <%# Icon URL Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= f.label :icon_url, "Icon URL (optional)", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= f.text_field :icon_url, class: "form-control", placeholder: "https://example.com/icon.png",
+                  style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
             </div>
 
-            <div class="mb-3">
-              <%= f.check_box :is_active, class: "form-check-input", checked: true %>
-              <%= f.label :is_active, "Active", class: "form-check-label" %>
+            <%# Checkboxes %>
+            <div style="margin-bottom: 1rem;">
+              <div class="form-check">
+                <%= f.check_box :is_active, checked: true, style: "margin-right: 0.5rem;" %>
+                <%= f.label :is_active, "Active", style: "color: white;" %>
+              </div>
             </div>
 
-            <div class="mb-3">
-              <%= f.check_box :is_verified, class: "form-check-input" %>
-              <%= f.label :is_verified, "Verified", class: "form-check-label" %>
-              <div class="form-text">Mark as verified/official integration</div>
+            <div style="margin-bottom: 1.5rem;">
+              <div class="form-check">
+                <%= f.check_box :is_verified, style: "margin-right: 0.5rem;" %>
+                <%= f.label :is_verified, "Verified", style: "color: white;" %>
+                <small style="color: var(--text-muted); font-size: 0.875rem; display: block; margin-top: 0.25rem; margin-left: 1.5rem;">
+                  Mark as verified/official integration
+                </small>
+              </div>
             </div>
 
-            <div class="d-flex gap-2">
-              <%= f.submit "Create Integration", class: "btn btn-primary" %>
-              <%= link_to "Cancel", admin_integrations_path, class: "btn btn-outline-secondary" %>
+            <%# Action Buttons %>
+            <div style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border-primary);">
+              <%= f.submit "Create Integration", class: "admin-btn admin-btn-primary" %>
+              <%= link_to admin_integrations_path, class: "admin-btn admin-btn-outline" do %>
+                <i data-lucide="x"></i>
+                <span>Cancel</span>
+              <% end %>
             </div>
           <% end %>
         </div>
-      </div>
 
-      <div class="alert alert-info mt-3">
-        <i class="fas fa-info-circle me-2"></i>
-        <strong>Next Steps:</strong> After creating the integration, configure authentication details by clicking "Auth Config" button.
-      </div>
-    </div>
-
-    <div class="col-lg-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0">Tips</h5>
+        <%# Next Steps Alert %>
+        <div style="margin-top: 1.5rem; padding: 1rem; background-color: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 0.5rem;">
+          <div style="display: flex; align-items-start; gap: 0.75rem;">
+            <i data-lucide="info" style="width: 1.25rem; height: 1.25rem; color: #22D3EE; flex-shrink: 0; margin-top: 0.125rem;"></i>
+            <div>
+              <strong style="color: white;">Next Steps:</strong>
+              <span style="color: var(--text-secondary);"> After creating the integration, configure authentication details by clicking "Auth Config" button.</span>
+            </div>
+          </div>
         </div>
-        <div class="card-body">
-          <p><strong>Slug Requirements:</strong></p>
-          <ul class="small">
-            <li>Lowercase letters and underscores only</li>
-            <li>Must be unique</li>
-            <li>Used in URLs and callbacks</li>
-          </ul>
+      </div>
 
-          <p class="mt-3"><strong>OAuth Integrations:</strong></p>
-          <p class="small">
-            After creating an OAuth2 integration, click "Auth Config" to set up client ID, client secret, and redirect URIs.
-          </p>
+      <%# Tips Sidebar %>
+      <div class="col-lg-4">
+        <div class="admin-card">
+          <h5 style="color: white; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="lightbulb" style="width: 1.25rem; height: 1.25rem; color: #FACC15;"></i>
+            <span>Tips</span>
+          </h5>
 
-          <p class="mt-3"><strong>Need Help?</strong></p>
-          <p class="small">
-            Check <code>docs/ADDING_INTEGRATIONS.md</code> for detailed instructions.
-          </p>
+          <div style="margin-bottom: 1.5rem;">
+            <p style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Slug Requirements:</p>
+            <ul style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.8; padding-left: 1.25rem;">
+              <li>Lowercase letters and underscores only</li>
+              <li>Must be unique</li>
+              <li>Used in URLs and callbacks</li>
+            </ul>
+          </div>
+
+          <div style="margin-bottom: 1.5rem;">
+            <p style="color: white; font-weight: 600; margin-bottom: 0.5rem;">OAuth Integrations:</p>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
+              After creating an OAuth2 integration, click "Auth Config" to set up client ID, client secret, and redirect URIs.
+            </p>
+          </div>
+
+          <div>
+            <p style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Need Help?</p>
+            <p style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
+              Check <code style="background-color: rgba(34, 211, 238, 0.1); padding: 0.125rem 0.375rem; border-radius: 0.25rem; color: #22D3EE;">docs/ADDING_INTEGRATIONS.md</code> for detailed instructions.
+            </p>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
-  </div>
-</div>
 
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
