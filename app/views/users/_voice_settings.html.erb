@@ -2,8 +2,8 @@
   <div class="card-header bg-white">
     <h5 class="mb-0"><i class="fas fa-microphone me-2"></i>Voice Settings</h5>
   </div>
-  <div class="card-body">
-    <%= form_with url: api_tts_preferences_path, method: :patch, local: false, data: { controller: "voice-settings", action: "ajax:success->voice-settings#onSaveSuccess ajax:error->voice-settings#onSaveError" } do |f| %>
+  <div class="card-body" data-controller="voice-settings">
+    <%= form_with url: api_tts_preferences_path, method: :patch, local: false, data: { action: "submit->voice-settings#saveSettings" } do |f| %>
       
       <div class="form-check form-switch mb-4">
         <%= check_box_tag :enabled, "true", current_user.tts_preferences&.dig('enabled') != false, 
@@ -20,13 +20,46 @@
           <label for="voice_id" class="form-label">Voice</label>
           <%= select_tag :voice_id, 
               options_for_select([
-                ['Matthew (US Male)', 'Matthew'],
-                ['Joanna (US Female)', 'Joanna'],
-                ['Amy (UK Female)', 'Amy'],
-                ['Brian (UK Male)', 'Brian'],
-                ['Camila (Brazilian Portuguese)', 'Camila'],
-                ['Lupe (US Spanish)', 'Lupe'],
-                ['Takumi (Japanese Male)', 'Takumi']
+                # US English - Neural
+                ['Matthew (US Male - Neural)', 'Matthew'],
+                ['Joanna (US Female - Neural)', 'Joanna'],
+                ['Ivy (US Child Female - Neural)', 'Ivy'],
+                ['Kendra (US Female - Neural)', 'Kendra'],
+                ['Kimberly (US Female - Neural)', 'Kimberly'],
+                ['Salli (US Female - Neural)', 'Salli'],
+                ['Joey (US Male - Neural)', 'Joey'],
+                ['Justin (US Male - Neural)', 'Justin'],
+                ['Kevin (US Child Male - Neural)', 'Kevin'],
+                ['Ruth (US Female - Neural)', 'Ruth'],
+                ['Stephen (US Male - Neural)', 'Stephen'],
+                # US English - Generative (Most Natural)
+                ['Ruth (US Female - Generative) ⭐', 'Ruth'],
+                ['Matthew (US Male - Generative) ⭐', 'Matthew'],
+                ['Joanna (US Female - Generative) ⭐', 'Joanna'],
+                ['Stephen (US Male - Generative) ⭐', 'Stephen'],
+                ['Olivia (US Female - Generative) ⭐', 'Olivia'],
+                ['Salli (US Female - Generative) ⭐', 'Salli'],
+                # Spanish - US
+                ['Lupe (US Spanish Female - Neural)', 'Lupe'],
+                ['Pedro (US Spanish Male - Neural)', 'Pedro'],
+                ['Lupe (US Spanish Female - Generative) ⭐', 'Lupe'],
+                ['Pedro (US Spanish Male - Generative) ⭐', 'Pedro'],
+                # Spanish - Spain
+                ['Lucia (European Spanish Female - Neural)', 'Lucia'],
+                ['Sergio (European Spanish Male - Neural)', 'Sergio'],
+                ['Lucia (European Spanish Female - Generative) ⭐', 'Lucia'],
+                ['Sergio (European Spanish Male - Generative) ⭐', 'Sergio'],
+                # Spanish - Mexico
+                ['Mia (Mexican Spanish Female - Neural)', 'Mia'],
+                ['Andrés (Mexican Spanish Male - Neural)', 'Andres'],
+                ['Mía (Mexican Spanish Female - Generative) ⭐', 'Mia'],
+                ['Andrés (Mexican Spanish Male - Generative) ⭐', 'Andres'],
+                # Portuguese - Portugal
+                ['Inês (Portuguese Female - Neural)', 'Ines'],
+                # Portuguese - Brazil
+                ['Camila (Brazilian Portuguese Female - Neural)', 'Camila'],
+                ['Vitória (Brazilian Portuguese Female - Neural)', 'Vitoria'],
+                ['Thiago (Brazilian Portuguese Male - Neural)', 'Thiago']
               ], current_user.tts_preferences&.dig('voice_id') || 'Matthew'),
               class: "form-select",
               id: "voice_id",

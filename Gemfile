@@ -68,6 +68,9 @@ gem "thruster", require: false
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 1.2"
 
+# Vector database support for RAG
+gem "neighbor", "~> 0.5"
+
 # AWS SDK for Bedrock integration
 gem "aws-sdk-bedrockruntime", "~> 1.0"
 gem "aws-sdk-s3", "~> 1.0"
@@ -75,6 +78,7 @@ gem "aws-sdk-polly", "~> 1.0"
 
 # Vector storage and RAG
 gem "pinecone", "~> 1.2"
+gem "neighbor", "~> 0.5" # pgvector integration for Rails
 
 # HTTP client for API calls (Serper, etc)
 gem "httparty", "~> 0.22.0"
@@ -145,6 +149,9 @@ group :test do
   gem "selenium-webdriver"
   # Mocking and stubbing [https://github.com/freerange/mocha]
   gem "mocha"
+  # Test file generation
+  gem "prawn", "~> 2.4" # PDF generation for tests
+  gem "chunky_png", "~> 1.4" # PNG image generation for tests
 end
 
 gem "down", "~> 5.4"

@@ -1,148 +1,125 @@
-<div class="scout-canvas document-viewer">
-  <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h4 class="mb-1">
-        <i class="fas fa-file-alt text-primary me-2"></i>
-        Document Viewer
-      </h4>
-      <p class="text-muted mb-0"><%= canvas_data[:filename] || 'Uploaded Document' %></p>
-    </div>
-    <div class="d-flex gap-2">
-      <% if canvas_data[:download_url] %>
-        <a href="<%= canvas_data[:download_url] %>" class="btn btn-outline-secondary" download>
-          <i class="fas fa-download me-1"></i>
-          Download
-        </a>
-      <% end %>
-      <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage?.('Summarize this document')">
-        <i class="fas fa-file-alt me-1"></i>
-        Summarize
-      </button>
-      <button class="btn btn-outline-secondary" onclick="window.scoutSendMessage?.('Translate this document')">
-        <i class="fas fa-language me-1"></i>
-        Translate
-      </button>
-      <button class="btn btn-primary" onclick="window.scoutSendMessage?.('Extract data from this document')">
-        <i class="fas fa-database me-1"></i>
-        Extract Data
-      </button>
-    </div>
-  </div>
-  
-  <!-- Document Display -->
-  <div class="document-display card border-0 shadow-sm">
-    <div class="card-body p-0">
-      <% if canvas_data[:content_type]&.start_with?('image/') %>
-        <!-- Image Display -->
-        <div class="text-center p-4" style="background: #f8f9fa;">
-          <img src="<%= canvas_data[:url] %>" 
-               alt="<%= canvas_data[:filename] %>" 
-               class="img-fluid rounded shadow"
-               style="max-height: 600px; max-width: 100%;">
-        </div>
-        
-      <% elsif canvas_data[:content_type] == 'application/pdf' %>
-        <!-- PDF Display -->
-        <div class="pdf-viewer" style="height: 700px;">
-          <% if canvas_data[:url] %>
-            <iframe src="<%= canvas_data[:url] %>#toolbar=0&navpanes=0" 
-                    width="100%" 
-                    height="100%" 
-                    style="border: none;"
-                    title="<%= canvas_data[:filename] %>">
-            </iframe>
-          <% else %>
-            <div class="text-center p-5">
-              <i class="fas fa-file-pdf text-danger" style="font-size: 6rem;"></i>
-              <p class="text-muted mt-3">PDF Preview</p>
-              <p class="small"><%= canvas_data[:filename] %></p>
-            </div>
+<!-- Document Viewer Canvas -->
+<div class="document-viewer-container" data-asset-id="<%= canvas_data[:asset_id] %>" data-url="<%= canvas_data[:url] %>">
+  <div class="viewer-header mb-4">
+    <div class="row align-items-center">
+      <div class="col">
+        <h5 class="mb-0">
+          <i class="fas fa-file-pdf text-danger me-2"></i>
+          <%= canvas_data[:filename] || 'Document' %>
+        </h5>
+        <% if canvas_data[:size] %>
+                        <small class="text-muted">
+            <%= number_to_human_size(canvas_data[:size]) %> • <%= canvas_data[:content_type] %>
+                        </small>
           <% end %>
-        </div>
-        
-      <% else %>
-        <!-- Generic File Display -->
-        <div class="text-center p-5">
-          <i class="fas fa-file text-secondary" style="font-size: 6rem;"></i>
-          <p class="text-muted mt-3"><%= canvas_data[:filename] %></p>
-          <p class="small text-muted">
-            Type: <%= canvas_data[:content_type] %><br>
-            Size: <%= number_to_human_size(canvas_data[:size]) if canvas_data[:size] %>
-          </p>
-        </div>
-      <% end %>
-    </div>
-  </div>
-  
-  <!-- Document Info -->
-  <div class="document-info mt-3">
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <h6 class="mb-3 text-dark">
-          <i class="fas fa-info-circle text-primary me-2"></i>
-          Document Information
-        </h6>
-        <div class="row">
-          <div class="col-md-6">
-            <dl class="mb-0">
-              <dt class="small text-secondary">Filename</dt>
-              <dd class="text-dark fw-semibold"><%= canvas_data[:filename] %></dd>
-              
-              <dt class="small text-secondary">Type</dt>
-              <dd class="text-dark"><%= canvas_data[:content_type] %></dd>
-            </dl>
-          </div>
-          <div class="col-md-6">
-            <dl class="mb-0">
-              <% if canvas_data[:size] %>
-                <dt class="small text-secondary">Size</dt>
-                <dd class="text-dark"><%= number_to_human_size(canvas_data[:size]) %></dd>
-              <% end %>
-              
-              <% if canvas_data[:pages] %>
-                <dt class="small text-secondary">Pages</dt>
-                <dd class="text-dark"><%= canvas_data[:pages] %></dd>
-              <% end %>
-            </dl>
-          </div>
-        </div>
-        
-        <% if canvas_data[:extracted_text_preview] %>
-          <div class="mt-3">
-            <dt class="small text-secondary">Extracted Text Preview</dt>
-            <dd class="small font-monospace bg-light text-dark p-2 rounded" style="max-height: 100px; overflow-y: auto;">
-              <%= truncate(canvas_data[:extracted_text_preview], length: 500) %>
-            </dd>
-          </div>
-        <% end %>
       </div>
+      <div class="col-auto">
+        <% if canvas_data[:download_url] %>
+          <a href="<%= canvas_data[:download_url] %>" class="btn btn-sm btn-outline-primary" download>
+            <i class="fas fa-download me-1"></i> Download
+          </a>
+        <% end %>
+        <button class="btn btn-sm btn-outline-secondary" onclick="window.scoutController.goToConversation()">
+          <i class="fas fa-times me-1"></i> Close
+        </button>
     </div>
   </div>
 </div>
 
+  <% if canvas_data[:extracted_text_preview] && canvas_data[:extracted_text_preview].include?("⚠️ Unable to extract text") %>
+    <!-- Show OCR error message -->
+    <div class="alert alert-warning">
+      <h5 class="alert-heading">
+        <i class="fas fa-exclamation-triangle me-2"></i>Unable to Process Document
+      </h5>
+      <p class="mb-2">This appears to be a scanned PDF that requires special tools to read.</p>
+      
+      <div class="mt-3">
+        <p class="mb-2"><strong>To enable OCR processing:</strong></p>
+        <ol class="mb-3">
+          <li>Install ImageMagick: <code>brew install imagemagick</code></li>
+          <li>Install Ghostscript: <code>brew install ghostscript</code></li>
+          <li>Restart your Rails server</li>
+        </ol>
+        
+        <p class="mb-2"><strong>Alternative options:</strong></p>
+        <ul class="mb-0">
+          <li>Convert the PDF to text using an online tool</li>
+          <li>Upload a text-based PDF instead of a scanned image</li>
+          <li>Take a screenshot of the PDF and upload it as an image</li>
+        </ul>
+      </div>
+            </div>
+  <% end %>
+
+  <!-- Document Viewer -->
+  <div class="document-frame" style="height: 600px;">
+    <% case canvas_data[:content_type] %>
+    <% when 'application/pdf' %>
+      <embed src="<%= canvas_data[:url] %>" type="application/pdf" width="100%" height="100%" />
+    <% when /^image\// %>
+      <div class="text-center p-4">
+        <img src="<%= canvas_data[:url] %>" class="img-fluid" style="max-height: 100%;" />
+      </div>
+    <% when /^text\// %>
+      <div class="p-4 bg-light h-100 overflow-auto">
+        <pre class="mb-0"><%= canvas_data[:extracted_text_preview] || 'Loading...' %></pre>
+      </div>
+    <% else %>
+      <div class="text-center p-5">
+        <i class="fas fa-file fa-4x text-muted mb-3"></i>
+        <p class="text-muted">This file type cannot be displayed in the browser.</p>
+        <% if canvas_data[:download_url] %>
+          <a href="<%= canvas_data[:download_url] %>" class="btn btn-primary" download>
+            <i class="fas fa-download me-2"></i>Download to View
+          </a>
+        <% end %>
+      </div>
+    <% end %>
+        </div>
+
+  <% if canvas_data[:rag_store_id] %>
+    <div class="mt-3 text-muted text-center">
+      <small>
+        <i class="fas fa-database me-1"></i>
+        Document stored in knowledge base (ID: <%= canvas_data[:rag_store_id] %>)
+      </small>
+    </div>
+  <% end %>
+          </div>
+
 <style>
-.document-viewer {
+.document-viewer-container {
   height: 100%;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
-.document-display {
-  background: white;
-}
-
-.pdf-viewer {
+.document-frame {
+  flex: 1;
+  border: 1px solid #dee2e6;
+  border-radius: 0.5rem;
+  overflow: hidden;
   background: #f8f9fa;
 }
 
-/* Force dark text for document info */
-.document-viewer .card-body h6,
-.document-viewer .card-body dd,
-.document-viewer .card-body dt {
-  color: #1f2937 !important;
-}
-
-.document-viewer .text-secondary {
-  color: #6b7280 !important;
+.document-frame embed {
+  border: none;
 }
 </style>
 
+<script>
+// Initialize document viewer
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('📄 Document viewer loaded');
+  
+  // Handle PDF loading errors
+  const embed = document.querySelector('.document-frame embed');
+  if (embed) {
+    embed.addEventListener('error', function() {
+      console.error('Failed to load PDF');
+      // Could show an error message here
+    });
+  }
+});
+</script>

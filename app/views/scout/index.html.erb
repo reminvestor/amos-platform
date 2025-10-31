@@ -150,7 +150,7 @@
     width: 40px;
     height: 40px;
     background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    border-radius: 50%;
+    border-radius: 0.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -244,6 +244,86 @@
     align-items: flex-start;
     gap: 12px;
   }
+
+  /* Source Citations Styles */
+  .source-citations {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .sources-container {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 0.9rem;
+  }
+
+  .sources-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .sources-header i {
+    color: #667eea;
+    font-size: 0.9rem;
+  }
+
+  .sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .source-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .source-item:hover {
+    border-color: #667eea;
+    background: #f0f4ff;
+    transform: translateX(2px);
+  }
+
+  .source-item i {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .source-details {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .source-filename {
+    font-weight: 500;
+    color: #212529;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.9rem;
+  }
+
+  .source-meta {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 2px;
+  }
 </style>
 
 <div id="workspace" class="workspace conversation-mode" data-controller="scout">
@@ -251,46 +331,46 @@
   <nav class="side-nav collapsed" data-scout-target="sideNav">
     <div class="side-nav-header">
       <div class="brand">
-        <i class="fas fa-cube text-primary"></i>
+        <i data-lucide="box" class="text-primary"></i>
         <span class="brand-text">Amos</span>
       </div>
       <button class="nav-toggle" data-action="click->scout#toggleSideNav" data-scout-target="navToggle">
-        <i class="fas fa-bars"></i>
+        <i data-lucide="menu"></i>
       </button>
     </div>
-    
+
     <div class="nav-items">
       <div class="nav-section">
         <div class="nav-item active" data-action="click->scout#goToConversation">
-          <i class="fas fa-home"></i>
+          <i data-lucide="home"></i>
           <span class="nav-text">Dashboard</span>
         </div>
         <div class="nav-item" data-template-type="landing_page" data-action="click->scout#loadLandingPagesCanvas">
-          <i class="fas fa-globe"></i>
+          <i data-lucide="globe"></i>
           <span class="nav-text">Landing Pages</span>
         </div>
         <div class="nav-item" data-template-type="campaign" data-action="click->scout#loadCampaignsCanvas">
-          <i class="fas fa-envelope"></i>
+          <i data-lucide="mail"></i>
           <span class="nav-text">Campaigns</span>
         </div>
         <div class="nav-item" data-template-type="email_template" data-action="click->scout#loadEmailTemplatesCanvas">
-          <i class="fas fa-file-alt"></i>
+          <i data-lucide="file-text"></i>
           <span class="nav-text">Email Templates</span>
         </div>
         <div class="nav-item" data-template-type="contact" data-action="click->scout#loadContactsCanvas">
-          <i class="fas fa-users"></i>
+          <i data-lucide="users"></i>
           <span class="nav-text">Contacts</span>
         </div>
         <div class="nav-item" data-template-type="analytics" data-action="click->scout#loadAnalyticsCanvas">
-          <i class="fas fa-chart-bar"></i>
+          <i data-lucide="bar-chart-2"></i>
           <span class="nav-text">Analytics</span>
         </div>
         <div class="nav-item" data-template-type="integration" data-action="click->scout#loadIntegrationsCanvas">
-          <i class="fas fa-plug"></i>
+          <i data-lucide="plug"></i>
           <span class="nav-text">Integrations</span>
         </div>
       </div>
-      
+
       <div class="nav-section">
         <div class="nav-section-title">Templates</div>
         <div id="template-list" data-scout-target="templateList">
@@ -298,18 +378,18 @@
         </div>
       </div>
     </div>
-    
+
     <div class="nav-footer">
       <div class="nav-item" data-action="click->scout#openSettings">
-        <i class="fas fa-cog"></i>
+        <i data-lucide="settings"></i>
         <span class="nav-text">Settings</span>
       </div>
       <div class="nav-item" data-action="click->scout#openProfile">
-        <i class="fas fa-user"></i>
+        <i data-lucide="user"></i>
         <span class="nav-text">Profile</span>
       </div>
       <div class="nav-item" data-action="click->scout#logout">
-        <i class="fas fa-sign-out-alt"></i>
+        <i data-lucide="log-out"></i>
         <span class="nav-text">Logout</span>
       </div>
     </div>
@@ -320,36 +400,40 @@
     <!-- Chat Area (Full screen in conversation mode, sidebar in work mode) -->
     <section class="chat-area" data-scout-target="chatArea">
       <div class="chat-header">
-        <div class="conversation-controls">
-          <div class="header-title">
-            <h2>Amos AI</h2>
-        </div>
-          <div class="header-buttons">
-            <div class="conversation-info">
-              <button class="icon-btn" id="conversation-selector" title="Conversation history">
-                <i class="fas fa-history"></i>
-              </button>
-              <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
-                <div class="dropdown-header">
-                  <h4>Recent Conversations</h4>
-      </div>
-                <div class="conversation-list" id="conversation-list">
-                  <!-- Conversations will be loaded here -->
-          </div>
+        <div class="chat-header-content">
+          <h2 class="chat-header-title">Amos AI</h2>
+
+          <div class="chat-header-actions">
+            <div class="header-divider"></div>
+
+            <button class="header-icon-btn" id="new-conversation-btn" title="New conversation">
+              <i data-lucide="rotate-ccw"></i>
+            </button>
+
+            <button class="header-icon-btn" id="conversation-selector" title="Conversation history">
+              <i data-lucide="history"></i>
+            </button>
+
+            <button class="header-icon-btn" id="tts-toggle-btn" title="Toggle voice output">
+              <i data-lucide="volume-2"></i>
+            </button>
+
+            <button class="header-icon-btn" title="More options">
+              <i data-lucide="more-horizontal"></i>
+            </button>
+
+            <!-- Conversation dropdown (hidden by default) -->
+            <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
+              <div class="dropdown-header">
+                <h4>Recent Conversations</h4>
+              </div>
+              <div class="conversation-list" id="conversation-list">
+                <!-- Conversations will be loaded here -->
               </div>
             </div>
-            <button class="icon-btn" id="tts-toggle-btn" title="Toggle voice output">
-              <i class="fas fa-volume-up"></i>
-            </button>
-            <%= link_to advanced_mode_path, class: "icon-btn", title: "Switch to Advanced Mode", style: "text-decoration: none; color: inherit;" do %>
-              <i class="fas fa-th-large"></i>
-            <% end %>
-            <button class="icon-btn" id="new-conversation-btn" title="New conversation">
-              <i class="fas fa-plus"></i>
-              </button>
-            </div>
           </div>
         </div>
+      </div>
       
       <div class="chat-messages" id="chat-messages" data-scout-target="chatMessages">
         <!-- Messages will be loaded here from history -->
@@ -362,33 +446,113 @@
           <div class="attached-files" id="attached-files" style="display: none;">
             <!-- Attached files will be shown here -->
           </div>
-          <div class="input-group">
-            <input type="file" 
-              id="file-input" 
-              multiple 
+
+          <!-- Model Selector with Brain Icon -->
+          <div class="model-selector-container">
+            <div class="model-selector-trigger">
+              <button id="model-selector-btn" class="model-brain-btn" title="Model Selection">
+                <div class="brain-icon-wrapper">
+                  <i data-lucide="brain" class="brain-outline"></i>
+                  <div class="brain-fill">
+                    <i data-lucide="brain" class="brain-filled"></i>
+                  </div>
+                </div>
+                <div class="power-dots">
+                  <div class="power-dot"></div>
+                  <div class="power-dot"></div>
+                </div>
+              </button>
+
+              <!-- Model Selector Popover -->
+              <div id="model-selector-popover" class="model-popover" style="display: none;">
+                <div class="model-popover-content">
+                  <div class="model-header">
+                    <div class="model-header-icon">
+                      <div class="brain-icon-wrapper">
+                        <i data-lucide="brain" class="brain-outline-lg"></i>
+                        <div class="brain-fill-lg">
+                          <i data-lucide="brain" class="brain-filled-lg"></i>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="model-header-text">
+                      <h3>Model Selection</h3>
+                      <p id="current-model-name">Claude 3.5 Sonnet</p>
+                    </div>
+                  </div>
+
+                  <div class="model-slider-section">
+                    <input type="range" id="model-power-slider" class="model-slider" min="0" max="100" value="50">
+                    <div class="slider-labels">
+                      <span>Faster</span>
+                      <span id="model-power-percent" class="power-percent">50%</span>
+                      <span>More Robust</span>
+                    </div>
+                  </div>
+
+                  <div class="model-presets">
+                    <button class="model-preset-btn" data-power="0">
+                      <span>Faster</span>
+                      <span class="preset-model">Claude 3.5 Haiku</span>
+                    </button>
+                    <button class="model-preset-btn active" data-power="50">
+                      <span>Balanced</span>
+                      <span class="preset-model">Claude 3.5 Sonnet</span>
+                    </button>
+                    <button class="model-preset-btn" data-power="100">
+                      <span>More Robust</span>
+                      <span class="preset-model">Claude Sonnet 4.5</span>
+                    </button>
+                  </div>
+
+                  <div class="model-info">
+                    <p>Higher model power provides more accurate and nuanced responses but may be slower.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hidden select for backward compatibility -->
+            <select id="model-select" class="model-select" style="display: none;">
+              <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+              <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="claude-opus-4-1">Claude Opus 4.1</option>
+              <option value="claude-3-haiku" selected>Claude 3.5 Haiku</option>
+            </select>
+          </div>
+
+          <!-- Input Container -->
+          <div class="input-container">
+            <input type="file"
+              id="file-input"
+              multiple
               accept="image/*,.pdf,.doc,.docx,.txt,.csv"
               style="display: none;"
               data-scout-target="fileInput">
+
             <button type="button" class="attach-btn" id="attach-button" title="Attach files">
-              <i class="fas fa-paperclip"></i>
+              <i data-lucide="paperclip"></i>
             </button>
-            <textarea 
-              class="chat-input" 
+
+            <textarea
+              class="chat-input"
               id="message-input"
-              placeholder="Type your message..." 
+              placeholder="Type your message..."
               data-scout-target="chatInput"
               autocomplete="off"
               rows="1"
             ></textarea>
+
             <button type="button"
                     class="voice-btn"
                     data-action="click->voice-assistant#toggleVoice"
                     data-voice-assistant-target="button"
                     title="Voice input">
-              <i class="fas fa-microphone"></i>
+              <i data-lucide="mic"></i>
             </button>
+
             <button type="submit" class="send-btn" id="send-button">
-              <i class="fas fa-paper-plane"></i>
+              <i data-lucide="send"></i>
             </button>
           </div>
         </form>
@@ -409,17 +573,17 @@
           <div class="layout-controls">
             <div class="layout-presets">
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="15" title="Compact Scout">
-                <i class="fas fa-compress-alt"></i>
+                <i data-lucide="minimize-2"></i>
               </button>
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="25" title="Balanced">
-                <i class="fas fa-columns"></i>
+                <i data-lucide="columns"></i>
               </button>
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="35" title="Wide Scout">
-                <i class="fas fa-expand-alt"></i>
+                <i data-lucide="maximize-2"></i>
               </button>
             </div>
             <button class="close-template" data-action="click->scout#closeTemplate">
-              <i class="fas fa-times"></i>
+              <i data-lucide="x"></i>
             </button>
           </div>
         </div>
@@ -428,7 +592,7 @@
       <div class="template-content" data-scout-target="templateContent">
         <div class="template-placeholder">
           <div class="placeholder-icon">
-            <i class="fas fa-cube"></i>
+            <i data-lucide="box"></i>
           </div>
           <p>No template loaded</p>
         </div>
@@ -547,7 +711,7 @@
 #workspace .message-avatar {
   width: 40px !important;
   height: 40px !important;
-  border-radius: 50% !important;
+  border-radius: 0.5rem !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -921,9 +1085,40 @@
   justify-content: space-between;
   font-size: 0.85rem;
   color: #666;
-}
-
-</style>
+  }
+  
+  /* Fix for messages appearing side-by-side when loaded from DB */
+  #chat-messages {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+  
+  #chat-messages > .message {
+    display: flex !important;
+    width: 100% !important;
+    clear: both !important;
+    float: none !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  /* Ensure user messages align right */
+  #chat-messages > .message.user-message {
+    justify-content: flex-end !important;
+  }
+  
+  /* Ensure assistant messages align left */
+  #chat-messages > .message.ai-message {
+    justify-content: flex-start !important;
+  }
+  
+  /* Prevent any inline display */
+  #chat-messages > * {
+    float: none !important;
+    clear: both !important;
+  }
+  
+  </style>
 
 <!-- JavaScript for Scout Chat -->
 <script>
@@ -932,15 +1127,147 @@ document.addEventListener('turbo:load', function() {
   if (window.scoutCleanup) {
     window.scoutCleanup();
   }
-  
+
   // Store cleanup function
   window.scoutCleanup = function() {
     // This will be populated with cleanup tasks
   };
+
+  // Initialize Lucide icons on page load
+  function initializeLucideIcons() {
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+      console.log('🎨 Initializing Lucide icons...');
+      lucide.createIcons();
+      console.log('✅ Lucide icons initialized');
+    } else {
+      console.warn('⚠️ Lucide not available, retrying in 100ms...');
+      setTimeout(initializeLucideIcons, 100);
+    }
+  }
+  initializeLucideIcons();
+
   const messageForm = document.getElementById('message-form');
   const messageInput = document.getElementById('message-input');
   const chatMessages = document.getElementById('chat-messages');
   const sendButton = document.getElementById('send-button');
+
+  // Brain Icon Model Selector
+  const modelSelectorBtn = document.getElementById('model-selector-btn');
+  const modelPopover = document.getElementById('model-selector-popover');
+  const modelSlider = document.getElementById('model-power-slider');
+  const powerPercent = document.getElementById('model-power-percent');
+  const currentModelName = document.getElementById('current-model-name');
+  const presetBtns = document.querySelectorAll('.model-preset-btn');
+  const modelSelect = document.getElementById('model-select');
+
+  // Model power to Claude model mapping
+  const MODEL_MAP = {
+    0: { model: 'claude-3-haiku', name: 'Claude 3.5 Haiku' },
+    50: { model: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
+    100: { model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' }
+  };
+
+  // Get current model from power level
+  function getModelFromPower(power) {
+    if (power <= 25) return MODEL_MAP[0];
+    if (power <= 75) return MODEL_MAP[50];
+    return MODEL_MAP[100];
+  }
+
+  // Update brain fill based on power
+  function updateBrainFill(power) {
+    const fillPercent = 100 - power; // Invert for clip-path
+    const brainFills = document.querySelectorAll('.brain-fill, .brain-fill-lg');
+    brainFills.forEach(fill => {
+      fill.style.clipPath = `inset(${fillPercent}% 0 0 0)`;
+    });
+
+    // Update power dots
+    const dots = document.querySelectorAll('.power-dot');
+    dots[0].classList.toggle('active', power >= 33);
+    dots[1].classList.toggle('active', power >= 66);
+  }
+
+  // Load saved model power or default to 50%
+  let currentPower = parseInt(localStorage.getItem('scout_model_power') || '50');
+  updateBrainFill(currentPower);
+  if (modelSlider) modelSlider.value = currentPower;
+  if (powerPercent) powerPercent.textContent = `${currentPower}%`;
+
+  // Update model select and name
+  const currentModel = getModelFromPower(currentPower);
+  if (modelSelect) modelSelect.value = currentModel.model;
+  if (currentModelName) currentModelName.textContent = currentModel.name;
+
+  // Toggle popover
+  console.log('Model selector button found:', !!modelSelectorBtn);
+  console.log('Model popover found:', !!modelPopover);
+
+  if (modelSelectorBtn) {
+    modelSelectorBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      console.log('🧠 Model selector clicked');
+      const isOpen = modelPopover.style.display === 'block';
+      modelPopover.style.display = isOpen ? 'none' : 'block';
+      console.log('🧠 Popover display:', modelPopover.style.display);
+
+      // Re-initialize Lucide icons in popover
+      if (!isOpen && typeof lucide !== 'undefined') {
+        setTimeout(() => lucide.createIcons(), 10);
+      }
+    });
+  } else {
+    console.error('❌ Model selector button not found!');
+  }
+
+  // Close popover when clicking outside
+  document.addEventListener('click', (e) => {
+    if (modelPopover && !modelPopover.contains(e.target) && e.target !== modelSelectorBtn) {
+      modelPopover.style.display = 'none';
+    }
+  });
+
+  // Handle slider changes
+  if (modelSlider) {
+    modelSlider.addEventListener('input', (e) => {
+      const power = parseInt(e.target.value);
+      currentPower = power;
+
+      // Update UI
+      updateBrainFill(power);
+      powerPercent.textContent = `${power}%`;
+
+      // Update model
+      const model = getModelFromPower(power);
+      currentModelName.textContent = model.name;
+      if (modelSelect) modelSelect.value = model.model;
+
+      // Update active preset
+      presetBtns.forEach(btn => {
+        const presetPower = parseInt(btn.dataset.power);
+        const isActive = Math.abs(power - presetPower) < 26;
+        btn.classList.toggle('active', isActive);
+      });
+
+      // Save to localStorage
+      localStorage.setItem('scout_model_power', power.toString());
+      localStorage.setItem('scout_selected_model', model.model);
+    });
+  }
+
+  // Handle preset buttons
+  presetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const power = parseInt(btn.dataset.power);
+      modelSlider.value = power;
+      modelSlider.dispatchEvent(new Event('input'));
+    });
+  });
+
+  // Helper function to get currently selected model
+  window.getSelectedModel = function() {
+    return modelSelect ? modelSelect.value : 'claude-3-haiku';
+  };
   const toolActivity = document.getElementById('tool-activity');
   
   // Initialize TTS
@@ -967,15 +1294,23 @@ document.addEventListener('turbo:load', function() {
   // Update TTS button appearance
   function updateTTSButton() {
     if (!ttsToggleBtn || !ttsManager) return;
-    
+
     if (ttsManager.isEnabled) {
       ttsToggleBtn.classList.remove('text-muted');
-      ttsToggleBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+      ttsToggleBtn.innerHTML = '<i data-lucide="volume-2"></i>';
       ttsToggleBtn.title = 'Voice output enabled (click to mute)';
+      // Re-initialize Lucide icon
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
     } else {
       ttsToggleBtn.classList.add('text-muted');
-      ttsToggleBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+      ttsToggleBtn.innerHTML = '<i data-lucide="volume-x"></i>';
       ttsToggleBtn.title = 'Voice output disabled (click to enable)';
+      // Re-initialize Lucide icon
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
     }
   }
   
@@ -1380,14 +1715,16 @@ document.addEventListener('turbo:load', function() {
       processedContent = content.replace(/\n/g, '<br>');
     }
     
-    const avatar = role === 'assistant' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
-    
+    const avatar = role === 'assistant'
+      ? '<i data-lucide="bot"></i>'
+      : '<i data-lucide="user"></i>';
+
     wrapper.innerHTML = `
       <div class="message-content">
         <div class="message-avatar">
           ${avatar}
         </div>
-      <div class="message-bubble">
+        <div class="message-bubble">
           ${processedContent}
         </div>
       </div>
@@ -1403,6 +1740,12 @@ document.addEventListener('turbo:load', function() {
   function appendMessage(content, role, timestamp = null, id = null, metadata = null) {
     const el = buildMessageElement({ id, content, role, timestamp, metadata });
     chatMessages.appendChild(el);
+
+    // Initialize Lucide icons for newly added message
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
     scrollToBottom();
   }
 
@@ -1414,6 +1757,11 @@ document.addEventListener('turbo:load', function() {
     chatMessages.insertBefore(fragment, chatMessages.firstChild);
     const newScrollHeight = chatMessages.scrollHeight;
     chatMessages.scrollTop = newScrollHeight - prevScrollHeight + chatMessages.scrollTop;
+
+    // Initialize Lucide icons for prepended messages
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
   }
 
   // Backward-compatible helper
@@ -1444,7 +1792,12 @@ document.addEventListener('turbo:load', function() {
     
     const el = buildMessageElement({ content: messageContent, role, timestamp, metadata: null });
     chatMessages.appendChild(el);
-    
+
+    // Initialize Lucide icons for newly added message
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
     // Track the content to prevent future duplicates
     streamedContent.add(messageContent.toString().trim());
     
@@ -1492,6 +1845,228 @@ document.addEventListener('turbo:load', function() {
 
   function hideTypingIndicator() {
     // No-op: typing is now shown in unified chat messages
+  }
+
+  // Add source citations to the last assistant message
+  function addSourceCitations(sources) {
+    console.log('📚 addSourceCitations called with:', sources);
+
+    // Find the last assistant message
+    const messages = chatMessages.querySelectorAll('.message.assistant');
+    const lastMessage = messages[messages.length - 1];
+
+    if (!lastMessage) {
+      console.warn('⚠️ No assistant message found to attach sources');
+      return;
+    }
+
+    // Check if sources already exist (prevent duplicates)
+    if (lastMessage.querySelector('.source-citations')) {
+      console.log('ℹ️ Sources already attached to this message');
+      return;
+    }
+
+    // Build sources HTML
+    const sourcesHtml = buildSourcesHtml(sources);
+
+    // Find the message content div and append sources
+    const messageContent = lastMessage.querySelector('.message-content') || lastMessage;
+    const sourcesDiv = document.createElement('div');
+    sourcesDiv.className = 'source-citations';
+    sourcesDiv.innerHTML = sourcesHtml;
+    messageContent.appendChild(sourcesDiv);
+
+    // Initialize Lucide icons in sources
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+
+    console.log('✅ Sources added to message');
+  }
+
+  // Build HTML for source citations
+  function buildSourcesHtml(sources) {
+    // Group sources by type
+    const ragDocs = sources.filter(s => s.type === 'rag_document');
+    const sessionDocs = sources.filter(s => s.type === 'session_document' || s.type === 'document');
+    const dbSources = sources.filter(s => s.type === 'database');
+    const webSources = sources.filter(s => s.type === 'web_search');
+    const integrationSources = sources.filter(s => s.type === 'integration');
+    const conversationSources = sources.filter(s => s.type === 'conversation');
+    const analyticsSources = sources.filter(s => s.type === 'analytics');
+    const billingSources = sources.filter(s => s.type === 'billing');
+    const workflowSources = sources.filter(s => s.type === 'workflow');
+
+    let html = '<div class="sources-container">';
+    html += '<div class="sources-header">';
+    html += '<i data-lucide="book-open"></i>';
+    html += `<span>Sources (${sources.length})</span>`;
+    html += '</div>';
+    html += '<div class="sources-list">';
+
+    // RAG documents
+    ragDocs.forEach(source => {
+      const icon = getSourceIcon(source.filename);
+      const pages = source.pages ? ` • Pages: ${source.pages.join(', ')}` : '';
+      html += `
+        <div class="source-item" onclick="viewDocument('${source.filename}')">
+          ${icon}
+          <div class="source-details">
+            <div class="source-filename">${source.filename}</div>
+            <div class="source-meta">RAG Knowledge Base${pages}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Session documents (recent uploads)
+    sessionDocs.forEach(source => {
+      const icon = getSourceIcon(source.filename);
+      html += `
+        <div class="source-item" onclick="viewDocument('${source.filename}')">
+          ${icon}
+          <div class="source-details">
+            <div class="source-filename">${source.filename}</div>
+            <div class="source-meta">Recent Upload (Session)</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Database sources
+    dbSources.forEach(source => {
+      html += `
+        <div class="source-item">
+          <i data-lucide="database"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.object_type}</div>
+            <div class="source-meta">${source.record_count} records</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Web search results
+    webSources.forEach(source => {
+      const truncatedUrl = source.url.length > 50 ? source.url.substring(0, 47) + '...' : source.url;
+      html += `
+        <div class="source-item" onclick="window.open('${source.url}', '_blank')">
+          <i data-lucide="globe" class="text-primary"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.title || 'Web Search Result'}</div>
+            <div class="source-meta">${truncatedUrl}</div>
+          </div>
+          <i data-lucide="external-link" class="text-muted" style="font-size: 0.75rem; margin-left: 0.5rem;"></i>
+        </div>
+      `;
+    });
+
+    // Integration API sources
+    integrationSources.forEach(source => {
+      const recordInfo = source.record_count ? ` • ${source.record_count} records` : '';
+      html += `
+        <div class="source-item">
+          <i data-lucide="plug" class="text-warning"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.integration_name} API</div>
+            <div class="source-meta">${source.operation}${recordInfo}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Conversation history
+    conversationSources.forEach(source => {
+      const timeInfo = source.time_range ? ` • ${source.time_range}` : '';
+      html += `
+        <div class="source-item">
+          <i data-lucide="message-square" class="text-info"></i>
+          <div class="source-details">
+            <div class="source-filename">Conversation History</div>
+            <div class="source-meta">${source.message_count} messages${timeInfo}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Analytics and metrics
+    analyticsSources.forEach(source => {
+      const dataInfo = source.data_points ? ` • ${source.data_points} data points` : '';
+      const timeInfo = source.time_range ? ` • ${source.time_range}` : '';
+      html += `
+        <div class="source-item">
+          <i data-lucide="line-chart" class="text-success"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.metric_name || 'Analytics Data'}</div>
+            <div class="source-meta">Analytics${dataInfo}${timeInfo}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Billing and subscription data
+    billingSources.forEach(source => {
+      const recordInfo = source.record_count > 1 ? ` • ${source.record_count} records` : '';
+      html += `
+        <div class="source-item">
+          <i data-lucide="credit-card" class="text-danger"></i>
+          <div class="source-details">
+            <div class="source-filename">${source.data_type}</div>
+            <div class="source-meta">Billing Data${recordInfo}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Workflow context
+    workflowSources.forEach(source => {
+      const fileInfo = source.file_count ? `${source.file_count} files` : '';
+      const contextInfo = source.context_keys ? `${source.context_keys} context keys` : '';
+      const separator = fileInfo && contextInfo ? ' • ' : '';
+      html += `
+        <div class="source-item">
+          <i data-lucide="workflow" class="text-purple"></i>
+          <div class="source-details">
+            <div class="source-filename">Workflow Context</div>
+            <div class="source-meta">${fileInfo}${separator}${contextInfo}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div></div>';
+    return html;
+  }
+
+  // Get icon for source based on filename (returns Lucide icon HTML)
+  function getSourceIcon(filename) {
+    if (!filename) return '<i data-lucide="file"></i>';
+    const ext = filename.split('.').pop().toLowerCase();
+    const iconMap = {
+      'pdf': '<i data-lucide="file-text" class="text-danger"></i>',
+      'doc': '<i data-lucide="file-text" class="text-primary"></i>',
+      'docx': '<i data-lucide="file-text" class="text-primary"></i>',
+      'xls': '<i data-lucide="file-spreadsheet" class="text-success"></i>',
+      'xlsx': '<i data-lucide="file-spreadsheet" class="text-success"></i>',
+      'ppt': '<i data-lucide="presentation" class="text-warning"></i>',
+      'pptx': '<i data-lucide="presentation" class="text-warning"></i>',
+      'txt': '<i data-lucide="file-text"></i>',
+      'md': '<i data-lucide="file-text"></i>',
+      'jpg': '<i data-lucide="image" class="text-info"></i>',
+      'jpeg': '<i data-lucide="image" class="text-info"></i>',
+      'png': '<i data-lucide="image" class="text-info"></i>',
+      'gif': '<i data-lucide="image" class="text-info"></i>'
+    };
+    return iconMap[ext] || '<i data-lucide="file"></i>';
+  }
+
+  // View document function
+  function viewDocument(filename) {
+    console.log('📄 View document:', filename);
+    // Load document viewer canvas with this document
+    if (window.scoutLoadCanvas) {
+      window.scoutLoadCanvas('document_viewer', { highlight_document: filename });
+    }
   }
 
   // Tool call tracking
@@ -1701,6 +2276,12 @@ document.addEventListener('turbo:load', function() {
     files.forEach((file, index) => {
       formData.append(`files[${index}]`, file);
     });
+    
+    // Add storage choice if available
+    if (window.documentStorageChoice) {
+      formData.append('storage_type', window.documentStorageChoice);
+      console.log('📦 Including storage type:', window.documentStorageChoice);
+    }
     
     try {
       const response = await fetch('/scout/upload_files', {
@@ -1929,6 +2510,12 @@ document.addEventListener('turbo:load', function() {
                   }
                 });
                 chatMessages.appendChild(toolMessage);
+
+                // Initialize Lucide icons for tool message
+                if (typeof lucide !== 'undefined') {
+                  lucide.createIcons();
+                }
+
                 scrollToBottom();
                 updateMessageCount();
                 
@@ -2001,17 +2588,17 @@ document.addEventListener('turbo:load', function() {
                 if (data.data.error) {
                   addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
                 } else {
-                  console.log('📨 Response data:', data.data);
-                  
                   // For advisor mode with streaming, we've already added the content
                   // Only add a new message if we weren't streaming
                   if (!streamingMessage && data.data.message) {
-                    console.log('➕ Adding non-streamed message to chat');
                   addMessage(data.data.message, 'assistant');
-                  } else if (streamingMessage) {
-                    console.log('✅ Message was streamed, not adding duplicate');
                   }
-                  
+
+                  // Display source citations if available
+                  if (data.data.sources && data.data.sources.length > 0) {
+                    addSourceCitations(data.data.sources);
+                  }
+
                   // Show tool usage info
                   if (data.data.tools_used && data.data.tools_list?.length > 0) {
                     console.log('Tools used:', data.data.tools_list);
@@ -2179,10 +2766,12 @@ document.addEventListener('turbo:load', function() {
 
   // Initial fetch of recent history when page loads
   loadMoreHistory(true).then(() => {
-    // Try to restore canvas state first
-    const canvasRestored = restoreCanvasState();
-    
-    // If no canvas was restored, add buttons to the first welcome message
+    // Don't auto-restore canvas state on login - let user choose what to do
+    // Clear any stale canvas state from previous sessions
+    localStorage.removeItem('scout_canvas_state');
+    const canvasRestored = false;
+
+    // Add buttons to the first welcome message
     if (!canvasRestored) {
       setTimeout(() => {
         const messages = chatMessages.querySelectorAll('.message.ai-message');
@@ -2238,25 +2827,47 @@ document.addEventListener('turbo:load', function() {
   const fileInput = document.getElementById('file-input');
   const attachedFilesContainer = document.getElementById('attached-files');
   let attachedFiles = [];
-  
+
+  console.log('📎 File upload initialization:', {
+    attachButton: !!attachButton,
+    fileInput: !!fileInput,
+    attachedFilesContainer: !!attachedFilesContainer
+  });
+
+  if (!attachButton || !fileInput) {
+    console.error('❌ File upload elements not found!');
+  }
+
   attachButton.addEventListener('click', function() {
+    console.log('📎 Attach button clicked');
     fileInput.click();
   });
   
   fileInput.addEventListener('change', function(e) {
+    console.log('📎 File input changed, files selected:', e.target.files.length);
     const files = Array.from(e.target.files);
+    console.log('📎 Files:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
+
     files.forEach(file => {
       if (!attachedFiles.find(f => f.name === file.name)) {
+        console.log('📎 Adding file:', file.name);
         attachedFiles.push(file);
         displayAttachedFile(file);
+      } else {
+        console.log('📎 File already attached:', file.name);
       }
     });
     fileInput.value = ''; // Reset input
+    console.log('📎 Total attached files:', attachedFiles.length);
   });
   
   function displayAttachedFile(file) {
+    console.log('📎 Displaying attached file:', file.name);
+    console.log('📎 Container display before:', attachedFilesContainer.style.display);
+
     if (attachedFiles.length > 0 && attachedFilesContainer.style.display === 'none') {
       attachedFilesContainer.style.display = 'block';
+      console.log('📎 Container display after:', attachedFilesContainer.style.display);
     }
     
     const fileDiv = document.createElement('div');
@@ -2298,48 +2909,100 @@ document.addEventListener('turbo:load', function() {
   // Handle form submission
   messageForm.addEventListener('submit', async function(e) {
     e.preventDefault();
-    
+
     const message = messageInput.value.trim();
-    if (!message) return;
-    
+
     // Interrupt TTS if speaking
     if (ttsManager && ttsManager.isPlaying) {
       ttsManager.interrupt();
     }
 
-    // Add user message immediately
-    addMessage(message, 'user');
-    messageInput.value = '';
-    messageInput.style.height = '42px'; // Reset height after sending
-    
-    // Disable input while processing
-    messageInput.disabled = true;
-    sendButton.disabled = true;
-    
-    // Use intelligent routing
-    try {
-      // Get current canvas context
-      const currentCanvas = getCurrentCanvasContext();
-      
-      // Check if message suggests interactive workflow
-      if (shouldUseInteractiveMode(message)) {
-        console.log('🎯 Using interactive mode for:', message);
-        await handleInteractiveChat(message, currentCanvas, attachedFiles);
-        // Clear attached files after sending
-        attachedFiles = [];
-        attachedFilesContainer.innerHTML = '';
-        attachedFilesContainer.style.display = 'none';
-      } else {
-        console.log('⚡ Using streaming mode for:', message);
-        // Route through scout controller ONLY
-        if (window.scoutController && window.scoutController.processMessage) {
-          await window.scoutController.processMessage(message, attachedFiles);
+    // Allow submission if there are attached files even without a message
+    if (!message && attachedFiles.length === 0) {
+      console.log('⚠️ No message and no files, returning early');
+      return;
+    }
+
+    // If there are files but no message, use a default message
+    const finalMessage = message || 'Please process these files';
+    console.log('📤 Submitting with message:', finalMessage, 'and', attachedFiles.length, 'files');
+
+    // If files are attached, show storage choice modal first
+    if (attachedFiles.length > 0) {
+      console.log('📎 Files attached, showing storage choice modal');
+
+      // Store the continuation function
+      window.pendingFileUpload = async function() {
+        console.log('📤 Proceeding with upload, storage choice:', window.documentStorageChoice);
+
+        // Add user message
+        addMessage(finalMessage, 'user');
+        messageInput.value = '';
+        messageInput.style.height = '42px';
+
+        // Disable input while processing
+        messageInput.disabled = true;
+        sendButton.disabled = true;
+
+        try {
+          const currentCanvas = getCurrentCanvasContext();
+
+          if (shouldUseInteractiveMode(finalMessage)) {
+            console.log('🎯 Using interactive mode for:', finalMessage);
+            await handleInteractiveChat(finalMessage, currentCanvas, attachedFiles);
+          } else {
+            console.log('⚡ Using streaming mode for:', finalMessage);
+            if (window.scoutController && window.scoutController.processMessage) {
+              await window.scoutController.processMessage(finalMessage, attachedFiles);
+            } else {
+              console.error('❌ Scout controller not available!');
+              addMessage('Sorry, the chat system is not ready. Please refresh the page.', 'assistant');
+              throw new Error('Scout controller not available');
+            }
+          }
+
           // Clear attached files after sending
           attachedFiles = [];
           attachedFilesContainer.innerHTML = '';
           attachedFilesContainer.style.display = 'none';
+        } catch (error) {
+          console.error('Error sending message:', error);
+          hideStreamingStatus();
+          hideTypingIndicator();
+          addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+
+          // Re-enable form
+          messageInput.disabled = false;
+          sendButton.disabled = false;
+          if (messageInput && messageInput.focus) {
+            messageInput.focus();
+          }
+        }
+      };
+
+      // Show the modal
+      const storageModal = new bootstrap.Modal(document.getElementById('document-storage-modal'));
+      storageModal.show();
+      return; // Wait for user choice
+    }
+
+    // No files - proceed normally
+    addMessage(finalMessage, 'user');
+    messageInput.value = '';
+    messageInput.style.height = '42px';
+    messageInput.disabled = true;
+    sendButton.disabled = true;
+
+    try {
+      const currentCanvas = getCurrentCanvasContext();
+
+      if (shouldUseInteractiveMode(finalMessage)) {
+        await handleInteractiveChat(finalMessage, currentCanvas, []);
+      } else {
+        if (window.scoutController && window.scoutController.processMessage) {
+          await window.scoutController.processMessage(finalMessage, []);
         } else {
-          console.error('❌ Scout controller not available! Cannot process message.');
+          console.error('❌ Scout controller not available!');
           addMessage('Sorry, the chat system is not ready. Please refresh the page.', 'assistant');
           throw new Error('Scout controller not available');
         }
@@ -2348,17 +3011,14 @@ document.addEventListener('turbo:load', function() {
       console.error('Error sending message:', error);
       hideStreamingStatus();
       hideTypingIndicator();
-        addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
-      
-      // Re-enable form
+      addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+
       messageInput.disabled = false;
       sendButton.disabled = false;
       if (messageInput && messageInput.focus) {
         messageInput.focus();
       }
-      return;
     }
-
   });
 
   // Handle enter key (send on Enter, new line on Shift+Enter)
@@ -2409,14 +3069,72 @@ function showConfirmationDialog(message, onConfirm) {
   modal.show();
 }
 
-// Handle confirmation proceed
+// Handle document storage modal
 document.addEventListener('turbo:load', function() {
+  // Storage choice modal handlers
+  const storageModal = document.getElementById('document-storage-modal');
+  const confirmBtn = document.getElementById('confirm-storage-choice');
+  const storageOptions = document.querySelectorAll('.storage-option');
+  const radioButtons = document.querySelectorAll('input[name="storageChoice"]');
+
+  // Make entire card clickable
+  storageOptions.forEach(option => {
+    option.addEventListener('click', function() {
+      const radio = this.querySelector('input[type="radio"]');
+      radio.checked = true;
+      confirmBtn.disabled = false;
+
+      // Visual feedback
+      storageOptions.forEach(opt => opt.classList.remove('border-primary'));
+      this.classList.add('border-primary');
+    });
+  });
+
+  // Radio button change
+  radioButtons.forEach(radio => {
+    radio.addEventListener('change', function() {
+      confirmBtn.disabled = false;
+    });
+  });
+
+  // Store the selected choice globally for the upload handler
+  window.documentStorageChoice = null;
+  window.pendingFileUpload = null;
+
+  confirmBtn?.addEventListener('click', function() {
+    const selectedRadio = document.querySelector('input[name="storageChoice"]:checked');
+    if (selectedRadio) {
+      window.documentStorageChoice = selectedRadio.value;
+      console.log('📝 Storage choice:', window.documentStorageChoice);
+
+      // Hide modal
+      const modalInstance = bootstrap.Modal.getInstance(storageModal);
+      modalInstance.hide();
+
+      // Proceed with the pending upload
+      if (window.pendingFileUpload) {
+        window.pendingFileUpload();
+        window.pendingFileUpload = null;
+      }
+    }
+  });
+
+  // Reset modal when closed
+  storageModal?.addEventListener('hidden.bs.modal', function() {
+    radioButtons.forEach(radio => radio.checked = false);
+    storageOptions.forEach(opt => opt.classList.remove('border-primary'));
+    confirmBtn.disabled = true;
+    window.documentStorageChoice = null;
+    window.pendingFileUpload = null;
+  });
+
+  // Handle confirmation proceed
   document.getElementById('confirmation-proceed')?.addEventListener('click', function() {
     if (window.pendingConfirmation) {
       window.pendingConfirmation();
       window.pendingConfirmation = null;
     }
-    
+
     // Hide the modal
     const dialog = document.getElementById('confirmation-dialog');
     const modal = bootstrap.Modal.getInstance(dialog);
@@ -2443,6 +3161,57 @@ document.addEventListener('turbo:load', function() {
   <% end %>
 });
 </script> 
+
+<!-- Document Storage Choice Modal -->
+<div id="document-storage-modal" class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">How should I use this document?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <div class="storage-option mb-3 p-3 border rounded" style="cursor: pointer;" data-storage-type="short-term">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="storageChoice" id="shortTermRadio" value="short-term">
+            <label class="form-check-label w-100" for="shortTermRadio" style="cursor: pointer;">
+              <div class="d-flex align-items-start">
+                <div class="me-3 mt-1">
+                  <i class="fas fa-clock fa-2x text-primary"></i>
+                </div>
+                <div>
+                  <h6 class="mb-1">Just for this conversation</h6>
+                  <small class="text-muted">Temporary access for current chat session only. Document will be removed when you close this conversation.</small>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="storage-option p-3 border rounded" style="cursor: pointer;" data-storage-type="long-term">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="storageChoice" id="longTermRadio" value="long-term">
+            <label class="form-check-label w-100" for="longTermRadio" style="cursor: pointer;">
+              <div class="d-flex align-items-start">
+                <div class="me-3 mt-1">
+                  <i class="fas fa-database fa-2x text-success"></i>
+                </div>
+                <div>
+                  <h6 class="mb-1">Add to my knowledge base</h6>
+                  <small class="text-muted">Permanent storage. I'll remember this document across all future conversations and can reference it anytime.</small>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirm-storage-choice" disabled>Continue</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Confirmation Dialog -->
 <div id="confirmation-dialog" class="modal fade" tabindex="-1" role="dialog">

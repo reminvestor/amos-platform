@@ -1,0 +1,60 @@
+# RagProcessingJob fixtures for testing
+job_completed:
+  rag_store: entity_one_custom
+  job_id: "job_abc123def456"
+  job_type: "docling_extraction"
+  status: 2  # completed
+  error_message: null
+  retry_count: 0
+  started_at: <%= Time.now - 10.minutes %>
+  completed_at: <%= Time.now - 8.minutes %>
+
+job_processing:
+  rag_store: entity_one_custom
+  job_id: "job_def456789abc"
+  job_type: "chunking"
+  status: 1  # processing
+  error_message: null
+  retry_count: 0
+  started_at: <%= Time.now - 2.minutes %>
+  completed_at: null
+
+job_failed:
+  rag_store: entity_two_internal
+  job_id: "job_failed_123"
+  job_type: "docling_extraction"
+  status: 3  # failed
+  error_message: "Docling timeout: File too large to process"
+  retry_count: 2
+  started_at: <%= Time.now - 1.hour %>
+  completed_at: <%= Time.now - 58.minutes %>
+
+job_pending:
+  rag_store: system_stripe
+  job_id: "job_pending_789"
+  job_type: "embedding_batch"
+  status: 0  # pending
+  error_message: null
+  retry_count: 0
+  started_at: null
+  completed_at: null
+
+job_pipeline:
+  rag_store: entity_one_custom
+  job_id: "job_pipeline_abc"
+  job_type: "pipeline"
+  status: 2  # completed
+  error_message: null
+  retry_count: 0
+  started_at: <%= Time.now - 30.minutes %>
+  completed_at: <%= Time.now - 25.minutes %>
+
+job_fallback:
+  rag_store: entity_two_internal
+  job_id: "job_fallback_def"
+  job_type: "fallback_processor"
+  status: 2  # completed
+  error_message: null
+  retry_count: 1
+  started_at: <%= Time.now - 15.minutes %>
+  completed_at: <%= Time.now - 12.minutes %>

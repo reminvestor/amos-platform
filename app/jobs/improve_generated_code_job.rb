@@ -41,7 +41,7 @@ class ImproveGeneratedCodeJob < ApplicationJob
     end
 
     # Initialize client
-    claude_client = ClaudeService.new
+    claude_client = AiServiceHelper.get_service
 
     Rails.logger.info "ImproveGeneratedCodeJob: Starting code improvement for Job ID: #{crawler_job.id}"
     crawler_job.add_log("Starting code improvement process", "info")

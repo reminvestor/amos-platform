@@ -61,3 +61,8 @@ end
 
 puts "Affiliate tiers seeded successfully!"
 puts ""
+
+# Load demo users seed (development only)
+if Rails.env.development?
+  load Rails.root.join('db', 'seeds', 'demo_users.rb')
+end

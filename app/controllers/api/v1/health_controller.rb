@@ -22,6 +22,25 @@ module Api
           }
         }
       end
+
+      # RAG system health check endpoint
+      # GET /api/v1/health/rag
+      def rag
+        health_result = Rag::HealthCheckJob.new.perform
+
+        status_code = health_result[:all_healthy] ? 200 : 503
+
+        render json: {
+          status: health_result[:all_healthy] ? "healthy" : "unhealthy",
+          timestamp: health_result[:timestamp],
+          checks: health_result[:checks],
+          summary: {
+            total_checks: health_result[:checks].length,
+            healthy_checks: health_result[:checks].count { |_, c| c[:healthy] },
+            unhealthy_checks: health_result[:checks].count { |_, c| !c[:healthy] }
+          }
+        }, status: status_code
+      end
     end
   end
 end

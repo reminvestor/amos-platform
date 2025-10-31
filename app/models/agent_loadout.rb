@@ -25,6 +25,8 @@ class AgentLoadout
         'list_metrics',               # Discover metrics
         'explain_query',              # Explain analytics queries
         'read_document',              # Read uploaded PDFs/docs
+        'query_document_content',     # Search uploaded documents (session + RAG)
+        'query_rag_store',            # Query RAG knowledge base
         'load_canvas',                # UI interactions
         'aggregate_artifact_data',    # Simple aggregations
         'create_dynamic_visualization', # Quick visualizations

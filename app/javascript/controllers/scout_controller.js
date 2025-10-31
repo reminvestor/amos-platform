@@ -80,8 +80,8 @@ export default class extends Controller {
     // Initialize ActionCable subscription for job notifications
     this.setupJobNotifications()
     
-    // Don't automatically restore canvas state - let user start fresh
-    // this.restoreCanvasState()
+    // Restore canvas state if available
+    this.restoreCanvasState()
   }
   
   disconnect() {
@@ -384,6 +384,9 @@ export default class extends Controller {
       if (files && files.length > 0) {
         console.log("📎 Uploading files:", files.map(f => f.name))
         fileUrls = await this.uploadFiles(files);
+        console.log("📎 Upload complete, file URLs:", fileUrls)
+      } else {
+        console.log("📎 No files to upload")
       }
       
       // Use streaming endpoint for better timeout handling
@@ -1931,12 +1934,21 @@ export default class extends Controller {
   
   // Upload files to the server
   async uploadFiles(files) {
+    console.log('📎 uploadFiles called with', files.length, 'files')
+
     const formData = new FormData()
     files.forEach((file, index) => {
+      console.log(`📎 Appending file[${index}]:`, file.name, file.type, file.size)
       formData.append(`files[${index}]`, file)
     })
-    
+
+    // Add storage choice from modal
+    const storageChoice = window.documentStorageChoice || 'long-term'; // Default to long-term if not set
+    formData.append('storage_type', storageChoice);
+    console.log('📎 Storage type:', storageChoice);
+
     try {
+      console.log('📎 Sending POST to /scout/upload_files')
       const response = await fetch('/scout/upload_files', {
         method: 'POST',
         headers: {
@@ -1944,15 +1956,24 @@ export default class extends Controller {
         },
         body: formData
       })
-      
+
+      console.log('📎 Upload response status:', response.status)
+
       if (!response.ok) {
         throw new Error('File upload failed')
       }
-      
+
       const result = await response.json()
+      console.log('📎 Upload result:', result)
+
+      if (result.rag_stores_created && result.rag_stores_created.length > 0) {
+        console.log('✅ RAG stores created:', result.rag_stores_created)
+        console.log('✅ Message:', result.message)
+      }
+
       return result.urls || []
     } catch (error) {
-      console.error('File upload error:', error)
+      console.error('❌ File upload error:', error)
       this.addMessage('Failed to upload files. Please try again.', 'ai')
       return []
     }

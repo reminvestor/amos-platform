@@ -6,6 +6,8 @@ one:
   slug: "test-entity-one"
   status: "active"
   settings: {}
+  subscription_status: "active"
+  plan_tier: "professional"
 
 two:
   name: "Test Entity Two"
@@ -13,6 +15,8 @@ two:
   slug: "test-entity-two"
   status: "active"
   settings: {}
+  subscription_status: "active"
+  plan_tier: "professional"
 
 default:
   name: "Default Test Entity"
@@ -20,3 +24,32 @@ default:
   slug: "default-test-entity"
   status: "active"
   settings: {}
+  subscription_status: "active"
+  plan_tier: "starter"
+
+demo_company:
+  name: "Demo Company"
+  subdomain: "demo"
+  slug: "demo-company"
+  status: "active"
+  settings: {}
+  subscription_status: "active"
+  plan_tier: "professional"
+
+another_entity:
+  name: "Another Entity"
+  subdomain: "another"
+  slug: "another-entity"
+  status: "active"
+  settings: {}
+  subscription_status: "active"
+  plan_tier: "starter"
+
+company_one:
+  name: "Test Company One"
+  subdomain: "company1"
+  slug: "company-one"
+  status: "active"
+  settings: {}
+  subscription_status: "active"
+  plan_tier: "professional"

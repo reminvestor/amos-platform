@@ -36,7 +36,7 @@ class GenerateLandingPageClarificationJob < ApplicationJob
     user_prompt = build_clarification_prompt(context)
 
     # Use Claude to generate questions
-    response = ClaudeService.new.send_message(system_prompt, user_prompt)
+    response = AiServiceHelper.get_service.send_message(system_prompt, user_prompt)
 
     # Parse the response to extract questions
     parse_questions_response(response)

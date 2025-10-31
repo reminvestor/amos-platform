@@ -214,7 +214,7 @@
                   <% @workflows.each do |workflow| %>
                     <tr>
                       <td><code>#<%= workflow.id %></code></td>
-                      <td><%= workflow.workflow_template_name || "N/A" %></td>
+                      <td><%= workflow.workflow_template_id || "Ad-hoc" %></td>
                       <td><%= workflow.entity&.name || "N/A" %></td>
                       <td><%= workflow.user&.email || "System" %></td>
                       <td>

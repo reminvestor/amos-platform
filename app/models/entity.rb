@@ -24,6 +24,7 @@ class Entity < ApplicationRecord
   has_many :social_media_accounts, dependent: :destroy
   has_many :business_profiles, dependent: :destroy
   has_many :crawler_jobs, dependent: :destroy
+  has_many :image_assets, dependent: :destroy
 
   # AI Pipeline relationships
   has_many :mcp_connections, dependent: :destroy
@@ -37,8 +38,19 @@ class Entity < ApplicationRecord
   has_many :scout_conversations, dependent: :destroy
   has_many :business_insights, dependent: :destroy
 
+  # RAG Storage Associations
+  has_many :rag_stores, dependent: :destroy
+  has_many :rag_documents, through: :rag_stores
+  has_many :rag_chunks, through: :rag_documents
+  has_many :rag_queries, dependent: :destroy
+
   # Subscription tracking
   has_many :subscription_events, dependent: :destroy
+  
+  # RAG and Knowledge Base
+  has_many :knowledge_documents, dependent: :destroy
+  has_many :conversation_embeddings, dependent: :destroy
+  has_many :integration_embeddings, dependent: :destroy
   
   # Subscription status accessor
   def subscription_status

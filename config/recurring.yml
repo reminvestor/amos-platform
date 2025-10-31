@@ -1,36 +1,43 @@
-# AI Pipeline - Recurring Jobs for Ticket Polling, Timeout Monitoring, and Workspace Cleanup
+# RAG System Monitoring & Maintenance Jobs
 production:
-  # Poll JIRA/Azure DevOps for new tickets every 5 minutes
-  ticket_watcher:
-    class: TicketWatcherJob
-    queue: pipeline
-    schedule: every 5 minutes
-
-  # Monitor for stuck/timed out pipelines every 5 minutes
-  pipeline_timeout_monitor:
-    class: PipelineTimeoutMonitorJob
+  # Daily metrics collection - comprehensive system statistics
+  rag_daily_metrics:
+    class: Rag::MetricsJob
     queue: maintenance
-    schedule: every 5 minutes
+    schedule: at 2am every day
 
-  # Cleanup old agent workspaces every hour
-  workspace_cleanup:
-    class: CleanupWorkspacesJob
+  # Health checks every 15 minutes - ensure all systems operational
+  rag_health_check:
+    class: Rag::HealthCheckJob
     queue: maintenance
-    schedule: every hour
+    schedule: every 15 minutes
 
+  # Cache warming every 6 hours - pre-compute popular queries
+  rag_cache_warming:
+    class: Rag::WarmCacheJob
+    queue: maintenance
+    schedule: every 6 hours
+
+  # Weekly archival - move old documents to Glacier storage
+  rag_weekly_archival:
+    class: Rag::ArchiveOldDocumentsJob
+    queue: maintenance
+    schedule: at 3am every sunday
+
+# Development environment - run less frequently to avoid noise
 development:
-  # Same schedule for development environment
-  ticket_watcher:
-    class: TicketWatcherJob
-    queue: pipeline
-    schedule: every 5 minutes
-
-  pipeline_timeout_monitor:
-    class: PipelineTimeoutMonitorJob
+  # Daily metrics in dev (just for testing)
+  rag_daily_metrics:
+    class: Rag::MetricsJob
     queue: maintenance
-    schedule: every 5 minutes
+    schedule: at 2am every day
 
-  workspace_cleanup:
-    class: CleanupWorkspacesJob
+  # Health check once per hour in dev
+  rag_health_check:
+    class: Rag::HealthCheckJob
     queue: maintenance
     schedule: every hour
+
+# Test environment - disable recurring jobs
+test:
+  # No recurring jobs in test environment

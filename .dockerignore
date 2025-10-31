@@ -49,3 +49,41 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# Ignore documentation (not needed in production image)
+/docs/
+README.md
+CHANGELOG.md
+*.md
+!docs/architecture/.keep
+
+# Ignore tests (not needed in production image)
+/test/
+/spec/
+
+# Ignore AI agent configs (not needed in production)
+/.claude/
+
+# Ignore Git files
+/.git/
+/.gitattributes
+/.github/
+
+# Ignore local helper scripts
+/tmp/*.rb
+/bin/setup
+/bin/update
+
+# Ignore coverage and analysis tools
+/coverage/
+/.simplecov
+
+# Ignore IDE files
+/.vscode/
+/.idea/
+*.swp
+*.swo
+
+# Ignore Terraform (infrastructure as code, not app code)
+/aws/
+/terraform/

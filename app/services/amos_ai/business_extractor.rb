@@ -5,7 +5,7 @@ module AmosAI
     def initialize(user:, entity:)
       @user = user
       @entity = entity
-      @claude_service = ClaudeService.new
+      @claude_service = AiServiceHelper.get_service
     end
 
     def extract(conversation_context:)

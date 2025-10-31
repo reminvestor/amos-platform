@@ -1,0 +1,251 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-tachometer-alt text-info me-2"></i>Performance Monitoring
+      </h1>
+      <p class="text-muted">Track system performance and response times</p>
+    </div>
+    
+    <div class="btn-group" role="group">
+      <%= link_to admin_observability_performance_path(time_range: 1), class: "btn btn-sm btn-outline-primary #{'active' if params[:time_range] == '1'}" do %>
+        24h
+      <% end %>
+      <%= link_to admin_observability_performance_path(time_range: 7), class: "btn btn-sm btn-outline-primary #{'active' if params[:time_range].nil? || params[:time_range] == '7'}" do %>
+        7d
+      <% end %>
+      <%= link_to admin_observability_performance_path(time_range: 30), class: "btn btn-sm btn-outline-primary #{'active' if params[:time_range] == '30'}" do %>
+        30d
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Performance Metrics -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">Total Workflows</div>
+              <h3 class="mb-0"><%= number_with_delimiter(@total_workflows) %></h3>
+            </div>
+            <div class="text-primary">
+              <i class="fas fa-tasks fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted small">Success Rate</div>
+              <h3 class="mb-0"><%= @success_rate %>%</h3>
+            </div>
+            <div class="<%= @success_rate >= 95 ? 'text-success' : 'text-warning' %>">
+              <i class="fas fa-check-circle fa-2x"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Avg Workflow</div>
+          <h4 class="mb-0"><%= @avg_workflow_duration %>ms</h4>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Avg Phase</div>
+          <h4 class="mb-0"><%= @avg_phase_duration %>ms</h4>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-2">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Avg Tool</div>
+          <h4 class="mb-0"><%= @avg_tool_duration %>ms</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <!-- Performance Trend Chart -->
+    <% if @performance_chart && @performance_chart[:data]&.any? %>
+      <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white">
+            <h5 class="mb-0">Performance Trend</h5>
+          </div>
+          <div class="card-body">
+            <canvas id="performanceTrendChart" height="100"></canvas>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    
+    <!-- Error Rate Chart -->
+    <% if @error_rate_chart && @error_rate_chart[:data]&.any? %>
+      <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white">
+            <h5 class="mb-0">Error Rate</h5>
+          </div>
+          <div class="card-body">
+            <canvas id="errorRateChart" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Slowest Operations -->
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Slowest Workflows</h5>
+        </div>
+        <div class="card-body">
+            <% if @slowest_workflows.any? %>
+            <div class="list-group list-group-flush">
+              <% @slowest_workflows.each do |workflow| %>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <small class="text-muted">#<%= workflow.id %></small>
+                    <div><%= workflow.entity&.name || "N/A" %></div>
+                    <small class="text-muted"><%= workflow.workflow_template_id || "Ad-hoc" %></small>
+                  </div>
+                  <% if workflow.started_at && workflow.completed_at %>
+                    <span class="badge bg-warning"><%= ((workflow.completed_at - workflow.started_at) * 1000).round %>ms</span>
+                  <% else %>
+                    <span class="badge bg-secondary">N/A</span>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted text-center mb-0">No data available</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">Slowest Tool Calls</h5>
+        </div>
+        <div class="card-body">
+          <% if @slowest_tools.any? %>
+            <div class="list-group list-group-flush">
+              <% @slowest_tools.each do |event| %>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <small class="text-muted">#<%= event.id %></small>
+                    <div><%= event.metadata&.dig('tool') || "Unknown tool" %></div>
+                  </div>
+                  <span class="badge bg-warning"><%= event.duration_ms %>ms</span>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted text-center mb-0">No data available</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if @performance_chart && @performance_chart[:data]&.any? %>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const ctx = document.getElementById('performanceTrendChart');
+      if (ctx && window.Chart) {
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: <%= raw @performance_chart[:labels].to_json %>,
+            datasets: [{
+              label: 'Avg Workflow Duration (ms)',
+              data: <%= raw @performance_chart[:data].to_json %>,
+              borderColor: 'rgb(13, 110, 253)',
+              backgroundColor: 'rgba(13, 110, 253, 0.1)',
+              tension: 0.4,
+              fill: true
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: function(value) {
+                    return value + 'ms';
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    });
+  </script>
+<% end %>
+
+<% if @error_rate_chart && @error_rate_chart[:data]&.any? %>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const ctx = document.getElementById('errorRateChart');
+      if (ctx && window.Chart) {
+        new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Success', 'Errors'],
+            datasets: [{
+              data: [
+                <%= @successful_workflows %>,
+                <%= @failed_workflows %>
+              ],
+              backgroundColor: [
+                'rgb(25, 135, 84)',
+                'rgb(220, 53, 69)'
+              ]
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom'
+              }
+            }
+          }
+        });
+      }
+    });
+  </script>
+<% end %>
+

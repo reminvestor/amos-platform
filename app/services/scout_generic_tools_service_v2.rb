@@ -16,6 +16,9 @@ class ScoutGenericToolsServiceV2
     @saved_message_content = Set.new
     @messages_saved_during_streaming = false
     @context = {}
+    @sources = [] # Track sources from tool responses
+    @model_used = nil # Track actual model used (may differ from requested due to fallback)
+    @model_name = nil # Human-readable model name
   end
 
   def set_context(context = {})
@@ -110,7 +113,10 @@ class ScoutGenericToolsServiceV2
           },
           canvas_type: @suggested_canvas || "conversation",
           canvas_data: @canvas_data,
-          tools_used: []
+          tools_used: [],
+          sources: @sources,
+          model_used: @model_used,
+          model_name: @model_name
         }
       end
     rescue => e
@@ -209,6 +215,30 @@ class ScoutGenericToolsServiceV2
     prompt = <<~PROMPT
       #{ai_identity}
 
+      ═══════════════════════════════════════════════════════════════
+      🔴 CRITICAL: DOCUMENT SEARCH PRIORITY 🔴
+      ═══════════════════════════════════════════════════════════════
+
+      When users ask questions about information in documents they've uploaded:
+
+      YOU MUST CALL query_document_content FIRST! Do not answer from memory!
+
+      Triggers (MUST use query_document_content):
+      - "tell me about X" → query_document_content(query: "X")
+      - "summarize my data for X" → query_document_content(query: "X")
+      - "what do I have about X" → query_document_content(query: "X")
+      - "find information on X" → query_document_content(query: "X")
+      - "search my documents for X" → query_document_content(query: "X")
+
+      This tool is SMART:
+      1. Checks recent uploads first (session storage - instant, free)
+      2. Falls back to permanent knowledge base (RAG - comprehensive)
+
+      NEVER say "based on searching" unless you ACTUALLY called query_document_content!
+      NEVER answer from conversation memory - ALWAYS query documents first!
+
+      ═══════════════════════════════════════════════════════════════
+
       You have access to a comprehensive toolset for managing and automating business operations.
 
       CONVERSATION HISTORY:
@@ -266,8 +296,12 @@ class ScoutGenericToolsServiceV2
       - "show landing pages" or "landing pages" → load_canvas with canvas_name: "landing_page_viewer"
       - "show contacts" or "contacts" → load_canvas with canvas_name: "contact_viewer"
 
-      DOCUMENT HANDLING (CRITICAL):
-      When user uploads a file (PDF, DOCX, etc.) and asks about it:
+      🔴 DOCUMENT HANDLING - TWO DIFFERENT SITUATIONS:
+
+      ═══════════════════════════════════════════════════════════════════════════════
+      SITUATION 1: User JUST uploaded a file in THIS message (has asset_id in context)
+      ═══════════════════════════════════════════════════════════════════════════════
+      → Use read_document(asset_id: X) to read the NEWLY uploaded file
 
       STEP 1: ALWAYS read the document first!
       - Use read_document tool with the asset_id from attached files
@@ -285,12 +319,43 @@ class ScoutGenericToolsServiceV2
       RIGHT: read_document to get actual content ✅
 
       Examples:
-      - User uploads "document.pdf" and says "Translate this"
-        → read_document(asset_id: X) → Got Portuguese text → Translate to English
-      - User uploads "report.pdf" and says "Summarize this"
-        → read_document(asset_id: X) → Got content → Provide summary
       - User uploads "invoice.pdf" and says "What's the total?"
-        → read_document(asset_id: X) → Got content → Find total amount
+        → read_document(asset_id: X) → Extract content → Answer
+      - User uploads "document.pdf" and says "Translate this"
+        → read_document(asset_id: X) → Get text → Translate
+
+      ═══════════════════════════════════════════════════════════════════════════════
+      SITUATION 2: User asks about PREVIOUSLY uploaded documents (NOT in current message)
+      ═══════════════════════════════════════════════════════════════════════════════
+      → Use query_document_content(query: "...") - this is the SAME tool mentioned at the top!
+
+      The query_document_content tool is smart and automatic:
+      1. Checks session storage first (recent uploads, instant)
+      2. Falls back to permanent RAG database (all documents, comprehensive)
+      3. Returns unified results from both sources
+
+      Detection: User refers to documents WITHOUT attaching a new file
+      - "tell me about X" (no file attached)
+      - "what's in my documents about X"
+      - "find my server error info"
+      - "summarize my product data"
+
+      Examples:
+      - User: "tell me about my server error" (no file attached)
+        → query_document_content(query: "server error")
+        → Returns: Activity ID, Session ID, timestamps from uploaded PDF
+
+      - User: "tell me about tires"
+        → query_document_content(query: "tires")
+        → If found: "Based on your documents, here's what I found about tires..."
+        → If empty: "No documents contain information about tires."
+
+      - User: "summarize my wheel data"
+        → query_document_content(query: "wheels")
+        → Returns summary from all matching documents
+
+      🔴 CRITICAL: Use query_document_content, NOT search_history, for document queries!
+      search_history only searches conversation text, NOT uploaded document content.
 
       LANDING PAGE EDITING:
       CRITICAL: Detect if user wants to EDIT existing page vs CREATE new:
@@ -309,6 +374,7 @@ class ScoutGenericToolsServiceV2
       Canvas Loading:
       - "show integrations" or "integrations" or "connections" → load_canvas with canvas_name: "integrations_manager"
       - "analytics" or "data" → load_canvas with canvas_name: "analytics_dashboard"
+      - "show me my documents" or "show documents" or "document library" or "my files" or "uploaded files" → load_canvas with canvas_name: "document_viewer"
 
       CRITICAL: Always load the canvas FIRST using the load_canvas tool, then explain what's shown.
 
@@ -533,12 +599,17 @@ class ScoutGenericToolsServiceV2
         end
       end
     when :usage
-      # Token usage with cache metrics
+      # Token usage with cache metrics and model used (for fallback transparency)
+      @model_used = chunk[:model_used] if chunk[:model_used]
+      @model_name = chunk[:model_name] if chunk[:model_name]
+
       progress_callback&.call({
         type: "cache_metrics",
         tokens: chunk[:tokens],
         cache_creation: chunk[:cache_creation] || 0,
-        cache_read: chunk[:cache_read] || 0
+        cache_read: chunk[:cache_read] || 0,
+        model_used: @model_used,
+        model_name: @model_name
       })
     when :message_stop
       # Message complete
@@ -578,6 +649,9 @@ class ScoutGenericToolsServiceV2
           @delegated_task_session_id = result[:task_session_id]
           @delegated_workflow_spec = result[:workflow_spec]
         end
+
+        # Extract sources from tool results
+        extract_sources_from_result(tool_call[:name], result)
 
         progress_callback&.call({
           type: "tool_complete",
@@ -662,6 +736,10 @@ class ScoutGenericToolsServiceV2
         if continuation_tool_calls.any? && chunk[:tool_use]
           continuation_tool_calls.last[:arguments] += chunk[:tool_use][:input] || ""
         end
+      when :usage
+        # Capture model info from continuation as well
+        @model_used = chunk[:model_used] if chunk[:model_used]
+        @model_name = chunk[:model_name] if chunk[:model_name]
       end
     end
 
@@ -725,7 +803,10 @@ class ScoutGenericToolsServiceV2
       },
       canvas_type: @suggested_canvas || "conversation",
       canvas_data: @canvas_data,
-      tools_used: tool_calls.map { |tc| tc[:name] }
+      tools_used: tool_calls.map { |tc| tc[:name] },
+      sources: @sources,
+      model_used: @model_used,
+      model_name: @model_name
     }
 
     # Add workflow approval data if delegation happened
@@ -891,5 +972,229 @@ class ScoutGenericToolsServiceV2
     Rails.logger.info "📊 Conversation messages: #{messages.length}, estimated ~#{estimated_tokens} tokens"
 
     messages
+  end
+
+  # Extract source information from tool results
+  def extract_sources_from_result(tool_name, result)
+    return unless result[:success]
+
+    case tool_name
+    when "query_document_content"
+      # Unified document query - handles both session and RAG sources
+      source_type = result[:source] # 'session', 'rag', or 'none'
+
+      if result[:results].is_a?(Array) && result[:results].any?
+        result[:results].each do |chunk|
+          source_data = {
+            tool: "query_document_content"
+          }
+
+          # Determine source type from result
+          if source_type == 'session'
+            source_data[:type] = "session_document"
+            source_data[:filename] = chunk[:filename] || chunk.dig(:metadata, :filename)
+            source_data[:asset_id] = chunk.dig(:metadata, :asset_id)
+          elsif source_type == 'rag'
+            source_data[:type] = "rag_document"
+            source_data[:filename] = chunk[:filename] || chunk.dig(:metadata, :filename)
+            source_data[:page] = chunk.dig(:metadata, :page)
+            source_data[:section] = chunk.dig(:metadata, :section)
+            source_data[:similarity_score] = chunk[:similarity_score]
+          end
+
+          add_source(source_data) if source_data[:filename]
+        end
+      end
+
+    when "query_rag_store"
+      # RAG query tool returns sources array
+      if result[:sources].present?
+        result[:sources].each do |filename|
+          add_source({
+            type: "rag_document",
+            filename: filename,
+            tool: "query_rag_store"
+          })
+        end
+      end
+
+      # Also extract chunk-level details if available
+      if result[:results].is_a?(Array)
+        result[:results].each do |chunk|
+          if chunk[:metadata] && chunk[:metadata][:filename]
+            add_source({
+              type: "rag_document",
+              filename: chunk[:metadata][:filename],
+              page: chunk[:metadata][:page],
+              section: chunk[:metadata][:section],
+              similarity_score: chunk[:similarity_score],
+              tool: "query_rag_store"
+            })
+          end
+        end
+      end
+
+    when "read_document"
+      # Document read tool
+      if result[:filename].present?
+        add_source({
+          type: "document",
+          filename: result[:filename],
+          asset_id: result[:asset_id],
+          content_type: result[:content_type],
+          tool: "read_document"
+        })
+      end
+
+    when "get_data"
+      # Data retrieval tool - track what data was fetched
+      if result[:records].present?
+        add_source({
+          type: "database",
+          object_type: result[:object_type],
+          record_count: result[:record_count],
+          tool: "get_data"
+        })
+      end
+
+    when "web_search_tool"
+      # Web search results - track URLs and titles
+      if result[:results].is_a?(Array) && result[:results].any?
+        result[:results].each do |search_result|
+          add_source({
+            type: "web_search",
+            url: search_result[:url] || search_result["url"],
+            title: search_result[:title] || search_result["title"],
+            snippet: search_result[:snippet] || search_result["snippet"],
+            tool: "web_search_tool"
+          })
+        end
+      end
+
+    when "execute_integration", "invoke_operation"
+      # Integration API calls - track which services were used
+      add_source({
+        type: "integration",
+        integration_name: result[:integration_name] || result[:service_name],
+        operation: result[:operation] || result[:operation_name],
+        record_count: result[:record_count] || result[:results]&.length,
+        tool: tool_name
+      })
+
+    when "retrieve_history", "search_history"
+      # Conversation history - track how many messages were referenced
+      if result[:messages].is_a?(Array) && result[:messages].any?
+        add_source({
+          type: "conversation",
+          message_count: result[:messages].length,
+          time_range: result[:time_range],
+          tool: tool_name
+        })
+      end
+
+    when "query_metric", "aggregate_artifact_data"
+      # Analytics and metrics - track what data was analyzed
+      add_source({
+        type: "analytics",
+        metric_name: result[:metric_name] || result[:artifact_type],
+        data_points: result[:data_points]&.length || result[:record_count],
+        time_range: result[:time_range],
+        tool: tool_name
+      })
+
+    when "get_billing_info", "view_invoices"
+      # Billing and subscription data
+      add_source({
+        type: "billing",
+        data_type: tool_name == "get_billing_info" ? "Subscription Info" : "Invoices",
+        record_count: result[:invoices]&.length || 1,
+        tool: tool_name
+      })
+
+    when "get_workflow_context"
+      # Workflow context - files and data from current workflow
+      if result[:files].present? || result[:context_data].present?
+        add_source({
+          type: "workflow",
+          file_count: result[:files]&.length || 0,
+          context_keys: result[:context_data]&.keys&.length || 0,
+          tool: "get_workflow_context"
+        })
+      end
+    end
+  rescue => e
+    Rails.logger.error "Error extracting sources: #{e.message}"
+  end
+
+  # Add a source to the accumulated sources list
+  def add_source(source_data)
+    # Deduplicate based on source type
+    case source_data[:type]
+    when "rag_document", "session_document", "document"
+      # For documents, deduplicate by filename
+      key = source_data[:filename]
+      existing = @sources.find { |s| s[:filename] == key }
+
+      if existing
+        # Merge additional details (like page numbers)
+        if source_data[:page] && !existing[:pages]&.include?(source_data[:page])
+          existing[:pages] ||= []
+          existing[:pages] << source_data[:page]
+        end
+      else
+        @sources << source_data
+      end
+
+    when "database"
+      # For database, deduplicate by object_type
+      key = source_data[:object_type]
+      existing = @sources.find { |s| s[:type] == "database" && s[:object_type] == key }
+
+      if existing
+        # Update record count if new data has more records
+        existing[:record_count] = [existing[:record_count], source_data[:record_count]].max
+      else
+        @sources << source_data
+      end
+
+    when "web_search"
+      # For web search, deduplicate by URL
+      key = source_data[:url]
+      existing = @sources.find { |s| s[:type] == "web_search" && s[:url] == key }
+      @sources << source_data unless existing
+
+    when "integration"
+      # For integrations, deduplicate by integration name + operation
+      key = "#{source_data[:integration_name]}_#{source_data[:operation]}"
+      existing = @sources.find { |s|
+        s[:type] == "integration" &&
+        "#{s[:integration_name]}_#{s[:operation]}" == key
+      }
+
+      if existing
+        # Update record count if available
+        existing[:record_count] = [existing[:record_count] || 0, source_data[:record_count] || 0].max
+      else
+        @sources << source_data
+      end
+
+    when "conversation", "analytics", "billing", "workflow"
+      # For these types, only add once per type (deduplicate by type)
+      existing = @sources.find { |s| s[:type] == source_data[:type] }
+
+      if existing
+        # Merge counts and update with latest data
+        existing[:message_count] = [existing[:message_count] || 0, source_data[:message_count] || 0].max
+        existing[:data_points] = [existing[:data_points] || 0, source_data[:data_points] || 0].max
+        existing[:record_count] = [existing[:record_count] || 0, source_data[:record_count] || 0].max
+        existing[:file_count] = [existing[:file_count] || 0, source_data[:file_count] || 0].max
+      else
+        @sources << source_data
+      end
+
+    else
+      # Unknown type, just add without deduplication
+      @sources << source_data
+    end
   end
 end

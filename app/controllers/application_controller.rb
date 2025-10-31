@@ -54,7 +54,7 @@ class ApplicationController < ActionController::Base
     end
 
     # Check if we're on the app subdomain
-    if request.subdomain == "app"
+    if SubdomainConfig.app_subdomains.include?(request.subdomain)
       # User is onboarded and has subscription, proceed with entity logic
       if resource.entity
         # User has an entity, go to chat (default mode)
@@ -64,11 +64,16 @@ class ApplicationController < ActionController::Base
         new_entity_path
       end
     else
-      # Not on app subdomain, build URL with app subdomain
-      # In production: app.agentmarketing.com
+      # Not on app subdomain, redirect to default app subdomain
+      # In production: app.amoslabs.com or stay on current if dev
       # In development: app.localhost:5001
       if Rails.env.production?
-        root_url(subdomain: "app")
+        # If we're on dev.amoslabs.com in production (dev environment), stay there
+        if ENV['APP_DOMAIN']&.start_with?('dev.')
+          root_url
+        else
+          root_url(subdomain: "app")
+        end
       else
         # For development, manually construct to avoid subdomain doubling
         port = request.port == 80 ? "" : ":#{request.port}"
@@ -115,7 +120,7 @@ class ApplicationController < ActionController::Base
   private
 
   def handle_authentication_failure
-    if request.subdomain == "app"
+    if SubdomainConfig.app_subdomains.include?(request.subdomain)
       # On app subdomain, redirect to login
       Rails.logger.info "🔄 Redirecting to login page for app subdomain"
       redirect_to new_user_session_path

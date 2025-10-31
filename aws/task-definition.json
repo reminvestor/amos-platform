@@ -91,6 +91,14 @@
         {
           "name": "ANTHROPIC_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-anthropic-api-key-4ItdAq"
+        },
+        {
+          "name": "DEEPGRAM_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-deepgram-api-key-ccHoyY"
+        },
+        {
+          "name": "DEEPGRAM_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-deepgram-webhook-secret-r8dFAM"
         }
       ],
       "logConfiguration": {
@@ -176,6 +184,14 @@
         {
           "name": "ANTHROPIC_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-anthropic-api-key-4ItdAq"
+        },
+        {
+          "name": "DEEPGRAM_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-deepgram-api-key-ccHoyY"
+        },
+        {
+          "name": "DEEPGRAM_WEBHOOK_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-deepgram-webhook-secret-r8dFAM"
         }
       ],
       "logConfiguration": {
