@@ -499,6 +499,20 @@ Rails.application.routes.draw do
       end
     end
 
+    # AI Pipeline management
+    resources :pipeline_connections do
+      member do
+        post :test
+      end
+    end
+
+    resources :pipeline_executions, only: [:index, :show] do
+      member do
+        post :retry
+        post :cancel
+      end
+    end
+
     # Policy management
     resources :policy_rules
 
