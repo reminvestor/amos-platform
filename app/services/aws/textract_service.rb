@@ -238,6 +238,34 @@ module Aws
       Rails.logger.warn "Failed to cleanup S3 file #{s3_key}: #{e.message}"
     end
 
+    def parse_tables(response)
+      tables = []
+      block_map = response.blocks.index_by(&:id)
+
+      response.blocks.each do |block|
+        next unless block.block_type == 'TABLE'
+        table = parse_table_block(block, block_map)
+        tables << table if table
+      end
+
+      tables
+    end
+
+    def parse_forms(response)
+      forms = []
+      block_map = response.blocks.index_by(&:id)
+
+      response.blocks.each do |block|
+        next unless block.block_type == 'KEY_VALUE_SET'
+        next unless block.entity_types&.include?('KEY')
+
+        form_field = parse_form_field(block, block_map)
+        forms << form_field if form_field
+      end
+
+      forms
+    end
+
     def determine_features(options)
       features = []
       features << 'TABLES' if options[:extract_tables] != false
