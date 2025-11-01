@@ -4,6 +4,7 @@
 
 module Ocr
   class DualModeService
+    include Singleton
     include ActiveSupport::Rescuable
 
     # Document types that benefit from Textract's specialized processing
@@ -12,72 +13,72 @@ module Ocr
       check bank_statement tax_form medical_record
     ].freeze
 
-    attr_reader :entity, :metrics
+    attr_reader :metrics
 
-    def initialize(entity)
-      @entity = entity
+    def initialize
       @metrics = { provider: nil, fallback_used: false, processing_time: 0 }
     end
 
     # Main entry point for document processing
-    def process_document(file_path, options = {})
+    def process_document(entity, file_path, options = {})
       start_time = Time.current
 
       # Determine which provider to use
       provider = determine_provider(file_path, options)
       @metrics[:provider] = provider
+      @metrics[:entity_id] = entity&.id
 
       Rails.logger.info "OCR: Using #{provider} provider for #{File.basename(file_path)}"
 
       result = case provider
       when :textract
-        process_with_textract(file_path, options)
+        process_with_textract(entity, file_path, options)
       when :docling
-        process_with_docling(file_path, options)
+        process_with_docling(entity, file_path, options)
       when :auto
-        process_with_auto_selection(file_path, options)
+        process_with_auto_selection(entity, file_path, options)
       else
         raise ArgumentError, "Unknown OCR provider: #{provider}"
       end
 
       @metrics[:processing_time] = Time.current - start_time
-      log_metrics(file_path)
+      log_metrics(entity, file_path)
 
       # Run shadow mode if enabled (process with both for comparison)
-      run_shadow_mode(file_path, options) if shadow_mode_enabled?
+      run_shadow_mode(entity, file_path, options) if shadow_mode_enabled?
 
       result
     rescue => e
-      handle_processing_error(e, file_path, options)
+      handle_processing_error(entity, e, file_path, options)
     end
 
     # Process with automatic provider selection
-    def process_with_auto_selection(file_path, options = {})
+    def process_with_auto_selection(entity, file_path, options = {})
       document_type = detect_document_type(file_path, options)
       file_size_mb = File.size(file_path) / 1.megabyte.to_f
 
       # Decision logic for provider selection
       if should_use_textract?(document_type, file_size_mb, options)
-        process_with_textract(file_path, options)
+        process_with_textract(entity, file_path, options)
       else
-        process_with_docling(file_path, options)
+        process_with_docling(entity, file_path, options)
       end
     end
 
     # Process with AWS Textract
-    def process_with_textract(file_path, options = {})
+    def process_with_textract(entity, file_path, options = {})
       unless textract_available?
         Rails.logger.warn "Textract not available, falling back to Docling"
         @metrics[:fallback_used] = true
-        return process_with_docling(file_path, options)
+        return process_with_docling(entity, file_path, options)
       end
 
-      service = Aws::TextractService.new(@entity)
+      service = Aws::TextractService.new(entity)
       result = service.process_document(file_path, options)
 
       # Enhance with Comprehend if enabled
       if comprehend_enabled? && result[:raw_text].present?
-        enhance_with_comprehend(result)
+        enhance_with_comprehend(entity, result)
       end
 
       format_result(result, :textract)
@@ -86,14 +87,14 @@ module Ocr
 
       if fallback_enabled?
         @metrics[:fallback_used] = true
-        process_with_docling(file_path, options)
+        process_with_docling(entity, file_path, options)
       else
         raise
       end
     end
 
     # Process with Docling
-    def process_with_docling(file_path, options = {})
+    def process_with_docling(entity, file_path, options = {})
       unless docling_available?
         raise "Neither Textract nor Docling is available for OCR processing"
       end
@@ -127,7 +128,7 @@ module Ocr
     end
 
     # Compare results from both providers (for testing/optimization)
-    def compare_providers(file_path, options = {})
+    def compare_providers(entity, file_path, options = {})
       results = {}
       timings = {}
 
@@ -135,7 +136,7 @@ module Ocr
       if textract_available?
         start = Time.current
         begin
-          results[:textract] = process_with_textract(file_path, options.merge(skip_fallback: true))
+          results[:textract] = process_with_textract(entity, file_path, options.merge(skip_fallback: true))
           timings[:textract] = Time.current - start
         rescue => e
           results[:textract] = { error: e.message }
@@ -147,7 +148,7 @@ module Ocr
       if docling_available?
         start = Time.current
         begin
-          results[:docling] = process_with_docling(file_path, options.merge(skip_fallback: true))
+          results[:docling] = process_with_docling(entity, file_path, options.merge(skip_fallback: true))
           timings[:docling] = Time.current - start
         rescue => e
           results[:docling] = { error: e.message }
@@ -245,9 +246,9 @@ module Ocr
       ENV['OCR_SHADOW_MODE'] == 'true'
     end
 
-    def enhance_with_comprehend(result)
-      service = Aws::ComprehendService.new
-      analysis = service.analyze_document(result[:raw_text])
+    def enhance_with_comprehend(entity, result)
+      service = Aws::ComprehendService.instance
+      analysis = service.analyze_document(result[:raw_text], entity: entity)
 
       result[:nlp_analysis] = {
         entities: analysis[:entities],
@@ -337,9 +338,9 @@ module Ocr
       table_data
     end
 
-    def run_shadow_mode(file_path, options)
+    def run_shadow_mode(entity, file_path, options)
       # Run comparison in background job to not block main processing
-      OcrComparisonJob.perform_later(@entity.id, file_path, options)
+      OcrComparisonJob.perform_later(entity.id, file_path, options) if entity
     rescue => e
       Rails.logger.error "Shadow mode comparison failed: #{e.message}"
     end
@@ -435,7 +436,7 @@ module Ocr
       recommendations.join('; ')
     end
 
-    def handle_processing_error(error, file_path, options)
+    def handle_processing_error(entity, error, file_path, options)
       Rails.logger.error "OCR processing failed for #{file_path}: #{error.message}"
       Rails.logger.error error.backtrace.join("\n")
 
@@ -446,10 +447,10 @@ module Ocr
         # Try the other provider
         if @metrics[:provider] == :textract
           Rails.logger.info "Falling back to Docling"
-          return process_with_docling(file_path, options)
+          return process_with_docling(entity, file_path, options)
         elsif @metrics[:provider] == :docling
           Rails.logger.info "Falling back to Textract"
-          return process_with_textract(file_path, options)
+          return process_with_textract(entity, file_path, options)
         end
       end
 
@@ -457,18 +458,18 @@ module Ocr
       raise error
     end
 
-    def log_metrics(file_path)
+    def log_metrics(entity, file_path)
       Rails.logger.info "OCR Metrics: #{@metrics.to_json}"
 
       # Track in database if entity has metrics tracking enabled
-      if @entity.track_ocr_metrics?
+      if entity && entity.respond_to?(:track_ocr_metrics?) && entity.track_ocr_metrics?
         OcrMetric.create!(
-          entity: @entity,
+          entity: entity,
           file_path: file_path,
           provider: @metrics[:provider],
           fallback_used: @metrics[:fallback_used],
           processing_time_ms: (@metrics[:processing_time] * 1000).to_i,
-          processed_at: Time.current
+          status: 'success'
         )
       end
     rescue => e

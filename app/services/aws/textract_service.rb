@@ -74,16 +74,18 @@ module Aws
       Rails.logger.info "Starting async document analysis with features: #{features.join(', ')}"
 
       # Start async job
-      job_response = @client.start_document_analysis(
+      params = {
         document_location: {
           s3_object: {
             bucket: bucket_name,
             name: s3_key
           }
         },
-        feature_types: features,
-        notification_channel: notification_config if notification_enabled?
-      )
+        feature_types: features
+      }
+      params[:notification_channel] = notification_config if notification_enabled?
+
+      job_response = @client.start_document_analysis(params)
 
       # Queue background job to check results
       TextractResultJob.perform_later(
