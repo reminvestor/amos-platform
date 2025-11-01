@@ -1,0 +1,157 @@
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Bedrock Knowledge Base Management</h1>
+        <%= link_to "Back to Admin", admin_dashboard_path, class: "btn btn-secondary" %>
+      </div>
+
+      <!-- Statistics Cards -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card bg-primary text-white">
+            <div class="card-body">
+              <h6 class="card-title">Total Entities</h6>
+              <h2 class="mb-0"><%= @statistics[:total_entities] %></h2>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-success text-white">
+            <div class="card-body">
+              <h6 class="card-title">Bedrock KB Enabled</h6>
+              <h2 class="mb-0"><%= @statistics[:bedrock_kb_enabled] %></h2>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-info text-white">
+            <div class="card-body">
+              <h6 class="card-title">KB Configured</h6>
+              <h2 class="mb-0"><%= @statistics[:bedrock_kb_configured] %></h2>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-warning text-white">
+            <div class="card-body">
+              <h6 class="card-title">Hybrid Mode</h6>
+              <h2 class="mb-0"><%= @statistics[:hybrid_mode] %></h2>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RAG Modes Documentation -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Available RAG Modes</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <% @statistics[:modes].each do |key, mode| %>
+              <div class="col-md-4 mb-3">
+                <div class="border rounded p-3 h-100">
+                  <h6 class="text-primary"><%= mode[:name] %></h6>
+                  <p class="text-muted small mb-2"><%= mode[:description] %></p>
+                  <% if mode[:requirements].any? %>
+                    <small class="text-secondary">
+                      Requirements: <%= mode[:requirements].map(&:to_s).join(', ') %>
+                    </small>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Entities Table -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Entities</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Entity</th>
+                  <th>RAG Mode</th>
+                  <th>Knowledge Base ID</th>
+                  <th>KB Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @entities.each do |entity| %>
+                  <% selector = RagModeSelector.new(entity) %>
+                  <tr>
+                    <td>
+                      <strong><%= entity.name %></strong><br>
+                      <small class="text-muted"><%= entity.subdomain %></small>
+                    </td>
+                    <td>
+                      <% mode_info = selector.mode_info %>
+                      <span class="badge bg-<%= selector.mode == :bedrock_kb ? 'success' : 'secondary' %>">
+                        <%= mode_info[:name] %>
+                      </span>
+                    </td>
+                    <td>
+                      <% if entity.bedrock_knowledge_base_id.present? %>
+                        <code><%= entity.bedrock_knowledge_base_id %></code>
+                      <% else %>
+                        <span class="text-muted">Not configured</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if entity.bedrock_kb_status.present? %>
+                        <span class="badge bg-<%= entity.bedrock_kb_status == 'ACTIVE' ? 'success' : 'warning' %>">
+                          <%= entity.bedrock_kb_status %>
+                        </span>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <%= link_to "Manage", admin_bedrock_kb_path(entity), class: "btn btn-sm btn-primary" %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Environment Configuration -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <h5 class="mb-0">Environment Configuration</h5>
+        </div>
+        <div class="card-body">
+          <dl class="row">
+            <dt class="col-sm-4">AWS Bedrock KB Enabled</dt>
+            <dd class="col-sm-8">
+              <span class="badge bg-<%= ENV['AWS_BEDROCK_KB_ENABLED'] != 'false' ? 'success' : 'danger' %>">
+                <%= ENV['AWS_BEDROCK_KB_ENABLED'] != 'false' ? 'Yes' : 'No' %>
+              </span>
+            </dd>
+
+            <dt class="col-sm-4">Pinecone Available</dt>
+            <dd class="col-sm-8">
+              <span class="badge bg-<%= ENV['PINECONE_API_KEY'].present? ? 'success' : 'secondary' %>">
+                <%= ENV['PINECONE_API_KEY'].present? ? 'Yes' : 'No' %>
+              </span>
+            </dd>
+
+            <dt class="col-sm-4">RAG Bucket</dt>
+            <dd class="col-sm-8">
+              <code><%= ENV['RAG_BUCKET'] || 'Not configured' %></code>
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
