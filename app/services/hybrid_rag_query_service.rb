@@ -430,6 +430,39 @@ class HybridRagQueryService
     ENV['PINECONE_API_KEY'].present? && ENV['PINECONE_ENVIRONMENT'].present?
   end
 
+  # Analyze query with AWS Comprehend for enhanced search
+  def analyze_query_with_comprehend(query_text)
+    Rails.logger.info "  🧠 Analyzing query with Comprehend"
+
+    start_time = Time.current
+
+    # Detect language
+    language_result = @comprehend.detect_language(query_text, entity: @entity)
+    language_code = language_result[:language_code] || 'en'
+
+    # Extract entities (people, organizations, locations, etc.)
+    entities_result = @comprehend.detect_entities(query_text, entity: @entity, language_code: language_code)
+
+    # Extract key phrases
+    phrases_result = @comprehend.detect_key_phrases(query_text, entity: @entity, language_code: language_code)
+
+    elapsed_ms = ((Time.current - start_time) * 1000).to_i
+
+    analysis = {
+      language: language_code,
+      entities: entities_result[:success] ? entities_result[:entities] : [],
+      key_phrases: phrases_result[:success] ? phrases_result[:key_phrases] : [],
+      processing_time_ms: elapsed_ms
+    }
+
+    Rails.logger.info "  ✅ Query analysis complete in #{elapsed_ms}ms: #{analysis[:entities].count} entities, #{analysis[:key_phrases].count} phrases"
+
+    analysis
+  rescue => e
+    Rails.logger.error "❌ Comprehend query analysis failed: #{e.message}"
+    { language: 'en', entities: [], key_phrases: [], processing_time_ms: 0 }
+  end
+
   # Bedrock Knowledge Base integration
   def bedrock_kb_enabled?
     @entity.use_bedrock_kb && @entity.bedrock_knowledge_base_id.present?
