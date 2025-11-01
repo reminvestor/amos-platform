@@ -1,0 +1,315 @@
+<%# app/views/admin/entity_costs/bulk_analysis.html.erb %>
+<div class="container-fluid mt-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2">
+          <i class="fas fa-analytics me-2"></i>
+          Bulk Cost Analysis
+        </h1>
+
+        <%= link_to admin_entity_costs_path, class: "btn btn-outline-secondary" do %>
+          <i class="fas fa-arrow-left me-1"></i> Back to Costs
+        <% end %>
+      </div>
+
+      <!-- Insights Dashboard -->
+      <div class="row mb-4">
+        <!-- Highest Cost Entities -->
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header bg-danger text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-fire me-2"></i>
+                Highest Cost Entities
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Entity</th>
+                      <th>Tier</th>
+                      <th class="text-end">Total Cost</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @insights[:highest_cost_entities].each do |entity| %>
+                      <tr>
+                        <td>
+                          <strong><%= entity.name %></strong>
+                          <br>
+                          <small class="text-muted">ID: <%= entity.id %></small>
+                        </td>
+                        <td>
+                          <span class="badge bg-<%= entity.billing_tier == 'premium' ? 'primary' : 'secondary' %>">
+                            <%= entity.billing_tier %>
+                          </span>
+                        </td>
+                        <td class="text-end">
+                          $<%= number_with_precision(entity.entity_cost_summaries.sum(:total_cost), precision: 2) %>
+                        </td>
+                        <td>
+                          <%= link_to admin_entity_cost_path(entity), class: "btn btn-sm btn-outline-primary" do %>
+                            <i class="fas fa-chart-line"></i>
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fastest Growing Costs -->
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-header bg-warning">
+              <h5 class="mb-0">
+                <i class="fas fa-rocket me-2"></i>
+                Fastest Growing Costs
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Entity</th>
+                      <th class="text-end">Last Month</th>
+                      <th class="text-end">This Month</th>
+                      <th class="text-end">Growth</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @insights[:fastest_growing_costs].limit(10).each do |entity| %>
+                      <% growth = entity.current_month_cost && entity.last_month_cost > 0 ?
+                                  ((entity.current_month_cost - entity.last_month_cost) / entity.last_month_cost * 100) : 0 %>
+                      <tr>
+                        <td>
+                          <strong><%= entity.name %></strong>
+                          <br>
+                          <small class="text-muted">ID: <%= entity.id %></small>
+                        </td>
+                        <td class="text-end">
+                          $<%= number_with_precision(entity.last_month_cost, precision: 2) %>
+                        </td>
+                        <td class="text-end">
+                          $<%= number_with_precision(entity.current_month_cost, precision: 2) %>
+                        </td>
+                        <td class="text-end">
+                          <span class="badge bg-<%= growth > 50 ? 'danger' : growth > 20 ? 'warning' : 'success' %>">
+                            +<%= number_with_precision(growth, precision: 1) %>%
+                          </span>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Anomalies and Optimizations -->
+      <div class="row">
+        <!-- Cost Anomalies -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header bg-danger text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Cost Anomalies Detected
+              </h5>
+            </div>
+            <div class="card-body">
+              <% if @insights[:anomalies].any? %>
+                <div class="list-group list-group-flush">
+                  <% @insights[:anomalies].first(10).each do |anomaly| %>
+                    <div class="list-group-item px-0">
+                      <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                          <strong><%= anomaly[:entity_name] %></strong>
+                          <br>
+                          <small class="text-muted">
+                            <%= anomaly[:date] %> - Spike detected
+                          </small>
+                        </div>
+                        <div class="text-end">
+                          <span class="text-danger fw-bold">
+                            $<%= number_with_precision(anomaly[:cost], precision: 2) %>
+                          </span>
+                          <br>
+                          <small class="text-muted">
+                            Expected: $<%= anomaly[:expected_range] %>
+                          </small>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <p class="text-muted mb-0">No anomalies detected</p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optimization Opportunities -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header bg-success text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-lightbulb me-2"></i>
+                Optimization Opportunities
+              </h5>
+            </div>
+            <div class="card-body">
+              <% if @insights[:optimization_opportunities].any? %>
+                <div class="list-group list-group-flush">
+                  <% @insights[:optimization_opportunities].each do |opportunity| %>
+                    <div class="list-group-item px-0">
+                      <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                          <strong>Entity #<%= opportunity[:entity_id] %></strong>
+                          <br>
+                          <% if opportunity[:type] == 'downgrade_tier' %>
+                            <span class="badge bg-info">Tier Optimization</span>
+                            <small class="d-block mt-1">
+                              Consider downgrading tier - low usage detected
+                            </small>
+                          <% elsif opportunity[:type] == 'optimize_storage' %>
+                            <span class="badge bg-warning">Storage Optimization</span>
+                            <small class="d-block mt-1">
+                              <%= opportunity[:recommendation] %>
+                            </small>
+                          <% end %>
+                        </div>
+                        <div class="text-end">
+                          <% if opportunity[:potential_savings] %>
+                            <span class="text-success fw-bold">
+                              Save $<%= number_with_precision(opportunity[:potential_savings], precision: 0) %>/mo
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <p class="text-muted mb-0">No optimization opportunities identified</p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Service Category Analysis -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <h5 class="mb-0">Service Category Breakdown (All Entities)</h5>
+        </div>
+        <div class="card-body">
+          <canvas id="serviceCategoryChart" height="100"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Service Category Stacked Bar Chart
+  const ctx = document.getElementById('serviceCategoryChart').getContext('2d');
+
+  // Get last 7 days of data
+  const dates = [];
+  const aiData = [];
+  const emailData = [];
+  const storageData = [];
+  const computeData = [];
+  const otherData = [];
+
+  <% 7.downto(1) do |days_ago| %>
+    <% date = days_ago.days.ago.to_date %>
+    <% daily_totals = EntityCostSummary.where(summary_date: date).group(:summary_date).sum(
+         :ai_chat_cost, :email_cost, :storage_cost, :compute_cost,
+         :bandwidth_cost, :integration_cost, :other_costs) %>
+    dates.push('<%= date.strftime("%b %d") %>');
+    aiData.push(<%= daily_totals[date]&.[](:ai_chat_cost) || 0 %>);
+    emailData.push(<%= daily_totals[date]&.[](:email_cost) || 0 %>);
+    storageData.push(<%= daily_totals[date]&.[](:storage_cost) || 0 %>);
+    computeData.push(<%= daily_totals[date]&.[](:compute_cost) || 0 %>);
+    otherData.push(<%= (daily_totals[date]&.[](:bandwidth_cost) || 0) +
+                       (daily_totals[date]&.[](:integration_cost) || 0) +
+                       (daily_totals[date]&.[](:other_costs) || 0) %>);
+  <% end %>
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dates,
+      datasets: [
+        {
+          label: 'AI Chat',
+          data: aiData,
+          backgroundColor: '#0d6efd'
+        },
+        {
+          label: 'Email',
+          data: emailData,
+          backgroundColor: '#6610f2'
+        },
+        {
+          label: 'Storage',
+          data: storageData,
+          backgroundColor: '#d63384'
+        },
+        {
+          label: 'Compute',
+          data: computeData,
+          backgroundColor: '#fd7e14'
+        },
+        {
+          label: 'Other',
+          data: otherData,
+          backgroundColor: '#6c757d'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          stacked: true
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) {
+              return '$' + value.toFixed(0);
+            }
+          }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+            }
+          }
+        }
+      }
+    }
+  });
+});
+</script>
