@@ -12,7 +12,7 @@ stripe_api_doc:
   status: indexed
   indexed_at: <%= 2.days.ago %>
   chunk_count: 156
-  uploaded_by: admin (User)
+  uploaded_by: one (User)
   created_at: <%= 3.days.ago %>
   updated_at: <%= 2.days.ago %>
 
@@ -26,7 +26,7 @@ hubspot_integration_guide:
   file_size_bytes: 1536000
   s3_key: system/integrations/hubspot/hubspot_integration_1234567891.pdf
   status: pending
-  uploaded_by: admin (User)
+  uploaded_by: one (User)
   created_at: <%= 1.day.ago %>
   updated_at: <%= 1.day.ago %>
 
@@ -42,7 +42,7 @@ amos_architecture_doc:
   status: indexed
   indexed_at: <%= 5.days.ago %>
   chunk_count: 24
-  uploaded_by: admin (User)
+  uploaded_by: one (User)
   created_at: <%= 6.days.ago %>
   updated_at: <%= 5.days.ago %>
 
@@ -57,6 +57,6 @@ failed_upload:
   s3_key: system/api_docs/test/failed_doc_1234567893.pdf
   status: failed
   error_message: "S3 connection timeout after 30 seconds"
-  uploaded_by: admin (User)
+  uploaded_by: one (User)
   created_at: <%= 12.hours.ago %>
   updated_at: <%= 12.hours.ago %>
