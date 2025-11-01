@@ -100,7 +100,13 @@
       "Bash(git add docs/architecture/SYSTEM_DOCUMENT_LIBRARY.md)",
       "Bash(git commit -m \"Add comprehensive System Document Library documentation\n\nCreated complete documentation covering:\n- Overview and use cases\n- Upload flow diagram\n- Database schema and S3 storage structure\n- Background job processing pipeline\n- Admin UI features\n- HybridRagQueryService integration\n- Environment configuration\n- Testing procedures\n- Troubleshooting guide\n- Security considerations\n- Future enhancement ideas\n\nThis 600+ line guide documents the entire system from admin upload\nto Scout querying, providing examples and best practices.\n\nAdmins can now reference this when uploading system documents to\nmake them queryable by Scout for all entities.\")",
       "Bash(mv /Users/ryan/Documents/agent_marketing/.claude/docs/ai_pipeline_spec.md /Users/ryan/Documents/agent_marketing/docs/ai_pipeline_spec.md)",
-      "Bash(git add test/models/system_document_test.rb test/controllers/admin/system_documents_controller_test.rb test/jobs/system_document_index_job_test.rb test/integration/system_document_upload_test.rb test/fixtures/system_documents.yml app/views/layouts/admin.html.erb)"
+      "Bash(git add test/models/system_document_test.rb test/controllers/admin/system_documents_controller_test.rb test/jobs/system_document_index_job_test.rb test/integration/system_document_upload_test.rb test/fixtures/system_documents.yml app/views/layouts/admin.html.erb)",
+      "Bash(git checkout -b feature/aws-bedrock-migration)",
+      "Bash(git push -u origin feature/aws-bedrock-migration)",
+      "Bash(bundle install)",
+      "Bash(gem install bundler:2.6.3)",
+      "Bash(git checkout feature/ux-improvements)",
+      "Bash(git add -A)"
     ],
     "deny": [],
     "ask": []
