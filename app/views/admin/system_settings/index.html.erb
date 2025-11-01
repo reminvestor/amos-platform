@@ -1,4 +1,6 @@
-<div class="container-fluid py-3">
+<div class="admin-content">
+  <div style="padding: 2rem;">
+    <div class="container-fluid py-3">
   <div class="row mb-3">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center mb-3">
@@ -47,13 +49,14 @@
                     <div class="input-group input-group-sm">
                       <%= password_field_tag "settings[#{setting.id}]",
                           setting.effective_value,
-                          class: "form-control font-monospace",
+                          class: "form-control font-monospace password-field",
                           placeholder: "Enter #{setting.key}",
                           autocomplete: "off",
-                          style: "font-size: 0.8rem;" %>
-                      <button class="btn btn-outline-secondary" type="button"
-                              onclick="togglePassword(this)" style="padding: 0.25rem 0.5rem;">
-                        <i class="bi bi-eye" style="font-size: 0.9rem;"></i>
+                          style: "font-size: 0.8rem;",
+                          id: "setting_#{setting.id}" %>
+                      <button class="btn btn-outline-secondary toggle-password" type="button"
+                              data-target="setting_<%= setting.id %>" style="padding: 0.25rem 0.5rem;">
+                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
                       </button>
                     </div>
                     <% if setting.effective_value.present? %>
@@ -81,10 +84,11 @@
                   <div>
                     <% if %w[OPENAI_API_KEY DEEPGRAM_API_KEY GITHUB_TOKEN].include?(setting.key) %>
                       <button type="button"
-                              class="btn btn-sm btn-outline-primary py-0 px-2"
-                              onclick="testKey(<%= setting.id %>)"
+                              class="btn btn-sm btn-outline-primary py-0 px-2 test-key-btn"
+                              data-setting-id="<%= setting.id %>"
                               style="font-size: 0.7rem;">
-                        <i class="bi bi-check-circle me-1"></i>Test
+                        <i data-lucide="check-circle" style="width: 12px; height: 12px;"></i>
+                        <span class="ms-1">Test</span>
                       </button>
                     <% end %>
                   </div>
@@ -104,51 +108,172 @@
 </div>
 
 <script>
-function togglePassword(button) {
-  const input = button.parentElement.querySelector('input');
-  const icon = button.querySelector('i');
+function initPasswordToggles() {
+  console.log('Initializing password toggles...');
 
-  if (input.type === 'password') {
-    input.type = 'text';
-    icon.classList.remove('bi-eye');
-    icon.classList.add('bi-eye-slash');
+  document.querySelectorAll('.toggle-password').forEach(button => {
+    // Remove old listeners by cloning
+    const newButton = button.cloneNode(true);
+    button.parentNode.replaceChild(newButton, button);
+
+    newButton.addEventListener('click', function(e) {
+      e.preventDefault();
+
+      const targetId = this.getAttribute('data-target');
+      console.log('Toggle clicked, target:', targetId);
+
+      const input = document.getElementById(targetId);
+      if (!input) {
+        console.error('Input not found:', targetId);
+        return;
+      }
+
+      // Lucide replaces <i> with <svg>, so look for either
+      const icon = this.querySelector('i') || this.querySelector('svg') || this.querySelector('[data-lucide]');
+      if (!icon) {
+        console.error('Icon not found in button');
+        return;
+      }
+
+      console.log('Current input type:', input.type);
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        // Replace the entire icon element
+        icon.setAttribute('data-lucide', 'eye-off');
+        console.log('Switched to text');
+      } else {
+        input.type = 'password';
+        // Replace the entire icon element
+        icon.setAttribute('data-lucide', 'eye');
+        console.log('Switched to password');
+      }
+
+      // Reinitialize the icon
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+        console.log('Icons reinitialized');
+      } else {
+        console.error('lucide is not defined');
+      }
+    });
+  });
+
+  // Initialize lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+    console.log('Initial lucide icons created');
   } else {
-    input.type = 'password';
-    icon.classList.remove('bi-eye-slash');
-    icon.classList.add('bi-eye');
+    console.error('lucide library not loaded');
   }
 }
 
-function testKey(settingId) {
-  const button = event.target.closest('button');
-  const originalHTML = button.innerHTML;
-  button.disabled = true;
-  button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
+function initTestButtons() {
+  console.log('Initializing test buttons...');
 
-  fetch(`/admin/system_settings/${settingId}/test_key`, {
-    method: 'POST',
-    headers: {
-      'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content,
-      'Accept': 'application/json'
-    }
-  })
-  .then(response => response.json())
-  .then(data => {
-    button.disabled = false;
-    button.innerHTML = originalHTML;
+  document.querySelectorAll('.test-key-btn').forEach(button => {
+    // Remove old listeners by cloning
+    const newButton = button.cloneNode(true);
+    button.parentNode.replaceChild(newButton, button);
 
-    if (data.success) {
-      alert('✓ ' + data.message);
-    } else {
-      alert('✗ ' + data.message);
-    }
-  })
-  .catch(error => {
-    button.disabled = false;
-    button.innerHTML = originalHTML;
-    alert('Error testing API key: ' + error);
+    newButton.addEventListener('click', function(e) {
+      e.preventDefault();
+
+      const settingId = this.getAttribute('data-setting-id');
+      console.log('Test button clicked for setting:', settingId);
+
+      const originalHTML = this.innerHTML;
+      this.disabled = true;
+      this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
+
+      // Get CSRF token from the form (form_with automatically includes it)
+      console.log('Looking for CSRF token...');
+      console.log('All forms:', document.querySelectorAll('form'));
+      console.log('All inputs with name authenticity_token:', document.querySelectorAll('input[name="authenticity_token"]'));
+      console.log('All hidden inputs:', document.querySelectorAll('input[type="hidden"]'));
+
+      let csrfTokenInput = document.querySelector('input[name="authenticity_token"]');
+
+      // If not found, try getting it from Rails directly via a data attribute
+      if (!csrfTokenInput) {
+        console.warn('Token not in form, trying to get from Rails...');
+        // Let's embed it directly in the page
+        const tokenValue = '<%= form_authenticity_token %>';
+        console.log('Using embedded token');
+
+        if (!tokenValue || tokenValue === '') {
+          console.error('CSRF token not available');
+          alert('Error: CSRF token not found. Please refresh the page.');
+          this.disabled = false;
+          this.innerHTML = originalHTML;
+          return;
+        }
+
+        // Continue with embedded token
+        makeRequest(tokenValue);
+        return;
+      }
+
+      const tokenValue = csrfTokenInput.value;
+      makeRequest(tokenValue);
+
+      function makeRequest(token) {
+        console.log('CSRF token found:', token ? 'Yes' : 'No');
+        console.log('Fetching:', `/admin/system_settings/${settingId}/test_key`);
+
+        fetch(`/admin/system_settings/${settingId}/test_key`, {
+          method: 'POST',
+          headers: {
+            'X-CSRF-Token': token,
+            'Accept': 'application/json'
+          }
+        })
+        .then(response => {
+          console.log('Response status:', response.status);
+          return response.json();
+        })
+        .then(data => {
+          console.log('Response data:', data);
+          newButton.disabled = false;
+          newButton.innerHTML = originalHTML;
+
+          // Reinitialize icons
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+          }
+
+          if (data.success) {
+            alert('✓ ' + data.message);
+          } else {
+            alert('✗ ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error testing API key:', error);
+          newButton.disabled = false;
+          newButton.innerHTML = originalHTML;
+
+          // Reinitialize icons
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+          }
+
+          alert('Error testing API key: ' + error);
+        });
+      }
+    });
   });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  initPasswordToggles();
+  initTestButtons();
+});
+
+document.addEventListener('turbo:load', () => {
+  initPasswordToggles();
+  initTestButtons();
+});
 </script>
 
 <style>
@@ -161,3 +286,5 @@ function testKey(settingId) {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   }
 </style>
+  </div>
+</div>

@@ -49,12 +49,17 @@ Rails.application.configure do
   # Devise mailer configuration
   config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
 
-  # Mailgun configuration
-  config.action_mailer.delivery_method = :mailgun
-  config.action_mailer.mailgun_settings = {
-    api_key: ENV["MAILGUN_API_KEY"],
-    domain: ENV["MAILGUN_DOMAIN"]
-  }
+  # Letter Opener - Preview emails in browser instead of sending them
+  # Access sent emails at http://localhost:3000/letter_opener
+  config.action_mailer.delivery_method = :letter_opener
+  config.action_mailer.perform_deliveries = true
+
+  # Mailgun configuration (for production use)
+  # config.action_mailer.delivery_method = :mailgun
+  # config.action_mailer.mailgun_settings = {
+  #   api_key: ENV["MAILGUN_API_KEY"],
+  #   domain: ENV["MAILGUN_DOMAIN"]
+  # }
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log

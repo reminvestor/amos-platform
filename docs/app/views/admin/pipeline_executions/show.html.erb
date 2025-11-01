@@ -1,0 +1,395 @@
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <%= link_to admin_pipeline_executions_path, class: "btn btn-outline-secondary btn-sm" do %>
+        <i class="fas fa-arrow-left"></i>
+        Back to Dashboard
+      <% end %>
+    </div>
+    <div>
+      <% unless @pipeline_execution.terminal_state? %>
+        <%= button_to cancel_admin_pipeline_execution_path(@pipeline_execution),
+                      method: :post,
+                      class: "btn btn-danger",
+                      data: { confirm: "Cancel this pipeline?" } do %>
+          <i class="fas fa-times"></i>
+          Cancel Pipeline
+        <% end %>
+      <% end %>
+
+      <% if @pipeline_execution.status_failed? || @pipeline_execution.status_rolled_back? %>
+        <%= button_to retry_admin_pipeline_execution_path(@pipeline_execution),
+                      method: :post,
+                      class: "btn btn-success",
+                      data: { confirm: "Retry this pipeline?" } do %>
+          <i class="fas fa-redo"></i>
+          Retry Pipeline
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Pipeline Overview -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">
+        <i class="fas fa-ticket-alt"></i>
+        <%= @pipeline_execution.ticket_id %>
+      </h4>
+      <% color = AiAgents::Pipeline::StateMachine.state_color(@pipeline_execution.status) %>
+      <% icon = AiAgents::Pipeline::StateMachine.state_icon(@pipeline_execution.status) %>
+      <span class="badge bg-<%= color %> fs-6">
+        <i class="<%= icon %>"></i>
+        <%= @pipeline_execution.status.titleize %>
+      </span>
+    </div>
+    <div class="card-body">
+      <h5 class="mb-3"><%= @pipeline_execution.ticket_title %></h5>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <p class="text-muted mb-1"><i class="fas fa-link"></i> Ticket URL</p>
+          <% if @pipeline_execution.ticket_url.present? %>
+            <%= link_to @pipeline_execution.ticket_url, @pipeline_execution.ticket_url, target: "_blank" %>
+            <i class="fas fa-external-link-alt fa-xs"></i>
+          <% else %>
+            <span class="text-muted">Not available</span>
+          <% end %>
+        </div>
+
+        <div class="col-md-3">
+          <p class="text-muted mb-1"><i class="fas fa-flag"></i> Priority</p>
+          <% priority_colors = { 'critical' => 'danger', 'high' => 'warning', 'medium' => 'info', 'low' => 'secondary' } %>
+          <span class="badge bg-<%= priority_colors[@pipeline_execution.priority] || 'secondary' %>">
+            <%= @pipeline_execution.priority&.titleize || 'Medium' %>
+          </span>
+        </div>
+
+        <div class="col-md-3">
+          <p class="text-muted mb-1"><i class="fas fa-server"></i> System</p>
+          <%= @pipeline_execution.ticket_system&.titleize || 'N/A' %>
+        </div>
+
+        <% if @pipeline_execution.pr_url.present? %>
+          <div class="col-md-6">
+            <p class="text-muted mb-1"><i class="fab fa-github"></i> Pull Request</p>
+            <%= link_to @pipeline_execution.pr_url, @pipeline_execution.pr_url, target: "_blank" %>
+            <i class="fas fa-external-link-alt fa-xs"></i>
+          </div>
+        <% end %>
+
+        <% if @pipeline_execution.branch_name.present? %>
+          <div class="col-md-6">
+            <p class="text-muted mb-1"><i class="fas fa-code-branch"></i> Branch</p>
+            <code><%= @pipeline_execution.branch_name %></code>
+          </div>
+        <% end %>
+
+        <div class="col-md-3">
+          <p class="text-muted mb-1"><i class="fas fa-dollar-sign"></i> Total Cost</p>
+          <strong>$<%= number_with_precision(@pipeline_execution.total_cost || 0, precision: 4) %></strong>
+        </div>
+
+        <div class="col-md-3">
+          <p class="text-muted mb-1"><i class="fas fa-coins"></i> Tokens Used</p>
+          <%= number_with_delimiter(@pipeline_execution.total_tokens_used || 0) %>
+        </div>
+
+        <div class="col-md-3">
+          <p class="text-muted mb-1"><i class="fas fa-clock"></i> Duration</p>
+          <% if @pipeline_execution.completed_at && @pipeline_execution.started_at %>
+            <%= distance_of_time_in_words(@pipeline_execution.started_at, @pipeline_execution.completed_at) %>
+          <% elsif @pipeline_execution.started_at %>
+            <%= distance_of_time_in_words(@pipeline_execution.started_at, Time.current) %>
+            <span class="badge bg-info">Running</span>
+          <% else %>
+            <span class="text-muted">Not started</span>
+          <% end %>
+        </div>
+
+        <div class="col-md-3">
+          <p class="text-muted mb-1"><i class="fas fa-calendar-alt"></i> Started</p>
+          <%= @pipeline_execution.started_at&.strftime("%b %d, %I:%M %p") || 'Not started' %>
+        </div>
+      </div>
+
+      <% if @pipeline_execution.ticket_description.present? %>
+        <hr>
+        <p class="text-muted mb-1"><i class="fas fa-file-alt"></i> Description</p>
+        <div class="bg-light p-3 rounded">
+          <%= simple_format(@pipeline_execution.ticket_description) %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Agent Execution Timeline -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="fas fa-robot"></i>
+        Agent Execution Timeline
+      </h5>
+    </div>
+    <div class="card-body">
+      <% if @agent_executions.any? %>
+        <div class="timeline">
+          <% @agent_executions.each_with_index do |agent_execution, index| %>
+            <div class="timeline-item <%= 'timeline-item-last' if index == @agent_executions.length - 1 %>">
+              <div class="timeline-marker bg-<%= agent_execution.status_completed? ? 'success' : (agent_execution.status_failed? ? 'danger' : 'info') %>"></div>
+              <div class="timeline-content">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <h6 class="mb-1">
+                      <%= agent_execution.agent_id.titleize %>
+                      <% if agent_execution.status_completed? %>
+                        <i class="fas fa-check-circle text-success"></i>
+                      <% elsif agent_execution.status_failed? %>
+                        <i class="fas fa-times-circle text-danger"></i>
+                      <% elsif agent_execution.status_running? %>
+                        <i class="fas fa-spinner fa-spin text-info"></i>
+                      <% else %>
+                        <i class="fas fa-clock text-muted"></i>
+                      <% end %>
+                    </h6>
+                    <p class="text-muted small mb-0">
+                      <%= agent_execution.created_at.strftime("%b %d, %I:%M:%S %p") %>
+                    </p>
+                  </div>
+                  <div class="text-end">
+                    <% if agent_execution.cost && agent_execution.cost > 0 %>
+                      <p class="mb-0"><small class="text-muted">Cost:</small> <strong>$<%= number_with_precision(agent_execution.cost, precision: 4) %></strong></p>
+                    <% end %>
+                    <% if agent_execution.tokens_used && agent_execution.tokens_used > 0 %>
+                      <p class="mb-0 small text-muted"><%= number_with_delimiter(agent_execution.tokens_used) %> tokens</p>
+                    <% end %>
+                    <% if agent_execution.completed_at && agent_execution.created_at %>
+                      <p class="mb-0 small text-muted">
+                        Duration: <%= distance_of_time_in_words(agent_execution.created_at, agent_execution.completed_at) %>
+                      </p>
+                    <% end %>
+                  </div>
+                </div>
+
+                <% if agent_execution.error_message.present? %>
+                  <div class="alert alert-danger alert-sm mb-0">
+                    <strong>Error:</strong> <%= agent_execution.error_message %>
+                  </div>
+                <% elsif agent_execution.outputs.present? %>
+                  <details class="small">
+                    <summary class="text-muted" style="cursor: pointer;">View outputs</summary>
+                    <pre class="bg-light p-2 rounded mt-2 mb-0"><%= JSON.pretty_generate(agent_execution.outputs) %></pre>
+                  </details>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-muted text-center mb-0">
+          <i class="fas fa-hourglass-start"></i>
+          No agents have executed yet
+        </p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Artifacts -->
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-file-code"></i>
+            Artifacts (<%= @artifacts.count %>)
+          </h5>
+        </div>
+        <div class="card-body">
+          <% if @artifacts.any? %>
+            <div class="list-group list-group-flush">
+              <% @artifacts.each do |artifact| %>
+                <div class="list-group-item px-0">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <i class="fas fa-file-alt text-primary"></i>
+                      <strong><%= artifact.file_name %></strong>
+                      <br>
+                      <small class="text-muted">
+                        <%= artifact.artifact_type.titleize %> &bull;
+                        <%= number_to_human_size(artifact.content&.length || artifact.file_size || 0) %> &bull;
+                        <%= artifact.created_at.strftime("%b %d, %I:%M %p") %>
+                      </small>
+                    </div>
+                    <div>
+                      <!-- Download/View artifact buttons -->
+                      <% if artifact.content.present? && artifact.content.length < 100_000 %>
+                        <button class="btn btn-sm btn-outline-primary" type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#artifact-<%= artifact.id %>">
+                          <i class="fas fa-eye"></i> View
+                        </button>
+                      <% end %>
+                    </div>
+                  </div>
+                  <% if artifact.content.present? && artifact.content.length < 100_000 %>
+                    <div class="collapse mt-2" id="artifact-<%= artifact.id %>">
+                      <pre class="bg-light p-2 rounded small mb-0"><%= artifact.content %></pre>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted text-center mb-0">
+              <i class="fas fa-inbox"></i>
+              No artifacts generated yet
+            </p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Events Audit Trail -->
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="fas fa-list"></i>
+            Events (<%= @events.count %>)
+          </h5>
+        </div>
+        <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+          <% if @events.any? %>
+            <div class="list-group list-group-flush">
+              <% @events.each do |event| %>
+                <div class="list-group-item px-0 py-2">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                      <code class="small"><%= event.event_type %></code>
+                      <br>
+                      <small class="text-muted">
+                        Source: <%= event.source %> &bull;
+                        <%= event.created_at.strftime("%I:%M:%S %p") %>
+                      </small>
+                      <% if event.payload.present? && event.payload.any? %>
+                        <details class="small mt-1">
+                          <summary style="cursor: pointer;" class="text-muted">Payload</summary>
+                          <pre class="bg-light p-1 rounded mt-1 mb-0"><%= JSON.pretty_generate(event.payload) %></pre>
+                        </details>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted text-center mb-0">
+              <i class="fas fa-inbox"></i>
+              No events recorded yet
+            </p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Human Interactions (if any) -->
+  <% if @interactions.any? %>
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="fas fa-comments"></i>
+          Human Interactions
+        </h5>
+      </div>
+      <div class="card-body">
+        <% @interactions.each do |interaction| %>
+          <div class="card mb-3 <%= interaction.status_pending? ? 'border-warning' : (interaction.status_answered? ? 'border-success' : 'border-secondary') %>">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="mb-0">
+                  <%= interaction.interaction_type.titleize %>
+                  <% if interaction.status_pending? %>
+                    <span class="badge bg-warning">Pending</span>
+                  <% elsif interaction.status_answered? %>
+                    <span class="badge bg-success">Answered</span>
+                  <% elsif interaction.status_timeout? %>
+                    <span class="badge bg-danger">Timeout</span>
+                  <% end %>
+                </h6>
+                <small class="text-muted">
+                  <%= interaction.asked_at.strftime("%b %d, %I:%M %p") %>
+                </small>
+              </div>
+
+              <p class="mb-2"><strong>Question:</strong></p>
+              <div class="bg-light p-2 rounded mb-2">
+                <%= simple_format(interaction.question) %>
+              </div>
+
+              <% if interaction.response.present? %>
+                <p class="mb-2"><strong>Response:</strong></p>
+                <div class="bg-success bg-opacity-10 p-2 rounded mb-2">
+                  <%= simple_format(interaction.response) %>
+                </div>
+              <% end %>
+
+              <% if interaction.status_pending? %>
+                <div class="alert alert-warning mb-0">
+                  <i class="fas fa-clock"></i>
+                  Timeout at: <%= interaction.timeout_at&.strftime("%b %d, %I:%M %p") %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.timeline {
+  position: relative;
+  padding: 20px 0;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 40px;
+  padding-bottom: 30px;
+}
+
+.timeline-item-last {
+  padding-bottom: 0;
+}
+
+.timeline-item:not(.timeline-item-last)::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 25px;
+  bottom: -10px;
+  width: 2px;
+  background: #dee2e6;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 0 0 2px #dee2e6;
+}
+
+.timeline-content {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 15px;
+}
+</style>

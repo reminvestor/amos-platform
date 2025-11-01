@@ -1,8 +1,12 @@
 <%= form_with(model: email_template) do |form| %>
+  <%# Error Messages %>
   <% if email_template.errors.any? %>
-    <div class="alert alert-danger">
-      <h4><%= pluralize(email_template.errors.count, "error") %> prohibited this template from being saved:</h4>
-      <ul>
+    <div class="alert alert-danger" style="background-color: var(--status-error-bg); border-color: var(--status-error-border); color: var(--status-error-text); margin-bottom: 1.5rem;">
+      <h5 style="margin-bottom: 0.5rem;">
+        <i data-lucide="alert-circle" class="icon-md"></i>
+        <%= pluralize(email_template.errors.count, "error") %> prohibited this template from being saved:
+      </h5>
+      <ul style="margin-bottom: 0;">
         <% email_template.errors.each do |error| %>
           <li><%= error.full_message %></li>
         <% end %>
@@ -10,41 +14,134 @@
     </div>
   <% end %>
 
-  <div class="mb-3">
-    <%= form.label :name, class: "form-label" %>
-    <%= form.text_field :name, class: "form-control", placeholder: "e.g. Welcome Email" %>
+  <%# Template Name %>
+  <div style="margin-bottom: 1.5rem;">
+    <%= form.label :name, "Template Name", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+    <%= form.text_field :name, class: "form-control", placeholder: "e.g. Welcome Email",
+        style: "background-color: #1E293B; border: 1px solid #334155; color: white; padding: 0.75rem; border-radius: 0.5rem;" %>
+    <small style="color: #64748B; font-size: 0.875rem; display: block; margin-top: 0.5rem;">
+      A descriptive name to help you identify this template
+    </small>
   </div>
 
-  <div class="mb-3">
-    <%= form.label :subject, class: "form-label" %>
-    <%= form.text_field :subject, class: "form-control", placeholder: "e.g. Welcome to our service!" %>
+  <%# Email Subject %>
+  <div style="margin-bottom: 1.5rem;">
+    <%= form.label :subject, "Email Subject", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+    <%= form.text_field :subject, class: "form-control", placeholder: "e.g. Welcome to our service!",
+        style: "background-color: #1E293B; border: 1px solid #334155; color: white; padding: 0.75rem; border-radius: 0.5rem;" %>
+    <small style="color: #64748B; font-size: 0.875rem; display: block; margin-top: 0.5rem;">
+      The subject line recipients will see. Keep it under 60 characters for best results.
+    </small>
   </div>
 
-  <div class="mb-3">
-    <%= form.label :body, class: "form-label" %>
-    <%= form.text_area :body, class: "form-control email-template-editor", rows: 15, placeholder: "Enter your email content here..." %>
-    <div class="form-text">
-      You can use HTML formatting. The following variables are available:
-      <ul class="mt-1">
-        <li><code>{{first_name}}</code> - Recipient's first name</li>
-        <li><code>{{last_name}}</code> - Recipient's last name</li>
-        <li><code>{{email}}</code> - Recipient's email address</li>
-      </ul>
+  <%# Email Body %>
+  <div style="margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+      <%= form.label :body, "Email Content", style: "color: white; font-weight: 600; margin: 0;" %>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <i data-lucide="code" style="width: 1rem; height: 1rem; color: #64748B;"></i>
+        <small style="color: #64748B; font-size: 0.875rem;">HTML editor</small>
+      </div>
+    </div>
+    <%= form.text_area :body, class: "form-control email-template-editor", rows: 15, placeholder: "Enter your email content here...",
+        style: "background-color: #1E293B; border: 1px solid #334155; color: white; padding: 1rem; border-radius: 0.5rem;" %>
+
+    <div style="margin-top: 1rem; padding: 1rem; background-color: rgba(34, 211, 238, 0.05); border: 1px solid rgba(34, 211, 238, 0.1); border-radius: 0.5rem;">
+      <div style="display: flex; align-items-start; gap: 0.75rem;">
+        <i data-lucide="info" style="width: 1.25rem; height: 1.25rem; color: #22D3EE; flex-shrink: 0; margin-top: 0.125rem;"></i>
+        <div>
+          <p style="color: white; font-weight: 600; margin: 0 0 0.5rem 0;">Available Variables:</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            <code style="background-color: rgba(34, 211, 238, 0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: #22D3EE; font-size: 0.813rem;">{{first_name}}</code>
+            <code style="background-color: rgba(34, 211, 238, 0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: #22D3EE; font-size: 0.813rem;">{{last_name}}</code>
+            <code style="background-color: rgba(34, 211, 238, 0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem; color: #22D3EE; font-size: 0.813rem;">{{email}}</code>
+          </div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0.5rem 0 0 0;">
+            These will be automatically replaced with recipient data when emails are sent.
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="mt-4">
-    <%= form.submit class: "btn btn-primary" %>
-    <%= link_to "Cancel", email_templates_path, class: "btn btn-outline-secondary ms-2" %>
+  <%# Action Buttons %>
+  <div style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid #334155;">
+    <%= form.submit "Save Template", class: "admin-btn admin-btn-primary" do %>
+      <i data-lucide="check"></i>
+      <span>Save Template</span>
+    <% end %>
+    <%= link_to email_templates_path, class: "admin-btn admin-btn-outline" do %>
+      <i data-lucide="x"></i>
+      <span>Cancel</span>
+    <% end %>
   </div>
 <% end %>
 
 <% content_for :head do %>
   <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
-  
+
+  <style>
+    /* Summernote Dark Theme Override */
+    .note-editor.note-frame {
+      background-color: #1E293B !important;
+      border: 1px solid #334155 !important;
+    }
+    .note-editor .note-toolbar {
+      background-color: #0F172A !important;
+      border-bottom: 1px solid #334155 !important;
+    }
+    .note-editor .note-toolbar .btn-group button {
+      background-color: #1E293B !important;
+      border-color: #334155 !important;
+      color: #94A3B8 !important;
+    }
+    .note-editor .note-toolbar .btn-group button:hover {
+      background-color: #334155 !important;
+      color: white !important;
+    }
+    .note-editor .note-editing-area .note-editable {
+      background-color: #1E293B !important;
+      color: white !important;
+    }
+    .note-editor .note-statusbar {
+      background-color: #0F172A !important;
+      border-top: 1px solid #334155 !important;
+    }
+    .note-popover .popover-content,
+    .note-popover .arrow::after {
+      background-color: #1E293B !important;
+      border-color: #334155 !important;
+    }
+    .note-modal .modal-content {
+      background-color: #1E293B !important;
+      border: 1px solid #334155 !important;
+    }
+    .note-modal .modal-header,
+    .note-modal .modal-footer {
+      background-color: #0F172A !important;
+      border-color: #334155 !important;
+    }
+    .note-modal .modal-title,
+    .note-modal .modal-body,
+    .note-modal label {
+      color: white !important;
+    }
+    .note-modal .form-control {
+      background-color: #1E293B !important;
+      border-color: #334155 !important;
+      color: white !important;
+    }
+  </style>
+
   <script>
     document.addEventListener('turbo:load', function() {
+      // Destroy existing Summernote instance if it exists
+      if ($('.email-template-editor').length && $('.email-template-editor').hasClass('note-editable')) {
+        $('.email-template-editor').summernote('destroy');
+      }
+
+      // Initialize Summernote
       $('.email-template-editor').summernote({
         placeholder: 'Write your email content here...',
         tabsize: 2,
@@ -57,8 +154,47 @@
           ['table', ['table']],
           ['insert', ['link', 'picture']],
           ['view', ['fullscreen', 'codeview', 'help']]
-        ]
+        ],
+        callbacks: {
+          onInit: function() {
+            // Ensure Lucide icons are rendered after Summernote initialization
+            if (typeof lucide !== 'undefined') {
+              lucide.createIcons();
+            }
+          }
+        }
+      });
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Destroy existing Summernote instance if it exists
+      if ($('.email-template-editor').length && $('.email-template-editor').hasClass('note-editable')) {
+        $('.email-template-editor').summernote('destroy');
+      }
+
+      // Initialize Summernote
+      $('.email-template-editor').summernote({
+        placeholder: 'Write your email content here...',
+        tabsize: 2,
+        height: 300,
+        toolbar: [
+          ['style', ['style']],
+          ['font', ['bold', 'underline', 'clear']],
+          ['color', ['color']],
+          ['para', ['ul', 'ol', 'paragraph']],
+          ['table', ['table']],
+          ['insert', ['link', 'picture']],
+          ['view', ['fullscreen', 'codeview', 'help']]
+        ],
+        callbacks: {
+          onInit: function() {
+            // Ensure Lucide icons are rendered after Summernote initialization
+            if (typeof lucide !== 'undefined') {
+              lucide.createIcons();
+            }
+          }
+        }
       });
     });
   </script>
-<% end %> 
+<% end %>

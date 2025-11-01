@@ -1,174 +1,202 @@
-<div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1>
-        <i class="fas fa-globe text-primary"></i>
-        Landing Pages
-      </h1>
-      <p class="text-muted">Manage your marketing landing pages</p>
+
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="layout"></i>
+      </div>
+      <div class="header-text">
+        <h1>Landing Pages</h1>
+        <p>Manage your marketing landing pages</p>
+      </div>
     </div>
-    <div class="col-auto">
-      <%= link_to new_landing_page_path, class: "btn btn-primary" do %>
-        <i class="fas fa-plus me-1"></i> Create New Page
+
+    <div class="header-actions">
+      <%= link_to new_landing_page_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus" aria-hidden="true"></i>
+        <span>Create New Page</span>
       <% end %>
     </div>
   </div>
 
   <% if @landing_pages.any? %>
-    <!-- Quick Stats -->
-    <div class="row mb-4">
-      <div class="col-md-3">
-        <div class="card bg-light border-0">
-          <div class="card-body">
-            <div class="d-flex align-items-center">
-              <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
-                <i class="fas fa-globe text-primary fa-lg"></i>
-              </div>
-              <div>
-                <div class="h4 mb-0"><%= @landing_pages.count %></div>
-                <div class="text-muted small">Total Pages</div>
-              </div>
+    <%# Stats Cards %>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-4">
+      <%# Total Pages - Purple Gradient %>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-gradient">
+              <i data-lucide="layout" class="icon-xl text-white" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Total Pages</p>
+              <h3 class="stat-value"><%= @landing_pages.count %></h3>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card bg-light border-0">
-          <div class="card-body">
-            <div class="d-flex align-items-center">
-              <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
-                <i class="fas fa-check-circle text-success fa-lg"></i>
-              </div>
-              <div>
-                <div class="h4 mb-0"><%= @landing_pages.where(status: 'published').count %></div>
-                <div class="text-muted small">Published</div>
-              </div>
+
+      <%# Published - Green %>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-success">
+              <i data-lucide="check-circle" class="icon-xl text-success" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Published</p>
+              <h3 class="stat-value"><%= @landing_pages.where(status: 'published').count %></h3>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card bg-light border-0">
-          <div class="card-body">
-            <div class="d-flex align-items-center">
-              <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
-                <i class="fas fa-edit text-warning fa-lg"></i>
-              </div>
-              <div>
-                <div class="h4 mb-0"><%= @landing_pages.where(status: 'draft').count %></div>
-                <div class="text-muted small">Drafts</div>
-              </div>
+
+      <%# Drafts - Yellow %>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-warning">
+              <i data-lucide="file-edit" class="icon-xl text-warning" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Drafts</p>
+              <h3 class="stat-value"><%= @landing_pages.where(status: 'draft').count %></h3>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-md-3">
-        <div class="card bg-light border-0">
-          <div class="card-body">
-            <div class="d-flex align-items-center">
-              <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
-                <i class="fas fa-clock text-info fa-lg"></i>
-              </div>
-              <div>
-                <div class="h4 mb-0"><%= @landing_pages.where('created_at > ?', 7.days.ago).count %></div>
-                <div class="text-muted small">This Week</div>
-              </div>
+
+      <%# This Week - Cyan %>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-info">
+              <i data-lucide="calendar" class="icon-xl text-info" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">This Week</p>
+              <h3 class="stat-value"><%= @landing_pages.where('created_at > ?', 7.days.ago).count %></h3>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Landing Pages Grid -->
-    <div class="row">
+    <%# Landing Pages Grid %>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem;">
       <% @landing_pages.each do |page| %>
-        <div class="col-lg-6 col-xl-4 mb-4">
-          <div class="card h-100 border-0 shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-              <span class="badge <%= page.status == 'published' ? 'bg-success' : page.status == 'draft' ? 'bg-warning' : 'bg-secondary' %>">
-                <%= page.status.titleize %>
+        <div class="admin-card" style="display: flex; flex-direction: column; height: 100%;">
+          <%# Card Header %>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid #1E293B;">
+            <% if page.status == 'published' %>
+              <span class="admin-badge admin-badge-online">Published</span>
+            <% elsif page.status == 'draft' %>
+              <span class="admin-badge admin-badge-warning">Draft</span>
+            <% else %>
+              <span class="admin-badge admin-badge-default"><%= page.status.titleize %></span>
+            <% end %>
+
+            <% if page.metadata&.dig('generated_from') == 'workflow' || page.metadata&.dig('ai_generated') %>
+              <span class="admin-badge admin-badge-cyan">
+                <i data-lucide="bot" class="icon-xs" aria-hidden="true"></i> AI Generated
               </span>
-              <% if page.metadata&.dig('generated_from') == 'workflow' || page.metadata&.dig('ai_generated') %>
-                <span class="badge bg-info">
-                  <i class="fas fa-robot"></i> AI Generated
-                </span>
-              <% end %>
+            <% end %>
+          </div>
+
+          <%# Card Body %>
+          <div style="flex: 1; padding: 1rem 0;">
+            <h5 style="color: white; font-size: 1.125rem; font-weight: 600; margin: 0 0 0.5rem 0;">
+              <%= link_to page.title, preview_landing_page_path(page), target: "_blank", style: 'color: #22D3EE; text-decoration: none;' %>
+            </h5>
+
+            <% if page.description.present? %>
+              <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 1rem 0;">
+                <%= truncate(page.description, length: 100) %>
+              </p>
+            <% end %>
+
+            <div class="mb-3">
+              <div class="d-flex align-items-center gap-2 text-muted small">
+                <i data-lucide="link" class="icon-md" aria-hidden="true"></i>
+                <code class="text-info" style="background: var(--bg-input); padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;"><%= page.slug %></code>
+              </div>
             </div>
-            
-            <div class="card-body">
-              <h5 class="card-title mb-2">
-                <%= link_to page.title, preview_landing_page_path(page), target: "_blank", class: "text-decoration-none" %>
-              </h5>
-              
-              <% if page.description.present? %>
-                <p class="card-text text-muted small mb-3">
-                  <%= truncate(page.description, length: 100) %>
-                </p>
-              <% end %>
-              
+
+            <% if page.campaign %>
               <div class="mb-3">
-                <small class="text-muted">
-                  <i class="fas fa-link"></i> 
-                  <code class="small"><%= page.slug %></code>
-                </small>
-              </div>
-              
-              <% if page.campaign %>
-                <div class="mb-2">
-                  <small class="text-muted">
-                    <i class="fas fa-envelope"></i> 
-                    Campaign: <%= page.campaign.name %>
-                  </small>
+                <div class="d-flex align-items-center gap-2 text-secondary small">
+                  <i data-lucide="mail" class="icon-md" aria-hidden="true"></i>
+                  Campaign: <%= page.campaign.name %>
                 </div>
+              </div>
+            <% end %>
+
+            <div class="d-flex align-items-center gap-2 text-muted small">
+              <i data-lucide="calendar" class="icon-md" aria-hidden="true"></i>
+              Created <%= time_ago_in_words(page.created_at) %> ago
+            </div>
+          </div>
+
+          <%# Card Footer %>
+          <div class="d-flex gap-2 pt-3" style="border-top: 1px solid var(--border-primary);">
+            <%= link_to preview_landing_page_path(page), class: "admin-btn admin-btn-sm admin-btn-outline flex-fill", target: "_blank", "aria-label": "Preview #{page.title}" do %>
+              <i data-lucide="eye" aria-hidden="true"></i>
+              <span>Preview</span>
+            <% end %>
+
+            <%= link_to edit_landing_page_path(page), class: "admin-btn admin-btn-sm admin-btn-outline flex-fill", "aria-label": "Edit #{page.title}" do %>
+              <i data-lucide="pencil" aria-hidden="true"></i>
+              <span>Edit</span>
+            <% end %>
+
+            <% if page.status == 'published' %>
+              <%= button_to unpublish_landing_page_path(page), method: :patch, class: "admin-btn admin-btn-sm admin-btn-outline flex-fill",
+                  "aria-label": "Unpublish #{page.title}",
+                  data: { turbo_confirm: "Unpublish this page?" } do %>
+                <i data-lucide="eye-off" aria-hidden="true"></i>
+                <span>Unpublish</span>
               <% end %>
-              
-              <div class="small text-muted">
-                <i class="fas fa-calendar"></i>
-                Created <%= time_ago_in_words(page.created_at) %> ago
-              </div>
-            </div>
-            
-            <div class="card-footer bg-white border-top">
-              <div class="d-flex gap-2 justify-content-between">
-                <%= link_to preview_landing_page_path(page), class: "btn btn-sm btn-outline-primary", target: "_blank" do %>
-                  <i class="fas fa-eye"></i> Preview
-                <% end %>
-                
-                <%= link_to edit_landing_page_path(page), class: "btn btn-sm btn-outline-secondary" do %>
-                  <i class="fas fa-edit"></i> Edit
-                <% end %>
-                
-                <% if page.status == 'published' %>
-                  <%= button_to unpublish_landing_page_path(page), method: :patch, class: "btn btn-sm btn-outline-warning", 
-                      data: { confirm: "Unpublish this page?" } do %>
-                    <i class="fas fa-eye-slash"></i> Unpublish
-                  <% end %>
-                <% else %>
-                  <%= button_to publish_landing_page_path(page), method: :patch, class: "btn btn-sm btn-success" do %>
-                    <i class="fas fa-paper-plane"></i> Publish
-                  <% end %>
-                <% end %>
-              </div>
-            </div>
+            <% else %>
+              <%= button_to publish_landing_page_path(page), method: :patch, class: "admin-btn admin-btn-sm admin-btn-primary flex-fill",
+                  "aria-label": "Publish #{page.title}" do %>
+                <i data-lucide="send" aria-hidden="true"></i>
+                <span>Publish</span>
+              <% end %>
+            <% end %>
           </div>
         </div>
       <% end %>
     </div>
   <% else %>
-    <!-- Empty State -->
-    <div class="row">
-      <div class="col-12">
-        <div class="card border-0 shadow-sm">
-          <div class="card-body text-center py-5">
-            <i class="fas fa-globe fa-4x text-muted mb-3"></i>
-            <h3>No Landing Pages Yet</h3>
-            <p class="text-muted mb-4">Create your first AI-powered landing page to start converting visitors into customers</p>
-            <%= link_to new_landing_page_path, class: "btn btn-primary btn-lg" do %>
-              <i class="fas fa-plus me-2"></i> Create Your First Landing Page
-            <% end %>
-          </div>
+    <%# Empty State %>
+    <div class="admin-card">
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="layout"></i>
         </div>
+        <h3>No Landing Pages Yet</h3>
+        <p>Create your first AI-powered landing page to start converting visitors into customers</p>
+        <%= link_to new_landing_page_path, class: "admin-btn admin-btn-primary mt-3" do %>
+          <i data-lucide="plus" aria-hidden="true"></i>
+          <span>Create Your First Landing Page</span>
+        <% end %>
       </div>
     </div>
   <% end %>
 </div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
