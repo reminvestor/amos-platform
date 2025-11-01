@@ -11,7 +11,7 @@ module Scout
       DoclingBridgeService::SUPPORTED_EXTENSIONS.include?(extension)
     end
 
-    def process_for_rag(file, storage_type: 'long-term')
+    def process_for_rag(file, storage_type: 'long-term', ocr_provider: nil)
       Rails.logger.info "📄 Processing document for RAG: #{file.original_filename} (storage: #{storage_type})"
 
       # Save uploaded file temporarily
@@ -28,13 +28,34 @@ module Scout
         # Also create ImageAsset for storage (so file is accessible)
         image_asset = create_image_asset(file)
 
-        # Process with DocumentProcessorService (which uses Docling)
-        processor = DocumentProcessorService.new(use_docling: true)
-        processing_result = processor.process_documents([{
-          type: "file",
-          content: temp_path,
-          filename: file.original_filename
-        }])
+        # Process with dual-mode OCR service
+        processing_result = if dual_mode_ocr_available?
+          # Use new dual-mode OCR service (Textract + Docling)
+          ocr_service = Ocr::DualModeService.new(@entity)
+          ocr_result = ocr_service.process_document(temp_path, {
+            provider: ocr_provider,
+            document_type: detect_document_type(file.original_filename),
+            extract_tables: true,
+            extract_forms: true,
+            create_chunks: true
+          })
+
+          # Convert to expected format
+          {
+            success: true,
+            chunks: format_ocr_chunks(ocr_result),
+            metadata: ocr_result[:metadata],
+            provider: ocr_result[:provider]
+          }
+        else
+          # Fallback to original Docling-only processor
+          processor = DocumentProcessorService.new(use_docling: true)
+          processor.process_documents([{
+            type: "file",
+            content: temp_path,
+            filename: file.original_filename
+          }])
+        end
 
         unless processing_result[:success]
           return {
@@ -196,6 +217,85 @@ module Scout
         # Fallback to Rails.application.routes.url_helpers if no generator provided
         Rails.application.routes.url_helpers.rails_blob_url(image_asset.file)
       end
+    end
+
+    private
+
+    def dual_mode_ocr_available?
+      defined?(Ocr::DualModeService) &&
+        (ENV['OCR_PROVIDER'].present? || ENV['TEXTRACT_ENABLED'] == 'true')
+    end
+
+    def detect_document_type(filename)
+      filename_lower = filename.downcase
+
+      return 'invoice' if filename_lower.include?('invoice')
+      return 'receipt' if filename_lower.include?('receipt')
+      return 'contract' if filename_lower.include?('contract') || filename_lower.include?('agreement')
+      return 'form' if filename_lower.include?('form') || filename_lower.include?('application')
+      return 'id' if filename_lower.include?('license') || filename_lower.include?('passport') || filename_lower.include?('id')
+      return 'statement' if filename_lower.include?('statement')
+      return 'report' if filename_lower.include?('report')
+
+      'general'
+    end
+
+    def format_ocr_chunks(ocr_result)
+      chunks = []
+
+      # Convert pages to chunks format
+      ocr_result[:pages].each_with_index do |page, index|
+        chunks << {
+          content: page[:text],
+          metadata: {
+            type: 'page',
+            page_number: page[:page_number],
+            confidence: page[:confidence] || page[:average_confidence],
+            provider: ocr_result[:provider]
+          }
+        }
+
+        # Add table chunks if present
+        page[:tables]&.each_with_index do |table, table_index|
+          chunks << {
+            content: format_table_for_chunk(table),
+            metadata: {
+              type: 'table',
+              page_number: page[:page_number],
+              table_index: table_index,
+              provider: ocr_result[:provider]
+            }
+          }
+        end
+
+        # Add form chunks if present
+        if page[:forms].present? && page[:forms].any?
+          chunks << {
+            content: format_forms_for_chunk(page[:forms]),
+            metadata: {
+              type: 'form',
+              page_number: page[:page_number],
+              provider: ocr_result[:provider]
+            }
+          }
+        end
+      end
+
+      chunks
+    end
+
+    def format_table_for_chunk(table)
+      return "" unless table[:data].present?
+
+      lines = []
+      table[:data].each_with_index do |row, i|
+        lines << row.join(' | ')
+      end
+      lines.join("\n")
+    end
+
+    def format_forms_for_chunk(forms)
+      forms.map { |field| "#{field[:key]}: #{field[:value]}" }.join("\n")
     end
   end
 end
