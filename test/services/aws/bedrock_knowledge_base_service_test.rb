@@ -198,20 +198,21 @@ module Aws
 
     test "deletes document from knowledge base" do
       doc = rag_documents(:one)
-      doc.update!(
-        entity: @entity,
-        metadata: { 's3_key' => 'documents/test/file.pdf' }
-      )
+      # Set metadata with S3 key
+      doc.update!(metadata: { 's3_key' => 'documents/test/file.pdf' })
 
       @service.s3_client.stub :delete_object, OpenStruct.new(delete_marker: true) do
         @service.bedrock_agent_client.stub :list_data_sources, OpenStruct.new(data_source_summaries: []) do
-          result = @service.delete_document(@entity, doc.id)
+          # Need to stub entity.rag_documents association
+          @entity.stub :rag_documents, RagDocument.where(id: doc.id) do
+            result = @service.delete_document(@entity, doc.id)
 
-          assert result[:success]
+            assert result[:success]
 
-          doc.reload
-          assert_equal 'deleted', doc.processing_status
-          assert_not_nil doc.deleted_at
+            doc.reload
+            assert_equal 'deleted', doc.processing_status
+            assert_not_nil doc.deleted_at
+          end
         end
       end
     end

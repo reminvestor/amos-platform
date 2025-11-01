@@ -4,16 +4,16 @@ require 'aws-sdk-s3'
 
 module Aws
   class TextractService
+    include Singleton
     include ActiveSupport::Rescuable
 
     SUPPORTED_FORMATS = %w[pdf png jpg jpeg tiff].freeze
     MAX_SYNC_PAGES = 1  # Use async for multi-page docs
     MAX_FILE_SIZE = 500.megabytes # Textract limit
 
-    attr_reader :entity, :client, :s3_client
+    attr_reader :client, :s3_client
 
-    def initialize(entity)
-      @entity = entity
+    def initialize
       @client = ::Aws::Textract::Client.new(
         region: ENV.fetch('AWS_REGION', 'us-east-1'),
         http_read_timeout: 120
@@ -27,17 +27,17 @@ module Aws
     end
 
     # Main entry point for document processing
-    def process_document(file_path, options = {})
+    def process_document(entity, file_path, options = {})
       validate_file!(file_path)
 
       # Upload to S3 first (Textract requires S3 location)
-      s3_key = upload_to_s3(file_path)
+      s3_key = upload_to_s3(entity, file_path)
 
       # Determine processing method
       if single_page_document?(file_path)
         result = process_sync(s3_key, options)
       else
-        result = process_async(s3_key, options)
+        result = process_async(entity, s3_key, options)
       end
 
       # Cleanup S3 file unless specified otherwise
@@ -68,7 +68,7 @@ module Aws
     end
 
     # Asynchronous processing for multi-page documents
-    def process_async(s3_key, options = {})
+    def process_async(entity, s3_key, options = {})
       features = determine_features(options)
 
       Rails.logger.info "Starting async document analysis with features: #{features.join(', ')}"
@@ -89,7 +89,7 @@ module Aws
 
       # Queue background job to check results
       TextractResultJob.perform_later(
-        entity_id: @entity.id,
+        entity_id: entity.id,
         job_id: job_response.job_id,
         s3_key: s3_key,
         options: options
@@ -161,9 +161,9 @@ module Aws
     end
 
     # Analyze expense documents (invoices, receipts)
-    def analyze_expense(file_path, options = {})
+    def analyze_expense(entity, file_path, options = {})
       validate_file!(file_path)
-      s3_key = upload_to_s3(file_path)
+      s3_key = upload_to_s3(entity, file_path)
 
       response = @client.analyze_expense(
         document: {
@@ -180,9 +180,9 @@ module Aws
     end
 
     # Analyze identity documents (driver's license, passport)
-    def analyze_identity(file_path, options = {})
+    def analyze_identity(entity, file_path, options = {})
       validate_file!(file_path)
-      s3_key = upload_to_s3(file_path)
+      s3_key = upload_to_s3(entity, file_path)
 
       response = @client.analyze_id(
         document_pages: [
@@ -206,9 +206,9 @@ module Aws
       @bucket_name ||= ENV.fetch('RAG_BUCKET', "agent-marketing-rag-storage")
     end
 
-    def upload_to_s3(file_path)
+    def upload_to_s3(entity, file_path)
       file_name = File.basename(file_path)
-      s3_key = "textract/#{@entity.id}/#{SecureRandom.hex(8)}/#{file_name}"
+      s3_key = "textract/#{entity.id}/#{SecureRandom.hex(8)}/#{file_name}"
 
       Rails.logger.info "Uploading file to S3: s3://#{bucket_name}/#{s3_key}"
 
@@ -218,7 +218,7 @@ module Aws
           key: s3_key,
           body: file,
           metadata: {
-            'entity-id' => @entity.id.to_s,
+            'entity-id' => entity.id.to_s,
             'uploaded-at' => Time.current.iso8601,
             'original-filename' => file_name
           }
