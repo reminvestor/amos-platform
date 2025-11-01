@@ -83,6 +83,9 @@ gem "neighbor", "~> 0.5" # pgvector integration for Rails
 # HTTP client for API calls (Serper, etc)
 gem "httparty", "~> 0.22.0"
 
+# GitHub API client for AI Pipeline
+gem "octokit", "~> 8.0"
+
 # Document parsing
 gem "pdf-reader", "~> 2.12"
 gem "kramdown", "~> 2.4"
@@ -134,6 +137,10 @@ end
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
+
+  # Preview emails in browser instead of sending them
+  gem "letter_opener", "~> 1.8"
+  gem "letter_opener_web", "~> 2.0"
 end
 
 group :test do

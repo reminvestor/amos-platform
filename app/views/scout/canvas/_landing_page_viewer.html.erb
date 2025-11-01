@@ -2,18 +2,18 @@
   <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
     <div>
       <h4 class="mb-1">
-        <i class="fas fa-globe text-primary me-2"></i>
+        <i data-lucide="globe" class="text-primary me-2" aria-hidden="true"></i>
         Landing Pages
       </h4>
       <p class="text-muted mb-0">Manage your marketing landing pages</p>
     </div>
     <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" id="autoRefreshToggle" onclick="toggleAutoRefresh()" title="Toggle auto refresh">
-        <i class="fas fa-rotate"></i>
+      <button class="btn btn-outline-secondary" id="autoRefreshToggle" onclick="toggleAutoRefresh()" aria-label="Toggle auto refresh">
+        <i data-lucide="refresh-cw" aria-hidden="true"></i>
         <span id="autoRefreshLabel">Auto-refresh: On</span>
       </button>
-      <button class="btn btn-primary" onclick="scoutCreateLandingPage()">
-      <i class="fas fa-plus me-1"></i>
+      <button class="btn btn-primary" onclick="scoutCreateLandingPage()" aria-label="Create new landing page">
+      <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
       Create New Page
       </button>
     </div>
@@ -27,7 +27,7 @@
           <div class="stat-card-body p-3">
             <div class="d-flex align-items-center">
               <div class="stat-icon bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                <i class="fas fa-globe text-primary"></i>
+                <i data-lucide="globe" class="text-primary" aria-hidden="true"></i>
               </div>
               <div>
                 <div class="stat-number h5 mb-0"><%= landing_pages.count %></div>
@@ -42,7 +42,7 @@
           <div class="stat-card-body p-3">
             <div class="d-flex align-items-center">
               <div class="stat-icon bg-success bg-opacity-10 rounded-circle p-2 me-3">
-                <i class="fas fa-check-circle text-success"></i>
+                <i data-lucide="check-circle" class="text-success" aria-hidden="true"></i>
               </div>
               <div>
                 <div class="stat-number h5 mb-0"><%= landing_pages.where(status: 'published').count %></div>
@@ -57,7 +57,7 @@
           <div class="stat-card-body p-3">
             <div class="d-flex align-items-center">
               <div class="stat-icon bg-warning bg-opacity-10 rounded-circle p-2 me-3">
-                <i class="fas fa-edit text-warning"></i>
+                <i data-lucide="file-edit" class="text-warning" aria-hidden="true"></i>
               </div>
               <div>
                 <div class="stat-number h5 mb-0"><%= landing_pages.where(status: 'draft').count %></div>
@@ -72,7 +72,7 @@
           <div class="stat-card-body p-3">
             <div class="d-flex align-items-center">
               <div class="stat-icon bg-info bg-opacity-10 rounded-circle p-2 me-3">
-                <i class="fas fa-clock text-info"></i>
+                <i data-lucide="clock" class="text-info" aria-hidden="true"></i>
               </div>
               <div>
                 <div class="stat-number h5 mb-0"><%= landing_pages.where('created_at > ?', 7.days.ago).count %></div>
@@ -100,35 +100,38 @@
                 </span>
                 <% unless page.has_content? %>
                   <span class="badge bg-info">
-                    <i class="fas fa-cog fa-spin me-1"></i>Generating
+                    <i data-lucide="settings" class="icon-spin me-1" aria-hidden="true"></i>Generating
                   </span>
                 <% end %>
               </div>
               <div class="dropdown" onclick="event.stopPropagation()">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" onclick="event.stopPropagation()">
-                  <i class="fas fa-ellipsis-h"></i>
+                <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                        data-bs-toggle="dropdown"
+                        onclick="event.stopPropagation()"
+                        aria-label="More actions for <%= page.title %>">
+                  <i data-lucide="more-horizontal" aria-hidden="true"></i>
                 </button>
                 <ul class="dropdown-menu">
                   <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutEditLandingPageInline(<%= page.id %>)">
-                    <i class="fas fa-edit me-2"></i>Edit Page
+                    <i data-lucide="pencil" class="me-2" aria-hidden="true"></i>Edit Page
                   </a></li>
                   <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutEditLandingPage(<%= page.id %>)">
-                    <i class="fas fa-code me-2"></i>Edit HTML
+                    <i data-lucide="code" class="me-2" aria-hidden="true"></i>Edit HTML
                   </a></li>
                   <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutViewLandingPage(<%= page.id %>)">
-                    <i class="fas fa-eye me-2"></i>View Details
+                    <i data-lucide="eye" class="me-2" aria-hidden="true"></i>View Details
                   </a></li>
                   <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); scoutPreviewLandingPageInTab(<%= page.id %>)">
-                    <i class="fas fa-external-link-alt me-2"></i>Preview in Tab
+                    <i data-lucide="external-link" class="me-2" aria-hidden="true"></i>Preview in Tab
                   </a></li>
                   <% if page.status == 'published' %>
                     <li><a class="dropdown-item" href="<%= page.full_url(request.base_url) %>" target="_blank">
-                      <i class="fas fa-external-link-alt me-2"></i>View Live
+                      <i data-lucide="external-link" class="me-2" aria-hidden="true"></i>View Live
                     </a></li>
                   <% end %>
                   <li><hr class="dropdown-divider"></li>
                   <li><a class="dropdown-item text-danger" href="#" onclick="scoutDeleteLandingPage(<%= page.id %>)">
-                    <i class="fas fa-trash me-2"></i>Delete
+                    <i data-lucide="trash-2" class="me-2" aria-hidden="true"></i>Delete
                   </a></li>
                 </ul>
               </div>
@@ -137,14 +140,14 @@
               <div class="landing-page-preview mb-3">
                 <div class="preview-placeholder bg-light rounded d-flex align-items-center justify-content-center position-relative" style="height: 120px;">
                   <% if page.has_content? %>
-                    <i class="fas fa-globe text-primary fa-2x"></i>
+                    <i data-lucide="globe" class="text-primary icon-2x" aria-hidden="true"></i>
                   <% else %>
                     <div class="text-center">
                       <% if page.metadata&.dig('generation_requested') %>
-                        <i class="fas fa-magic text-info fa-2x mb-2"></i>
+                        <i data-lucide="wand-2" class="text-info icon-2x mb-2" aria-hidden="true"></i>
                         <div class="small text-muted">Click to start wizard</div>
                       <% else %>
-                        <div class="spinner-border text-primary mb-2" role="status" style="width: 1.5rem; height: 1.5rem;">
+                        <div class="spinner-border text-primary mb-2" role="status">
                           <span class="visually-hidden">Loading...</span>
                         </div>
                         <div class="small text-muted">AI Generating</div>
@@ -161,15 +164,19 @@
               </p>
               <div class="d-flex justify-content-between align-items-center">
                 <small class="text-muted">
-                  <i class="fas fa-clock me-1"></i>
+                  <i data-lucide="clock" class="me-1" aria-hidden="true"></i>
                   <%= time_ago_in_words(page.updated_at) %> ago
                 </small>
                 <div class="btn-group" role="group">
-                  <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); scoutEditLandingPageInline(<%= page.id %>)" title="Edit Page">
-                    <i class="fas fa-edit"></i>
+                  <button class="btn btn-sm btn-outline-primary"
+                          onclick="event.stopPropagation(); scoutEditLandingPageInline(<%= page.id %>)"
+                          aria-label="Edit <%= page.title %>">
+                    <i data-lucide="pencil" aria-hidden="true"></i>
                   </button>
-                  <button class="btn btn-sm btn-outline-success" onclick="event.stopPropagation(); scoutPreviewLandingPageInTab(<%= page.id %>)" title="Preview">
-                    <i class="fas fa-eye"></i>
+                  <button class="btn btn-sm btn-outline-success"
+                          onclick="event.stopPropagation(); scoutPreviewLandingPageInTab(<%= page.id %>)"
+                          aria-label="Preview <%= page.title %>">
+                    <i data-lucide="eye" aria-hidden="true"></i>
                   </button>
                 </div>
               </div>
@@ -182,15 +189,15 @@
     <!-- Empty State -->
     <div class="empty-state text-center py-5">
       <div class="empty-icon mb-3">
-        <i class="fas fa-globe text-muted" style="font-size: 4rem;"></i>
+        <i data-lucide="globe" class="text-muted" aria-hidden="true" style="font-size: 4rem;"></i>
       </div>
       <h5 class="text-muted">No landing pages yet</h5>
       <p class="text-muted mb-4">
         Create your first landing page to start converting visitors into customers.<br>
         Landing pages are focused, single-purpose pages designed to drive specific actions.
       </p>
-      <button class="btn btn-primary btn-lg" onclick="scoutCreateLandingPage()">
-        <i class="fas fa-plus me-2"></i>
+      <button class="btn btn-primary btn-lg" onclick="scoutCreateLandingPage()" aria-label="Create your first landing page">
+        <i data-lucide="plus" class="me-2" aria-hidden="true"></i>
         Create Your First Landing Page
       </button>
     </div>

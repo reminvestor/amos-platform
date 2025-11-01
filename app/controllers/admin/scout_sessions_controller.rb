@@ -116,7 +116,7 @@ class Admin::ScoutSessionsController < ApplicationController
 
   def require_admin
     unless current_user.admin?
-      redirect_to root_path, alert: 'Admin access required'
+      redirect_to chat_mode_path, alert: 'Admin access required'
     end
   end
 end

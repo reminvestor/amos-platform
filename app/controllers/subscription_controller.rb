@@ -9,24 +9,31 @@ class SubscriptionController < ApplicationController
     # Get the token from params
     token = params[:token]
 
-    if token.present?
-      # Find the email delivery associated with this token
-      @email_delivery = EmailDelivery.find_by(id: token)
+    if token.blank?
+      @message = "No unsubscribe token provided. Please use the link in the email you received."
+      render :unsubscribe and return
+    end
 
-      if @email_delivery&.contact
-        # Mark the contact as unsubscribed
-        @contact = @email_delivery.contact
-        @contact.update(opted_out: true, opted_out_at: Time.current)
+    # Find the email delivery using secure token (not ID!)
+    @email_delivery = EmailDelivery.find_by(unsubscribe_token: token)
 
-        # Message to display
-        @message = "You have been successfully unsubscribed. You will no longer receive emails from us."
+    if @email_delivery&.contact
+      # Mark the contact as unsubscribed
+      @contact = @email_delivery.contact
+
+      # Only unsubscribe if not already opted out
+      if @contact.opted_out?
+        @message = "You are already unsubscribed from our emails."
       else
-        # Invalid token
-        @message = "Invalid unsubscribe link. Please contact us if you wish to unsubscribe."
+        @contact.update(opted_out: true, opted_out_at: Time.current)
+        @message = "You have been successfully unsubscribed. You will no longer receive emails from us."
+
+        Rails.logger.info("Contact #{@contact.id} unsubscribed via token #{token[0..8]}...")
       end
     else
-      # No token provided
-      @message = "No unsubscribe token provided. Please use the link in the email you received."
+      # Invalid or expired token
+      @message = "Invalid or expired unsubscribe link. Please contact us if you wish to unsubscribe."
+      Rails.logger.warn("Invalid unsubscribe token attempt: #{token[0..8]}...")
     end
 
     render :unsubscribe

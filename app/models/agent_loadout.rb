@@ -34,7 +34,8 @@ class AgentLoadout
         'get_my_ai_usage',           # Usage tracking
         'retrieve_history',           # Retrieve older conversation messages
         'get_message_count',          # Get total message count
-        'search_history'              # Search conversation history
+        'search_history',             # Search conversation history
+        'manage_pipeline'             # AI Development Pipeline management
       ],
       canvas_allowlist: [ "*" ],
       data_scopes: { read: [ "*" ], write: [ "*" ] },

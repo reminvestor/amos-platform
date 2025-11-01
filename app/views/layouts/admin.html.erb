@@ -7,143 +7,126 @@
     <%= csp_meta_tag %>
 
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <link rel="stylesheet" href="/assets/admin_dark.css" data-turbo-track="reload">
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
   </head>
 
-  <body class="bg-dark text-white">
+  <body class="admin-dark">
     <% if @current_admin %>
-      <!-- Admin Navigation -->
-      <nav class="navbar navbar-expand-lg navbar-dark bg-secondary shadow">
-        <div class="container-fluid">
-          <a class="navbar-brand" href="<%= admin_dashboard_path %>">
-            <i class="fas fa-shield-alt"></i> Admin Portal
-          </a>
-          
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNav">
-            <span class="navbar-toggler-icon"></span>
+      <%# Left Sidebar Navigation %>
+      <aside class="admin-sidebar" id="adminSidebar">
+        <%# Logo with Hamburger %>
+        <div class="sidebar-logo">
+          <div class="logo-icon">
+            <i data-lucide="box" class="icon-xl"></i>
+          </div>
+          <span class="logo-text">AMOS Admin</span>
+          <button class="hamburger-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+            <i data-lucide="menu"></i>
+          </button>
+        </div>
+
+        <%# Main Navigation %>
+        <nav>
+          <%= link_to admin_dashboard_path, class: "nav-item #{'active' if current_page?(admin_dashboard_path)}" do %>
+            <i data-lucide="layout-dashboard"></i>
+            <span>Dashboard</span>
+          <% end %>
+
+          <%= link_to admin_services_path, class: "nav-item #{'active' if current_page?(admin_services_path)}" do %>
+            <i data-lucide="activity"></i>
+            <span>Services Health</span>
+          <% end %>
+
+          <%= link_to admin_users_path, class: "nav-item #{'active' if controller_name == 'users'}" do %>
+            <i data-lucide="users"></i>
+            <span>Users</span>
+          <% end %>
+
+          <%= link_to admin_integrations_path, class: "nav-item #{'active' if controller_name == 'integrations'}" do %>
+            <i data-lucide="plug"></i>
+            <span>Integrations</span>
+          <% end %>
+
+          <%= link_to admin_connections_path, class: "nav-item #{'active' if controller_name == 'connections'}" do %>
+            <i data-lucide="link"></i>
+            <span>Connections</span>
+          <% end %>
+
+          <%= link_to admin_pipeline_connections_path, class: "nav-item #{'active' if request.path.start_with?('/admin/pipeline')}" do %>
+            <i data-lucide="git-branch"></i>
+            <span>AI Pipeline</span>
+          <% end %>
+
+          <%= link_to admin_observability_ai_usage_path, class: "nav-item #{'active' if request.path.start_with?('/admin/observability')}" do %>
+            <i data-lucide="bar-chart-3"></i>
+            <span>Observability</span>
+          <% end %>
+        </nav>
+
+        <%# Bottom Actions %>
+        <div class="sidebar-bottom">
+          <button data-theme-toggle class="nav-item w-100 text-start border-0 bg-transparent" aria-label="Toggle light/dark theme">
+            <i data-theme-icon data-lucide="moon" aria-hidden="true"></i>
+            <span>Theme</span>
           </button>
 
-          <div class="collapse navbar-collapse" id="adminNav">
-            <ul class="navbar-nav me-auto">
-              <li class="nav-item">
-                <%= link_to admin_dashboard_path, class: "nav-link #{'active' if current_page?(admin_dashboard_path)}" do %>
-                  <i class="fas fa-tachometer-alt"></i> Dashboard
-                <% end %>
-              </li>
+          <%= link_to chat_mode_path, class: "nav-item" do %>
+            <i data-lucide="home"></i>
+            <span>Return to App</span>
+          <% end %>
 
-              <li class="nav-item">
-                <%= link_to admin_services_path, class: "nav-link #{'active' if current_page?(admin_services_path)}" do %>
-                  <i class="fas fa-heartbeat"></i> Services Health
-                <% end %>
-              </li>
-
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle <%= 'active' if controller_path.start_with?('admin/affiliates') || controller_path.start_with?('admin/commissions') || controller_path.start_with?('admin/payouts') %>" href="#" data-bs-toggle="dropdown">
-                  <i class="fas fa-users-cog"></i> Affiliates
-                </a>
-                <ul class="dropdown-menu dropdown-menu-dark">
-                  <li><%= link_to "Affiliates", admin_affiliates_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Commissions", admin_commissions_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Payouts", admin_payouts_path, class: "dropdown-item" %></li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li><%= link_to "Analytics", admin_analytics_affiliates_path, class: "dropdown-item" %></li>
-                </ul>
-              </li>
-
-              <li class="nav-item">
-                <%= link_to admin_integrations_path, class: "nav-link #{'active' if controller_name == 'integrations'}" do %>
-                  <i class="fas fa-plug"></i> Integrations
-                <% end %>
-              </li>
-
-              <li class="nav-item">
-                <%= link_to admin_connections_path, class: "nav-link #{'active' if controller_name == 'connections'}" do %>
-                  <i class="fas fa-link"></i> Connections
-                <% end %>
-              </li>
-
-              <li class="nav-item">
-                <%= link_to admin_users_path, class: "nav-link #{'active' if controller_name == 'users'}" do %>
-                  <i class="fas fa-users"></i> Users
-                <% end %>
-              </li>
-
-              <li class="nav-item">
-                <%= link_to "/agents/monitoring", class: "nav-link #{'active' if request.path.start_with?('/agents')}" do %>
-                  <i class="fas fa-robot"></i> Agent Monitoring
-                <% end %>
-              </li>
-
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle #{'active' if controller_name == 'observability'}" href="#" data-bs-toggle="dropdown">
-                  <i class="fas fa-chart-line"></i> Observability
-                </a>
-                <ul class="dropdown-menu dropdown-menu-dark">
-                  <li><%= link_to "AI Usage", admin_observability_ai_usage_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Workflows", admin_observability_workflows_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Errors", admin_observability_errors_path, class: "dropdown-item" %></li>
-                  <li><%= link_to "Performance", admin_observability_performance_path, class: "dropdown-item" %></li>
-                </ul>
-              </li>
-
-              <li class="nav-item">
-                <%= link_to admin_system_settings_path, class: "nav-link #{'active' if controller_name == 'system_settings'}" do %>
-                  <i class="fas fa-key"></i> System Settings
-                <% end %>
-              </li>
-            </ul>
-
-            <ul class="navbar-nav">
-              <li class="nav-item">
-                <%= link_to chat_mode_path, class: "nav-link" do %>
-                  <i class="fas fa-home me-1"></i> Return to App
-                <% end %>
-              </li>
-              
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                  <i class="fas fa-user-circle"></i> <%= @current_admin.full_name %>
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
-                  <li><h6 class="dropdown-header"><%= @current_admin.role.humanize %></h6></li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li>
-                    <%= button_to "Sign Out", admin_destroy_session_path, 
-                        method: :delete, 
-                        class: "dropdown-item",
-                        form: { data: { turbo: false } } %>
-                  </li>
-                </ul>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </nav>
-
-      <!-- Flash Messages -->
-      <% if flash.any? %>
-        <div class="container-fluid mt-3">
-          <% flash.each do |type, message| %>
-            <div class="alert alert-<%= type == 'notice' ? 'success' : 'danger' %> alert-dismissible fade show" role="alert">
-              <%= message %>
-              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
+          <%= button_to admin_destroy_session_path, method: :delete, class: "nav-item", form: { data: { turbo: false } } do %>
+            <i data-lucide="log-out"></i>
+            <span>Sign Out</span>
           <% end %>
         </div>
-      <% end %>
+      </aside>
 
-      <!-- Main Content -->
-      <main class="py-4">
-        <%= yield %>
-      </main>
+      <%# Main Content Area %>
+      <%= yield %>
 
-      <!-- Footer -->
-      <footer class="text-center text-muted py-4 mt-5">
-        <small>AMOS Labs Admin Portal &copy; <%= Date.current.year %></small>
-      </footer>
     <% else %>
       <!-- Login page content -->
       <%= yield %>
     <% end %>
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+        initSidebarToggle();
+      });
+
+      document.addEventListener('turbo:load', () => {
+        lucide.createIcons();
+        initSidebarToggle();
+      });
+
+      function initSidebarToggle() {
+        const sidebar = document.getElementById('adminSidebar');
+        const toggle = document.getElementById('sidebarToggle');
+
+        if (!sidebar || !toggle) return;
+
+        // Check saved state
+        const isCollapsed = localStorage.getItem('adminSidebarCollapsed') === 'true';
+        if (isCollapsed) {
+          sidebar.classList.add('collapsed');
+        }
+
+        // Toggle on click
+        toggle.addEventListener('click', () => {
+          sidebar.classList.toggle('collapsed');
+          localStorage.setItem('adminSidebarCollapsed', sidebar.classList.contains('collapsed'));
+
+          // Re-initialize icons after DOM changes
+          setTimeout(() => lucide.createIcons(), 100);
+        });
+      }
+    </script>
   </body>
 </html>

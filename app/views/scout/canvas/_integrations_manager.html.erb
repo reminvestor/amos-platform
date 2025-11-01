@@ -1,7 +1,7 @@
 <div class="canvas-container bg-dark text-white p-4">
   <div class="canvas-header mb-4">
     <h3 class="text-white mb-2">
-      <i class="fas fa-plug"></i> Integration Connections
+      <i data-lucide="plug" aria-hidden="true"></i> Integration Connections
     </h3>
     <p class="text-muted">Manage your external application connections</p>
   </div>
@@ -19,9 +19,9 @@
                   <% if connection[:integration][:icon_url].present? %>
                     <img src="<%= connection[:integration][:icon_url] %>" 
                          alt="<%= connection[:integration][:name] %>" 
-                         class="rounded me-2" style="width: 32px; height: 32px;">
+                         class="rounded me-2" class="icon-2x">
                   <% else %>
-                    <i class="fas fa-cube fa-2x text-muted me-2"></i>
+                    <i data-lucide="box" class="icon-2x text-muted me-2" aria-hidden="true"></i>
                   <% end %>
                   <div>
                     <h6 class="mb-0 text-dark"><%= connection[:integration][:name] %></h6>
@@ -46,17 +46,20 @@
                 </small>
                 
                 <div class="mt-2">
-                  <button class="btn btn-sm btn-outline-primary" 
-                          onclick="testConnection(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')">
-                    <i class="fas fa-check"></i> Test
+                  <button class="btn btn-sm btn-outline-primary"
+                          onclick="testConnection(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
+                          aria-label="Test <%= connection[:integration][:name] %> connection">
+                    <i data-lucide="check" aria-hidden="true"></i> Test
                   </button>
                   <button class="btn btn-sm btn-outline-secondary"
-                          onclick="loadOperationsCanvas(<%= connection[:id] %>, '<%= connection[:integration][:name] %>', '<%= connection[:name] %>')">
-                    <i class="fas fa-cogs"></i> Operations
+                          onclick="loadOperationsCanvas(<%= connection[:id] %>, '<%= connection[:integration][:name] %>', '<%= connection[:name] %>')"
+                          aria-label="View <%= connection[:integration][:name] %> operations">
+                    <i data-lucide="settings" aria-hidden="true"></i> Operations
                   </button>
                   <button class="btn btn-sm btn-outline-danger"
-                          onclick="disconnectIntegration(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')">
-                    <i class="bi bi-link-45deg"></i> Disconnect
+                          onclick="disconnectIntegration(<%= connection[:id] %>, '<%= connection[:integration][:name] %>')"
+                          aria-label="Disconnect <%= connection[:integration][:name] %>">
+                    <i data-lucide="unplug" aria-hidden="true"></i> Disconnect
                   </button>
                 </div>
               </div>
@@ -75,7 +78,7 @@
         <% canvas_data[:integrations].group_by { |i| i[:category] }.each do |category, integrations| %>
           <div class="col-12 mb-3">
             <h6 class="text-warning mb-2">
-              <i class="fas fa-folder"></i> <%= category&.humanize || 'Other' %>
+              <i data-lucide="folder" aria-hidden="true"></i> <%= category&.humanize || 'Other' %>
             </h6>
             <div class="row">
               <% integrations.each do |integration| %>
@@ -88,13 +91,13 @@
                                alt="<%= integration[:name] %>" 
                                class="rounded me-2" style="width: 24px; height: 24px;">
                         <% else %>
-                          <i class="fas fa-puzzle-piece text-muted me-2"></i>
+                          <i data-lucide="puzzle" class="text-muted me-2" aria-hidden="true"></i>
                         <% end %>
                         <div class="flex-grow-1">
                           <h6 class="mb-0 text-dark">
                             <%= integration[:name] %>
                             <% if integration[:is_verified] %>
-                              <i class="fas fa-check-circle text-success small" title="Verified"></i>
+                              <i data-lucide="check-circle" class="text-success small" aria-hidden="true" title="Verified"></i>
                             <% end %>
                           </h6>
                           <small class="text-muted"><%= integration[:auth_type]&.humanize %></small>
@@ -114,8 +117,9 @@
                           <span class="badge bg-success">Connected</span>
                         <% else %>
                           <button class="btn btn-sm btn-primary"
-                                  onclick="connectIntegration('<%= integration[:slug] %>', '<%= integration[:name] %>', '<%= integration[:auth_type] %>')">
-                            <i class="fas fa-link"></i> Connect
+                                  onclick="connectIntegration('<%= integration[:slug] %>', '<%= integration[:name] %>', '<%= integration[:auth_type] %>')"
+                                  aria-label="Connect <%= integration[:name] %> integration">
+                            <i data-lucide="link" aria-hidden="true"></i> Connect
                           </button>
                         <% end %>
                       </div>
@@ -129,7 +133,7 @@
       </div>
     <% else %>
       <div class="alert alert-info">
-        <i class="fas fa-info-circle"></i> No integrations available. Contact your administrator to add integrations.
+        <i data-lucide="info" aria-hidden="true"></i> No integrations available. Contact your administrator to add integrations.
       </div>
     <% end %>
   </div>
@@ -137,18 +141,21 @@
   <!-- Quick Actions -->
   <div class="mt-4 p-3 bg-secondary rounded">
     <h6 class="text-white mb-2">Quick Actions</h6>
-    <div class="btn-group" role="group">
+    <div class="btn-group" role="group" aria-label="Quick actions">
       <button class="btn btn-sm btn-outline-primary"
-              onclick="sendMessageToAI('Test all my connections')">
-        <i class="fas fa-check-double"></i> Test All
+              onclick="sendMessageToAI('Test all my connections')"
+              aria-label="Test all connections">
+        <i data-lucide="check-check" aria-hidden="true"></i> Test All
       </button>
       <button class="btn btn-sm btn-outline-info"
-              onclick="sendMessageToAI('Show me integration documentation')">
-        <i class="fas fa-book"></i> Documentation
+              onclick="sendMessageToAI('Show me integration documentation')"
+              aria-label="View integration documentation">
+        <i data-lucide="book-open" aria-hidden="true"></i> Documentation
       </button>
       <button class="btn btn-sm btn-outline-warning"
-              onclick="sendMessageToAI('Help me choose an integration')">
-        <i class="fas fa-question-circle"></i> Get Help
+              onclick="sendMessageToAI('Help me choose an integration')"
+              aria-label="Get help choosing an integration">
+        <i data-lucide="help-circle" aria-hidden="true"></i> Get Help
       </button>
     </div>
   </div>
@@ -314,11 +321,16 @@ function showNotification(type, message) {
   notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
   notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
   notification.innerHTML = `
-    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+    <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" aria-hidden="true"></i>
     ${message}
   `;
-  
+
   document.body.appendChild(notification);
+
+  // Initialize Lucide icon
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
   
   // Remove after 5 seconds
   setTimeout(() => {

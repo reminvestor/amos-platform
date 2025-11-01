@@ -2,18 +2,18 @@
   <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
     <div>
       <h4 class="mb-1">
-        <i class="fas fa-user-plus text-primary me-2"></i>
+        <i data-lucide="user-plus" class="text-primary me-2" aria-hidden="true"></i>
         Add New Contact
       </h4>
       <p class="text-muted mb-0">Create a new contact for your marketing campaigns</p>
     </div>
     <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="scoutBackToContacts()">
-        <i class="fas fa-arrow-left me-1"></i>
+      <button class="btn btn-outline-secondary" onclick="scoutBackToContacts()" aria-label="Back to contacts">
+        <i data-lucide="arrow-left" class="me-1" aria-hidden="true"></i>
         Back to Contacts
       </button>
-      <button class="btn btn-outline-primary" onclick="scoutImportContacts()">
-        <i class="fas fa-upload me-1"></i>
+      <button class="btn btn-outline-primary" onclick="scoutImportContacts()" aria-label="Import multiple contacts">
+        <i data-lucide="upload" class="me-1" aria-hidden="true"></i>
         Import Multiple
       </button>
     </div>
@@ -25,7 +25,7 @@
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-light">
           <h6 class="mb-0">
-            <i class="fas fa-user me-2"></i>
+            <i data-lucide="user" class="me-2" aria-hidden="true"></i>
             Contact Information
           </h6>
         </div>
@@ -101,16 +101,16 @@
             </div>
             
             <div class="d-flex gap-2">
-              <button type="button" class="btn btn-primary" onclick="scoutSaveContact()">
-                <i class="fas fa-save me-1"></i>
+              <button type="button" class="btn btn-primary" onclick="scoutSaveContact()" aria-label="Save contact">
+                <i data-lucide="save" class="me-1" aria-hidden="true"></i>
                 Save Contact
               </button>
-              <button type="button" class="btn btn-success" onclick="scoutSaveAndAdd()">
-                <i class="fas fa-plus me-1"></i>
+              <button type="button" class="btn btn-success" onclick="scoutSaveAndAdd()" aria-label="Save and add another contact">
+                <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
                 Save & Add Another
               </button>
-              <button type="button" class="btn btn-outline-secondary" onclick="scoutClearForm()">
-                <i class="fas fa-eraser me-1"></i>
+              <button type="button" class="btn btn-outline-secondary" onclick="scoutClearForm()" aria-label="Clear form">
+                <i data-lucide="eraser" class="me-1" aria-hidden="true"></i>
                 Clear Form
               </button>
             </div>
@@ -125,7 +125,7 @@
       <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-light">
           <h6 class="mb-0">
-            <i class="fas fa-layer-group me-2"></i>
+            <i data-lucide="layers" class="me-2" aria-hidden="true"></i>
             Contact Groups
           </h6>
         </div>
@@ -145,16 +145,16 @@
               </div>
             <% end %>
             <hr>
-            <button class="btn btn-sm btn-outline-primary w-100" onclick="scoutCreateGroup()">
-              <i class="fas fa-plus me-1"></i>
+            <button class="btn btn-sm btn-outline-primary w-100" onclick="scoutCreateGroup()" aria-label="Create new group">
+              <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
               Create New Group
             </button>
           <% else %>
             <div class="text-center py-3">
-              <i class="fas fa-layer-group text-muted mb-2" style="font-size: 2rem;"></i>
+              <i data-lucide="layers" class="text-muted mb-2 icon-2x" aria-hidden="true"></i>
               <p class="text-muted mb-3">No contact groups yet</p>
-              <button class="btn btn-primary btn-sm" onclick="scoutCreateGroup()">
-                <i class="fas fa-plus me-1"></i>
+              <button class="btn btn-primary btn-sm" onclick="scoutCreateGroup()" aria-label="Create first group">
+                <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
                 Create First Group
               </button>
             </div>
@@ -166,26 +166,26 @@
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-light">
           <h6 class="mb-0">
-            <i class="fas fa-bolt me-2"></i>
+            <i data-lucide="zap" class="me-2" aria-hidden="true"></i>
             Quick Actions
           </h6>
         </div>
         <div class="card-body">
           <div class="d-grid gap-2">
-            <button class="btn btn-outline-secondary btn-sm" onclick="scoutValidateEmail()">
-              <i class="fas fa-check-circle me-1"></i>
+            <button class="btn btn-outline-secondary btn-sm" onclick="scoutValidateEmail()" aria-label="Validate email">
+              <i data-lucide="check-circle" class="me-1" aria-hidden="true"></i>
               Validate Email
             </button>
-            <button class="btn btn-outline-secondary btn-sm" onclick="scoutFindSocial()">
-              <i class="fas fa-search me-1"></i>
+            <button class="btn btn-outline-secondary btn-sm" onclick="scoutFindSocial()" aria-label="Find social profiles">
+              <i data-lucide="search" class="me-1" aria-hidden="true"></i>
               Find Social Profiles
             </button>
-            <button class="btn btn-outline-secondary btn-sm" onclick="scoutCheckDuplicates()">
-              <i class="fas fa-users me-1"></i>
+            <button class="btn btn-outline-secondary btn-sm" onclick="scoutCheckDuplicates()" aria-label="Check for duplicates">
+              <i data-lucide="users" class="me-1" aria-hidden="true"></i>
               Check for Duplicates
             </button>
-            <button class="btn btn-outline-secondary btn-sm" onclick="scoutPreFillData()">
-              <i class="fas fa-magic me-1"></i>
+            <button class="btn btn-outline-secondary btn-sm" onclick="scoutPreFillData()" aria-label="Auto-fill from email">
+              <i data-lucide="wand-2" class="me-1" aria-hidden="true"></i>
               Auto-fill from Email
             </button>
           </div>

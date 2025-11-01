@@ -1,5 +1,7 @@
 class DashboardController < ApplicationController
   before_action :authenticate_user!
+  before_action :set_current_admin
+  layout 'admin'
 
   def index
     @entity = current_entity
@@ -23,6 +25,11 @@ class DashboardController < ApplicationController
   end
 
   private
+
+  def set_current_admin
+    # Set @current_admin to current_user for admin layout compatibility
+    @current_admin = current_user
+  end
 
   def calculate_user_ai_usage
     # Get AI usage from task sessions and scout messages

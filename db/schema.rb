@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
+ActiveRecord::Schema[8.0].define(version: 2025_10_31_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -182,6 +182,29 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["conversation_id"], name: "index_agent_activities_on_conversation_id"
+  end
+
+  create_table "agent_executions", force: :cascade do |t|
+    t.bigint "pipeline_execution_id", null: false
+    t.string "agent_id", null: false
+    t.integer "status", default: 0, null: false
+    t.string "workspace_path"
+    t.jsonb "inputs", default: {}
+    t.jsonb "outputs", default: {}
+    t.text "logs"
+    t.text "error_message"
+    t.integer "tokens_used", default: 0
+    t.decimal "cost", precision: 10, scale: 4, default: "0.0"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_id"], name: "index_agent_executions_on_agent_id"
+    t.index ["pipeline_execution_id", "agent_id"], name: "index_agent_executions_on_pipeline_execution_id_and_agent_id"
+    t.index ["pipeline_execution_id", "status"], name: "index_agent_executions_on_pipeline_execution_id_and_status"
+    t.index ["pipeline_execution_id"], name: "index_agent_executions_on_pipeline_execution_id"
+    t.index ["started_at"], name: "index_agent_executions_on_started_at"
+    t.index ["status"], name: "index_agent_executions_on_status"
   end
 
   create_table "agent_messages", force: :cascade do |t|
@@ -586,6 +609,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
     t.string "mailgun_message_id"
     t.string "mailgun_status"
     t.text "notes"
+    t.string "unsubscribe_token"
     t.index ["campaign_id", "id"], name: "index_email_deliveries_on_campaign_id_and_id"
     t.index ["campaign_id", "status", "sent_at"], name: "index_email_deliveries_on_campaign_status_sent"
     t.index ["campaign_id", "status"], name: "index_email_deliveries_on_campaign_id_and_status"
@@ -593,6 +617,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
     t.index ["contact_id"], name: "index_email_deliveries_on_contact_id"
     t.index ["email_template_id"], name: "index_email_deliveries_on_email_template_id"
     t.index ["status"], name: "index_email_deliveries_on_status"
+    t.index ["unsubscribe_token"], name: "index_email_deliveries_on_unsubscribe_token", unique: true
   end
 
   create_table "email_sequences", force: :cascade do |t|
@@ -879,6 +904,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
     t.index ["user_id"], name: "index_landing_pages_on_user_id"
   end
 
+  create_table "mcp_connections", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "system_type", null: false
+    t.string "name", null: false
+    t.text "encrypted_config"
+    t.integer "status", default: 0, null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "last_sync_at"
+    t.datetime "last_health_check_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "system_type"], name: "index_mcp_connections_on_entity_id_and_system_type"
+    t.index ["entity_id"], name: "index_mcp_connections_on_entity_id"
+    t.index ["last_sync_at"], name: "index_mcp_connections_on_last_sync_at"
+    t.index ["status"], name: "index_mcp_connections_on_status"
+  end
+
   create_table "metric_definitions", force: :cascade do |t|
     t.string "name"
     t.string "version"
@@ -908,24 +950,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
     t.index ["custom_model_id", "entity_id", "permission_type"], name: "idx_model_perms", unique: true
     t.index ["custom_model_id"], name: "index_model_permissions_on_custom_model_id"
     t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
-  end
-
-  create_table "o_auth_configurations", force: :cascade do |t|
-    t.bigint "entity_id", null: false
-    t.bigint "integration_id", null: false
-    t.string "client_id", null: false
-    t.string "client_secret", null: false
-    t.string "redirect_uri", null: false
-    t.text "scopes"
-    t.string "authorize_url", null: false
-    t.string "token_url", null: false
-    t.text "credentials"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["client_id"], name: "index_o_auth_configurations_on_client_id"
-    t.index ["entity_id", "integration_id"], name: "index_oauth_configs_on_entity_integration", unique: true
-    t.index ["entity_id"], name: "index_o_auth_configurations_on_entity_id"
-    t.index ["integration_id"], name: "index_o_auth_configurations_on_integration_id"
   end
 
   create_table "oauth_configurations", force: :cascade do |t|
@@ -986,6 +1010,101 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
     t.index ["payout_date"], name: "index_payouts_on_payout_date"
     t.index ["processed_by_id"], name: "index_payouts_on_processed_by_id"
     t.index ["status"], name: "index_payouts_on_status"
+  end
+
+  create_table "pipeline_artifacts", force: :cascade do |t|
+    t.bigint "pipeline_execution_id", null: false
+    t.bigint "agent_execution_id"
+    t.string "artifact_type", null: false
+    t.string "file_name", null: false
+    t.text "content"
+    t.string "storage_path"
+    t.integer "file_size", default: 0
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_execution_id"], name: "index_pipeline_artifacts_on_agent_execution_id"
+    t.index ["artifact_type"], name: "index_pipeline_artifacts_on_artifact_type"
+    t.index ["pipeline_execution_id", "artifact_type"], name: "idx_on_pipeline_execution_id_artifact_type_b27a739ffc"
+    t.index ["pipeline_execution_id"], name: "index_pipeline_artifacts_on_pipeline_execution_id"
+  end
+
+  create_table "pipeline_events", force: :cascade do |t|
+    t.bigint "pipeline_execution_id", null: false
+    t.string "event_type", null: false
+    t.jsonb "payload", default: {}
+    t.string "source", null: false
+    t.boolean "processed", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_type"], name: "index_pipeline_events_on_event_type"
+    t.index ["pipeline_execution_id", "event_type"], name: "index_pipeline_events_on_pipeline_execution_id_and_event_type"
+    t.index ["pipeline_execution_id"], name: "index_pipeline_events_on_pipeline_execution_id"
+    t.index ["processed", "created_at"], name: "index_pipeline_events_on_processed_and_created_at"
+    t.index ["processed"], name: "index_pipeline_events_on_processed"
+    t.index ["source"], name: "index_pipeline_events_on_source"
+  end
+
+  create_table "pipeline_executions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "mcp_connection_id", null: false
+    t.string "ticket_id", null: false
+    t.string "ticket_system", null: false
+    t.string "ticket_url"
+    t.string "ticket_title", null: false
+    t.text "ticket_description"
+    t.integer "priority", default: 2
+    t.jsonb "ticket_metadata", default: {}
+    t.bigint "git_connection_id"
+    t.string "repository"
+    t.string "branch_name"
+    t.string "pr_id"
+    t.string "pr_url"
+    t.integer "status", default: 0, null: false
+    t.jsonb "state_history", default: []
+    t.datetime "state_changed_at"
+    t.integer "total_tokens_used", default: 0
+    t.decimal "total_cost", precision: 10, scale: 4, default: "0.0"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "slack_thread_ts"
+    t.index ["completed_at"], name: "index_pipeline_executions_on_completed_at"
+    t.index ["entity_id", "status"], name: "index_pipeline_executions_on_entity_id_and_status"
+    t.index ["entity_id", "ticket_id", "mcp_connection_id"], name: "index_pipeline_executions_on_unique_ticket", unique: true
+    t.index ["entity_id", "ticket_system"], name: "index_pipeline_executions_on_entity_id_and_ticket_system"
+    t.index ["entity_id"], name: "index_pipeline_executions_on_entity_id"
+    t.index ["git_connection_id"], name: "index_pipeline_executions_on_git_connection_id"
+    t.index ["mcp_connection_id"], name: "index_pipeline_executions_on_mcp_connection_id"
+    t.index ["priority"], name: "index_pipeline_executions_on_priority"
+    t.index ["slack_thread_ts"], name: "index_pipeline_executions_on_slack_thread_ts"
+    t.index ["started_at"], name: "index_pipeline_executions_on_started_at"
+    t.index ["status"], name: "index_pipeline_executions_on_status"
+    t.index ["ticket_system"], name: "index_pipeline_executions_on_ticket_system"
+  end
+
+  create_table "pipeline_interactions", force: :cascade do |t|
+    t.bigint "pipeline_execution_id", null: false
+    t.bigint "user_id"
+    t.string "interaction_type", null: false
+    t.string "channel", null: false
+    t.string "external_thread_id"
+    t.text "question", null: false
+    t.text "response"
+    t.integer "status", default: 0, null: false
+    t.datetime "asked_at", null: false
+    t.datetime "answered_at"
+    t.datetime "timeout_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["channel"], name: "index_pipeline_interactions_on_channel"
+    t.index ["external_thread_id"], name: "index_pipeline_interactions_on_external_thread_id"
+    t.index ["interaction_type"], name: "index_pipeline_interactions_on_interaction_type"
+    t.index ["pipeline_execution_id", "status"], name: "idx_on_pipeline_execution_id_status_6bd028d347"
+    t.index ["pipeline_execution_id"], name: "index_pipeline_interactions_on_pipeline_execution_id"
+    t.index ["status"], name: "index_pipeline_interactions_on_status"
+    t.index ["user_id"], name: "index_pipeline_interactions_on_user_id"
   end
 
   create_table "plugin_permissions", force: :cascade do |t|
@@ -1836,6 +1955,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
   add_foreign_key "affiliates", "admin_users", column: "approved_by_id"
   add_foreign_key "affiliates", "users"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
+  add_foreign_key "agent_executions", "pipeline_executions"
   add_foreign_key "agent_messages", "task_sessions"
   add_foreign_key "ai_usage_logs", "entities"
   add_foreign_key "ai_usage_logs", "scout_messages"
@@ -1910,15 +2030,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_29_000328) do
   add_foreign_key "landing_pages", "campaigns"
   add_foreign_key "landing_pages", "entities"
   add_foreign_key "landing_pages", "users"
+  add_foreign_key "mcp_connections", "entities"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
-  add_foreign_key "o_auth_configurations", "entities"
-  add_foreign_key "o_auth_configurations", "integrations"
   add_foreign_key "oauth_configurations", "integrations"
   add_foreign_key "observability_events", "entities"
   add_foreign_key "observability_events", "users"
   add_foreign_key "payouts", "admin_users", column: "processed_by_id"
   add_foreign_key "payouts", "affiliates"
+  add_foreign_key "pipeline_artifacts", "agent_executions"
+  add_foreign_key "pipeline_artifacts", "pipeline_executions"
+  add_foreign_key "pipeline_events", "pipeline_executions"
+  add_foreign_key "pipeline_executions", "entities"
+  add_foreign_key "pipeline_executions", "mcp_connections"
+  add_foreign_key "pipeline_executions", "mcp_connections", column: "git_connection_id"
+  add_foreign_key "pipeline_interactions", "pipeline_executions"
+  add_foreign_key "pipeline_interactions", "users"
   add_foreign_key "plugin_permissions", "custom_plugins"
   add_foreign_key "plugin_permissions", "entities"
   add_foreign_key "plugin_permissions", "users"

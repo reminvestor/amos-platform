@@ -3,11 +3,15 @@ class EmailDelivery < ApplicationRecord
   belongs_to :contact
   belongs_to :email_template, optional: true
 
+  # Generate secure unsubscribe token before creation
+  before_create :generate_unsubscribe_token
+
   # Status options
   STATUSES = %w[pending sent delivered opened clicked failed bounced].freeze
 
   # Validations
   validates :status, inclusion: { in: STATUSES }
+  validates :unsubscribe_token, uniqueness: true, allow_nil: true
 
   # Scopes
   scope :pending, -> { where(status: "pending") }
@@ -44,5 +48,11 @@ class EmailDelivery < ApplicationRecord
 
   def mark_as_bounced(reason = nil)
     update(status: "bounced", error_message: reason)
+  end
+
+  private
+
+  def generate_unsubscribe_token
+    self.unsubscribe_token ||= SecureRandom.urlsafe_base64(32)
   end
 end

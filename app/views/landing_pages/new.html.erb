@@ -1,99 +1,167 @@
-<div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 85vh;">
-  <div class="row justify-content-center w-100">
-    <div class="col-12 col-lg-6 col-xl-5">
-      
-      <%= form_with(model: @landing_page, local: true, class: "text-center") do |form| %>
-        <% if @landing_page.errors.any? %>
-          <div class="alert alert-danger mb-4">
-            <h6><%= pluralize(@landing_page.errors.count, "error") %> prohibited this landing page from being saved:</h6>
-            <ul class="mb-0 text-start">
-              <% @landing_page.errors.full_messages.each do |message| %>
-                <li><%= message %></li>
+<div class="admin-content" style="padding: 2rem;">
+  <div class="container-fluid">
+    <%# Page Header %>
+    <div class="admin-page-header" style="margin-bottom: 2rem;">
+      <div class="header-left">
+        <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+          <i data-lucide="file-text"></i>
+        </div>
+        <div class="header-text">
+          <h1>New Landing Page</h1>
+          <p>Describe your landing page and AI will create it for you</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <%= link_to landing_pages_path, class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="arrow-left"></i>
+          <span>Back</span>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="row">
+      <%# Main Form Column %>
+      <div class="col-lg-8 col-xl-9">
+        <div class="admin-card">
+          <%= form_with(model: @landing_page, local: true) do |form| %>
+            <%# Error Messages %>
+            <% if @landing_page.errors.any? %>
+              <div class="alert alert-danger" style="background-color: var(--status-error-bg); border-color: var(--status-error-border); color: var(--status-error-text); margin-bottom: 1.5rem;">
+                <h5 style="margin-bottom: 0.5rem;">
+                  <i data-lucide="alert-circle" class="icon-md"></i>
+                  <%= pluralize(@landing_page.errors.count, "error") %> prohibited this landing page from being saved:
+                </h5>
+                <ul style="margin-bottom: 0;">
+                  <% @landing_page.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <%# Description Field %>
+            <div style="margin-bottom: 1.5rem;">
+              <%= form.label :description, "Landing Page Description", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+              <%= form.text_area :description,
+                  class: "form-control",
+                  rows: 8,
+                  placeholder: "Describe your landing page in detail. What's its purpose? Who is your target audience? What action do you want visitors to take?\n\nExample: A landing page for a fitness app that helps busy professionals work out at home. The page should have a hero section with a strong headline, benefits of the app, testimonials, and a sign-up form.",
+                  autofocus: true,
+                  style: "background-color: #1E293B; border: 1px solid #334155; color: white; padding: 1rem; border-radius: 0.5rem; font-size: 1rem; line-height: 1.6; resize: vertical;" %>
+              <small style="color: #64748B; font-size: 0.875rem; display: block; margin-top: 0.5rem;">
+                Be as specific as possible. The more detail you provide, the better the AI can create your landing page.
+              </small>
+            </div>
+
+            <%# Campaign Selection (Optional) %>
+            <% if current_user.campaigns.where(entity_id: current_entity.id).any? %>
+              <div style="margin-bottom: 1.5rem;">
+                <%= form.label :campaign_id, "Link to Campaign (Optional)", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+                <%= form.collection_select :campaign_id,
+                    current_user.campaigns.where(entity_id: current_entity.id).order(created_at: :desc),
+                    :id, :name,
+                    { include_blank: "No campaign - standalone page", prompt: "Select a campaign" },
+                    { class: "form-select",
+                      style: "background-color: #1E293B; border: 1px solid #334155; color: white; padding: 0.75rem; border-radius: 0.5rem;" } %>
+                <small style="color: #64748B; font-size: 0.875rem; display: block; margin-top: 0.5rem;">
+                  <i data-lucide="info" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i>
+                  Linking to a campaign helps AI understand your marketing context
+                </small>
+              </div>
+            <% end %>
+
+            <%# Hidden fields for AI generation %>
+            <%= form.hidden_field :title, value: "" %>
+            <%= form.hidden_field :slug, value: "" %>
+
+            <%# Action Buttons %>
+            <div style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid #334155;">
+              <button type="submit" name="action" value="generate_with_ai" class="admin-btn admin-btn-primary">
+                <i data-lucide="wand-2"></i>
+                <span>Generate with AI</span>
+              </button>
+              <%= link_to landing_pages_path, class: "admin-btn admin-btn-outline" do %>
+                <i data-lucide="x"></i>
+                <span>Cancel</span>
               <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Tips Sidebar %>
+      <div class="col-lg-4 col-xl-3">
+        <div class="admin-card">
+          <h5 style="color: white; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="lightbulb" style="width: 1.25rem; height: 1.25rem; color: #FACC15;"></i>
+            <span>Tips</span>
+          </h5>
+
+          <div style="margin-bottom: 1.5rem;">
+            <p style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Be Specific:</p>
+            <p style="color: #94A3B8; font-size: 0.875rem; line-height: 1.6;">
+              Include details about your target audience, desired actions, and brand tone for better results.
+            </p>
+          </div>
+
+          <div style="margin-bottom: 1.5rem;">
+            <p style="color: white; font-weight: 600; margin-bottom: 0.5rem;">What to Include:</p>
+            <ul style="color: #94A3B8; font-size: 0.875rem; line-height: 1.8; padding-left: 1.25rem;">
+              <li>Page purpose and goal</li>
+              <li>Target audience</li>
+              <li>Key benefits or features</li>
+              <li>Call-to-action type</li>
+              <li>Brand personality/tone</li>
             </ul>
           </div>
-        <% end %>
-        
-        <!-- Main Description Box -->
-        <div class="mb-4">
-          <%= form.text_area :description, 
-              class: "form-control form-control-lg", 
-              rows: 4, 
-              style: "font-size: 1.2rem; border-radius: 25px; padding: 20px 25px; border: 2px solid #e9ecef; box-shadow: 0 4px 6px rgba(0,0,0,0.1);",
-              placeholder: "Describe your landing page...",
-              autofocus: true %>
+
+          <div style="padding: 1rem; background-color: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.2); border-radius: 0.5rem;">
+            <div style="display: flex; align-items-start; gap: 0.75rem;">
+              <i data-lucide="sparkles" style="width: 1.25rem; height: 1.25rem; color: #A78BFA; flex-shrink: 0; margin-top: 0.125rem;"></i>
+              <p style="color: #C4B5FD; font-size: 0.875rem; line-height: 1.6; margin: 0;">
+                AI will generate a complete landing page with sections, copy, and layout. You can edit everything after creation.
+              </p>
+            </div>
+          </div>
         </div>
-        
-        <!-- Action Button -->
-        <div class="mb-4">
-          <button type="submit" name="action" value="generate_with_ai" class="btn btn-primary btn-lg px-5 py-3" style="border-radius: 25px; font-size: 1.1rem; font-weight: 600;">
-            Create Landing Page
-          </button>
-        </div>
-        
-        <!-- Campaign Selection (Optional) -->
-        <% if current_user.campaigns.where(entity_id: current_entity.id).any? %>
-          <div class="mb-3">
-            <details class="text-start">
-              <summary class="btn btn-link btn-sm text-muted p-0">
-                <i class="fas fa-link me-1"></i>
-                Link to campaign
-              </summary>
-              <div class="mt-2">
-                <%= form.collection_select :campaign_id, 
-                    current_user.campaigns.where(entity_id: current_entity.id).order(created_at: :desc), 
-                    :id, :name, 
-                    { include_blank: "Select a campaign" }, 
-                    { class: "form-select form-select-sm" } %>
-              </div>
-            </details>
+
+        <%# Recent Landing Pages %>
+        <% recent_pages = current_entity.landing_pages.order(created_at: :desc).limit(3) %>
+        <% if recent_pages.any? %>
+          <div class="admin-card" style="margin-top: 1.5rem;">
+            <h5 style="color: white; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="clock" style="width: 1.25rem; height: 1.25rem; color: #22D3EE;"></i>
+              <span>Recent Pages</span>
+            </h5>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <% recent_pages.each do |page| %>
+                <%= link_to landing_page_path(page), style: "text-decoration: none; display: block; padding: 0.75rem; background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 0.5rem; transition: all 0.2s;" do %>
+                  <div style="color: white; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">
+                    <%= page.title.present? ? truncate(page.title, length: 40) : "Untitled Page" %>
+                  </div>
+                  <div style="color: #64748B; font-size: 0.75rem;">
+                    <%= time_ago_in_words(page.created_at) %> ago
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
           </div>
         <% end %>
-        
-        <!-- Cancel Link -->
-        <div>
-          <%= link_to "Cancel", landing_pages_path, class: "text-muted small" %>
-        </div>
-        
-        <!-- Hidden fields for AI generation -->
-        <%= form.hidden_field :title, value: "" %>
-        <%= form.hidden_field :slug, value: "" %>
-      <% end %>
-      
+      </div>
     </div>
   </div>
 </div>
 
-<style>
-  /* Ultra-minimal Google-style */
-  body {
-    background: #fff;
-  }
-  
-  .form-control-lg:focus {
-    border-color: #4285f4 !important;
-    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.2) !important;
-    outline: none;
-  }
-  
-  .btn-primary {
-    background: #4285f4;
-    border: none;
-    transition: all 0.2s ease;
-  }
-  
-  .btn-primary:hover {
-    background: #3367d6;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
-  }
-  
-  details summary {
-    cursor: pointer;
-    list-style: none;
-  }
-  
-  details summary::-webkit-details-marker {
-    display: none;
-  }
-</style> 
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

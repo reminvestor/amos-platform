@@ -1,4 +1,84 @@
-<div class="container mt-4">
-  <h1>New Social Media Post</h1>
-  <%= render 'form', social_post: @social_post %>
-</div> 
+<div class="admin-content" style="padding: 2rem;">
+  <div class="container-fluid">
+    <%# Page Header %>
+    <div class="admin-page-header" style="margin-bottom: 2rem;">
+      <div class="header-left">
+        <div class="header-icon" style="background: linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%);">
+          <i data-lucide="share-2"></i>
+        </div>
+        <div class="header-text">
+          <h1>New Social Media Post</h1>
+          <p>Create and schedule content for your social media channels</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <%= link_to social_posts_path, class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="arrow-left"></i>
+          <span>Back</span>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="row">
+      <%# Main Form Column %>
+      <div class="col-lg-8 col-xl-9">
+        <div class="admin-card">
+          <%= render 'form', social_post: @social_post %>
+        </div>
+      </div>
+
+      <%# Tips Sidebar %>
+      <div class="col-lg-4 col-xl-3">
+        <div class="admin-card">
+          <h5 style="color: white; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="lightbulb" style="width: 1.25rem; height: 1.25rem; color: #FACC15;"></i>
+            <span>Tips</span>
+          </h5>
+
+          <div style="margin-bottom: 1.5rem;">
+            <p style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Platform Guidelines:</p>
+            <ul style="color: #94A3B8; font-size: 0.875rem; line-height: 1.8; padding-left: 1.25rem;">
+              <li><strong style="color: white;">Twitter:</strong> 280 characters max</li>
+              <li><strong style="color: white;">Facebook:</strong> 63,206 characters max</li>
+              <li><strong style="color: white;">Instagram:</strong> Image required, 2,200 char max</li>
+              <li><strong style="color: white;">LinkedIn:</strong> 3,000 characters max</li>
+            </ul>
+          </div>
+
+          <div style="margin-bottom: 1.5rem;">
+            <p style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Best Practices:</p>
+            <ul style="color: #94A3B8; font-size: 0.875rem; line-height: 1.8; padding-left: 1.25rem;">
+              <li>Use AI to generate engaging content</li>
+              <li>Include relevant hashtags</li>
+              <li>Add emojis for personality</li>
+              <li>Schedule during peak times</li>
+            </ul>
+          </div>
+
+          <div style="padding: 1rem; background-color: rgba(167, 139, 250, 0.1); border: 1px solid rgba(167, 139, 250, 0.2); border-radius: 0.5rem;">
+            <div style="display: flex; align-items-start; gap: 0.75rem;">
+              <i data-lucide="bot" style="width: 1.25rem; height: 1.25rem; color: #A78BFA; flex-shrink: 0; margin-top: 0.125rem;"></i>
+              <p style="color: #C4B5FD; font-size: 0.875rem; line-height: 1.6; margin: 0;">
+                Use AI to generate platform-optimized content based on your business profile and goals.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
