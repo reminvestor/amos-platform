@@ -120,21 +120,8 @@ module Aws
       # Trigger ingestion
       start_ingestion_job(entity.bedrock_knowledge_base_id, entity)
 
-      # Track in database
-      RagDocument.create!(
-        entity: entity,
-        file_name: File.basename(file_path),
-        file_path: s3_key,
-        file_size_bytes: File.size(file_path),
-        content_type: Marcel::MimeType.for(file_path),
-        metadata: metadata.merge(
-          bedrock_kb_id: entity.bedrock_knowledge_base_id,
-          s3_bucket: bucket_name(entity),
-          s3_key: s3_key
-        ),
-        processing_status: 'ingesting',
-        provider: 'bedrock'
-      )
+      # Note: Bedrock KB manages document tracking internally via S3 sync
+      # We track ingestion jobs at the entity level via bedrock_last_ingestion_job_id
 
       Rails.logger.info "Added document #{s3_key} to knowledge base for entity #{entity.id}"
 
@@ -312,8 +299,7 @@ module Aws
 
       # Store job ID for tracking
       entity.update!(
-        bedrock_last_ingestion_job_id: response.ingestion_job.ingestion_job_id,
-        bedrock_last_ingestion_at: Time.current
+        bedrock_last_ingestion_job_id: response.ingestion_job.ingestion_job_id
       )
 
       response.ingestion_job
