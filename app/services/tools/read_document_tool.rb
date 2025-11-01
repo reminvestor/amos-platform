@@ -243,8 +243,9 @@ module Tools
         Rails.logger.info "🔍 Checking for PDF conversion tools..."
         
         # Try using Ghostscript directly first
-        gs_version = `gs --version 2>&1`.strip
-        if gs_version.match?(/\d+\.\d+/)
+        gs_version, status = Open3.capture2e('gs', '--version')
+        gs_version = gs_version.strip
+        if status.success? && gs_version.match?(/\d+\.\d+/)
           Rails.logger.info "✅ Using Ghostscript #{gs_version} for PDF conversion"
           
           # Convert PDF to PNG using Ghostscript directly

@@ -334,8 +334,8 @@
         <i data-lucide="box" class="text-primary"></i>
         <span class="brand-text">Amos</span>
       </div>
-      <button class="nav-toggle" data-action="click->scout#toggleSideNav" data-scout-target="navToggle">
-        <i data-lucide="menu"></i>
+      <button class="nav-toggle" data-action="click->scout#toggleSideNav" data-scout-target="navToggle" aria-label="Toggle navigation menu">
+        <i data-lucide="menu" aria-hidden="true"></i>
       </button>
     </div>
 
@@ -406,20 +406,20 @@
           <div class="chat-header-actions">
             <div class="header-divider"></div>
 
-            <button class="header-icon-btn" id="new-conversation-btn" title="New conversation">
-              <i data-lucide="rotate-ccw"></i>
+            <button class="header-icon-btn" id="new-conversation-btn" title="New conversation" aria-label="Start new conversation">
+              <i data-lucide="rotate-ccw" aria-hidden="true"></i>
             </button>
 
-            <button class="header-icon-btn" id="conversation-selector" title="Conversation history">
-              <i data-lucide="history"></i>
+            <button class="header-icon-btn" id="conversation-selector" title="Conversation history" aria-label="View conversation history">
+              <i data-lucide="history" aria-hidden="true"></i>
             </button>
 
-            <button class="header-icon-btn" id="tts-toggle-btn" title="Toggle voice output">
-              <i data-lucide="volume-2"></i>
+            <button class="header-icon-btn" id="tts-toggle-btn" title="Toggle voice output" aria-label="Toggle voice output">
+              <i data-lucide="volume-2" aria-hidden="true"></i>
             </button>
 
-            <button class="header-icon-btn" title="More options">
-              <i data-lucide="more-horizontal"></i>
+            <button class="header-icon-btn" title="More options" aria-label="More options">
+              <i data-lucide="more-horizontal" aria-hidden="true"></i>
             </button>
 
             <!-- Conversation dropdown (hidden by default) -->
@@ -450,7 +450,7 @@
           <!-- Model Selector with Brain Icon -->
           <div class="model-selector-container">
             <div class="model-selector-trigger">
-              <button id="model-selector-btn" class="model-brain-btn" title="Model Selection">
+              <button id="model-selector-btn" class="model-brain-btn" title="Model Selection" aria-label="Select AI model">
                 <div class="brain-icon-wrapper">
                   <i data-lucide="brain" class="brain-outline"></i>
                   <div class="brain-fill">
@@ -530,8 +530,8 @@
               style="display: none;"
               data-scout-target="fileInput">
 
-            <button type="button" class="attach-btn" id="attach-button" title="Attach files">
-              <i data-lucide="paperclip"></i>
+            <button type="button" class="attach-btn" id="attach-button" title="Attach files" aria-label="Attach files">
+              <i data-lucide="paperclip" aria-hidden="true"></i>
             </button>
 
             <textarea
@@ -541,18 +541,20 @@
               data-scout-target="chatInput"
               autocomplete="off"
               rows="1"
+              aria-label="Message input"
             ></textarea>
 
             <button type="button"
                     class="voice-btn"
                     data-action="click->voice-assistant#toggleVoice"
                     data-voice-assistant-target="button"
-                    title="Voice input">
-              <i data-lucide="mic"></i>
+                    title="Voice input"
+                    aria-label="Start voice input">
+              <i data-lucide="mic" aria-hidden="true"></i>
             </button>
 
-            <button type="submit" class="send-btn" id="send-button">
-              <i data-lucide="send"></i>
+            <button type="submit" class="send-btn" id="send-button" aria-label="Send message">
+              <i data-lucide="send" aria-hidden="true"></i>
             </button>
           </div>
         </form>
@@ -572,18 +574,18 @@
           <h3 data-scout-target="templateTitle">Template</h3>
           <div class="layout-controls">
             <div class="layout-presets">
-              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="15" title="Compact Scout">
-                <i data-lucide="minimize-2"></i>
+              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="15" title="Compact Scout" aria-label="Compact layout">
+                <i data-lucide="minimize-2" aria-hidden="true"></i>
               </button>
-              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="25" title="Balanced">
-                <i data-lucide="columns"></i>
+              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="25" title="Balanced" aria-label="Balanced layout">
+                <i data-lucide="columns" aria-hidden="true"></i>
               </button>
-              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="35" title="Wide Scout">
-                <i data-lucide="maximize-2"></i>
+              <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="35" title="Wide Scout" aria-label="Wide layout">
+                <i data-lucide="maximize-2" aria-hidden="true"></i>
               </button>
             </div>
-            <button class="close-template" data-action="click->scout#closeTemplate">
-              <i data-lucide="x"></i>
+            <button class="close-template" data-action="click->scout#closeTemplate" aria-label="Close canvas">
+              <i data-lucide="x" aria-hidden="true"></i>
             </button>
           </div>
         </div>
@@ -1956,7 +1958,7 @@ document.addEventListener('turbo:load', function() {
             <div class="source-filename">${source.title || 'Web Search Result'}</div>
             <div class="source-meta">${truncatedUrl}</div>
           </div>
-          <i data-lucide="external-link" class="text-muted" style="font-size: 0.75rem; margin-left: 0.5rem;"></i>
+          <i data-lucide="external-link" class="text-muted" class="icon-xs ms-2"></i>
         </div>
       `;
     });
@@ -2100,7 +2102,7 @@ document.addEventListener('turbo:load', function() {
       <div class="tool-call-header" onclick="toggleToolCallDetails('${toolCallId}')">
         <div class="tool-call-info">
           <div class="tool-call-icon ${toolCall.status}" id="${toolCallId}-icon">
-            <i class="fas fa-clock"></i>
+            <i data-lucide="clock"></i>
         </div>
           <div>
             <div class="tool-call-name">${getToolDisplayName(toolName)}</div>
@@ -2108,7 +2110,7 @@ document.addEventListener('turbo:load', function() {
           </div>
         </div>
         <div class="tool-call-toggle" id="${toolCallId}-toggle">
-          <i class="fas fa-chevron-down"></i>
+          <i data-lucide="chevron-down"></i>
         </div>
       </div>
       <div class="tool-call-details" id="${toolCallId}-details">
@@ -2137,16 +2139,16 @@ document.addEventListener('turbo:load', function() {
       icon.className = `tool-call-icon ${status}`;
       switch(status) {
         case 'running':
-          icon.innerHTML = '<i class="fas fa-sync-alt"></i>';
+          icon.innerHTML = '<i data-lucide="loader-circle"></i>'; lucide.createIcons();
           break;
         case 'success':
-          icon.innerHTML = '<i class="fas fa-check"></i>';
+          icon.innerHTML = '<i data-lucide="check"></i>'; lucide.createIcons();
           break;
         case 'error':
-          icon.innerHTML = '<i class="fas fa-times"></i>';
+          icon.innerHTML = '<i data-lucide="x"></i>'; lucide.createIcons();
           break;
         default:
-          icon.innerHTML = '<i class="fas fa-clock"></i>';
+          icon.innerHTML = '<i data-lucide="clock"></i>';
       }
     }
     
@@ -2199,19 +2201,19 @@ document.addEventListener('turbo:load', function() {
               const messagesContainer = document.getElementById('chat-messages');
               
               // Get appropriate icon for the tool
-              let icon = 'fa-cog'; // default
+              let icon = 'settings'; // default
               if (toolName === 'load_canvas') {
-                icon = 'fa-window-maximize';
+                icon = 'maximize';
               } else if (toolName === 'get_data') {
-                icon = 'fa-database';
+                icon = 'database';
               } else if (toolName === 'create_object') {
-                icon = 'fa-plus-circle';
+                icon = 'plus-circle';
               } else if (toolName === 'get_schema') {
-                icon = 'fa-list-alt';
+                icon = 'list';
               } else if (toolName === 'generate_ai_landing_page') {
-                icon = 'fa-file-code';
+                icon = 'file-code';
               } else if (toolName === 'link_template_to_campaign') {
-                icon = 'fa-link';
+                icon = 'link';
               }
 
               // Get display name
@@ -2892,10 +2894,10 @@ document.addEventListener('turbo:load', function() {
   }
   
   function getFileIcon(fileType) {
-    if (fileType.startsWith('image/')) return 'fas fa-image';
-    if (fileType === 'application/pdf') return 'fas fa-file-pdf';
-    if (fileType.includes('word') || fileType.includes('document')) return 'fas fa-file-word';
-    return 'fas fa-file';
+    if (fileType.startsWith('image/')) return 'image';
+    if (fileType === 'application/pdf') return 'file-text';
+    if (fileType.includes('word') || fileType.includes('document')) return 'file-text';
+    return 'file';
   }
   
   function removeFile(file, fileDiv) {
@@ -3177,7 +3179,7 @@ document.addEventListener('turbo:load', function() {
             <label class="form-check-label w-100" for="shortTermRadio" style="cursor: pointer;">
               <div class="d-flex align-items-start">
                 <div class="me-3 mt-1">
-                  <i class="fas fa-clock fa-2x text-primary"></i>
+                  <i data-lucide="clock" class="icon-2x text-primary"></i>
                 </div>
                 <div>
                   <h6 class="mb-1">Just for this conversation</h6>
@@ -3194,7 +3196,7 @@ document.addEventListener('turbo:load', function() {
             <label class="form-check-label w-100" for="longTermRadio" style="cursor: pointer;">
               <div class="d-flex align-items-start">
                 <div class="me-3 mt-1">
-                  <i class="fas fa-database fa-2x text-success"></i>
+                  <i data-lucide="database" class="icon-2x text-success"></i>
                 </div>
                 <div>
                   <h6 class="mb-1">Add to my knowledge base</h6>

@@ -1,0 +1,263 @@
+<div class="admin-content">
+  <div style="padding: 2rem;">
+    <div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">New Pipeline Connection</h1>
+    <%= link_to admin_pipeline_connections_path, class: 'btn btn-secondary' do %>
+      <i data-lucide="arrow-left" class="icon-md"></i>
+      Back to Connections
+    <% end %>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body">
+          <%= form_with model: @pipeline_connection, url: admin_pipeline_connections_path, local: true do |f| %>
+            <% if @pipeline_connection.errors.any? %>
+              <div class="alert alert-danger" role="alert">
+                <h5 class="alert-heading">
+                  <i data-lucide="alert-circle" class="icon-lg"></i>
+                  <%= pluralize(@pipeline_connection.errors.count, "error") %> prohibited this connection from being saved:
+                </h5>
+                <ul class="mb-0">
+                  <% @pipeline_connection.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <div class="mb-3">
+              <%= f.label :system_type, "System Type", class: "form-label" %>
+              <%= f.select :system_type,
+                  options_for_select([
+                    ['JIRA', 'jira'],
+                    ['GitHub', 'github'],
+                    ['Azure DevOps', 'azure_devops'],
+                    ['Azure Repos', 'azure_repos']
+                  ], @pipeline_connection.system_type),
+                  { prompt: 'Select a system type' },
+                  class: 'form-select',
+                  id: 'system_type_select' %>
+              <div class="form-text">Choose the external system to connect to</div>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :name, "Connection Name", class: "form-label" %>
+              <%= f.text_field :name, class: 'form-control', placeholder: 'e.g., GitHub - Production' %>
+              <div class="form-text">A friendly name to identify this connection</div>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :status, "Status", class: "form-label" %>
+              <%= f.select :status,
+                  options_for_select([
+                    ['Active', 'active'],
+                    ['Inactive', 'inactive']
+                  ], @pipeline_connection.status || 'inactive'),
+                  {},
+                  class: 'form-select' %>
+            </div>
+
+            <hr class="my-4">
+
+            <h5 class="mb-3">Configuration</h5>
+            <p class="text-muted mb-3">Enter the credentials and settings for this connection.</p>
+
+            <!-- JIRA Config -->
+            <div id="jira_config" class="config-section d-none">
+              <div class="mb-3">
+                <label class="form-label">JIRA API URL</label>
+                <input type="text" name="mcp_connection[config][api_url]" class="form-control" placeholder="https://your-domain.atlassian.net">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">JIRA API Token</label>
+                <div class="input-group">
+                  <input type="password" name="mcp_connection[config][api_token]" class="form-control password-field" placeholder="Your JIRA API token" id="jira_token">
+                  <button class="btn btn-outline-secondary toggle-password" type="button" data-target="jira_token">
+                    <i data-lucide="eye" class="icon-md"></i>
+                  </button>
+                </div>
+                <div class="form-text">Generate at: <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">id.atlassian.com/manage-profile/security/api-tokens</a></div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" name="mcp_connection[config][email]" class="form-control" placeholder="your@email.com">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Project Key (Optional)</label>
+                <input type="text" name="mcp_connection[config][project_key]" class="form-control" placeholder="e.g., PROJ">
+              </div>
+            </div>
+
+            <!-- GitHub Config -->
+            <div id="github_config" class="config-section d-none">
+              <div class="mb-3">
+                <label class="form-label">GitHub API Token</label>
+                <div class="input-group">
+                  <input type="password" name="mcp_connection[config][token]" class="form-control password-field" placeholder="ghp_..." id="github_token">
+                  <button class="btn btn-outline-secondary toggle-password" type="button" data-target="github_token">
+                    <i data-lucide="eye" class="icon-md"></i>
+                  </button>
+                </div>
+                <div class="form-text">Generate at: <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a></div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Organization</label>
+                <input type="text" name="mcp_connection[config][organization]" class="form-control" placeholder="e.g., NuvolaNetworks">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Repository (Optional)</label>
+                <input type="text" name="mcp_connection[config][repository]" class="form-control" placeholder="e.g., agent_marketing">
+                <div class="form-text">Leave blank to access all repositories in the organization</div>
+              </div>
+            </div>
+
+            <!-- Azure DevOps Config -->
+            <div id="azure_devops_config" class="config-section d-none">
+              <div class="mb-3">
+                <label class="form-label">Azure DevOps Organization</label>
+                <input type="text" name="mcp_connection[config][organization]" class="form-control" placeholder="Your organization name">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Personal Access Token (PAT)</label>
+                <div class="input-group">
+                  <input type="password" name="mcp_connection[config][pat]" class="form-control password-field" placeholder="Your Azure DevOps PAT" id="azure_devops_pat">
+                  <button class="btn btn-outline-secondary toggle-password" type="button" data-target="azure_devops_pat">
+                    <i data-lucide="eye" class="icon-md"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Project (Optional)</label>
+                <input type="text" name="mcp_connection[config][project]" class="form-control" placeholder="Project name">
+              </div>
+            </div>
+
+            <!-- Azure Repos Config -->
+            <div id="azure_repos_config" class="config-section d-none">
+              <div class="mb-3">
+                <label class="form-label">Azure Repos Organization</label>
+                <input type="text" name="mcp_connection[config][organization]" class="form-control" placeholder="Your organization name">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Personal Access Token (PAT)</label>
+                <div class="input-group">
+                  <input type="password" name="mcp_connection[config][pat]" class="form-control password-field" placeholder="Your Azure Repos PAT" id="azure_repos_pat">
+                  <button class="btn btn-outline-secondary toggle-password" type="button" data-target="azure_repos_pat">
+                    <i data-lucide="eye" class="icon-md"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+              <%= f.submit "Create Connection", class: "btn btn-primary" %>
+              <%= link_to "Cancel", admin_pipeline_connections_path, class: "btn btn-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card bg-light text-dark">
+        <div class="card-body">
+          <h5 class="card-title">
+            <i data-lucide="help-circle" class="icon-lg"></i>
+            Help
+          </h5>
+          <p class="card-text">
+            Pipeline connections allow AMOS to integrate with external systems for automated ticket processing and code deployment.
+          </p>
+          <hr>
+          <h6>Supported Systems</h6>
+          <ul class="small">
+            <li><strong>JIRA</strong> - Ticket tracking and project management</li>
+            <li><strong>GitHub</strong> - Code repository and pull requests</li>
+            <li><strong>Azure DevOps</strong> - Boards and pipelines</li>
+            <li><strong>Azure Repos</strong> - Git repositories</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const systemTypeSelect = document.getElementById('system_type_select');
+    const configSections = document.querySelectorAll('.config-section');
+
+    function updateConfigSection() {
+      const selectedType = systemTypeSelect.value;
+
+      // Hide all config sections
+      configSections.forEach(section => {
+        section.classList.add('d-none');
+      });
+
+      // Show selected config section
+      if (selectedType) {
+        const targetSection = document.getElementById(`${selectedType}_config`);
+        if (targetSection) {
+          targetSection.classList.remove('d-none');
+        }
+      }
+    }
+
+    systemTypeSelect.addEventListener('change', updateConfigSection);
+
+    // Initialize on page load
+    updateConfigSection();
+
+    // Password toggle functionality
+    document.querySelectorAll('.toggle-password').forEach(button => {
+      // Remove old listeners by cloning
+      const newButton = button.cloneNode(true);
+      button.parentNode.replaceChild(newButton, button);
+
+      newButton.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const targetId = this.getAttribute('data-target');
+        const input = document.getElementById(targetId);
+
+        // Lucide replaces <i> with <svg>, so look for either
+        const icon = this.querySelector('i') || this.querySelector('svg') || this.querySelector('[data-lucide]');
+
+        if (!input || !icon) {
+          console.error('Toggle failed - input or icon not found');
+          return;
+        }
+
+        if (input.type === 'password') {
+          input.type = 'text';
+          icon.setAttribute('data-lucide', 'eye-off');
+        } else {
+          input.type = 'password';
+          icon.setAttribute('data-lucide', 'eye');
+        }
+
+        // Reinitialize the icon
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      });
+    });
+
+    // Reinitialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
+  </div>
+</div>

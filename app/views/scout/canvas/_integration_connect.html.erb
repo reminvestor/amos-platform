@@ -7,7 +7,7 @@
                alt="<%= canvas_data[:integration][:name] %>" 
                class="rounded me-3" style="width: 48px; height: 48px;">
         <% else %>
-          <i class="fas fa-puzzle-piece fa-3x text-muted me-3"></i>
+          <i data-lucide="puzzle" class="icon-3x text-muted me-3" aria-hidden="true"></i>
         <% end %>
         <div>
           <h3 class="text-white mb-1">Connect to <%= canvas_data[:integration][:name] %></h3>
@@ -16,8 +16,8 @@
           <% end %>
         </div>
       </div>
-      <button class="btn btn-outline-secondary" onclick="goBackToIntegrations()">
-        <i class="fas fa-arrow-left"></i> Back to Integrations
+      <button class="btn btn-outline-secondary" onclick="goBackToIntegrations()" aria-label="Back to integrations">
+        <i data-lucide="arrow-left" aria-hidden="true"></i> Back to Integrations
       </button>
     </div>
   </div>
@@ -72,7 +72,7 @@
             <% else %>
               <%# No auth config found - needs admin setup %>
               <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle"></i>
+                <i data-lucide="alert-triangle" aria-hidden="true"></i>
                 <strong>Authentication not configured</strong><br>
                 This integration hasn't been set up yet. Please contact an administrator to configure the authentication settings for <%= canvas_data[:integration][:name] %>.
               </div>
@@ -82,8 +82,8 @@
               <button type="button" class="btn btn-secondary me-md-2" onclick="goBackToIntegrations()">
                 Cancel
               </button>
-              <button type="submit" class="btn btn-primary" id="connectBtn">
-                <i class="fas fa-link"></i> Connect to <%= canvas_data[:integration][:name] %>
+              <button type="submit" class="btn btn-primary" id="connectBtn" aria-label="Connect to <%= canvas_data[:integration][:name] %>">
+                <i data-lucide="link" aria-hidden="true"></i> Connect to <%= canvas_data[:integration][:name] %>
               </button>
             </div>
             
@@ -95,7 +95,7 @@
       <div class="card bg-secondary mt-3">
         <div class="card-body">
           <h6 class="card-title text-white">
-            <i class="fas fa-question-circle text-info"></i> Need Help?
+            <i data-lucide="help-circle" class="text-info" aria-hidden="true"></i> Need Help?
           </h6>
           <p class="card-text small text-muted">
             Having trouble connecting? 
@@ -128,7 +128,10 @@ function submitConnection(event) {
   
   // Show loading state
   connectBtn.disabled = true;
-  connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+  connectBtn.innerHTML = '<i data-lucide="loader-circle" class="icon-spin" aria-hidden="true"></i> Connecting...';
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
   
   // Convert FormData to JSON object
   const jsonData = {};
@@ -182,11 +185,16 @@ function showNotification(type, message) {
   notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
   notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
   notification.innerHTML = `
-    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+    <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" aria-hidden="true"></i>
     ${message}
   `;
-  
+
   document.body.appendChild(notification);
+
+  // Initialize Lucide icon
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
   
   // Remove after 5 seconds
   setTimeout(() => {

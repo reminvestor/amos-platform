@@ -1,98 +1,145 @@
+
 <div class="container-fluid py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="fas fa-flask me-2"></i>A/B Testing</h1>
-    <%= link_to new_ab_test_path, class: "btn btn-primary" do %>
-      <i class="fas fa-plus me-2"></i>New A/B Test
-    <% end %>
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);">
+        <i data-lucide="flask-conical"></i>
+      </div>
+      <div class="header-text">
+        <h1>A/B Testing</h1>
+        <p>Optimize your campaigns with data-driven experiments</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to new_ab_test_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>New A/B Test</span>
+      <% end %>
+    </div>
   </div>
 
   <% if @ab_tests.empty? %>
-    <div class="card">
-      <div class="card-body text-center py-5">
-        <i class="fas fa-flask fa-3x text-muted mb-3"></i>
+    <%# Empty State %>
+    <div class="admin-card">
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="flask-conical"></i>
+        </div>
         <h3>No A/B Tests Yet</h3>
-        <p class="text-muted">Create your first A/B test to optimize your campaigns with data-driven decisions.</p>
-        <%= link_to new_ab_test_path, class: "btn btn-primary mt-3" do %>
-          <i class="fas fa-plus me-2"></i>Create Your First Test
+        <p>Create your first A/B test to optimize your campaigns with data-driven decisions</p>
+        <%= link_to new_ab_test_path, class: "admin-btn admin-btn-primary", style: "margin-top: 1rem;" do %>
+          <i data-lucide="plus"></i>
+          <span>Create Your First Test</span>
         <% end %>
       </div>
     </div>
   <% else %>
-    <!-- Active Tests -->
+    <%# Active Tests %>
     <% if @active_tests.any? %>
-      <div class="mb-4">
-        <h3 class="mb-3"><i class="fas fa-play-circle text-success me-2"></i>Active Tests</h3>
-        <div class="row">
+      <div style="margin-bottom: 2.5rem;">
+        <h5 style="color: rgb(74, 222, 128); font-size: 1.125rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="play-circle" class="icon-lg"></i>
+          <span>Active Tests (<%= @active_tests.count %>)</span>
+        </h5>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(450px, 1fr)); gap: 1.5rem;">
           <% @active_tests.each do |test| %>
-            <div class="col-md-6 mb-3">
-              <%= render partial: 'ab_test_card', locals: { test: test } %>
-            </div>
+            <%= render partial: 'ab_test_card', locals: { test: test } %>
           <% end %>
         </div>
       </div>
     <% end %>
 
-    <!-- All Tests Table -->
-    <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0"><i class="fas fa-list me-2"></i>All Tests</h5>
+    <%# All Tests Table %>
+    <div class="admin-card">
+      <div style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom: 1px solid #1E293B;">
+        <h5 style="color: white; font-size: 1.125rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="list" class="icon-lg"></i>
+          <span>All Tests</span>
+        </h5>
       </div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover mb-0">
-            <thead>
+
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Variants</th>
+              <th>Impressions</th>
+              <th>Conversion Rate</th>
+              <th>Confidence</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @ab_tests.each do |test| %>
               <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Variants</th>
-                <th>Impressions</th>
-                <th>Conversion Rate</th>
-                <th>Confidence</th>
-                <th>Created</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @ab_tests.each do |test| %>
-                <tr>
-                  <td>
-                    <%= link_to test.name, ab_test_path(test) %>
-                  </td>
-                  <td>
-                    <span class="badge bg-secondary"><%= test.testable_type %></span>
-                  </td>
-                  <td>
-                    <%= render partial: 'status_badge', locals: { status: test.status } %>
-                  </td>
-                  <td><%= test.variants.count %></td>
-                  <td><%= number_with_delimiter(test.variants.sum(:impressions)) %></td>
-                  <td>
-                    <% total_conv = test.variants.sum(:conversions) %>
-                    <% total_imp = test.variants.sum(:impressions) %>
+                <td>
+                  <%= link_to test.name, ab_test_path(test), style: 'color: #22D3EE; text-decoration: none; font-weight: 600;' %>
+                </td>
+                <td>
+                  <span class="admin-badge admin-badge-secondary">
+                    <%= test.testable_type %>
+                  </span>
+                </td>
+                <td>
+                  <%= render partial: 'status_badge', locals: { status: test.status } %>
+                </td>
+                <td style="color: #94A3B8;"><%= test.variants.count %></td>
+                <td style="color: #94A3B8;"><%= number_with_delimiter(test.variants.sum(:impressions)) %></td>
+                <td>
+                  <% total_conv = test.variants.sum(:conversions) %>
+                  <% total_imp = test.variants.sum(:impressions) %>
+                  <span style="color: #94A3B8;">
                     <%= total_imp > 0 ? number_to_percentage((total_conv.to_f / total_imp * 100), precision: 2) : 'N/A' %>
-                  </td>
-                  <td>
-                    <% if test.winner %>
-                      <span class="badge bg-success"><i class="fas fa-trophy"></i> Winner Found</span>
-                    <% elsif test.status == 'running' %>
-                      <%= number_to_percentage(test.confidence_level * 100, precision: 0) %> required
-                    <% else %>
-                      <span class="text-muted">-</span>
-                    <% end %>
-                  </td>
-                  <td><%= time_ago_in_words(test.created_at) %> ago</td>
-                  <td>
-                    <%= link_to ab_test_path(test), class: "btn btn-sm btn-outline-primary" do %>
-                      <i class="fas fa-eye"></i>
-                    <% end %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
+                  </span>
+                </td>
+                <td>
+                  <% if test.winner %>
+                    <span class="admin-badge admin-badge-success">
+                      <i data-lucide="trophy" class="icon-sm"></i>
+                      <span>Winner Found</span>
+                    </span>
+                  <% elsif test.status == 'running' %>
+                    <span style="color: #94A3B8;"><%= number_to_percentage(test.confidence_level * 100, precision: 0) %> required</span>
+                  <% else %>
+                    <span style="color: #64748B;">-</span>
+                  <% end %>
+                </td>
+                <td style="color: #94A3B8;">
+                  <i data-lucide="clock" style="width: 0.875rem; height: 0.875rem; display: inline; vertical-align: middle;"></i>
+                  <%= time_ago_in_words(test.created_at) %> ago
+                </td>
+                <td>
+                  <%= link_to ab_test_path(test), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                    <i data-lucide="eye"></i>
+                    <span>View</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
       </div>
     </div>
   <% end %>
 </div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

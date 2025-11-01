@@ -1,0 +1,232 @@
+<div class="admin-content">
+  <%# Alert Banner %>
+  <% if @pipeline_connection.status_error? %>
+    <div class="admin-alert admin-alert-error">
+      <div class="alert-content">
+        <i data-lucide="alert-circle"></i>
+        <span>Connection test failed. <%= @pipeline_connection.metadata&.dig('last_error') || 'Not connected to MCP server' %></span>
+      </div>
+      <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+    </div>
+  <% elsif flash[:notice] %>
+    <div class="admin-alert admin-alert-success">
+      <div class="alert-content">
+        <i data-lucide="check-circle"></i>
+        <span><%= flash[:notice] %></span>
+      </div>
+      <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+    </div>
+  <% elsif flash[:alert] %>
+    <div class="admin-alert admin-alert-error">
+      <div class="alert-content">
+        <i data-lucide="alert-circle"></i>
+        <span><%= flash[:alert] %></span>
+      </div>
+      <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+    </div>
+  <% end %>
+
+  <%# Main Content %>
+  <div style="padding: 2rem;">
+    <%# Page Header %>
+    <div class="admin-page-header">
+      <div class="header-left">
+        <div class="header-icon">
+          <% if @pipeline_connection.system_type == 'github' %>
+            <i data-lucide="github"></i>
+          <% elsif @pipeline_connection.system_type == 'jira' %>
+            <i data-lucide="ticket"></i>
+          <% elsif @pipeline_connection.system_type == 'azure_devops' || @pipeline_connection.system_type == 'azure_repos' %>
+            <i data-lucide="cloud"></i>
+          <% else %>
+            <i data-lucide="link"></i>
+          <% end %>
+        </div>
+        <div class="header-text">
+          <h1><%= @pipeline_connection.name %></h1>
+          <p>Manage your <%= @pipeline_connection.system_type.titleize %> integration connection</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <%= link_to edit_admin_pipeline_connection_path(@pipeline_connection), class: 'admin-btn admin-btn-outline' do %>
+          <i data-lucide="pencil"></i>
+          <span>Edit</span>
+        <% end %>
+        <%= button_to test_admin_pipeline_connection_path(@pipeline_connection), method: :post, class: 'admin-btn admin-btn-primary' do %>
+          <i data-lucide="test-tube-2"></i>
+          <span>Test Connection</span>
+        <% end %>
+        <%= button_to admin_pipeline_connection_path(@pipeline_connection), method: :delete, data: { turbo_confirm: 'Are you sure?' }, class: 'admin-btn admin-btn-danger' do %>
+          <i data-lucide="trash-2"></i>
+          <span>Delete</span>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Cards Grid %>
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+      <%# Connection Details Card %>
+      <div class="admin-card">
+        <h3 class="card-title">Connection Details</h3>
+        <div class="admin-detail-list">
+          <div class="detail-item">
+            <span class="detail-label">Type</span>
+            <span class="admin-badge admin-badge-default"><%= @pipeline_connection.system_type.upcase %></span>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">Status</span>
+            <% if @pipeline_connection.status_active? %>
+              <span class="admin-badge admin-badge-online">ONLINE</span>
+            <% elsif @pipeline_connection.status_inactive? %>
+              <span class="admin-badge admin-badge-warning">INACTIVE</span>
+            <% else %>
+              <span class="admin-badge admin-badge-offline">OFFLINE</span>
+            <% end %>
+          </div>
+
+          <div class="detail-item">
+            <div class="detail-label">
+              <i data-lucide="calendar"></i>
+              <span>Created</span>
+            </div>
+            <span class="detail-value"><%= l @pipeline_connection.created_at, format: :long %></span>
+          </div>
+
+          <div class="detail-item">
+            <div class="detail-label">
+              <i data-lucide="refresh-cw"></i>
+              <span>Last Sync</span>
+            </div>
+            <span class="detail-value">
+              <% if @pipeline_connection.last_sync_at %>
+                <%= time_ago_in_words(@pipeline_connection.last_sync_at) %> ago
+              <% else %>
+                Never
+              <% end %>
+            </span>
+          </div>
+
+          <div class="detail-item">
+            <div class="detail-label">
+              <i data-lucide="clock"></i>
+              <span>Last Health Check</span>
+            </div>
+            <span class="detail-value">
+              <% if @pipeline_connection.last_health_check_at %>
+                <%= time_ago_in_words(@pipeline_connection.last_health_check_at) %> ago
+              <% else %>
+                Never
+              <% end %>
+            </span>
+          </div>
+
+          <div class="detail-item">
+            <div class="detail-label">
+              <i data-lucide="activity"></i>
+              <span>Executions</span>
+            </div>
+            <span class="detail-value"><%= @pipeline_connection.pipeline_executions.count %></span>
+          </div>
+        </div>
+      </div>
+
+      <%# Metadata Card %>
+      <div class="admin-card">
+        <h3 class="card-title">
+          <% if @pipeline_connection.metadata&.dig('last_error') %>
+            Error Metadata
+          <% else %>
+            Connection Metadata
+          <% end %>
+        </h3>
+        <% if @pipeline_connection.metadata.present? %>
+          <div class="admin-code-block">
+            <pre><%= JSON.pretty_generate(@pipeline_connection.metadata) %></pre>
+          </div>
+        <% else %>
+          <div class="admin-empty-state" style="padding: 2rem;">
+            <div class="empty-icon">
+              <i data-lucide="code"></i>
+            </div>
+            <p class="empty-title">No metadata available</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Recent Pipeline Executions %>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+        <h3 class="card-title" style="margin-bottom: 0;">Recent Pipeline Executions</h3>
+        <%= link_to admin_pipeline_executions_path(connection_id: @pipeline_connection.id), class: 'admin-btn admin-btn-outline admin-btn-sm' do %>
+          <span>View All</span>
+        <% end %>
+      </div>
+
+      <% if @recent_executions.any? %>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
+            <thead>
+              <tr style="border-bottom: 1px solid #1E293B;">
+                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Ticket ID</th>
+                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Title</th>
+                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Status</th>
+                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Priority</th>
+                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Started</th>
+                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @recent_executions.each do |execution| %>
+                <tr style="border-bottom: 1px solid #1E293B;">
+                  <td style="padding: 0.75rem;">
+                    <%= link_to execution.ticket_id, admin_pipeline_execution_path(execution), style: 'color: #22D3EE; text-decoration: none;' %>
+                  </td>
+                  <td style="padding: 0.75rem; color: white;"><%= execution.ticket_title %></td>
+                  <td style="padding: 0.75rem;">
+                    <span class="admin-badge admin-badge-<%= execution.status_done? ? 'online' : execution.status_failed? ? 'offline' : 'warning' %>">
+                      <%= execution.status.titleize %>
+                    </span>
+                  </td>
+                  <td style="padding: 0.75rem;">
+                    <span class="admin-badge admin-badge-<%= execution.priority_critical? ? 'offline' : execution.priority_high? ? 'warning' : 'default' %>">
+                      <%= execution.priority.titleize %>
+                    </span>
+                  </td>
+                  <td style="padding: 0.75rem; color: #94A3B8; font-size: 0.875rem;">
+                    <% if execution.started_at %>
+                      <%= time_ago_in_words(execution.started_at) %> ago
+                    <% else %>
+                      Not started
+                    <% end %>
+                  </td>
+                  <td style="padding: 0.75rem; color: #94A3B8; font-size: 0.875rem;"><%= execution.duration_human %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="admin-empty-state">
+          <div class="empty-icon">
+            <i data-lucide="activity"></i>
+          </div>
+          <p class="empty-title">No executions yet</p>
+          <p class="empty-description">Pipeline executions will appear here once you start using this connection</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+  });
+</script>

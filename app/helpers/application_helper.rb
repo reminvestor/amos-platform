@@ -41,13 +41,33 @@ module ApplicationHelper
     end
   end
 
+  # Sanitize user/AI-generated HTML content
+  def safe_html(content)
+    return "" if content.blank?
+
+    sanitize(
+      content,
+      tags: %w[p h1 h2 h3 h4 h5 h6 em strong b i u br hr ul ol li div span a img blockquote code pre table thead tbody tr th td],
+      attributes: {
+        'a' => ['href', 'title', 'target', 'rel'],
+        'img' => ['src', 'alt', 'width', 'height', 'loading'],
+        'div' => ['class', 'id'],
+        'span' => ['class', 'id'],
+        'table' => ['class'],
+        'td' => ['colspan', 'rowspan'],
+        'th' => ['colspan', 'rowspan'],
+        '*' => ['class', 'id']
+      }
+    )
+  end
+
   def markdown(text)
     return "" if text.blank?
 
     # Initialize Redcarpet Markdown renderer
     renderer = Redcarpet::Render::HTML.new(
       hard_wrap: true,
-      filter_html: false,
+      filter_html: true,  # SECURITY: Filter raw HTML in markdown
       link_attributes: { target: "_blank", rel: "noopener noreferrer" }
     )
 
@@ -64,8 +84,8 @@ module ApplicationHelper
       quote: true
     )
 
-    # Process the markdown
-    markdown.render(text)
+    # Process the markdown and sanitize output
+    safe_html(markdown.render(text))
   end
 
   # Generate a consistent color for an avatar based on a seed string (like email)

@@ -1,0 +1,149 @@
+<div class="admin-content">
+  <%# Flash Messages %>
+  <% if flash[:notice] %>
+    <div class="admin-alert admin-alert-success">
+      <div class="alert-content">
+        <i data-lucide="check-circle"></i>
+        <span><%= flash[:notice] %></span>
+      </div>
+      <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+    </div>
+  <% elsif flash[:alert] %>
+    <div class="admin-alert admin-alert-error">
+      <div class="alert-content">
+        <i data-lucide="alert-circle"></i>
+        <span><%= flash[:alert] %></span>
+      </div>
+      <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+    </div>
+  <% end %>
+
+  <%# Main Content %>
+  <div style="padding: 2rem;">
+    <%# Page Header %>
+    <div class="admin-page-header">
+      <div class="header-left">
+        <div class="header-icon">
+          <i data-lucide="link"></i>
+        </div>
+        <div class="header-text">
+          <h1>Pipeline Connections</h1>
+          <p>Manage your ticket system and repository integrations</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <%= link_to new_admin_pipeline_connection_path, class: 'admin-btn admin-btn-primary' do %>
+          <i data-lucide="plus"></i>
+          <span>New Connection</span>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Filter Tabs %>
+    <div class="admin-tabs" style="margin-bottom: 2rem;">
+      <%= link_to 'All', admin_pipeline_connections_path, class: "admin-tab #{params[:system_type].blank? ? 'admin-tab-active' : ''}" %>
+      <%= link_to 'JIRA', admin_pipeline_connections_path(system_type: 'jira'), class: "admin-tab #{params[:system_type] == 'jira' ? 'admin-tab-active' : ''}" %>
+      <%= link_to 'GitHub', admin_pipeline_connections_path(system_type: 'github'), class: "admin-tab #{params[:system_type] == 'github' ? 'admin-tab-active' : ''}" %>
+      <%= link_to 'Azure DevOps', admin_pipeline_connections_path(system_type: 'azure_devops'), class: "admin-tab #{params[:system_type] == 'azure_devops' ? 'admin-tab-active' : ''}" %>
+      <%= link_to 'Azure Repos', admin_pipeline_connections_path(system_type: 'azure_repos'), class: "admin-tab #{params[:system_type] == 'azure_repos' ? 'admin-tab-active' : ''}" %>
+    </div>
+
+    <% if @pipeline_connections.any? %>
+      <%# Connections Table Card %>
+      <div class="admin-card">
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Last Sync</th>
+                <th>Executions</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @pipeline_connections.each do |connection| %>
+                <tr>
+                  <td>
+                    <%= link_to connection.name, admin_pipeline_connection_path(connection), style: 'color: #22D3EE; text-decoration: none; font-weight: 600;' %>
+                  </td>
+                  <td>
+                    <span class="admin-badge admin-badge-default">
+                      <%= connection.system_type.upcase %>
+                    </span>
+                  </td>
+                  <td>
+                    <% if connection.status_active? %>
+                      <span class="admin-badge admin-badge-online">ONLINE</span>
+                    <% elsif connection.status_inactive? %>
+                      <span class="admin-badge admin-badge-warning">INACTIVE</span>
+                    <% else %>
+                      <span class="admin-badge admin-badge-offline">ERROR</span>
+                    <% end %>
+                  </td>
+                  <td style="color: #94A3B8; font-size: 0.875rem;">
+                    <% if connection.last_sync_at %>
+                      <%= time_ago_in_words(connection.last_sync_at) %> ago
+                    <% else %>
+                      Never
+                    <% end %>
+                  </td>
+                  <td style="color: white;">
+                    <%= connection.pipeline_executions.count %>
+                  </td>
+                  <td style="text-align: right;">
+                    <div style="display: inline-flex; gap: 0.5rem;">
+                      <%= link_to admin_pipeline_connection_path(connection), class: 'admin-btn admin-btn-sm admin-btn-outline', aria: { label: 'View connection' } do %>
+                        <i data-lucide="eye"></i>
+                      <% end %>
+                      <%= link_to edit_admin_pipeline_connection_path(connection), class: 'admin-btn admin-btn-sm admin-btn-outline', aria: { label: 'Edit connection' } do %>
+                        <i data-lucide="pencil"></i>
+                      <% end %>
+                      <%= button_to test_admin_pipeline_connection_path(connection), method: :post, class: 'admin-btn admin-btn-sm admin-btn-outline', aria: { label: 'Test connection' } do %>
+                        <i data-lucide="zap"></i>
+                      <% end %>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <% if @pipeline_connections.respond_to?(:total_pages) && @pipeline_connections.total_pages > 1 %>
+        <div style="margin-top: 1.5rem;">
+          <%= paginate @pipeline_connections %>
+        </div>
+      <% end %>
+    <% else %>
+      <%# Empty State %>
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="link"></i>
+        </div>
+        <p class="empty-title">No pipeline connections yet</p>
+        <p class="empty-description">
+          Create your first connection to integrate with JIRA, GitHub, Azure DevOps, or other systems
+        </p>
+        <%= link_to new_admin_pipeline_connection_path, class: 'admin-btn admin-btn-primary', style: 'margin-top: 1rem;' do %>
+          <i data-lucide="plus"></i>
+          <span>Create Connection</span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+  });
+</script>

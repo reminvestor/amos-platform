@@ -2,18 +2,18 @@
   <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
     <div>
       <h4 class="mb-1">
-        <i class="fas fa-envelope text-primary me-2"></i>
+        <i data-lucide="mail" class="text-primary me-2" aria-hidden="true"></i>
         Email Campaigns
       </h4>
       <p class="text-muted mb-0">Manage your email marketing campaigns</p>
     </div>
     <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="scoutViewTemplates()">
-        <i class="fas fa-file-alt me-1"></i>
+      <button class="btn btn-outline-secondary" onclick="scoutViewTemplates()" aria-label="View email templates">
+        <i data-lucide="file-text" class="me-1" aria-hidden="true"></i>
         Templates
       </button>
-      <button class="btn btn-primary" onclick="scoutCreateCampaign()">
-        <i class="fas fa-plus me-1"></i>
+      <button class="btn btn-primary" onclick="scoutCreateCampaign()" aria-label="Create new campaign">
+        <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
         Create Campaign
       </button>
     </div>
@@ -26,7 +26,7 @@
         <div class="stat-card-body p-3">
           <div class="d-flex align-items-center">
             <div class="stat-icon bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-              <i class="fas fa-envelope text-primary"></i>
+              <i data-lucide="mail" class="text-primary" aria-hidden="true"></i>
             </div>
             <div>
               <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:total_campaigns]) %></div>
@@ -41,7 +41,7 @@
         <div class="stat-card-body p-3">
           <div class="d-flex align-items-center">
             <div class="stat-icon bg-success bg-opacity-10 rounded-circle p-2 me-3">
-              <i class="fas fa-paper-plane text-success"></i>
+              <i data-lucide="send" class="text-success" aria-hidden="true"></i>
             </div>
             <div>
               <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:sent_campaigns]) %></div>
@@ -56,7 +56,7 @@
         <div class="stat-card-body p-3">
           <div class="d-flex align-items-center">
             <div class="stat-icon bg-warning bg-opacity-10 rounded-circle p-2 me-3">
-              <i class="fas fa-edit text-warning"></i>
+              <i data-lucide="file-edit" class="text-warning" aria-hidden="true"></i>
             </div>
             <div>
               <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:draft_campaigns]) %></div>
@@ -71,7 +71,7 @@
         <div class="stat-card-body p-3">
           <div class="d-flex align-items-center">
             <div class="stat-icon bg-info bg-opacity-10 rounded-circle p-2 me-3">
-              <i class="fas fa-chart-line text-info"></i>
+              <i data-lucide="trending-up" class="text-info" aria-hidden="true"></i>
             </div>
             <div>
               <% avg_open_rate = campaigns.select { |c| c.mailgun_stats.present? }
@@ -94,9 +94,10 @@
   <div class="row mb-4">
     <div class="col-md-4">
       <div class="input-group">
-        <span class="input-group-text"><i class="fas fa-search"></i></span>
-        <input type="text" class="form-control" id="campaignSearch" 
-               placeholder="Search campaigns by name or subject">
+        <span class="input-group-text"><i data-lucide="search" aria-hidden="true"></i></span>
+        <input type="text" class="form-control" id="campaignSearch"
+               placeholder="Search campaigns by name or subject"
+               aria-label="Search campaigns">
       </div>
     </div>
     <div class="col-md-3">
@@ -129,16 +130,16 @@
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <h6 class="mb-0">
-          <i class="fas fa-list me-2"></i>
+          <i data-lucide="list" class="me-2" aria-hidden="true"></i>
           Campaigns
         </h6>
         <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-outline-secondary" onclick="scoutExportCampaigns()">
-            <i class="fas fa-download me-1"></i>
+          <button class="btn btn-sm btn-outline-secondary" onclick="scoutExportCampaigns()" aria-label="Export campaigns">
+            <i data-lucide="download" class="me-1" aria-hidden="true"></i>
             Export
           </button>
-          <button class="btn btn-sm btn-outline-primary" onclick="scoutAnalyzeCampaigns()">
-            <i class="fas fa-chart-bar me-1"></i>
+          <button class="btn btn-sm btn-outline-primary" onclick="scoutAnalyzeCampaigns()" aria-label="Analyze campaigns">
+            <i data-lucide="bar-chart" class="me-1" aria-hidden="true"></i>
             Analyze
           </button>
         </div>
@@ -247,43 +248,44 @@
                 </td>
                 <td>
                   <div class="btn-group" role="group">
-                    <button class="btn btn-sm btn-outline-secondary" 
-                            onclick="scoutViewCampaign(<%= campaign.id %>)" 
-                            title="View Details">
-                      <i class="fas fa-eye"></i>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            onclick="scoutViewCampaign(<%= campaign.id %>)"
+                            aria-label="View <%= campaign.name %> details">
+                      <i data-lucide="eye" aria-hidden="true"></i>
                     </button>
                     <% if campaign.status == 'draft' %>
-                      <button class="btn btn-sm btn-outline-primary" 
-                              onclick="scoutEditCampaign(<%= campaign.id %>)" 
-                              title="Edit">
-                        <i class="fas fa-edit"></i>
+                      <button class="btn btn-sm btn-outline-primary"
+                              onclick="scoutEditCampaign(<%= campaign.id %>)"
+                              aria-label="Edit <%= campaign.name %>">
+                        <i data-lucide="pencil" aria-hidden="true"></i>
                       </button>
                     <% end %>
                     <div class="dropdown">
-                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
-                              data-bs-toggle="dropdown" title="More Actions">
-                        <i class="fas fa-ellipsis-h"></i>
+                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                              data-bs-toggle="dropdown"
+                              aria-label="More actions for <%= campaign.name %>">
+                        <i data-lucide="more-horizontal" aria-hidden="true"></i>
                       </button>
                       <ul class="dropdown-menu">
                         <% if campaign.status == 'sent' %>
                           <li><a class="dropdown-item" href="#" onclick="scoutAnalyzeCampaign(<%= campaign.id %>)">
-                            <i class="fas fa-chart-line me-2"></i>View Analytics
+                            <i data-lucide="trending-up" class="me-2" aria-hidden="true"></i>View Analytics
                           </a></li>
                           <li><a class="dropdown-item" href="#" onclick="scoutDuplicateCampaign(<%= campaign.id %>)">
-                            <i class="fas fa-copy me-2"></i>Duplicate
+                            <i data-lucide="copy" class="me-2" aria-hidden="true"></i>Duplicate
                           </a></li>
                         <% end %>
                         <% if campaign.status == 'draft' %>
                           <li><a class="dropdown-item" href="#" onclick="scoutSendCampaign(<%= campaign.id %>)">
-                            <i class="fas fa-paper-plane me-2"></i>Send Campaign
+                            <i data-lucide="send" class="me-2" aria-hidden="true"></i>Send Campaign
                           </a></li>
                           <li><a class="dropdown-item" href="#" onclick="scoutScheduleCampaign(<%= campaign.id %>)">
-                            <i class="fas fa-clock me-2"></i>Schedule
+                            <i data-lucide="clock" class="me-2" aria-hidden="true"></i>Schedule
                           </a></li>
                         <% end %>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item text-danger" href="#" onclick="scoutDeleteCampaign(<%= campaign.id %>)">
-                          <i class="fas fa-trash me-2"></i>Delete
+                          <i data-lucide="trash-2" class="me-2" aria-hidden="true"></i>Delete
                         </a></li>
                       </ul>
                     </div>
@@ -300,11 +302,11 @@
             Showing <%= campaigns.count %> of <%= stats[:total_campaigns] %> campaigns
           </small>
           <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-secondary" onclick="scoutLoadMoreCampaigns()">
+            <button class="btn btn-sm btn-outline-secondary" onclick="scoutLoadMoreCampaigns()" aria-label="Load more campaigns">
               Load More
             </button>
-            <button class="btn btn-sm btn-primary" onclick="scoutCreateCampaign()">
-              <i class="fas fa-plus me-1"></i>
+            <button class="btn btn-sm btn-primary" onclick="scoutCreateCampaign()" aria-label="Create new campaign">
+              <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
               Create Campaign
             </button>
           </div>
@@ -315,7 +317,7 @@
     <!-- Empty State -->
     <div class="empty-state text-center py-5">
       <div class="empty-icon mb-3">
-        <i class="fas fa-envelope text-muted" style="font-size: 4rem;"></i>
+        <i data-lucide="mail" class="text-muted icon-2x" aria-hidden="true" style="font-size: 4rem;"></i>
       </div>
       <h5 class="text-muted">No campaigns yet</h5>
       <p class="text-muted mb-4">
@@ -323,12 +325,12 @@
         Email campaigns are a powerful way to engage customers and drive conversions.
       </p>
       <div class="d-flex gap-2 justify-content-center">
-        <button class="btn btn-primary" onclick="scoutCreateCampaign()">
-          <i class="fas fa-plus me-2"></i>
+        <button class="btn btn-primary" onclick="scoutCreateCampaign()" aria-label="Create your first campaign">
+          <i data-lucide="plus" class="me-2" aria-hidden="true"></i>
           Create Your First Campaign
         </button>
-        <button class="btn btn-outline-secondary" onclick="scoutViewTemplates()">
-          <i class="fas fa-file-alt me-2"></i>
+        <button class="btn btn-outline-secondary" onclick="scoutViewTemplates()" aria-label="Browse email templates">
+          <i data-lucide="file-text" class="me-2" aria-hidden="true"></i>
           Browse Templates
         </button>
       </div>

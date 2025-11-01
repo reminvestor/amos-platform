@@ -1,57 +1,159 @@
-<div class="container mt-4">
-  <div class="row">
-    <div class="col-md-12">
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h2>Contact Groups</h2>
-          <%= link_to "New Group", new_contact_group_path, class: "btn btn-primary" %>
-        </div>
-        <div class="card-body">
-          <% if @contact_groups.any? %>
-            <div class="table-responsive">
-              <table class="table table-striped">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Contacts</th>
-                    <th>Description</th>
-                    <th>Created</th>
-                    <th width="200">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @contact_groups.each do |group| %>
-                    <tr>
-                      <td><%= group.name %></td>
-                      <td><span class="badge bg-primary"><%= group.contacts.count %></span></td>
-                      <td><%= truncate(group.description, length: 100) if group.description.present? %></td>
-                      <td><%= group.created_at.strftime("%b %d, %Y") %></td>
-                      <td>
-                        <%= link_to "View", contact_group_path(group), class: "btn btn-sm btn-outline-primary" %>
-                        <%= link_to "Edit", edit_contact_group_path(group), class: "btn btn-sm btn-outline-secondary" %>
-                        <%= button_to "Delete", contact_group_path(group), method: :delete, data: { turbo_confirm: "Are you sure?" }, class: "btn btn-sm btn-outline-danger", form_class: "d-inline" %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-            
-            <div class="d-flex justify-content-between align-items-center mt-4">
-              <div class="pagination-info text-muted">
-                <%= page_entries_info @contact_groups %>
-              </div>
-              <div>
-                <%= paginate @contact_groups %>
-              </div>
-            </div>
-          <% else %>
-            <div class="alert alert-info">
-              <p class="mb-0">You don't have any contact groups yet. <%= link_to "Create your first group", new_contact_group_path %>.</p>
-            </div>
-          <% end %>
+
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+        <i data-lucide="folder"></i>
+      </div>
+      <div class="header-text">
+        <h1>Contact Groups</h1>
+        <p>Organize your contacts into groups for targeted campaigns</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to new_contact_group_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus" aria-hidden="true"></i>
+        <span>New Group</span>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @contact_groups.any? %>
+    <%# Stats Card %>
+    <div class="mb-4">
+      <div class="admin-card">
+        <div class="d-flex align-items-center gap-3">
+          <div class="stat-icon stat-icon-gradient">
+            <i data-lucide="folder" class="icon-xl text-white" aria-hidden="true"></i>
+          </div>
+          <div class="stat-content">
+            <p class="stat-label">Total Groups</p>
+            <h3 class="stat-value"><%= @contact_groups.total_count %></h3>
+          </div>
+          <div class="ms-auto">
+            <p class="text-secondary small mb-1">Total Contacts</p>
+            <h3 class="text-info fs-4 fw-semibold mb-0">
+              <%= @contact_groups.sum { |g| g.contacts.count } %>
+            </h3>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+
+    <%# Groups Table %>
+    <div class="admin-card">
+      <div style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom: 1px solid #1E293B;">
+        <h5 style="color: white; font-size: 1.125rem; font-weight: 600; margin: 0;">Your Groups</h5>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Contacts</th>
+              <th>Description</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @contact_groups.each do |group| %>
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center rounded" style="width: 2rem; height: 2rem; background: rgba(124, 58, 237, 0.1);">
+                      <i data-lucide="folder" class="icon-md" style="color: #A78BFA;" aria-hidden="true"></i>
+                    </div>
+                    <strong class="text-white"><%= group.name %></strong>
+                  </div>
+                </td>
+                <td>
+                  <span class="admin-badge admin-badge-info">
+                    <i data-lucide="users" class="icon-sm" aria-hidden="true"></i>
+                    <span><%= group.contacts.count %></span>
+                  </span>
+                </td>
+                <td>
+                  <% if group.description.present? %>
+                    <span class="text-secondary"><%= truncate(group.description, length: 100) %></span>
+                  <% else %>
+                    <span class="text-muted">No description</span>
+                  <% end %>
+                </td>
+                <td>
+                  <div class="text-secondary small">
+                    <i data-lucide="calendar" class="icon-sm" aria-hidden="true"></i>
+                    <%= group.created_at.strftime("%b %d, %Y") %>
+                  </div>
+                </td>
+                <td>
+                  <div class="d-flex gap-2">
+                    <%= link_to contact_group_path(group), class: "admin-btn admin-btn-sm admin-btn-outline", "aria-label": "View #{group.name}" do %>
+                      <i data-lucide="eye" aria-hidden="true"></i>
+                      <span>View</span>
+                    <% end %>
+                    <%= link_to edit_contact_group_path(group), class: "admin-btn admin-btn-sm admin-btn-outline", "aria-label": "Edit #{group.name}" do %>
+                      <i data-lucide="pencil" aria-hidden="true"></i>
+                      <span>Edit</span>
+                    <% end %>
+                    <%= button_to contact_group_path(group), method: :delete,
+                        data: { turbo_confirm: "Are you sure you want to delete this group?" },
+                        class: "admin-btn admin-btn-sm admin-btn-outline text-danger border-danger",
+                        "aria-label": "Delete #{group.name}" do %>
+                      <i data-lucide="trash-2" aria-hidden="true"></i>
+                      <span>Delete</span>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <%# Pagination %>
+      <% if @contact_groups.total_pages > 1 %>
+        <div style="padding: 1rem 1.5rem; border-top: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center;">
+          <div style="color: #94A3B8; font-size: 0.875rem;">
+            <%= page_entries_info @contact_groups %>
+          </div>
+          <div>
+            <%= paginate @contact_groups, theme: 'twitter-bootstrap-4' %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <%# Empty State %>
+    <div class="admin-card">
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="folder-plus"></i>
+        </div>
+        <h3>No Contact Groups Yet</h3>
+        <p>Create groups to organize your contacts for targeted campaigns</p>
+        <%= link_to new_contact_group_path, class: "admin-btn admin-btn-primary", style: "margin-top: 1rem;" do %>
+          <i data-lucide="plus"></i>
+          <span>Create Your First Group</span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 </div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

@@ -1,0 +1,206 @@
+<div class="admin-content">
+  <div style="padding: 2rem;">
+    <%# Page Header %>
+    <div class="admin-page-header">
+      <div class="header-left">
+        <div class="header-icon">
+          <i data-lucide="activity"></i>
+        </div>
+        <div class="header-text">
+          <h1>Pipeline Executions</h1>
+          <p>Monitor and manage AI development pipeline runs</p>
+        </div>
+      </div>
+    </div>
+
+    <%# Stats Cards %>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+      <%# Total Executions %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="activity" class="icon-xl text-white"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Executions</p>
+            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:total] %></h3>
+          </div>
+        </div>
+      </div>
+
+      <%# Active %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
+            <i data-lucide="play-circle" class="icon-xl text-info"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Active</p>
+            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:active] %></h3>
+          </div>
+        </div>
+      </div>
+
+      <%# Completed %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
+            <i data-lucide="check-circle" class="icon-xl text-success"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Completed</p>
+            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:completed] %></h3>
+          </div>
+        </div>
+      </div>
+
+      <%# Total Cost %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(251, 191, 36, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(251, 191, 36, 0.2);">
+            <i data-lucide="dollar-sign" style="width: 1.5rem; height: 1.5rem; color: rgb(252, 211, 77);"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Cost</p>
+            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;">$<%= number_with_precision(@stats[:total_cost], precision: 2) %></h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Filters Card %>
+    <div class="admin-card" style="margin-bottom: 2rem;">
+      <%= form_with url: admin_pipeline_executions_path, method: :get, style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;' do %>
+        <div>
+          <label style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem; display: block;">Status</label>
+          <%= select_tag :status, options_for_select(
+            [['All Statuses', '']] + PipelineExecution.statuses.keys.map { |k| [k.titleize, k] },
+            params[:status]
+          ), class: 'admin-select', style: 'width: 100%; padding: 0.5rem; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem; color: white;' %>
+        </div>
+
+        <div>
+          <label style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem; display: block;">Priority</label>
+          <%= select_tag :priority, options_for_select(
+            [['All Priorities', '']] + PipelineExecution.priorities.keys.map { |k| [k.titleize, k] },
+            params[:priority]
+          ), class: 'admin-select', style: 'width: 100%; padding: 0.5rem; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem; color: white;' %>
+        </div>
+
+        <div>
+          <label style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem; display: block;">System</label>
+          <%= select_tag :ticket_system, options_for_select(
+            [['All Systems', ''], ['JIRA', 'jira'], ['Azure DevOps', 'azure_devops']],
+            params[:ticket_system]
+          ), class: 'admin-select', style: 'width: 100%; padding: 0.5rem; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem; color: white;' %>
+        </div>
+
+        <div>
+          <%= submit_tag 'Filter', class: 'admin-btn admin-btn-primary', style: 'width: 100%;' %>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Executions Table %>
+    <% if @pipeline_executions.any? %>
+      <div class="admin-card">
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Ticket</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>System</th>
+                <th>Started</th>
+                <th>Duration</th>
+                <th>Cost</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @pipeline_executions.each do |execution| %>
+                <tr>
+                  <td>
+                    <%= link_to execution.ticket_id, admin_pipeline_execution_path(execution), style: 'color: #22D3EE; text-decoration: none; font-weight: 600;' %>
+                  </td>
+                  <td>
+                    <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="<%= execution.ticket_title %>">
+                      <%= execution.ticket_title %>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="admin-badge admin-badge-<%= AiAgents::Pipeline::StateMachine.state_color(execution.status) == 'success' ? 'online' : AiAgents::Pipeline::StateMachine.state_color(execution.status) == 'danger' ? 'offline' : 'warning' %>">
+                      <%= execution.status.upcase.gsub('_', ' ') %>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="admin-badge admin-badge-<%= execution.priority_critical? ? 'offline' : execution.priority_high? ? 'warning' : 'default' %>">
+                      <%= execution.priority.upcase %>
+                    </span>
+                  </td>
+                  <td style="color: #94A3B8; font-size: 0.875rem;">
+                    <%= execution.ticket_system.upcase %>
+                  </td>
+                  <td style="color: #94A3B8; font-size: 0.875rem;">
+                    <% if execution.started_at %>
+                      <%= time_ago_in_words(execution.started_at) %> ago
+                    <% else %>
+                      Not started
+                    <% end %>
+                  </td>
+                  <td style="color: #94A3B8; font-size: 0.875rem;">
+                    <%= execution.duration_human %>
+                  </td>
+                  <td style="color: #94A3B8; font-size: 0.875rem;">
+                    <%= execution.cost_dollars %>
+                  </td>
+                  <td style="text-align: right;">
+                    <div style="display: inline-flex; gap: 0.5rem;">
+                      <%= link_to admin_pipeline_execution_path(execution), class: 'admin-btn admin-btn-sm admin-btn-outline', aria: { label: 'View execution' } do %>
+                        <i data-lucide="eye"></i>
+                      <% end %>
+                      <% if execution.status_failed? || execution.status_rolled_back? %>
+                        <%= button_to retry_admin_pipeline_execution_path(execution), method: :post, class: 'admin-btn admin-btn-sm admin-btn-outline', aria: { label: 'Retry execution' } do %>
+                          <i data-lucide="refresh-cw"></i>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <% if @pipeline_executions.respond_to?(:total_pages) && @pipeline_executions.total_pages > 1 %>
+        <div style="margin-top: 1.5rem;">
+          <%= paginate @pipeline_executions %>
+        </div>
+      <% end %>
+    <% else %>
+      <%# Empty State %>
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="activity"></i>
+        </div>
+        <p class="empty-title">No pipeline executions found</p>
+        <p class="empty-description">
+          Executions will appear here once pipelines start processing tickets
+        </p>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+  });
+</script>

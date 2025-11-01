@@ -4,7 +4,7 @@
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
       <div>
         <h5 class="mb-0">
-          <i class="fas fa-edit text-primary me-2"></i>
+          <i data-lucide="pencil" class="text-primary me-2" aria-hidden="true"></i>
           <%= landing_page.title %>
         </h5>
         <small class="text-muted">
@@ -12,19 +12,19 @@
         </small>
       </div>
       <div class="d-flex gap-2">
-        <button class="btn btn-success btn-sm" id="saveInlineChanges" onclick="saveInlineChanges()">
-          <i class="fas fa-save me-1"></i> Save Changes
+        <button class="btn btn-success btn-sm" id="saveInlineChanges" onclick="saveInlineChanges()" aria-label="Save changes to landing page">
+          <i data-lucide="save" class="me-1" aria-hidden="true"></i> Save Changes
         </button>
-        <a href="<%= preview_landing_page_path(landing_page) %>" class="btn btn-primary btn-sm" target="_blank">
-          <i class="fas fa-eye me-1"></i> Preview
+        <a href="<%= preview_landing_page_path(landing_page) %>" class="btn btn-primary btn-sm" target="_blank" aria-label="Preview landing page">
+          <i data-lucide="eye" class="me-1" aria-hidden="true"></i> Preview
         </a>
         <% if landing_page.status == 'published' %>
-          <a href="<%= landing_page.full_url %>" class="btn btn-info btn-sm" target="_blank">
-            <i class="fas fa-external-link-alt me-1"></i> Live Page
+          <a href="<%= landing_page.full_url %>" class="btn btn-info btn-sm" target="_blank" aria-label="View live landing page">
+            <i data-lucide="external-link" class="me-1" aria-hidden="true"></i> Live Page
           </a>
         <% end %>
-        <button class="btn btn-outline-secondary btn-sm" onclick="window.scoutLoadCanvas?.('landing_page_viewer', {})">
-          <i class="fas fa-arrow-left me-1"></i> Back to List
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.scoutLoadCanvas?.('landing_page_viewer', {})" aria-label="Back to landing pages list">
+          <i data-lucide="arrow-left" class="me-1" aria-hidden="true"></i> Back to List
         </button>
       </div>
     </div>
@@ -32,14 +32,14 @@
 
   <!-- Instructions -->
   <div class="alert alert-info alert-dismissible fade show" role="alert">
-    <strong><i class="fas fa-info-circle me-2"></i>Direct Editing Mode</strong>
+    <strong><i data-lucide="info" class="me-2" aria-hidden="true"></i>Direct Editing Mode</strong>
     <ul class="mb-0 mt-2 small">
       <li>Click on any text to edit it directly</li>
-      <li>Click the <i class="fas fa-image"></i> icon on images to replace them</li>
+      <li>Click the <i data-lucide="image" aria-hidden="true"></i> icon on images to replace them</li>
       <li>Changes are highlighted until saved</li>
       <li>Press <kbd>Escape</kbd> to cancel editing text</li>
     </ul>
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close instructions"></button>
   </div>
 
   <!-- Editable preview container -->
@@ -409,12 +409,17 @@
       // Add edit button
       const editBtn = doc.createElement('button');
       editBtn.className = 'image-edit-btn';
-      editBtn.innerHTML = '<i class="fas fa-image"></i>';
+      editBtn.innerHTML = '<i data-lucide="image" aria-hidden="true"></i>';
       editBtn.onclick = function(e) {
         e.preventDefault();
         openImagePicker(img);
       };
       container.appendChild(editBtn);
+
+      // Initialize Lucide icon for the button
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons({ nameAttr: 'data-lucide' });
+      }
 
       // Add resize handle (bottom-right)
       const handle = doc.createElement('div');
@@ -652,11 +657,19 @@
     if (hasChanges) {
       saveBtn.classList.remove('btn-success');
       saveBtn.classList.add('btn-warning');
-      saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Save Changes*';
+      saveBtn.innerHTML = '<i data-lucide="save" class="me-1" aria-hidden="true"></i> Save Changes*';
+      // Re-initialize Lucide icons
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
     } else {
       saveBtn.classList.remove('btn-warning');
       saveBtn.classList.add('btn-success');
-      saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Save Changes';
+      saveBtn.innerHTML = '<i data-lucide="save" class="me-1" aria-hidden="true"></i> Save Changes';
+      // Re-initialize Lucide icons
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
     }
   }
   

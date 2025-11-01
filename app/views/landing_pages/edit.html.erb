@@ -1,197 +1,241 @@
-<div class="container-fluid mt-4">
-  <div class="row">
-    <div class="col-md-12 mb-3">
-      <div class="card shadow">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <h3><i class="fas fa-globe me-2"></i> Edit Landing Page: <%= @landing_page.title %></h3>
-          <div>
-            <%= link_to inline_edit_landing_page_path(@landing_page), class: "btn btn-outline-light me-2" do %>
-              <i class="fas fa-edit me-1"></i> Quick Edit
-            <% end %>
-            <%= link_to preview_landing_page_path(@landing_page), class: "btn btn-outline-light me-2", target: "_blank" do %>
-              <i class="fas fa-eye me-1"></i> Preview
-            <% end %>
-            
-            <% if @landing_page.status == 'published' %>
-              <%= button_to unpublish_landing_page_path(@landing_page), method: :post, class: "btn btn-warning" do %>
-                <i class="fas fa-ban me-1"></i> Unpublish
-              <% end %>
-            <% else %>
-              <%= button_to publish_landing_page_path(@landing_page), method: :post, class: "btn btn-success" do %>
-                <i class="fas fa-check me-1"></i> Publish
-              <% end %>
-            <% end %>
-          </div>
+<div class="admin-content" style="padding: 2rem;">
+  <div class="container-fluid">
+    <%# Page Header %>
+    <div class="admin-page-header" style="margin-bottom: 2rem;">
+      <div class="header-left">
+        <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+          <i data-lucide="file-text"></i>
+        </div>
+        <div class="header-text">
+          <h1>Edit Landing Page</h1>
+          <p><%= @landing_page.title.presence || "Untitled Landing Page" %></p>
         </div>
       </div>
+      <div class="header-actions" style="display: flex; gap: 0.75rem;">
+        <%= link_to landing_pages_path, class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="arrow-left"></i>
+          <span>Back</span>
+        <% end %>
+        <%= link_to inline_edit_landing_page_path(@landing_page), class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="edit"></i>
+          <span>Quick Edit</span>
+        <% end %>
+        <%= link_to preview_landing_page_path(@landing_page), class: "admin-btn admin-btn-outline", target: "_blank" do %>
+          <i data-lucide="eye"></i>
+          <span>Preview</span>
+        <% end %>
+        <% if @landing_page.status == 'published' %>
+          <%= button_to unpublish_landing_page_path(@landing_page), method: :post, class: "admin-btn", style: "background: linear-gradient(135deg, #FBBf24 0%, #F59E0B 100%); border: none;" do %>
+            <i data-lucide="x-circle"></i>
+            <span>Unpublish</span>
+          <% end %>
+        <% else %>
+          <%= button_to publish_landing_page_path(@landing_page), method: :post, class: "admin-btn admin-btn-primary" do %>
+            <i data-lucide="check-circle"></i>
+            <span>Publish</span>
+          <% end %>
+        <% end %>
+      </div>
     </div>
-  </div>
-  
-  <div class="row">
-    <!-- Main content editing area -->
-    <div class="col-md-8">
-      <div class="card shadow mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="fas fa-code me-2"></i>
-            Landing Page Content
-          </h5>
-        </div>
-        
-        <%= form_with(model: @landing_page, local: true) do |form| %>
-          <div class="card-body">
+
+    <div class="row">
+      <%# Main Content Column %>
+      <div class="col-lg-8">
+        <div class="admin-card">
+          <%= form_with(model: @landing_page, local: true) do |form| %>
+            <%# Error Messages %>
             <% if @landing_page.errors.any? %>
-              <div class="alert alert-danger">
-                <h4><%= pluralize(@landing_page.errors.count, "error") %> prohibited this landing page from being saved:</h4>
-                <ul>
+              <div class="alert alert-danger" style="background-color: var(--status-error-bg); border-color: var(--status-error-border); color: var(--status-error-text); margin-bottom: 1.5rem;">
+                <h5 style="margin-bottom: 0.5rem;">
+                  <i data-lucide="alert-circle" class="icon-md"></i>
+                  <%= pluralize(@landing_page.errors.count, "error") %> prohibited this landing page from being saved:
+                </h5>
+                <ul style="margin-bottom: 0;">
                   <% @landing_page.errors.full_messages.each do |message| %>
                     <li><%= message %></li>
                   <% end %>
                 </ul>
               </div>
             <% end %>
-            
-            <!-- Basic Settings -->
-            <div class="row mb-4">
+
+            <%# Basic Settings %>
+            <div class="row" style="margin-bottom: 1.5rem;">
               <div class="col-md-6">
-                <%= form.label :title, "Page Title", class: "form-label fw-bold" %>
-                <%= form.text_field :title, class: "form-control", placeholder: "Enter page title" %>
+                <%= form.label :title, "Page Title", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+                <%= form.text_field :title, class: "form-control", placeholder: "Enter page title",
+                    style: "background-color: #1E293B; border: 1px solid #334155; color: white; padding: 0.75rem; border-radius: 0.5rem;" %>
               </div>
               <div class="col-md-6">
-                <%= form.label :slug, "URL Slug", class: "form-label fw-bold" %>
+                <%= form.label :slug, "URL Slug", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
                 <div class="input-group">
-                  <span class="input-group-text">/landing/</span>
-                  <%= form.text_field :slug, class: "form-control", placeholder: "my-landing-page" %>
+                  <span class="input-group-text" style="background-color: #1E293B; border: 1px solid #334155; color: #64748B;">/landing/</span>
+                  <%= form.text_field :slug, class: "form-control", placeholder: "my-landing-page",
+                      style: "background-color: #1E293B; border: 1px solid #334155; color: white; padding: 0.75rem; border-radius: 0 0.5rem 0.5rem 0;" %>
                 </div>
               </div>
             </div>
-            
-            <!-- HTML Content Editor -->
-            <div class="mb-4">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <label class="form-label fw-bold mb-0">HTML Content</label>
-                <div>
-                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="requestAIEdit()">
-                    <i class="fas fa-wand-magic-sparkles me-1"></i>
-                    Request AI Edit
+
+            <%# HTML Content Editor %>
+            <div style="margin-bottom: 1.5rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <label style="color: white; font-weight: 600; margin: 0;">HTML Content</label>
+                <div style="display: flex; gap: 0.5rem;">
+                  <button type="button" class="admin-btn admin-btn-outline" onclick="requestAIEdit()" style="padding: 0.5rem 0.75rem; font-size: 0.875rem;">
+                    <i data-lucide="wand-2"></i>
+                    <span>Request AI Edit</span>
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline-info" onclick="formatHTML()">
-                    <i class="fas fa-indent me-1"></i>
-                    Format HTML
+                  <button type="button" class="admin-btn admin-btn-outline" onclick="formatHTML()" style="padding: 0.5rem 0.75rem; font-size: 0.875rem;">
+                    <i data-lucide="code"></i>
+                    <span>Format HTML</span>
                   </button>
                 </div>
               </div>
-              
+
               <% if @landing_page.html_content.present? %>
-                <%= form.text_area :html_content, 
-                    class: "form-control", 
-                    rows: 30, 
-                    style: "font-family: 'Courier New', monospace; font-size: 12px;",
-                    placeholder: "Your landing page HTML will appear here after AI generation..." %>
+                <%= form.text_area :html_content,
+                    class: "form-control",
+                    rows: 30,
+                    placeholder: "Your landing page HTML will appear here after AI generation...",
+                    style: "background-color: #1E293B; border: 1px solid #334155; color: #22D3EE; padding: 1rem; border-radius: 0.5rem; font-family: 'Courier New', monospace; font-size: 12px; resize: vertical;" %>
               <% else %>
-                <div class="text-center p-5 bg-light rounded">
-                  <i class="fas fa-magic fa-3x text-muted mb-3"></i>
-                  <h5 class="text-muted">No HTML content generated yet</h5>
-                  <p class="text-muted">
-                    This landing page doesn't have HTML content yet. 
-                    You can regenerate it or add your own HTML content.
+                <div style="text-align: center; padding: 3rem 2rem; background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 0.5rem;">
+                  <i data-lucide="wand-2" style="width: 3rem; height: 3rem; color: #64748B; margin-bottom: 1rem;"></i>
+                  <h5 style="color: white; margin-bottom: 0.5rem;">No HTML content generated yet</h5>
+                  <p style="color: #94A3B8; margin-bottom: 1.5rem;">
+                    This landing page doesn't have HTML content yet. You can regenerate it or add your own HTML content.
                   </p>
-                  <button type="button" class="btn btn-primary" onclick="regenerateContent()">
-                    <i class="fas fa-magic me-1"></i>
-                    Generate HTML Content
+                  <button type="button" class="admin-btn admin-btn-primary" onclick="regenerateContent()">
+                    <i data-lucide="sparkles"></i>
+                    <span>Generate HTML Content</span>
                   </button>
                 </div>
                 <%= form.hidden_field :html_content %>
               <% end %>
             </div>
-            
-            <!-- SEO Settings -->
-            <div class="row">
-              <div class="col-md-6">
-                <%= form.label :meta_description, "Meta Description", class: "form-label fw-bold" %>
-                <%= form.text_area :meta_description, class: "form-control", rows: 3, placeholder: "Enter a description for search engines" %>
-              </div>
-              <div class="col-md-6">
-                <%= form.label :meta_keywords, "Meta Keywords", class: "form-label fw-bold" %>
-                <%= form.text_field :meta_keywords, class: "form-control", placeholder: "keyword1, keyword2, keyword3" %>
+
+            <%# SEO Settings %>
+            <div style="margin-bottom: 1.5rem;">
+              <h5 style="color: white; font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #334155;">
+                <i data-lucide="search" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle;"></i>
+                SEO Settings
+              </h5>
+              <div class="row">
+                <div class="col-md-6" style="margin-bottom: 1rem;">
+                  <%= form.label :meta_description, "Meta Description", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+                  <%= form.text_area :meta_description, class: "form-control", rows: 3, placeholder: "Enter a description for search engines",
+                      style: "background-color: #1E293B; border: 1px solid #334155; color: white; padding: 0.75rem; border-radius: 0.5rem;" %>
+                </div>
+                <div class="col-md-6" style="margin-bottom: 1rem;">
+                  <%= form.label :meta_keywords, "Meta Keywords", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+                  <%= form.text_field :meta_keywords, class: "form-control", placeholder: "keyword1, keyword2, keyword3",
+                      style: "background-color: #1E293B; border: 1px solid #334155; color: white; padding: 0.75rem; border-radius: 0.5rem;" %>
+                </div>
               </div>
             </div>
-          </div>
-          
-          <div class="card-footer">
-            <div class="d-flex justify-content-between">
-              <%= link_to "Cancel", landing_pages_path, class: "btn btn-light" %>
-              <%= form.submit "Save Changes", class: "btn btn-primary" %>
+
+            <%# Action Buttons %>
+            <div style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid #334155;">
+              <%= form.submit "Save Changes", class: "admin-btn admin-btn-primary" %>
+              <%= link_to landing_pages_path, class: "admin-btn admin-btn-outline" do %>
+                <i data-lucide="x"></i>
+                <span>Cancel</span>
+              <% end %>
             </div>
+          <% end %>
+        </div>
+
+        <%# Generate Images Alert %>
+        <div style="margin-top: 1.5rem; padding: 1rem; background-color: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 0.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items-start; gap: 0.75rem;">
+                <i data-lucide="image" style="width: 1.25rem; height: 1.25rem; color: #22D3EE; flex-shrink: 0; margin-top: 0.125rem;"></i>
+                <div>
+                  <strong style="color: white;">Replace placeholders with real images</strong>
+                  <p style="color: #94A3B8; font-size: 0.875rem; margin: 0.25rem 0 0 0;">
+                    We will generate marketing-ready images for sizes detected in this page (e.g., 1200x600, 100x100).
+                  </p>
+                </div>
+              </div>
+            </div>
+            <%= button_to 'Generate Images', generate_images_landing_page_path(@landing_page), method: :post, class: "admin-btn", style: "background: linear-gradient(135deg, #FBBf24 0%, #F59E0B 100%); border: none; white-space: nowrap;" do %>
+              <i data-lucide="sparkles"></i>
+              <span>Generate Images</span>
+            <% end %>
           </div>
-        <% end %>
+        </div>
       </div>
 
-      <!-- Generate real images for placeholders -->
-      <div class="alert alert-info d-flex justify-content-between align-items-center">
-        <div>
-          <strong>Replace placeholders with real images</strong>
-          <div class="small text-muted">We will generate marketing-ready images for sizes detected in this page (e.g., 1200x600, 100x100).</div>
-        </div>
-        <%= button_to 'Generate Images', generate_images_landing_page_path(@landing_page), method: :post, class: 'btn btn-warning' %>
-      </div>
-    </div>
-    
-    <!-- Sidebar with AI tools -->
-    <div class="col-md-4">
-      <div class="card shadow mb-4">
-        <div class="card-header bg-secondary text-white">
-          <h5 class="mb-0"><i class="fas fa-robot me-2"></i> AI Assistant</h5>
-        </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label class="form-label fw-bold">Ask AI to modify your landing page:</label>
-            <textarea id="ai-instruction" class="form-control" rows="4" placeholder="E.g., Make the headline more compelling, add a testimonial section, change the color scheme to blue and white, etc."></textarea>
+      <%# Sidebar %>
+      <div class="col-lg-4">
+        <%# AI Assistant Card %>
+        <div class="admin-card">
+          <h5 style="color: white; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="bot" style="width: 1.25rem; height: 1.25rem; color: #A78BFA;"></i>
+            <span>AI Assistant</span>
+          </h5>
+
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">Ask AI to modify your landing page:</label>
+            <textarea id="ai-instruction" class="form-control" rows="4" placeholder="E.g., Make the headline more compelling, add a testimonial section, change the color scheme to blue and white, etc."
+                style="background-color: #1E293B; border: 1px solid #334155; color: white; padding: 0.75rem; border-radius: 0.5rem;"></textarea>
           </div>
-          
-          <div class="d-grid mb-3">
-            <button type="button" class="btn btn-primary" onclick="sendAIInstruction()">
-              <i class="fas fa-magic me-1"></i>
-              Apply AI Changes
-            </button>
-          </div>
-          
-          <div class="alert alert-info">
-            <small>
-              <i class="fas fa-info-circle me-1"></i>
-              Describe what you want to change and AI will modify the entire HTML for you.
-            </small>
+
+          <button type="button" class="admin-btn admin-btn-primary" onclick="sendAIInstruction()" style="width: 100%; margin-bottom: 1rem;">
+            <i data-lucide="wand-2"></i>
+            <span>Apply AI Changes</span>
+          </button>
+
+          <div style="padding: 0.75rem; background-color: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 0.5rem;">
+            <div style="display: flex; align-items-start; gap: 0.5rem;">
+              <i data-lucide="info" style="width: 1rem; height: 1rem; color: #22D3EE; flex-shrink: 0; margin-top: 0.125rem;"></i>
+              <small style="color: #94A3B8; line-height: 1.5;">
+                Describe what you want to change and AI will modify the entire HTML for you.
+              </small>
+            </div>
           </div>
         </div>
-      </div>
-      
-      <div class="card shadow mb-4">
-        <div class="card-header bg-info text-white">
-          <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i> Page Info</h5>
-        </div>
-        <div class="card-body">
-          <p><strong>Status:</strong> 
-            <span class="badge <%= @landing_page.status == 'published' ? 'bg-success' : 'bg-secondary' %>">
-              <%= @landing_page.status == 'published' ? 'Published' : 'Draft' %>
-            </span>
-          </p>
-          
+
+        <%# Page Info Card %>
+        <div class="admin-card" style="margin-top: 1.5rem;">
+          <h5 style="color: white; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="info" style="width: 1.25rem; height: 1.25rem; color: #22D3EE;"></i>
+            <span>Page Info</span>
+          </h5>
+
+          <div style="margin-bottom: 1rem;">
+            <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.25rem;">Status</p>
+            <% if @landing_page.status == 'published' %>
+              <span class="admin-badge admin-badge-online">Published</span>
+            <% else %>
+              <span class="admin-badge admin-badge-default">Draft</span>
+            <% end %>
+          </div>
+
           <% if @landing_page.status == 'published' %>
-            <p><strong>Public URL:</strong><br>
-              <a href="<%= @landing_page.full_url %>" target="_blank" class="text-break">
+            <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #334155;">
+              <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.25rem;">Public URL</p>
+              <a href="<%= @landing_page.full_url %>" target="_blank" style="color: #22D3EE; font-size: 0.875rem; word-break: break-all; text-decoration: none;">
                 <%= @landing_page.full_url %>
+                <i data-lucide="external-link" style="width: 0.875rem; height: 0.875rem; display: inline-block; vertical-align: middle; margin-left: 0.25rem;"></i>
               </a>
-            </p>
+            </div>
           <% end %>
-          
-          <p><strong>Last Updated:</strong><br>
-            <%= @landing_page.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
-          </p>
-          
-          <% if @landing_page.campaign %>
-            <p><strong>Campaign:</strong><br>
-              <%= @landing_page.campaign.name %>
+
+          <div style="margin-bottom: 1rem;">
+            <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.25rem;">Last Updated</p>
+            <p style="color: white; font-size: 0.875rem; margin: 0;">
+              <%= @landing_page.updated_at.strftime("%B %d, %Y at %I:%M %p") %>
             </p>
+          </div>
+
+          <% if @landing_page.campaign %>
+            <div style="margin-bottom: 0;">
+              <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.25rem;">Campaign</p>
+              <p style="color: white; font-size: 0.875rem; margin: 0;">
+                <%= @landing_page.campaign.name %>
+              </p>
+            </div>
           <% end %>
         </div>
       </div>
@@ -199,18 +243,21 @@
   </div>
 </div>
 
-<!-- AI Processing Modal -->
+<%# AI Processing Modal %>
 <div class="modal fade" id="aiProcessingModal" tabindex="-1" aria-labelledby="aiProcessingModalLabel" aria-hidden="true">
   <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="aiProcessingModalLabel">AI is Processing Your Request</h5>
+    <div class="modal-content" style="background-color: #1E293B; border: 1px solid #334155;">
+      <div class="modal-header" style="border-bottom: 1px solid #334155;">
+        <h5 class="modal-title" id="aiProcessingModalLabel" style="color: white;">
+          <i data-lucide="loader-circle" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+          AI is Processing Your Request
+        </h5>
       </div>
-      <div class="modal-body text-center">
-        <div class="spinner-border text-primary mb-3" role="status">
+      <div class="modal-body" style="text-align: center;">
+        <div class="spinner-border text-primary mb-3" role="status" style="color: #A78BFA !important;">
           <span class="visually-hidden">Loading...</span>
         </div>
-        <p>AI is modifying your landing page. This may take a moment...</p>
+        <p style="color: #94A3B8;">AI is modifying your landing page. This may take a moment...</p>
       </div>
     </div>
   </div>
@@ -218,22 +265,41 @@
 
 <script>
   let aiProcessingModal;
-  
-  document.addEventListener('DOMContentLoaded', function() {
-    aiProcessingModal = new bootstrap.Modal(document.getElementById('aiProcessingModal'));
+
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+    initializeModal();
   });
-  
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+    initializeModal();
+  });
+
+  function initializeModal() {
+    const modalElement = document.getElementById('aiProcessingModal');
+    if (modalElement && typeof bootstrap !== 'undefined') {
+      aiProcessingModal = new bootstrap.Modal(modalElement);
+    }
+  }
+
   function sendAIInstruction() {
     const instruction = document.getElementById('ai-instruction').value.trim();
-    
+
     if (!instruction) {
       alert('Please enter an instruction for the AI.');
       return;
     }
-    
+
     // Show processing modal
-    aiProcessingModal.show();
-    
+    if (aiProcessingModal) {
+      aiProcessingModal.show();
+    }
+
     // Send the instruction to the AI
     fetch('<%= apply_change_landing_page_path(@landing_page) %>', {
       method: 'POST',
@@ -251,23 +317,27 @@
         // Poll for updates
         checkForUpdates();
       } else {
-        aiProcessingModal.hide();
+        if (aiProcessingModal) {
+          aiProcessingModal.hide();
+        }
         alert('Error: ' + (data.message || 'Unknown error'));
       }
     })
     .catch(error => {
-      aiProcessingModal.hide();
+      if (aiProcessingModal) {
+        aiProcessingModal.hide();
+      }
       alert('Error sending request: ' + error.message);
     });
   }
-  
+
   function checkForUpdates() {
     setTimeout(() => {
       // Reload the page to get the updated HTML
       window.location.reload();
     }, 5000);
   }
-  
+
   function formatHTML() {
     const htmlContent = document.getElementById('landing_page_html_content');
     if (htmlContent && htmlContent.value) {
@@ -278,14 +348,14 @@
       htmlContent.value = formatted;
     }
   }
-  
+
   function regenerateContent() {
     if (confirm('This will regenerate the entire HTML content. Are you sure?')) {
       // Redirect to the clarification flow
       window.location.href = '<%= clarify_landing_page_path(@landing_page) %>';
     }
   }
-  
+
   function requestAIEdit() {
     const instruction = prompt('What would you like to change about your landing page?');
     if (instruction) {
@@ -293,4 +363,4 @@
       sendAIInstruction();
     }
   }
-</script> 
+</script>
