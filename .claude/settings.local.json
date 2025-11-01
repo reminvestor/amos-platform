@@ -117,7 +117,8 @@
       "Bash(git commit:*)",
       "Bash(docker compose:*)",
       "Bash(ruby -v:*)",
-      "Bash(rbenv versions:*)"
+      "Bash(rbenv versions:*)",
+      "Bash(timeout 60 bash -c:*)"
     ],
     "deny": [],
     "ask": []

@@ -93,8 +93,7 @@ module Aws
       # Store KB ID in entity
       entity.update!(
         bedrock_knowledge_base_id: kb.knowledge_base_id,
-        bedrock_kb_status: 'CREATING',
-        bedrock_kb_created_at: Time.current
+        bedrock_kb_status: 'CREATING'
       )
 
       # Start sync job

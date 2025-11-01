@@ -85,7 +85,7 @@ module Aws
 
       @mock_s3_client.expect :put_object, s3_response, [Hash]
 
-      s3_key = @service.send(:upload_to_s3, @test_file)
+      s3_key = @service.send(:upload_to_s3, @entity, @test_file)
 
       assert s3_key.present?
       assert s3_key.starts_with?("textract/#{@entity.id}/")
