@@ -25,6 +25,7 @@ class HybridRagQueryService
     @bedrock = Aws::BedrockRuntime::Client.new(
       region: ENV.fetch('AWS_REGION', 'us-east-1')
     )
+    @comprehend = Aws::ComprehendService.instance
   end
 
   def query(user_query, options = {})
@@ -48,15 +49,22 @@ class HybridRagQueryService
 
     start_time = Time.current
 
+    # Analyze query with Comprehend for enhanced search (optional)
+    query_analysis = nil
+    if options.fetch(:enable_nlp, false) && @comprehend.enabled?
+      query_analysis = analyze_query_with_comprehend(user_query)
+    end
+
     # Generate query embedding
     query_embedding = generate_query_embedding(user_query)
 
-    # Perform hybrid search
+    # Perform hybrid search (with optional NLP-enhanced terms)
     chunks = perform_hybrid_search(
       query_embedding,
       user_query,
       top_k: top_k,
-      include_system: include_system
+      include_system: include_system,
+      query_analysis: query_analysis
     )
 
     # Build context from chunks
@@ -67,7 +75,8 @@ class HybridRagQueryService
       chunks: chunks.map { |c| format_chunk(c) },
       context: context,
       response_time_ms: ((Time.current - start_time) * 1000).to_i,
-      source_count: chunks.length
+      source_count: chunks.length,
+      query_analysis: query_analysis
     }
 
     # Cache result
@@ -158,12 +167,24 @@ class HybridRagQueryService
     parsed['embedding']
   end
 
-  def perform_hybrid_search(query_embedding, query_text, top_k:, include_system:)
+  def perform_hybrid_search(query_embedding, query_text, top_k:, include_system:, query_analysis: nil)
     # Perform vector search (pgvector + Pinecone + Bedrock KB)
     vector_results = vector_search(query_embedding, top_k: top_k, include_system: include_system)
 
+    # Enhance keyword search with NLP-extracted terms
+    enhanced_query_text = query_text
+    if query_analysis
+      # Add extracted entities and key phrases to search terms
+      search_terms = [query_text]
+      search_terms += query_analysis[:entities].map { |e| e[:text] } if query_analysis[:entities]
+      search_terms += query_analysis[:key_phrases].map { |p| p[:text] } if query_analysis[:key_phrases]
+      enhanced_query_text = search_terms.uniq.join(' ')
+
+      Rails.logger.info "  🧠 NLP-enhanced query: #{search_terms.count} terms (#{query_analysis[:entities]&.count || 0} entities, #{query_analysis[:key_phrases]&.count || 0} phrases)"
+    end
+
     # Perform keyword search (PostgreSQL full-text)
-    keyword_results = keyword_search(query_text, limit: [top_k / 2, 5].max, include_system: include_system)
+    keyword_results = keyword_search(enhanced_query_text, limit: [top_k / 2, 5].max, include_system: include_system)
 
     # If Bedrock KB is enabled, also query it
     bedrock_results = []
@@ -482,5 +503,38 @@ class HybridRagQueryService
 
     # Return top K results
     sorted_chunks.first(top_k)
+  end
+
+  # Analyze query with AWS Comprehend for enhanced search
+  def analyze_query_with_comprehend(query_text)
+    Rails.logger.info "  🧠 Analyzing query with Comprehend"
+
+    start_time = Time.current
+
+    # Detect language
+    language_result = @comprehend.detect_language(query_text, entity: @entity)
+    language_code = language_result[:language_code] || 'en'
+
+    # Extract entities (people, organizations, locations, etc.)
+    entities_result = @comprehend.detect_entities(query_text, entity: @entity, language_code: language_code)
+
+    # Extract key phrases
+    phrases_result = @comprehend.detect_key_phrases(query_text, entity: @entity, language_code: language_code)
+
+    elapsed_ms = ((Time.current - start_time) * 1000).to_i
+
+    analysis = {
+      language: language_code,
+      entities: entities_result[:success] ? entities_result[:entities] : [],
+      key_phrases: phrases_result[:success] ? phrases_result[:key_phrases] : [],
+      processing_time_ms: elapsed_ms
+    }
+
+    Rails.logger.info "  ✅ Query analysis complete in #{elapsed_ms}ms: #{analysis[:entities].count} entities, #{analysis[:key_phrases].count} phrases"
+
+    analysis
+  rescue => e
+    Rails.logger.error "❌ Comprehend query analysis failed: #{e.message}"
+    { language: 'en', entities: [], key_phrases: [], processing_time_ms: 0 }
   end
 end
