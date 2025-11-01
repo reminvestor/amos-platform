@@ -25,6 +25,7 @@ class HybridRagQueryService
     @bedrock = Aws::BedrockRuntime::Client.new(
       region: ENV.fetch('AWS_REGION', 'us-east-1')
     )
+    @comprehend = Aws::ComprehendService.instance
   end
 
   def query(user_query, options = {})
@@ -48,15 +49,22 @@ class HybridRagQueryService
 
     start_time = Time.current
 
+    # Analyze query with Comprehend for enhanced search (optional)
+    query_analysis = nil
+    if options.fetch(:enable_nlp, false) && @comprehend.enabled?
+      query_analysis = analyze_query_with_comprehend(user_query)
+    end
+
     # Generate query embedding
     query_embedding = generate_query_embedding(user_query)
 
-    # Perform hybrid search
+    # Perform hybrid search (with optional NLP-enhanced terms)
     chunks = perform_hybrid_search(
       query_embedding,
       user_query,
       top_k: top_k,
-      include_system: include_system
+      include_system: include_system,
+      query_analysis: query_analysis
     )
 
     # Build context from chunks
@@ -67,7 +75,8 @@ class HybridRagQueryService
       chunks: chunks.map { |c| format_chunk(c) },
       context: context,
       response_time_ms: ((Time.current - start_time) * 1000).to_i,
-      source_count: chunks.length
+      source_count: chunks.length,
+      query_analysis: query_analysis
     }
 
     # Cache result
@@ -158,17 +167,35 @@ class HybridRagQueryService
     parsed['embedding']
   end
 
-  def perform_hybrid_search(query_embedding, query_text, top_k:, include_system:)
-    # Perform vector search (pgvector + Pinecone)
+  def perform_hybrid_search(query_embedding, query_text, top_k:, include_system:, query_analysis: nil)
+    # Perform vector search (pgvector + Pinecone + Bedrock KB)
     vector_results = vector_search(query_embedding, top_k: top_k, include_system: include_system)
 
+    # Enhance keyword search with NLP-extracted terms
+    enhanced_query_text = query_text
+    if query_analysis
+      # Add extracted entities and key phrases to search terms
+      search_terms = [query_text]
+      search_terms += query_analysis[:entities].map { |e| e[:text] } if query_analysis[:entities]
+      search_terms += query_analysis[:key_phrases].map { |p| p[:text] } if query_analysis[:key_phrases]
+      enhanced_query_text = search_terms.uniq.join(' ')
+
+      Rails.logger.info "  🧠 NLP-enhanced query: #{search_terms.count} terms (#{query_analysis[:entities]&.count || 0} entities, #{query_analysis[:key_phrases]&.count || 0} phrases)"
+    end
+
     # Perform keyword search (PostgreSQL full-text)
-    keyword_results = keyword_search(query_text, limit: [top_k / 2, 5].max, include_system: include_system)
+    keyword_results = keyword_search(enhanced_query_text, limit: [top_k / 2, 5].max, include_system: include_system)
 
-    # Merge and rerank
-    merged_results = merge_and_rerank(vector_results, keyword_results, top_k: top_k)
+    # If Bedrock KB is enabled, also query it
+    bedrock_results = []
+    if bedrock_kb_enabled?
+      bedrock_results = search_bedrock_kb(query_text, top_k: top_k)
+    end
 
-    Rails.logger.info "  Found #{merged_results.length} relevant chunks (#{vector_results.length} vector, #{keyword_results.length} keyword)"
+    # Merge and rerank all results
+    merged_results = merge_and_rerank_multi(vector_results, keyword_results, bedrock_results, top_k: top_k)
+
+    Rails.logger.info "  Found #{merged_results.length} relevant chunks (#{vector_results.length} vector, #{keyword_results.length} keyword, #{bedrock_results.length} bedrock)"
 
     merged_results
   end
@@ -401,5 +428,146 @@ class HybridRagQueryService
 
   def pinecone_configured?
     ENV['PINECONE_API_KEY'].present? && ENV['PINECONE_ENVIRONMENT'].present?
+  end
+
+  # Analyze query with AWS Comprehend for enhanced search
+  def analyze_query_with_comprehend(query_text)
+    Rails.logger.info "  🧠 Analyzing query with Comprehend"
+
+    start_time = Time.current
+
+    # Detect language
+    language_result = @comprehend.detect_language(query_text, entity: @entity)
+    language_code = language_result[:language_code] || 'en'
+
+    # Extract entities (people, organizations, locations, etc.)
+    entities_result = @comprehend.detect_entities(query_text, entity: @entity, language_code: language_code)
+
+    # Extract key phrases
+    phrases_result = @comprehend.detect_key_phrases(query_text, entity: @entity, language_code: language_code)
+
+    elapsed_ms = ((Time.current - start_time) * 1000).to_i
+
+    analysis = {
+      language: language_code,
+      entities: entities_result[:success] ? entities_result[:entities] : [],
+      key_phrases: phrases_result[:success] ? phrases_result[:key_phrases] : [],
+      processing_time_ms: elapsed_ms
+    }
+
+    Rails.logger.info "  ✅ Query analysis complete in #{elapsed_ms}ms: #{analysis[:entities].count} entities, #{analysis[:key_phrases].count} phrases"
+
+    analysis
+  rescue => e
+    Rails.logger.error "❌ Comprehend query analysis failed: #{e.message}"
+    { language: 'en', entities: [], key_phrases: [], processing_time_ms: 0 }
+  end
+
+  # Bedrock Knowledge Base integration
+  def bedrock_kb_enabled?
+    @entity.use_bedrock_kb && @entity.bedrock_knowledge_base_id.present?
+  end
+
+  def search_bedrock_kb(query_text, top_k:)
+    return [] unless bedrock_kb_enabled?
+
+    Rails.logger.info "  🔍 Querying Bedrock Knowledge Base..."
+    start_time = Time.current
+
+    kb_service = Aws::BedrockKnowledgeBaseService.instance
+    result = kb_service.query(@entity, query_text, max_results: top_k)
+
+    # Convert Bedrock KB results to our chunk format
+    chunks = result[:results].map do |r|
+      {
+        id: "bedrock-#{SecureRandom.hex(8)}",
+        content: r[:content],
+        metadata: r[:metadata] || {},
+        source: :bedrock_kb,
+        score: r[:score] || 0.0,
+        combined_score: r[:score] || 0.0,
+        # Store original Bedrock data for reference
+        bedrock_data: {
+          retrieval_result_id: r[:retrieval_result_id],
+          location: r[:location]
+        }
+      }
+    end
+
+    elapsed_ms = ((Time.current - start_time) * 1000).to_i
+    Rails.logger.info "  ✅ Bedrock KB returned #{chunks.length} results in #{elapsed_ms}ms"
+
+    chunks
+  rescue => e
+    Rails.logger.error "❌ Bedrock KB search failed: #{e.message}"
+    Rails.logger.error e.backtrace.first(5).join("\n")
+    []
+  end
+
+  def merge_and_rerank_multi(vector_results, keyword_results, bedrock_results, top_k:)
+    # Combine all chunks from all sources
+    all_chunks = (vector_results + keyword_results + bedrock_results)
+
+    # Deduplicate by content similarity
+    chunks_by_content = {}
+
+    all_chunks.each do |chunk|
+      # Use content hash as key for deduplication
+      content_key = chunk[:content].to_s[0..200].strip.downcase
+
+      if chunks_by_content[content_key]
+        # Merge scores - take maximum score
+        existing = chunks_by_content[content_key]
+        new_score = chunk[:combined_score] || 0
+        existing[:combined_score] = [existing[:combined_score] || 0, new_score].max
+
+        # Prefer Bedrock KB source if available
+        if chunk[:source] == :bedrock_kb
+          existing[:source] = :bedrock_kb
+          existing[:bedrock_data] = chunk[:bedrock_data] if chunk[:bedrock_data]
+        end
+      else
+        chunks_by_content[content_key] = chunk
+      end
+    end
+
+    # Sort by combined score
+    sorted_chunks = chunks_by_content.values.sort_by { |c| -(c[:combined_score] || 0) }
+
+    # Return top K results
+    sorted_chunks.first(top_k)
+  end
+
+  # Analyze query with AWS Comprehend for enhanced search
+  def analyze_query_with_comprehend(query_text)
+    Rails.logger.info "  🧠 Analyzing query with Comprehend"
+
+    start_time = Time.current
+
+    # Detect language
+    language_result = @comprehend.detect_language(query_text, entity: @entity)
+    language_code = language_result[:language_code] || 'en'
+
+    # Extract entities (people, organizations, locations, etc.)
+    entities_result = @comprehend.detect_entities(query_text, entity: @entity, language_code: language_code)
+
+    # Extract key phrases
+    phrases_result = @comprehend.detect_key_phrases(query_text, entity: @entity, language_code: language_code)
+
+    elapsed_ms = ((Time.current - start_time) * 1000).to_i
+
+    analysis = {
+      language: language_code,
+      entities: entities_result[:success] ? entities_result[:entities] : [],
+      key_phrases: phrases_result[:success] ? phrases_result[:key_phrases] : [],
+      processing_time_ms: elapsed_ms
+    }
+
+    Rails.logger.info "  ✅ Query analysis complete in #{elapsed_ms}ms: #{analysis[:entities].count} entities, #{analysis[:key_phrases].count} phrases"
+
+    analysis
+  rescue => e
+    Rails.logger.error "❌ Comprehend query analysis failed: #{e.message}"
+    { language: 'en', entities: [], key_phrases: [], processing_time_ms: 0 }
   end
 end

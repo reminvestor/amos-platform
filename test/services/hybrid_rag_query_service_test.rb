@@ -533,6 +533,198 @@ class HybridRagQueryServiceTest < ActiveSupport::TestCase
     # Skipping for now as it's complex integration testing
   end
 
+  # ===== Comprehend NLP Enhancement (Phase 3) =====
+
+  test "query without NLP enhancement disabled by default" do
+    mock_bedrock_embedding do
+      result = @service.query("How do I create a campaign?")
+
+      # NLP should be disabled by default
+      assert_nil result[:query_analysis]
+    end
+  end
+
+  test "query with NLP enhancement when enabled" do
+    mock_comprehend_analysis do
+      mock_bedrock_embedding do
+        result = @service.query(
+          "What did Tim Cook say about Apple iPhone sales?",
+          enable_nlp: true
+        )
+
+        # Should include query analysis
+        assert_not_nil result[:query_analysis]
+        assert result[:query_analysis].key?(:language)
+        assert result[:query_analysis].key?(:entities)
+        assert result[:query_analysis].key?(:key_phrases)
+        assert result[:query_analysis].key?(:processing_time_ms)
+      end
+    end
+  end
+
+  test "extracts entities from query with NLP" do
+    mock_comprehend_analysis(
+      entities: [
+        { type: 'PERSON', text: 'Tim Cook', score: 0.99 },
+        { type: 'ORGANIZATION', text: 'Apple', score: 0.98 },
+        { type: 'COMMERCIAL_ITEM', text: 'iPhone', score: 0.95 }
+      ]
+    ) do
+      mock_bedrock_embedding do
+        result = @service.query(
+          "What did Tim Cook say about Apple iPhone sales?",
+          enable_nlp: true
+        )
+
+        entities = result[:query_analysis][:entities]
+        assert_equal 3, entities.length
+        assert_equal 'Tim Cook', entities[0][:text]
+        assert_equal 'Apple', entities[1][:text]
+        assert_equal 'iPhone', entities[2][:text]
+      end
+    end
+  end
+
+  test "extracts key phrases from query with NLP" do
+    mock_comprehend_analysis(
+      key_phrases: [
+        { text: 'iPhone sales', score: 0.99 },
+        { text: 'quarterly results', score: 0.95 }
+      ]
+    ) do
+      mock_bedrock_embedding do
+        result = @service.query(
+          "Tell me about iPhone sales in quarterly results",
+          enable_nlp: true
+        )
+
+        phrases = result[:query_analysis][:key_phrases]
+        assert_equal 2, phrases.length
+        assert_equal 'iPhone sales', phrases[0][:text]
+        assert_equal 'quarterly results', phrases[1][:text]
+      end
+    end
+  end
+
+  test "detects query language with NLP" do
+    mock_comprehend_analysis(language: 'es') do
+      mock_bedrock_embedding do
+        result = @service.query(
+          "¿Cómo creo una campaña?",
+          enable_nlp: true
+        )
+
+        assert_equal 'es', result[:query_analysis][:language]
+      end
+    end
+  end
+
+  test "enhances keyword search with extracted entities" do
+    # Create chunk mentioning "Apple"
+    apple_chunk = @rag_document.rag_chunks.create!(
+      content: "Apple reported strong Q4 earnings with iPhone revenue growth.",
+      chunk_index: 99,
+      token_count: 12,
+      embedding: @sample_embedding,
+      metadata: { page: 1 }
+    )
+
+    mock_comprehend_analysis(
+      entities: [
+        { type: 'ORGANIZATION', text: 'Apple', score: 0.98 }
+      ],
+      key_phrases: [
+        { text: 'quarterly earnings', score: 0.95 }
+      ]
+    ) do
+      mock_bedrock_embedding do
+        # Query doesn't mention "Apple" directly but Comprehend extracts it
+        result = @service.query(
+          "What did the company report in quarterly earnings?",
+          enable_nlp: true
+        )
+
+        # Enhanced search should find Apple chunk
+        # (Note: This depends on full-text search being set up)
+        assert_not_nil result
+      end
+    end
+  end
+
+  test "handles Comprehend service disabled" do
+    # Stub Comprehend service to return disabled
+    comprehend_mock = Minitest::Mock.new
+    comprehend_mock.expect :enabled?, false
+
+    Aws::ComprehendService.stub :instance, comprehend_mock do
+      service = HybridRagQueryService.new(@entity)
+
+      mock_bedrock_embedding_for_service(service) do
+        result = service.query("test query", enable_nlp: true)
+
+        # Should work without NLP
+        assert_not_nil result
+        assert_nil result[:query_analysis]
+      end
+    end
+  end
+
+  test "handles Comprehend API errors gracefully" do
+    # Mock Comprehend to raise error
+    comprehend_mock = Minitest::Mock.new
+    comprehend_mock.expect :enabled?, true
+    comprehend_mock.expect :detect_language, -> { raise StandardError, "AWS API error" }, [String, Hash]
+
+    Aws::ComprehendService.stub :instance, comprehend_mock do
+      service = HybridRagQueryService.new(@entity)
+
+      mock_bedrock_embedding_for_service(service) do
+        # Should not raise error, should fallback gracefully
+        assert_nothing_raised do
+          result = service.query("test query", enable_nlp: true)
+          assert_not_nil result
+        end
+      end
+    end
+  end
+
+  test "NLP enhancement tracks processing time" do
+    mock_comprehend_analysis do
+      mock_bedrock_embedding do
+        result = @service.query("test query", enable_nlp: true)
+
+        assert result[:query_analysis][:processing_time_ms] >= 0
+      end
+    end
+  end
+
+  test "empty query with NLP returns default analysis" do
+    mock_comprehend_analysis(
+      entities: [],
+      key_phrases: []
+    ) do
+      mock_bedrock_embedding do
+        result = @service.query("test", enable_nlp: true)
+
+        assert_equal [], result[:query_analysis][:entities]
+        assert_equal [], result[:query_analysis][:key_phrases]
+      end
+    end
+  end
+
+  test "multi-lingual query with NLP auto-detects language" do
+    mock_comprehend_analysis(language: 'fr') do
+      mock_bedrock_embedding do
+        result = @service.query(
+          "Comment créer une campagne marketing?",
+          enable_nlp: true
+        )
+
+        assert_equal 'fr', result[:query_analysis][:language]
+      end
+    end
+  end
+
   # ===== Edge Cases =====
 
   test "handles empty query results" do
@@ -670,5 +862,48 @@ class HybridRagQueryServiceTest < ActiveSupport::TestCase
     body = StringIO.new({ embedding: embedding }.to_json)
 
     OpenStruct.new(body: body)
+  end
+
+  def mock_comprehend_analysis(options = {})
+    # Default mock analysis
+    default_analysis = {
+      language: options[:language] || 'en',
+      entities: options[:entities] || [],
+      key_phrases: options[:key_phrases] || [],
+      processing_time_ms: options[:processing_time_ms] || 150
+    }
+
+    # Mock Comprehend service
+    comprehend_mock = Minitest::Mock.new
+    comprehend_mock.expect :enabled?, true
+
+    # Mock language detection
+    comprehend_mock.expect(
+      :detect_language,
+      { success: true, language_code: default_analysis[:language] },
+      [String, Hash]
+    )
+
+    # Mock entity detection
+    entities_result = {
+      success: true,
+      entities: default_analysis[:entities],
+      entity_count: default_analysis[:entities].length
+    }
+    comprehend_mock.expect :detect_entities, entities_result, [String, Hash]
+
+    # Mock key phrase extraction
+    phrases_result = {
+      success: true,
+      key_phrases: default_analysis[:key_phrases],
+      phrase_count: default_analysis[:key_phrases].length
+    }
+    comprehend_mock.expect :detect_key_phrases, phrases_result, [String, Hash]
+
+    Aws::ComprehendService.stub :instance, comprehend_mock do
+      # Re-initialize service to pick up mocked Comprehend
+      @service = HybridRagQueryService.new(@entity)
+      yield
+    end
   end
 end

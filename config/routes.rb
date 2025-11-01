@@ -100,6 +100,16 @@ Rails.application.routes.draw do
           post :reprocess_drip_campaigns
         end
       end
+
+      # Entity cost tracking
+      resources :entity_costs, only: [ :index, :show ] do
+        member do
+          get :export
+        end
+        collection do
+          get :bulk_analysis
+        end
+      end
     end
 
     # Entity management
@@ -496,6 +506,16 @@ Rails.application.routes.draw do
       member do
         post :test
         post :refresh
+      end
+    end
+
+    # Bedrock Knowledge Base management
+    resources :bedrock_kb, only: [:index, :show] do
+      member do
+        post :create_kb
+        post :enable
+        post :disable
+        post :sync
       end
     end
 

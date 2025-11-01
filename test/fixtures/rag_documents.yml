@@ -1,4 +1,16 @@
 # RagDocument fixtures for testing
+one:
+  rag_store: entity_one_custom
+  original_filename: "test_doc.pdf"
+  content_type: "application/pdf"
+  file_size_bytes: 102400  # 100 KB
+  file_hash: "one123abc456def789012345678901234567890abcdef1234567890test1234"
+  docling_metadata: {}
+  extracted_tables: []
+  extracted_images: []
+  document_structure: {}
+  page_count: 1
+
 document_one:
   rag_store: entity_one_custom
   original_filename: "brand_guidelines.pdf"
