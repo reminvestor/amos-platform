@@ -29,15 +29,24 @@ module Aws
         )
       )
 
-      @service.bedrock_agent_client.stub :create_knowledge_base, mock_kb_response do
-        @service.bedrock_agent_client.stub :create_data_source, OpenStruct.new(data_source: OpenStruct.new(data_source_id: 'ds-123')) do
-          kb = @service.create_knowledge_base(entity)
+      # Stub S3 and OpenSearch operations to prevent actual AWS calls
+      @service.stub :ensure_s3_bucket, 'test-bucket' do
+        @service.stub :ensure_opensearch_collection, 'arn:aws:aoss:us-east-1:123:collection/test' do
+          @service.bedrock_agent_client.stub :create_knowledge_base, mock_kb_response do
+            @service.bedrock_agent_client.stub :create_data_source, OpenStruct.new(data_source: OpenStruct.new(data_source_id: 'ds-123')) do
+              @service.bedrock_agent_client.stub :list_data_sources, OpenStruct.new(data_source_summaries: [OpenStruct.new(data_source_id: 'ds-123')]) do
+                @service.bedrock_agent_client.stub :start_ingestion_job, OpenStruct.new(ingestion_job: OpenStruct.new(ingestion_job_id: 'job-123')) do
+                  kb = @service.create_knowledge_base(entity)
 
-          assert_not_nil kb
-          assert_equal 'new-kb-123', kb.knowledge_base_id
+                  assert_not_nil kb
+                  assert_equal 'new-kb-123', kb.knowledge_base_id
 
-          entity.reload
-          assert_equal 'new-kb-123', entity.bedrock_knowledge_base_id
+                  entity.reload
+                  assert_equal 'new-kb-123', entity.bedrock_knowledge_base_id
+                end
+              end
+            end
+          end
         end
       end
     end
@@ -69,13 +78,17 @@ module Aws
         source: 'unit_test'
       }
 
-      # Mock S3 upload
+      # Mock S3 upload and ingestion job
       @service.s3_client.stub :put_object, OpenStruct.new(etag: 'test-etag') do
-        result = @service.add_document(@entity, file_path, metadata)
+        @service.bedrock_agent_client.stub :list_data_sources, OpenStruct.new(data_source_summaries: [OpenStruct.new(data_source_id: 'ds-123')]) do
+          @service.bedrock_agent_client.stub :start_ingestion_job, OpenStruct.new(ingestion_job: OpenStruct.new(ingestion_job_id: 'job-123', status: 'STARTING')) do
+            result = @service.add_document(@entity, file_path, metadata)
 
-        assert result[:success]
-        assert result[:s3_key].present?
-        assert result[:s3_key].starts_with?("documents/#{@entity.id}/")
+            assert result[:success]
+            assert result[:s3_key].present?
+            assert result[:s3_key].starts_with?("documents/#{@entity.id}/")
+          end
+        end
       end
 
       FileUtils.rm_f(file_path)
@@ -270,7 +283,7 @@ module Aws
       entity = entities(:two)
       entity.update!(bedrock_knowledge_base_id: nil)
 
-      # Mock KB creation
+      # Mock KB creation and S3 bucket operations
       mock_kb = OpenStruct.new(
         knowledge_base: OpenStruct.new(
           knowledge_base_id: 'new-kb-123',
@@ -278,12 +291,19 @@ module Aws
         )
       )
 
-      @service.bedrock_agent_client.stub :create_knowledge_base, mock_kb do
-        @service.bedrock_agent_client.stub :create_data_source, OpenStruct.new(data_source: OpenStruct.new(data_source_id: 'ds-123')) do
-          @service.send(:ensure_knowledge_base, entity)
+      # Stub ensure_s3_bucket to prevent actual S3 API calls
+      @service.stub :ensure_s3_bucket, 'test-bucket' do
+        @service.stub :ensure_opensearch_collection, 'arn:aws:aoss:us-east-1:123:collection/test' do
+          @service.bedrock_agent_client.stub :create_knowledge_base, mock_kb do
+            @service.bedrock_agent_client.stub :create_data_source, OpenStruct.new(data_source: OpenStruct.new(data_source_id: 'ds-123')) do
+              @service.bedrock_agent_client.stub :start_ingestion_job, OpenStruct.new(ingestion_job: OpenStruct.new(ingestion_job_id: 'job-123')) do
+                @service.send(:ensure_knowledge_base, entity)
 
-          entity.reload
-          assert_equal 'new-kb-123', entity.bedrock_knowledge_base_id
+                entity.reload
+                assert_equal 'new-kb-123', entity.bedrock_knowledge_base_id
+              end
+            end
+          end
         end
       end
     end

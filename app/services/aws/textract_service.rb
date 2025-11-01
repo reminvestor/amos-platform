@@ -242,7 +242,7 @@ module Aws
       features = []
       features << 'TABLES' if options[:extract_tables] != false
       features << 'FORMS' if options[:extract_forms]
-      features << 'LAYOUT' if options[:extract_layout]
+      features << 'LAYOUT' if options[:extract_layout] != false  # Default to true like TABLES
       features << 'SIGNATURES' if options[:detect_signatures]
       features << 'QUERIES' if options[:queries].present?
 

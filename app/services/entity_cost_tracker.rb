@@ -95,7 +95,14 @@ class EntityCostTracker
       cloudwatch_logs: { per_gb_ingested: 0.45, per_gb_stored_month: 0.028 },  # Reduced
       custom_metrics: { per_metric_month: 0.25 },                              # New tier
       dashboards: { per_dashboard_month: 2.50 },                               # 16.7% reduction
-      insights_queries: { per_gb_scanned: 0.0045 }                            # Query costs
+      insights_queries: { per_gb_scanned: 0.0045 },                            # Query costs
+      comprehend: {
+        detect_entities: { per_100_chars: 0.00008 },
+        detect_sentiment: { per_100_chars: 0.00008 },
+        detect_key_phrases: { per_100_chars: 0.00008 },
+        detect_pii: { per_100_chars: 0.00008 },
+        classify_document: { per_100_chars: 0.00008 }
+      }
     },
 
     # Development & Testing (2025 rates)
@@ -387,6 +394,11 @@ class EntityCostTracker
     if rate.is_a?(Hash) && rate[:percent]
       base_amount = metadata[:amount] || 0
       (base_amount * rate[:percent] / 100.0) + (rate[:fixed] || 0)
+    # Handle per-unit pricing hashes
+    elsif rate.is_a?(Hash)
+      # Extract the numeric rate from hash (e.g., { per_100_chars: 0.00008 })
+      unit_rate = rate.values.first
+      unit_rate * quantity
     else
       rate * quantity
     end
