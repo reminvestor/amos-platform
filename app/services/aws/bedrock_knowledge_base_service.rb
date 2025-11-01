@@ -227,9 +227,9 @@ module Aws
       # Add session if provided for conversation continuity
       if session_id
         request[:session_id] = session_id
-        request[:session_configuration] = {
-          kms_key_id: ENV['KMS_KEY_ID'] if ENV['KMS_KEY_ID']
-        }
+        session_config = {}
+        session_config[:kms_key_id] = ENV['KMS_KEY_ID'] if ENV['KMS_KEY_ID']
+        request[:session_configuration] = session_config if session_config.any?
       end
 
       response = @bedrock_runtime_client.retrieve_and_generate(request)
@@ -435,12 +435,14 @@ module Aws
         @s3_client.head_bucket(bucket: bucket)
       rescue Aws::S3::Errors::NotFound
         # Create bucket
-        @s3_client.create_bucket({
-          bucket: bucket,
-          create_bucket_configuration: {
-            location_constraint: ENV.fetch('AWS_REGION', 'us-east-1')
-          } unless ENV.fetch('AWS_REGION', 'us-east-1') == 'us-east-1'
-        })
+        create_params = { bucket: bucket }
+        region = ENV.fetch('AWS_REGION', 'us-east-1')
+        if region != 'us-east-1'
+          create_params[:create_bucket_configuration] = {
+            location_constraint: region
+          }
+        end
+        @s3_client.create_bucket(create_params)
 
         # Enable versioning
         @s3_client.put_bucket_versioning({

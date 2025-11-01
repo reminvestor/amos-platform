@@ -216,10 +216,10 @@ module Aws
       ]
 
       @service.stub :analyze_text, {
-        sentiment: { sentiment: :negative, scores: { negative: 0.8 } },
-        key_phrases: { top_phrases: [{ text: 'billing problem', score: 0.9 }] },
-        entities: { entities_by_type: {} },
-        language: { primary_language: { language_code: 'en' } }
+        sentiment: { success: true, sentiment: :negative, scores: { negative: 0.8 } },
+        key_phrases: { success: true, key_phrases: [{ text: 'billing problem', score: 0.9 }], top_phrases: [{ text: 'billing problem', score: 0.9 }] },
+        entities: { success: true, entities_by_type: {} },
+        language: { success: true, primary_language: { language_code: 'en' } }
       } do
         result = @service.analyze_conversation(messages, @entity)
 
