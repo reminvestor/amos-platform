@@ -509,6 +509,16 @@ Rails.application.routes.draw do
       end
     end
 
+    # Bedrock Knowledge Base management
+    resources :bedrock_kb, only: [:index, :show] do
+      member do
+        post :create_kb
+        post :enable
+        post :disable
+        post :sync
+      end
+    end
+
     # Policy management
     resources :policy_rules
 
