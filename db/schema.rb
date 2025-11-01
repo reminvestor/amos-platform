@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_10_31_140000) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_01_195949) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -687,7 +687,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_140000) do
     t.decimal "aws_cost_limit_usd", precision: 10, scale: 2
     t.decimal "aws_cost_alert_threshold", precision: 10, scale: 2
     t.datetime "last_cost_alert_sent_at"
+    t.string "bedrock_knowledge_base_id"
+    t.string "bedrock_kb_status"
+    t.string "bedrock_last_ingestion_job_id"
     t.index ["bedrock_kb_id"], name: "index_entities_on_bedrock_kb_id"
+    t.index ["bedrock_kb_status"], name: "index_entities_on_bedrock_kb_status"
+    t.index ["bedrock_knowledge_base_id"], name: "index_entities_on_bedrock_knowledge_base_id"
+    t.index ["bedrock_last_ingestion_job_id"], name: "index_entities_on_bedrock_last_ingestion_job_id"
     t.index ["slug"], name: "index_entities_on_slug", unique: true
     t.index ["stripe_customer_id"], name: "index_entities_on_stripe_customer_id"
     t.index ["stripe_subscription_id"], name: "index_entities_on_stripe_subscription_id"
@@ -1354,8 +1360,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_10_31_140000) do
     t.jsonb "comprehend_analysis"
     t.string "bedrock_ingestion_status"
     t.datetime "bedrock_ingested_at"
+    t.string "processing_status"
+    t.datetime "deleted_at"
+    t.jsonb "metadata", default: {}
     t.index ["bedrock_ingestion_status"], name: "index_rag_documents_on_bedrock_ingestion_status"
+    t.index ["deleted_at"], name: "index_rag_documents_on_deleted_at"
     t.index ["file_hash"], name: "index_rag_documents_on_file_hash"
+    t.index ["processing_status"], name: "index_rag_documents_on_processing_status"
     t.index ["rag_store_id", "file_hash"], name: "index_rag_documents_on_rag_store_id_and_file_hash"
     t.index ["rag_store_id"], name: "index_rag_documents_on_rag_store_id"
     t.index ["textract_job_id"], name: "index_rag_documents_on_textract_job_id"

@@ -5,7 +5,7 @@ module Ocr
   class DualModeServiceTest < ActiveSupport::TestCase
     setup do
       @entity = entities(:one)
-      @service = DualModeService.new(@entity)
+      @service = DualModeService.instance
 
       # Create test file
       @test_file = Rails.root.join('tmp', 'test_ocr_document.txt')
@@ -15,11 +15,6 @@ module Ocr
 
     teardown do
       FileUtils.rm_f(@test_file) if @test_file && File.exist?(@test_file)
-    end
-
-    test "initializes with entity and metrics" do
-      assert_equal @entity, @service.entity
-      assert_equal({ provider: nil, fallback_used: false, processing_time: 0 }, @service.metrics)
     end
 
     test "determines provider from options" do
@@ -260,7 +255,7 @@ module Ocr
 
       Object.stub_const(:DoclingBridgeService, Class.new) do
         DoclingBridgeService.stub :new, mock_docling_service do
-          result = @service.process_document(@test_file, provider: 'docling')
+          result = @service.process_document(@entity, @test_file, provider: 'docling')
 
           assert_equal :docling, @service.metrics[:provider]
           assert @service.metrics[:processing_time] > 0
@@ -283,7 +278,7 @@ module Ocr
 
         Object.stub_const(:DoclingBridgeService, Class.new) do
           DoclingBridgeService.stub :new, mock_docling_service do
-            result = @service.send(:process_with_textract, @test_file, {})
+            result = @service.send(:process_with_textract, @entity, @test_file, {})
 
             assert_equal :docling, result[:provider]
             assert @service.metrics[:fallback_used]
@@ -298,7 +293,7 @@ module Ocr
       @service.stub :textract_available?, false do
         @service.stub :docling_available?, false do
           assert_raises RuntimeError do
-            @service.send(:process_with_docling, @test_file, {})
+            @service.send(:process_with_docling, @entity, @test_file, {})
           end
         end
       end
@@ -322,7 +317,7 @@ module Ocr
 
       Aws::ComprehendService.stub :new, mock_comprehend do
         @service.stub :comprehend_enabled?, true do
-          enhanced = @service.send(:enhance_with_comprehend, result)
+          enhanced = @service.send(:enhance_with_comprehend, @entity, result)
 
           assert enhanced[:nlp_analysis].present?
           assert enhanced[:nlp_analysis][:entities].present?
@@ -338,7 +333,7 @@ module Ocr
 
       Aws::ComprehendService.stub :new, ->{ raise StandardError.new("API Error") } do
         @service.stub :comprehend_enabled?, true do
-          enhanced = @service.send(:enhance_with_comprehend, result)
+          enhanced = @service.send(:enhance_with_comprehend, @entity, result)
 
           # Should return original result without enhancement
           assert_nil enhanced[:nlp_analysis]
@@ -369,7 +364,7 @@ module Ocr
           Aws::TextractService.stub :new, mock_textract do
             Object.stub_const(:DoclingBridgeService, Class.new) do
               DoclingBridgeService.stub :new, mock_docling do
-                comparison = @service.compare_providers(@test_file)
+                comparison = @service.compare_providers(@entity, @test_file)
 
                 assert comparison[:results][:textract].present?
                 assert comparison[:results][:docling].present?
@@ -390,7 +385,7 @@ module Ocr
       @service.stub :textract_available?, true do
         @service.stub :docling_available?, false do
           Aws::TextractService.stub :new, ->(_) { raise StandardError.new("Textract Error") } do
-            comparison = @service.compare_providers(@test_file)
+            comparison = @service.compare_providers(@entity, @test_file)
 
             assert comparison[:results][:textract][:error].present?
             assert_includes comparison[:recommendation], "Both providers failed"
@@ -408,7 +403,7 @@ module Ocr
         })
 
         assert_difference 'OcrMetric.count', 1 do
-          @service.send(:log_metrics, @test_file)
+          @service.send(:log_metrics, @entity, @test_file)
         end
 
         metric = OcrMetric.last
@@ -424,7 +419,7 @@ module Ocr
         OcrMetric.stub :create!, ->(*) { raise StandardError.new("DB Error") } do
           # Should not raise error
           assert_nothing_raised do
-            @service.send(:log_metrics, @test_file)
+            @service.send(:log_metrics, @entity, @test_file)
           end
         end
       end

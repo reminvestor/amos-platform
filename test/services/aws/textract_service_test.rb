@@ -22,7 +22,7 @@ module Aws
       @mock_s3_client = Minitest::Mock.new
 
       # Initialize service with mocked clients
-      @service = TextractService.new(@entity)
+      @service = TextractService.instance
       @service.instance_variable_set(:@client, @mock_textract_client)
       @service.instance_variable_set(:@s3_client, @mock_s3_client)
     end
@@ -31,12 +31,6 @@ module Aws
       FileUtils.rm_f(@test_file) if @test_file && File.exist?(@test_file)
       ENV.delete('TEXTRACT_SNS_TOPIC_ARN')
       ENV.delete('TEXTRACT_ROLE_ARN')
-    end
-
-    test "initializes with entity and clients" do
-      assert_equal @entity, @service.entity
-      assert @service.client.present?
-      assert @service.s3_client.present?
     end
 
     test "validates supported file formats" do
@@ -184,7 +178,7 @@ module Aws
 
       # Stub single_page_document? to return true
       @service.stub :single_page_document?, true do
-        result = @service.process_document(@test_file)
+        result = @service.process_document(@entity, @test_file)
 
         assert result[:pages].present?
         assert result[:raw_text].present?
@@ -205,7 +199,7 @@ module Aws
       @service.stub :single_page_document?, false do
         # Stub TextractResultJob
         TextractResultJob.stub :perform_later, true do
-          result = @service.process_document(@test_file, cleanup: false)
+          result = @service.process_document(@entity, @test_file, cleanup: false)
 
           assert_equal 'processing', result[:status]
           assert_equal 'job-123', result[:job_id]
@@ -380,7 +374,7 @@ module Aws
       @mock_textract_client.expect :analyze_expense, mock_response, [Hash]
       @mock_s3_client.expect :delete_object, nil, [Hash]
 
-      result = @service.analyze_expense(@test_file)
+      result = @service.analyze_expense(@entity, @test_file)
 
       assert result[:expenses].present?
       assert_equal 1, result[:expenses].count
@@ -417,7 +411,7 @@ module Aws
       @mock_textract_client.expect :analyze_id, mock_response, [Hash]
       @mock_s3_client.expect :delete_object, nil, [Hash]
 
-      result = @service.analyze_identity(@test_file)
+      result = @service.analyze_identity(@entity, @test_file)
 
       assert result[:identity_documents].present?
       assert_equal 1, result[:identity_documents].count
