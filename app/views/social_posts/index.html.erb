@@ -1,69 +1,222 @@
-<div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Social Media Posts</h1>
-    <%= link_to 'New Post', new_social_post_path, class: 'btn btn-primary' %>
+
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="share-2"></i>
+      </div>
+      <div class="header-text">
+        <h1>Social Media Posts</h1>
+        <p>Manage and schedule your social media content</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to new_social_post_path, class: "admin-btn admin-btn-primary", "aria-label": "Create new social media post" do %>
+        <i data-lucide="plus" aria-hidden="true"></i>
+        <span>New Post</span>
+      <% end %>
+    </div>
   </div>
 
-  <div class="row">
-    <% @social_posts.each do |post| %>
-      <div class="col-md-6 col-lg-4 mb-4">
-        <div class="card h-100">
-          <% if post.image? %>
-            <div class="card-img-top" style="height: 200px; overflow: hidden;">
-              <%= image_tag post.image_url, class: 'img-fluid w-100 h-100', style: 'object-fit: cover;' %>
+  <% if @social_posts.any? %>
+    <%# Stats Cards %>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-4">
+      <%# Total Posts - Purple Gradient %>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-gradient">
+              <i data-lucide="share-2" class="icon-xl text-white" aria-hidden="true"></i>
             </div>
-          <% end %>
-          <div class="card-body">
-            <h5 class="card-title"><%= post.title %></h5>
-            <p class="card-text"><%= truncate(post.content, length: 150) %></p>
-            <div class="d-flex justify-content-between align-items-center">
-              <span class="badge bg-<%= status_color(post.status) %>"><%= post.status.titleize %></span>
-              <small class="text-muted"><%= post.platform.titleize %></small>
+            <div class="stat-content">
+              <p class="stat-label">Total Posts</p>
+              <h3 class="stat-value"><%= @social_posts.count %></h3>
             </div>
-            <% if post.scheduled? %>
-              <div class="mt-2">
-                <small class="text-muted">Scheduled for: <%= post.scheduled_at.strftime("%B %d, %Y at %I:%M %p") %></small>
-              </div>
-            <% end %>
-            <% if post.published? && post.latest_analytics %>
-              <div class="mt-2">
-                <small class="text-muted">
-                  <%= pluralize(post.latest_analytics.likes, 'like') %> •
-                  <%= pluralize(post.latest_analytics.comments, 'comment') %> •
-                  <%= number_to_percentage(post.calculate_engagement_rate, precision: 2) %> engagement
-                </small>
-              </div>
-            <% end %>
-          </div>
-          <div class="card-footer">
-            <div class="btn-group w-100">
-              <%= link_to 'View', post, class: 'btn btn-outline-primary' %>
-              <%= link_to 'Edit', edit_social_post_path(post), class: 'btn btn-outline-secondary' %>
-              <%= button_to 'Delete', post, method: :delete, class: 'btn btn-outline-danger', data: { confirm: 'Are you sure?' } %>
-            </div>
-            <% if post.draft? %>
-              <%= button_to 'Publish', publish_social_post_path(post), method: :post, class: 'btn btn-success mt-2 w-100' %>
-            <% end %>
           </div>
         </div>
       </div>
-    <% end %>
-  </div>
+
+      <%# Published - Green %>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-success">
+              <i data-lucide="check-circle" class="icon-xl text-success" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Published</p>
+              <h3 class="stat-value"><%= @social_posts.where(status: 'published').count %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Scheduled - Cyan %>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-info">
+              <i data-lucide="calendar-clock" class="icon-xl text-info" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Scheduled</p>
+              <h3 class="stat-value"><%= @social_posts.where(status: 'scheduled').count %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%# Drafts - Yellow %>
+      <div class="col">
+        <div class="admin-card">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-warning">
+              <i data-lucide="file-edit" class="icon-xl text-warning" aria-hidden="true"></i>
+            </div>
+            <div class="stat-content">
+              <p class="stat-label">Drafts</p>
+              <h3 class="stat-value"><%= @social_posts.where(status: 'draft').count %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Posts Grid %>
+    <div class="row row-cols-1 row-cols-lg-2 row-cols-xl-3 g-4">
+      <% @social_posts.each do |post| %>
+        <div class="col">
+          <div class="admin-card d-flex flex-column h-100">
+            <%# Post Image %>
+            <% if post.image? %>
+              <div class="overflow-hidden rounded mb-3" style="height: 200px;">
+                <%= image_tag post.image_url, class: 'w-100 h-100', style: 'object-fit: cover;' %>
+              </div>
+            <% end %>
+
+            <%# Card Header %>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+            <% if post.status == 'published' %>
+              <span class="admin-badge admin-badge-online">Published</span>
+            <% elsif post.status == 'draft' %>
+              <span class="admin-badge admin-badge-default">Draft</span>
+            <% elsif post.status == 'scheduled' %>
+              <span class="admin-badge admin-badge-cyan">Scheduled</span>
+            <% elsif post.status == 'failed' %>
+              <span class="admin-badge admin-badge-offline">Failed</span>
+            <% else %>
+              <span class="admin-badge admin-badge-default"><%= post.status.titleize %></span>
+            <% end %>
+
+            <span class="admin-badge admin-badge-default">
+              <% case post.platform %>
+              <% when 'twitter', 'x' %>
+                <i data-lucide="twitter" class="icon-xs"></i>
+              <% when 'facebook' %>
+                <i data-lucide="facebook" class="icon-xs"></i>
+              <% when 'instagram' %>
+                <i data-lucide="instagram" class="icon-xs"></i>
+              <% when 'linkedin' %>
+                <i data-lucide="linkedin" class="icon-xs"></i>
+              <% else %>
+                <i data-lucide="share-2" class="icon-xs"></i>
+              <% end %>
+              <%= post.platform.titleize %>
+            </span>
+          </div>
+
+          <%# Card Body %>
+          <div class="flex-fill">
+            <h5 class="text-white fs-5 fw-semibold mb-3"><%= post.title %></h5>
+            <p class="text-secondary small mb-3">
+              <%= truncate(post.content, length: 150) %>
+            </p>
+
+            <% if post.scheduled? && post.scheduled_at %>
+              <div class="d-flex align-items-center gap-2 text-muted small mb-3">
+                <i data-lucide="calendar-clock" class="icon-md" aria-hidden="true"></i>
+                Scheduled for <%= post.scheduled_at.strftime("%B %d, %Y at %I:%M %p") %>
+              </div>
+            <% end %>
+
+            <% if post.published? && post.latest_analytics %>
+              <div class="border border-secondary rounded p-3 mb-3" style="background-color: var(--bg-secondary);">
+                <div class="d-flex gap-4 justify-content-around">
+                  <div class="text-center">
+                    <div class="text-secondary" style="font-size: 0.75rem;">Likes</div>
+                    <div class="text-white fw-semibold"><%= number_with_delimiter(post.latest_analytics.likes) %></div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-secondary" style="font-size: 0.75rem;">Comments</div>
+                    <div class="text-white fw-semibold"><%= number_with_delimiter(post.latest_analytics.comments) %></div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-secondary" style="font-size: 0.75rem;">Engagement</div>
+                    <div class="text-info fw-semibold"><%= number_to_percentage(post.calculate_engagement_rate, precision: 1) %></div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <%# Card Footer %>
+          <div class="d-grid gap-2 pt-3 border-top border-secondary" style="grid-template-columns: 1fr 1fr 1fr;">
+            <%= link_to social_post_path(post), class: "admin-btn admin-btn-sm admin-btn-outline", "aria-label": "View #{post.title}" do %>
+              <i data-lucide="eye" aria-hidden="true"></i>
+            <% end %>
+            <%= link_to edit_social_post_path(post), class: "admin-btn admin-btn-sm admin-btn-outline", "aria-label": "Edit #{post.title}" do %>
+              <i data-lucide="pencil" aria-hidden="true"></i>
+            <% end %>
+            <%= button_to social_post_path(post), method: :delete,
+                class: "admin-btn admin-btn-sm admin-btn-outline text-danger border-danger",
+                "aria-label": "Delete #{post.title}",
+                data: { turbo_confirm: 'Are you sure?' } do %>
+              <i data-lucide="trash-2" aria-hidden="true"></i>
+            <% end %>
+          </div>
+
+          <% if post.draft? %>
+            <%= button_to publish_social_post_path(post), method: :post,
+                class: "admin-btn admin-btn-sm admin-btn-primary w-100 mt-2",
+                "aria-label": "Publish #{post.title} now" do %>
+              <i data-lucide="send" aria-hidden="true"></i>
+              <span>Publish Now</span>
+            <% end %>
+          <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <%# Empty State %>
+    <div class="admin-card">
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="share-2" aria-hidden="true"></i>
+        </div>
+        <h3>No Social Posts Yet</h3>
+        <p>Create your first social media post and start engaging with your audience</p>
+        <%= link_to new_social_post_path, class: "admin-btn admin-btn-primary mt-3", "aria-label": "Create your first social media post" do %>
+          <i data-lucide="plus" aria-hidden="true"></i>
+          <span>Create Your First Post</span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 </div>
 
-<% content_for :helper_methods do %>
-  def status_color(status)
-    case status
-    when 'draft'
-      'secondary'
-    when 'scheduled'
-      'info'
-    when 'published'
-      'success'
-    when 'failed'
-      'danger'
-    else
-      'secondary'
-    end
-  end
-<% end %> 
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

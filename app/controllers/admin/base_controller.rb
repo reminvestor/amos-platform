@@ -15,7 +15,7 @@ class Admin::BaseController < ApplicationController
       # Regular user with admin privileges - create/find admin record
       sign_in_admin_from_user
     else
-      redirect_to root_path, alert: "You must be an admin to access this area."
+      redirect_to chat_mode_path, alert: "You must be an admin to access this area."
     end
   end
 
@@ -27,6 +27,11 @@ class Admin::BaseController < ApplicationController
     @current_admin ||= AdminUser.find_by(id: session[:admin_user_id]) if session[:admin_user_id]
   end
   helper_method :current_admin
+
+  def current_entity
+    @current_entity ||= current_user&.entity
+  end
+  helper_method :current_entity
 
   def sign_in_admin_from_user
     # Find or create AdminUser record based on user email
@@ -44,7 +49,7 @@ class Admin::BaseController < ApplicationController
     end
 
     if admin.locked?
-      redirect_to root_path, alert: "Your admin account is locked."
+      redirect_to chat_mode_path, alert: "Your admin account is locked."
     else
       session[:admin_user_id] = admin.id
       admin.record_login!

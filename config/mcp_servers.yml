@@ -1,0 +1,46 @@
+# MCP Server Configuration
+# Model Context Protocol servers provide tools and resources to AI agents
+
+servers:
+  github:
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-github"
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_API_TOKEN}"
+    description: "GitHub repository management, PR creation, code review"
+    tools:
+      - create_or_update_file
+      - search_repositories
+      - create_repository
+      - get_file_contents
+      - push_files
+      - create_issue
+      - create_pull_request
+      - fork_repository
+      - create_branch
+
+  filesystem:
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "${PIPELINE_WORKSPACE_PATH}"
+    env: {}
+    description: "File system operations in pipeline workspace"
+    tools:
+      - read_file
+      - read_multiple_files
+      - write_file
+      - create_directory
+      - list_directory
+      - move_file
+      - search_files
+      - get_file_info
+      - list_allowed_directories
+
+# Future MCP servers to add:
+# - JIRA server (when available)
+# - Slack server (for notifications)
+# - Database server (for querying app data)

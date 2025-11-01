@@ -1,267 +1,275 @@
-<div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i class="fas fa-chart-line"></i> Dashboard</h1>
-      <p class="text-muted">Welcome back, <%= current_user.first_name %>! Here's your business overview.</p>
-    </div>
-  </div>
 
-  <!-- Quick Stats -->
-  <div class="row mb-4">
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
-              <i class="fas fa-envelope text-primary fa-lg"></i>
-            </div>
-            <div>
-              <div class="h3 mb-0"><%= @campaigns_count %></div>
-              <div class="text-muted small">Campaigns</div>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent border-0">
-          <%= link_to "View All", campaigns_path, class: "small text-decoration-none" %>
-        </div>
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+        <i data-lucide="layout-dashboard"></i>
       </div>
-    </div>
-
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
-              <i class="fas fa-users text-success fa-lg"></i>
-            </div>
-            <div>
-              <div class="h3 mb-0"><%= @contacts_count %></div>
-              <div class="text-muted small">Contacts</div>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent border-0">
-          <%= link_to "View All", contacts_path, class: "small text-decoration-none" %>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
-              <i class="fas fa-globe text-info fa-lg"></i>
-            </div>
-            <div>
-              <div class="h3 mb-0"><%= @landing_pages_count %></div>
-              <div class="text-muted small">Landing Pages</div>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent border-0">
-          <%= link_to "View All", landing_pages_path, class: "small text-decoration-none" %>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
-              <i class="fas fa-file-alt text-warning fa-lg"></i>
-            </div>
-            <div>
-              <div class="h3 mb-0"><%= @email_templates_count %></div>
-              <div class="text-muted small">Email Templates</div>
-            </div>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent border-0">
-          <%= link_to "View All", email_templates_path, class: "small text-decoration-none" %>
-        </div>
+      <div class="header-text">
+        <h1>Dashboard</h1>
+        <p>Welcome back, <%= current_user.first_name %>! Here's your business overview.</p>
       </div>
     </div>
   </div>
 
-  <!-- AI Usage Stats -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-          <h5 class="mb-0"><i class="fas fa-robot text-info"></i> Your AI Usage (Last 30 Days)</h5>
-          <small class="text-muted">Track your AMOS AI consumption</small>
+  <%# Quick Stats %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <%# Campaigns %>
+    <div class="admin-card" style="position: relative;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="mail" class="icon-xl text-white"></i>
         </div>
-        <div class="card-body">
-          <div class="row text-center">
-            <div class="col-md-2">
-              <div class="h4 mb-0 text-primary"><%= @ai_usage[:conversations_this_month] %></div>
-              <div class="text-muted small">Conversations</div>
-            </div>
-            <div class="col-md-2">
-              <div class="h4 mb-0 text-info"><%= @ai_usage[:messages_this_month] %></div>
-              <div class="text-muted small">Messages</div>
-            </div>
-            <div class="col-md-2">
-              <div class="h4 mb-0 text-success"><%= @ai_usage[:workflows_this_month] %></div>
-              <div class="text-muted small">Workflows</div>
-            </div>
-            <div class="col-md-2">
-              <div class="h4 mb-0 text-warning"><%= number_with_delimiter(@ai_usage[:estimated_tokens]) %></div>
-              <div class="text-muted small">Est. Tokens</div>
-            </div>
-            <div class="col-md-2">
-              <div class="h4 mb-0 text-success">$<%= @ai_usage[:estimated_cost] %></div>
-              <div class="text-muted small">Est. Cost</div>
-            </div>
-            <div class="col-md-2">
-              <div class="h4 mb-0 text-primary"><%= @ai_usage[:workflows_completed] %></div>
-              <div class="text-muted small">Completed</div>
-            </div>
-          </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Campaigns</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @campaigns_count %></h3>
         </div>
+      </div>
+      <%= link_to campaigns_path, style: "position: absolute; bottom: 1rem; right: 1rem; color: #22D3EE; font-size: 0.875rem; text-decoration: none;" do %>
+        <span>View All</span>
+        <i data-lucide="chevron-right" class="icon-sm"></i>
+      <% end %>
+    </div>
+
+    <%# Contacts %>
+    <div class="admin-card" style="position: relative;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
+          <i data-lucide="users" class="icon-xl text-success"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Contacts</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @contacts_count %></h3>
+        </div>
+      </div>
+      <%= link_to contacts_path, style: "position: absolute; bottom: 1rem; right: 1rem; color: #22D3EE; font-size: 0.875rem; text-decoration: none;" do %>
+        <span>View All</span>
+        <i data-lucide="chevron-right" class="icon-sm"></i>
+      <% end %>
+    </div>
+
+    <%# Landing Pages %>
+    <div class="admin-card" style="position: relative;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
+          <i data-lucide="layout" class="icon-xl text-info"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Landing Pages</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @landing_pages_count %></h3>
+        </div>
+      </div>
+      <%= link_to landing_pages_path, style: "position: absolute; bottom: 1rem; right: 1rem; color: #22D3EE; font-size: 0.875rem; text-decoration: none;" do %>
+        <span>View All</span>
+        <i data-lucide="chevron-right" class="icon-sm"></i>
+      <% end %>
+    </div>
+
+    <%# Email Templates %>
+    <div class="admin-card" style="position: relative;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(234, 179, 8, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(234, 179, 8, 0.2);">
+          <i data-lucide="file-text" class="icon-xl text-warning"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Email Templates</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @email_templates_count %></h3>
+        </div>
+      </div>
+      <%= link_to email_templates_path, style: "position: absolute; bottom: 1rem; right: 1rem; color: #22D3EE; font-size: 0.875rem; text-decoration: none;" do %>
+        <span>View All</span>
+        <i data-lucide="chevron-right" class="icon-sm"></i>
+      <% end %>
+    </div>
+  </div>
+
+  <%# AI Usage Stats %>
+  <div class="admin-card" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid #1E293B; margin-bottom: 1.5rem;">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
+          <i data-lucide="bot" class="icon-xl text-info"></i>
+        </div>
+        <div>
+          <h4 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;">Your AI Usage</h4>
+          <p style="color: #64748B; font-size: 0.875rem; margin: 0;">Last 30 Days</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; text-align: center;">
+      <div>
+        <div style="color: #A78BFA; font-size: 2rem; font-weight: 600; margin-bottom: 0.25rem;"><%= @ai_usage[:conversations_this_month] %></div>
+        <div style="color: #94A3B8; font-size: 0.875rem;">Conversations</div>
+      </div>
+      <div>
+        <div style="color: #22D3EE; font-size: 2rem; font-weight: 600; margin-bottom: 0.25rem;"><%= @ai_usage[:messages_this_month] %></div>
+        <div style="color: #94A3B8; font-size: 0.875rem;">Messages</div>
+      </div>
+      <div>
+        <div style="color: rgb(74, 222, 128); font-size: 2rem; font-weight: 600; margin-bottom: 0.25rem;"><%= @ai_usage[:workflows_this_month] %></div>
+        <div style="color: #94A3B8; font-size: 0.875rem;">Workflows</div>
+      </div>
+      <div>
+        <div style="color: rgb(250, 204, 21); font-size: 2rem; font-weight: 600; margin-bottom: 0.25rem;"><%= number_with_delimiter(@ai_usage[:estimated_tokens]) %></div>
+        <div style="color: #94A3B8; font-size: 0.875rem;">Est. Tokens</div>
+      </div>
+      <div>
+        <div style="color: rgb(74, 222, 128); font-size: 2rem; font-weight: 600; margin-bottom: 0.25rem;">$<%= @ai_usage[:estimated_cost] %></div>
+        <div style="color: #94A3B8; font-size: 0.875rem;">Est. Cost</div>
+      </div>
+      <div>
+        <div style="color: #A78BFA; font-size: 2rem; font-weight: 600; margin-bottom: 0.25rem;"><%= @ai_usage[:workflows_completed] %></div>
+        <div style="color: #94A3B8; font-size: 0.875rem;">Completed</div>
       </div>
     </div>
   </div>
 
-  <!-- Active Connections -->
+  <%# Active Integrations %>
   <% if @active_connections.any? %>
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fas fa-plug text-success"></i> Active Integrations</h5>
-            <%= link_to "Manage", social_media_accounts_path, class: "btn btn-sm btn-outline-primary" %>
+    <div class="admin-card" style="margin-bottom: 2rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid #1E293B; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
+            <i data-lucide="plug" class="icon-xl text-success"></i>
           </div>
-          <div class="card-body">
-            <div class="row">
-              <% @active_connections.each do |connection| %>
-                <div class="col-md-4 col-lg-3 mb-2">
-                  <div class="d-flex align-items-center">
-                    <% if connection.integration.icon_url.present? %>
-                      <img src="<%= connection.integration.icon_url %>" 
-                           alt="<%= connection.integration.name %>" 
-                           class="rounded me-2" style="width: 24px; height: 24px;">
-                    <% else %>
-                      <i class="fas fa-cube text-muted me-2"></i>
-                    <% end %>
-                    <div>
-                      <div class="small fw-bold"><%= connection.integration.name %></div>
-                      <div class="text-muted" style="font-size: 0.75rem;"><%= connection.name %></div>
-                    </div>
-                  </div>
-                </div>
-              <% end %>
+          <h4 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;">Active Integrations</h4>
+        </div>
+        <%= link_to social_media_accounts_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+          <span>Manage</span>
+        <% end %>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
+        <% @active_connections.each do |connection| %>
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <% if connection.integration.icon_url.present? %>
+              <img src="<%= connection.integration.icon_url %>"
+                   alt="<%= connection.integration.name %>"
+                   style="width: 24px; height: 24px; border-radius: 0.25rem;">
+            <% else %>
+              <i data-lucide="box" style="width: 1.5rem; height: 1.5rem; color: #64748B;"></i>
+            <% end %>
+            <div>
+              <div style="color: white; font-weight: 600; font-size: 0.875rem;"><%= connection.integration.name %></div>
+              <div style="color: #64748B; font-size: 0.75rem;"><%= connection.name %></div>
             </div>
           </div>
-        </div>
+        <% end %>
       </div>
     </div>
   <% end %>
 
-  <!-- Recent Activity -->
-  <div class="row">
-    <!-- Recent Campaigns -->
-    <div class="col-lg-6 mb-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-          <h5 class="mb-0"><i class="fas fa-envelope text-primary"></i> Recent Campaigns</h5>
-          <%= link_to "View All", campaigns_path, class: "small text-decoration-none" %>
+  <%# Recent Activity %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <%# Recent Campaigns %>
+    <div class="admin-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid #1E293B; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="mail" style="width: 1.25rem; height: 1.25rem; color: #A78BFA;"></i>
+          <h5 style="color: white; font-weight: 600; margin: 0;">Recent Campaigns</h5>
         </div>
-        <div class="card-body">
-          <% if @recent_campaigns.any? %>
-            <div class="list-group list-group-flush">
-              <% @recent_campaigns.each do |campaign| %>
-                <div class="list-group-item border-0 px-0">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <%= link_to campaign.name, campaign_path(campaign), class: "text-decoration-none" %>
-                      <div class="small text-muted">
-                        <%= campaign.status.titleize %> • Created <%= time_ago_in_words(campaign.created_at) %> ago
-                      </div>
-                    </div>
-                    <span class="badge bg-<%= campaign.status == 'sent' ? 'success' : 'secondary' %>">
-                      <%= campaign.status.titleize %>
-                    </span>
-                  </div>
+        <%= link_to "View All", campaigns_path, style: "color: #22D3EE; font-size: 0.875rem; text-decoration: none;" %>
+      </div>
+
+      <% if @recent_campaigns.any? %>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <% @recent_campaigns.each do |campaign| %>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #0F172A; border-radius: 0.5rem;">
+              <div style="flex: 1;">
+                <%= link_to campaign.name, campaign_path(campaign), style: "color: #22D3EE; text-decoration: none; font-weight: 600;" %>
+                <div style="color: #64748B; font-size: 0.875rem; margin-top: 0.25rem;">
+                  <%= campaign.status.titleize %> • <%= time_ago_in_words(campaign.created_at) %> ago
                 </div>
+              </div>
+              <% if campaign.status == 'sent' %>
+                <span class="admin-badge admin-badge-online">Sent</span>
+              <% else %>
+                <span class="admin-badge admin-badge-default"><%= campaign.status.titleize %></span>
               <% end %>
             </div>
-          <% else %>
-            <p class="text-muted text-center py-3">No campaigns yet</p>
           <% end %>
         </div>
-      </div>
+      <% else %>
+        <p style="color: #64748B; text-align: center; padding: 2rem 0;">No campaigns yet</p>
+      <% end %>
     </div>
 
-    <!-- Recent Landing Pages -->
-    <div class="col-lg-6 mb-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-          <h5 class="mb-0"><i class="fas fa-globe text-info"></i> Recent Landing Pages</h5>
-          <%= link_to "View All", landing_pages_path, class: "small text-decoration-none" %>
+    <%# Recent Landing Pages %>
+    <div class="admin-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid #1E293B; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="layout" class="icon-lg text-info"></i>
+          <h5 style="color: white; font-weight: 600; margin: 0;">Recent Landing Pages</h5>
         </div>
-        <div class="card-body">
-          <% if @recent_landing_pages.any? %>
-            <div class="list-group list-group-flush">
-              <% @recent_landing_pages.each do |page| %>
-                <div class="list-group-item border-0 px-0">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <%= link_to page.title, preview_landing_page_path(page), target: "_blank", class: "text-decoration-none" %>
-                      <div class="small text-muted">
-                        <%= page.slug %> • Created <%= time_ago_in_words(page.created_at) %> ago
-                      </div>
-                    </div>
-                    <span class="badge bg-<%= page.status == 'published' ? 'success' : 'warning' %>">
-                      <%= page.status.titleize %>
-                    </span>
-                  </div>
+        <%= link_to "View All", landing_pages_path, style: "color: #22D3EE; font-size: 0.875rem; text-decoration: none;" %>
+      </div>
+
+      <% if @recent_landing_pages.any? %>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <% @recent_landing_pages.each do |page| %>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #0F172A; border-radius: 0.5rem;">
+              <div style="flex: 1;">
+                <%= link_to page.title, preview_landing_page_path(page), target: "_blank", style: "color: #22D3EE; text-decoration: none; font-weight: 600;" %>
+                <div style="color: #64748B; font-size: 0.875rem; margin-top: 0.25rem;">
+                  <%= page.slug %> • <%= time_ago_in_words(page.created_at) %> ago
                 </div>
+              </div>
+              <% if page.status == 'published' %>
+                <span class="admin-badge admin-badge-online">Published</span>
+              <% else %>
+                <span class="admin-badge admin-badge-warning">Draft</span>
               <% end %>
             </div>
-          <% else %>
-            <p class="text-muted text-center py-3">No landing pages yet</p>
           <% end %>
         </div>
-      </div>
+      <% else %>
+        <p style="color: #64748B; text-align: center; padding: 2rem 0;">No landing pages yet</p>
+      <% end %>
     </div>
   </div>
 
-  <!-- Quick Actions -->
-  <div class="row">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-bolt text-warning"></i> Quick Actions</h5>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-3 mb-2">
-              <%= link_to new_campaign_path, class: "btn btn-outline-primary w-100" do %>
-                <i class="fas fa-envelope me-2"></i> New Campaign
-              <% end %>
-            </div>
-            <div class="col-md-3 mb-2">
-              <%= link_to new_landing_page_path, class: "btn btn-outline-info w-100" do %>
-                <i class="fas fa-globe me-2"></i> New Landing Page
-              <% end %>
-            </div>
-            <div class="col-md-3 mb-2">
-              <%= link_to new_contact_path, class: "btn btn-outline-success w-100" do %>
-                <i class="fas fa-user-plus me-2"></i> Add Contact
-              <% end %>
-            </div>
-            <div class="col-md-3 mb-2">
-              <%= link_to chat_mode_path, class: "btn btn-outline-secondary w-100" do %>
-                <i class="fas fa-comments me-2"></i> Chat with AMOS
-              <% end %>
-            </div>
-          </div>
-        </div>
+  <%# Quick Actions %>
+  <div class="admin-card">
+    <div style="display: flex; align-items: center; gap: 0.75rem; padding-bottom: 1rem; border-bottom: 1px solid #1E293B; margin-bottom: 1.5rem;">
+      <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(234, 179, 8, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(234, 179, 8, 0.2);">
+        <i data-lucide="zap" class="icon-xl text-warning"></i>
       </div>
+      <h4 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;">Quick Actions</h4>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+      <%= link_to new_campaign_path, class: "admin-btn admin-btn-outline", style: "width: 100%;" do %>
+        <i data-lucide="mail"></i>
+        <span>New Campaign</span>
+      <% end %>
+      <%= link_to new_landing_page_path, class: "admin-btn admin-btn-outline", style: "width: 100%;" do %>
+        <i data-lucide="layout"></i>
+        <span>New Landing Page</span>
+      <% end %>
+      <%= link_to new_contact_path, class: "admin-btn admin-btn-outline", style: "width: 100%;" do %>
+        <i data-lucide="user-plus"></i>
+        <span>Add Contact</span>
+      <% end %>
+      <%= link_to chat_mode_path, class: "admin-btn admin-btn-outline", style: "width: 100%;" do %>
+        <i data-lucide="message-circle"></i>
+        <span>Chat with AMOS</span>
+      <% end %>
     </div>
   </div>
 </div>
 
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

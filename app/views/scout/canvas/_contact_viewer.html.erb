@@ -2,18 +2,18 @@
   <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
     <div>
       <h4 class="mb-1">
-        <i class="fas fa-users text-primary me-2"></i>
+        <i data-lucide="users" class="text-primary me-2" aria-hidden="true"></i>
         Contacts
       </h4>
       <p class="text-muted mb-0">Manage your customer database</p>
     </div>
     <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="scoutImportContacts()">
-        <i class="fas fa-upload me-1"></i>
+      <button class="btn btn-outline-secondary" onclick="scoutImportContacts()" aria-label="Import contacts">
+        <i data-lucide="upload" class="me-1" aria-hidden="true"></i>
         Import
       </button>
-      <button class="btn btn-primary" onclick="scoutCreateContact()">
-        <i class="fas fa-plus me-1"></i>
+      <button class="btn btn-primary" onclick="scoutCreateContact()" aria-label="Add new contact">
+        <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
         Add Contact
       </button>
     </div>
@@ -26,7 +26,7 @@
         <div class="stat-card-body p-3">
           <div class="d-flex align-items-center">
             <div class="stat-icon bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-              <i class="fas fa-users text-primary"></i>
+              <i data-lucide="users" class="text-primary" aria-hidden="true"></i>
             </div>
             <div>
               <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:total_contacts]) %></div>
@@ -41,7 +41,7 @@
         <div class="stat-card-body p-3">
           <div class="d-flex align-items-center">
             <div class="stat-icon bg-success bg-opacity-10 rounded-circle p-2 me-3">
-              <i class="fas fa-plus-circle text-success"></i>
+              <i data-lucide="user-plus" class="text-success" aria-hidden="true"></i>
             </div>
             <div>
               <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:recent_contacts]) %></div>
@@ -56,7 +56,7 @@
         <div class="stat-card-body p-3">
           <div class="d-flex align-items-center">
             <div class="stat-icon bg-info bg-opacity-10 rounded-circle p-2 me-3">
-              <i class="fas fa-layer-group text-info"></i>
+              <i data-lucide="layers" class="text-info" aria-hidden="true"></i>
             </div>
             <div>
               <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:contact_groups]) %></div>
@@ -71,7 +71,7 @@
         <div class="stat-card-body p-3">
           <div class="d-flex align-items-center">
             <div class="stat-icon bg-warning bg-opacity-10 rounded-circle p-2 me-3">
-              <i class="fas fa-star text-warning"></i>
+              <i data-lucide="star" class="text-warning" aria-hidden="true"></i>
             </div>
             <div>
               <div class="stat-number h5 mb-0"><%= contacts.where.not(tags: [nil, '']).count %></div>
@@ -87,9 +87,10 @@
   <div class="row mb-4">
     <div class="col-md-6">
       <div class="input-group">
-        <span class="input-group-text"><i class="fas fa-search"></i></span>
-        <input type="text" class="form-control" id="contactSearch" 
-               placeholder="Search contacts by name, email, or company">
+        <span class="input-group-text"><i data-lucide="search" aria-hidden="true"></i></span>
+        <input type="text" class="form-control" id="contactSearch"
+               placeholder="Search contacts by name, email, or company"
+               aria-label="Search contacts by name, email, or company">
       </div>
     </div>
     <div class="col-md-3">
@@ -116,16 +117,16 @@
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <h6 class="mb-0">
-          <i class="fas fa-list me-2"></i>
+          <i data-lucide="list" class="me-2" aria-hidden="true"></i>
           Recent Contacts
         </h6>
         <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-outline-secondary" onclick="scoutSelectAllContacts()">
-            <i class="fas fa-check-square me-1"></i>
+          <button class="btn btn-sm btn-outline-secondary" onclick="scoutSelectAllContacts()" aria-label="Select all contacts">
+            <i data-lucide="check-square" class="me-1" aria-hidden="true"></i>
             Select All
           </button>
-          <button class="btn btn-sm btn-outline-primary" onclick="scoutExportContacts()">
-            <i class="fas fa-download me-1"></i>
+          <button class="btn btn-sm btn-outline-primary" onclick="scoutExportContacts()" aria-label="Export contacts">
+            <i data-lucide="download" class="me-1" aria-hidden="true"></i>
             Export
           </button>
         </div>
@@ -199,32 +200,32 @@
                 </td>
                 <td>
                   <div class="dropdown">
-                    <button 
+                    <button
                       class="btn btn-sm btn-outline-secondary"
                       onclick="scoutViewContact(<%= contact.id %>)"
-                      title="View Contact">
-                      <i class="fas fa-eye"></i>
+                      aria-label="View contact <%= "#{contact.first_name} #{contact.last_name}".strip.presence || contact.email %>">
+                      <i data-lucide="eye" aria-hidden="true"></i>
                     </button>
-                    <button 
+                    <button
                       class="btn btn-sm btn-outline-primary ms-1"
                       onclick="scoutEditContact(<%= contact.id %>)"
-                      title="Edit Contact">
-                      <i class="fas fa-edit"></i>
+                      aria-label="Edit contact <%= "#{contact.first_name} #{contact.last_name}".strip.presence || contact.email %>">
+                      <i data-lucide="pencil" aria-hidden="true"></i>
                     </button>
-                    
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle ms-1" type="button" data-bs-toggle="dropdown">
-                      <i class="fas fa-ellipsis-h"></i>
+
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle ms-1" type="button" data-bs-toggle="dropdown" aria-label="More actions for <%= "#{contact.first_name} #{contact.last_name}".strip.presence || contact.email %>">
+                      <i data-lucide="more-horizontal" aria-hidden="true"></i>
                     </button>
                     <ul class="dropdown-menu">
                       <li><a class="dropdown-item" href="#" onclick="scoutAddToGroup(<%= contact.id %>)">
-                        <i class="fas fa-users me-2"></i>Add to Group
+                        <i data-lucide="users" class="me-2" aria-hidden="true"></i>Add to Group
                       </a></li>
                       <li><a class="dropdown-item" href="#" onclick="scoutSendEmail(<%= contact.id %>)">
-                        <i class="fas fa-envelope me-2"></i>Send Email
+                        <i data-lucide="mail" class="me-2" aria-hidden="true"></i>Send Email
                       </a></li>
                       <li><hr class="dropdown-divider"></li>
                       <li><a class="dropdown-item text-danger" href="#" onclick="scoutDeleteContact(<%= contact.id %>)">
-                        <i class="fas fa-trash me-2"></i>Delete
+                        <i data-lucide="trash-2" class="me-2" aria-hidden="true"></i>Delete
                       </a></li>
                     </ul>
                   </div>
@@ -240,11 +241,11 @@
             Showing <%= contacts.count %> of <%= stats[:total_contacts] %> contacts
           </small>
           <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-secondary" onclick="scoutLoadMoreContacts()">
+            <button class="btn btn-sm btn-outline-secondary" onclick="scoutLoadMoreContacts()" aria-label="Load more contacts">
               Load More
             </button>
-            <button class="btn btn-sm btn-primary" onclick="scoutCreateContact()">
-              <i class="fas fa-plus me-1"></i>
+            <button class="btn btn-sm btn-primary" onclick="scoutCreateContact()" aria-label="Add new contact">
+              <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
               Add Contact
             </button>
           </div>
@@ -255,7 +256,7 @@
     <!-- Empty State -->
     <div class="empty-state text-center py-5">
       <div class="empty-icon mb-3">
-        <i class="fas fa-users text-muted" style="font-size: 4rem;"></i>
+        <i data-lucide="users" class="text-muted icon-4x" aria-hidden="true"></i>
       </div>
       <h5 class="text-muted">No contacts yet</h5>
       <p class="text-muted mb-4">
@@ -263,12 +264,12 @@
         You can add contacts manually, import from a file, or capture them through landing pages.
       </p>
       <div class="d-flex gap-2 justify-content-center">
-        <button class="btn btn-primary" onclick="scoutCreateContact()">
-          <i class="fas fa-plus me-2"></i>
+        <button class="btn btn-primary" onclick="scoutCreateContact()" aria-label="Add your first contact">
+          <i data-lucide="plus" class="me-2" aria-hidden="true"></i>
           Add Your First Contact
         </button>
-        <button class="btn btn-outline-secondary" onclick="scoutImportContacts()">
-          <i class="fas fa-upload me-2"></i>
+        <button class="btn btn-outline-secondary" onclick="scoutImportContacts()" aria-label="Import contacts">
+          <i data-lucide="upload" class="me-2" aria-hidden="true"></i>
           Import Contacts
         </button>
       </div>

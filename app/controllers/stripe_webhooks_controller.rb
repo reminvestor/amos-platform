@@ -7,14 +7,15 @@ class StripeWebhooksController < ApplicationController
     sig_header = request.headers['Stripe-Signature']
     endpoint_secret = ENV['STRIPE_WEBHOOK_SECRET']
 
+    # NEVER skip signature verification - fail fast if not configured
+    if endpoint_secret.blank?
+      Rails.logger.error("STRIPE_WEBHOOK_SECRET not configured - cannot process webhooks")
+      return render json: { error: "Webhook not configured" }, status: 500
+    end
+
     begin
-      # In test environment without webhook secret, parse JSON directly
-      if Rails.env.test? && endpoint_secret.blank?
-        event_data = JSON.parse(payload)
-        event = Stripe::Event.construct_from(event_data)
-      else
-        event = Stripe::Webhook.construct_event(payload, sig_header, endpoint_secret)
-      end
+      # Always verify signature (no test environment bypass)
+      event = Stripe::Webhook.construct_event(payload, sig_header, endpoint_secret)
     rescue JSON::ParserError => e
       Rails.logger.error "Stripe webhook JSON parse error: #{e.message}"
       return head :bad_request

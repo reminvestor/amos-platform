@@ -1,3 +1,73 @@
+/* Import theme system for light/dark mode support */
+@import 'themes';
+
+/* Lucide Icon Sizing Classes */
+/* Match Font Awesome sizing conventions for easy migration */
+i[data-lucide] {
+  display: inline-block;
+  vertical-align: middle;
+  width: 1em;
+  height: 1em;
+}
+
+/* Size variants */
+.icon-xs, i[data-lucide].icon-xs {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.icon-sm, i[data-lucide].icon-sm {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.icon-md, i[data-lucide].icon-md {
+  width: 1rem;
+  height: 1rem;
+}
+
+.icon-lg, i[data-lucide].icon-lg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.icon-xl, i[data-lucide].icon-xl {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.icon-2x, i[data-lucide].icon-2x {
+  width: 2rem;
+  height: 2rem;
+}
+
+.icon-3x, i[data-lucide].icon-3x {
+  width: 3rem;
+  height: 3rem;
+}
+
+.icon-4x, i[data-lucide].icon-4x {
+  width: 4rem;
+  height: 4rem;
+}
+
+/* Common spacing combinations */
+.icon-with-spacing {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+/* Icon animations */
+.icon-spin {
+  animation: icon-spin 1s linear infinite;
+}
+
+@keyframes icon-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Markdown content styling */
 .markdown-content {
   h1, h2, h3, h4, h5, h6 {

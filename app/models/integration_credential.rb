@@ -2,8 +2,7 @@ class IntegrationCredential < ApplicationRecord
   belongs_to :connection
 
   # Encryption - Rails 7+ built-in encryption
-  # TODO: Configure encryption keys in credentials
-  # encrypts :credentials
+  encrypts :credentials
 
   # Parse JSON credentials
   def credentials
@@ -13,16 +12,12 @@ class IntegrationCredential < ApplicationRecord
     if self[:credentials].is_a?(Hash)
       self[:credentials]
     elsif self[:credentials].is_a?(String)
-      # Try to parse as JSON first
+      # Only accept JSON format - no eval() for security
       begin
         JSON.parse(self[:credentials])
-      rescue JSON::ParserError
-        # If it fails, try to evaluate as Ruby hash string (legacy format)
-        begin
-          eval(self[:credentials])
-        rescue
-          {}
-        end
+      rescue JSON::ParserError => e
+        Rails.logger.error("Invalid credentials JSON for IntegrationCredential #{id}: #{e.message}")
+        {}
       end
     else
       {}
