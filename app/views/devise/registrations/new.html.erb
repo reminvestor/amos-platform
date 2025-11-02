@@ -7,11 +7,10 @@
         <i data-lucide="box" class="text-primary"></i>
         <span class="brand-text">Amos</span>
       </div>
-      <p class="brand-tagline">Your AI Marketing Agent</p>
+      <p class="brand-tagline">Your AI Business Automation Platform</p>
     </div>
 
     <div class="auth-features">
-      <h4 class="mb-4">Get started with Scout!</h4>
       <div class="feature-list">
         <div class="feature-item">
           <i data-lucide="bot" class="text-primary"></i>
@@ -50,7 +49,6 @@
     <div class="auth-form-container">
       <div class="auth-header">
         <h2 class="mb-2">Create Account</h2>
-        <p class="text-muted">Join thousands of marketers using AMOS to grow their business</p>
       </div>
       
       <%= form_for(resource, as: resource_name, url: registration_path(resource_name), local: true, html: { class: "auth-form" }) do |f| %>
@@ -69,15 +67,15 @@
 
         <div class="form-group">
           <label for="user_business_name" class="form-label">
-            Business Name 
-            <span class="text-muted">(Optional)</span>
+            Business Name
+            <span class="form-optional">(Optional)</span>
           </label>
-          <input type="text" 
-                 name="user[business_name]" 
+          <input type="text"
+                 name="user[business_name]"
                  id="user_business_name"
-                 class="form-control" 
+                 class="form-control"
                  placeholder="Acme Corporation">
-          <small class="form-text text-muted">
+          <small class="form-text">
             If left blank, we'll use your name + "Inc" (e.g., "John Smith Inc")
           </small>
         </div>
@@ -96,7 +94,7 @@
         <div class="form-group">
           <%= f.label :password, "Password", class: "form-label" %>
           <% if @minimum_password_length %>
-            <span class="text-muted">(<%= @minimum_password_length %> characters minimum)</span>
+            <span class="form-optional">(<%= @minimum_password_length %> characters minimum)</span>
           <% end %>
           <%= f.password_field :password, 
               autocomplete: "new-password", 
@@ -126,10 +124,10 @@
       </div>
       
       <div class="auth-footer">
-        <p class="text-muted small text-center">
+        <p class="auth-footer-text">
           By creating an account, you agree to our
-          <a href="<%= app_terms_path %>" class="auth-link" target="_blank">Terms of Service</a> and
-          <a href="<%= app_privacy_path %>" class="auth-link" target="_blank">Privacy Policy</a>
+          <a href="<%= marketing_terms_path %>" class="auth-link" target="_blank">Terms of Service</a> and
+          <a href="<%= marketing_privacy_path %>" class="auth-link" target="_blank">Privacy Policy</a>
         </p>
       </div>
     </div>
@@ -158,10 +156,13 @@
 .auth-brand {
   text-align: center;
   margin-bottom: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .brand-logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
@@ -180,6 +181,7 @@
   color: var(--scout-text-muted, #9ca3af);
   margin: 0;
   font-size: 1.1rem;
+  text-align: center;
 }
 
 .auth-features h4 {
@@ -242,6 +244,12 @@
   font-size: 2rem;
 }
 
+.auth-subtitle {
+  color: var(--scout-text-muted, #9ca3af);
+  margin: 0;
+  font-size: 1rem;
+}
+
 .auth-form {
   margin-bottom: 2rem;
 }
@@ -284,6 +292,14 @@
   color: var(--scout-text-muted, #9ca3af);
   font-size: 0.875rem;
   margin-top: 0.25rem;
+  display: block;
+}
+
+.form-optional {
+  color: var(--scout-text-muted, #9ca3af);
+  font-size: 0.875rem;
+  font-weight: 400;
+  margin-left: 0.25rem;
 }
 
 .form-check-input {
@@ -378,6 +394,13 @@
 
 .auth-footer {
   margin-top: 2rem;
+}
+
+.auth-footer-text {
+  color: var(--scout-text-muted, #9ca3af);
+  font-size: 0.875rem;
+  text-align: center;
+  margin: 0;
 }
 
 /* Responsive Design */
