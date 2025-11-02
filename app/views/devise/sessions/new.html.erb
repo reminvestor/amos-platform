@@ -50,7 +50,7 @@
     <div class="auth-form-container">
       <div class="auth-header">
         <h2 class="mb-2">Welcome Back</h2>
-        <p class="text-muted">Sign in to continue to your AMOS dashboard</p>
+        <p class="auth-subtitle">Sign in to continue to your AMOS dashboard</p>
       </div>
       
       <%= form_for(resource, as: resource_name, url: session_path(resource_name), local: true, html: { class: "auth-form", id: "login-form" }) do |f| %>
@@ -69,7 +69,7 @@
                 </option>
               <% end %>
             </select>
-            <small class="form-text text-muted">
+            <small class="form-text">
               Select a user to auto-fill login credentials
             </small>
           </div>
@@ -125,7 +125,7 @@
       </div>
 
       <div class="auth-footer">
-        <p class="text-muted small text-center">
+        <p class="auth-footer-text">
           By signing in, you agree to our
           <a href="<%= marketing_terms_path %>" class="auth-link" target="_blank">Terms of Service</a> and
           <a href="<%= marketing_privacy_path %>" class="auth-link" target="_blank">Privacy Policy</a>
@@ -241,6 +241,12 @@
   font-size: 2rem;
 }
 
+.auth-subtitle {
+  color: var(--scout-text-muted, #9ca3af);
+  margin: 0;
+  font-size: 1rem;
+}
+
 .auth-form {
   margin-bottom: 2rem;
 }
@@ -283,6 +289,7 @@
   color: var(--scout-text-muted, #9ca3af);
   font-size: 0.875rem;
   margin-top: 0.25rem;
+  display: block;
 }
 
 .form-check-input {
@@ -377,6 +384,13 @@
 
 .auth-footer {
   margin-top: 2rem;
+}
+
+.auth-footer-text {
+  color: var(--scout-text-muted, #9ca3af);
+  font-size: 0.875rem;
+  text-align: center;
+  margin: 0;
 }
 
 /* Responsive Design */
