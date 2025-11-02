@@ -245,8 +245,20 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+  // Track initialization to prevent multiple runs
+  let aiUsagePageInitialized = false;
+
   // Initialize charts and icons only once
   function initializeAIUsagePage() {
+    // Prevent multiple initializations
+    if (aiUsagePageInitialized) {
+      return;
+    }
+    aiUsagePageInitialized = true;
+
+    // Save current scroll position
+    const scrollPosition = window.scrollY;
+
     // Dark theme colors
     Chart.defaults.color = '#94A3B8';
     Chart.defaults.borderColor = '#1E293B';
@@ -322,11 +334,21 @@
       });
     }
 
-    // Initialize Lucide icons
+    // Initialize Lucide icons (only if not already initialized)
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
     }
+
+    // Restore scroll position after a brief delay to allow DOM to settle
+    requestAnimationFrame(() => {
+      window.scrollTo(0, scrollPosition);
+    });
   }
+
+  // Reset initialization flag when navigating away
+  document.addEventListener('turbo:before-render', () => {
+    aiUsagePageInitialized = false;
+  });
 
   // Run on both DOMContentLoaded and turbo:load
   if (document.readyState === 'loading') {
