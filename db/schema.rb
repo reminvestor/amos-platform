@@ -1050,6 +1050,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_01_195949) do
     t.index ["entity_id"], name: "index_model_permissions_on_entity_id"
   end
 
+  create_table "o_auth_configurations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "integration_id", null: false
+    t.string "client_id", null: false
+    t.string "client_secret", null: false
+    t.string "redirect_uri", null: false
+    t.text "scopes"
+    t.string "authorize_url", null: false
+    t.string "token_url", null: false
+    t.text "credentials"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id"], name: "index_o_auth_configurations_on_client_id"
+    t.index ["entity_id", "integration_id"], name: "index_oauth_configs_on_entity_integration", unique: true
+    t.index ["entity_id"], name: "index_o_auth_configurations_on_entity_id"
+    t.index ["integration_id"], name: "index_o_auth_configurations_on_integration_id"
+  end
+
   create_table "oauth_configurations", force: :cascade do |t|
     t.bigint "integration_id", null: false
     t.string "client_id"
@@ -2180,6 +2198,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_01_195949) do
   add_foreign_key "mcp_connections", "entities"
   add_foreign_key "model_permissions", "custom_models"
   add_foreign_key "model_permissions", "entities"
+  add_foreign_key "o_auth_configurations", "entities"
+  add_foreign_key "o_auth_configurations", "integrations"
   add_foreign_key "oauth_configurations", "integrations"
   add_foreign_key "observability_events", "entities"
   add_foreign_key "observability_events", "users"
