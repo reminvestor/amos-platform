@@ -59,7 +59,7 @@ class OnboardingController < ApplicationController
       # Check if user is asking data-related questions that need tools
       if needs_tool_enabled_response?(user_message)
         # Use tool-enabled Scout for data queries during onboarding
-        entity = current_user.entity_users.first&.entity
+        entity = current_user.entity
         if entity
           tool_service = ScoutConversationWithToolsService.new(current_user, entity, conversation_history)
           tool_response = tool_service.process_message_with_tools(user_message)
