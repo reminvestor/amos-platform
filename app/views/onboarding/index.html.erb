@@ -529,9 +529,9 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('🚀 Onboarding: DOMContentLoaded event fired');
-  
+function initializeOnboarding() {
+  console.log('🚀 Onboarding: Initializing onboarding chat');
+
   const messageForm = document.getElementById('message-form');
   const messageInput = document.getElementById('message-input');
   const sendButton = document.getElementById('send-button');
@@ -784,23 +784,23 @@ document.addEventListener('DOMContentLoaded', function() {
   window.completeOnboarding = function() {
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]');
-      
+
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = '/onboarding/complete';
-      
+
       const csrfInput = document.createElement('input');
       csrfInput.type = 'hidden';
       csrfInput.name = 'authenticity_token';
       csrfInput.value = csrfToken ? csrfToken.content : '';
       form.appendChild(csrfInput);
-      
+
       const methodInput = document.createElement('input');
       methodInput.type = 'hidden';
       methodInput.name = '_method';
       methodInput.value = 'PATCH';
       form.appendChild(methodInput);
-      
+
       document.body.appendChild(form);
       form.submit();
     } catch (e) {
@@ -808,5 +808,9 @@ document.addEventListener('DOMContentLoaded', function() {
       window.location.href = '/scout';
     }
   };
-});
+}
+
+// Initialize on both DOMContentLoaded (full page load) and turbo:load (Turbo navigation)
+document.addEventListener('DOMContentLoaded', initializeOnboarding);
+document.addEventListener('turbo:load', initializeOnboarding);
 </script>
