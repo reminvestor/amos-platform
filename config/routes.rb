@@ -65,22 +65,22 @@ Rails.application.routes.draw do
       post "landing_pages/:landing_page_slug/submit", to: "landing_page_submissions#create"
     end
   end
-  
+
+  # Devise routes for authentication - accessible from all subdomains (including none)
+  devise_for :users, controllers: {
+    registrations: "users/registrations",
+    sessions: "users/sessions",
+    passwords: "users/passwords"
+  }
+
   # Routes with constraints on subdomain - application routes for 'app' or 'dev' subdomain
-  constraints(lambda { |req| 
+  constraints(lambda { |req|
     SubdomainConfig.app_subdomains.include?(req.subdomain)
   }) do
     # Solid Queue Interface
     authenticate :user, lambda { |u| u.admin? } do
       mount SolidQueueInterface::Engine => "/solid_queue"
     end
-
-    # Devise routes for authentication
-    devise_for :users, controllers: {
-      registrations: "users/registrations",
-      sessions: "users/sessions",
-      passwords: "users/passwords"
-    }
 
     # User management
     resources :users, only: [ :show, :edit, :update ]
