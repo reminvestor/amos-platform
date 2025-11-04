@@ -46,7 +46,7 @@
             <% if @crawler_job.conversation_stage == 'url_finding' %>
               <div class="d-flex justify-content-center mb-3">
                 <button id="skip-url-button" class="btn btn-outline-secondary">
-                  <i class="fas fa-forward me-1"></i> Skip URL Discovery
+                  <i data-lucide="fast-forward" class="me-1"></i> Skip URL Discovery
                 </button>
               </div>
             <% end %>
@@ -93,7 +93,7 @@
         <div class="card-body">
           <% if @crawler_job.status == 'ready' %>
             <div class="alert alert-info mb-3">
-              <i class="fas fa-info-circle me-2"></i>
+              <i data-lucide="info" class="me-2"></i>
               <strong>Tip:</strong> If your crawler has errors, follow these steps:
               <ol class="mb-0 mt-2">
                 <li>Click <strong>Debug</strong> to run the crawler in debug mode (collects error details)</li>
@@ -115,7 +115,7 @@
             </li>
             <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.conversation_stage == 'url_finding' ? 'active' : '' %>" id="pipeline-discover">
               <span>
-                <i class="fas fa-globe me-2"></i> 
+                <i data-lucide="globe" class="me-2"></i> 
                 Discovering URLs
               </span>
               <% if @crawler_job.conversation_stage == 'url_finding' %>
@@ -521,7 +521,7 @@
           
           // Reset button
           skipUrlButton.disabled = false;
-          skipUrlButton.innerHTML = '<i class="fas fa-forward me-1"></i> Skip URL Discovery';
+          skipUrlButton.innerHTML = '<i data-lucide="fast-forward" class="me-1"></i> Skip URL Discovery';
         });
       });
     }
