@@ -62,6 +62,13 @@ docker-compose exec web rails runner .claude/skills/testing-rag-system/scripts/t
 - ✅ Top-K results
 - ✅ Metadata in results
 
+**Document Processing & Status Tracking:**
+- ✅ Automatic RAG indexing when documents are read
+- ✅ Real-time document processing status API (`/scout/document-status/:asset_id`)
+- ✅ 4-stage pipeline tracking (Upload → Extraction → Chunking → Embedding)
+- ✅ Progress card display in document viewer
+- ✅ RagProcessingJob status monitoring
+
 **Security:**
 - ✅ Multi-tenant isolation (cross-entity access denied)
 - ✅ System store accessibility (all entities can access)
@@ -219,6 +226,64 @@ docker-compose logs -f web | grep RAG
 .claude/skills/testing-rag-system/scripts/test-rag.sh
 ```
 
+### Example 4: Test Document Upload & Progress Tracking
+
+```bash
+# Terminal 1 - Watch logs during document processing
+docker-compose logs -f web | grep -E "📤|📚|✅|❌"
+
+# Terminal 2 - In Rails console, upload and read a document
+docker-compose exec web rails console
+
+# Then in the console:
+entity = Entity.first
+user = entity.users.first
+context = {}
+
+# Create an ImageAsset (simulating file upload)
+file_content = File.read('path/to/document.pdf')
+asset = entity.image_assets.create!(
+  user: user,
+  title: 'Test Document',
+  file: file_content,
+  source: 'upload'
+)
+
+# Read the document - this will trigger RAG indexing automatically
+tool = Tools::ReadDocumentTool.new(entity: entity, user: user, context: {})
+result = tool.execute(asset_id: asset.id)
+
+# Check status API
+curl http://localhost:3000/scout/document-status/#{asset.id}
+# Response will include: stage, message, progress_percent, ready_for_chat
+
+# Repeatedly call until complete
+# Stage 1: Uploading document to storage
+# Stage 2: Extracting text (Docling)
+# Stage 3: Breaking into chunks
+# Stage 4: Generating embeddings (ready_for_chat: true)
+```
+
+### Example 5: Monitor Progress via API
+
+```bash
+# Watch document progress in real-time
+watch -n 1 "curl -s http://localhost:3000/scout/document-status/ASSET_ID | jq '.'"
+
+# Example response:
+# {
+#   "asset_id": 123,
+#   "status": "embedding",
+#   "stage": 4,
+#   "total_stages": 4,
+#   "message": "Generating embeddings... 45/100 complete",
+#   "ready_for_chat": false,
+#   "embedded_chunks": 45,
+#   "total_chunks": 100,
+#   "progress_percent": 45.0
+# }
+```
+
 ## Notes
 
 - Test creates temporary RAG stores (can be cleaned up)
@@ -237,3 +302,7 @@ All steps should show ✅ green checkmarks:
 - [x] Queries return results
 - [x] Multi-tenant isolation works
 - [x] No errors in output
+- [x] Document upload triggers RAG indexing
+- [x] Status API returns correct pipeline stages
+- [x] Progress card updates in real-time
+- [x] Document becomes ready_for_chat after embedding
