@@ -57,7 +57,7 @@ chunk_system:
   chunk_type: "text"
 
 chunk_no_embedding:
-  rag_document: document_two
+  rag_document: document_duplicate
   content: "This chunk has not been embedded yet and is pending processing."
   embedding: null
   pinecone_vector_id: null
