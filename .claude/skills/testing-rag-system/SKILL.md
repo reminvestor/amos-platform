@@ -21,6 +21,29 @@ Use this skill when you need to:
 - Debug RAG issues
 - Validate multi-tenant isolation
 - See RAG in action with visual output
+- Test document upload with session vs long-term storage
+
+## Document Storage Options
+
+When testing document uploads, you can choose how documents are stored:
+
+**Session Storage** (Temporary - within Scout conversation)
+- Documents stored in `WorkflowContext` during the conversation session
+- Cleared when session ends
+- Good for: Quick testing, temporary document analysis
+- Data persists: Only within the current Scout chat session
+
+**Long-Term RAG Storage** (Persistent - Knowledge Base)
+- Documents indexed into RagStore (pgvector/Pinecone)
+- Available after session ends
+- Searchable across all future conversations
+- Good for: Building knowledge bases, permanent document repositories
+- Data persists: Indefinitely until manually deleted
+
+**Which to Use for Testing?**
+- Use **Long-Term RAG Storage** to test the new auto-indexing feature
+- This demonstrates the full pipeline: Upload → Extraction → Chunking → Embedding
+- Documents appear in knowledge base and can be queried across sessions
 
 ## Prerequisites
 
@@ -286,11 +309,28 @@ watch -n 1 "curl -s http://localhost:3000/scout/document-status/ASSET_ID | jq '.
 
 ## Notes
 
-- Test creates temporary RAG stores (can be cleaned up)
+### Storage Considerations
+
+- **Session Storage**: Documents are stored in WorkflowContext during the conversation
+  - Cleared automatically when Scout session ends
+  - Can be retrieved within the same conversation using `get_workflow_context` tool
+  - Ideal for ephemeral, session-scoped document analysis
+
+- **Long-Term RAG Storage**: Documents are indexed into RagStore
+  - Created automatically when `read_document` tool is executed (with new auto-indexing)
+  - Persists indefinitely in pgvector/Pinecone
+  - Searchable across all future conversations
+  - Can be queried with `query_document_content` tool
+  - Should be explicitly cleaned up when no longer needed
+
+### General Notes
+
+- Test creates temporary RAG stores (can be cleaned up with `RagStore.where("name LIKE '%Test%'").destroy_all`)
 - Requires valid API keys with available quota/credits
 - Uses colorized output (requires `colorize` gem)
 - Safe to run multiple times
 - Does not affect existing RAG stores
+- Document auto-indexing happens asynchronously via background jobs
 
 ## Success Criteria
 
