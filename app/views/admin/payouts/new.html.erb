@@ -22,7 +22,7 @@
         </div>
         <div class="col-md-2">
           <button type="submit" class="btn btn-primary">
-            <i class="fas fa-filter"></i> Apply Filter
+            <i data-lucide="filter"></i> Apply Filter
           </button>
         </div>
       <% end %>
@@ -162,7 +162,7 @@
     <% end %>
   <% else %>
     <div class="alert alert-info">
-      <i class="fas fa-info-circle"></i> No affiliates ready for payout with the current threshold of $<%= number_with_delimiter(@minimum_threshold, precision: 2) %>.
+      <i data-lucide="info"></i> No affiliates ready for payout with the current threshold of $<%= number_with_delimiter(@minimum_threshold, precision: 2) %>.
     </div>
   <% end %>
 </div>

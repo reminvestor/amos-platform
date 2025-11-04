@@ -48,7 +48,7 @@
         </div>
         <div class="col-md-6 text-end">
           <%= link_to admin_payouts_path(format: :csv, **params.permit(:status)), class: "btn btn-outline-success" do %>
-            <i class="fas fa-file-csv"></i> Export CSV
+            <i data-lucide="file-spreadsheet"></i> Export CSV
           <% end %>
         </div>
       <% end %>

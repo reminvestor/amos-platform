@@ -96,7 +96,7 @@
             <% else %>
               <!-- Non-OAuth auth types -->
               <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
+                <i data-lucide="info" class="me-2"></i>
                 This integration uses <strong><%= @integration.auth_type.humanize %></strong> authentication.
                 <% if @oauth_configuration.auth_configs.any? && @oauth_configuration.auth_configs.first.auth_key.present? %>
                   <br><br>
