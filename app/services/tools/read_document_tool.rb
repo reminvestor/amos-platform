@@ -110,6 +110,11 @@ module Tools
           text_content = text_content[0...max_length] + "\n\n[Content truncated - full document has #{text_content.length} characters]"
         end
 
+        # Trigger RAG indexing for this document if not already indexed
+        if asset_id
+          enqueue_rag_indexing(asset, filename)
+        end
+
         # Suggest loading document viewer canvas
         @context[:canvas_suggestion] = 'document_viewer'
         @context[:canvas_data] = {
@@ -321,6 +326,58 @@ module Tools
       Rails.logger.error "PDF conversion error: #{e.message}"
       Rails.logger.error "Please install required tools with: brew install imagemagick ghostscript"
       raise "PDF to image conversion failed: #{e.message}. Please ensure ImageMagick and Ghostscript are installed."
+    end
+
+    def enqueue_rag_indexing(asset, filename)
+      # Check if this asset has already been indexed
+      existing_rag_docs = RagDocument.joins(:rag_store)
+        .where(rag_stores: { entity_id: @entity.id })
+        .where("rag_documents.original_filename = ?", filename)
+        .count
+
+      if existing_rag_docs > 0
+        Rails.logger.info "📚 Document #{filename} already indexed in RAG, skipping"
+        return
+      end
+
+      # Create a persistent temp file from ActiveStorage
+      ext = File.extname(filename)
+      persistent_temp = Tempfile.new(['rag_document', ext])
+      persistent_temp.binmode
+
+      # Copy file from ActiveStorage to temp location
+      asset.file.blob.open do |blob_file|
+        persistent_temp.write(blob_file.read)
+      end
+
+      persistent_temp.rewind
+      persistent_temp_path = persistent_temp.path
+      persistent_temp.close  # Close but keep the file (don't unlink)
+
+      # Create a RagStore for this document if not exists
+      rag_store = @entity.rag_stores.find_or_create_by(
+        name: "Chat Documents",
+        app_name: "scout",
+        store_type: "general"
+      ) do |store|
+        store.status = 'active'
+      end
+
+      Rails.logger.info "📤 Enqueuing RAG indexing for #{filename}"
+
+      # Enqueue the document pipeline job to process the file
+      Rag::DocumentPipelineJob.perform_later(
+        rag_store.id,
+        persistent_temp_path,
+        {
+          source: "upload",
+          asset_id: asset.id,
+          content_type: asset.file.content_type
+        }
+      )
+    rescue => e
+      Rails.logger.warn "⚠️ Failed to enqueue RAG indexing: #{e.message}"
+      # Don't raise - this shouldn't block document reading
     end
   end
 end
