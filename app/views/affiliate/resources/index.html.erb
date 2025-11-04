@@ -163,7 +163,7 @@
           <% @social_posts.each_with_index do |post, index| %>
             <div class="card mb-3 <%= 'border-primary' if index == 0 %>" data-controller="copy-to-clipboard">
               <div class="card-header bg-light">
-                <strong><i class="bi bi-<%= post[:platform].downcase %> me-2"></i><%= post[:platform] %></strong>
+                <strong><i data-lucide="<%= post[:platform].downcase %>" class="me-2"></i><%= post[:platform] %></strong>
               </div>
               <div class="card-body">
                 <p class="mb-3" data-copy-to-clipboard-target="source"><%= post[:text] %></p>
@@ -295,10 +295,10 @@
           <p class="text-muted mb-3">Contact our affiliate support team or visit the dashboard for performance tracking</p>
           <div class="d-flex gap-2 justify-content-center">
             <%= link_to affiliate_dashboard_path, class: "btn btn-primary" do %>
-              <i class="bi bi-speedometer2 me-2"></i>Back to Dashboard
+              <i class="data-lucide="gauge" me-2"></i>Back to Dashboard
             <% end %>
             <button class="btn btn-outline-primary" disabled>
-              <i class="bi bi-envelope me-2"></i>Contact Support
+              <i class="data-lucide="mail" me-2"></i>Contact Support
             </button>
           </div>
         </div>
