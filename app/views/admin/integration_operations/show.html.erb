@@ -94,7 +94,7 @@
           <%= link_to admin_integration_operation_path(@integration, @operation), method: :delete,
               class: "btn btn-outline-danger",
               data: { turbo_method: :delete, turbo_confirm: "Delete this operation?" } do %>
-            <i class="fas fa-trash me-2"></i> Delete
+            <i data-lucide="trash" class="me-2"></i> Delete
           <% end %>
         </div>
       </div>
