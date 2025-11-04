@@ -1,7 +1,7 @@
 <div class="container-fluid">
   <div class="row mb-4">
     <div class="col">
-      <h1><i class="fas fa-user"></i> <%= @user.full_name %></h1>
+      <h1><i data-lucide="user"></i> <%= @user.full_name %></h1>
       <p class="text-muted"><%= @user.email %></p>
     </div>
     <div class="col-auto">
@@ -37,7 +37,7 @@
               <% if @user.onboarded? %>
                 <i data-lucide="check" class="text-success"></i> Yes
               <% else %>
-                <i class="fas fa-times text-danger"></i> No
+                <i data-lucide="x" class="text-danger"></i> No
               <% end %>
             </dd>
             
@@ -56,7 +56,7 @@
     <div class="col-lg-4">
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-tools"></i> Actions</h5>
+          <h5 class="mb-0"><i data-lucide="wrench"></i> Actions</h5>
         </div>
         <div class="card-body d-grid gap-2">
           <%= link_to edit_entity_user_path(@user), class: "btn btn-outline-primary" do %>
@@ -67,7 +67,7 @@
             <%= button_to change_role_entity_user_path(@user, role: 'admin'), 
                 method: :post,
                 class: "btn btn-outline-warning" do %>
-              <i class="fas fa-user-shield me-2"></i> Make Admin
+              <i data-lucide="shield-check" class="me-2"></i> Make Admin
             <% end %>
           <% end %>
         </div>
