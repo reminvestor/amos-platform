@@ -4,7 +4,7 @@
     <div class="d-flex justify-content-between align-items-center">
       <div>
         <h4 class="mb-1">
-          <i class="bi bi-inbox me-2"></i>
+          <i data-lucide="inbox" class="me-2"></i>
           Form Submissions
         </h4>
         <p class="text-muted mb-0 small">
@@ -105,18 +105,18 @@
                       </span>
                     </h6>
                     <div class="text-muted small">
-                      <i class="bi bi-envelope me-1"></i>
+                      <i data-lucide="mail" class="me-1"></i>
                       <%= submission[:contact_info][:email] %>
                     </div>
                     <% if submission[:contact_info][:phone] %>
                       <div class="text-muted small">
-                        <i class="bi bi-phone me-1"></i>
+                        <i data-lucide="phone" class="me-1"></i>
                         <%= submission[:contact_info][:phone] %>
                       </div>
                     <% end %>
                     <% if submission[:contact_info][:company] %>
                       <div class="text-muted small">
-                        <i class="bi bi-building me-1"></i>
+                        <i data-lucide="building" class="me-1"></i>
                         <%= submission[:contact_info][:company] %>
                       </div>
                     <% end %>
@@ -132,12 +132,12 @@
                       </span>
                     </div>
                     <div class="text-muted small">
-                      <i class="bi bi-calendar me-1"></i>
+                      <i data-lucide="calendar" class="me-1"></i>
                       <%= time_ago_in_words(Time.parse(submission[:submitted_at])) %> ago
                     </div>
                     <% if submission[:source_ip] %>
                       <div class="text-muted small">
-                        <i class="bi bi-geo me-1"></i>
+                        <i data-lucide="map-pin" class="me-1"></i>
                         <%= submission[:source_ip] %>
                       </div>
                     <% end %>
@@ -157,7 +157,7 @@
                   <% end %>
                   <% if submission[:referrer] %>
                     <div class="text-muted small">
-                      <i class="bi bi-link me-1"></i>
+                      <i data-lucide="link" class="me-1"></i>
                       <span title="<%= submission[:referrer] %>">
                         <%= truncate(submission[:referrer], length: 30) %>
                       </span>
@@ -170,18 +170,18 @@
                   <div class="btn-group-vertical btn-group-sm">
                     <button class="btn btn-outline-primary btn-sm" 
                             onclick="viewSubmissionDetails('<%= submission[:id] %>')">
-                      <i class="bi bi-eye"></i>
+                      <i data-lucide="eye"></i>
                     </button>
                     <% if submission[:status] == 'pending' %>
                       <button class="btn btn-outline-success btn-sm" 
                               onclick="processSubmission('<%= submission[:id] %>')">
-                        <i class="bi bi-check"></i>
+                        <i data-lucide="check"></i>
                       </button>
                     <% end %>
                     <% if submission[:status] != 'spam' %>
                       <button class="btn btn-outline-danger btn-sm" 
                               onclick="markAsSpam('<%= submission[:id] %>')">
-                        <i class="bi bi-shield-x"></i>
+                        <i data-lucide="shield-x"></i>
                       </button>
                     <% end %>
                   </div>
@@ -223,12 +223,12 @@
             <div class="pagination-controls">
               <% if canvas_data[:pagination][:has_previous] %>
                 <button class="btn btn-outline-secondary btn-sm me-2" onclick="loadPreviousPage()">
-                  <i class="bi bi-chevron-left"></i> Previous
+                  <i data-lucide="chevron-left"></i> Previous
                 </button>
               <% end %>
               <% if canvas_data[:pagination][:has_next] %>
                 <button class="btn btn-outline-secondary btn-sm" onclick="loadNextPage()">
-                  Next <i class="bi bi-chevron-right"></i>
+                  Next <i data-lucide="chevron-right"></i>
                 </button>
               <% end %>
             </div>
@@ -239,7 +239,7 @@
     <% else %>
       <!-- Empty State -->
       <div class="text-center py-5">
-        <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+        <i data-lucide="inbox" class="icon-display-1 text-muted mb-3"></i>
         <h5>No Form Submissions Yet</h5>
         <p class="text-muted">
           <% if canvas_data[:landing_page] %>
@@ -249,7 +249,7 @@
           <% end %>
         </p>
         <button class="btn btn-primary" onclick="scoutSendMessage('Create a landing page')">
-          <i class="bi bi-plus me-1"></i>
+          <i data-lucide="plus" class="me-1"></i>
           Create Landing Page
         </button>
       </div>
@@ -271,7 +271,7 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         <button type="button" class="btn btn-primary" id="contactSubmitterBtn">
-          <i class="bi bi-envelope me-1"></i>
+          <i data-lucide="mail" class="me-1"></i>
           Contact Submitter
         </button>
       </div>
@@ -381,7 +381,7 @@ function displaySubmissionDetails(submission) {
           <div class="referrer-info bg-light p-3 rounded">
             <a href="${submission.referrer}" target="_blank" class="text-decoration-none">
               ${submission.referrer}
-              <i class="bi bi-box-arrow-up-right ms-1"></i>
+              <i data-lucide="external-link" class="ms-1"></i>
             </a>
           </div>
         </div>
