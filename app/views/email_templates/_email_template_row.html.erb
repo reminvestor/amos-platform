@@ -5,7 +5,7 @@
   <td>
     <%= link_to "View", email_template_path(template), class: "btn btn-sm btn-outline-primary" %>
     <%= link_to improve_ai_content_path(template), class: "btn btn-sm btn-outline-info" do %>
-      <i class="fas fa-robot"></i> Improve
+      <i data-lucide="bot"></i> Improve
     <% end %>
     <%= link_to "Edit", edit_email_template_path(template), class: "btn btn-sm btn-outline-secondary" %>
     <%= button_to "Delete", email_template_path(template), method: :delete, data: { turbo_confirm: "Are you sure?" }, class: "btn btn-sm btn-outline-danger", form_class: "d-inline" %>

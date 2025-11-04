@@ -63,7 +63,7 @@
         </div>
         <div class="list-group list-group-flush">
           <%= link_to admin_system_documents_path, class: "list-group-item list-group-item-action #{'active' if params[:category].blank?}" do %>
-            <i class="fas fa-list"></i> All Documents
+            <i data-lucide="list"></i> All Documents
             <span class="badge bg-secondary float-end"><%= @total_documents %></span>
           <% end %>
 
