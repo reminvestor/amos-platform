@@ -2,180 +2,263 @@
 
 Quick access commands that chain multiple skills together for common workflows.
 
-## Available Commands
+## Primary Commands (Use These)
 
-### Development Setup
+### Environment & Health
 
-#### `/new-dev-setup [entity_name]`
-Complete onboarding for new developers.
+#### `/check-deployment`
+Comprehensive health checks for all environments (dev, staging, production).
 
-**What it does:**
-- Checks application health
-- Sets up entity with full sample data
-- Runs tests to validate setup
-- Shows getting started guide
-
-**Example:**
-```bash
-/new-dev-setup "Training Company"
-```
-
-**Uses skills:** checking-application-health, preparing-development-environment, running-tests
-
----
-
-### Code Quality & Commits
-
-#### `/quick-commit [message]`
-Fast pre-commit workflow for small changes.
-
-**What it does:**
-- Runs quick tests (changed files only)
-- Fixes RuboCop offenses
-- Commits with message
-- Ready to push
+**When to use:**
+- Daily health check before starting work
+- Debugging connection issues (Docker, database, Redis)
+- Checking deployed application status
+- Verifying all services are running
 
 **Example:**
 ```bash
-/quick-commit "Fix validation bug"
+/check-deployment
 ```
 
-**Uses skills:** running-tests (quick), fixing-rubocop-offenses, making-quick-commits
+#### `/prepare-dev-env`
+Complete setup of development environment from scratch.
 
-#### `/finishing-feature-work`
-Full pre-commit workflow before creating PR.
-
-**What it does:**
-- Runs full test suite
-- Fixes all RuboCop offenses
-- Cleans up merged branches
-- Updates documentation
-- Optional auto-commit
+**When to use:**
+- Fresh developer onboarding (first time setup)
+- New machine setup
+- Major dependency updates (Ruby/gem changes)
+- Recovering from corrupted environment
+- Complete reset needed
 
 **Example:**
 ```bash
-# Run all checks
-Use finishing-feature-work
-
-# Skip docs update during development
-Use finishing-feature-work with skip_docs=true
-
-# Auto-commit if all passes
-Use finishing-feature-work with auto_commit=true
+/prepare-dev-env
 ```
-
-**Uses skills:** running-tests, fixing-rubocop-offenses
-
----
-
-### Testing
-
-#### `/test-feature [workflow_name]`
-Comprehensive testing workflow.
-
-**What it does:**
-- Tests Scout AI tools individually
-- Tests workflow end-to-end
-- Runs automated test suite
-- Generates summary report
-
-**Example:**
-```bash
-/test-feature create_campaign
-```
-
-**Uses skills:** testing-tools-manually, testing-workflows-manually, running-tests
 
 ---
 
 ### Feature Development
 
-#### `/build-feature [description]`
-Complete end-to-end feature development workflow.
+#### `/complete-feature [feature_name]` ⭐ PRIMARY COMMAND
+End-to-end feature development with mandatory UX review and testing.
 
-**What it does:**
-- Creates feature branch with implementation plan
-- Builds workflow templates, tools, and integrations
-- Tests tools individually
-- Tests workflows end-to-end
-- Runs full test suite
-- Final quality checks
+**Includes:**
+1. Scaffolds the feature (model, controller, routes)
+2. Creates Scout AI tools (if needed)
+3. Creates V2 workflow templates (if needed)
+4. **Runs UX review on all new views**
+5. **Writes comprehensive system tests**
+6. **Reloads Docker for live manual testing**
+7. Full pre-commit checks (linting, tests, docs)
+8. Creates draft PR on GitHub
+
+**When to use:**
+- Building any new feature
+- The default command for feature development
+- When you want quality built-in from the start
 
 **Example:**
 ```bash
-/build-feature "Create a workflow that generates Instagram posts"
+/complete-feature "subscription management"
 ```
 
-**Uses skills:** starting-features, testing-tools-manually, testing-workflows-manually, running-tests, finishing-feature-work
+---
+
+### Git & GitHub
+
+#### `/github-push [pr-title]`
+Push to GitHub and create a draft pull request.
+
+**When to use:**
+- After using `/complete-feature` (PR creation is automated)
+- For manual pushes if needed
+
+**Example:**
+```bash
+/github-push "Add subscription management feature"
+```
+
+---
+
+## Advanced/Specialized Commands
+
+Use these only when you need to work outside the standard feature workflow.
 
 #### `/add-tool [description]`
-Create new Scout AI tool.
+Create a new Scout AI tool without building a full feature.
 
-**What it does:**
-- Designs tool functionality
-- Creates BaseTool class
-- Implements tool definition and execute method
-- Writes unit tests
-- Verifies tool catalog registration
+**When to use:**
+- Adding tools to existing features
+- Building tools independently
 
-**Example:**
 ```bash
-/add-tool "Create a tool to export campaign analytics to CSV"
+/add-tool "Export campaign data to CSV"
 ```
-
-**Uses skills:** starting-features
 
 #### `/add-workflow [description]`
-Create new V2 workflow template.
+Create a new V2 workflow template without building a full feature.
 
-**What it does:**
-- Designs workflow phases
-- Creates V2 YAML template
-- Defines three-phase structure
-- Adds planner keywords
-- Identifies required tools
+**When to use:**
+- Adding workflows to existing features
+- Building workflows independently
 
-**Example:**
 ```bash
-/add-workflow "Create a workflow for generating blog posts"
+/add-workflow "Auto-renew subscriptions"
 ```
 
-**Uses skills:** starting-features
-
 #### `/add-integration [service_name]`
-Add new external API integration.
+Set up a new external API integration.
 
-**What it does:**
-- Creates Integration and IntegrationOperation records
-- Implements authentication handlers
-- Sets up API transformations
-- Creates connection management UI
+**When to use:**
+- Connecting to external services (Stripe, Mailgun, etc.)
 
-**Example:**
 ```bash
 /add-integration "Shopify"
 ```
 
-**Uses skills:** starting-features
+#### `/add-entity [name]`
+Create test entities with sample data.
+
+**When to use:**
+- Setting up test tenants for development
+- Creating demo data
+
+```bash
+/add-entity "Test Company"
+```
+
+#### `/ux [file_paths]`
+Review UX implementation and provide Rails + Bootstrap best practice recommendations.
+
+**When to use:**
+- Manual UX reviews (already runs in `/complete-feature`)
+- Reviewing existing code
+
+```bash
+/ux app/views/scout/index.html.erb app/assets/stylesheets/scout.scss
+```
+
+#### `/validate-skill [skill_name]`
+Validate and test skill definitions for correctness.
+
+**When to use:**
+- Creating or modifying skills
+- Debugging skill issues
+
+```bash
+/validate-skill
+```
 
 ---
 
-## Command vs Skill
+## Infrastructure & Database
 
-**Commands** = Quick shortcuts that chain multiple skills
-**Skills** = Individual reusable capabilities
+#### `/docker`
+Manage Docker containers for development environment.
 
-### When to use Commands:
-- Common workflows you repeat often
-- Multi-step processes
-- Onboarding new developers
-- Pre-commit checks
+**When to use:**
+- Start/stop services
+- View logs
+- Execute commands in containers
+- Reset containers
 
-### When to use Skills directly:
-- Single-purpose tasks
-- Custom parameters needed
-- Learning the system
-- Building custom workflows
+```bash
+/docker
+```
+
+#### `/reset-database`
+Reset the demo database to initial state.
+
+**When to use:**
+- Starting fresh with clean data
+- Recovering from failed migrations
+- Cleaning up after integration testing
+
+```bash
+/reset-database
+```
+
+#### `/db-snapshot`
+Create and manage database snapshots for backup and testing.
+
+**When to use:**
+- Backup before risky operations
+- Testing with consistent data
+- Comparing database states
+
+```bash
+/db-snapshot
+```
+
+#### `/test-rag`
+Test RAG (Retrieval-Augmented Generation) system.
+
+**When to use:**
+- Testing document indexing
+- Verifying semantic search
+- Testing multi-tenant isolation
+
+```bash
+/test-rag
+```
+
+---
+
+## Command Cheatsheet
+
+| Task | Command | Use When |
+|------|---------|----------|
+| **Build complete feature** | **`/complete-feature`** | **Building any new feature** |
+| Check system health | `/check-deployment` | Starting work, debugging issues |
+| Setup dev environment | `/prepare-dev-env` | First time setup, corrupted env |
+| Push to GitHub | `/github-push` | Need to push manually |
+| Manage Docker | `/docker` | Container issues, logs |
+| Reset database | `/reset-database` | Need fresh data |
+| Create Scout tool | `/add-tool` | Need tools outside `/complete-feature` |
+| Create workflow | `/add-workflow` | Need workflows outside `/complete-feature` |
+| UX review | `/ux` | Manual UX reviews |
+
+---
+
+## Daily Workflow
+
+### Morning: Start Work
+```bash
+/check-deployment              # Verify everything is healthy
+```
+
+### Building a Feature
+```bash
+/complete-feature "feature name"  # One command that does it all:
+                                  # - Scaffolds feature
+                                  # - Adds tools (if needed)
+                                  # - UX review (mandatory)
+                                  # - Tests (mandatory)
+                                  # - Docker reload (manual testing)
+                                  # - Final checks
+                                  # - Creates PR
+```
+
+### Troubleshooting
+```bash
+/check-deployment              # See what's broken
+/reset-database               # Hard reset corrupted data
+/prepare-dev-env              # Complete environment reset
+/docker                       # Check/restart services
+```
+
+---
+
+## Philosophy
+
+**Simple First, Advanced When Needed**
+
+- Use `/complete-feature` for 95% of your feature work
+- Use specialized commands only when you need to work outside that workflow
+- All checks (UX, tests, linting) are mandatory in `/complete-feature`
+- Manual testing in Docker happens BEFORE pushing to GitHub
+
+---
 
 ## Creating Custom Commands
 
@@ -192,51 +275,15 @@ Description of what it does.
 /my-custom-command [args]
 \`\`\`
 
-## Implementation
+## What It Does
 
-\`\`\`bash
-#!/usr/bin/env bash
-# Chain skills together
-.claude/skills/skill-one/scripts/script.sh
-.claude/skills/skill-two/scripts/script.sh
-\`\`\`
+- Step 1
+- Step 2
 ```
 
 Then use with: `/my-custom-command`
 
-## Command Cheatsheet
-
-| Task | Command | Speed | Thoroughness |
-|------|---------|-------|--------------|
-| New dev setup | `/new-dev-setup` | Slow | Complete |
-| Quick fix commit | `/quick-commit "fix"` | Fast | Basic |
-| Pre-PR checks | `finishing-feature-work` | Medium | Complete |
-| Test feature | `/test-feature` | Slow | Complete |
-| Build feature | `/build-feature` | Fast | Scaffold |
-
-## Tips
-
-1. **Use quick-commit during development**
-   - Fast iteration
-   - Only tests changed files
-   - Good for bug fixes
-
-2. **Use finishing-feature-work before PR**
-   - Full test coverage
-   - Complete checks
-   - Documentation updated
-
-3. **Chain commands for complex workflows**
-   ```bash
-   /build-feature "payments" && \
-   /test-feature "payment_workflow" && \
-   finishing-feature-work
-   ```
-
-4. **Create project-specific commands**
-   - Add to `.claude/commands/`
-   - Name with your workflow
-   - Share with team
+---
 
 ## Resources
 
