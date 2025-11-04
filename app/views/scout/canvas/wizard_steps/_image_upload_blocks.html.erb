@@ -21,7 +21,7 @@
               <i class="fas fa-upload me-1"></i> Upload Image
             </button>
             <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="openMediaLibrary(1)">
-              <i class="fas fa-photo-video me-1"></i> Choose from Library
+              <i data-lucide="camera" class="me-1"></i> Choose from Library
             </button>
             <input type="text" 
                    id="image-prompt-1" 
@@ -50,7 +50,7 @@
               <i class="fas fa-upload me-1"></i> Upload Image
             </button>
             <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="openMediaLibrary(2)">
-              <i class="fas fa-photo-video me-1"></i> Choose from Library
+              <i data-lucide="camera" class="me-1"></i> Choose from Library
             </button>
             <input type="text" 
                    id="image-prompt-2" 
@@ -79,7 +79,7 @@
               <i class="fas fa-upload me-1"></i> Upload Image
             </button>
             <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="openMediaLibrary(3)">
-              <i class="fas fa-photo-video me-1"></i> Choose from Library
+              <i data-lucide="camera" class="me-1"></i> Choose from Library
             </button>
             <input type="text" 
                    id="image-prompt-3" 
@@ -95,7 +95,7 @@
   <!-- Design Reference Upload - Below Images -->
   <div class="design-reference-section mt-4">
     <h6 class="mb-2 text-white">
-      <i class="fas fa-palette me-2"></i>
+      <i data-lucide="palette" class="me-2"></i>
       Design Reference (Optional)
     </h6>
     <p class="text-light small mb-3">
@@ -129,7 +129,7 @@
   <!-- Hidden fields to store image data for form submission -->
   <input type="hidden" id="images-data" name="images_data" value="">
   <div class="d-flex justify-content-end mt-2">
-    <a href="/image_assets/new" target="_blank" class="small text-decoration-underline"><i class="fas fa-plus me-1"></i>Add images to library</a>
+    <a href="/image_assets/new" target="_blank" class="small text-decoration-underline"><i data-lucide="plus" class="me-1"></i>Add images to library</a>
   </div>
 </div>
 
@@ -524,7 +524,7 @@ if (!window.imageUploadBlocksInitialized) {
       <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title"><i class="fas fa-photo-video me-2"></i>Media Library</h5>
+            <h5 class="modal-title"><i data-lucide="camera" class="me-2"></i>Media Library</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">

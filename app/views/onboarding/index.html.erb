@@ -28,7 +28,7 @@
           </div>
         </div>
         <div class="feature-item">
-          <i class="fas fa-magic text-warning"></i>
+          <i data-lucide="sparkles" class="text-warning"></i>
           <div>
             <strong>Instant Marketing Materials</strong>
             <p>Once AMOS understands your business, it can create landing pages, emails, and campaigns in seconds.</p>
@@ -88,7 +88,7 @@
             <div class="message-avatar">
               <% if message[:role] == 'assistant' %>
                 <div class="avatar-circle bg-gradient-primary">
-                  <i class="fas fa-robot text-white"></i>
+                  <i data-lucide="bot" class="text-white"></i>
                 </div>
               <% else %>
                 <div class="avatar-circle bg-secondary">
@@ -125,7 +125,7 @@
         <div id="typing-indicator" class="message assistant-message" style="display: none;">
           <div class="message-avatar">
             <div class="avatar-circle bg-gradient-primary">
-              <i class="fas fa-robot text-white"></i>
+              <i data-lucide="bot" class="text-white"></i>
             </div>
           </div>
           <div class="message-content">
@@ -154,7 +154,7 @@
               rows="1"
               maxlength="1000"></textarea>
             <button type="submit" class="send-btn" id="send-button">
-              <i class="fas fa-paper-plane"></i>
+              <i data-lucide="send"></i>
             </button>
           </div>
         </form>
@@ -745,7 +745,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       if (sendButton) {
         if (enabled) {
-          sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+          sendButton.innerHTML = '<i data-lucide="send"></i>';
           sendButton.className = 'send-btn';
         } else {
           sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';

@@ -9,7 +9,7 @@
                alt="<%= @connection.integration.name %>" 
                class="rounded me-2" style="width: 40px; height: 40px;">
         <% else %>
-          <i class="fas fa-plug text-primary"></i>
+          <i data-lucide="plug" class="text-primary"></i>
         <% end %>
         <%= @connection.name %>
       </h1>
@@ -60,7 +60,7 @@
             <dt class="col-sm-3">Credentials</dt>
             <dd class="col-sm-9">
               <% if @connection.integration_credentials.any? %>
-                <i class="fas fa-key text-success"></i> <%= pluralize(@connection.integration_credentials.count, 'credential') %>
+                <i data-lucide="key" class="text-success"></i> <%= pluralize(@connection.integration_credentials.count, 'credential') %>
               <% else %>
                 <i data-lucide="x" class="text-muted"></i> No credentials
               <% end %>
