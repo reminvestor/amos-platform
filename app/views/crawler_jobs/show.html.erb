@@ -10,7 +10,7 @@
           </h5>
           <% if @crawler_job.status == 'ready' || @crawler_job.status == 'failed' %>
             <button id="reset-conversation" class="btn btn-sm btn-outline-secondary">
-              <i class="fas fa-redo me-1"></i> Reset Conversation
+              <i data-lucide="refresh-cw" class="me-1"></i> Reset Conversation
             </button>
           <% end %>
         </div>
@@ -57,7 +57,7 @@
                           <%= @crawler_job.status == 'generating' || @crawler_job.status == 'testing' || @crawler_job.status == 'improving' || @crawler_job.status == 'fixing' ? 'disabled' : '' %>></textarea>
                 <button type="submit" class="btn btn-primary" 
                         <%= @crawler_job.status == 'generating' || @crawler_job.status == 'testing' || @crawler_job.status == 'improving' || @crawler_job.status == 'fixing' ? 'disabled' : '' %>>
-                  <i class="fas fa-paper-plane"></i>
+                  <i data-lucide="send"></i>
                 </button>
               </div>
               <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
@@ -67,7 +67,7 @@
                 <span class="text-warning">Please wait while I'm working...</span>
               <% elsif @crawler_job.conversation_stage == 'url_finding' %>
                 <small class="text-muted">
-                  <i class="fas fa-lightbulb me-1"></i> Having trouble finding URLs? Type <strong>skip</strong> to continue without web search.
+                  <i data-lucide="lightbulb" class="me-1"></i> Having trouble finding URLs? Type <strong>skip</strong> to continue without web search.
                 </small>
               <% else %>
                 Ask questions, provide details about the websites, or give feedback on the crawler.
@@ -104,7 +104,7 @@
           <ul class="list-group list-group-flush" id="crawler-pipeline">
             <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'analyzing' || @crawler_job.conversation_stage == 'analyzing' ? 'active' : '' %>" id="pipeline-analyze">
               <span>
-                <i class="fas fa-search me-2"></i> 
+                <i data-lucide="search" class="me-2"></i> 
                 Analyzing Request
               </span>
               <% if @crawler_job.conversation_stage == 'analyzing' %>

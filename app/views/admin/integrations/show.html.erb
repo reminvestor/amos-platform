@@ -8,7 +8,7 @@
           <img src="<%= @integration.icon_url %>" alt="<%= @integration.name %>" 
                class="rounded me-2" style="width: 40px; height: 40px;">
         <% else %>
-          <i class="fas fa-puzzle-piece text-primary"></i>
+          <i data-lucide="puzzle" class="text-primary"></i>
         <% end %>
         <%= @integration.name %>
       </h1>
@@ -102,7 +102,7 @@
           <h5 class="mb-0"><i class="fas fa-tasks"></i> Available Operations</h5>
           <% if current_admin&.editor? || current_admin&.super_admin? %>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#discoverOperationsModal">
-              <i class="fas fa-magic me-1"></i> AI Discover
+              <i data-lucide="sparkles" class="me-1"></i> AI Discover
             </button>
           <% end %>
         </div>
@@ -199,7 +199,7 @@
             <p class="text-muted mb-3">No authentication configuration yet</p>
             
             <%= link_to new_admin_integration_oauth_configuration_path(@integration), class: "btn btn-warning btn-sm w-100" do %>
-              <i class="fas fa-plus me-1"></i> Configure Authentication
+              <i data-lucide="plus" class="me-1"></i> Configure Authentication
             <% end %>
           <% end %>
         </div>
@@ -208,7 +208,7 @@
       <!-- Active Connections -->
       <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-link"></i> Active Connections</h5>
+          <h5 class="mb-0"><i data-lucide="link"></i> Active Connections</h5>
         </div>
         <div class="card-body">
           <% active_connections = @integration.connections.where(status: 'connected') %>
@@ -260,7 +260,7 @@
       <%= form_with url: discover_operations_admin_integration_path(@integration), method: :post, local: true do |form| %>
         <div class="modal-header">
           <h5 class="modal-title" id="discoverOperationsModalLabel">
-            <i class="fas fa-magic text-primary me-2"></i> AI Operation Discovery
+            <i data-lucide="sparkles" class="text-primary me-2"></i> AI Operation Discovery
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
@@ -282,7 +282,7 @@
           <div class="card border-primary mb-3">
             <div class="card-body py-2">
               <small>
-                <i class="fas fa-lightbulb text-warning me-1"></i>
+                <i data-lucide="lightbulb" class="text-warning me-1"></i>
                 <strong>Current Operations:</strong> <%= @integration.integration_operations.count %> configured
                 <% if @integration.integration_operations.any? %>
                   <br>

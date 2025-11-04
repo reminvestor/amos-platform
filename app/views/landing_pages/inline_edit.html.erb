@@ -10,7 +10,7 @@
               <i class="fas fa-toggle-on me-1"></i> Edit Mode: <span id="editModeStatus">ON</span>
             </button>
             <button class="btn btn-success" id="saveChanges" onclick="saveInlineChanges()">
-              <i class="fas fa-save me-1"></i> Save Changes
+              <i data-lucide="save" class="me-1"></i> Save Changes
             </button>
             <%= link_to edit_landing_page_path(@landing_page), class: "btn btn-outline-light" do %>
               <i data-lucide="code" class="me-1"></i> HTML Editor
