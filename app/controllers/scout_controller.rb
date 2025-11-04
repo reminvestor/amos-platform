@@ -585,7 +585,7 @@ class ScoutController < ApplicationController
       end
 
       # Check if this is a plan approval response
-      if current_canvas.dig("data", "awaiting_approval") && is_approval_response?(user_message)
+      if current_canvas&.dig("data", "awaiting_approval") && is_approval_response?(user_message)
         stream_update("📋 Processing your plan feedback...")
         approval_action = extract_approval_action(user_message)
         result = interactive_service.handle_plan_approval(approval_action, user_message)
