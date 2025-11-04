@@ -38,7 +38,7 @@
         </div>
         <div class="btn-group">
           <%= link_to edit_contact_group_path(@contact_group), class: 'btn btn-outline-primary' do %>
-            <i class="fas fa-edit me-1"></i> Edit Group
+            <i data-lucide="edit" class="me-1"></i> Edit Group
           <% end %>
           <%= link_to contact_groups_path, class: 'btn btn-outline-secondary' do %>
             <i data-lucide="arrow-left" class="me-1"></i> Back
@@ -103,7 +103,7 @@
           </div>
           <div class="modal-body">
             <div class="alert alert-info">
-              <h6><i class="fas fa-info-circle me-1"></i> CSV Format</h6>
+              <h6><i data-lucide="info" class="me-1"></i> CSV Format</h6>
               <p class="mb-2">Your CSV file should include these columns:</p>
               <ul class="mb-2">
                 <li><strong>name</strong> - Contact's full name</li>
@@ -113,7 +113,7 @@
               </ul>
               <div class="d-grid">
                 <a href="#" class="btn btn-sm btn-outline-info" id="downloadTemplateBtn">
-                  <i class="fas fa-download me-1"></i> Download Template
+                  <i data-lucide="download" class="me-1"></i> Download Template
                 </a>
               </div>
             </div>
@@ -146,7 +146,7 @@
         <div class="d-flex gap-2 flex-wrap">
           <div class="dropdown d-none d-md-block">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="fas fa-filter me-1"></i> Filter
+              <i data-lucide="filter" class="me-1"></i> Filter
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filterDropdown">
               <li><a class="dropdown-item filter-status" href="#" data-status="all">All Statuses</a></li>
@@ -158,11 +158,11 @@
           </div>
           <div class="dropdown d-none d-md-block">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="fas fa-download me-1"></i> Export
+              <i data-lucide="download" class="me-1"></i> Export
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
               <li><a class="dropdown-item" href="#" onclick="window.print(); return false;"><i class="fas fa-print me-2"></i>Print View</a></li>
-              <li><a class="dropdown-item" href="<%= contact_group_path(@contact_group, format: :csv) %>"><i class="fas fa-file-csv me-2"></i>Export to CSV</a></li>
+              <li><a class="dropdown-item" href="<%= contact_group_path(@contact_group, format: :csv) %>"><i data-lucide="file-spreadsheet" class="me-2"></i>Export to CSV</a></li>
             </ul>
           </div>
           <div class="input-group" style="max-width: 300px;">
@@ -418,7 +418,7 @@
         
         // Update filter button text
         document.getElementById('filterDropdown').innerHTML = 
-          `<i class="fas fa-filter me-1"></i> ${status === 'all' ? 'Filter' : this.textContent}`;
+          `<i data-lucide="filter" class="me-1"></i> ${status === 'all' ? 'Filter' : this.textContent}`;
           
         updateEmptyStateVisibility();
       });

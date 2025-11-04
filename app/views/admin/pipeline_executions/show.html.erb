@@ -54,14 +54,14 @@
           <p class="text-muted mb-1"><i class="fas fa-link"></i> Ticket URL</p>
           <% if @pipeline_execution.ticket_url.present? %>
             <%= link_to @pipeline_execution.ticket_url, @pipeline_execution.ticket_url, target: "_blank" %>
-            <i class="fas fa-external-link-alt fa-xs"></i>
+            <i data-lucide="external-link" class="icon-xs"></i>
           <% else %>
             <span class="text-muted">Not available</span>
           <% end %>
         </div>
 
         <div class="col-md-3">
-          <p class="text-muted mb-1"><i class="fas fa-flag"></i> Priority</p>
+          <p class="text-muted mb-1"><i data-lucide="flag"></i> Priority</p>
           <% priority_colors = { 'critical' => 'danger', 'high' => 'warning', 'medium' => 'info', 'low' => 'secondary' } %>
           <span class="badge bg-<%= priority_colors[@pipeline_execution.priority] || 'secondary' %>">
             <%= @pipeline_execution.priority&.titleize || 'Medium' %>
@@ -76,7 +76,7 @@
 
       <% if @pipeline_execution.ticket_description.present? %>
         <hr>
-        <p class="text-muted mb-1"><i class="fas fa-file-alt"></i> Description</p>
+        <p class="text-muted mb-1"><i data-lucide="file-text"></i> Description</p>
         <div class="bg-light p-3 rounded">
           <%= simple_format(@pipeline_execution.ticket_description) %>
         </div>
@@ -138,7 +138,7 @@
         <% end %>
       <% else %>
         <p class="text-muted text-center mb-0">
-          <i class="fas fa-hourglass-start"></i>
+          <i data-lucide="hourglass"></i>
           No agents have executed yet
         </p>
       <% end %>
@@ -151,7 +151,7 @@
       <div class="card h-100">
         <div class="card-header">
           <h5 class="mb-0">
-            <i class="fas fa-file-code"></i>
+            <i data-lucide="file-code"></i>
             Artifacts (<%= @artifacts.count %>)
           </h5>
         </div>
@@ -159,7 +159,7 @@
           <% if @artifacts.any? %>
             <% @artifacts.each do |artifact| %>
               <div class="mb-3 p-2 border rounded">
-                <i class="fas fa-file-alt text-primary"></i>
+                <i data-lucide="file-text" class="text-primary"></i>
                 <strong><%= artifact.file_name %></strong>
                 <br>
                 <small class="text-muted">
@@ -176,7 +176,7 @@
             <% end %>
           <% else %>
             <p class="text-muted text-center mb-0">
-              <i class="fas fa-inbox"></i>
+              <i data-lucide="inbox"></i>
               No artifacts generated yet
             </p>
           <% end %>
@@ -207,7 +207,7 @@
             <% end %>
           <% else %>
             <p class="text-muted text-center mb-0">
-              <i class="fas fa-inbox"></i>
+              <i data-lucide="inbox"></i>
               No events recorded yet
             </p>
           <% end %>

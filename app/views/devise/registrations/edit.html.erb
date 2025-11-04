@@ -36,7 +36,7 @@
               <%= f.password_field :password, autocomplete: "new-password", class: "form-control", placeholder: "Leave blank to keep current password" %>
               <% if @minimum_password_length %>
                 <div class="form-text">
-                  <i class="fas fa-info-circle"></i> Minimum <%= @minimum_password_length %> characters
+                  <i data-lucide="info"></i> Minimum <%= @minimum_password_length %> characters
                 </div>
               <% end %>
             </div>
@@ -116,7 +116,7 @@
 
       <div class="card border-0 shadow-sm mt-3">
         <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-info-circle text-primary"></i> Account Info</h5>
+          <h5 class="mb-0"><i data-lucide="info" class="text-primary"></i> Account Info</h5>
         </div>
         <div class="card-body">
           <p class="mb-2">

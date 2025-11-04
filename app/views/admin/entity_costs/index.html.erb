@@ -15,7 +15,7 @@
 
           <%= link_to export_admin_entity_costs_path(format: :csv, start_date: @start_date, end_date: @end_date),
                       class: "btn btn-outline-success" do %>
-            <i class="fas fa-download me-1"></i> Export All
+            <i data-lucide="download" class="me-1"></i> Export All
           <% end %>
         </div>
       </div>
@@ -87,7 +87,7 @@
                 <% elsif trend == 'decreasing' %>
                   <i data-lucide="arrow-down" class="text-success"></i>
                 <% else %>
-                  <i class="fas fa-equals text-secondary"></i>
+                  <i data-lucide="equal" class="text-secondary"></i>
                 <% end %>
                 <%= trend.capitalize %>
               </h2>

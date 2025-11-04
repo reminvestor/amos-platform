@@ -3,7 +3,7 @@
     <div class="container-fluid">
   <div class="row mb-4">
     <div class="col-12">
-      <h1><i class="fas fa-dollar-sign"></i> Commission Management</h1>
+      <h1><i data-lucide="dollar-sign"></i> Commission Management</h1>
     </div>
   </div>
 
@@ -59,7 +59,7 @@
         </div>
         <div class="col-md-2 text-end">
           <%= link_to admin_commissions_path(format: :csv, **params.permit(:status, :date_from, :date_to, :affiliate_id)), class: "btn btn-outline-success" do %>
-            <i class="fas fa-file-csv"></i> Export CSV
+            <i data-lucide="file-spreadsheet"></i> Export CSV
           <% end %>
         </div>
       <% end %>

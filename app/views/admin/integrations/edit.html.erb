@@ -54,7 +54,7 @@
                   data: { controller: "auth-type-warning" } %>
               <% if @integration.connections.any? %>
                 <div class="alert alert-warning mt-2 mb-0">
-                  <i class="fas fa-exclamation-triangle me-2"></i>
+                  <i data-lucide="alert-triangle" class="me-2"></i>
                   <strong>Warning:</strong> This integration has <%= @integration.connections.count %> active connection(s). 
                   Changing the authentication type may break existing connections. Users will need to reconnect.
                 </div>
