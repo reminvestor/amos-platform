@@ -11,8 +11,11 @@ export default class extends Controller {
   togglePreview(event) {
     const enabled = event.target.checked
     if (this.hasSettingsTarget) {
-      this.settingsTarget.style.opacity = enabled ? '1' : '0.5'
-      this.settingsTarget.style.pointerEvents = enabled ? 'auto' : 'none'
+      if (enabled) {
+        this.settingsTarget.classList.remove('settings-disabled')
+      } else {
+        this.settingsTarget.classList.add('settings-disabled')
+      }
     }
   }
   
@@ -34,7 +37,9 @@ export default class extends Controller {
     const button = event.currentTarget
     const originalText = button.innerHTML
     button.disabled = true
-    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Testing...'
+    button.innerHTML = '<i data-lucide="loader" class="icon-spin me-2"></i>Testing...'
+    // Re-initialize Lucide icons for the new icon
+    if (typeof lucide !== 'undefined') lucide.createIcons()
     
     const voiceId = document.getElementById('voice_id').value
     const engine = document.getElementById('engine').value
@@ -218,8 +223,11 @@ export default class extends Controller {
   updateUI() {
     const enabled = document.getElementById('tts_enabled')?.checked
     if (this.hasSettingsTarget) {
-      this.settingsTarget.style.opacity = enabled ? '1' : '0.5'
-      this.settingsTarget.style.pointerEvents = enabled ? 'auto' : 'none'
+      if (enabled) {
+        this.settingsTarget.classList.remove('settings-disabled')
+      } else {
+        this.settingsTarget.classList.add('settings-disabled')
+      }
     }
   }
 }

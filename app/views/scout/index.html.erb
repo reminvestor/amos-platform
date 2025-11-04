@@ -423,7 +423,7 @@
             </button>
 
             <!-- Conversation dropdown (hidden by default) -->
-            <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
+            <div class="conversation-dropdown d-none" id="conversation-dropdown">
               <div class="dropdown-header">
                 <h4>Recent Conversations</h4>
               </div>
@@ -443,7 +443,7 @@
       
       <div class="chat-input-area" data-controller="voice-assistant">
         <form id="message-form" data-scout-target="chatForm" enctype="multipart/form-data">
-          <div class="attached-files" id="attached-files" style="display: none;">
+          <div class="attached-files d-none" id="attached-files">
             <!-- Attached files will be shown here -->
           </div>
 
@@ -464,7 +464,7 @@
               </button>
 
               <!-- Model Selector Popover -->
-              <div id="model-selector-popover" class="model-popover" style="display: none;">
+              <div id="model-selector-popover" class="model-popover d-none">
                 <div class="model-popover-content">
                   <div class="model-header">
                     <div class="model-header-icon">
@@ -513,7 +513,7 @@
             </div>
 
             <!-- Hidden select for backward compatibility -->
-            <select id="model-select" class="model-select" style="display: none;">
+            <select id="model-select" class="model-select d-none">
               <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
               <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
               <option value="claude-opus-4-1">Claude Opus 4.1</option>
@@ -527,7 +527,7 @@
               id="file-input"
               multiple
               accept="image/*,.pdf,.doc,.docx,.txt,.csv"
-              style="display: none;"
+              class="d-none"
               data-scout-target="fileInput">
 
             <button type="button" class="attach-btn" id="attach-button" title="Attach files" aria-label="Attach files">
@@ -1661,7 +1661,7 @@ document.addEventListener('turbo:load', function() {
           </div>
           ${hasDetails ? `
             <div id="${collapseId}" class="collapse mt-2">
-              <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-word;">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
+              <pre class="mt-2 mb-0 pre-wrapped">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
             </div>
           ` : ''}
         </div>
@@ -2239,7 +2239,7 @@ document.addEventListener('turbo:load', function() {
           </div>
           ${hasDetails ? `
             <div id="${collapseId}" class="collapse mt-2">
-              <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-word;">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
+              <pre class="mt-2 mb-0 pre-wrapped">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
             </div>
           ` : ''}
         </div>
@@ -3173,10 +3173,10 @@ document.addEventListener('turbo:load', function() {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body px-4 py-3">
-        <div class="storage-option mb-3 p-3 border rounded" style="cursor: pointer;" data-storage-type="short-term">
+        <div class="storage-option mb-3 p-3 border rounded cursor-pointer" data-storage-type="short-term">
           <div class="form-check">
             <input class="form-check-input" type="radio" name="storageChoice" id="shortTermRadio" value="short-term">
-            <label class="form-check-label w-100" for="shortTermRadio" style="cursor: pointer;">
+            <label class="form-check-label w-100 cursor-pointer" for="shortTermRadio">
               <div class="d-flex align-items-start">
                 <div class="me-3 mt-1">
                   <i data-lucide="clock" class="icon-2x text-primary"></i>
@@ -3190,10 +3190,10 @@ document.addEventListener('turbo:load', function() {
           </div>
         </div>
 
-        <div class="storage-option p-3 border rounded" style="cursor: pointer;" data-storage-type="long-term">
+        <div class="storage-option p-3 border rounded cursor-pointer" data-storage-type="long-term">
           <div class="form-check">
             <input class="form-check-input" type="radio" name="storageChoice" id="longTermRadio" value="long-term">
-            <label class="form-check-label w-100" for="longTermRadio" style="cursor: pointer;">
+            <label class="form-check-label w-100 cursor-pointer" for="longTermRadio">
               <div class="d-flex align-items-start">
                 <div class="me-3 mt-1">
                   <i data-lucide="database" class="icon-2x text-success"></i>
