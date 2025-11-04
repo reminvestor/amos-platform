@@ -44,3 +44,12 @@ another_user:
   encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
   onboarded: true
   role: "admin"
+
+admin:
+  entity: one
+  email: "admin@test.com"
+  first_name: "Admin"
+  last_name: "Test"
+  encrypted_password: "$2a$12$KHLgqKDfYQEYO2/XdLjreuNZQjvlJRqaKPuUfxI4jvIBqP3PZOGTm"
+  onboarded: true
+  role: "admin"
