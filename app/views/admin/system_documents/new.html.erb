@@ -3,7 +3,7 @@
     <div class="col-md-8">
       <div class="card">
         <div class="card-header">
-          <h4 class="mb-0"><i class="fas fa-upload"></i> Upload System Document</h4>
+          <h4 class="mb-0"><i data-lucide="upload"></i> Upload System Document</h4>
         </div>
         <div class="card-body">
           <%= form_with model: @document, url: admin_system_documents_path, local: true, html: { multipart: true } do |f| %>
@@ -65,10 +65,10 @@
             <!-- Actions -->
             <div class="d-flex justify-content-between">
               <%= link_to admin_system_documents_path, class: 'btn btn-secondary' do %>
-                <i class="fas fa-times"></i> Cancel
+                <i data-lucide="x"></i> Cancel
               <% end %>
               <%= f.submit 'Upload & Index Document', class: 'btn btn-primary' do %>
-                <i class="fas fa-upload"></i> Upload & Index Document
+                <i data-lucide="upload"></i> Upload & Index Document
               <% end %>
             </div>
           <% end %>
@@ -88,7 +88,7 @@
             <li>Document becomes queryable by all entities via Scout</li>
           </ol>
           <div class="alert alert-info mt-3 mb-0">
-            <small><i class="fas fa-clock"></i> Processing time: 1-5 minutes depending on document size</small>
+            <small><i data-lucide="clock"></i> Processing time: 1-5 minutes depending on document size</small>
           </div>
         </div>
       </div>

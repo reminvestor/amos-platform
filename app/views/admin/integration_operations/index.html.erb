@@ -40,9 +40,9 @@
                       <td><code class="small"><%= operation.path_template %></code></td>
                       <td>
                         <% if operation.is_idempotent %>
-                          <i class="fas fa-check text-success"></i> Yes
+                          <i data-lucide="check" class="text-success"></i> Yes
                         <% else %>
-                          <i class="fas fa-times text-muted"></i> No
+                          <i data-lucide="x" class="text-muted"></i> No
                         <% end %>
                       </td>
                       <td>

@@ -16,7 +16,7 @@
           </span>
         </h1>
         <%= link_to admin_affiliates_path, class: "btn btn-outline-secondary" do %>
-          <i class="fas fa-arrow-left"></i> Back to List
+          <i data-lucide="arrow-left"></i> Back to List
         <% end %>
       </div>
     </div>
@@ -126,7 +126,7 @@
         <div class="card-body">
           <% if @affiliate.pending? %>
             <%= button_to approve_admin_affiliate_path(@affiliate), method: :post, class: "btn btn-success mb-2 w-100" do %>
-              <i class="fas fa-check"></i> Approve Affiliate
+              <i data-lucide="check"></i> Approve Affiliate
             <% end %>
           <% end %>
 

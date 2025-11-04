@@ -49,11 +49,11 @@
                   <td>
                     <div class="btn-group btn-group-sm">
                       <%= link_to crawler_job_path(job), class: "btn btn-outline-primary", title: "Continue conversation" do %>
-                        <i class="fas fa-comments"></i>
+                        <i data-lucide="message-circle"></i>
                       <% end %>
                       <% if job.status == 'ready' %>
                         <%= button_to execute_crawler_job_path(job), method: :post, class: "btn btn-outline-success", title: "Run crawler", form: { class: "d-inline" } do %>
-                          <i class="fas fa-play"></i>
+                          <i data-lucide="play"></i>
                         <% end %>
                       <% end %>
                     </div>
@@ -93,7 +93,7 @@
         </div>
         <div class="col-md-4 text-center mb-3">
           <div class="mb-2">
-            <i class="fas fa-code fa-3x text-success"></i>
+            <i data-lucide="code" class="icon-3x text-success"></i>
           </div>
           <h5>2. Generate & Test</h5>
           <p class="small">The AI creates a custom crawler and automatically tests it to ensure it works.</p>
