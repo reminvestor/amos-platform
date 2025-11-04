@@ -22,7 +22,7 @@
 
           <%= link_to export_admin_entity_cost_path(@entity, format: :csv, start_date: @start_date, end_date: @end_date),
                       class: "btn btn-outline-success" do %>
-            <i class="fas fa-download me-1"></i> Export CSV
+            <i data-lucide="download" class="me-1"></i> Export CSV
           <% end %>
 
           <%= link_to export_admin_entity_cost_path(@entity, format: :json, start_date: @start_date, end_date: @end_date),
@@ -55,7 +55,7 @@
       <% if @threshold_alerts.any? %>
         <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
           <h5 class="alert-heading">
-            <i class="fas fa-exclamation-triangle me-2"></i>
+            <i data-lucide="alert-triangle" class="me-2"></i>
             Cost Threshold Alerts
           </h5>
           <ul class="mb-0">

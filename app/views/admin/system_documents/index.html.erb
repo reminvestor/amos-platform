@@ -2,7 +2,7 @@
   <!-- Header -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h1><i class="fas fa-database"></i> System Document Library</h1>
+      <h1><i data-lucide="database"></i> System Document Library</h1>
       <p class="text-muted mb-0">Manage knowledge base documents available to all entities via Scout</p>
     </div>
     <%= link_to new_admin_system_document_path, class: "btn btn-primary" do %>
@@ -72,7 +72,7 @@
 
             <%= link_to admin_system_documents_path(category: category),
                 class: "list-group-item list-group-item-action #{'active' if params[:category] == category && params[:subcategory].blank?}" do %>
-              <i class="fas fa-folder-open"></i> <%= category.titleize %>
+              <i data-lucide="folder-open"></i> <%= category.titleize %>
               <span class="badge bg-secondary float-end"><%= total_count %></span>
             <% end %>
 
@@ -168,7 +168,7 @@
       <% else %>
         <div class="card">
           <div class="card-body text-center py-5">
-            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+            <i data-lucide="inbox" class="icon-3x text-muted mb-3"></i>
             <h5>No documents found</h5>
             <p class="text-muted">Upload your first system document to get started</p>
             <%= link_to new_admin_system_document_path, class: "btn btn-primary mt-2" do %>
