@@ -69,8 +69,25 @@ module Tools
         )
       end
 
+      # STEP 3: Fall back to searching uploaded documents directly
+      # (Finds recently uploaded files that haven't been indexed to RAG yet)
+      Rails.logger.info "🔄 No RAG results, searching uploaded documents"
+      uploaded_docs = search_uploaded_documents(query, top_k)
+
+      if uploaded_docs[:documents].any?
+        Rails.logger.info "✅ Found #{uploaded_docs[:documents].length} uploaded document(s) matching query"
+        return success_response(
+          query: query,
+          source: 'uploaded',
+          results: uploaded_docs[:documents],
+          count: uploaded_docs[:documents].length,
+          message: "Found #{uploaded_docs[:documents].length} uploaded document(s). Use read_document tool with asset_id to read content.",
+          cost: 0.0  # Free - searching local database
+        )
+      end
+
       # No results found anywhere
-      Rails.logger.info "⚠️ No results found in session or RAG storage"
+      Rails.logger.info "⚠️ No results found in session, RAG storage, or uploaded documents"
       success_response(
         query: query,
         source: 'none',
@@ -150,6 +167,52 @@ module Tools
     rescue => e
       Rails.logger.error "RAG query error: #{e.message}"
       { chunks: [], response_time_ms: 0 }
+    end
+
+    # Search uploaded documents directly (fallback for recently uploaded files)
+    def search_uploaded_documents(query, top_k)
+      query_lower = query.downcase
+
+      # Search documents by title matching
+      documents = @entity.image_assets
+        .where("LOWER(title) LIKE ?", "%#{query_lower}%")
+        .order(created_at: :desc)
+        .limit(top_k)
+
+      matching_docs = documents.map do |doc|
+        {
+          title: doc.title,
+          asset_id: doc.id,
+          content_type: doc.file.content_type,
+          size: doc.file.blob.byte_size,
+          uploaded_at: doc.created_at,
+          storage_type: 'uploaded',
+          relevance: calculate_relevance(doc.title, query)
+        }
+      end
+
+      # Sort by relevance score
+      matching_docs.sort_by! { |d| -d[:relevance] }
+
+      {
+        documents: matching_docs
+      }
+    rescue => e
+      Rails.logger.error "Uploaded documents search error: #{e.message}"
+      { documents: [] }
+    end
+
+    # Calculate relevance score for document title matching
+    def calculate_relevance(title, query)
+      query_words = query.downcase.split
+      title_lower = title.downcase
+
+      # Exact match gets highest score
+      return 100 if title_lower == query.downcase
+
+      # Matches are scored by number of query words found
+      score = query_words.count { |word| title_lower.include?(word) }
+      score * 10
     end
   end
 end
