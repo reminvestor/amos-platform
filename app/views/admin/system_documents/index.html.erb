@@ -113,7 +113,7 @@
                     <span class="mx-2">•</span>
                     <i data-lucide="clock"></i> <%= time_ago_in_words(doc.created_at) %> ago
                     <span class="mx-2">•</span>
-                    <i class="fas fa-user"></i> <%= doc.uploaded_by.email %>
+                    <i data-lucide="user"></i> <%= doc.uploaded_by.email %>
                   </p>
 
                   <% if doc.description.present? %>
@@ -148,7 +148,7 @@
                   <% end %>
 
                   <%= button_to reindex_admin_system_document_path(doc), method: :post, class: "btn btn-sm btn-outline-info" do %>
-                    <i class="fas fa-sync"></i> Re-index
+                    <i data-lucide="refresh-cw"></i> Re-index
                   <% end %>
 
                   <%= button_to admin_system_document_path(doc), method: :delete,

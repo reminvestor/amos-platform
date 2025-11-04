@@ -67,13 +67,13 @@
         <div class="header-user">
           <div class="dropdown">
             <button class="btn btn-link text-decoration-none dropdown-toggle" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="color: var(--scout-text-muted, #9ca3af);">
-              <i class="fas fa-user-circle me-2"></i>
+              <i data-lucide="user-circle" me-2"></i>
               <%= current_user.full_name %>
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuDropdown">
               <li>
                 <%= link_to destroy_user_session_path, method: :delete, class: "dropdown-item" do %>
-                  <i class="fas fa-sign-out-alt me-2"></i> Sign Out
+                  <i data-lucide="log-out" me-2"></i> Sign Out
                 <% end %>
               </li>
             </ul>
@@ -92,7 +92,7 @@
                 </div>
               <% else %>
                 <div class="avatar-circle bg-secondary">
-                  <i class="fas fa-user text-white"></i>
+                  <i data-lucide="user" text-white"></i>
                 </div>
               <% end %>
             </div>
@@ -171,7 +171,7 @@
         <div class="mb-4">
           <div class="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center" 
                style="width: 80px; height: 80px; background: linear-gradient(45deg, #28a745, #20c997);">
-            <i class="fas fa-check text-white" style="font-size: 2rem;"></i>
+            <i data-lucide="check" text-white" style="font-size: 2rem;"></i>
           </div>
           <h4 class="fw-bold mb-2">🎉 Perfect! You're all set!</h4>
           <p class="text-muted">AMOS now knows about your business and is ready to help you succeed with comprehensive marketing strategies.</p>
@@ -689,7 +689,7 @@ document.addEventListener('DOMContentLoaded', function() {
       messageElement.innerHTML = `
         <div class="message-avatar">
           <div class="avatar-circle ${isAssistant ? 'bg-gradient-primary' : 'bg-secondary'}">
-            <i class="fas fa-${isAssistant ? 'robot' : 'user'} text-white"></i>
+            <i class="text-white" data-lucide="${isAssistant ? 'bot' : 'user'}"></i>
           </div>
         </div>
         <div class="message-content">
@@ -748,7 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
           sendButton.innerHTML = '<i data-lucide="send"></i>';
           sendButton.className = 'send-btn';
         } else {
-          sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+          sendButton.innerHTML = '<i data-lucide="loader-2" class="icon-spin"></i>';
           sendButton.className = 'send-btn';
         }
       }
