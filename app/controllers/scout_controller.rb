@@ -1596,9 +1596,12 @@ class ScoutController < ApplicationController
       if asset && asset.file.attached?
         data[:url] = rails_blob_url(asset.file)
         data[:download_url] = rails_blob_url(asset.file, disposition: 'attachment')
+        data[:content_type] = asset.file.content_type
+        data[:filename] = asset.file.filename.to_s
+        data[:size] = asset.file.byte_size
       end
     end
-    
+
     render_to_string(
       partial: 'scout/canvas/document_viewer',
       locals: {
