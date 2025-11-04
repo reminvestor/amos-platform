@@ -1616,3 +1616,13 @@
     transform: translateY(0);
   }
 }
+
+/* Utility Classes */
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.pre-wrapped {
+  white-space: pre-wrap;
+  word-break: break-word;
+}

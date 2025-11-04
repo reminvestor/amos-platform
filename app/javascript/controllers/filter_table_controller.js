@@ -49,10 +49,10 @@ export default class extends Controller {
       const isVisible = matchesSearch && matchesStatus && matchesDateRange
 
       if (isVisible) {
-        row.style.display = ""
+        row.classList.remove('d-none')
         visibleCount++
       } else {
-        row.style.display = "none"
+        row.classList.add('d-none')
       }
     })
 
@@ -125,7 +125,7 @@ export default class extends Controller {
 
     // Show all rows
     this.rowTargets.forEach(row => {
-      row.style.display = ""
+      row.classList.remove('d-none')
     })
 
     this.updateResultCount(this.rowTargets.length)
@@ -144,13 +144,13 @@ export default class extends Controller {
     if (!this.hasNoResultsTarget) return
 
     if (show) {
-      this.noResultsTarget.style.display = ""
+      this.noResultsTarget.classList.remove('d-none')
     } else {
-      this.noResultsTarget.style.display = "none"
+      this.noResultsTarget.classList.add('d-none')
     }
   }
 
   get visibleRowCount() {
-    return this.rowTargets.filter(row => row.style.display !== "none").length
+    return this.rowTargets.filter(row => !row.classList.contains('d-none')).length
   }
 }
