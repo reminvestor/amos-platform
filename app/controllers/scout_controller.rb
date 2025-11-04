@@ -1042,6 +1042,19 @@ class ScoutController < ApplicationController
     render json: { session_id: session[:scout_session_id] }
   end
 
+  # GET /scout/document-status/:asset_id
+  # API endpoint to check document indexing status
+  def document_indexing_status
+    asset_id = params[:asset_id]
+    return render json: { error: "asset_id required" }, status: :bad_request if asset_id.blank?
+
+    asset = current_entity.image_assets.find_by(id: asset_id)
+    return render json: { error: "Document not found" }, status: :not_found unless asset
+
+    status = calculate_document_status(asset)
+    render json: status
+  end
+
   private
 
   def is_approval_response?(message)
@@ -1590,7 +1603,10 @@ class ScoutController < ApplicationController
   end
 
   def render_document_viewer_canvas(data = {})
-    # Build document URL from asset_id
+    # Load all documents for the entity
+    documents = current_entity.image_assets.order(created_at: :desc)
+
+    # Build document URL from asset_id (single document view)
     if data[:asset_id]
       asset = ImageAsset.find_by(id: data[:asset_id], entity: current_entity)
       if asset && asset.file.attached?
@@ -1599,6 +1615,21 @@ class ScoutController < ApplicationController
         data[:content_type] = asset.file.content_type
         data[:filename] = asset.file.filename.to_s
         data[:size] = asset.file.byte_size
+        data[:view_type] = 'single'
+      end
+    else
+      # Multi-document library view
+      data[:view_type] = 'library'
+      data[:documents] = documents.map do |doc|
+        {
+          id: doc.id,
+          title: doc.title,
+          size: doc.file.blob.byte_size,
+          content_type: doc.file.content_type,
+          created_at: doc.created_at,
+          url: rails_blob_url(doc.file),
+          download_url: rails_blob_url(doc.file, disposition: 'attachment')
+        }
       end
     end
 
@@ -2075,5 +2106,188 @@ class ScoutController < ApplicationController
         data: data
       }
     )
+  end
+
+  private
+
+  def calculate_document_status(asset)
+    # Find RagStore and RagDocument for this asset
+    rag_stores = current_entity.rag_stores
+    rag_document = rag_stores
+      .joins(:rag_documents)
+      .where("rag_documents.original_filename LIKE ?", "%#{asset.title}%")
+      .first&.rag_documents&.first
+
+    if rag_document.nil?
+      # Document uploaded but not yet indexed
+      return {
+        status: "pending",
+        asset_id: asset.id,
+        title: asset.title,
+        stage: 0,
+        total_stages: 4,
+        message: "Document uploaded but not yet indexed",
+        ready_for_chat: false
+      }
+    end
+
+    # Get processing jobs for this RAG document
+    processing_jobs = RagProcessingJob.joins(:rag_store)
+      .where(rag_stores: { id: rag_document.rag_store_id })
+      .order(created_at: :desc)
+
+    # Determine current stage and status
+    status_response = {
+      asset_id: asset.id,
+      title: asset.title,
+      rag_document_id: rag_document.id
+    }
+
+    # Check embedding status first (final stage)
+    embedding_job = processing_jobs.where(job_type: "embedding_batch").first
+
+    if embedding_job&.status_completed?
+      # Fully indexed and ready for chat
+      embedded_count = rag_document.embedded_chunks_count
+      total_chunks = rag_document.chunks_count
+
+      status_response.merge!(
+        status: "complete",
+        stage: 4,
+        total_stages: 4,
+        message: "Ready to use in chat",
+        ready_for_chat: true,
+        embedded_chunks: embedded_count,
+        total_chunks: total_chunks,
+        progress_percent: (total_chunks.zero? ? 0 : (embedded_count.to_f / total_chunks * 100).round(1))
+      )
+    elsif embedding_job&.status_processing?
+      # Embedding in progress
+      embedded_count = rag_document.embedded_chunks_count
+      total_chunks = rag_document.chunks_count
+
+      status_response.merge!(
+        status: "embedding",
+        stage: 4,
+        total_stages: 4,
+        message: "Generating embeddings... #{embedded_count}/#{total_chunks} complete",
+        ready_for_chat: false,
+        embedded_chunks: embedded_count,
+        total_chunks: total_chunks,
+        progress_percent: (total_chunks.zero? ? 0 : (embedded_count.to_f / total_chunks * 100).round(1))
+      )
+    elsif embedding_job&.status_failed?
+      # Embedding failed
+      status_response.merge!(
+        status: "embedding_failed",
+        stage: 4,
+        total_stages: 4,
+        message: "Embedding generation failed",
+        ready_for_chat: false,
+        error: embedding_job.error_message
+      )
+    else
+      # Check chunking status
+      chunking_job = processing_jobs.where(job_type: "chunking").first
+
+      if chunking_job&.status_completed?
+        total_chunks = rag_document.chunks_count
+        status_response.merge!(
+          status: "chunking_complete",
+          stage: 3,
+          total_stages: 4,
+          message: "Chunking complete (#{total_chunks} chunks), generating embeddings...",
+          ready_for_chat: false,
+          total_chunks: total_chunks
+        )
+      elsif chunking_job&.status_processing?
+        status_response.merge!(
+          status: "chunking",
+          stage: 3,
+          total_stages: 4,
+          message: "Breaking document into chunks...",
+          ready_for_chat: false
+        )
+      elsif chunking_job&.status_failed?
+        status_response.merge!(
+          status: "chunking_failed",
+          stage: 3,
+          total_stages: 4,
+          message: "Chunking failed",
+          ready_for_chat: false,
+          error: chunking_job.error_message
+        )
+      else
+        # Check docling status
+        docling_job = processing_jobs.where(job_type: "docling_extraction").first
+
+        if docling_job&.status_completed?
+          status_response.merge!(
+            status: "extraction_complete",
+            stage: 2,
+            total_stages: 4,
+            message: "Text extraction complete, processing chunks...",
+            ready_for_chat: false
+          )
+        elsif docling_job&.status_processing?
+          status_response.merge!(
+            status: "extracting",
+            stage: 2,
+            total_stages: 4,
+            message: "Extracting text from document...",
+            ready_for_chat: false
+          )
+        elsif docling_job&.status_failed?
+          status_response.merge!(
+            status: "extraction_failed",
+            stage: 2,
+            total_stages: 4,
+            message: "Text extraction failed",
+            ready_for_chat: false,
+            error: docling_job.error_message
+          )
+        else
+          # Check pipeline status
+          pipeline_job = processing_jobs.where(job_type: "pipeline").first || processing_jobs.where(job_type: "document_pipeline").first
+
+          if pipeline_job&.status_completed?
+            status_response.merge!(
+              status: "pipeline_complete",
+              stage: 1,
+              total_stages: 4,
+              message: "Queued for text extraction...",
+              ready_for_chat: false
+            )
+          elsif pipeline_job&.status_processing?
+            status_response.merge!(
+              status: "uploading",
+              stage: 1,
+              total_stages: 4,
+              message: "Uploading document to storage...",
+              ready_for_chat: false
+            )
+          elsif pipeline_job&.status_failed?
+            status_response.merge!(
+              status: "upload_failed",
+              stage: 1,
+              total_stages: 4,
+              message: "Upload failed",
+              ready_for_chat: false,
+              error: pipeline_job.error_message
+            )
+          else
+            status_response.merge!(
+              status: "pending",
+              stage: 0,
+              total_stages: 4,
+              message: "Waiting to be processed...",
+              ready_for_chat: false
+            )
+          end
+        end
+      end
+    end
+
+    status_response
   end
 end
