@@ -241,6 +241,9 @@ class RagProcessingJobTest < ActiveSupport::TestCase
     new_store = RagStore.create!(
       entity: entities(:one),
       name: "Empty Store",
+      app_name: "EmptyApp",
+      store_type: "entity",
+      status: "active",
       pinecone_namespace: "empty"
     )
 
