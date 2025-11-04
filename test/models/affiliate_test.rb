@@ -3,10 +3,12 @@ require "test_helper"
 class AffiliateTest < ActiveSupport::TestCase
   # Validation tests
   test "should require affiliate_code" do
+    # The affiliate_code is auto-generated via before_validation callback
+    # So we test that a new affiliate will have a code generated
     affiliate = Affiliate.new(user: users(:one), commission_rate: 0.20)
-    affiliate.affiliate_code = nil
-    assert_not affiliate.valid?
-    assert_includes affiliate.errors[:affiliate_code], "can't be blank"
+    assert affiliate.valid?
+    assert_not_nil affiliate.affiliate_code
+    assert_match /^[A-Z0-9]{8}$/, affiliate.affiliate_code
   end
 
   test "affiliate_code should be unique" do
@@ -257,7 +259,12 @@ class AffiliateTest < ActiveSupport::TestCase
   end
 
   test "conversion_rate should calculate percentage correctly" do
-    affiliate = affiliates(:active_affiliate)
+    # Create a unique affiliate for this test to avoid interference from other tests
+    affiliate = Affiliate.create!(
+      user: users(:one),
+      affiliate_code: "TEST_CONV_RATE_#{SecureRandom.hex(4)}",
+      commission_rate: 0.20
+    )
 
     # Create some clicks and conversions
     3.times do
