@@ -17,7 +17,11 @@
       "Bash(git fetch:*)",
       "Bash(git merge:*)",
       "Bash(git stash:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(git clone:*)",
+      "Bash(pkill:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
