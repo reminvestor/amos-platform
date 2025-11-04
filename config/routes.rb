@@ -369,6 +369,9 @@ Rails.application.routes.draw do
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
 
+  # Document indexing status API
+  get "scout/document-status/:asset_id", to: "scout#document_indexing_status"
+
   # Analytics routes
   get "analytics", to: "analytics#index"
   get "analytics/stream", to: "analytics#stream"
