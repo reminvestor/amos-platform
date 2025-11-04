@@ -4,7 +4,7 @@
     <div class="d-flex justify-content-between align-items-center">
       <div>
         <h4 class="mb-1">
-          <i class="bi bi-graph-up me-2"></i>
+          <i data-lucide="trending-up" class="me-2"></i>
           Workflow Analytics
         </h4>
         <p class="text-muted mb-0 small">
@@ -31,7 +31,7 @@
       <div class="col-md-3">
         <div class="metric-card card border-primary">
           <div class="card-body text-center">
-            <i class="bi bi-play-circle display-4 text-primary mb-2"></i>
+            <i data-lucide="play-circle" class="icon-4x text-primary mb-2"></i>
             <h3 class="mb-1"><%= canvas_data[:workflow_analytics][:total_workflows] || 0 %></h3>
             <p class="text-muted mb-0">Workflows Started</p>
           </div>
@@ -40,7 +40,7 @@
       <div class="col-md-3">
         <div class="metric-card card border-success">
           <div class="card-body text-center">
-            <i class="bi bi-check-circle display-4 text-success mb-2"></i>
+            <i data-lucide="check-circle" class="icon-4x text-success mb-2"></i>
             <h3 class="mb-1"><%= canvas_data[:workflow_analytics][:completion_rate] || 0 %>%</h3>
             <p class="text-muted mb-0">Completion Rate</p>
           </div>
@@ -49,7 +49,7 @@
       <div class="col-md-3">
         <div class="metric-card card border-info">
           <div class="card-body text-center">
-            <i class="bi bi-clock display-4 text-info mb-2"></i>
+            <i data-lucide="clock" class="icon-4x text-info mb-2"></i>
             <h3 class="mb-1">
               <%= canvas_data[:workflow_analytics][:avg_completion_time_seconds] ? 
                     time_duration_in_words(canvas_data[:workflow_analytics][:avg_completion_time_seconds]) : 
@@ -62,7 +62,7 @@
       <div class="col-md-3">
         <div class="metric-card card border-warning">
           <div class="card-body text-center">
-            <i class="bi bi-tools display-4 text-warning mb-2"></i>
+            <i data-lucide="wrench" class="icon-4x text-warning mb-2"></i>
             <h3 class="mb-1"><%= canvas_data[:tool_analytics][:success_rate] || 0 %>%</h3>
             <p class="text-muted mb-0">Tool Success Rate</p>
           </div>
@@ -83,7 +83,7 @@
               <% canvas_data[:workflow_analytics][:popular_workflow_types].each do |workflow_type, count| %>
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="workflow-type">
-                    <i class="bi bi-diagram-3 me-2"></i>
+                    <i data-lucide="network" class="me-2"></i>
                     <%= workflow_type&.humanize || 'Unknown' %>
                   </span>
                   <div class="d-flex align-items-center">
@@ -98,7 +98,7 @@
               <% end %>
             <% else %>
               <div class="text-center text-muted py-3">
-                <i class="bi bi-graph-up display-4 mb-2"></i>
+                <i data-lucide="trending-up" class="icon-4x mb-2"></i>
                 <p>No workflow data yet</p>
               </div>
             <% end %>
@@ -117,7 +117,7 @@
               <% canvas_data[:tool_analytics][:tool_usage_by_type].first(8).each do |tool_name, count| %>
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <span class="tool-name">
-                    <i class="bi bi-gear me-2"></i>
+                    <i data-lucide="settings" class="me-2"></i>
                     <%= tool_name&.humanize || 'Unknown' %>
                   </span>
                   <div class="d-flex align-items-center">
@@ -132,7 +132,7 @@
               <% end %>
             <% else %>
               <div class="text-center text-muted py-3">
-                <i class="bi bi-tools display-4 mb-2"></i>
+                <i data-lucide="wrench" class="icon-4x mb-2"></i>
                 <p>No tool usage data yet</p>
               </div>
             <% end %>
@@ -275,7 +275,7 @@
           <div class="card-body">
             <% if canvas_data[:workflow_analytics][:daily_workflow_counts]&.any? %>
               <div class="chart-placeholder bg-light rounded p-4 text-center">
-                <i class="bi bi-bar-chart display-4 text-muted mb-3"></i>
+                <i data-lucide="bar-chart" class="icon-4x text-muted mb-3"></i>
                 <h6>Chart Coming Soon</h6>
                 <p class="text-muted mb-0">
                   Daily workflow data available - chart visualization will be added in a future update
@@ -292,7 +292,7 @@
               </div>
             <% else %>
               <div class="text-center text-muted py-4">
-                <i class="bi bi-graph-up display-4 mb-2"></i>
+                <i data-lucide="trending-up" class="icon-4x mb-2"></i>
                 <p>No workflow activity data yet</p>
               </div>
             <% end %>
@@ -308,18 +308,18 @@
     <div class="d-flex justify-content-between align-items-center">
       <div class="analytics-info">
         <small class="text-muted">
-          <i class="bi bi-clock me-1"></i>
+          <i data-lucide="clock" class="me-1"></i>
           Last updated: <%= Time.current.strftime('%I:%M %p') %>
         </small>
       </div>
       
       <div class="analytics-actions">
         <button class="btn btn-outline-primary btn-sm me-2" onclick="refreshAnalytics()">
-          <i class="bi bi-arrow-clockwise me-1"></i>
+          <i data-lucide="refresh-cw" class="me-1"></i>
           Refresh
         </button>
         <button class="btn btn-outline-secondary btn-sm" onclick="exportAnalytics()">
-          <i class="bi bi-download me-1"></i>
+          <i data-lucide="download" class="me-1"></i>
           Export Report
         </button>
       </div>
