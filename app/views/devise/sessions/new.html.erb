@@ -55,7 +55,7 @@
         <% if Rails.env.development? || Rails.env.test? %>
           <div class="form-group">
             <label class="form-label">
-              <i data-lucide="flask-conical" class="text-warning" style="width: 1rem; height: 1rem; display: inline-block; vertical-align: middle;"></i> Quick Login (Dev Only)
+              <i data-lucide="flask-conical" class="text-warning icon-md"></i> Quick Login (Dev Only)
             </label>
             <select id="quick-login-selector" class="form-control">
               <option value="">-- Select a test user --</option>
@@ -426,6 +426,10 @@
   box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.1);
 }
 
+.quick-login-success {
+  border-color: #10b981 !important;
+}
+
 code {
   background: #404448;
   padding: 0.2rem 0.4rem;
@@ -455,12 +459,12 @@ document.addEventListener('DOMContentLoaded', function() {
         passwordField.value = selectedOption.dataset.password || 'password123';
 
         // Visual feedback
-        emailField.style.borderColor = '#10b981';
-        passwordField.style.borderColor = '#10b981';
+        emailField.classList.add('quick-login-success');
+        passwordField.classList.add('quick-login-success');
 
         setTimeout(() => {
-          emailField.style.borderColor = '';
-          passwordField.style.borderColor = '';
+          emailField.classList.remove('quick-login-success');
+          passwordField.classList.remove('quick-login-success');
         }, 1000);
       } else {
         // Clear fields if "Select a test user" is chosen

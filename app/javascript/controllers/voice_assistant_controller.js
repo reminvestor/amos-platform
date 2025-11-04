@@ -967,7 +967,13 @@ export default class extends Controller {
     console.log("Status:", status)
     if (this.hasStatusTarget) {
       this.statusTarget.textContent = status
-      this.statusTarget.style.display = status ? "block" : "none"
+      if (status) {
+        this.statusTarget.classList.remove('d-none')
+        this.statusTarget.classList.add('d-block')
+      } else {
+        this.statusTarget.classList.add('d-none')
+        this.statusTarget.classList.remove('d-block')
+      }
     }
   }
 
@@ -982,15 +988,15 @@ export default class extends Controller {
         if (this.continuousMode) {
           this.buttonTarget.title = "Continuous mode active - click to stop"
           // Add pulsing effect for continuous mode
-          this.buttonTarget.style.animation = "pulse 2s infinite"
+          this.buttonTarget.classList.add('voice-pulse-animation')
         } else {
           this.buttonTarget.title = "Stop voice input"
-          this.buttonTarget.style.animation = ""
+          this.buttonTarget.classList.remove('voice-pulse-animation')
         }
       } else {
         this.buttonTarget.classList.remove("active")
         this.buttonTarget.title = "Voice input"
-        this.buttonTarget.style.animation = ""
+        this.buttonTarget.classList.remove('voice-pulse-animation')
       }
     }
   }
