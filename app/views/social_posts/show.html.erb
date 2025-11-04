@@ -81,7 +81,7 @@
                           <%= link_to "View", data['external_post_url'], target: "_blank", class: "btn btn-sm btn-outline-primary" %>
                         <% elsif !data['success'] && data['error'].present? %>
                           <span class="text-danger" title="<%= data['error'] %>">
-                            <i class="fas fa-exclamation-circle"></i> Error
+                            <i data-lucide="alert-circle"></i> Error
                           </span>
                         <% else %>
                           <span class="text-muted">N/A</span>

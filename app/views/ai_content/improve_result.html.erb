@@ -3,11 +3,11 @@
     <div class="col-md-12">
       <div class="card shadow">
         <div class="card-header bg-primary text-white">
-          <h3><i class="fas fa-robot me-2"></i> AI Improved Email Content</h3>
+          <h3><i data-lucide="bot" class="me-2"></i> AI Improved Email Content</h3>
         </div>
         <div class="card-body">
           <div class="alert alert-success">
-            <i class="fas fa-check-circle me-2"></i> Your email content has been improved successfully!
+            <i data-lucide="check-circle" class="me-2"></i> Your email content has been improved successfully!
           </div>
           
           <div class="row mt-4">
@@ -69,7 +69,7 @@
                   <div class="code-container position-relative">
                     <button class="btn btn-sm btn-outline-primary position-absolute top-0 end-0 mt-2 me-2" 
                             onclick="copyToClipboard('email-source-code')">
-                      <i class="fas fa-copy"></i> Copy
+                      <i data-lucide="copy"></i> Copy
                     </button>
                     <pre id="email-source-code" class="p-3 bg-light border rounded"><%= h @improved_content %></pre>
                   </div>
@@ -144,7 +144,7 @@
     navigator.clipboard.writeText(textToCopy).then(() => {
       const button = element.parentElement.querySelector('button');
       const originalText = button.innerHTML;
-      button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      button.innerHTML = '<i data-lucide="check"></i> Copied!'; if (typeof lucide !== 'undefined') lucide.createIcons();
       
       setTimeout(() => {
         button.innerHTML = originalText;

@@ -16,7 +16,7 @@
     </div>
     <div class="col-auto">
       <%= link_to admin_integrations_path, class: "btn btn-outline-secondary" do %>
-        <i class="fas fa-arrow-left me-1"></i> Back to Integrations
+        <i data-lucide="arrow-left" class="me-1"></i> Back to Integrations
       <% end %>
     </div>
   </div>
@@ -67,7 +67,7 @@
       <!-- Configuration -->
       <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-cog"></i> Configuration</h5>
+          <h5 class="mb-0"><i data-lucide="settings"></i> Configuration</h5>
         </div>
         <div class="card-body">
           <dl class="row mb-0">
@@ -84,7 +84,7 @@
             <dt class="col-sm-3">Verified</dt>
             <dd class="col-sm-9">
               <% if @integration.is_verified %>
-                <i class="fas fa-check-circle text-success"></i> Verified
+                <i data-lucide="check-circle" class="text-success"></i> Verified
               <% else %>
                 <i class="fas fa-times-circle text-muted"></i> Not verified
               <% end %>
@@ -120,7 +120,7 @@
                         <% end %>
                         <% if operation.documentation&.include?("Auto-discovered by AI") %>
                           <span class="badge bg-info">
-                            <i class="fas fa-magic"></i> AI Discovered
+                            <i data-lucide="sparkles"></i> AI Discovered
                           </span>
                         <% end %>
                       </div>
@@ -233,7 +233,7 @@
       <!-- Actions -->
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white">
-          <h5 class="mb-0"><i class="fas fa-bolt"></i> Actions</h5>
+          <h5 class="mb-0"><i data-lucide="zap"></i> Actions</h5>
         </div>
         <div class="card-body d-grid gap-2">
           <%= link_to edit_admin_integration_path(@integration), class: "btn btn-primary" do %>
@@ -243,7 +243,7 @@
           <%= link_to admin_integration_path(@integration, format: :json), 
               class: "btn btn-outline-info", 
               target: "_blank" do %>
-            <i class="fas fa-code me-2"></i> View JSON
+            <i data-lucide="code" class="me-2"></i> View JSON
           <% end %>
         </div>
       </div>
@@ -270,7 +270,7 @@
           </p>
           
           <div class="alert alert-info mb-3">
-            <strong><i class="fas fa-brain me-2"></i> How it works:</strong>
+            <strong><i data-lucide="brain" class="me-2"></i> How it works:</strong>
             <ol class="mb-0 mt-2">
               <li>AI searches the web for <%= @integration.name %> API documentation</li>
               <li>Analyzes your existing operations as templates</li>
@@ -294,7 +294,7 @@
           
           <div class="mb-3">
             <label for="operation_spec" class="form-label">
-              <strong><i class="fas fa-bullseye me-1"></i> Target Specific Operations (Optional)</strong>
+              <strong><i data-lucide="target" class="me-1"></i> Target Specific Operations (Optional)</strong>
             </label>
             <%= form.text_area :operation_spec, 
                 class: "form-control", 
@@ -306,7 +306,7 @@
           </div>
           
           <div class="alert alert-warning mb-0">
-            <i class="fas fa-clock me-2"></i>
+            <i data-lucide="clock" class="me-2"></i>
             <strong>Processing time:</strong> 1-2 minutes. You'll receive a notification when new operations are ready for review.
           </div>
         </div>

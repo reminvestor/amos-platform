@@ -4,7 +4,7 @@
   <div class="row mb-4">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center">
-        <h1><i class="fas fa-chart-line"></i> Affiliate Analytics</h1>
+        <h1><i data-lucide="trending-up"></i> Affiliate Analytics</h1>
         <div>
           <%= form_with url: admin_analytics_affiliates_path, method: :get, local: true, class: "d-inline" do %>
             <%= select_tag :date_range, options_for_select([['Last 7 Days', '7days'], ['Last 30 Days', '30days'], ['Last 90 Days', '90days'], ['Last Year', 'year'], ['All Time', 'all']], @date_range), class: "form-select d-inline-block w-auto", onchange: "this.form.submit()" %>
@@ -96,7 +96,7 @@
             <h2 class="text-primary"><%= number_with_delimiter(@analytics[:conversion_funnel][:clicks]) %></h2>
             <p class="text-muted mb-0">Clicks</p>
           </div>
-          <i class="fas fa-arrow-down fa-2x text-muted"></i>
+          <i data-lucide="arrow-down" class="icon-2x text-muted"></i>
         </div>
         <div class="col-md-4 text-center">
           <div class="mb-2">
@@ -104,7 +104,7 @@
             <p class="text-muted mb-0">Signups</p>
             <small class="badge bg-info"><%= @analytics[:conversion_funnel][:click_to_signup_rate] %>% rate</small>
           </div>
-          <i class="fas fa-arrow-down fa-2x text-muted"></i>
+          <i data-lucide="arrow-down" class="icon-2x text-muted"></i>
         </div>
         <div class="col-md-4 text-center">
           <div class="mb-2">
@@ -161,7 +161,7 @@
                 <td>$<%= number_with_delimiter(affiliate.total_earnings, precision: 2) %></td>
                 <td>
                   <%= link_to admin_affiliate_path(affiliate), class: "btn btn-sm btn-outline-primary" do %>
-                    <i class="fas fa-eye"></i> View
+                    <i data-lucide="eye"></i> View
                   <% end %>
                 </td>
               </tr>
@@ -213,7 +213,7 @@
       <div class="row">
         <div class="col-md-12">
           <p class="text-muted text-center">
-            <i class="fas fa-chart-line fa-3x mb-3"></i><br>
+            <i data-lucide="trending-up" class="icon-3x mb-3"></i><br>
             Chart integration available with Chart.js or similar library.
           </p>
           <div class="row">
@@ -252,7 +252,7 @@
       <i class="fas fa-users-cog"></i> Manage Affiliates
     <% end %>
     <%= link_to admin_settings_affiliate_path, class: "btn btn-outline-primary" do %>
-      <i class="fas fa-cog"></i> Settings
+      <i data-lucide="settings"></i> Settings
     <% end %>
   </div>
 </div>

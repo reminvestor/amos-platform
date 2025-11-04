@@ -6,7 +6,7 @@
     </div>
     <div class="col-auto">
       <%= link_to entity_users_path, class: "btn btn-outline-secondary" do %>
-        <i class="fas fa-arrow-left me-1"></i> Back to Team
+        <i data-lucide="arrow-left" class="me-1"></i> Back to Team
       <% end %>
     </div>
   </div>
@@ -35,7 +35,7 @@
             <dt class="col-sm-3">Onboarded</dt>
             <dd class="col-sm-9">
               <% if @user.onboarded? %>
-                <i class="fas fa-check text-success"></i> Yes
+                <i data-lucide="check" class="text-success"></i> Yes
               <% else %>
                 <i class="fas fa-times text-danger"></i> No
               <% end %>
