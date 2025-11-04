@@ -5,7 +5,7 @@
       <div class="card h-100">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">
-            <i class="fas fa-comment-alt me-2"></i>
+            <i data-lucide="message-square" class="me-2"></i>
             Crawler Assistant
           </h5>
           <% if @crawler_job.status == 'ready' || @crawler_job.status == 'failed' %>
@@ -132,7 +132,7 @@
             </li>
             <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'generating' ? 'active' : '' %>" id="pipeline-generate">
               <span>
-                <i class="fas fa-code me-2"></i> 
+                <i data-lucide="code" class="me-2"></i> 
                 Generating Crawler Code
               </span>
               <% if @crawler_job.status == 'generating' %>
@@ -169,7 +169,7 @@
             </li>
             <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'ready' ? 'active' : '' %>" id="pipeline-ready">
               <span>
-                <i class="fas fa-check-circle me-2"></i> 
+                <i data-lucide="check-circle" class="me-2"></i> 
                 Ready to Use
               </span>
               <% if @crawler_job.status == 'ready' %>
@@ -177,17 +177,17 @@
                   <span class="badge bg-success me-2">Crawler Ready</span>
                   <%= form_tag debug_crawler_job_path(@crawler_job), method: :post, class: "me-2" do %>
                     <button type="submit" class="btn btn-sm btn-warning">
-                      <i class="fas fa-bug me-1"></i> Debug
+                      <i data-lucide="bug" class="me-1"></i> Debug
                     </button>
                   <% end %>
                   <%= form_tag debug_crawler_job_path(@crawler_job, auto_fix: true), method: :post, class: "me-2" do %>
                     <button type="submit" class="btn btn-sm btn-warning">
-                      <i class="fas fa-wrench me-1"></i> Debug & Fix
+                      <i data-lucide="wrench" class="me-1"></i> Debug & Fix
                     </button>
                   <% end %>
                   <%= form_tag fix_bugs_crawler_job_path(@crawler_job), method: :post, class: "me-2" do %>
                     <button type="submit" class="btn btn-sm btn-info">
-                      <i class="fas fa-wrench me-1"></i> Fix Bugs
+                      <i data-lucide="wrench" class="me-1"></i> Fix Bugs
                     </button>
                   <% end %>
                   <%= button_to 'Run Crawler', execute_crawler_job_path(@crawler_job), method: :post, class: "btn btn-sm btn-primary" %>
@@ -234,7 +234,7 @@
         <div class="card mt-4">
           <div class="card-header">
             <h5 class="mb-0">
-              <i class="fas fa-code me-2"></i>
+              <i data-lucide="code" class="me-2"></i>
               Generated Python Code
             </h5>
           </div>
@@ -257,7 +257,7 @@
                 <p class="mb-1"><strong>The following improvements were made:</strong></p>
                 <% @crawler_job.fix_explanation.split('. ').each do |fix| %>
                   <div class="d-flex align-items-start mb-2">
-                    <i class="fas fa-check-circle text-success me-2 mt-1"></i>
+                    <i data-lucide="check-circle" class="text-success me-2 mt-1"></i>
                     <span><%= fix.gsub(/\.$/, '') %></span>
                   </div>
                 <% end %>

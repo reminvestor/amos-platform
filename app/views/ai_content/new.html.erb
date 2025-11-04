@@ -3,7 +3,7 @@
     <div class="col-md-12">
       <div class="card shadow">
         <div class="card-header bg-primary text-white">
-          <h3><i class="fas fa-robot me-2"></i> AI Email Content Generator</h3>
+          <h3><i data-lucide="bot" class="me-2"></i> AI Email Content Generator</h3>
         </div>
         <div class="card-body">
           <%= form_with url: generate_ai_content_path, method: :post, local: true, data: { turbo: false } do |form| %>
@@ -78,7 +78,7 @@
                     <%= form.label :create_template, "Save as new template", class: "form-check-label fw-bold" %>
                   </div>
                   
-                  <div id="template_name_container" style="display: none;">
+                  <div id="template_name_container" class="d-none">
                     <%= form.label :template_name, "Template Name", class: "form-label" %>
                     <%= form.text_field :template_name, class: "form-control", placeholder: "e.g., Summer Promotion Email" %>
                   </div>
@@ -112,10 +112,12 @@
     
     checkbox.addEventListener('change', function() {
       if (this.checked) {
-        container.style.display = 'block';
+        container.classList.remove('d-none');
+        container.classList.add('d-block');
         templateSelect.disabled = true;
       } else {
-        container.style.display = 'none';
+        container.classList.add('d-none');
+        container.classList.remove('d-block');
         templateSelect.disabled = false;
       }
     });

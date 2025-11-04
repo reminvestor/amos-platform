@@ -53,7 +53,7 @@
         </div>
         <div class="col-md-2">
           <button type="submit" class="btn btn-primary">
-            <i class="fas fa-search"></i> Filter
+            <i data-lucide="search"></i> Filter
           </button>
           <%= link_to "Clear", admin_commissions_path, class: "btn btn-outline-secondary" %>
         </div>
@@ -87,7 +87,7 @@
           </button>
           <button type="submit" class="btn btn-sm btn-success"
                   data-bulk-select-target="actionButton">
-            <i class="fas fa-check-double"></i> Bulk Approve Selected
+            <i data-lucide="check-check"></i> Bulk Approve Selected
           </button>
         </div>
       </div>
@@ -146,10 +146,10 @@
                   <td>
                     <% if commission.pending? %>
                       <%= button_to approve_admin_commission_path(commission), method: :post, class: "btn btn-sm btn-success", data: { turbo: false } do %>
-                        <i class="fas fa-check"></i>
+                        <i data-lucide="check"></i>
                       <% end %>
                       <%= button_to cancel_admin_commission_path(commission), method: :post, class: "btn btn-sm btn-danger", data: { confirm: 'Cancel this commission?', turbo: false } do %>
-                        <i class="fas fa-times"></i>
+                        <i data-lucide="x"></i>
                       <% end %>
                     <% elsif commission.approved? %>
                       <span class="badge bg-success">Approved</span>
