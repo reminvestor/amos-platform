@@ -5,7 +5,7 @@
   <div class="row mb-4">
     <div class="col-12">
       <h1 class="display-5 mb-2">
-        <i class="bi bi-box-seam text-primary"></i>
+        <i data-lucide="package" class="text-primary"></i>
         Marketing Resources
       </h1>
       <p class="text-muted">Download assets and use pre-written content to promote AMOS</p>
@@ -16,7 +16,7 @@
   <div class="row mb-4">
     <div class="col-12">
       <div class="alert alert-info">
-        <i class="bi bi-info-circle-fill me-2"></i>
+        <i data-lucide="info" class="me-2"></i>
         <strong>Your Referral Code:</strong> <code><%= @affiliate.affiliate_code %></code>
         | <strong>Commission Rate:</strong> <%= (@affiliate.commission_rate * 100).round(2) %>%
         | <strong>Tier:</strong> <%= @affiliate.tier&.titleize || 'Bronze' %>
@@ -30,7 +30,7 @@
       <div class="card border-0 shadow-sm h-100">
         <div class="card-header bg-white">
           <h5 class="mb-0">
-            <i class="bi bi-image me-2"></i>
+            <i data-lucide="image" class="me-2"></i>
             Logos & Branding
           </h5>
         </div>
@@ -40,44 +40,44 @@
           <div class="list-group">
             <div class="list-group-item d-flex justify-content-between align-items-center">
               <div>
-                <i class="bi bi-file-earmark-image text-primary me-2"></i>
+                <i data-lucide="file-image" class="text-primary me-2"></i>
                 <strong>Primary Logo (PNG)</strong>
                 <br>
                 <small class="text-muted">High resolution, transparent background</small>
               </div>
               <button class="btn btn-sm btn-outline-primary" disabled>
-                <i class="bi bi-download me-1"></i>Download
+                <i data-lucide="download" class="me-1"></i>Download
               </button>
             </div>
 
             <div class="list-group-item d-flex justify-content-between align-items-center">
               <div>
-                <i class="bi bi-file-earmark-code text-info me-2"></i>
+                <i data-lucide="file-code" class="text-info me-2"></i>
                 <strong>Logo (SVG)</strong>
                 <br>
                 <small class="text-muted">Vector format, scalable</small>
               </div>
               <button class="btn btn-sm btn-outline-primary" disabled>
-                <i class="bi bi-download me-1"></i>Download
+                <i data-lucide="download" class="me-1"></i>Download
               </button>
             </div>
 
             <div class="list-group-item d-flex justify-content-between align-items-center">
               <div>
-                <i class="bi bi-square text-dark me-2"></i>
+                <i data-lucide="square" class="text-dark me-2"></i>
                 <strong>Logo Variations</strong>
                 <br>
                 <small class="text-muted">White, black, and color versions</small>
               </div>
               <button class="btn btn-sm btn-outline-primary" disabled>
-                <i class="bi bi-download me-1"></i>Download ZIP
+                <i data-lucide="download" class="me-1"></i>Download ZIP
               </button>
             </div>
           </div>
 
           <div class="alert alert-warning mt-3 mb-0">
             <small>
-              <i class="bi bi-exclamation-triangle me-1"></i>
+              <i data-lucide="alert-triangle" class="me-1"></i>
               Please follow our brand guidelines when using these assets
             </small>
           </div>
@@ -90,7 +90,7 @@
       <div class="card border-0 shadow-sm h-100">
         <div class="card-header bg-white">
           <h5 class="mb-0">
-            <i class="bi bi-file-image me-2"></i>
+            <i data-lucide="file-image" class="me-2"></i>
             Banner Images
           </h5>
         </div>
@@ -105,7 +105,7 @@
                 <small class="text-muted">728 x 90 pixels</small>
               </div>
               <button class="btn btn-sm btn-outline-primary" disabled>
-                <i class="bi bi-download me-1"></i>Download
+                <i data-lucide="download" class="me-1"></i>Download
               </button>
             </div>
 
@@ -116,7 +116,7 @@
                 <small class="text-muted">300 x 250 pixels</small>
               </div>
               <button class="btn btn-sm btn-outline-primary" disabled>
-                <i class="bi bi-download me-1"></i>Download
+                <i data-lucide="download" class="me-1"></i>Download
               </button>
             </div>
 
@@ -127,7 +127,7 @@
                 <small class="text-muted">1200 x 628 pixels (Facebook/Twitter)</small>
               </div>
               <button class="btn btn-sm btn-outline-primary" disabled>
-                <i class="bi bi-download me-1"></i>Download
+                <i data-lucide="download" class="me-1"></i>Download
               </button>
             </div>
 
@@ -138,7 +138,7 @@
                 <small class="text-muted">Complete set in one ZIP file</small>
               </div>
               <button class="btn btn-sm btn-outline-primary" disabled>
-                <i class="bi bi-download me-1"></i>Download ZIP
+                <i data-lucide="download" class="me-1"></i>Download ZIP
               </button>
             </div>
           </div>
@@ -153,7 +153,7 @@
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white">
           <h5 class="mb-0">
-            <i class="bi bi-share-fill me-2"></i>
+            <i data-lucide="share" class="me-2"></i>
             Pre-Written Social Media Posts
           </h5>
         </div>
@@ -170,12 +170,12 @@
                 <div class="d-flex gap-2">
                   <button class="btn btn-sm btn-outline-primary"
                           data-action="copy-to-clipboard#copy">
-                    <i class="bi bi-clipboard me-1"></i>Copy Text
+                    <i data-lucide="clipboard" class="me-1"></i>Copy Text
                   </button>
                   <button class="btn btn-sm btn-outline-secondary"
                           data-copy-to-clipboard-text-value="<%= request.base_url %>?ref=<%= @affiliate.affiliate_code %>"
                           data-action="copy-to-clipboard#copy">
-                    <i class="bi bi-link-45deg me-1"></i>Copy My Link
+                    <i data-lucide="link" class="me-1"></i>Copy My Link
                   </button>
                 </div>
               </div>
@@ -183,7 +183,7 @@
           <% end %>
 
           <div class="alert alert-info mb-0">
-            <i class="bi bi-lightbulb-fill me-2"></i>
+            <i data-lucide="lightbulb" class="me-2"></i>
             <strong>Tip:</strong> Personalize these posts with your own experience and add your referral link:
             <code><%= request.base_url %>?ref=<%= @affiliate.affiliate_code %></code>
           </div>
@@ -198,7 +198,7 @@
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white">
           <h5 class="mb-0">
-            <i class="bi bi-envelope-fill me-2"></i>
+            <i data-lucide="mail" class="me-2"></i>
             Email Template Ideas
           </h5>
         </div>
@@ -211,14 +211,14 @@
                 <div class="card h-100 border">
                   <div class="card-body">
                     <h6 class="card-title">
-                      <i class="bi bi-envelope-open me-2"></i>
+                      <i data-lucide="mail-open" class="me-2"></i>
                       <%= template[:subject] %>
                     </h6>
                     <p class="card-text text-muted small">
                       <%= template[:preview] %>
                     </p>
                     <button class="btn btn-sm btn-outline-primary" disabled>
-                      <i class="bi bi-eye me-1"></i>View Full Template
+                      <i data-lucide="eye" class="me-1"></i>View Full Template
                     </button>
                   </div>
                 </div>
@@ -227,7 +227,7 @@
           </div>
 
           <div class="alert alert-warning mt-4 mb-0">
-            <i class="bi bi-shield-check me-2"></i>
+            <i data-lucide="shield-check" class="me-2"></i>
             <strong>Email Best Practices:</strong> Always disclose your affiliate relationship and follow CAN-SPAM regulations
           </div>
         </div>
@@ -241,7 +241,7 @@
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white">
           <h5 class="mb-0">
-            <i class="bi bi-file-pdf me-2"></i>
+            <i data-lucide="file-text" class="me-2"></i>
             Brand Guidelines & Documentation
           </h5>
         </div>
@@ -250,7 +250,7 @@
             <div class="col-md-6">
               <div class="d-flex align-items-start mb-3">
                 <div class="bg-danger bg-opacity-10 p-3 rounded me-3">
-                  <i class="bi bi-file-pdf-fill text-danger fs-4"></i>
+                  <i data-lucide="file-text" class="text-danger icon-4x"></i>
                 </div>
                 <div>
                   <h6>Brand Guidelines PDF</h6>
@@ -258,7 +258,7 @@
                     Complete guide on how to use our brand assets correctly
                   </p>
                   <button class="btn btn-sm btn-outline-danger" disabled>
-                    <i class="bi bi-download me-1"></i>Download PDF
+                    <i data-lucide="download" class="me-1"></i>Download PDF
                   </button>
                 </div>
               </div>
@@ -267,7 +267,7 @@
             <div class="col-md-6">
               <div class="d-flex align-items-start mb-3">
                 <div class="bg-primary bg-opacity-10 p-3 rounded me-3">
-                  <i class="bi bi-book-fill text-primary fs-4"></i>
+                  <i data-lucide="book" class="text-primary icon-4x"></i>
                 </div>
                 <div>
                   <h6>Affiliate Handbook</h6>
@@ -275,7 +275,7 @@
                     Best practices and tips for promoting AMOS effectively
                   </p>
                   <button class="btn btn-sm btn-outline-primary" disabled>
-                    <i class="bi bi-download me-1"></i>Download PDF
+                    <i data-lucide="download" class="me-1"></i>Download PDF
                   </button>
                 </div>
               </div>
