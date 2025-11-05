@@ -6,6 +6,7 @@ job_completed:
   status: 2  # completed
   error_message: null
   retry_count: 0
+  created_at: <%= Time.now - 11.minutes %>
   started_at: <%= Time.now - 10.minutes %>
   completed_at: <%= Time.now - 8.minutes %>
 
@@ -55,6 +56,6 @@ job_fallback:
   job_type: "fallback_processor"
   status: 2  # completed
   error_message: null
-  retry_count: 1
+  retry_count: 2
   started_at: <%= Time.now - 15.minutes %>
   completed_at: <%= Time.now - 12.minutes %>

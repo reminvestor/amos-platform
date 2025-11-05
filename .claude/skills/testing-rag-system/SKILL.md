@@ -21,6 +21,29 @@ Use this skill when you need to:
 - Debug RAG issues
 - Validate multi-tenant isolation
 - See RAG in action with visual output
+- Test document upload with session vs long-term storage
+
+## Document Storage Options
+
+When testing document uploads, you can choose how documents are stored:
+
+**Session Storage** (Temporary - within Scout conversation)
+- Documents stored in `WorkflowContext` during the conversation session
+- Cleared when session ends
+- Good for: Quick testing, temporary document analysis
+- Data persists: Only within the current Scout chat session
+
+**Long-Term RAG Storage** (Persistent - Knowledge Base)
+- Documents indexed into RagStore (pgvector/Pinecone)
+- Available after session ends
+- Searchable across all future conversations
+- Good for: Building knowledge bases, permanent document repositories
+- Data persists: Indefinitely until manually deleted
+
+**Which to Use for Testing?**
+- Use **Long-Term RAG Storage** to test the new auto-indexing feature
+- This demonstrates the full pipeline: Upload → Extraction → Chunking → Embedding
+- Documents appear in knowledge base and can be queried across sessions
 
 ## Prerequisites
 
@@ -61,6 +84,13 @@ docker-compose exec web rails runner .claude/skills/testing-rag-system/scripts/t
 - ✅ Relevance scoring (0-1)
 - ✅ Top-K results
 - ✅ Metadata in results
+
+**Document Processing & Status Tracking:**
+- ✅ Automatic RAG indexing when documents are read
+- ✅ Real-time document processing status API (`/scout/document-status/:asset_id`)
+- ✅ 4-stage pipeline tracking (Upload → Extraction → Chunking → Embedding)
+- ✅ Progress card display in document viewer
+- ✅ RagProcessingJob status monitoring
 
 **Security:**
 - ✅ Multi-tenant isolation (cross-entity access denied)
@@ -219,13 +249,88 @@ docker-compose logs -f web | grep RAG
 .claude/skills/testing-rag-system/scripts/test-rag.sh
 ```
 
+### Example 4: Test Document Upload & Progress Tracking
+
+```bash
+# Terminal 1 - Watch logs during document processing
+docker-compose logs -f web | grep -E "📤|📚|✅|❌"
+
+# Terminal 2 - In Rails console, upload and read a document
+docker-compose exec web rails console
+
+# Then in the console:
+entity = Entity.first
+user = entity.users.first
+context = {}
+
+# Create an ImageAsset (simulating file upload)
+file_content = File.read('path/to/document.pdf')
+asset = entity.image_assets.create!(
+  user: user,
+  title: 'Test Document',
+  file: file_content,
+  source: 'upload'
+)
+
+# Read the document - this will trigger RAG indexing automatically
+tool = Tools::ReadDocumentTool.new(entity: entity, user: user, context: {})
+result = tool.execute(asset_id: asset.id)
+
+# Check status API
+curl http://localhost:3000/scout/document-status/#{asset.id}
+# Response will include: stage, message, progress_percent, ready_for_chat
+
+# Repeatedly call until complete
+# Stage 1: Uploading document to storage
+# Stage 2: Extracting text (Docling)
+# Stage 3: Breaking into chunks
+# Stage 4: Generating embeddings (ready_for_chat: true)
+```
+
+### Example 5: Monitor Progress via API
+
+```bash
+# Watch document progress in real-time
+watch -n 1 "curl -s http://localhost:3000/scout/document-status/ASSET_ID | jq '.'"
+
+# Example response:
+# {
+#   "asset_id": 123,
+#   "status": "embedding",
+#   "stage": 4,
+#   "total_stages": 4,
+#   "message": "Generating embeddings... 45/100 complete",
+#   "ready_for_chat": false,
+#   "embedded_chunks": 45,
+#   "total_chunks": 100,
+#   "progress_percent": 45.0
+# }
+```
+
 ## Notes
 
-- Test creates temporary RAG stores (can be cleaned up)
+### Storage Considerations
+
+- **Session Storage**: Documents are stored in WorkflowContext during the conversation
+  - Cleared automatically when Scout session ends
+  - Can be retrieved within the same conversation using `get_workflow_context` tool
+  - Ideal for ephemeral, session-scoped document analysis
+
+- **Long-Term RAG Storage**: Documents are indexed into RagStore
+  - Created automatically when `read_document` tool is executed (with new auto-indexing)
+  - Persists indefinitely in pgvector/Pinecone
+  - Searchable across all future conversations
+  - Can be queried with `query_document_content` tool
+  - Should be explicitly cleaned up when no longer needed
+
+### General Notes
+
+- Test creates temporary RAG stores (can be cleaned up with `RagStore.where("name LIKE '%Test%'").destroy_all`)
 - Requires valid API keys with available quota/credits
 - Uses colorized output (requires `colorize` gem)
 - Safe to run multiple times
 - Does not affect existing RAG stores
+- Document auto-indexing happens asynchronously via background jobs
 
 ## Success Criteria
 
@@ -237,3 +342,7 @@ All steps should show ✅ green checkmarks:
 - [x] Queries return results
 - [x] Multi-tenant isolation works
 - [x] No errors in output
+- [x] Document upload triggers RAG indexing
+- [x] Status API returns correct pipeline stages
+- [x] Progress card updates in real-time
+- [x] Document becomes ready_for_chat after embedding

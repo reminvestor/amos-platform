@@ -25,15 +25,20 @@ class RagProcessingJob < ApplicationRecord
   }, prefix: true
 
   # Validations
+  validates :job_id, presence: true, uniqueness: true
   validates :job_type, presence: true
   validates :status, presence: true
 
   # Scopes
   scope :for_rag_store, ->(rag_store) { where(rag_store: rag_store) }
+  scope :for_entity, ->(entity) { joins(:rag_store).where(rag_stores: { entity_id: entity.id }) }
   scope :by_type, ->(type) { where(job_type: type) }
   scope :recent, -> { order(created_at: :desc) }
   scope :active, -> { where(status: [:pending, :processing]) }
   scope :finished, -> { where(status: [:completed, :failed]) }
+  scope :in_progress, -> { where(status: [:pending, :processing]) }
+  scope :failed_jobs, -> { where(status: :failed) }
+  scope :with_errors, -> { where.not(error_message: [nil, '']) }
 
   # Job type scopes
   scope :pipeline_jobs, -> { where(job_type: "pipeline") }
@@ -46,6 +51,25 @@ class RagProcessingJob < ApplicationRecord
   def duration_ms
     return nil unless started_at && completed_at
     ((completed_at - started_at) * 1000).round(0)
+  end
+
+  def duration_seconds
+    return nil unless duration_ms
+    (duration_ms.to_f / 1000).round(1)
+  end
+
+  def job_age
+    (Time.current - created_at).to_i
+  end
+
+  def fast_job?
+    return false unless duration_ms
+    duration_ms < 5000  # Less than 5 seconds
+  end
+
+  def slow_job?
+    return false unless duration_ms
+    duration_ms > 30000  # More than 30 seconds
   end
 
   def duration_human
@@ -64,7 +88,7 @@ class RagProcessingJob < ApplicationRecord
 
   # Status helpers
   def in_progress?
-    status_processing?
+    status_pending? || status_processing?
   end
 
   def successful?
@@ -73,6 +97,18 @@ class RagProcessingJob < ApplicationRecord
 
   def has_errors?
     status_failed?
+  end
+
+  def has_error?
+    error_message.present?
+  end
+
+  def finished?
+    status_completed? || status_failed?
+  end
+
+  def can_retry?
+    status_failed? && retry_count < 3
   end
 
   # Job type helpers
@@ -131,8 +167,25 @@ class RagProcessingJob < ApplicationRecord
     (durations.sum / durations.size).round(0)
   end
 
+  def self.average_processing_time(job_type: nil)
+    average_duration(job_type: job_type)
+  end
+
   def self.failure_rate(job_type: nil, timeframe: 1.day)
     100 - success_rate(job_type: job_type, timeframe: timeframe)
+  end
+
+  def self.retry_count_stats
+    completed_jobs = status_completed
+
+    return { min: 0, max: 0, avg: 0 } if completed_jobs.empty?
+
+    retry_counts = completed_jobs.pluck(:retry_count)
+    {
+      min: retry_counts.min,
+      max: retry_counts.max,
+      avg: (retry_counts.sum.to_f / retry_counts.length).round(2)
+    }
   end
 
   # Retry tracking
@@ -172,6 +225,7 @@ class RagProcessingJob < ApplicationRecord
       completed_at: Time.current
     )
   end
+  alias_method :mark_as_completed!, :mark_completed!
 
   def mark_failed!(error)
     update!(
@@ -180,6 +234,19 @@ class RagProcessingJob < ApplicationRecord
       error_message: error.to_s,
       retry_count: retry_count + 1
     )
+  end
+  alias_method :mark_as_failed!, :mark_failed!
+
+  def record_error(message)
+    update!(
+      status: :failed,
+      error_message: message,
+      completed_at: Time.current
+    )
+  end
+
+  def increment_retry!
+    increment!(:retry_count)
   end
 
   def processing?
