@@ -1,10 +1,11 @@
 class InteractiveTaskService
-  attr_reader :task_session, :workflow_engine, :user, :entity
+  attr_reader :task_session, :workflow_engine, :user, :entity, :model
 
-  def initialize(user, entity, session_id = nil)
+  def initialize(user, entity, session_id = nil, model: nil)
     @user = user
     @entity = entity
     @session_id = session_id || SecureRandom.uuid
+    @model = model # Store the selected model
 
     # Find or create task session
     @task_session = find_or_create_task_session
@@ -123,7 +124,7 @@ class InteractiveTaskService
       
       # Delegate back to AI to handle the modification
       main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
-      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout)
+      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout, model: @model)
       
       modification_context = "User provided feedback on the workflow plan: #{message}\n\nOriginal request: #{@task_session.metadata['request_text']}\n\nPlease create a revised plan incorporating their feedback."
       
@@ -637,7 +638,7 @@ class InteractiveTaskService
     
     # Let the AI decide if it needs planning - no more keyword checking
     main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
-    generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout)
+    generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout, model: @model)
     
     # Pass task session context and any additional context (like files) so AI can delegate if needed
     generic_tools_service.set_context(task_session: @task_session, **@additional_context)
@@ -1452,7 +1453,7 @@ class InteractiveTaskService
       
       # Delegate to autonomous system with main_chat loadout
       main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
-      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout)
+      generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout, model: @model)
       
       if @progress_callback
         generic_tools_service.process_message_with_tools_streaming(
