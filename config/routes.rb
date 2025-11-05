@@ -65,22 +65,22 @@ Rails.application.routes.draw do
       post "landing_pages/:landing_page_slug/submit", to: "landing_page_submissions#create"
     end
   end
-  
+
+  # Devise routes for authentication - accessible from all subdomains (including none)
+  devise_for :users, controllers: {
+    registrations: "users/registrations",
+    sessions: "users/sessions",
+    passwords: "users/passwords"
+  }
+
   # Routes with constraints on subdomain - application routes for 'app' or 'dev' subdomain
-  constraints(lambda { |req| 
+  constraints(lambda { |req|
     SubdomainConfig.app_subdomains.include?(req.subdomain)
   }) do
     # Solid Queue Interface
     authenticate :user, lambda { |u| u.admin? } do
       mount SolidQueueInterface::Engine => "/solid_queue"
     end
-
-    # Devise routes for authentication
-    devise_for :users, controllers: {
-      registrations: "users/registrations",
-      sessions: "users/sessions",
-      passwords: "users/passwords"
-    }
 
     # User management
     resources :users, only: [ :show, :edit, :update ]
@@ -133,6 +133,13 @@ Rails.application.routes.draw do
     resources :image_assets, only: [ :index, :new, :create, :show, :destroy ] do
       collection do
         post :generate
+      end
+    end
+    
+    # Document store for RAG
+    resources :documents, only: [ :index, :new, :create, :destroy ] do
+      member do
+        get :download
       end
     end
     resources :email_templates do
@@ -257,6 +264,9 @@ Rails.application.routes.draw do
         delete "disconnect/:id", to: "social_media_accounts#disconnect", as: :disconnect
       end
     end
+    
+    # Alias for integrations (points to social_media_accounts controller)
+    get "integrations", to: "social_media_accounts#index", as: :customer_integrations
 
     # Crawler Jobs Management
     resources :crawler_jobs, only: [ :index, :new, :create, :show ] do
@@ -368,6 +378,9 @@ Rails.application.routes.draw do
   # Scout Intelligent Canvas routes
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
+
+  # Document indexing status API
+  get "scout/document-status/:asset_id", to: "scout#document_indexing_status"
 
   # Analytics routes
   get "analytics", to: "analytics#index"

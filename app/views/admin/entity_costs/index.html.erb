@@ -4,18 +4,18 @@
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h2">
-          <i class="fas fa-chart-line me-2"></i>
+          <i data-lucide="trending-up" class="me-2"></i>
           Entity Cost Tracking
         </h1>
 
         <div class="d-flex gap-2">
           <%= link_to bulk_analysis_admin_entity_costs_path, class: "btn btn-outline-primary" do %>
-            <i class="fas fa-analytics me-1"></i> Bulk Analysis
+            <i data-lucide="bar-chart-3" class="me-1"></i> Bulk Analysis
           <% end %>
 
           <%= link_to export_admin_entity_costs_path(format: :csv, start_date: @start_date, end_date: @end_date),
                       class: "btn btn-outline-success" do %>
-            <i class="fas fa-download me-1"></i> Export All
+            <i data-lucide="download" class="me-1"></i> Export All
           <% end %>
         </div>
       </div>
@@ -83,11 +83,11 @@
               <h2 class="mb-0">
                 <% trend = @cost_trends[:trend] %>
                 <% if trend == 'increasing' %>
-                  <i class="fas fa-arrow-up text-danger"></i>
+                  <i data-lucide="arrow-up" class="text-danger"></i>
                 <% elsif trend == 'decreasing' %>
-                  <i class="fas fa-arrow-down text-success"></i>
+                  <i data-lucide="arrow-down" class="text-success"></i>
                 <% else %>
-                  <i class="fas fa-equals text-secondary"></i>
+                  <i data-lucide="equal" class="text-secondary"></i>
                 <% end %>
                 <%= trend.capitalize %>
               </h2>
@@ -181,12 +181,12 @@
                       <%= link_to admin_entity_cost_path(entity),
                                   class: "btn btn-sm btn-outline-primary",
                                   title: "View Details" do %>
-                        <i class="fas fa-chart-bar"></i>
+                        <i data-lucide="bar-chart"></i>
                       <% end %>
                       <%= link_to export_admin_entity_cost_path(entity, format: :csv, start_date: @start_date, end_date: @end_date),
                                   class: "btn btn-sm btn-outline-success",
                                   title: "Export CSV" do %>
-                        <i class="fas fa-download"></i>
+                        <i data-lucide="download"></i>
                       <% end %>
                     </td>
                   </tr>

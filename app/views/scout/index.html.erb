@@ -324,6 +324,39 @@
     color: #6c757d;
     margin-top: 2px;
   }
+
+  /* Dropdown menu dark theme */
+  .dropdown-menu {
+    background: rgba(31, 41, 55, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    min-width: 200px;
+  }
+
+  .dropdown-item {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+  }
+
+  .dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    text-decoration: none;
+  }
+
+  .dropdown-item.disabled {
+    color: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+  }
+
+  .dropdown-divider {
+    border-color: rgba(255, 255, 255, 0.1);
+    margin: 0.5rem 0;
+  }
 </style>
 
 <div id="workspace" class="workspace conversation-mode" data-controller="scout">
@@ -418,12 +451,25 @@
               <i data-lucide="volume-2" aria-hidden="true"></i>
             </button>
 
-            <button class="header-icon-btn" title="More options" aria-label="More options">
-              <i data-lucide="more-horizontal" aria-hidden="true"></i>
-            </button>
+            <div class="dropdown">
+              <button class="header-icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More options" aria-label="More options">
+                <i data-lucide="more-horizontal" aria-hidden="true"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <%= link_to advanced_mode_path, class: "dropdown-item" do %>
+                  <i data-lucide="layout-dashboard" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
+                  Advanced Mode
+                <% end %>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item disabled" href="#">
+                  <i data-lucide="settings" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
+                  Settings (Coming Soon)
+                </a></li>
+              </ul>
+            </div>
 
             <!-- Conversation dropdown (hidden by default) -->
-            <div class="conversation-dropdown" id="conversation-dropdown" style="display: none;">
+            <div class="conversation-dropdown d-none" id="conversation-dropdown">
               <div class="dropdown-header">
                 <h4>Recent Conversations</h4>
               </div>
@@ -443,14 +489,14 @@
       
       <div class="chat-input-area" data-controller="voice-assistant">
         <form id="message-form" data-scout-target="chatForm" enctype="multipart/form-data">
-          <div class="attached-files" id="attached-files" style="display: none;">
+          <div class="attached-files d-none" id="attached-files">
             <!-- Attached files will be shown here -->
           </div>
 
           <!-- Model Selector with Brain Icon -->
           <div class="model-selector-container">
             <div class="model-selector-trigger">
-              <button id="model-selector-btn" class="model-brain-btn" title="Model Selection" aria-label="Select AI model">
+              <button type="button" id="model-selector-btn" class="model-brain-btn" title="Model Selection" aria-label="Select AI model">
                 <div class="brain-icon-wrapper">
                   <i data-lucide="brain" class="brain-outline"></i>
                   <div class="brain-fill">
@@ -464,7 +510,7 @@
               </button>
 
               <!-- Model Selector Popover -->
-              <div id="model-selector-popover" class="model-popover" style="display: none;">
+              <div id="model-selector-popover" class="model-popover d-none">
                 <div class="model-popover-content">
                   <div class="model-header">
                     <div class="model-header-icon">
@@ -513,7 +559,7 @@
             </div>
 
             <!-- Hidden select for backward compatibility -->
-            <select id="model-select" class="model-select" style="display: none;">
+            <select id="model-select" class="model-select d-none">
               <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
               <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
               <option value="claude-opus-4-1">Claude Opus 4.1</option>
@@ -527,7 +573,7 @@
               id="file-input"
               multiple
               accept="image/*,.pdf,.doc,.docx,.txt,.csv"
-              style="display: none;"
+              class="d-none"
               data-scout-target="fileInput">
 
             <button type="button" class="attach-btn" id="attach-button" title="Attach files" aria-label="Attach files">
@@ -1207,13 +1253,14 @@ document.addEventListener('turbo:load', function() {
 
   if (modelSelectorBtn) {
     modelSelectorBtn.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       console.log('🧠 Model selector clicked');
-      const isOpen = modelPopover.style.display === 'block';
-      modelPopover.style.display = isOpen ? 'none' : 'block';
-      console.log('🧠 Popover display:', modelPopover.style.display);
+      const isOpen = !modelPopover.classList.contains('d-none');
+      modelPopover.classList.toggle('d-none');
+      console.log('🧠 Popover is now:', isOpen ? 'closed' : 'open');
 
-      // Re-initialize Lucide icons in popover
+      // Re-initialize Lucide icons in popover when opening
       if (!isOpen && typeof lucide !== 'undefined') {
         setTimeout(() => lucide.createIcons(), 10);
       }
@@ -1225,7 +1272,7 @@ document.addEventListener('turbo:load', function() {
   // Close popover when clicking outside
   document.addEventListener('click', (e) => {
     if (modelPopover && !modelPopover.contains(e.target) && e.target !== modelSelectorBtn) {
-      modelPopover.style.display = 'none';
+      modelPopover.classList.add('d-none');
     }
   });
 
@@ -1655,13 +1702,13 @@ document.addEventListener('turbo:load', function() {
               <button class="btn btn-link btn-sm p-0 ms-2 align-baseline text-white-50" type="button" 
                       data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}"
                       title="Show details">
-                <i class="bi bi-chevron-down"></i>
+                <i data-lucide="chevron-down"></i>
               </button>
             ` : ''}
           </div>
           ${hasDetails ? `
             <div id="${collapseId}" class="collapse mt-2">
-              <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-word;">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
+              <pre class="mt-2 mb-0 pre-wrapped">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
             </div>
           ` : ''}
         </div>
@@ -2233,13 +2280,13 @@ document.addEventListener('turbo:load', function() {
               <button class="btn btn-link btn-sm p-0 ms-2 align-baseline text-white-50" type="button" 
                       data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}"
                       title="Show details">
-                <i class="bi bi-chevron-down"></i>
+                <i data-lucide="chevron-down"></i>
               </button>
             ` : ''}
           </div>
           ${hasDetails ? `
             <div id="${collapseId}" class="collapse mt-2">
-              <pre class="mt-2 mb-0" style="white-space: pre-wrap; word-break: break-word;">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
+              <pre class="mt-2 mb-0 pre-wrapped">${escapeForPre(JSON.stringify(metadata, null, 2))}</pre>
             </div>
           ` : ''}
         </div>
@@ -2871,32 +2918,41 @@ document.addEventListener('turbo:load', function() {
       attachedFilesContainer.style.display = 'block';
       console.log('📎 Container display after:', attachedFilesContainer.style.display);
     }
-    
+
     const fileDiv = document.createElement('div');
     fileDiv.className = 'attached-file';
-    
+
     const icon = document.createElement('i');
-    icon.className = getFileIcon(file.type);
+    const iconName = getFileIcon(file.type);
+    icon.setAttribute('data-lucide', iconName);
     icon.classList.add('file-icon');
-    
+
     const name = document.createElement('span');
     name.textContent = file.name;
-    
+
     const remove = document.createElement('span');
     remove.className = 'remove';
     remove.innerHTML = '&times;';
     remove.onclick = () => removeFile(file, fileDiv);
-    
+
     fileDiv.appendChild(icon);
     fileDiv.appendChild(name);
     fileDiv.appendChild(remove);
     attachedFilesContainer.appendChild(fileDiv);
+
+    // Render Lucide icon
+    if (typeof lucide !== 'undefined') {
+      requestAnimationFrame(() => {
+        lucide.createIcons({ target: fileDiv });
+      });
+    }
   }
-  
+
   function getFileIcon(fileType) {
     if (fileType.startsWith('image/')) return 'image';
-    if (fileType === 'application/pdf') return 'file-text';
+    if (fileType === 'application/pdf') return 'file-pdf';
     if (fileType.includes('word') || fileType.includes('document')) return 'file-text';
+    if (fileType.includes('sheet') || fileType.includes('excel') || fileType === 'text/csv') return 'table';
     return 'file';
   }
   
@@ -3173,10 +3229,10 @@ document.addEventListener('turbo:load', function() {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body px-4 py-3">
-        <div class="storage-option mb-3 p-3 border rounded" style="cursor: pointer;" data-storage-type="short-term">
+        <div class="storage-option mb-3 p-3 border rounded cursor-pointer" data-storage-type="short-term">
           <div class="form-check">
             <input class="form-check-input" type="radio" name="storageChoice" id="shortTermRadio" value="short-term">
-            <label class="form-check-label w-100" for="shortTermRadio" style="cursor: pointer;">
+            <label class="form-check-label w-100 cursor-pointer" for="shortTermRadio">
               <div class="d-flex align-items-start">
                 <div class="me-3 mt-1">
                   <i data-lucide="clock" class="icon-2x text-primary"></i>
@@ -3190,10 +3246,10 @@ document.addEventListener('turbo:load', function() {
           </div>
         </div>
 
-        <div class="storage-option p-3 border rounded" style="cursor: pointer;" data-storage-type="long-term">
+        <div class="storage-option p-3 border rounded cursor-pointer" data-storage-type="long-term">
           <div class="form-check">
             <input class="form-check-input" type="radio" name="storageChoice" id="longTermRadio" value="long-term">
-            <label class="form-check-label w-100" for="longTermRadio" style="cursor: pointer;">
+            <label class="form-check-label w-100 cursor-pointer" for="longTermRadio">
               <div class="d-flex align-items-start">
                 <div class="me-3 mt-1">
                   <i data-lucide="database" class="icon-2x text-success"></i>

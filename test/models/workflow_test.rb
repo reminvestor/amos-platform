@@ -80,7 +80,7 @@ class WorkflowTest < ActiveSupport::TestCase
     # Provide user input
     result = @workflow.execute_next_step({ name: "Test User" })
 
-    assert_equal "completed", result[:status]
+    assert_equal "step_completed", result[:status]
     assert result[:message].include?("completed successfully")
   end
 
@@ -182,6 +182,6 @@ class WorkflowTest < ActiveSupport::TestCase
     # Test validation success
     workflow = Workflow.new(validation_spec)
     result = workflow.execute_next_step({ email: "test@example.com" })
-    assert_equal "completed", result[:status]
+    assert_equal "step_completed", result[:status]
   end
 end

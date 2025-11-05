@@ -5,7 +5,7 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <%= link_to admin_pipeline_executions_path, class: "btn btn-outline-secondary btn-sm" do %>
-        <i class="fas fa-arrow-left"></i>
+        <i data-lucide="arrow-left"></i>
         Back to Dashboard
       <% end %>
     </div>
@@ -15,7 +15,7 @@
                       method: :post,
                       class: "btn btn-danger",
                       data: { confirm: "Cancel this pipeline?" } do %>
-          <i class="fas fa-times"></i>
+          <i data-lucide="x"></i>
           Cancel Pipeline
         <% end %>
       <% end %>
@@ -25,7 +25,7 @@
                       method: :post,
                       class: "btn btn-success",
                       data: { confirm: "Retry this pipeline?" } do %>
-          <i class="fas fa-redo"></i>
+          <i data-lucide="refresh-cw"></i>
           Retry Pipeline
         <% end %>
       <% end %>
@@ -36,7 +36,7 @@
   <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h4 class="mb-0">
-        <i class="fas fa-ticket-alt"></i>
+        <i data-lucide="ticket"></i>
         <%= @pipeline_execution.ticket_id %>
       </h4>
       <% color = AiAgents::Pipeline::StateMachine.state_color(@pipeline_execution.status) %>
@@ -51,17 +51,17 @@
 
       <div class="row g-3 mb-3">
         <div class="col-md-6">
-          <p class="text-muted mb-1"><i class="fas fa-link"></i> Ticket URL</p>
+          <p class="text-muted mb-1"><i data-lucide="link"></i> Ticket URL</p>
           <% if @pipeline_execution.ticket_url.present? %>
             <%= link_to @pipeline_execution.ticket_url, @pipeline_execution.ticket_url, target: "_blank" %>
-            <i class="fas fa-external-link-alt fa-xs"></i>
+            <i data-lucide="external-link" class="icon-xs"></i>
           <% else %>
             <span class="text-muted">Not available</span>
           <% end %>
         </div>
 
         <div class="col-md-3">
-          <p class="text-muted mb-1"><i class="fas fa-flag"></i> Priority</p>
+          <p class="text-muted mb-1"><i data-lucide="flag"></i> Priority</p>
           <% priority_colors = { 'critical' => 'danger', 'high' => 'warning', 'medium' => 'info', 'low' => 'secondary' } %>
           <span class="badge bg-<%= priority_colors[@pipeline_execution.priority] || 'secondary' %>">
             <%= @pipeline_execution.priority&.titleize || 'Medium' %>
@@ -69,14 +69,14 @@
         </div>
 
         <div class="col-md-3">
-          <p class="text-muted mb-1"><i class="fas fa-server"></i> System</p>
+          <p class="text-muted mb-1"><i data-lucide="server"></i> System</p>
           <%= @pipeline_execution.ticket_system&.titleize || 'N/A' %>
         </div>
       </div>
 
       <% if @pipeline_execution.ticket_description.present? %>
         <hr>
-        <p class="text-muted mb-1"><i class="fas fa-file-alt"></i> Description</p>
+        <p class="text-muted mb-1"><i data-lucide="file-text"></i> Description</p>
         <div class="bg-light p-3 rounded">
           <%= simple_format(@pipeline_execution.ticket_description) %>
         </div>
@@ -88,7 +88,7 @@
   <div class="card mb-4">
     <div class="card-header">
       <h5 class="mb-0">
-        <i class="fas fa-robot"></i>
+        <i data-lucide="bot"></i>
         Agent Execution Timeline
       </h5>
     </div>
@@ -101,13 +101,13 @@
                 <h6 class="mb-1">
                   <%= agent_execution.agent_id.titleize %>
                   <% if agent_execution.status_completed? %>
-                    <i class="fas fa-check-circle text-success"></i>
+                    <i data-lucide="check-circle" class="text-success"></i>
                   <% elsif agent_execution.status_failed? %>
-                    <i class="fas fa-times-circle text-danger"></i>
+                    <i data-lucide="x-circle" class="text-danger"></i>
                   <% elsif agent_execution.status_running? %>
-                    <i class="fas fa-spinner fa-spin text-info"></i>
+                    <i data-lucide="loader" class="icon-spin text-info"></i>
                   <% else %>
-                    <i class="fas fa-clock text-muted"></i>
+                    <i data-lucide="clock" class="text-muted"></i>
                   <% end %>
                 </h6>
                 <p class="text-muted small mb-0">
@@ -138,7 +138,7 @@
         <% end %>
       <% else %>
         <p class="text-muted text-center mb-0">
-          <i class="fas fa-hourglass-start"></i>
+          <i data-lucide="hourglass"></i>
           No agents have executed yet
         </p>
       <% end %>
@@ -151,7 +151,7 @@
       <div class="card h-100">
         <div class="card-header">
           <h5 class="mb-0">
-            <i class="fas fa-file-code"></i>
+            <i data-lucide="file-code"></i>
             Artifacts (<%= @artifacts.count %>)
           </h5>
         </div>
@@ -159,7 +159,7 @@
           <% if @artifacts.any? %>
             <% @artifacts.each do |artifact| %>
               <div class="mb-3 p-2 border rounded">
-                <i class="fas fa-file-alt text-primary"></i>
+                <i data-lucide="file-text" class="text-primary"></i>
                 <strong><%= artifact.file_name %></strong>
                 <br>
                 <small class="text-muted">
@@ -168,7 +168,7 @@
                 </small>
                 <% if artifact.content.present? && artifact.content.length < 100_000 %>
                   <details class="mt-2">
-                    <summary style="cursor: pointer;" class="text-primary">View content</summary>
+                    <summary class="text-primary cursor-pointer">View content</summary>
                     <pre class="bg-light p-2 rounded small mt-2"><%= artifact.content %></pre>
                   </details>
                 <% end %>
@@ -176,7 +176,7 @@
             <% end %>
           <% else %>
             <p class="text-muted text-center mb-0">
-              <i class="fas fa-inbox"></i>
+              <i data-lucide="inbox"></i>
               No artifacts generated yet
             </p>
           <% end %>
@@ -189,7 +189,7 @@
       <div class="card h-100">
         <div class="card-header">
           <h5 class="mb-0">
-            <i class="fas fa-list"></i>
+            <i data-lucide="list"></i>
             Events (<%= @events.count %>)
           </h5>
         </div>
@@ -207,7 +207,7 @@
             <% end %>
           <% else %>
             <p class="text-muted text-center mb-0">
-              <i class="fas fa-inbox"></i>
+              <i data-lucide="inbox"></i>
               No events recorded yet
             </p>
           <% end %>

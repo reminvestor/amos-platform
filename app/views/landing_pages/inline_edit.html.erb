@@ -4,19 +4,19 @@
       <!-- Header with controls -->
       <div class="card shadow mb-3">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <h3><i class="fas fa-edit me-2"></i> Inline Editor: <%= @landing_page.title %></h3>
+          <h3><i data-lucide="edit" class="me-2"></i> Inline Editor: <%= @landing_page.title %></h3>
           <div class="btn-group">
             <button class="btn btn-outline-light" id="toggleEditMode">
-              <i class="fas fa-toggle-on me-1"></i> Edit Mode: <span id="editModeStatus">ON</span>
+              <i data-lucide="toggle-right" me-1"></i> Edit Mode: <span id="editModeStatus">ON</span>
             </button>
             <button class="btn btn-success" id="saveChanges" onclick="saveInlineChanges()">
-              <i class="fas fa-save me-1"></i> Save Changes
+              <i data-lucide="save" class="me-1"></i> Save Changes
             </button>
             <%= link_to edit_landing_page_path(@landing_page), class: "btn btn-outline-light" do %>
-              <i class="fas fa-code me-1"></i> HTML Editor
+              <i data-lucide="code" class="me-1"></i> HTML Editor
             <% end %>
             <%= link_to preview_landing_page_path(@landing_page), class: "btn btn-outline-light", target: "_blank" do %>
-              <i class="fas fa-eye me-1"></i> Preview
+              <i data-lucide="eye" class="me-1"></i> Preview
             <% end %>
           </div>
         </div>
@@ -27,7 +27,7 @@
         <strong>Quick Editing Mode:</strong>
         <ul class="mb-0 mt-2">
           <li>Click on any text to edit it directly</li>
-          <li>Click the <i class="fas fa-image"></i> icon on images to replace them from your library</li>
+          <li>Click the <i data-lucide="image"></i> icon on images to replace them from your library</li>
           <li>Changes are highlighted in yellow until saved</li>
           <li>Press <kbd>Escape</kbd> to cancel editing a text element</li>
         </ul>
@@ -265,7 +265,7 @@
       // Add edit button
       const editBtn = doc.createElement('button');
       editBtn.className = 'image-edit-btn';
-      editBtn.innerHTML = '<i class="fas fa-image"></i>';
+      editBtn.innerHTML = '<i data-lucide="image"></i>';
       editBtn.onclick = function(e) {
         e.preventDefault();
         openImagePicker(img);
@@ -491,7 +491,7 @@
         alert.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
         alert.style.zIndex = '1050';
         alert.innerHTML = `
-          <i class="fas fa-check-circle me-2"></i>
+          <i data-lucide="check-circle" class="me-2"></i>
           Changes saved successfully!
           <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;

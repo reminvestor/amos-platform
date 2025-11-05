@@ -3,6 +3,7 @@ require "ostruct"
 class EmailTemplatesController < ApplicationController
   include EntityScoped
   before_action :authenticate_user!
+  layout 'customer_admin'
   before_action :set_email_template, only: [ :show, :edit, :update, :destroy, :test_email ]
 
   def index

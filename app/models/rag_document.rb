@@ -13,6 +13,9 @@ class RagDocument < ApplicationRecord
   belongs_to :rag_store
   has_many :rag_chunks, dependent: :destroy
 
+  # Attribute aliases for backward compatibility
+  alias_attribute :file_size, :file_size_bytes
+
   # Validations
   validates :file_hash, presence: true
   validates :original_filename, presence: true

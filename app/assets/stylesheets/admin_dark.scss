@@ -46,6 +46,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
 
     .sidebar-logo .logo-text,
     nav .nav-item span,
+    nav .nav-section-header span,
     .sidebar-bottom .nav-item span {
       opacity: 0;
       width: 0;
@@ -143,6 +144,28 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
   nav {
     flex: 1;
     padding: 0 0.75rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    // Section headers
+    .nav-section-header {
+      padding: 1rem 1rem 0.5rem 1rem;
+      margin-top: 1rem;
+      
+      span {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: $admin-text-muted;
+      }
+    }
+    
+    // Sub-items indentation
+    .nav-sub-item {
+      padding-left: 2.5rem !important;
+      font-size: 0.875rem;
+    }
 
     .nav-item {
       display: flex;

@@ -7,7 +7,7 @@
     <div class="col-md-8 mx-auto">
       <div class="card">
         <div class="card-header">
-          <h3><i class="fas fa-key me-2"></i>Authentication Configuration for <%= @integration.name %></h3>
+          <h3><i data-lucide="key" class="me-2"></i>Authentication Configuration for <%= @integration.name %></h3>
           <small class="text-muted">
             Auth Type: <span class="badge bg-info"><%= @integration.auth_type.humanize %></span>
           </small>
@@ -96,7 +96,7 @@
             <% else %>
               <!-- Non-OAuth auth types -->
               <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
+                <i data-lucide="info" class="me-2"></i>
                 This integration uses <strong><%= @integration.auth_type.humanize %></strong> authentication.
                 <% if @oauth_configuration.auth_configs.any? && @oauth_configuration.auth_configs.first.auth_key.present? %>
                   <br><br>
@@ -141,7 +141,7 @@
                         <div class="col-md-1 d-flex align-items-end pb-3">
                           <%= ac.hidden_field :position %>
                           <button type="button" class="btn btn-danger btn-sm remove-auth-config" title="Delete">
-                            <i class="bi bi-trash"></i>
+                            <i class="data-lucide="trash""></i>
                           </button>
                         </div>
                       </div>
@@ -151,7 +151,7 @@
               </div>
 
               <button type="button" class="btn btn-outline-primary btn-sm mb-3" id="add-auth-config">
-                <i class="bi bi-plus-circle"></i> Add Another Parameter
+                <i class="data-lucide="plus-circle""></i> Add Another Parameter
               </button>
 
               <div class="alert alert-warning">
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="col-md-1 d-flex align-items-end pb-3">
               <input type="hidden" name="oauth_configuration[auth_configs_attributes][${timestamp}][position]" value="0">
               <button type="button" class="btn btn-danger btn-sm remove-auth-config" title="Delete">
-                <i class="bi bi-trash"></i>
+                <i class="data-lucide="trash""></i>
               </button>
             </div>
           </div>

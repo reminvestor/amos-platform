@@ -4,9 +4,9 @@
   <div class="row mb-4">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center">
-        <h1><i class="fas fa-money-check-alt"></i> Payout Management</h1>
+        <h1><i data-lucide="banknote"></i> Payout Management</h1>
         <%= link_to new_admin_payout_path, class: "btn btn-primary" do %>
-          <i class="fas fa-plus"></i> Create Batch Payout
+          <i data-lucide="plus"></i> Create Batch Payout
         <% end %>
       </div>
     </div>
@@ -42,13 +42,13 @@
         </div>
         <div class="col-md-3">
           <button type="submit" class="btn btn-primary">
-            <i class="fas fa-search"></i> Filter
+            <i data-lucide="search"></i> Filter
           </button>
           <%= link_to "Clear", admin_payouts_path, class: "btn btn-outline-secondary" %>
         </div>
         <div class="col-md-6 text-end">
           <%= link_to admin_payouts_path(format: :csv, **params.permit(:status)), class: "btn btn-outline-success" do %>
-            <i class="fas fa-file-csv"></i> Export CSV
+            <i data-lucide="file-spreadsheet"></i> Export CSV
           <% end %>
         </div>
       <% end %>
@@ -101,7 +101,7 @@
                 <td>
                   <% if payout.pending? || payout.processing? %>
                     <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#completeModal<%= payout.id %>">
-                      <i class="fas fa-check"></i> Complete
+                      <i data-lucide="check"></i> Complete
                     </button>
 
                     <!-- Modal for marking complete -->

@@ -1,4 +1,15 @@
 # System RAG stores (accessible to all entities)
+system_store:
+  name: "System General Knowledge"
+  app_name: "System"
+  store_type: system
+  entity: null
+  pinecone_index: "amos-system-general"
+  pinecone_namespace: "system_general"
+  chunk_count: 50
+  status: "active"
+  metadata: {}
+
 system_stripe:
   name: "Stripe Integration Docs (System)"
   app_name: "Stripe"

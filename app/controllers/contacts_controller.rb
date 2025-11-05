@@ -1,5 +1,6 @@
 class ContactsController < ApplicationController
   before_action :authenticate_user!
+  layout 'customer_admin'
   before_action :set_contact, only: [ :show, :edit, :update, :destroy ]
 
   def index

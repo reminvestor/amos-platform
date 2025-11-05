@@ -95,3 +95,4 @@ echo -e "\n${YELLOW}Next Steps:${NC}"
 echo -e "1. Monitor ECS service: aws ecs describe-services --cluster agent-marketing-dev-cluster --services agent-marketing-dev"
 echo -e "2. Check logs: aws logs tail /ecs/agent-marketing-dev --follow"
 echo -e "3. Set up CodePipeline for continuous deployment (optional)"
+

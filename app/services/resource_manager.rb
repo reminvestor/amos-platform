@@ -528,6 +528,10 @@ class ResourceManager
     key = "resource_metrics:#{@entity.id}:#{Time.current.to_i}"
     ($redis || Redis.new).setex(key, 1.hour, metrics.to_json)
 
+    # Only broadcast if there's actual usage (avoid flooding logs in development)
+    has_usage = metrics.any? { |_, data| data[:current] > 0 }
+    return unless has_usage || Rails.env.production?
+
     # Update dashboard
     ActionCable.server.broadcast(
       "resource_usage_#{@entity.id}",

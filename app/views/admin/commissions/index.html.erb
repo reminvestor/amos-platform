@@ -3,7 +3,7 @@
     <div class="container-fluid">
   <div class="row mb-4">
     <div class="col-12">
-      <h1><i class="fas fa-dollar-sign"></i> Commission Management</h1>
+      <h1><i data-lucide="dollar-sign"></i> Commission Management</h1>
     </div>
   </div>
 
@@ -53,13 +53,13 @@
         </div>
         <div class="col-md-2">
           <button type="submit" class="btn btn-primary">
-            <i class="fas fa-search"></i> Filter
+            <i data-lucide="search"></i> Filter
           </button>
           <%= link_to "Clear", admin_commissions_path, class: "btn btn-outline-secondary" %>
         </div>
         <div class="col-md-2 text-end">
           <%= link_to admin_commissions_path(format: :csv, **params.permit(:status, :date_from, :date_to, :affiliate_id)), class: "btn btn-outline-success" do %>
-            <i class="fas fa-file-csv"></i> Export CSV
+            <i data-lucide="file-spreadsheet"></i> Export CSV
           <% end %>
         </div>
       <% end %>
@@ -87,7 +87,7 @@
           </button>
           <button type="submit" class="btn btn-sm btn-success"
                   data-bulk-select-target="actionButton">
-            <i class="fas fa-check-double"></i> Bulk Approve Selected
+            <i data-lucide="check-check"></i> Bulk Approve Selected
           </button>
         </div>
       </div>
@@ -146,10 +146,10 @@
                   <td>
                     <% if commission.pending? %>
                       <%= button_to approve_admin_commission_path(commission), method: :post, class: "btn btn-sm btn-success", data: { turbo: false } do %>
-                        <i class="fas fa-check"></i>
+                        <i data-lucide="check"></i>
                       <% end %>
                       <%= button_to cancel_admin_commission_path(commission), method: :post, class: "btn btn-sm btn-danger", data: { confirm: 'Cancel this commission?', turbo: false } do %>
-                        <i class="fas fa-times"></i>
+                        <i data-lucide="x"></i>
                       <% end %>
                     <% elsif commission.approved? %>
                       <span class="badge bg-success">Approved</span>

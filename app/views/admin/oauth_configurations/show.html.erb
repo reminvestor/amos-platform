@@ -6,7 +6,7 @@
   <div class="row">
     <div class="col-md-10 mx-auto">
       <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="fas fa-key me-2"></i>OAuth Configuration #<%= @oauth_configuration.id %></h1>
+        <h1><i data-lucide="key" class="me-2"></i>OAuth Configuration #<%= @oauth_configuration.id %></h1>
         <div>
           <%= link_to "Edit", edit_admin_oauth_configuration_path(@oauth_configuration), class: "btn btn-primary" %>
           <%= link_to "Delete", admin_oauth_configuration_path(@oauth_configuration), 
@@ -28,7 +28,7 @@
 
             <dt class="col-sm-3">Integration</dt>
             <dd class="col-sm-9">
-              <i class="fas fa-plug me-1"></i>
+              <i data-lucide="plug" class="me-1"></i>
               <%= @oauth_configuration.integration.name %>
               <span class="badge bg-info ms-2"><%= @oauth_configuration.integration.auth_type.humanize %></span>
             </dd>
@@ -94,4 +94,5 @@
 </div>
   </div>
 </div>
+
 
