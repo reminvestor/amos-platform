@@ -226,9 +226,14 @@
             const currentlyExpanded = toggle.getAttribute('data-expanded') === 'true';
             const newExpanded = !currentlyExpanded;
             
-            // Toggle display
-            content.style.display = newExpanded ? 'block' : 'none';
-            toggle.setAttribute('data-expanded', newExpanded);
+            // Toggle display with animation
+            if (newExpanded) {
+              content.style.display = 'block';
+              toggle.setAttribute('data-expanded', 'true');
+            } else {
+              content.style.display = 'none';
+              toggle.setAttribute('data-expanded', 'false');
+            }
             
             // Save state
             localStorage.setItem(`navCollapse_${sectionId}`, newExpanded);
