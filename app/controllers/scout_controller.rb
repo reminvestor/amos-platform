@@ -646,10 +646,15 @@ class ScoutController < ApplicationController
           error_count: 0
         }
 
-        # Add source attribution if sources were tracked
-        if sources_used.any?
+        # Add source attribution from tools_used (e.g., read_document)
+        extracted_sources = extract_response_sources(final_response[:tools_used])
+        if extracted_sources.any?
+          final_response[:sources] = extracted_sources
+          Rails.logger.info "📚 Extracted sources from tools: #{final_response[:sources]}"
+        elsif sources_used.any?
+          # Fallback to event-tracked sources if no tools sources found
           final_response[:sources] = sources_used.map { |source, count| { type: source, count: count } }
-          Rails.logger.info "📊 Response included sources: #{final_response[:sources]}"
+          Rails.logger.info "📊 Response included sources from events: #{final_response[:sources]}"
         end
 
         # Check if workflow approval is needed
