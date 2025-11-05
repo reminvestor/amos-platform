@@ -93,25 +93,33 @@
 
         <div class="form-group">
           <%= f.label :password, "Password", class: "form-label" %>
-          <% if @minimum_password_length %>
-            <span class="form-optional">(<%= @minimum_password_length %> characters minimum)</span>
-          <% end %>
-          <%= f.password_field :password, 
-              autocomplete: "new-password", 
+          <span class="form-optional">(10 characters minimum)</span>
+          <%= f.password_field :password,
+              autocomplete: "new-password",
               class: "form-control",
-              placeholder: "Create a secure password" %>
+              id: "user_password",
+              minlength: "10",
+              placeholder: "Create a secure password (min 10 chars)" %>
         </div>
 
         <div class="form-group">
-          <%= f.label :password_confirmation, "Confirm Password", class: "form-label" %>
-          <%= f.password_field :password_confirmation, 
-              autocomplete: "new-password", 
+          <div class="password-confirm-group">
+            <%= f.label :password_confirmation, "Confirm Password", class: "form-label" %>
+            <span class="password-match-indicator" id="passwordMatchIndicator">
+              <i data-lucide="check-circle" class="match-icon"></i>
+              <span class="match-text">Passwords match</span>
+            </span>
+          </div>
+          <%= f.password_field :password_confirmation,
+              autocomplete: "new-password",
               class: "form-control",
+              id: "user_password_confirmation",
               placeholder: "Confirm your password" %>
+          <small class="form-text password-match-message" id="passwordMatchMessage" style="display: none;"></small>
         </div>
 
         <div class="form-group">
-          <%= f.submit "Create Account & Meet AMOS", class: "btn btn-primary btn-lg w-100" %>
+          <%= f.submit "Create Account & Meet AMOS", class: "btn btn-primary btn-lg w-100", id: "signup-submit-btn" %>
         </div>
       <% end %>
 
@@ -302,6 +310,56 @@
   margin-left: 0.25rem;
 }
 
+.password-confirm-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.password-match-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  opacity: 0;
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.password-match-indicator.match {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  opacity: 1;
+}
+
+.password-match-indicator.no-match {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  opacity: 1;
+}
+
+.password-match-indicator .match-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.password-match-message {
+  font-size: 0.85rem !important;
+  margin-top: 0.25rem;
+}
+
+.password-match-message.error {
+  color: #ef4444;
+}
+
+.password-match-message.success {
+  color: #10b981;
+}
+
 .form-check-input {
   background-color: var(--scout-secondary, #2c3034);
   border-color: var(--scout-border, #404448);
@@ -430,8 +488,85 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Lucide icons
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
+  }
+
+  // Password matching checker
+  const passwordInput = document.getElementById('user_password');
+  const passwordConfirmInput = document.getElementById('user_password_confirmation');
+  const passwordMatchIndicator = document.getElementById('passwordMatchIndicator');
+  const passwordMatchMessage = document.getElementById('passwordMatchMessage');
+  const submitButton = document.getElementById('signup-submit-btn');
+
+  function checkPasswordMatch() {
+    const password = passwordInput.value;
+    const passwordConfirm = passwordConfirmInput.value;
+    const MIN_PASSWORD_LENGTH = 10;
+
+    // Only show feedback if user has typed in confirmation field
+    if (passwordConfirm.length === 0) {
+      passwordMatchIndicator.classList.remove('match', 'no-match');
+      passwordMatchMessage.style.display = 'none';
+      submitButton.disabled = false;
+      return;
+    }
+
+    const passwordsMatch = password === passwordConfirm;
+    const passwordLongEnough = password.length >= MIN_PASSWORD_LENGTH;
+    const passwordsValid = password.length > 0 && passwordConfirm.length > 0;
+
+    if (passwordsValid) {
+      if (!passwordLongEnough) {
+        // Password too short
+        passwordMatchIndicator.classList.remove('match');
+        passwordMatchIndicator.classList.add('no-match');
+        passwordMatchMessage.textContent = `✗ Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
+        passwordMatchMessage.classList.remove('success');
+        passwordMatchMessage.classList.add('error');
+        passwordMatchMessage.style.display = 'block';
+        submitButton.disabled = true;
+      } else if (passwordsMatch) {
+        // Passwords match and length is valid
+        passwordMatchIndicator.classList.remove('no-match');
+        passwordMatchIndicator.classList.add('match');
+        passwordMatchMessage.textContent = '✓ Passwords match';
+        passwordMatchMessage.classList.remove('error');
+        passwordMatchMessage.classList.add('success');
+        passwordMatchMessage.style.display = 'block';
+        submitButton.disabled = false;
+      } else {
+        // Passwords don't match
+        passwordMatchIndicator.classList.remove('match');
+        passwordMatchIndicator.classList.add('no-match');
+        passwordMatchMessage.textContent = '✗ Passwords do not match';
+        passwordMatchMessage.classList.remove('success');
+        passwordMatchMessage.classList.add('error');
+        passwordMatchMessage.style.display = 'block';
+        submitButton.disabled = true;
+      }
+    }
+  }
+
+  // Add event listeners for real-time checking
+  if (passwordInput && passwordConfirmInput) {
+    passwordInput.addEventListener('input', checkPasswordMatch);
+    passwordConfirmInput.addEventListener('input', checkPasswordMatch);
+  }
+
+  // Reinitialize Lucide icons when password match indicator changes
+  const observer = new MutationObserver(function() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  if (passwordMatchIndicator) {
+    observer.observe(passwordMatchIndicator, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
   }
 });
 </script>
