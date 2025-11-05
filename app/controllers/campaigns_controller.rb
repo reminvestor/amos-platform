@@ -1,5 +1,6 @@
 class CampaignsController < ApplicationController
   before_action :authenticate_user!
+  layout 'customer_admin'
   before_action :set_campaign, only: [ :show, :edit, :update, :destroy, :send_test, :schedule, :send_now, :pause, :resume, :stop, :reactivate, :analyze, :sync_mailgun, :setup_drip, :trigger_drip, :force_resume ]
 
   def index
