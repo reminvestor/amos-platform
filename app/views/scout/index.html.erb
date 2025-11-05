@@ -324,6 +324,39 @@
     color: #6c757d;
     margin-top: 2px;
   }
+
+  /* Dropdown menu dark theme */
+  .dropdown-menu {
+    background: rgba(31, 41, 55, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    min-width: 200px;
+  }
+
+  .dropdown-item {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+  }
+
+  .dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    text-decoration: none;
+  }
+
+  .dropdown-item.disabled {
+    color: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+  }
+
+  .dropdown-divider {
+    border-color: rgba(255, 255, 255, 0.1);
+    margin: 0.5rem 0;
+  }
 </style>
 
 <div id="workspace" class="workspace conversation-mode" data-controller="scout">
@@ -418,9 +451,22 @@
               <i data-lucide="volume-2" aria-hidden="true"></i>
             </button>
 
-            <button class="header-icon-btn" title="More options" aria-label="More options">
-              <i data-lucide="more-horizontal" aria-hidden="true"></i>
-            </button>
+            <div class="dropdown">
+              <button class="header-icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More options" aria-label="More options">
+                <i data-lucide="more-horizontal" aria-hidden="true"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <%= link_to advanced_mode_path, class: "dropdown-item" do %>
+                  <i data-lucide="layout-dashboard" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
+                  Advanced Mode
+                <% end %>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item disabled" href="#">
+                  <i data-lucide="settings" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
+                  Settings (Coming Soon)
+                </a></li>
+              </ul>
+            </div>
 
             <!-- Conversation dropdown (hidden by default) -->
             <div class="conversation-dropdown d-none" id="conversation-dropdown">
