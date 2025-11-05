@@ -200,8 +200,8 @@ function sendScoutMessage(message) {
 }
 
 .action-card {
-  background: white;
-  border: 1px solid #e9ecef;
+  background: var(--scout-secondary, white);
+  border: 1px solid var(--scout-border, #e9ecef);
   border-radius: 12px;
   padding: 1.5rem;
   cursor: pointer;
@@ -212,9 +212,9 @@ function sendScoutMessage(message) {
 }
 
 .action-card:hover {
-  border-color: #007bff;
+  border-color: var(--scout-primary, #007bff);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,123,255,0.15);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
 }
 
 .action-icon {
@@ -228,30 +228,30 @@ function sendScoutMessage(message) {
 
 .action-arrow {
   font-size: 0.875rem;
-  color: #6c757d;
+  color: var(--scout-text-muted, #6c757d);
   flex-shrink: 0;
 }
 
 .example-prompt {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background: var(--scout-hover, #f8f9fa);
+  border: 1px solid var(--scout-border, #e9ecef);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
   font-style: italic;
-  color: #6c757d;
+  color: var(--scout-text-muted, #6c757d);
 }
 
 .example-prompt:hover {
-  background: #e9ecef;
-  border-color: #dee2e6;
-  color: #495057;
+  background: var(--scout-border, #e9ecef);
+  border-color: var(--scout-border-active, #dee2e6);
+  color: var(--scout-text, #495057);
 }
 
 .entity-info {
   padding: 1rem;
-  background: #f8f9fa;
+  background: var(--scout-hover, #f8f9fa);
   border-radius: 0.5rem;
 }
 
