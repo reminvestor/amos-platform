@@ -47,25 +47,11 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
     .sidebar-logo .logo-text,
     nav .nav-item span,
     nav .nav-section-header span,
-    nav .toggle-icon,
     .sidebar-bottom .nav-item span {
       opacity: 0;
       width: 0;
       overflow: hidden;
       white-space: nowrap;
-    }
-    
-    // Hide all sections when sidebar is collapsed
-    nav .nav-section-content {
-      display: none !important;
-    }
-    
-    nav .nav-section-header.nav-toggle {
-      pointer-events: none;
-      
-      .toggle-icon {
-        display: none;
-      }
     }
 
     .sidebar-logo {
@@ -158,6 +144,8 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
   nav {
     flex: 1;
     padding: 0 0.75rem;
+    overflow-y: auto;
+    overflow-x: hidden;
 
     // Section headers
     .nav-section-header {
@@ -171,43 +159,12 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
         letter-spacing: 0.05em;
         color: $admin-text-muted;
       }
-      
-      &.nav-toggle {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        cursor: pointer;
-        text-decoration: none;
-        color: inherit;
-        transition: all 0.2s ease;
-        
-        &:hover {
-          color: $admin-text-secondary;
-        }
-        
-        .toggle-icon {
-          width: 1rem;
-          height: 1rem;
-          transition: transform 0.2s ease;
-          color: $admin-text-muted;
-        }
-        
-        &[data-expanded="true"] .toggle-icon {
-          transform: rotate(180deg);
-        }
-      }
     }
     
     // Sub-items indentation
     .nav-sub-item {
       padding-left: 2.5rem !important;
       font-size: 0.875rem;
-    }
-    
-    // Section content
-    .nav-section-content {
-      overflow: hidden;
-      transition: all 0.3s ease;
     }
 
     .nav-item {
