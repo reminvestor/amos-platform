@@ -45,7 +45,7 @@ class McpConnection < ApplicationRecord
     when 'jira'
       AiAgents::Mcp::JiraClient.new(self).test_connection
     when 'azure_devops'
-      AiAgents::Mcp::AzureDevOpsClient.new(self).test_connection
+      AiAgents::Mcp::AzureDevopsClient.new(self).test_connection
     when 'github'
       Git::GithubClient.new(self).test_connection
     when 'azure_repos'
@@ -91,7 +91,7 @@ class McpConnection < ApplicationRecord
     when 'jira'
       AiAgents::Mcp::JiraClient.new(self)
     when 'azure_devops'
-      AiAgents::Mcp::AzureDevOpsClient.new(self)
+      AiAgents::Mcp::AzureDevopsClient.new(self)
     when 'github'
       Git::GithubClient.new(self)
     when 'azure_repos'

@@ -2,7 +2,7 @@ require 'faraday'
 require 'base64'
 
 module AiAgents::Mcp
-  class AzureDevOpsClient
+  class AzureDevopsClient
     attr_reader :connection
 
     # Azure DevOps REST API v7.0 endpoints
