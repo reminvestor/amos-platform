@@ -1,127 +1,185 @@
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-header bg-white">
-    <h5 class="mb-0"><i data-lucide="mic" class="me-2"></i>Voice Settings</h5>
-  </div>
-  <div class="card-body" data-controller="voice-settings">
+<div class="admin-card mb-4">
+  <h4 style="color: white; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+    <i data-lucide="mic" style="color: #A78BFA;"></i>
+    Voice Settings
+  </h4>
+  
+  <div data-controller="voice-settings">
     <%= form_with url: api_tts_preferences_path, method: :patch, local: false, data: { action: "submit->voice-settings#saveSettings" } do |f| %>
       
-      <div class="form-check form-switch mb-4">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem;">
         <%= check_box_tag :enabled, "true", current_user.tts_preferences&.dig('enabled') != false, 
             class: "form-check-input", 
             id: "tts_enabled",
+            style: "width: 1.25rem; height: 1.25rem; cursor: pointer;",
             data: { action: "change->voice-settings#togglePreview" } %>
-        <label class="form-check-label" for="tts_enabled">
+        <label for="tts_enabled" style="color: white; cursor: pointer; user-select: none; margin: 0;">
           Enable text-to-speech for AI responses
         </label>
       </div>
 
       <div class="row" data-voice-settings-target="settings">
-        <div class="col-md-6 mb-3">
-          <label for="voice_id" class="form-label">Voice</label>
-          <%= select_tag :voice_id, 
-              options_for_select([
-                # US English - Neural
-                ['Matthew (US Male - Neural)', 'Matthew'],
-                ['Joanna (US Female - Neural)', 'Joanna'],
-                ['Ivy (US Child Female - Neural)', 'Ivy'],
-                ['Kendra (US Female - Neural)', 'Kendra'],
-                ['Kimberly (US Female - Neural)', 'Kimberly'],
-                ['Salli (US Female - Neural)', 'Salli'],
-                ['Joey (US Male - Neural)', 'Joey'],
-                ['Justin (US Male - Neural)', 'Justin'],
-                ['Kevin (US Child Male - Neural)', 'Kevin'],
-                ['Ruth (US Female - Neural)', 'Ruth'],
-                ['Stephen (US Male - Neural)', 'Stephen'],
-                # US English - Generative (Most Natural)
-                ['Ruth (US Female - Generative) ⭐', 'Ruth'],
-                ['Matthew (US Male - Generative) ⭐', 'Matthew'],
-                ['Joanna (US Female - Generative) ⭐', 'Joanna'],
-                ['Stephen (US Male - Generative) ⭐', 'Stephen'],
-                ['Olivia (US Female - Generative) ⭐', 'Olivia'],
-                ['Salli (US Female - Generative) ⭐', 'Salli'],
-                # Spanish - US
-                ['Lupe (US Spanish Female - Neural)', 'Lupe'],
-                ['Pedro (US Spanish Male - Neural)', 'Pedro'],
-                ['Lupe (US Spanish Female - Generative) ⭐', 'Lupe'],
-                ['Pedro (US Spanish Male - Generative) ⭐', 'Pedro'],
-                # Spanish - Spain
-                ['Lucia (European Spanish Female - Neural)', 'Lucia'],
-                ['Sergio (European Spanish Male - Neural)', 'Sergio'],
-                ['Lucia (European Spanish Female - Generative) ⭐', 'Lucia'],
-                ['Sergio (European Spanish Male - Generative) ⭐', 'Sergio'],
-                # Spanish - Mexico
-                ['Mia (Mexican Spanish Female - Neural)', 'Mia'],
-                ['Andrés (Mexican Spanish Male - Neural)', 'Andres'],
-                ['Mía (Mexican Spanish Female - Generative) ⭐', 'Mia'],
-                ['Andrés (Mexican Spanish Male - Generative) ⭐', 'Andres'],
-                # Portuguese - Portugal
-                ['Inês (Portuguese Female - Neural)', 'Ines'],
-                # Portuguese - Brazil
-                ['Camila (Brazilian Portuguese Female - Neural)', 'Camila'],
-                ['Vitória (Brazilian Portuguese Female - Neural)', 'Vitoria'],
-                ['Thiago (Brazilian Portuguese Male - Neural)', 'Thiago']
-              ], current_user.tts_preferences&.dig('voice_id') || 'Matthew'),
-              class: "form-select",
-              id: "voice_id",
-              data: { action: "change->voice-settings#updatePreview" } %>
-          <small class="text-muted">Choose your preferred AI voice</small>
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label for="engine" class="form-label">Voice Quality</label>
-          <%= select_tag :engine,
-              options_for_select([
-                ['Neural (Best quality)', 'neural'],
-                ['Standard (Faster)', 'standard']
-              ], current_user.tts_preferences&.dig('engine') || 'neural'),
-              class: "form-select",
-              id: "engine" %>
-          <small class="text-muted">Neural voices sound more natural but cost more</small>
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label for="speed" class="form-label">Speaking Speed</label>
-          <div class="d-flex align-items-center gap-3">
-            <%= range_field_tag :speed, 
-                current_user.tts_preferences&.dig('speed') || 1.0,
-                min: 0.5, max: 2.0, step: 0.1,
-                class: "form-range flex-grow-1",
-                id: "speed",
-                data: { action: "input->voice-settings#updateSpeedLabel" } %>
-            <span class="badge bg-secondary" data-voice-settings-target="speedLabel">
-              <%= current_user.tts_preferences&.dig('speed') || '1.0' %>x
-            </span>
+        <div class="col-md-6 mb-4">
+          <div class="admin-form-group">
+            <label for="voice_id" class="admin-label">Voice</label>
+            <%= select_tag :voice_id, 
+                options_for_select([
+                  # US English - Neural
+                  ['Matthew (US Male - Neural)', 'Matthew'],
+                  ['Joanna (US Female - Neural)', 'Joanna'],
+                  ['Ivy (US Child Female - Neural)', 'Ivy'],
+                  ['Kendra (US Female - Neural)', 'Kendra'],
+                  ['Kimberly (US Female - Neural)', 'Kimberly'],
+                  ['Salli (US Female - Neural)', 'Salli'],
+                  ['Joey (US Male - Neural)', 'Joey'],
+                  ['Justin (US Male - Neural)', 'Justin'],
+                  ['Kevin (US Child Male - Neural)', 'Kevin'],
+                  ['Ruth (US Female - Neural)', 'Ruth'],
+                  ['Stephen (US Male - Neural)', 'Stephen'],
+                  # US English - Generative (Most Natural)
+                  ['Ruth (US Female - Generative) ⭐', 'Ruth'],
+                  ['Matthew (US Male - Generative) ⭐', 'Matthew'],
+                  ['Joanna (US Female - Generative) ⭐', 'Joanna'],
+                  ['Stephen (US Male - Generative) ⭐', 'Stephen'],
+                  ['Olivia (US Female - Generative) ⭐', 'Olivia'],
+                  ['Salli (US Female - Generative) ⭐', 'Salli'],
+                  # Spanish - US
+                  ['Lupe (US Spanish Female - Neural)', 'Lupe'],
+                  ['Pedro (US Spanish Male - Neural)', 'Pedro'],
+                  ['Lupe (US Spanish Female - Generative) ⭐', 'Lupe'],
+                  ['Pedro (US Spanish Male - Generative) ⭐', 'Pedro'],
+                  # Spanish - Spain
+                  ['Lucia (European Spanish Female - Neural)', 'Lucia'],
+                  ['Sergio (European Spanish Male - Neural)', 'Sergio'],
+                  ['Lucia (European Spanish Female - Generative) ⭐', 'Lucia'],
+                  ['Sergio (European Spanish Male - Generative) ⭐', 'Sergio'],
+                  # Spanish - Mexico
+                  ['Mia (Mexican Spanish Female - Neural)', 'Mia'],
+                  ['Andrés (Mexican Spanish Male - Neural)', 'Andres'],
+                  ['Mía (Mexican Spanish Female - Generative) ⭐', 'Mia'],
+                  ['Andrés (Mexican Spanish Male - Generative) ⭐', 'Andres'],
+                  # Portuguese - Portugal
+                  ['Inês (Portuguese Female - Neural)', 'Ines'],
+                  # Portuguese - Brazil
+                  ['Camila (Brazilian Portuguese Female - Neural)', 'Camila'],
+                  ['Vitória (Brazilian Portuguese Female - Neural)', 'Vitoria'],
+                  ['Thiago (Brazilian Portuguese Male - Neural)', 'Thiago']
+                ], current_user.tts_preferences&.dig('voice_id') || 'Matthew'),
+                class: "admin-input",
+                id: "voice_id",
+                data: { action: "change->voice-settings#updatePreview" } %>
+            <small style="color: #64748B; display: block; margin-top: 0.25rem;">Choose your preferred AI voice</small>
           </div>
-          <small class="text-muted">Adjust how fast the AI speaks</small>
         </div>
 
-        <div class="col-md-6 mb-3">
-          <label for="volume" class="form-label">Volume</label>
-          <div class="d-flex align-items-center gap-3">
-            <%= range_field_tag :volume,
-                current_user.tts_preferences&.dig('volume') || 1.0,
-                min: 0, max: 1, step: 0.1,
-                class: "form-range flex-grow-1",
-                id: "volume",
-                data: { action: "input->voice-settings#updateVolumeLabel" } %>
-            <span class="badge bg-secondary" data-voice-settings-target="volumeLabel">
-              <%= ((current_user.tts_preferences&.dig('volume') || 1.0) * 100).to_i %>%
-            </span>
+        <div class="col-md-6 mb-4">
+          <div class="admin-form-group">
+            <label for="engine" class="admin-label">Voice Quality</label>
+            <%= select_tag :engine,
+                options_for_select([
+                  ['Neural (Best quality)', 'neural'],
+                  ['Standard (Faster)', 'standard']
+                ], current_user.tts_preferences&.dig('engine') || 'neural'),
+                class: "admin-input",
+                id: "engine" %>
+            <small style="color: #64748B; display: block; margin-top: 0.25rem;">Neural voices sound more natural but cost more</small>
           </div>
-          <small class="text-muted">Set the playback volume</small>
+        </div>
+
+        <div class="col-md-6 mb-4">
+          <div class="admin-form-group">
+            <label for="speed" class="admin-label">Speaking Speed</label>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <%= range_field_tag :speed, 
+                  current_user.tts_preferences&.dig('speed') || 1.0,
+                  min: 0.5, max: 2.0, step: 0.1,
+                  class: "form-range",
+                  style: "flex: 1;",
+                  id: "speed",
+                  data: { action: "input->voice-settings#updateSpeedLabel" } %>
+              <span class="admin-badge admin-badge-default" data-voice-settings-target="speedLabel" style="min-width: 3rem; text-align: center;">
+                <%= current_user.tts_preferences&.dig('speed') || '1.0' %>x
+              </span>
+            </div>
+            <small style="color: #64748B; display: block; margin-top: 0.25rem;">Adjust how fast the AI speaks</small>
+          </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+          <div class="admin-form-group">
+            <label for="volume" class="admin-label">Volume</label>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <%= range_field_tag :volume,
+                  current_user.tts_preferences&.dig('volume') || 1.0,
+                  min: 0, max: 1, step: 0.1,
+                  class: "form-range",
+                  style: "flex: 1;",
+                  id: "volume",
+                  data: { action: "input->voice-settings#updateVolumeLabel" } %>
+              <span class="admin-badge admin-badge-default" data-voice-settings-target="volumeLabel" style="min-width: 3rem; text-align: center;">
+                <%= ((current_user.tts_preferences&.dig('volume') || 1.0) * 100).to_i %>%
+              </span>
+            </div>
+            <small style="color: #64748B; display: block; margin-top: 0.25rem;">Set the playback volume</small>
+          </div>
         </div>
       </div>
 
-      <div class="mt-4 d-flex justify-content-between align-items-center">
-        <button type="button" class="btn btn-outline-primary" data-action="click->voice-settings#testVoice">
-          <i data-lucide="play" class="me-2"></i>Test Voice
+      <div style="margin-top: 2rem; display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="admin-btn admin-btn-outline" data-action="click->voice-settings#testVoice">
+          <i data-lucide="play"></i>
+          <span>Test Voice</span>
         </button>
-        <%= f.submit "Save Settings", class: "btn btn-primary" %>
+        <%= f.submit "Save Settings", class: "admin-btn admin-btn-primary" %>
       </div>
     <% end %>
 
-    <div class="alert alert-info mt-3 d-none" data-voice-settings-target="successMessage">
-      <i data-lucide="check-circle" class="me-2"></i>Voice settings saved successfully!
+    <div class="alert alert-info mt-3 d-none" data-voice-settings-target="successMessage" 
+         style="background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.2); color: #A78BFA; padding: 1rem; border-radius: 0.5rem;">
+      <i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem; display: inline-block; margin-right: 0.5rem;"></i>
+      Voice settings saved successfully!
     </div>
   </div>
 </div>
+
+<style>
+  /* Custom styling for range inputs */
+  .form-range {
+    height: 0.5rem;
+    background: #0F172A;
+    border-radius: 0.25rem;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  
+  .form-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    background: #A78BFA;
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid #1F2937;
+  }
+  
+  .form-range::-moz-range-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    background: #A78BFA;
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid #1F2937;
+    border: none;
+  }
+  
+  .form-check-input:checked {
+    background-color: #A78BFA;
+    border-color: #A78BFA;
+  }
+  
+  .form-check-input:focus {
+    border-color: #A78BFA;
+    box-shadow: 0 0 0 0.25rem rgba(167, 139, 250, 0.25);
+  }
+</style>
