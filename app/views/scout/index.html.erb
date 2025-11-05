@@ -2912,11 +2912,11 @@ document.addEventListener('turbo:load', function() {
   
   function displayAttachedFile(file) {
     console.log('📎 Displaying attached file:', file.name);
-    console.log('📎 Container display before:', attachedFilesContainer.style.display);
+    console.log('📎 Container has d-none class:', attachedFilesContainer.classList.contains('d-none'));
 
-    if (attachedFiles.length > 0 && attachedFilesContainer.style.display === 'none') {
-      attachedFilesContainer.style.display = 'block';
-      console.log('📎 Container display after:', attachedFilesContainer.style.display);
+    if (attachedFiles.length > 0 && attachedFilesContainer.classList.contains('d-none')) {
+      attachedFilesContainer.classList.remove('d-none');
+      console.log('📎 Container d-none class removed');
     }
 
     const fileDiv = document.createElement('div');
@@ -2960,7 +2960,7 @@ document.addEventListener('turbo:load', function() {
     attachedFiles = attachedFiles.filter(f => f.name !== file.name);
     fileDiv.remove();
     if (attachedFiles.length === 0) {
-      attachedFilesContainer.style.display = 'none';
+      attachedFilesContainer.classList.add('d-none');
     }
   }
   
@@ -3022,7 +3022,7 @@ document.addEventListener('turbo:load', function() {
           // Clear attached files after sending
           attachedFiles = [];
           attachedFilesContainer.innerHTML = '';
-          attachedFilesContainer.style.display = 'none';
+          attachedFilesContainer.classList.add('d-none');
         } catch (error) {
           console.error('Error sending message:', error);
           hideStreamingStatus();
