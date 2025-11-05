@@ -99,12 +99,17 @@ export default class extends Controller {
     `)
 
     toast.innerHTML = `
-      <i class="fas fa-check-circle" style="font-size: 20px;"></i>
+      <i data-lucide="check-circle" style="width: 20px; height: 20px; flex-shrink: 0;"></i>
       <span>${message}</span>
       <button type="button"
               onclick="this.parentElement.remove()"
               style="margin-left: auto; background: none; border: none; font-size: 20px; cursor: pointer; color: #0f5132;">×</button>
     `
+
+    // Initialize Lucide icons in the toast
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons()
+    }
 
     document.body.appendChild(toast)
 

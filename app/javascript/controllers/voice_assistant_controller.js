@@ -933,7 +933,12 @@ export default class extends Controller {
 
           const avatar = document.createElement("div")
           avatar.className = "message-avatar"
-          avatar.innerHTML = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>'
+          avatar.innerHTML = role === 'user' ? '<i data-lucide="user" style="width: 20px; height: 20px;"></i>' : '<i data-lucide="bot" style="width: 20px; height: 20px;"></i>'
+
+          // Initialize Lucide icons
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons()
+          }
 
           const bubble = document.createElement("div")
           bubble.className = "message-bubble"
