@@ -85,7 +85,7 @@
           <% end %>
 
           <%# Entity Settings - Only for Entity Admins %>
-          <% if current_user.has_role?(:admin) || current_user.has_role?(:owner) %>
+          <% if current_user.entity_admin? %>
             <div class="nav-section-header">
               <span>Settings</span>
             </div>
