@@ -84,11 +84,6 @@
             <span>Social Media</span>
           <% end %>
 
-          <%= link_to connections_path, class: "nav-item #{'active' if controller_name == 'connections'}" do %>
-            <i data-lucide="plug"></i>
-            <span>Connections</span>
-          <% end %>
-
           <%# Entity Settings - Only for Entity Admins %>
           <% if current_user.has_role?(:admin) || current_user.has_role?(:owner) %>
             <div class="nav-section-header">
