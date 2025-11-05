@@ -1,304 +1,342 @@
-<div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i data-lucide="user" class="text-primary"></i> My Profile</h1>
-      <p class="text-muted">View and manage your account settings</p>
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="user"></i>
+      </div>
+      <div class="header-text">
+        <h1>My Profile</h1>
+        <p>View and manage your account settings</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to edit_user_path(@user), class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="pencil"></i>
+        <span>Edit Profile</span>
+      <% end %>
     </div>
   </div>
 
   <div class="row">
     <div class="col-lg-8">
-      <!-- Profile Information -->
-      <div class="card border-0 shadow-sm mb-3" data-controller="profile-editor">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">Profile Information</h5>
-          <button type="button" class="btn btn-sm btn-outline-primary" data-action="click->profile-editor#toggleEdit" data-profile-editor-target="editButton">
-            <i data-lucide="pencil" class="me-1"></i><span data-profile-editor-target="editButtonText">Edit</span>
-          </button>
-        </div>
-        <div class="card-body">
-          <%= form_with model: current_user, url: user_path(current_user), method: :patch, local: true, data: { profile_editor_target: "form" } do |f| %>
-            <!-- View Mode -->
-            <div data-profile-editor-target="viewMode">
-              <dl class="row mb-0">
-                <dt class="col-sm-3">Name</dt>
-                <dd class="col-sm-9"><%= current_user.full_name %></dd>
-                
-                <dt class="col-sm-3">Email</dt>
-                <dd class="col-sm-9"><%= current_user.email %></dd>
-                
-                <dt class="col-sm-3">Role</dt>
-                <dd class="col-sm-9">
-                  <span class="badge bg-primary"><%= current_user.role.titleize %></span>
-                </dd>
-                
-                <dt class="col-sm-3">Member Since</dt>
-                <dd class="col-sm-9"><%= current_user.created_at.strftime("%B %d, %Y") %></dd>
-                
-                <% if current_user.entity %>
-                  <dt class="col-sm-3">Entity</dt>
-                  <dd class="col-sm-9">
-                    <%= link_to current_user.entity.name, entities_path %>
-                  </dd>
-                <% end %>
-              </dl>
-            </div>
-
-            <!-- Edit Mode -->
-            <div data-profile-editor-target="editMode" class="d-none">
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <%= f.label :first_name, "First Name", class: "form-label" %>
-                  <%= f.text_field :first_name, class: "form-control", required: true %>
-                </div>
-                <div class="col-md-6">
-                  <%= f.label :last_name, "Last Name", class: "form-label" %>
-                  <%= f.text_field :last_name, class: "form-control", required: true %>
-                </div>
-              </div>
-
-              <div class="mb-3">
-                <%= f.label :email, class: "form-label" %>
-                <%= f.email_field :email, class: "form-control", required: true %>
-                <div class="form-text">
-                  <i data-lucide="info" class="me-1"></i>Changing your email will require confirmation
-                </div>
-              </div>
-
-              <div class="d-flex gap-2">
-                <%= f.submit "Save Changes", class: "btn btn-primary" %>
-                <button type="button" class="btn btn-secondary" data-action="click->profile-editor#cancelEdit">
-                  Cancel
-                </button>
-              </div>
-            </div>
+      <%# Profile Information %>
+      <div class="admin-card mb-4">
+        <h4 style="color: white; margin-bottom: 1.5rem;">Profile Information</h4>
+        
+        <dl class="row mb-0" style="color: #94A3B8;">
+          <dt class="col-sm-3" style="color: white;">Name</dt>
+          <dd class="col-sm-9"><%= current_user.full_name %></dd>
+          
+          <dt class="col-sm-3" style="color: white;">Email</dt>
+          <dd class="col-sm-9"><%= current_user.email %></dd>
+          
+          <dt class="col-sm-3" style="color: white;">Role</dt>
+          <dd class="col-sm-9">
+            <span class="admin-badge admin-badge-primary"><%= current_user.role.titleize %></span>
+          </dd>
+          
+          <dt class="col-sm-3" style="color: white;">Member Since</dt>
+          <dd class="col-sm-9"><%= current_user.created_at.strftime("%B %d, %Y") %></dd>
+          
+          <% if current_user.entity %>
+            <dt class="col-sm-3" style="color: white;">Entity</dt>
+            <dd class="col-sm-9">
+              <%= link_to current_user.entity.name, advanced_mode_path, style: "color: #A78BFA;" %>
+            </dd>
           <% end %>
-        </div>
+        </dl>
       </div>
 
-      <!-- Billing & Subscription -->
+      <%# Billing & Subscription %>
       <% if current_user.entity %>
-        <div class="card border-0 shadow-sm mb-3">
-          <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i data-lucide="credit-card" class="me-2 text-success"></i>Billing & Subscription</h5>
+        <div class="admin-card mb-4">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h4 style="color: white; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="credit-card" style="color: #22C55E;"></i>
+              Billing & Subscription
+            </h4>
             <% if current_user.entity.stripe_customer_id.present? %>
-              <%= link_to "Manage Billing", "#", class: "btn btn-sm btn-outline-primary", data: { bs_toggle: "modal", bs_target: "#billingPortalModal" } %>
+              <%= link_to "#", class: "admin-btn admin-btn-outline admin-btn-sm", data: { bs_toggle: "modal", bs_target: "#billingPortalModal" } do %>
+                <span>Manage Billing</span>
+              <% end %>
             <% end %>
           </div>
-          <div class="card-body">
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <h6 class="text-muted small mb-2">Current Plan</h6>
-                <div class="d-flex align-items-center">
-                  <% if current_user.entity.plan_tier.present? %>
-                    <span class="badge bg-primary fs-6"><%= current_user.entity.plan_tier.titleize %></span>
-                  <% else %>
-                    <span class="badge bg-secondary fs-6">Free</span>
-                  <% end %>
-                </div>
-              </div>
-              
-              <div class="col-md-6 mb-3">
-                <h6 class="text-muted small mb-2">Subscription Status</h6>
-                <% status = current_user.entity.subscription_status || 'inactive' %>
-                <% status_color = case status
-                     when 'active' then 'success'
-                     when 'trialing' then 'info'
-                     when 'past_due' then 'warning'
-                     when 'canceled', 'inactive' then 'secondary'
-                     else 'secondary'
-                   end %>
-                <span class="badge bg-<%= status_color %> fs-6"><%= status.titleize %></span>
-              </div>
-              
-              <% if current_user.entity.trial_ends_at.present? && current_user.entity.subscription_status == 'trialing' %>
-                <div class="col-md-6 mb-3">
-                  <h6 class="text-muted small mb-2">Trial Ends</h6>
-                  <div><%= current_user.entity.trial_ends_at.strftime("%B %d, %Y") %></div>
-                </div>
-              <% end %>
-              
-              <% if current_user.entity.current_period_end.present? %>
-                <div class="col-md-6 mb-3">
-                  <h6 class="text-muted small mb-2">Next Billing Date</h6>
-                  <div><%= current_user.entity.current_period_end.strftime("%B %d, %Y") %></div>
-                </div>
-              <% end %>
-              
-              <% if current_user.entity.token_limit.present? %>
-                <div class="col-md-12">
-                  <h6 class="text-muted small mb-2">AI Token Usage</h6>
-                  <div class="progress" style="height: 25px;">
-                    <% usage_percent = (current_user.entity.token_usage.to_f / current_user.entity.token_limit.to_f * 100).round(1) %>
-                    <div class="progress-bar <%= usage_percent > 80 ? 'bg-warning' : 'bg-success' %>" 
-                         role="progressbar" 
-                         style="width: <%= [usage_percent, 100].min %>%"
-                         aria-valuenow="<%= current_user.entity.token_usage %>" 
-                         aria-valuemin="0" 
-                         aria-valuemax="<%= current_user.entity.token_limit %>">
-                      <%= number_with_delimiter(current_user.entity.token_usage) %> / <%= number_with_delimiter(current_user.entity.token_limit) %> 
-                      (<%= usage_percent %>%)
-                    </div>
-                  </div>
-                </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-4">
+              <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Current Plan</p>
+              <% if current_user.entity.plan_tier.present? %>
+                <span class="admin-badge admin-badge-primary" style="font-size: 1rem;"><%= current_user.entity.plan_tier.titleize %></span>
+              <% else %>
+                <span class="admin-badge admin-badge-default" style="font-size: 1rem;">Free</span>
               <% end %>
             </div>
             
-            <% unless current_user.entity.stripe_customer_id.present? %>
-              <div class="mt-3">
-                <%= link_to "#", class: "btn btn-success w-100" do %>
-                  <i data-lucide="rocket" class="me-2"></i>Upgrade Your Plan
-                <% end %>
+            <div class="col-md-6 mb-4">
+              <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Subscription Status</p>
+              <% status = current_user.entity.subscription_status || 'inactive' %>
+              <% badge_class = case status
+                   when 'active' then 'admin-badge-online'
+                   when 'trialing' then 'admin-badge-primary'
+                   when 'past_due' then 'admin-badge-warning'
+                   when 'canceled', 'inactive' then 'admin-badge-default'
+                   else 'admin-badge-default'
+                 end %>
+              <span class="admin-badge <%= badge_class %>" style="font-size: 1rem;"><%= status.titleize %></span>
+            </div>
+            
+            <% if current_user.entity.trial_ends_at.present? && current_user.entity.subscription_status == 'trialing' %>
+              <div class="col-md-6 mb-4">
+                <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Trial Ends</p>
+                <div style="color: white;"><%= current_user.entity.trial_ends_at.strftime("%B %d, %Y") %></div>
+              </div>
+            <% end %>
+            
+            <% if current_user.entity.current_period_end.present? %>
+              <div class="col-md-6 mb-4">
+                <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem;">Next Billing Date</p>
+                <div style="color: white;"><%= current_user.entity.current_period_end.strftime("%B %d, %Y") %></div>
+              </div>
+            <% end %>
+            
+            <% if current_user.entity.token_limit.present? %>
+              <div class="col-md-12">
+                <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.75rem;">AI Token Usage</p>
+                <div style="background: #0F172A; border-radius: 0.5rem; height: 2rem; position: relative; overflow: hidden;">
+                  <% usage_percent = (current_user.entity.token_usage.to_f / current_user.entity.token_limit.to_f * 100).round(1) %>
+                  <div style="background: <%= usage_percent > 80 ? '#EAB308' : '#22C55E' %>; 
+                              height: 100%; 
+                              width: <%= [usage_percent, 100].min %>%;
+                              display: flex;
+                              align-items: center;
+                              padding: 0 1rem;
+                              color: white;
+                              font-size: 0.875rem;
+                              font-weight: 500;
+                              transition: width 0.3s ease;">
+                    <%= number_with_delimiter(current_user.entity.token_usage) %> / <%= number_with_delimiter(current_user.entity.token_limit) %> 
+                    (<%= usage_percent %>%)
+                  </div>
+                </div>
               </div>
             <% end %>
           </div>
-        </div>
-      <% end %>
-
-      <!-- Voice Settings -->
-      <%= render 'voice_settings' %>
-      
-      <!-- Activity Stats -->
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0">Your Activity</h5>
-        </div>
-        <div class="card-body">
-          <div class="row text-center">
-            <div class="col-md-3">
-              <div class="h4 mb-0"><%= current_user.campaigns.count %></div>
-              <div class="text-muted small">Campaigns</div>
-            </div>
-            <div class="col-md-3">
-              <div class="h4 mb-0"><%= current_user.contacts.count %></div>
-              <div class="text-muted small">Contacts</div>
-            </div>
-            <div class="col-md-3">
-              <div class="h4 mb-0"><%= current_user.landing_pages.count %></div>
-              <div class="text-muted small">Landing Pages</div>
-            </div>
-            <div class="col-md-3">
-              <div class="h4 mb-0"><%= current_user.email_templates.count %></div>
-              <div class="text-muted small">Email Templates</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sidebar -->
-    <div class="col-lg-4">
-      <!-- Account Security Card -->
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white">
-          <h5 class="mb-0"><i data-lucide="key" class="text-warning"></i> Account Security</h5>
-        </div>
-        <div class="card-body">
-          <p class="mb-3">
-            <strong>Last sign in:</strong><br>
-            <%= current_user.current_sign_in_at ? current_user.current_sign_in_at.strftime("%B %d, %Y at %I:%M %p") : 'Never' %>
-          </p>
-          <p class="mb-3">
-            <strong>Sign in count:</strong><br>
-            <%= current_user.sign_in_count || 0 %> times
-          </p>
           
-          <!-- Change Password Button with Modal -->
-          <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
-            <i data-lucide="lock" class="me-2"></i> Change Password
-          </button>
-        </div>
-      </div>
-
-      <!-- Account Deletion Card -->
-      <div class="card border-0 shadow-sm border-danger">
-        <div class="card-header bg-danger bg-opacity-10">
-          <h5 class="mb-0 text-danger"><i data-lucide="alert-triangle" class="me-2"></i>Danger Zone</h5>
-        </div>
-        <div class="card-body">
-          <p class="text-muted small">Once you delete your account, there is no going back. Please be certain.</p>
-          <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
-            <i data-lucide="trash-2" class="me-2"></i> Delete My Account
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Change Password Modal -->
-<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <%= form_for(current_user, url: registration_path(current_user), html: { method: :put }) do |f| %>
-        <div class="modal-header">
-          <h5 class="modal-title" id="changePasswordModalLabel">
-            <i data-lucide="lock" class="me-2"></i>Change Password
-          </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <% if current_user.errors.any? %>
-            <div class="alert alert-danger">
-              <% current_user.errors.full_messages.each do |message| %>
-                <div><%= message %></div>
+          <% unless current_user.entity.stripe_customer_id.present? %>
+            <div style="margin-top: 1.5rem;">
+              <%= link_to "#", class: "admin-btn admin-btn-primary", style: "width: 100%;" do %>
+                <i data-lucide="rocket"></i>
+                <span>Upgrade Your Plan</span>
               <% end %>
             </div>
           <% end %>
+        </div>
+      <% end %>
 
-          <div class="mb-3">
-            <%= f.label :password, "New Password", class: "form-label" %>
-            <%= f.password_field :password, autocomplete: "new-password", class: "form-control", placeholder: "Leave blank to keep current password" %>
-            <div class="form-text"><i data-lucide="info" class="me-1"></i>Minimum 6 characters</div>
+      <%# Voice Settings %>
+      <%= render 'voice_settings' if lookup_context.exists?('users/_voice_settings') %>
+      
+      <%# Activity Stats %>
+      <div class="admin-card">
+        <h4 style="color: white; margin-bottom: 1.5rem;">Your Activity</h4>
+        
+        <div class="row text-center">
+          <div class="col-md-3 mb-3">
+            <div style="width: 4rem; height: 4rem; margin: 0 auto 1rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="mail" style="width: 2rem; height: 2rem; color: #A78BFA;"></i>
+            </div>
+            <div style="font-size: 2rem; font-weight: 600; color: white; line-height: 1;"><%= current_user.campaigns.count %></div>
+            <div style="color: #94A3B8; font-size: 0.875rem; margin-top: 0.25rem;">Campaigns</div>
           </div>
-
-          <div class="mb-3">
-            <%= f.label :password_confirmation, "Confirm New Password", class: "form-label" %>
-            <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "form-control", placeholder: "Re-enter new password" %>
+          
+          <div class="col-md-3 mb-3">
+            <div style="width: 4rem; height: 4rem; margin: 0 auto 1rem; border-radius: 1rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="users" style="width: 2rem; height: 2rem; color: #22C55E;"></i>
+            </div>
+            <div style="font-size: 2rem; font-weight: 600; color: white; line-height: 1;"><%= current_user.contacts.count %></div>
+            <div style="color: #94A3B8; font-size: 0.875rem; margin-top: 0.25rem;">Contacts</div>
           </div>
-
-          <div class="mb-3">
-            <%= f.label :current_password, class: "form-label" %>
-            <%= f.password_field :current_password, autocomplete: "current-password", class: "form-control", required: true %>
-            <div class="form-text"><i data-lucide="shield" class="me-1"></i>We need your current password to confirm your changes</div>
+          
+          <div class="col-md-3 mb-3">
+            <div style="width: 4rem; height: 4rem; margin: 0 auto 1rem; border-radius: 1rem; background: rgba(59, 130, 246, 0.1); display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="layout" style="width: 2rem; height: 2rem; color: #3B82F6;"></i>
+            </div>
+            <div style="font-size: 2rem; font-weight: 600; color: white; line-height: 1;"><%= current_user.landing_pages.count %></div>
+            <div style="color: #94A3B8; font-size: 0.875rem; margin-top: 0.25rem;">Landing Pages</div>
+          </div>
+          
+          <div class="col-md-3 mb-3">
+            <div style="width: 4rem; height: 4rem; margin: 0 auto 1rem; border-radius: 1rem; background: rgba(251, 146, 60, 0.1); display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="file-text" style="width: 2rem; height: 2rem; color: #FB923C;"></i>
+            </div>
+            <div style="font-size: 2rem; font-weight: 600; color: white; line-height: 1;"><%= current_user.email_templates.count %></div>
+            <div style="color: #94A3B8; font-size: 0.875rem; margin-top: 0.25rem;">Email Templates</div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <%= f.submit "Update Password", class: "btn btn-primary" %>
+      </div>
+    </div>
+
+    <%# Sidebar %>
+    <div class="col-lg-4">
+      <%# Account Security Card %>
+      <div class="admin-card mb-4">
+        <h4 style="color: white; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="shield" style="color: #EAB308;"></i>
+          Account Security
+        </h4>
+        
+        <div style="margin-bottom: 1.5rem;">
+          <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.25rem;">Last sign in:</p>
+          <p style="color: white; margin: 0;">
+            <%= current_user.current_sign_in_at ? current_user.current_sign_in_at.strftime("%B %d, %Y at %I:%M %p") : 'Never' %>
+          </p>
+        </div>
+        
+        <div style="margin-bottom: 1.5rem;">
+          <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.25rem;">Sign in count:</p>
+          <p style="color: white; margin: 0;"><%= current_user.sign_in_count || 0 %> times</p>
+        </div>
+        
+        <button type="button" class="admin-btn admin-btn-outline" style="width: 100%;" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+          <i data-lucide="lock"></i>
+          <span>Change Password</span>
+        </button>
+      </div>
+
+      <%# Quick Links %>
+      <div class="admin-card mb-4">
+        <h4 style="color: white; margin-bottom: 1.5rem;">Quick Links</h4>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <%= link_to edit_business_profile_path, class: "admin-btn admin-btn-outline", style: "justify-content: flex-start;" do %>
+            <i data-lucide="briefcase"></i>
+            <span>Business Settings</span>
+          <% end %>
+          
+          <% if current_user.entity_admin? %>
+            <%= link_to entity_users_path, class: "admin-btn admin-btn-outline", style: "justify-content: flex-start;" do %>
+              <i data-lucide="users"></i>
+              <span>Team Members</span>
+            <% end %>
+            
+            <%= link_to entity_observability_path, class: "admin-btn admin-btn-outline", style: "justify-content: flex-start;" do %>
+              <i data-lucide="bar-chart"></i>
+              <span>Usage & Billing</span>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Danger Zone %>
+      <div class="admin-card" style="border: 1px solid rgba(239, 68, 68, 0.3);">
+        <div style="background: rgba(239, 68, 68, 0.1); margin: -1.5rem -1.5rem 1.5rem -1.5rem; padding: 1rem 1.5rem; border-radius: 0.75rem 0.75rem 0 0;">
+          <h4 style="color: #EF4444; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="alert-triangle"></i>
+            Danger Zone
+          </h4>
+        </div>
+        <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 1rem;">
+          Once you delete your account, there is no going back. Please be certain.
+        </p>
+        <button type="button" class="admin-btn" style="background: #DC2626; border-color: #DC2626; width: 100%;" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+          <i data-lucide="trash-2"></i>
+          <span>Delete My Account</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# Change Password Modal %>
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content" style="background: #1F2937; border: 1px solid #1E293B;">
+      <%= form_for(current_user, url: registration_path(current_user), html: { method: :put }) do |f| %>
+        <div class="modal-header" style="border-bottom: 1px solid #1E293B;">
+          <h5 class="modal-title" style="color: white; display: flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="lock"></i>
+            Change Password
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="admin-form-group mb-3">
+            <%= f.label :password, "New Password", class: "admin-label" %>
+            <%= f.password_field :password, autocomplete: "new-password", class: "admin-input", placeholder: "Leave blank to keep current password" %>
+            <small style="color: #64748B; display: block; margin-top: 0.25rem;">
+              <i data-lucide="info" style="width: 0.875rem; height: 0.875rem;"></i>
+              Minimum 6 characters
+            </small>
+          </div>
+
+          <div class="admin-form-group mb-3">
+            <%= f.label :password_confirmation, "Confirm New Password", class: "admin-label" %>
+            <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "admin-input", placeholder: "Re-enter new password" %>
+          </div>
+
+          <div class="admin-form-group mb-3">
+            <%= f.label :current_password, class: "admin-label" %>
+            <%= f.password_field :current_password, autocomplete: "current-password", class: "admin-input", required: true %>
+            <small style="color: #64748B; display: block; margin-top: 0.25rem;">
+              <i data-lucide="shield" style="width: 0.875rem; height: 0.875rem;"></i>
+              We need your current password to confirm your changes
+            </small>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top: 1px solid #1E293B;">
+          <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <%= f.submit "Update Password", class: "admin-btn admin-btn-primary" %>
         </div>
       <% end %>
     </div>
   </div>
 </div>
 
-<!-- Delete Account Modal -->
-<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+<%# Delete Account Modal %>
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
-    <div class="modal-content border-danger">
-      <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title" id="deleteAccountModalLabel">
-          <i data-lucide="alert-triangle" class="me-2"></i>Delete Account
+    <div class="modal-content" style="background: #1F2937; border: 1px solid rgba(239, 68, 68, 0.3);">
+      <div class="modal-header" style="background: rgba(239, 68, 68, 0.1); border-bottom: 1px solid rgba(239, 68, 68, 0.3);">
+        <h5 class="modal-title" style="color: #EF4444; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="alert-triangle"></i>
+          Delete Account
         </h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <div class="alert alert-danger">
+        <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #EF4444;">
           <strong>Warning:</strong> This action cannot be undone!
         </div>
-        <p>Once you delete your account:</p>
-        <ul>
+        <p style="color: white;">Once you delete your account:</p>
+        <ul style="color: #94A3B8;">
           <li>All your data will be permanently deleted</li>
           <li>You will lose access to all campaigns and contacts</li>
           <li>Your landing pages will be deactivated</li>
           <li>This action is irreversible</li>
         </ul>
-        <p class="mb-0"><strong>Are you absolutely sure you want to continue?</strong></p>
+        <p style="color: white; font-weight: 600;"><strong>Are you absolutely sure you want to continue?</strong></p>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <%= button_to "Yes, Delete My Account", registration_path(current_user), method: :delete, data: { confirm: "Are you ABSOLUTELY SURE? Type 'DELETE' to confirm.", turbo: false }, class: "btn btn-danger" %>
+      <div class="modal-footer" style="border-top: 1px solid rgba(239, 68, 68, 0.3);">
+        <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Cancel</button>
+        <%= button_to "Yes, Delete My Account", registration_path(current_user), method: :delete, 
+            data: { confirm: "Are you ABSOLUTELY SURE? Type 'DELETE' to confirm.", turbo: false }, 
+            class: "admin-btn", style: "background: #DC2626; border-color: #DC2626;" %>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+
+document.addEventListener('turbo:load', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>
