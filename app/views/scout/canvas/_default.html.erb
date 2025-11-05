@@ -1,164 +1,122 @@
-<div class="scout-canvas default-canvas">
-  <div class="canvas-header text-center mb-5">
-    <div class="canvas-hero">
-      <div class="hero-icon mb-3">
-        <i data-lucide="bot" class="text-primary icon-4x" aria-hidden="true"></i>
-      </div>
-      <h4 class="mb-2">Welcome to Amos AI</h4>
-      <p class="text-muted mb-4">
-        Your AI business automation assistant. I can help you manage operations, analyze data, create content,<br>
-        handle integrations, and automate workflows across your entire business.
-      </p>
+<div class="scout-canvas default-canvas" style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh;">
+  <!-- Hero Section -->
+  <div style="text-align: center; padding: 3rem 2rem 2rem; max-width: 600px; margin: 0 auto;">
+    <div style="width: 5rem; height: 5rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+      <i data-lucide="bot" style="width: 2.5rem; height: 2.5rem; color: white;"></i>
     </div>
+    <h2 style="color: #FFFFFF; font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">Welcome to Amos AI</h2>
+    <p style="color: #94A3B8; font-size: 1rem; line-height: 1.6; margin-bottom: 0;">
+      Your AI business automation assistant. I can help you manage operations, analyze data, create content,<br>
+      handle integrations, and automate workflows across your entire business.
+    </p>
   </div>
-  
+
   <!-- Quick Actions Grid -->
-  <div class="row mb-5">
-    <div class="col-lg-10 mx-auto">
-      <h5 class="text-center mb-4">What would you like to do today?</h5>
-      <div class="row g-3">
-        
-        <!-- Landing Pages -->
-        <div class="col-md-6 col-lg-4 mb-3">
-          <div class="action-card h-100" onclick="scoutQuickAction('landing_pages')" role="button" aria-label="View landing pages">
-            <div class="action-icon">
-              <i data-lucide="globe" class="text-primary" aria-hidden="true"></i>
-            </div>
-            <div class="action-content">
-              <h6 class="mb-1">Landing Pages</h6>
-              <p class="text-muted small mb-0">Create and manage marketing pages</p>
-            </div>
-            <div class="action-arrow">
-              <i data-lucide="chevron-right" aria-hidden="true"></i>
-            </div>
-          </div>
-        </div>
+  <div style="padding: 0 2rem 3rem; max-width: 1200px; margin: 0 auto;">
+    <h3 style="color: #FFFFFF; text-align: center; margin-bottom: 2rem; font-size: 1.25rem; font-weight: 600;">What would you like to do today?</h3>
 
-        <!-- Create Landing Page -->
-        <div class="col-md-6 col-lg-4 mb-3">
-          <div class="action-card h-100" onclick="scoutCreateLandingPage()" role="button" aria-label="Create new landing page">
-            <div class="action-icon">
-              <i data-lucide="circle-plus" class="text-success" aria-hidden="true"></i>
-            </div>
-            <div class="action-content">
-              <h6 class="mb-1">Create Landing Page</h6>
-              <p class="text-muted small mb-0">Build a new marketing page with AI</p>
-            </div>
-            <div class="action-arrow">
-              <i data-lucide="chevron-right" aria-hidden="true"></i>
-            </div>
-          </div>
-        </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
 
-        <!-- Contacts -->
-        <div class="col-md-6 col-lg-4 mb-3">
-          <div class="action-card h-100" onclick="scoutQuickAction('contacts')" role="button" aria-label="View contacts">
-            <div class="action-icon">
-              <i data-lucide="users" class="text-info" aria-hidden="true"></i>
-            </div>
-            <div class="action-content">
-              <h6 class="mb-1">Contacts</h6>
-              <p class="text-muted small mb-0">Manage your customer database</p>
-            </div>
-            <div class="action-arrow">
-              <i data-lucide="chevron-right" aria-hidden="true"></i>
-            </div>
-          </div>
+      <!-- Landing Pages -->
+      <div class="action-card" onclick="scoutQuickAction('landing_pages')" role="button" aria-label="View landing pages" style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3.5rem; height: 3.5rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i data-lucide="globe" style="width: 1.75rem; height: 1.75rem; color: white;"></i>
         </div>
+        <div style="flex-grow: 1;">
+          <h6 style="color: #FFFFFF; font-weight: 600; margin-bottom: 0.25rem;">Landing Pages</h6>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0;">Create and manage marketing pages</p>
+        </div>
+        <i data-lucide="chevron-right" style="color: #64748B; flex-shrink: 0;"></i>
+      </div>
 
-        <!-- Integrations -->
-        <div class="col-md-6 col-lg-4 mb-3">
-          <div class="action-card h-100" onclick="scoutQuickAction('integrations')" role="button" aria-label="View integrations">
-            <div class="action-icon">
-              <i data-lucide="plug" class="text-warning" aria-hidden="true"></i>
-            </div>
-            <div class="action-content">
-              <h6 class="mb-1">Integrations</h6>
-              <p class="text-muted small mb-0">Connect external apps & data</p>
-            </div>
-            <div class="action-arrow">
-              <i data-lucide="chevron-right" aria-hidden="true"></i>
-            </div>
-          </div>
+      <!-- Create Landing Page -->
+      <div class="action-card" onclick="scoutCreateLandingPage()" role="button" aria-label="Create new landing page" style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3.5rem; height: 3.5rem; background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i data-lucide="circle-plus" style="width: 1.75rem; height: 1.75rem; color: rgb(74, 222, 128);"></i>
         </div>
+        <div style="flex-grow: 1;">
+          <h6 style="color: #FFFFFF; font-weight: 600; margin-bottom: 0.25rem;">Create Landing Page</h6>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0;">Build a new marketing page with AI</p>
+        </div>
+        <i data-lucide="chevron-right" style="color: #64748B; flex-shrink: 0;"></i>
+      </div>
 
-        <!-- Data Analysis -->
-        <div class="col-md-6 col-lg-4 mb-3">
-          <div class="action-card h-100" onclick="sendScoutMessage('Analyze my business data')" role="button" aria-label="Analyze business data">
-            <div class="action-icon">
-              <i data-lucide="trending-up" class="text-primary" aria-hidden="true"></i>
-            </div>
-            <div class="action-content">
-              <h6 class="mb-1">Data Analysis</h6>
-              <p class="text-muted small mb-0">Get insights from your data</p>
-            </div>
-            <div class="action-arrow">
-              <i data-lucide="chevron-right" aria-hidden="true"></i>
-            </div>
-          </div>
+      <!-- Contacts -->
+      <div class="action-card" onclick="scoutQuickAction('contacts')" role="button" aria-label="View contacts" style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3.5rem; height: 3.5rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i data-lucide="users" style="width: 1.75rem; height: 1.75rem; color: #22D3EE;"></i>
         </div>
+        <div style="flex-grow: 1;">
+          <h6 style="color: #FFFFFF; font-weight: 600; margin-bottom: 0.25rem;">Contacts</h6>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0;">Manage your customer database</p>
+        </div>
+        <i data-lucide="chevron-right" style="color: #64748B; flex-shrink: 0;"></i>
+      </div>
 
-        <!-- Campaigns -->
-        <div class="col-md-6 col-lg-4 mb-3">
-          <div class="action-card h-100" onclick="scoutQuickAction('campaigns')" role="button" aria-label="View campaigns">
-            <div class="action-icon">
-              <i data-lucide="megaphone" class="text-danger" aria-hidden="true"></i>
-            </div>
-            <div class="action-content">
-              <h6 class="mb-1">Campaigns</h6>
-              <p class="text-muted small mb-0">Email marketing campaigns</p>
-            </div>
-            <div class="action-arrow">
-              <i data-lucide="chevron-right" aria-hidden="true"></i>
-            </div>
-          </div>
+      <!-- Integrations -->
+      <div class="action-card" onclick="scoutQuickAction('integrations')" role="button" aria-label="View integrations" style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3.5rem; height: 3.5rem; background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i data-lucide="plug" style="width: 1.75rem; height: 1.75rem; color: rgb(250, 204, 21);"></i>
         </div>
-        
+        <div style="flex-grow: 1;">
+          <h6 style="color: #FFFFFF; font-weight: 600; margin-bottom: 0.25rem;">Integrations</h6>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0;">Connect external apps & data</p>
+        </div>
+        <i data-lucide="chevron-right" style="color: #64748B; flex-shrink: 0;"></i>
+      </div>
+
+      <!-- Data Analysis -->
+      <div class="action-card" onclick="sendScoutMessage('Analyze my business data')" role="button" aria-label="Analyze business data" style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3.5rem; height: 3.5rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i data-lucide="trending-up" style="width: 1.75rem; height: 1.75rem; color: white;"></i>
+        </div>
+        <div style="flex-grow: 1;">
+          <h6 style="color: #FFFFFF; font-weight: 600; margin-bottom: 0.25rem;">Data Analysis</h6>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0;">Get insights from your data</p>
+        </div>
+        <i data-lucide="chevron-right" style="color: #64748B; flex-shrink: 0;"></i>
+      </div>
+
+      <!-- Campaigns -->
+      <div class="action-card" onclick="scoutQuickAction('campaigns')" role="button" aria-label="View campaigns" style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3.5rem; height: 3.5rem; background: rgba(248, 113, 113, 0.1); border: 1px solid rgba(248, 113, 113, 0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <i data-lucide="megaphone" style="width: 1.75rem; height: 1.75rem; color: rgb(248, 113, 113);"></i>
+        </div>
+        <div style="flex-grow: 1;">
+          <h6 style="color: #FFFFFF; font-weight: 600; margin-bottom: 0.25rem;">Campaigns</h6>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0;">Email marketing campaigns</p>
+        </div>
+        <i data-lucide="chevron-right" style="color: #64748B; flex-shrink: 0;"></i>
       </div>
     </div>
-  </div>
 
-  <!-- Example Prompts -->
-  <div class="row">
-    <div class="col-lg-10 mx-auto">
-      <h6 class="text-muted mb-3 text-center">Or try asking me something like:</h6>
-      <div class="row g-2">
-        <div class="col-md-6 mb-2">
-          <div class="example-prompt" onclick="sendScoutMessage(this.textContent)">
-            "Show me my Stripe revenue for this month"
-          </div>
+    <!-- Example Prompts -->
+    <div style="max-width: 900px; margin: 0 auto 3rem;">
+      <h6 style="color: #94A3B8; text-align: center; margin-bottom: 1.5rem; font-size: 0.875rem;">Or try asking me something like:</h6>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+        <div class="example-prompt" onclick="sendScoutMessage(this.textContent)" style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.5rem; padding: 1rem; cursor: pointer; transition: all 0.2s ease; font-style: italic; color: #94A3B8;">
+          "Show me my Stripe revenue for this month"
         </div>
-        <div class="col-md-6 mb-2">
-          <div class="example-prompt" onclick="sendScoutMessage(this.textContent)">
-            "Create a landing page for my new product"
-          </div>
+        <div class="example-prompt" onclick="sendScoutMessage(this.textContent)" style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.5rem; padding: 1rem; cursor: pointer; transition: all 0.2s ease; font-style: italic; color: #94A3B8;">
+          "Create a landing page for my new product"
         </div>
-        <div class="col-md-6 mb-2">
-          <div class="example-prompt" onclick="sendScoutMessage(this.textContent)">
-            "Analyze my top performing campaigns"
-          </div>
+        <div class="example-prompt" onclick="sendScoutMessage(this.textContent)" style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.5rem; padding: 1rem; cursor: pointer; transition: all 0.2s ease; font-style: italic; color: #94A3B8;">
+          "Analyze my top performing campaigns"
         </div>
-        <div class="col-md-6 mb-2">
-          <div class="example-prompt" onclick="sendScoutMessage(this.textContent)">
-            "Help me segment my contact list"
-          </div>
+        <div class="example-prompt" onclick="sendScoutMessage(this.textContent)" style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.5rem; padding: 1rem; cursor: pointer; transition: all 0.2s ease; font-style: italic; color: #94A3B8;">
+          "Help me segment my contact list"
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Entity Info -->
-  <div class="row mt-5">
-    <div class="col-lg-6 mx-auto">
-      <div class="entity-info text-center">
-        <h6 class="text-muted mb-2">Current Workspace</h6>
-        <div class="d-flex align-items-center justify-content-center">
-          <div class="entity-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
-               style="width: 32px; height: 32px; font-size: 14px;">
-            <%= entity.name.first.upcase %>
-          </div>
-          <span class="fw-medium"><%= entity.name %></span>
+    <!-- Entity Info -->
+    <div style="text-align: center; padding: 1.5rem; background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; max-width: 500px; margin: 0 auto;">
+      <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 1rem;">Current Workspace</p>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 1rem;">
+        <div style="width: 2.5rem; height: 2.5rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.875rem;">
+          <%= entity.name.first.upcase %>
         </div>
+        <span style="color: #FFFFFF; font-weight: 600;"><%= entity.name %></span>
       </div>
     </div>
   </div>
@@ -189,100 +147,40 @@ function sendScoutMessage(message) {
 
 <style>
 .default-canvas {
-  padding: 2rem;
   height: 100%;
   overflow-y: auto;
 }
 
-.canvas-hero {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.action-card {
-  background: var(--scout-secondary, white);
-  border: 1px solid var(--scout-border, #e9ecef);
-  border-radius: 12px;
-  padding: 1.5rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
 .action-card:hover {
-  border-color: var(--scout-primary, #007bff);
+  border-color: #7C3AED !important;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-}
-
-.action-icon {
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.action-content {
-  flex-grow: 1;
-}
-
-.action-content h6 {
-  color: var(--scout-text, #2c3e50);
-}
-
-.action-arrow {
-  font-size: 0.875rem;
-  color: var(--scout-text-muted, #6c757d);
-  flex-shrink: 0;
-}
-
-.example-prompt {
-  background: var(--scout-hover, #f8f9fa);
-  border: 1px solid var(--scout-border, #e9ecef);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-style: italic;
-  color: var(--scout-text-muted, #6c757d);
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.25);
 }
 
 .example-prompt:hover {
-  background: var(--scout-border, #e9ecef);
-  border-color: var(--scout-border-active, #dee2e6);
-  color: var(--scout-text, #495057);
-}
-
-.entity-info {
-  padding: 1rem;
-  background: var(--scout-hover, #f8f9fa);
-  border-radius: 0.5rem;
-}
-
-.entity-avatar {
-  font-weight: 600;
-  flex-shrink: 0;
+  background: #0F172A !important;
+  border-color: #7C3AED !important;
+  color: #94A3B8 !important;
 }
 
 @media (max-width: 768px) {
   .default-canvas {
-    padding: 1rem;
-  }
-  
-  .canvas-hero h4 {
-    font-size: 1.5rem;
-  }
-  
-  .canvas-hero p {
-    font-size: 0.9rem;
-  }
-  
-  .action-card {
-    padding: 1rem;
-  }
-  
-  .action-icon {
-    font-size: 1.25rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
   }
 }
 </style>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
