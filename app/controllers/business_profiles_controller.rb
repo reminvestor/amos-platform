@@ -1,6 +1,7 @@
 class BusinessProfilesController < ApplicationController
   before_action :authenticate_user!
   before_action :set_business_profile
+  layout 'customer_admin'
 
   def edit
     # Show the edit form
