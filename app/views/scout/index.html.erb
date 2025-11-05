@@ -1209,11 +1209,11 @@ document.addEventListener('turbo:load', function() {
     modelSelectorBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       console.log('🧠 Model selector clicked');
-      const isOpen = modelPopover.style.display === 'block';
-      modelPopover.style.display = isOpen ? 'none' : 'block';
-      console.log('🧠 Popover display:', modelPopover.style.display);
+      const isOpen = !modelPopover.classList.contains('d-none');
+      modelPopover.classList.toggle('d-none');
+      console.log('🧠 Popover is now:', isOpen ? 'closed' : 'open');
 
-      // Re-initialize Lucide icons in popover
+      // Re-initialize Lucide icons in popover when opening
       if (!isOpen && typeof lucide !== 'undefined') {
         setTimeout(() => lucide.createIcons(), 10);
       }
@@ -1225,7 +1225,7 @@ document.addEventListener('turbo:load', function() {
   // Close popover when clicking outside
   document.addEventListener('click', (e) => {
     if (modelPopover && !modelPopover.contains(e.target) && e.target !== modelSelectorBtn) {
-      modelPopover.style.display = 'none';
+      modelPopover.classList.add('d-none');
     }
   });
 
