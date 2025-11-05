@@ -396,6 +396,9 @@ export default class extends Controller {
         console.log("📎 No files to upload")
       }
       
+      // Get selected model if available
+      const selectedModel = window.getSelectedModel ? window.getSelectedModel() : null;
+
       // Use streaming endpoint for better timeout handling
       const response = await fetch("/scout/chat_stream", {
         method: "POST",
@@ -403,10 +406,11 @@ export default class extends Controller {
           "Content-Type": "application/json",
           "X-CSRF-Token": this.getCSRFToken()
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: message,
           current_canvas: this.currentCanvas,
-          file_urls: fileUrls
+          file_urls: fileUrls,
+          model: selectedModel
         })
       })
 
