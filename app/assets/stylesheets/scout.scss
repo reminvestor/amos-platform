@@ -1628,3 +1628,78 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Source Attribution Badges - Show where data comes from */
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+  margin-left: 6px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  i {
+    width: 0.85rem;
+    height: 0.85rem;
+    flex-shrink: 0;
+  }
+}
+
+.source-badge.rag {
+  background: #1e3a8a;
+  color: #93c5fd;
+  border: 1px solid #3b82f6;
+}
+
+.source-badge.session {
+  background: #1b4332;
+  color: #86efac;
+  border: 1px solid #22c55e;
+}
+
+.source-badge.uploaded {
+  background: #92400e;
+  color: #fdba74;
+  border: 1px solid #f97316;
+}
+
+.source-badge.generated {
+  background: #581c87;
+  color: #e9d5ff;
+  border: 1px solid #d946ef;
+}
+
+/* Source indicators at end of AI messages */
+.message-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #374151;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.source-label {
+  opacity: 0.7;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+
+  i {
+    width: 0.85rem;
+    height: 0.85rem;
+    flex-shrink: 0;
+  }
+}
+
+.sources-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

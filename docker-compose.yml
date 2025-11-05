@@ -29,6 +29,25 @@ services:
       timeout: 5s
       retries: 5
 
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/localstack/init.d:/docker-entrypoint-initaws.d
+    healthcheck:
+      test: ["CMD", "bash", "-c", "awslocal s3 ls &>/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
   web:
     build:
       context: .
@@ -90,6 +109,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      localstack:
+        condition: service_healthy
     stdin_open: true
     tty: true
 
@@ -127,10 +148,15 @@ services:
       # Optional services
       - MAILGUN_API_KEY=${MAILGUN_API_KEY}
       - MAILGUN_DOMAIN=${MAILGUN_DOMAIN}
+      # S3 (for RAG document storage)
+      - RAG_BUCKET=${RAG_BUCKET}
+      - AWS_S3_ENDPOINT=${AWS_S3_ENDPOINT}
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
     stdin_open: true
     tty: true

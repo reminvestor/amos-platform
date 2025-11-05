@@ -63,7 +63,7 @@ class EntityTest < ActiveSupport::TestCase
     assert entity.save
     assert_nil entity.stripe_customer_id
     assert_nil entity.stripe_subscription_id
-    assert_nil entity.subscription_status
+    assert_equal 'inactive', entity.subscription_status
   end
 
   test "can query entities by subscription status" do
