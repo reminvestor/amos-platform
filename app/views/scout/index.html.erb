@@ -1207,6 +1207,7 @@ document.addEventListener('turbo:load', function() {
 
   if (modelSelectorBtn) {
     modelSelectorBtn.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       console.log('🧠 Model selector clicked');
       const isOpen = !modelPopover.classList.contains('d-none');
