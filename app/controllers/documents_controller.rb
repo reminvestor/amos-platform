@@ -112,16 +112,8 @@ class DocumentsController < ApplicationController
   def download
     @document = @rag_store.rag_documents.find(params[:id])
     
-    # If we have the S3 key, redirect to a presigned URL
-    if @document.s3_key.present?
-      s3_service = AwsS3Service.new
-      presigned_url = s3_service.presigned_url(@document.s3_key, expires_in: 300)
-      redirect_to presigned_url, allow_other_host: true
-    else
-      redirect_to documents_path, alert: "Original file not available."
-    end
-  rescue => e
-    redirect_to documents_path, alert: "Error downloading document: #{e.message}"
+    # For now, just redirect back with message until S3 is properly configured
+    redirect_to documents_path, alert: "Document download will be available once S3 storage is configured."
   end
   
   private
