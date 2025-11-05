@@ -110,11 +110,16 @@
               <span class="match-text">Passwords match</span>
             </span>
           </div>
-          <%= f.password_field :password_confirmation,
-              autocomplete: "new-password",
-              class: "form-control",
-              id: "user_password_confirmation",
-              placeholder: "Confirm your password" %>
+          <div class="password-field-wrapper">
+            <%= f.password_field :password_confirmation,
+                autocomplete: "new-password",
+                class: "form-control",
+                id: "user_password_confirmation",
+                placeholder: "Confirm your password" %>
+            <span class="field-checkmark" id="fieldCheckmark">
+              <i data-lucide="check" class="checkmark-icon"></i>
+            </span>
+          </div>
           <small class="form-text password-match-message" id="passwordMatchMessage" style="display: none;"></small>
         </div>
 
@@ -310,7 +315,38 @@
 
 #user_password_confirmation.password-valid {
   border-color: #10b981;
-  box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.15), 0 0 8px rgba(16, 185, 129, 0.3);
+  animation: successGlow 0.6s ease-out;
+  padding-right: 2.75rem;
+}
+
+/* Checkmark icon on the password field */
+.field-checkmark {
+  position: absolute;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #10b981;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.field-checkmark.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.field-checkmark .checkmark-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3));
 }
 
 .form-control::placeholder {
@@ -336,6 +372,12 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.5rem;
+}
+
+.password-field-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .password-match-indicator {
@@ -371,6 +413,7 @@
 .password-match-message {
   font-size: 0.85rem !important;
   margin-top: 0.25rem;
+  transition: all 0.3s ease;
 }
 
 .password-match-message.error {
@@ -379,6 +422,51 @@
 
 .password-match-message.success {
   color: #10b981;
+  font-weight: 600;
+  font-size: 0.95rem !important;
+  animation: successPulse 0.6s ease-out;
+}
+
+@keyframes successPulse {
+  0% {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pulse animation for success indicator */
+.password-match-indicator.match {
+  animation: indicatorPulse 0.6s ease-out;
+}
+
+@keyframes indicatorPulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes successGlow {
+  0% {
+    box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.15), 0 0 0 rgba(16, 185, 129, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.15), 0 0 8px rgba(16, 185, 129, 0.3);
+  }
 }
 
 .form-check-input {
@@ -520,6 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const passwordMatchIndicator = document.getElementById('passwordMatchIndicator');
   const passwordMatchMessage = document.getElementById('passwordMatchMessage');
   const submitButton = document.getElementById('signup-submit-btn');
+  const fieldCheckmark = document.getElementById('fieldCheckmark');
 
   function checkPasswordMatch() {
     const password = passwordInput.value;
@@ -548,6 +637,7 @@ document.addEventListener('DOMContentLoaded', function() {
       passwordConfirmInput.classList.remove('password-invalid', 'password-valid');
       passwordMatchIndicator.classList.remove('match', 'no-match');
       passwordMatchMessage.style.display = 'none';
+      fieldCheckmark.classList.remove('show');
       submitButton.disabled = false;
       return;
     }
@@ -572,15 +662,14 @@ document.addEventListener('DOMContentLoaded', function() {
         passwordMatchMessage.classList.remove('success');
         passwordMatchMessage.classList.add('error');
         passwordMatchMessage.style.display = 'block';
+        fieldCheckmark.classList.remove('show');
         submitButton.disabled = true;
       } else if (passwordsMatch) {
         // Passwords match and length is valid
         passwordMatchIndicator.classList.remove('no-match');
         passwordMatchIndicator.classList.add('match');
-        passwordMatchMessage.textContent = '✓ Passwords match';
-        passwordMatchMessage.classList.remove('error');
-        passwordMatchMessage.classList.add('success');
-        passwordMatchMessage.style.display = 'block';
+        passwordMatchMessage.style.display = 'none';
+        fieldCheckmark.classList.add('show');
         submitButton.disabled = false;
       } else {
         // Passwords don't match
@@ -590,6 +679,7 @@ document.addEventListener('DOMContentLoaded', function() {
         passwordMatchMessage.classList.remove('success');
         passwordMatchMessage.classList.add('error');
         passwordMatchMessage.style.display = 'block';
+        fieldCheckmark.classList.remove('show');
         submitButton.disabled = true;
       }
     }
@@ -601,7 +691,7 @@ document.addEventListener('DOMContentLoaded', function() {
     passwordConfirmInput.addEventListener('input', checkPasswordMatch);
   }
 
-  // Reinitialize Lucide icons when password match indicator changes
+  // Reinitialize Lucide icons when password match indicator or checkmark changes
   const observer = new MutationObserver(function() {
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
@@ -610,6 +700,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
   if (passwordMatchIndicator) {
     observer.observe(passwordMatchIndicator, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+  }
+
+  if (fieldCheckmark) {
+    observer.observe(fieldCheckmark, {
       attributes: true,
       attributeFilter: ['class']
     });
