@@ -602,20 +602,43 @@ function scoutLoadChart(chartType) {
   }
 }
 
-/* Targeted fixes for white text on white background issues */
+/* Targeted fixes for contrast issues in both light and dark modes */
+.analytics-dashboard h4,
+.analytics-dashboard h5,
+.analytics-dashboard h6 {
+  color: var(--scout-text, #1f2937) !important;
+}
+
+.analytics-dashboard .card-header {
+  background-color: var(--scout-secondary, #f8f9fa) !important;
+}
+
+.analytics-dashboard .card-header h6 {
+  color: var(--scout-text, #1f2937) !important;
+  font-weight: 600;
+}
+
 .analytics-dashboard .activity-title {
-  color: #1f2937 !important;
+  color: var(--scout-text, #1f2937) !important;
   font-weight: 600;
 }
 
 .analytics-dashboard .activity-meta {
-  color: #6b7280 !important;
+  color: var(--scout-text-muted, #6b7280) !important;
+}
+
+.analytics-dashboard .metric-label {
+  color: var(--scout-text-muted, #6c757d) !important;
+}
+
+.analytics-dashboard .campaign-info h6 {
+  color: var(--scout-text, #1f2937) !important;
 }
 
 .analytics-dashboard .btn-outline-secondary {
-  color: #374151 !important;
-  border-color: #d1d5db !important;
-  background-color: #ffffff !important;
+  color: var(--scout-text, #374151) !important;
+  border-color: var(--scout-border, #d1d5db) !important;
+  background-color: var(--scout-secondary, #ffffff) !important;
 }
 
 .analytics-dashboard .btn-outline-secondary:hover {
@@ -631,12 +654,8 @@ function scoutLoadChart(chartType) {
 }
 
 .analytics-dashboard .form-select {
-  color: #1f2937 !important;
-  background-color: #ffffff !important;
-  border-color: #d1d5db !important;
-}
-
-.analytics-dashboard .card-header h6 {
-  color: #1f2937 !important;
+  color: var(--scout-text, #1f2937) !important;
+  background-color: var(--scout-secondary, #ffffff) !important;
+  border-color: var(--scout-border, #d1d5db) !important;
 }
 </style> 
