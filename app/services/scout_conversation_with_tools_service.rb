@@ -70,6 +70,10 @@ class ScoutConversationWithToolsService
       2. get_schema - Get database schema and field information for any object type
       3. create_object - Create basic objects like campaigns, contacts, or groups (for simple data entry)
       4. generate_ai_landing_page - Create sophisticated AI-powered landing pages using multi-agent system (PREFERRED for landing pages)
+      5. list_documents - List all uploaded documents for the user's business (PDFs, images, brand guides, etc.)
+      6. read_document - Read and extract text/content from uploaded documents
+      7. query_document_content - Search documents for specific information or data
+      8. query_rag_store - Query the RAG knowledge base to retrieve relevant documentation
 
       AVAILABLE DATA OBJECTS:
       #{data_objects_info[:available_objects]}
@@ -86,6 +90,12 @@ class ScoutConversationWithToolsService
       2. Use get_schema when you need to understand data structure
       3. Never ask users to provide data that you can retrieve yourself
 
+      DOCUMENT ACCESS - IMPORTANT:
+      - When users ask "show me my documents" or similar → Use list_documents immediately
+      - When users reference uploaded files or brand guidelines → Use list_documents to find them, then read_document
+      - When users ask questions about document content → Use query_document_content or query_rag_store
+      - Users may have uploaded business profiles, brand guidelines, product catalogs, etc.
+
       LANDING PAGE CREATION - CRITICAL:
       - For landing pages: ALWAYS use generate_ai_landing_page (triggers sophisticated multi-agent system)
       - Never use create_object for landing pages - it only creates empty records
@@ -97,6 +107,8 @@ class ScoutConversationWithToolsService
       - "Create a landing page" → generate_ai_landing_page(title, description, page_type)
       - "Create a contact" → create_object(contacts, data)
       - "Create a campaign" → create_object(campaigns, data)
+      - "Show me my documents" → list_documents()
+      - "What's in my brand guide?" → list_documents() then read_document(asset_id)
 
       CONVERSATION STYLE:
       - Be proactive: "Let me check your recent campaigns..."
@@ -106,10 +118,11 @@ class ScoutConversationWithToolsService
 
       CRITICAL RULES:
       1. If users ask for data analysis, marketing performance, or want to create campaigns - USE TOOLS
-      2. Don't ask for information you can get with tools
-      3. Always explain what you're doing: "Let me pull up your campaign data..."
-      4. Provide specific insights from real data, not generic advice
-      5. Be concise but comprehensive - users want actionable insights
+      2. If users ask about documents, files, or uploaded content - USE list_documents and document tools immediately
+      3. Don't ask for information you can get with tools
+      4. Always explain what you're doing: "Let me pull up your campaign data..." or "Let me check your documents..."
+      5. Provide specific insights from real data, not generic advice
+      6. Be concise but comprehensive - users want actionable insights
 
       Remember: You're not just a chatbot - you're a data-powered marketing intelligence agent!
     PROMPT
@@ -199,7 +212,7 @@ class ScoutConversationWithToolsService
       #{system_prompt}
 
       INTELLIGENT TOOL USAGE:
-      You are an intelligent agent who can access real marketing data. When users ask questions that would benefit from actual data, you should use your tools to provide specific, contextual insights.
+      You are an intelligent agent who can access real marketing data AND uploaded documents. When users ask questions that would benefit from actual data or documents, you should use your tools to provide specific, contextual insights.
 
       EXAMPLES OF WHEN TO USE TOOLS:
 
@@ -212,9 +225,16 @@ class ScoutConversationWithToolsService
       User: "Show me my contact engagement"
       You should: Use get_data for contacts with engagement metrics, then analyze_data to identify segments and patterns.
 
+      User: "Show me my documents" or "What documents do I have?"
+      You should: Use list_documents to retrieve all uploaded documents, then describe what you found.
+
+      User: "What's in my brand guide?" or "Can you review my product catalog?"
+      You should: Use list_documents to find the document, then read_document to extract and analyze its content.
+
       TOOL DECISION FRAMEWORK:
-      - If user asks about performance, metrics, or wants to see data → Use get_data + analyze_data
-      - If user wants insights, recommendations, or analysis → Use analyze_data (may need get_data first)
+      - If user asks about performance, metrics, or wants to see data → Use get_data
+      - If user asks about documents, files, uploads → Use list_documents immediately
+      - If user wants to read/analyze document content → Use read_document or query_document_content
       - If user wants to create campaigns, contacts, etc. → Use create_object
       - If user is just chatting or asking general questions → No tools needed
 
@@ -223,7 +243,7 @@ class ScoutConversationWithToolsService
 
       If no tools needed, respond normally and conversationally.
 
-      Your goal: Be a marketing intelligence agent who proactively accesses real data to provide specific, actionable insights rather than generic advice.
+      Your goal: Be a marketing intelligence agent who proactively accesses real data AND documents to provide specific, actionable insights rather than generic advice.
     PROMPT
   end
 
@@ -253,6 +273,21 @@ class ScoutConversationWithToolsService
 
     tool_calls = []
     user_question = extract_user_question_from_context
+
+    # Check for document/file requests first
+    needs_documents = response.match?(/document|file|upload|brand.*guide|catalog/i) || user_question.match?(/document|file|upload|brand|catalog|show.*my/i)
+
+    # Add document listing tool if user is asking about documents
+    if needs_documents
+      tool_calls << {
+        name: "list_documents",
+        parameters: {
+          search_query: extract_document_search_from_question(user_question)
+        }
+      }
+      # Only return document tools if that's what the user asked for
+      return tool_calls if user_question.match?(/show.*document|what.*document|list.*file/i)
+    end
 
     # Analyze Claude's response to understand what data is needed
     needs_campaign_data = response.match?(/campaign|email.*performance|marketing.*data/i) || user_question.match?(/campaign|email|marketing/i)
@@ -424,6 +459,10 @@ class ScoutConversationWithToolsService
           formatted_results << format_analysis_results(result[:result])
         when "create_object"
           formatted_results << format_creation_results(result[:result])
+        when "list_documents"
+          formatted_results << format_document_results(result[:result])
+        when "read_document", "query_document_content"
+          formatted_results << format_document_content_results(result[:result])
         end
       else
         formatted_results << "Error in #{result[:tool_name]}: #{result[:result][:error]}"
@@ -468,6 +507,25 @@ class ScoutConversationWithToolsService
     return "Creation failed" unless result[:success]
 
     "Created: #{result[:message]}"
+  end
+
+  def format_document_results(result)
+    return "No documents found" unless result[:documents]
+
+    documents = result[:documents]
+    summary_parts = ["Documents Found: #{documents.length}"]
+
+    documents.each do |doc|
+      summary_parts << "- #{doc[:title]} (#{doc[:size]}, uploaded #{doc[:uploaded_at]})"
+    end
+
+    summary_parts.join("\n")
+  end
+
+  def format_document_content_results(result)
+    return "Could not read document" unless result[:content]
+
+    "Document Content Retrieved:\n#{result[:content]}"
   end
 
   def format_final_response(claude_response, tool_results)
@@ -545,6 +603,19 @@ class ScoutConversationWithToolsService
       match[1].strip.titleize
     else
       "New Landing Page #{Time.current.strftime('%m/%d')}"
+    end
+  end
+
+  def extract_document_search_from_question(question)
+    # Try to extract a document search query from the user's question
+    if match = question.match(/find.*document.*(?:called|named|about)\s+([^.?!]+)/i)
+      match[1].strip
+    elsif match = question.match(/search.*for\s+([^.?!]+)/i)
+      match[1].strip
+    elsif match = question.match(/show.*me.*my\s+([^.?!]+)/i)
+      match[1].strip
+    else
+      "" # No specific search, will list all documents
     end
   end
 
