@@ -274,6 +274,21 @@ class ScoutConversationWithToolsService
     tool_calls = []
     user_question = extract_user_question_from_context
 
+    # Check for document/file requests first
+    needs_documents = response.match?(/document|file|upload|brand.*guide|catalog/i) || user_question.match?(/document|file|upload|brand|catalog|show.*my/i)
+
+    # Add document listing tool if user is asking about documents
+    if needs_documents
+      tool_calls << {
+        name: "list_documents",
+        parameters: {
+          search_query: extract_document_search_from_question(user_question)
+        }
+      }
+      # Only return document tools if that's what the user asked for
+      return tool_calls if user_question.match?(/show.*document|what.*document|list.*file/i)
+    end
+
     # Analyze Claude's response to understand what data is needed
     needs_campaign_data = response.match?(/campaign|email.*performance|marketing.*data/i) || user_question.match?(/campaign|email|marketing/i)
     needs_contact_data = response.match?(/contact|audience|engagement/i) || user_question.match?(/contact|audience|subscriber/i)
@@ -444,6 +459,10 @@ class ScoutConversationWithToolsService
           formatted_results << format_analysis_results(result[:result])
         when "create_object"
           formatted_results << format_creation_results(result[:result])
+        when "list_documents"
+          formatted_results << format_document_results(result[:result])
+        when "read_document", "query_document_content"
+          formatted_results << format_document_content_results(result[:result])
         end
       else
         formatted_results << "Error in #{result[:tool_name]}: #{result[:result][:error]}"
@@ -488,6 +507,25 @@ class ScoutConversationWithToolsService
     return "Creation failed" unless result[:success]
 
     "Created: #{result[:message]}"
+  end
+
+  def format_document_results(result)
+    return "No documents found" unless result[:documents]
+
+    documents = result[:documents]
+    summary_parts = ["Documents Found: #{documents.length}"]
+
+    documents.each do |doc|
+      summary_parts << "- #{doc[:title]} (#{doc[:size]}, uploaded #{doc[:uploaded_at]})"
+    end
+
+    summary_parts.join("\n")
+  end
+
+  def format_document_content_results(result)
+    return "Could not read document" unless result[:content]
+
+    "Document Content Retrieved:\n#{result[:content]}"
   end
 
   def format_final_response(claude_response, tool_results)
@@ -565,6 +603,19 @@ class ScoutConversationWithToolsService
       match[1].strip.titleize
     else
       "New Landing Page #{Time.current.strftime('%m/%d')}"
+    end
+  end
+
+  def extract_document_search_from_question(question)
+    # Try to extract a document search query from the user's question
+    if match = question.match(/find.*document.*(?:called|named|about)\s+([^.?!]+)/i)
+      match[1].strip
+    elsif match = question.match(/search.*for\s+([^.?!]+)/i)
+      match[1].strip
+    elsif match = question.match(/show.*me.*my\s+([^.?!]+)/i)
+      match[1].strip
+    else
+      "" # No specific search, will list all documents
     end
   end
 
