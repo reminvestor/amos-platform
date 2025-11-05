@@ -2871,32 +2871,41 @@ document.addEventListener('turbo:load', function() {
       attachedFilesContainer.style.display = 'block';
       console.log('📎 Container display after:', attachedFilesContainer.style.display);
     }
-    
+
     const fileDiv = document.createElement('div');
     fileDiv.className = 'attached-file';
-    
+
     const icon = document.createElement('i');
-    icon.className = getFileIcon(file.type);
+    const iconName = getFileIcon(file.type);
+    icon.setAttribute('data-lucide', iconName);
     icon.classList.add('file-icon');
-    
+
     const name = document.createElement('span');
     name.textContent = file.name;
-    
+
     const remove = document.createElement('span');
     remove.className = 'remove';
     remove.innerHTML = '&times;';
     remove.onclick = () => removeFile(file, fileDiv);
-    
+
     fileDiv.appendChild(icon);
     fileDiv.appendChild(name);
     fileDiv.appendChild(remove);
     attachedFilesContainer.appendChild(fileDiv);
+
+    // Render Lucide icon
+    if (typeof lucide !== 'undefined') {
+      requestAnimationFrame(() => {
+        lucide.createIcons({ target: fileDiv });
+      });
+    }
   }
-  
+
   function getFileIcon(fileType) {
     if (fileType.startsWith('image/')) return 'image';
-    if (fileType === 'application/pdf') return 'file-text';
+    if (fileType === 'application/pdf') return 'file-pdf';
     if (fileType.includes('word') || fileType.includes('document')) return 'file-text';
+    if (fileType.includes('sheet') || fileType.includes('excel') || fileType === 'text/csv') return 'table';
     return 'file';
   }
   

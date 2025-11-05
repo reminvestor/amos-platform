@@ -1007,7 +1007,9 @@
 }
 
 .attached-file .file-icon {
-  font-size: 1.2rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  flex-shrink: 0;
 }
 
 .attached-file .remove {
