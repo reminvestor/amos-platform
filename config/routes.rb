@@ -135,6 +135,13 @@ Rails.application.routes.draw do
         post :generate
       end
     end
+    
+    # Document store for RAG
+    resources :documents, only: [ :index, :new, :create, :destroy ] do
+      member do
+        get :download
+      end
+    end
     resources :email_templates do
       member do
         post :test_email
