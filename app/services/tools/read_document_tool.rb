@@ -132,6 +132,7 @@ module Tools
           content_type: content_type,
           character_count: text_content.length,
           truncated: text_content.length >= max_length,
+          source: 'uploaded',  # Document from uploaded files
           message: "Successfully extracted #{text_content.length} characters from #{filename}"
         )
         
