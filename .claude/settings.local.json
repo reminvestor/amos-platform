@@ -17,7 +17,8 @@
       "Bash(git fetch:*)",
       "Bash(git merge:*)",
       "Bash(git stash:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(rails test:system:*)"
     ],
     "deny": [],
     "ask": []
