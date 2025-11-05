@@ -1,5 +1,4 @@
-class Entity::ObservabilityController < ApplicationController
-  before_action :authenticate_user!
+class Entity::ObservabilityController < Entity::BaseController
 
   def index
     @timeframe = params[:timeframe] || "30d"

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AMOS - <%= @entity&.name || 'Marketing Platform' %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <link rel="stylesheet" href="/assets/admin_dark.css" data-turbo-track="reload">
+    <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+
+  <body class="admin-dark">
+    <% if current_user %>
+      <%# Left Sidebar Navigation %>
+      <aside class="admin-sidebar" id="customerSidebar">
+        <%# Logo with Hamburger %>
+        <div class="sidebar-logo">
+          <div class="logo-icon">
+            <div style="width: 2rem; height: 2rem; border-radius: 0.5rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="sparkles" class="icon-lg" style="color: white;"></i>
+            </div>
+          </div>
+          <span class="logo-text">AMOS</span>
+          <button class="hamburger-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+            <i data-lucide="menu"></i>
+          </button>
+        </div>
+
+        <%# Main Navigation %>
+        <nav>
+          <%# Dashboard %>
+          <%= link_to advanced_mode_path, class: "nav-item #{'active' if request.path == advanced_mode_path}" do %>
+            <i data-lucide="layout-dashboard"></i>
+            <span>Dashboard</span>
+          <% end %>
+
+          <%# Marketing Section %>
+          <div class="nav-section-header">
+            <span>Marketing</span>
+          </div>
+
+          <%= link_to campaigns_path, class: "nav-item #{'active' if controller_name == 'campaigns'}" do %>
+            <i data-lucide="mail"></i>
+            <span>Campaigns</span>
+          <% end %>
+
+          <%= link_to email_templates_path, class: "nav-item #{'active' if controller_name == 'email_templates'}" do %>
+            <i data-lucide="file-text"></i>
+            <span>Email Templates</span>
+          <% end %>
+
+          <%= link_to landing_pages_path, class: "nav-item #{'active' if controller_name == 'landing_pages'}" do %>
+            <i data-lucide="layout"></i>
+            <span>Landing Pages</span>
+          <% end %>
+
+          <%# Contacts Section %>
+          <div class="nav-section-header">
+            <span>Contacts</span>
+          </div>
+
+          <%= link_to contacts_path, class: "nav-item #{'active' if controller_name == 'contacts'}" do %>
+            <i data-lucide="users"></i>
+            <span>Contacts</span>
+          <% end %>
+
+          <%= link_to contact_groups_path, class: "nav-item #{'active' if controller_name == 'contact_groups'}" do %>
+            <i data-lucide="users-2"></i>
+            <span>Contact Groups</span>
+          <% end %>
+
+          <%# Integrations Section %>
+          <div class="nav-section-header">
+            <span>Integrations</span>
+          </div>
+
+          <%= link_to social_media_accounts_path, class: "nav-item #{'active' if controller_name == 'social_media_accounts'}" do %>
+            <i data-lucide="share-2"></i>
+            <span>Social Media</span>
+          <% end %>
+
+          <%= link_to connections_path, class: "nav-item #{'active' if controller_name == 'connections'}" do %>
+            <i data-lucide="plug"></i>
+            <span>Connections</span>
+          <% end %>
+
+          <%# Entity Settings - Only for Entity Admins %>
+          <% if current_user.has_role?(:admin) || current_user.has_role?(:owner) %>
+            <div class="nav-section-header">
+              <span>Settings</span>
+            </div>
+
+            <%= link_to entity_users_path, class: "nav-item #{'active' if request.path.start_with?('/entity/users')}" do %>
+              <i data-lucide="user-cog"></i>
+              <span>Team Members</span>
+            <% end %>
+
+            <%= link_to entity_policies_path, class: "nav-item #{'active' if controller_name == 'policies'}" do %>
+              <i data-lucide="shield"></i>
+              <span>Policies</span>
+            <% end %>
+
+            <%= link_to entity_privacy_path, class: "nav-item #{'active' if controller_name == 'privacy'}" do %>
+              <i data-lucide="lock"></i>
+              <span>Privacy Settings</span>
+            <% end %>
+
+            <%= link_to entity_observability_path, class: "nav-item #{'active' if request.path == '/entity/observability'}" do %>
+              <i data-lucide="bar-chart-3"></i>
+              <span>Usage & Billing</span>
+            <% end %>
+          <% end %>
+        </nav>
+
+        <%# Bottom Actions %>
+        <div class="sidebar-bottom">
+          <button data-theme-toggle class="nav-item w-100 text-start border-0 bg-transparent" aria-label="Toggle light/dark theme">
+            <i data-theme-icon data-lucide="moon" aria-hidden="true"></i>
+            <span>Theme</span>
+          </button>
+
+          <%= link_to chat_mode_path, class: "nav-item" do %>
+            <i data-lucide="message-circle"></i>
+            <span>Chat Mode</span>
+          <% end %>
+
+          <div class="nav-item" style="padding: 0.75rem 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div style="width: 2rem; height: 2rem; border-radius: 50%; background: #2D3548; display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="user" style="width: 1rem; height: 1rem; color: #94A3B8;"></i>
+              </div>
+              <span style="font-size: 0.875rem;">
+                <%= current_user.first_name %><br>
+                <span style="color: #64748B; font-size: 0.75rem;"><%= current_user.entity&.name %></span>
+              </span>
+            </div>
+          </div>
+
+          <%= button_to destroy_user_session_path, method: :delete, class: "nav-item", form: { data: { turbo: false } } do %>
+            <i data-lucide="log-out"></i>
+            <span>Sign Out</span>
+          <% end %>
+        </div>
+      </aside>
+
+      <%# Main Content Area %>
+      <div class="admin-content">
+        <%= yield %>
+      </div>
+
+    <% else %>
+      <!-- Not logged in -->
+      <%= yield %>
+    <% end %>
+
+    <!-- Initialize Lucide Icons and Sidebar Toggle -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+        initSidebarToggle();
+        initThemeToggle();
+      });
+
+      document.addEventListener('turbo:load', () => {
+        lucide.createIcons();
+        initSidebarToggle();
+        initThemeToggle();
+      });
+
+      function initSidebarToggle() {
+        const sidebar = document.getElementById('customerSidebar');
+        const toggle = document.getElementById('sidebarToggle');
+
+        if (!sidebar || !toggle) return;
+
+        // Check saved state
+        const isCollapsed = localStorage.getItem('customerSidebarCollapsed') === 'true';
+        if (isCollapsed) {
+          sidebar.classList.add('collapsed');
+        }
+
+        // Toggle on click
+        toggle.addEventListener('click', () => {
+          sidebar.classList.toggle('collapsed');
+          localStorage.setItem('customerSidebarCollapsed', sidebar.classList.contains('collapsed'));
+
+          // Re-initialize icons after DOM changes
+          setTimeout(() => lucide.createIcons(), 100);
+        });
+      }
+
+      function initThemeToggle() {
+        const themeToggle = document.querySelector('[data-theme-toggle]');
+        const themeIcon = document.querySelector('[data-theme-icon]');
+        
+        if (!themeToggle || !themeIcon) return;
+
+        // For admin dark theme, we'll just show the moon icon
+        // Theme switching could be implemented later if needed
+        themeIcon.setAttribute('data-lucide', 'moon');
+        lucide.createIcons();
+      }
+    </script>
+  </body>
+</html>
