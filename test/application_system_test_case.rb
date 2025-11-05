@@ -1,7 +1,22 @@
 require "test_helper"
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
-  driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1400 ]
+  # Don't parallelize system tests - they need exclusive browser access
+  parallelize(workers: 1)
+
+  # Configure headless Chrome with proper CI environment flags
+  driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1400 ] do |options|
+    # Add Chrome options for stable headless operation in CI environments
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-dev-shm-usage') # Disable /dev/shm to avoid memory issues
+    options.add_argument('--disable-software-rasterizer')
+    options.add_argument('--disable-extensions')
+    options.add_argument('--disable-plugins')
+
+    # Increase timeouts for slower CI environments
+    options.add_argument('--disable-blink-features=AutomationControlled')
+  end
 
   # Helper method for signing in users
   def sign_in(user)
