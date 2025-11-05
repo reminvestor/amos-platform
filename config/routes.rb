@@ -257,6 +257,9 @@ Rails.application.routes.draw do
         delete "disconnect/:id", to: "social_media_accounts#disconnect", as: :disconnect
       end
     end
+    
+    # Alias for integrations (points to social_media_accounts controller)
+    get "integrations", to: "social_media_accounts#index", as: :customer_integrations
 
     # Crawler Jobs Management
     resources :crawler_jobs, only: [ :index, :new, :create, :show ] do
