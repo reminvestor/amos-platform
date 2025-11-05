@@ -95,3 +95,4 @@ class AiUsageLog < ApplicationRecord
   end
 end
 
+
