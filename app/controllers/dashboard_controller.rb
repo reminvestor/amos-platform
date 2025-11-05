@@ -1,7 +1,7 @@
 class DashboardController < ApplicationController
   before_action :authenticate_user!
   before_action :set_current_admin
-  layout 'admin'
+  layout 'customer_admin'
 
   def index
     @entity = current_entity
