@@ -852,9 +852,12 @@ export default class extends Controller {
       // Add to the message
       lastAiMessage.appendChild(sourcesContainer)
 
-      // Render lucide icons
+      // Render lucide icons - need to target the specific container
       if (typeof lucide !== 'undefined') {
-        lucide.createIcons()
+        // Use requestAnimationFrame to ensure DOM is updated before creating icons
+        requestAnimationFrame(() => {
+          lucide.createIcons({ target: sourcesContainer })
+        })
       }
 
       console.log("✅ Source badges rendered successfully with icons")
