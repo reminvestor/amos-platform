@@ -7,11 +7,94 @@
     <%= csp_meta_tag %>
 
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-    <link rel="stylesheet" href="/assets/admin_dark.css" data-turbo-track="reload">
-    <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+        <link rel="stylesheet" href="/assets/admin_dark.css" data-turbo-track="reload">
+        <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
 
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+        <!-- Lucide Icons -->
+        <script src="https://unpkg.com/lucide@latest"></script>
+
+        <style>
+          /* User dropdown styling */
+          .user-dropdown-btn:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+          }
+          
+          .user-dropdown-btn:focus {
+            outline: none;
+            box-shadow: none;
+          }
+          
+          .admin-sidebar .dropdown-menu {
+            background: #0F172A;
+            border: 1px solid #1E293B;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            min-width: 220px;
+            margin-bottom: 0.5rem;
+          }
+          
+          .admin-sidebar .dropdown-item {
+            color: #94A3B8;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s ease;
+          }
+          
+          .admin-sidebar .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            text-decoration: none;
+          }
+          
+          .admin-sidebar .dropdown-item.text-danger {
+            color: #EF4444;
+          }
+          
+          .admin-sidebar .dropdown-item.text-danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: #EF4444;
+          }
+          
+          .admin-sidebar .dropdown-divider {
+            border-color: #1E293B;
+            margin: 0.5rem 0;
+          }
+          
+          /* Collapsed state adjustments */
+          .admin-sidebar.collapsed .user-dropdown-btn span,
+          .admin-sidebar.collapsed .user-dropdown-btn > div > div {
+            display: none;
+          }
+          
+          .admin-sidebar.collapsed .user-dropdown-btn {
+            justify-content: center;
+            padding: 0.75rem 0;
+          }
+          
+          .admin-sidebar.collapsed .dropdown-menu {
+            position: absolute;
+            left: 100%;
+            bottom: 0;
+            margin-left: 0.5rem;
+            margin-bottom: 0;
+          }
+          
+          /* Ensure hamburger button is styled correctly */
+          .hamburger-toggle {
+            background: transparent;
+            border: none;
+            color: #94A3B8;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+          
+          .hamburger-toggle:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-radius: 0.375rem;
+          }
+        </style>
   </head>
 
   <body class="admin-dark">
@@ -128,22 +211,58 @@
             <span>Chat Mode</span>
           <% end %>
 
-          <div class="nav-item" style="padding: 0.75rem 1rem;">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-              <div style="width: 2rem; height: 2rem; border-radius: 50%; background: #2D3548; display: flex; align-items: center; justify-content: center;">
-                <i data-lucide="user" style="width: 1rem; height: 1rem; color: #94A3B8;"></i>
+          <div class="dropdown dropup">
+            <button class="nav-item user-dropdown-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 100%; border: none; background: transparent; text-align: left;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="width: 2rem; height: 2rem; border-radius: 50%; background: #2D3548; display: flex; align-items: center; justify-content: center;">
+                  <i data-lucide="user" style="width: 1rem; height: 1rem; color: #94A3B8;"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-size: 0.875rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <%= current_user.first_name %>
+                  </div>
+                  <div style="color: #64748B; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <%= current_user.entity&.name %>
+                  </div>
+                </div>
+                <i data-lucide="chevron-up" style="width: 1rem; height: 1rem; color: #94A3B8;"></i>
               </div>
-              <span style="font-size: 0.875rem;">
-                <%= current_user.first_name %><br>
-                <span style="color: #64748B; font-size: 0.75rem;"><%= current_user.entity&.name %></span>
-              </span>
-            </div>
+            </button>
+            
+            <ul class="dropdown-menu">
+              <%= link_to edit_user_path(current_user), class: "dropdown-item" do %>
+                <i data-lucide="user" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
+                View Profile
+              <% end %>
+              
+              <%= link_to edit_business_profile_path, class: "dropdown-item" do %>
+                <i data-lucide="briefcase" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
+                Business Settings
+              <% end %>
+              
+              <% if current_user.entity_admin? %>
+                <%= link_to entity_observability_path, class: "dropdown-item" do %>
+                  <i data-lucide="info" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
+                  Entity Info & Usage
+                <% end %>
+              <% end %>
+              
+              <% if current_user.admin? %>
+                <li><hr class="dropdown-divider"></li>
+                <%= link_to admin_dashboard_path, class: "dropdown-item" do %>
+                  <i data-lucide="shield" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
+                  Admin Portal
+                <% end %>
+              <% end %>
+              
+              <li><hr class="dropdown-divider"></li>
+              
+              <%= button_to destroy_user_session_path, method: :delete, class: "dropdown-item text-danger", form: { data: { turbo: false } } do %>
+                <i data-lucide="log-out" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
+                Sign Out
+              <% end %>
+            </ul>
           </div>
-
-          <%= button_to destroy_user_session_path, method: :delete, class: "nav-item", form: { data: { turbo: false } } do %>
-            <i data-lucide="log-out"></i>
-            <span>Sign Out</span>
-          <% end %>
         </div>
       </aside>
 
@@ -175,7 +294,14 @@
         const sidebar = document.getElementById('customerSidebar');
         const toggle = document.getElementById('sidebarToggle');
 
-        if (!sidebar || !toggle) return;
+        if (!sidebar || !toggle) {
+          console.error('Sidebar or toggle not found:', { sidebar, toggle });
+          return;
+        }
+
+        // Remove any existing event listeners to prevent duplicates
+        const newToggle = toggle.cloneNode(true);
+        toggle.parentNode.replaceChild(newToggle, toggle);
 
         // Check saved state
         const isCollapsed = localStorage.getItem('customerSidebarCollapsed') === 'true';
@@ -184,14 +310,14 @@
         }
 
         // Toggle on click
-        toggle.addEventListener('click', () => {
+        newToggle.addEventListener('click', (e) => {
+          e.preventDefault();
           sidebar.classList.toggle('collapsed');
           localStorage.setItem('customerSidebarCollapsed', sidebar.classList.contains('collapsed'));
 
           // Re-initialize icons after DOM changes
           setTimeout(() => lucide.createIcons(), 100);
         });
-        
       }
 
       function initThemeToggle() {
