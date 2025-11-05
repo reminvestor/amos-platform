@@ -107,6 +107,10 @@ class ScoutController < ApplicationController
 
       Rails.logger.info "Scout: Got response - tools_used: #{response[:tools_used]}, success_count: #{response[:success_count]}"
 
+      # Extract source information from tools_used (specifically read_document calls)
+      sources = extract_response_sources(response[:tools_used])
+      Rails.logger.info "📚 Extracted sources: #{sources.inspect}" if sources.any?
+
       # Save Scout's response
       save_scout_message("assistant", response[:message])
 
@@ -117,6 +121,7 @@ class ScoutController < ApplicationController
         tools_list: response[:tools_list],
         success_count: response[:success_count],
         error_count: response[:error_count],
+        sources: sources,
         canvas: response[:canvas]
       }
 
@@ -439,6 +444,9 @@ class ScoutController < ApplicationController
       stream_update("📋 Detecting task mode and preparing workflow...")
       interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id])
 
+      # Track sources used in tool responses
+      sources_used = {}
+
       # Set up progress callback for streaming updates
       interactive_service.on_progress do |progress_data|
         # Handle both string and hash formats
@@ -492,6 +500,14 @@ class ScoutController < ApplicationController
             # Tool complete - just log, don't spam chat
             tool_name = progress_data[:tool_name] || progress_data[:name]
             Rails.logger.info "Tool complete: #{tool_name}"
+
+            # Track source if provided in tool response
+            if progress_data[:source]
+              source_type = progress_data[:source]
+              sources_used[source_type] ||= 0
+              sources_used[source_type] += 1
+              Rails.logger.info "📊 Source tracked: #{source_type} (total: #{sources_used[source_type]})"
+            end
             # Don't show tool complete messages - too noisy
           when 'planner_progress'
             # Stream planner reasoning as transient messages
@@ -630,6 +646,12 @@ class ScoutController < ApplicationController
           error_count: 0
         }
 
+        # Add source attribution if sources were tracked
+        if sources_used.any?
+          final_response[:sources] = sources_used.map { |source, count| { type: source, count: count } }
+          Rails.logger.info "📊 Response included sources: #{final_response[:sources]}"
+        end
+
         # Check if workflow approval is needed
         if result[:workflow_approval_needed]
           final_response[:workflow_approval] = {
@@ -651,6 +673,11 @@ class ScoutController < ApplicationController
           success_count: 0,
           error_count: 1
         }
+
+        # Add source attribution even in error case
+        if sources_used.any?
+          final_response[:sources] = sources_used.map { |source, count| { type: source, count: count } }
+        end
       end
 
       # Stream final response and close
@@ -2109,6 +2136,39 @@ class ScoutController < ApplicationController
   end
 
   private
+
+  def extract_response_sources(tools_used)
+    # Extract source information from tools_used array
+    # Specifically looks for read_document tool calls which indicate RAG/document sources
+    return [] unless tools_used.is_a?(Array)
+
+    sources = []
+
+    tools_used.each do |tool|
+      # Handle different tool format variations
+      tool_name = case tool
+                  when Hash
+                    tool[:name] || tool['name']
+                  when String
+                    tool
+                  else
+                    nil
+                  end
+
+      next unless tool_name
+
+      # If read_document tool was used, mark as document source
+      if tool_name.to_s.include?('read_document')
+        sources << {
+          type: 'documents',
+          count: 1
+        }
+      end
+    end
+
+    # Remove duplicates and return
+    sources.uniq { |s| s[:type] }
+  end
 
   def calculate_document_status(asset)
     # Find RagStore and RagDocument for this asset
