@@ -704,7 +704,12 @@ export default class extends Controller {
         // Clear streaming content for next message
         this.currentStreamingContent = undefined
         this.streamingMessageElement = null
-        
+
+        // Render source attribution badges if sources are available
+        if (finalResponseData.sources && finalResponseData.sources.length > 0) {
+          this.renderSourceBadges(finalResponseData.sources)
+        }
+
         // Check if Scout suggested a canvas to load
         if (finalResponseData.canvas_type && finalResponseData.canvas_type !== 'conversation') {
           console.log(`🎨 Scout suggested canvas: ${finalResponseData.canvas_type}`)
@@ -771,13 +776,90 @@ export default class extends Controller {
     // Re-enable via DOM elements
     const messageInput = document.getElementById('message-input')
     const sendButton = document.getElementById('send-button')
-    
+
     if (messageInput) {
       messageInput.disabled = false
       messageInput.focus()
     }
     if (sendButton) {
       sendButton.disabled = false
+    }
+  }
+
+  // Render source attribution badges below the AI message
+  renderSourceBadges(sources) {
+    try {
+      console.log("📊 Rendering source badges:", sources)
+
+      // Find the last AI message
+      const messages = this.chatMessagesTarget.querySelectorAll('.message')
+      let lastAiMessage = null
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].classList.contains('ai-message')) {
+          lastAiMessage = messages[i]
+          break
+        }
+      }
+
+      if (!lastAiMessage) {
+        console.warn("⚠️ No AI message found to attach source badges")
+        return
+      }
+
+      // Create source badges container
+      const sourcesContainer = document.createElement('div')
+      sourcesContainer.className = 'message-sources'
+
+      // Add label with icon
+      const labelContainer = document.createElement('span')
+      labelContainer.className = 'source-label'
+      labelContainer.innerHTML = '<i data-lucide="book-open" class="source-label-icon" aria-hidden="true"></i> Data sources:'
+      sourcesContainer.appendChild(labelContainer)
+
+      // Create badges list
+      const badgesList = document.createElement('div')
+      badgesList.className = 'sources-list'
+
+      // Icon map for different source types
+      const iconMap = {
+        documents: 'file-text',
+        rag: 'book',
+        session: 'message-square',
+        uploaded: 'upload',
+        generated: 'sparkles'
+      }
+
+      // Add a badge for each source
+      sources.forEach(source => {
+        const badge = document.createElement('span')
+        badge.className = `source-badge ${source.type}`
+
+        // Get appropriate icon for source type
+        const iconName = iconMap[source.type] || 'file'
+
+        // Format the badge text with source name and count
+        const sourceLabel = source.type.charAt(0).toUpperCase() + source.type.slice(1)
+        const countText = source.count > 1 ? ` (${source.count})` : ''
+
+        // Create badge content with icon and text
+        badge.innerHTML = `<i data-lucide="${iconName}" class="source-badge-icon" aria-hidden="true"></i> ${sourceLabel}${countText}`
+
+        badgesList.appendChild(badge)
+      })
+
+      sourcesContainer.appendChild(badgesList)
+
+      // Add to the message
+      lastAiMessage.appendChild(sourcesContainer)
+
+      // Render lucide icons
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons()
+      }
+
+      console.log("✅ Source badges rendered successfully with icons")
+    } catch (error) {
+      console.error("❌ Error rendering source badges:", error)
     }
   }
 
