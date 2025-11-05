@@ -163,10 +163,6 @@
             <i data-lucide="image"></i>
             <span>Image Library</span>
           <% end %>
-          <%= link_to documents_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'documents'}" do %>
-            <i data-lucide="file-text"></i>
-            <span>Document Store</span>
-          <% end %>
 
           <%# Entity Settings - Only for Entity Admins %>
           <% if current_user.entity_admin? %>
