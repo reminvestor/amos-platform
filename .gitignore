@@ -95,3 +95,7 @@ docs/notes/
 NOTES.md
 TODO.md
 .claude/settings.local.json
+
+# Security audit reports (generated output)
+security_audit_report*.txt
+security_report*.txt
