@@ -1,321 +1,278 @@
-<div class="scout-canvas analytics-dashboard">
-  <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
+<div class="scout-canvas analytics-dashboard" style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem;">
+  <!-- Page Header -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
     <div>
-      <h4 class="mb-1">
-        <i data-lucide="bar-chart" class="text-primary me-2"></i>
+      <h1 style="color: #FFFFFF; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+        <i data-lucide="bar-chart-3" style="width: 2rem; height: 2rem;"></i>
         Analytics Dashboard
-      </h4>
-      <p class="text-muted mb-0">Marketing performance insights and metrics</p>
+      </h1>
+      <p style="color: #94A3B8; margin-bottom: 0;">Marketing performance insights and metrics</p>
     </div>
-    <div class="d-flex gap-2">
-      <select class="form-select" id="dateRangeFilter" style="width: auto;">
-        <option value="7">Last 7 days</option>
-        <option value="30" selected>Last 30 days</option>
-        <option value="90">Last 90 days</option>
-        <option value="365">Last year</option>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+      <select class="form-select" id="dateRangeFilter" style="width: auto; background: #1A1F35; border: 1px solid #1E293B; color: #FFFFFF; border-radius: 0.5rem; padding: 0.5rem;">
+        <option value="7" style="background: #1A1F35; color: #FFFFFF;">Last 7 days</option>
+        <option value="30" selected style="background: #1A1F35; color: #FFFFFF;">Last 30 days</option>
+        <option value="90" style="background: #1A1F35; color: #FFFFFF;">Last 90 days</option>
+        <option value="365" style="background: #1A1F35; color: #FFFFFF;">Last year</option>
       </select>
-      <button class="btn btn-outline-secondary" onclick="scoutExportReport()">
-        <i data-lucide="download" class="me-1"></i>
+      <button onclick="scoutExportReport()" style="background: transparent; border: 1px solid #1E293B; color: #94A3B8; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-weight: 500; transition: all 0.2s ease;">
+        <i data-lucide="download" style="width: 1rem; height: 1rem;"></i>
         Export
       </button>
-      <button class="btn btn-primary" onclick="scoutCustomReport()">
-        <i data-lucide="trending-up" class="me-1"></i>
+      <button onclick="scoutCustomReport()" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); border: none; color: #FFFFFF; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-weight: 500; transition: all 0.2s ease;">
+        <i data-lucide="trending-up" style="width: 1rem; height: 1rem;"></i>
         Custom Report
       </button>
     </div>
   </div>
-  
-  <!-- Key Metrics Overview -->
-  <div class="row mb-4">
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="metric-card">
-        <div class="metric-icon bg-primary bg-opacity-10">
-          <i data-lucide="mail" class="text-primary"></i>
-        </div>
-        <div class="metric-content">
-          <h3 class="metric-number">
-            <%= number_with_delimiter(analytics_data[:total_emails_sent]) %>
-          </h3>
-          <p class="metric-label">Total Emails Sent</p>
-          <span class="metric-change positive">
-            <i data-lucide="arrow-up"></i> +12.5%
-          </span>
-        </div>
-      </div>
-    </div>
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="metric-card">
-        <div class="metric-icon bg-success bg-opacity-10">
-          <i data-lucide="eye" class="text-success"></i>
-        </div>
-        <div class="metric-content">
-          <h3 class="metric-number">
-            <%= analytics_data[:avg_open_rate] %>%
-          </h3>
-          <p class="metric-label">Average Open Rate</p>
-          <span class="metric-change <%= analytics_data[:avg_open_rate] > 20 ? 'positive' : 'negative' %>">
-            <i data-lucide="arrow-<%= analytics_data[:avg_open_rate] > 20 ? 'up' : 'down' %>"></i>
-            <%= analytics_data[:avg_open_rate] > 20 ? '+' : '-' %>2.1%
-          </span>
-        </div>
-      </div>
-    </div>
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="metric-card">
-        <div class="metric-icon bg-info bg-opacity-10">
-          <i data-lucide="users" class="text-info"></i>
-        </div>
-        <div class="metric-content">
-          <h3 class="metric-number">
-            <%= number_with_delimiter(analytics_data[:recent_contacts]) %>
-          </h3>
-          <p class="metric-label">New Contacts (30d)</p>
-          <span class="metric-change positive">
-            <i data-lucide="arrow-up"></i> +8.3%
-          </span>
-        </div>
-      </div>
-    </div>
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="metric-card">
-        <div class="metric-icon bg-warning bg-opacity-10">
-          <i data-lucide="globe" class="text-warning"></i>
-        </div>
-        <div class="metric-content">
-          <h3 class="metric-number">
-            <%= analytics_data[:landing_pages] %>
-          </h3>
-          <p class="metric-label">Active Landing Pages</p>
-          <span class="metric-change neutral">
-            <i data-lucide="minus"></i> 0%
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Charts Row -->
-  <div class="row mb-4">
-    <!-- Campaign Performance Chart -->
-    <div class="col-lg-8 mb-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-          <h6 class="mb-0">
-            <i data-lucide="trending-up" class="me-2"></i>
-            Campaign Performance Over Time
-          </h6>
-          <div class="btn-group btn-group-sm" role="group">
-            <button type="button" class="btn btn-outline-secondary active" onclick="scoutChangeChart('emails')">
-              Emails
-            </button>
-            <button type="button" class="btn btn-outline-secondary" onclick="scoutChangeChart('opens')">
-              Opens
-            </button>
-            <button type="button" class="btn btn-outline-secondary" onclick="scoutChangeChart('clicks')">
-              Clicks
-            </button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="chart-container" style="height: 300px;">
-            <canvas id="performanceChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Top Campaigns -->
-    <div class="col-lg-4 mb-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light">
-          <h6 class="mb-0">
-            <i data-lucide="trophy" class="me-2"></i>
-            Top Performing Campaigns
-          </h6>
-        </div>
-        <div class="card-body">
-          <% analytics_data[:campaigns].limit(5).each_with_index do |campaign, index| %>
-            <% 
-              sent = campaign.mailgun_stats&.dig('sent') || 0
-              opened = campaign.mailgun_stats&.dig('opened') || 0
-              open_rate = sent > 0 ? (opened.to_f / sent * 100) : 0
-            %>
-            <div class="campaign-item <%= 'mb-3' unless index == 4 %>">
-              <div class="d-flex justify-content-between align-items-start">
-                <div class="campaign-info flex-grow-1">
-                  <h6 class="mb-1">
-                    <%= campaign.name.present? ? truncate(campaign.name, length: 25) : "Campaign #{campaign.id}" %>
-                  </h6>
-                  <small class="text-muted">
-                    <%= number_with_delimiter(sent) %> sent
-                  </small>
-                </div>
-                <div class="campaign-metric text-end">
-                  <div class="metric-badge <%= open_rate > 25 ? 'bg-success' : open_rate > 15 ? 'bg-warning' : 'bg-danger' %>">
-                    <%= number_with_precision(open_rate, precision: 1) %>%
-                  </div>
-                </div>
-              </div>
-              <div class="progress mt-2" style="height: 4px;">
-                <div class="progress-bar <%= open_rate > 25 ? 'bg-success' : open_rate > 15 ? 'bg-warning' : 'bg-danger' %>" 
-                     style="width: <%= [open_rate, 100].min %>%"></div>
-              </div>
-            </div>
-          <% end %>
-          <button class="btn btn-sm btn-outline-primary w-100 mt-2" onclick="scoutViewAllCampaigns()">
-            View All Campaigns
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Additional Analytics -->
-  <div class="row">
-    <!-- Contact Growth -->
-    <div class="col-lg-6 mb-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light">
-          <h6 class="mb-0">
-            <i data-lucide="user-plus" class="me-2"></i>
-            Contact Growth
-          </h6>
-        </div>
-        <div class="card-body">
-          <div class="chart-container" style="height: 200px;">
-            <canvas id="contactGrowthChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Email Performance Breakdown -->
-    <div class="col-lg-6 mb-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light">
-          <h6 class="mb-0">
-            <i data-lucide="pie-chart" class="me-2"></i>
-            Email Performance Breakdown
-          </h6>
-        </div>
-        <div class="card-body">
-          <div class="row text-center">
-            <div class="col-4">
-              <div class="metric-circle delivered">
-                <div class="metric-circle-value">85%</div>
-                <div class="metric-circle-label">Delivered</div>
-              </div>
-            </div>
-            <div class="col-4">
-              <div class="metric-circle opened">
-                <div class="metric-circle-value"><%= analytics_data[:avg_open_rate] %>%</div>
-                <div class="metric-circle-label">Opened</div>
-              </div>
-            </div>
-            <div class="col-4">
-              <div class="metric-circle clicked">
-                <div class="metric-circle-value">4.2%</div>
-                <div class="metric-circle-label">Clicked</div>
-              </div>
-            </div>
-          </div>
-          <div class="mt-3">
-            <small class="text-muted">
-              <i data-lucide="info" class="me-1"></i>
-              Based on last 30 days of campaign data
-            </small>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- AI-Powered Analytics Query Section -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div class="card-body text-white">
-          <h6 class="mb-3">
-            <i data-lucide="wand-2" class="me-2"></i>
-            AI-Powered Analytics
-          </h6>
-          <p class="mb-3 opacity-75 small">Ask Amos to analyze your marketing data, integration metrics, or create custom reports</p>
 
-          <!-- Quick Analysis Buttons -->
-          <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-light btn-sm" onclick="quickAnalyticsQuery('campaign_performance')">
-              <i data-lucide="mail" class="me-1"></i>
-              Campaign Performance
-            </button>
-            <button class="btn btn-light btn-sm" onclick="quickAnalyticsQuery('email_engagement')">
-              <i data-lucide="trending-up" class="me-1"></i>
-              Email Engagement
-            </button>
-            <button class="btn btn-light btn-sm" onclick="quickAnalyticsQuery('contact_growth')">
-              <i data-lucide="user-plus" class="me-1"></i>
-              Contact Growth
-            </button>
-            <% if current_entity.connections.joins(:integration).where(integrations: { slug: 'stripe' }).where(status: :connected).exists? %>
-            <button class="btn btn-success btn-sm" onclick="quickAnalyticsQuery('stripe_revenue')">
-              <i data-lucide="dollar-sign" class="me-1"></i>
-              Stripe Revenue
-            </button>
-            <% end %>
-            <button class="btn btn-outline-light btn-sm" onclick="customAnalyticsQuery()">
-              <i data-lucide="help-circle" class="me-1"></i>
-              Custom Analysis
-            </button>
-          </div>
+  <!-- Key Metrics Overview -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- Total Emails Sent -->
+    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="mail" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Emails Sent</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(analytics_data[:total_emails_sent]) %></h3>
+          <span style="color: rgb(74, 222, 128); font-size: 0.75rem; font-weight: 600;"><i data-lucide="arrow-up" style="width: 0.75rem; height: 0.75rem; display: inline-block; vertical-align: middle;"></i> +12.5%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Average Open Rate -->
+    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="eye" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Average Open Rate</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= analytics_data[:avg_open_rate] %>%</h3>
+          <span style="color: <%= analytics_data[:avg_open_rate] > 20 ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)' %>; font-size: 0.75rem; font-weight: 600;"><i data-lucide="<%= analytics_data[:avg_open_rate] > 20 ? 'arrow-up' : 'arrow-down' %>" style="width: 0.75rem; height: 0.75rem; display: inline-block; vertical-align: middle;"></i> <%= analytics_data[:avg_open_rate] > 20 ? '+' : '-' %>2.1%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Contacts -->
+    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="users" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">New Contacts (30d)</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(analytics_data[:recent_contacts]) %></h3>
+          <span style="color: rgb(74, 222, 128); font-size: 0.75rem; font-weight: 600;"><i data-lucide="arrow-up" style="width: 0.75rem; height: 0.75rem; display: inline-block; vertical-align: middle;"></i> +8.3%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Landing Pages -->
+    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="globe" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Active Landing Pages</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= analytics_data[:landing_pages] %></h3>
+          <span style="color: #64748B; font-size: 0.75rem; font-weight: 600;"><i data-lucide="minus" style="width: 0.75rem; height: 0.75rem; display: inline-block; vertical-align: middle;"></i> 0%</span>
         </div>
       </div>
     </div>
   </div>
-  
-  <!-- Recent Activity -->
-  <div class="row">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-          <h6 class="mb-0">
-            <i data-lucide="clock" class="me-2"></i>
-            Recent Activity
-          </h6>
-          <button class="btn btn-sm btn-outline-primary" onclick="scoutViewFullActivity()">
-            View All Activity
+
+  <!-- Charts Row -->
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- Campaign Performance Chart -->
+    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; overflow: hidden;">
+      <div style="background: #0F172A; padding: 1.5rem; border-bottom: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="color: #FFFFFF; font-size: 1rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+          <i data-lucide="trending-up" style="width: 1.25rem; height: 1.25rem;"></i>
+          Campaign Performance Over Time
+        </h3>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" onclick="scoutChangeChart('emails')" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.75rem; font-weight: 600;" class="chart-btn active">
+            Emails
+          </button>
+          <button type="button" onclick="scoutChangeChart('opens')" style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.75rem; font-weight: 600;" class="chart-btn">
+            Opens
+          </button>
+          <button type="button" onclick="scoutChangeChart('clicks')" style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.75rem; font-weight: 600;" class="chart-btn">
+            Clicks
           </button>
         </div>
-        <div class="card-body">
-          <div class="activity-timeline">
-            <div class="activity-item">
-              <div class="activity-icon bg-success">
-                <i data-lucide="send" class="text-white"></i>
+      </div>
+      <div style="padding: 1.5rem; height: 300px;">
+        <canvas id="performanceChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Top Campaigns -->
+    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; overflow: hidden;">
+      <div style="background: #0F172A; padding: 1.5rem; border-bottom: 1px solid #1E293B;">
+        <h3 style="color: #FFFFFF; font-size: 1rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+          <i data-lucide="trophy" style="width: 1.25rem; height: 1.25rem;"></i>
+          Top Performing Campaigns
+        </h3>
+      </div>
+      <div style="padding: 1.5rem; max-height: 400px; overflow-y: auto;">
+        <% analytics_data[:campaigns].limit(5).each_with_index do |campaign, index| %>
+          <%
+            sent = campaign.mailgun_stats&.dig('sent') || 0
+            opened = campaign.mailgun_stats&.dig('opened') || 0
+            open_rate = sent > 0 ? (opened.to_f / sent * 100) : 0
+          %>
+          <div style="padding-bottom: 1rem; <%= 'border-bottom: 1px solid #1E293B; margin-bottom: 1rem;' unless index == 4 %>">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+              <div>
+                <h6 style="color: #FFFFFF; font-weight: 600; margin: 0;"><%= campaign.name.present? ? truncate(campaign.name, length: 25) : "Campaign #{campaign.id}" %></h6>
+                <small style="color: #94A3B8;"><%= number_with_delimiter(sent) %> sent</small>
               </div>
-              <div class="activity-content">
-                <div class="activity-title">Campaign "Newsletter #47" sent</div>
-                <div class="activity-meta">2 hours ago • 1,234 recipients</div>
+              <div style="background: <%= open_rate > 25 ? 'rgba(34, 197, 94, 0.2); color: rgb(74, 222, 128);' : open_rate > 15 ? 'rgba(250, 204, 21, 0.2); color: rgb(250, 204, 21);' : 'rgba(248, 113, 113, 0.2); color: rgb(248, 113, 113);' %> padding: 0.25rem 0.5rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
+                <%= number_with_precision(open_rate, precision: 1) %>%
               </div>
             </div>
-            <div class="activity-item">
-              <div class="activity-icon bg-info">
-                <i data-lucide="user-plus" class="text-white"></i>
-              </div>
-              <div class="activity-content">
-                <div class="activity-title">15 new contacts added</div>
-                <div class="activity-meta">4 hours ago • From landing page form</div>
-              </div>
+            <div style="width: 100%; height: 4px; background: #0F172A; border-radius: 2px; overflow: hidden;">
+              <div style="width: <%= [open_rate, 100].min %>%; height: 100%; background: <%= open_rate > 25 ? 'rgb(74, 222, 128)' : open_rate > 15 ? 'rgb(250, 204, 21)' : 'rgb(248, 113, 113)' %>;"></div>
             </div>
-            <div class="activity-item">
-              <div class="activity-icon bg-warning">
-                <i data-lucide="globe" class="text-white"></i>
-              </div>
-              <div class="activity-content">
-                <div class="activity-title">Landing page "Product Demo" published</div>
-                <div class="activity-meta">1 day ago • Now live at /landing/product-demo</div>
-              </div>
+          </div>
+        <% end %>
+        <button onclick="scoutViewAllCampaigns()" style="width: 100%; background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.5rem; border-radius: 0.375rem; cursor: pointer; font-weight: 500; margin-top: 1rem;">
+          View All Campaigns
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Additional Analytics -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- Contact Growth -->
+    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; overflow: hidden;">
+      <div style="background: #0F172A; padding: 1.5rem; border-bottom: 1px solid #1E293B;">
+        <h3 style="color: #FFFFFF; font-size: 1rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+          <i data-lucide="user-plus" style="width: 1.25rem; height: 1.25rem;"></i>
+          Contact Growth
+        </h3>
+      </div>
+      <div style="padding: 1.5rem; height: 200px;">
+        <canvas id="contactGrowthChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Email Performance Breakdown -->
+    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; overflow: hidden;">
+      <div style="background: #0F172A; padding: 1.5rem; border-bottom: 1px solid #1E293B;">
+        <h3 style="color: #FFFFFF; font-size: 1rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+          <i data-lucide="pie-chart" style="width: 1.25rem; height: 1.25rem;"></i>
+          Email Performance Breakdown
+        </h3>
+      </div>
+      <div style="padding: 1.5rem;">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; text-align: center; margin-bottom: 1.5rem;">
+          <div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: rgb(74, 222, 128); margin-bottom: 0.25rem;">85%</div>
+            <div style="font-size: 0.75rem; color: #94A3B8;">Delivered</div>
+          </div>
+          <div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #22D3EE; margin-bottom: 0.25rem;"><%= analytics_data[:avg_open_rate] %>%</div>
+            <div style="font-size: 0.75rem; color: #94A3B8;">Opened</div>
+          </div>
+          <div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: rgb(248, 113, 113); margin-bottom: 0.25rem;">4.2%</div>
+            <div style="font-size: 0.75rem; color: #94A3B8;">Clicked</div>
+          </div>
+        </div>
+        <div style="padding-top: 1rem; border-top: 1px solid #1E293B;">
+          <small style="color: #94A3B8;"><i data-lucide="info" style="width: 0.75rem; height: 0.75rem; display: inline-block; vertical-align: middle;"></i> Based on last 30 days of campaign data</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI-Powered Analytics Query Section -->
+  <div style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); border-radius: 0.75rem; padding: 2rem; margin-bottom: 2rem;">
+    <h3 style="color: #FFFFFF; font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+      <i data-lucide="wand-2" style="width: 1.25rem; height: 1.25rem;"></i>
+      AI-Powered Analytics
+    </h3>
+    <p style="color: rgba(255, 255, 255, 0.9); margin-bottom: 1.5rem; font-size: 0.875rem;">Ask Amos to analyze your marketing data, integration metrics, or create custom reports</p>
+
+    <!-- Quick Analysis Buttons -->
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+      <button onclick="quickAnalyticsQuery('campaign_performance')" style="background: rgba(255, 255, 255, 0.95); color: #374151; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="mail" style="width: 1rem; height: 1rem;"></i>
+        Campaign Performance
+      </button>
+      <button onclick="quickAnalyticsQuery('email_engagement')" style="background: rgba(255, 255, 255, 0.95); color: #374151; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="trending-up" style="width: 1rem; height: 1rem;"></i>
+        Email Engagement
+      </button>
+      <button onclick="quickAnalyticsQuery('contact_growth')" style="background: rgba(255, 255, 255, 0.95); color: #374151; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="user-plus" style="width: 1rem; height: 1rem;"></i>
+        Contact Growth
+      </button>
+      <% if current_entity.connections.joins(:integration).where(integrations: { slug: 'stripe' }).where(status: :connected).exists? %>
+      <button onclick="quickAnalyticsQuery('stripe_revenue')" style="background: #10b981; color: #FFFFFF; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="dollar-sign" style="width: 1rem; height: 1rem;"></i>
+        Stripe Revenue
+      </button>
+      <% end %>
+      <button onclick="customAnalyticsQuery()" style="background: transparent; color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.8); padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="help-circle" style="width: 1rem; height: 1rem;"></i>
+        Custom Analysis
+      </button>
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; overflow: hidden;">
+    <div style="background: #0F172A; padding: 1.5rem; border-bottom: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="color: #FFFFFF; font-size: 1rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+        <i data-lucide="clock" style="width: 1.25rem; height: 1.25rem;"></i>
+        Recent Activity
+      </h3>
+      <button onclick="scoutViewFullActivity()" style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.75rem; font-weight: 600;">
+        View All Activity
+      </button>
+    </div>
+    <div style="padding: 1.5rem;">
+      <% ['success', 'info', 'warning'].each_with_index do |type, index| %>
+        <div style="display: flex; gap: 1rem; padding-bottom: 1rem; <%= 'border-bottom: 1px solid #1E293B; margin-bottom: 1rem;' unless index == 2 %>">
+          <div style="width: 2.5rem; height: 2.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: <%= type == 'success' ? 'rgb(74, 222, 128)' : type == 'info' ? '#22D3EE' : 'rgb(250, 204, 21)' %>; color: white;">
+            <% if type == 'success' %>
+              <i data-lucide="send" style="width: 1.25rem; height: 1.25rem;"></i>
+            <% elsif type == 'info' %>
+              <i data-lucide="user-plus" style="width: 1.25rem; height: 1.25rem;"></i>
+            <% else %>
+              <i data-lucide="globe" style="width: 1.25rem; height: 1.25rem;"></i>
+            <% end %>
+          </div>
+          <div>
+            <div style="color: #FFFFFF; font-weight: 600; margin-bottom: 0.25rem;">
+              <% if type == 'success' %>
+                Campaign "Newsletter #47" sent
+              <% elsif type == 'info' %>
+                15 new contacts added
+              <% else %>
+                Landing page "Product Demo" published
+              <% end %>
+            </div>
+            <div style="color: #94A3B8; font-size: 0.875rem;">
+              <% if type == 'success' %>
+                2 hours ago • 1,234 recipients
+              <% elsif type == 'info' %>
+                4 hours ago • From landing page form
+              <% else %>
+                1 day ago • Now live at /landing/product-demo
+              <% end %>
             </div>
           </div>
         </div>
-      </div>
+      <% end %>
     </div>
   </div>
 </div>
@@ -324,9 +281,15 @@
 // Analytics dashboard functionality
 function scoutChangeChart(chartType) {
   // Update active button
-  document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
-  event.target.classList.add('active');
-  
+  document.querySelectorAll('.chart-btn').forEach(btn => {
+    btn.style.background = 'transparent';
+    btn.style.color = '#94A3B8';
+    btn.style.border = '1px solid #1E293B';
+  });
+  event.target.style.background = 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)';
+  event.target.style.color = '#FFFFFF';
+  event.target.style.border = 'none';
+
   window.scoutSendMessage?.(`Show ${chartType} performance chart`);
 }
 
@@ -347,7 +310,7 @@ function quickAnalyticsQuery(type) {
     'contact_growth': "Show me contact growth trends for the last 6 months",
     'stripe_revenue': "Show me Stripe revenue breakdown by month for this year"
   };
-  
+
   const query = queries[type];
   if (query && window.scoutSendMessage) {
     window.scoutSendMessage(query);
@@ -357,7 +320,7 @@ function quickAnalyticsQuery(type) {
 // Custom analytics query
 function customAnalyticsQuery() {
   const question = prompt("What would you like to analyze?\n\nExamples:\n- Revenue trends by channel\n- Campaign performance comparison\n- Customer lifetime value\n- Email vs Stripe correlation");
-  
+
   if (question && window.scoutSendMessage) {
     window.scoutSendMessage(question);
   }
@@ -379,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
       window.scoutSendMessage?.(`Update analytics for last ${this.value} days`);
     });
   }
-  
+
   // Initialize charts
   initializeCharts();
 });
@@ -388,18 +351,16 @@ function initializeCharts() {
   // Performance Chart (placeholder)
   const performanceCtx = document.getElementById('performanceChart');
   if (performanceCtx) {
-    // This would integrate with Chart.js or similar library
-    performanceCtx.style.background = 'linear-gradient(45deg, #f8f9fa, #e9ecef)';
+    performanceCtx.style.background = 'linear-gradient(45deg, #0F172A, #1A1F35)';
     performanceCtx.style.borderRadius = '8px';
-    
-    // Add placeholder text
+
     const placeholder = document.createElement('div');
     placeholder.className = 'chart-placeholder';
     placeholder.innerHTML = `
-      <div class="text-center py-5">
-        <i data-lucide="trending-up" class="text-muted mb-3" class="icon-3x"></i>
-        <p class="text-muted">Performance chart will display here</p>
-        <button class="btn btn-sm btn-primary" onclick="scoutLoadChart('performance')">
+      <div style="text-align: center; padding: 2rem;">
+        <i data-lucide="trending-up" style="width: 2rem; height: 2rem; color: #64748B; margin-bottom: 1rem; display: block;"></i>
+        <p style="color: #64748B; margin-bottom: 1rem;">Performance chart will display here</p>
+        <button onclick="scoutLoadChart('performance')" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
           Load Chart Data
         </button>
       </div>
@@ -407,20 +368,20 @@ function initializeCharts() {
     performanceCtx.parentNode.appendChild(placeholder);
     performanceCtx.style.display = 'none';
   }
-  
+
   // Contact Growth Chart (placeholder)
   const contactCtx = document.getElementById('contactGrowthChart');
   if (contactCtx) {
-    contactCtx.style.background = 'linear-gradient(45deg, #f8f9fa, #e9ecef)';
+    contactCtx.style.background = 'linear-gradient(45deg, #0F172A, #1A1F35)';
     contactCtx.style.borderRadius = '8px';
-    
+
     const placeholder = document.createElement('div');
     placeholder.className = 'chart-placeholder';
     placeholder.innerHTML = `
-      <div class="text-center py-4">
-        <i data-lucide="users" class="text-muted mb-2" style="width: 2rem; height: 2rem;"></i>
-        <p class="text-muted small">Contact growth chart</p>
-        <button class="btn btn-sm btn-outline-primary" onclick="scoutLoadChart('contacts')">
+      <div style="text-align: center; padding: 2rem;">
+        <i data-lucide="users" style="width: 2rem; height: 2rem; color: #64748B; margin-bottom: 1rem; display: block;"></i>
+        <p style="color: #64748B; font-size: 0.875rem; margin-bottom: 1rem;">Contact growth chart</p>
+        <button onclick="scoutLoadChart('contacts')" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
           Load Data
         </button>
       </div>
@@ -428,145 +389,34 @@ function initializeCharts() {
     contactCtx.parentNode.appendChild(placeholder);
     contactCtx.style.display = 'none';
   }
+
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 }
 
 function scoutLoadChart(chartType) {
   window.scoutSendMessage?.(`Load ${chartType} chart data`);
 }
+
+// Initialize on load
+document.addEventListener('turbo:load', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
 </script>
 
 <style>
 .analytics-dashboard {
   height: 100%;
   overflow-y: auto;
-}
-
-.metric-card {
-  background: white;
-  border: 1px solid #dee2e6;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.metric-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 1rem;
-  font-size: 1.5rem;
-}
-
-.metric-content .metric-number {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
-  line-height: 1;
-}
-
-.metric-content .metric-label {
-  font-size: 0.875rem;
-  color: #6c757d;
-  margin-bottom: 0.5rem;
-}
-
-.metric-change {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-}
-
-.metric-change.positive {
-  color: #198754;
-  background-color: rgba(25, 135, 84, 0.1);
-}
-
-.metric-change.negative {
-  color: #dc3545;
-  background-color: rgba(220, 53, 69, 0.1);
-}
-
-.metric-change.neutral {
-  color: #6c757d;
-  background-color: rgba(108, 117, 125, 0.1);
-}
-
-.campaign-item {
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #f8f9fa;
-}
-
-.campaign-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.metric-badge {
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.metric-circle {
-  text-align: center;
-}
-
-.metric-circle-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #495057;
-}
-
-.metric-circle-label {
-  font-size: 0.75rem;
-  color: #6c757d;
-  margin-top: 0.25rem;
-}
-
-.activity-timeline .activity-item {
-  display: flex;
-  align-items: center;
-  padding: 1rem 0;
-  border-bottom: 1px solid #f8f9fa;
-}
-
-.activity-timeline .activity-item:last-child {
-  border-bottom: none;
-}
-
-.activity-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 1rem;
-  flex-shrink: 0;
-}
-
-.activity-content .activity-title {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.activity-content .activity-meta {
-  font-size: 0.875rem;
-  color: #6c757d;
 }
 
 .chart-placeholder {
@@ -578,134 +428,13 @@ function scoutLoadChart(chartType) {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: white;
+  background: transparent;
   border-radius: 8px;
 }
 
-.chart-container {
-  position: relative;
-}
-
 @media (max-width: 768px) {
-  .metric-card {
-    margin-bottom: 1rem;
-  }
-  
-  .metric-icon {
-    width: 50px;
-    height: 50px;
-    font-size: 1.25rem;
-  }
-  
-  .metric-content .metric-number {
-    font-size: 1.5rem;
+  [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
   }
 }
-
-/* Targeted fixes for contrast issues in both light and dark modes */
-.analytics-dashboard h4,
-.analytics-dashboard h5,
-.analytics-dashboard h6 {
-  color: var(--scout-text, #1f2937) !important;
-}
-
-.analytics-dashboard .card-header {
-  background-color: var(--scout-secondary, #f8f9fa) !important;
-}
-
-.analytics-dashboard .card-header h6 {
-  color: var(--scout-text, #1f2937) !important;
-  font-weight: 600;
-}
-
-.analytics-dashboard .activity-title {
-  color: var(--scout-text, #1f2937) !important;
-  font-weight: 600;
-}
-
-.analytics-dashboard .activity-meta {
-  color: var(--scout-text-muted, #6b7280) !important;
-}
-
-.analytics-dashboard .metric-label {
-  color: var(--scout-text-muted, #6c757d) !important;
-}
-
-.analytics-dashboard .campaign-info h6 {
-  color: var(--scout-text, #1f2937) !important;
-}
-
-.analytics-dashboard .btn-outline-secondary {
-  color: var(--scout-text, #374151) !important;
-  border-color: var(--scout-border, #d1d5db) !important;
-  background-color: var(--scout-secondary, #ffffff) !important;
-}
-
-.analytics-dashboard .btn-outline-secondary:hover {
-  color: #ffffff !important;
-  background-color: #374151 !important;
-  border-color: #374151 !important;
-}
-
-.analytics-dashboard .btn-outline-secondary.active {
-  color: #ffffff !important;
-  background-color: #6366f1 !important;
-  border-color: #6366f1 !important;
-}
-
-.analytics-dashboard .form-select {
-  color: var(--scout-text, #1f2937) !important;
-  background-color: var(--scout-secondary, #ffffff) !important;
-  border-color: var(--scout-border, #d1d5db) !important;
-}
-
-/* AI-Powered Analytics section contrast fix */
-.analytics-dashboard .card[style*="linear-gradient"] .card-body {
-  background: transparent !important;
-}
-
-.analytics-dashboard .card[style*="linear-gradient"] .card-body h6 {
-  color: #ffffff !important;
-  font-weight: 600;
-}
-
-.analytics-dashboard .card[style*="linear-gradient"] .card-body p {
-  color: rgba(255, 255, 255, 0.9) !important;
-}
-
-.analytics-dashboard .card[style*="linear-gradient"] .btn-light {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  border-color: rgba(255, 255, 255, 0.95) !important;
-  color: #374151 !important;
-  font-weight: 500;
-}
-
-.analytics-dashboard .card[style*="linear-gradient"] .btn-light:hover {
-  background-color: #ffffff !important;
-  border-color: #ffffff !important;
-  color: #1f2937 !important;
-}
-
-.analytics-dashboard .card[style*="linear-gradient"] .btn-outline-light {
-  color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.8) !important;
-}
-
-.analytics-dashboard .card[style*="linear-gradient"] .btn-outline-light:hover {
-  background-color: rgba(255, 255, 255, 0.15) !important;
-  border-color: #ffffff !important;
-  color: #ffffff !important;
-}
-
-.analytics-dashboard .card[style*="linear-gradient"] .btn-success {
-  background-color: #10b981 !important;
-  border-color: #10b981 !important;
-  color: #ffffff !important;
-  font-weight: 500;
-}
-
-.analytics-dashboard .card[style*="linear-gradient"] .btn-success:hover {
-  background-color: #059669 !important;
-  border-color: #059669 !important;
-}
-</style> 
+</style>
