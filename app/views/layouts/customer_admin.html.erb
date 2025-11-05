@@ -72,13 +72,17 @@
             <span>Contact Groups</span>
           <% end %>
 
-          <%# Integrations Section %>
+          <%# Media Assets Section %>
           <div class="nav-section-header">
-            <span>Integrations</span>
+            <span>Media Assets</span>
           </div>
-          <%= link_to customer_integrations_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'social_media_accounts' || request.path == customer_integrations_path}" do %>
-            <i data-lucide="plug"></i>
-            <span>All Integrations</span>
+          <%= link_to image_assets_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'image_assets'}" do %>
+            <i data-lucide="image"></i>
+            <span>Image Library</span>
+          <% end %>
+          <%= link_to documents_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'documents'}" do %>
+            <i data-lucide="file-text"></i>
+            <span>Document Store</span>
           <% end %>
 
           <%# Entity Settings - Only for Entity Admins %>
@@ -86,6 +90,10 @@
             <div class="nav-section-header">
               <span>Settings</span>
             </div>
+            <%= link_to customer_integrations_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'social_media_accounts' || request.path == customer_integrations_path}" do %>
+              <i data-lucide="plug"></i>
+              <span>Integrations</span>
+            <% end %>
             <%= link_to entity_users_path, class: "nav-item nav-sub-item #{'active' if request.path.start_with?('/entity/users')}" do %>
               <i data-lucide="user-cog"></i>
               <span>Team Members</span>

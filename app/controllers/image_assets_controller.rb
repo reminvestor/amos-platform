@@ -2,6 +2,7 @@ class ImageAssetsController < ApplicationController
   include EntityScoped
 
   before_action :authenticate_user!
+  layout 'customer_admin'
   before_action :set_image_asset, only: [ :show, :destroy ]
 
   def index
