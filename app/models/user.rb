@@ -10,6 +10,7 @@ class User < ApplicationRecord
   # Validations
   validates :first_name, :last_name, presence: true
   validates :role, presence: true, inclusion: { in: ROLES }
+  validates :password, length: { minimum: 10, message: "must be at least 10 characters long" }, if: :password_required?
 
   # Set defaults for test environment
   before_validation :set_test_defaults, if: -> { Rails.env.test? }
