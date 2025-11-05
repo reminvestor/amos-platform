@@ -44,3 +44,4 @@ module Scout
     end
   end
 end
+
