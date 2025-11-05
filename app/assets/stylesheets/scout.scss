@@ -468,6 +468,10 @@
 
   &:hover {
     background: rgba(30, 41, 59, 0.5);
+
+    .brain-icon-wrapper {
+      transform: scale(1.1);
+    }
   }
 }
 
