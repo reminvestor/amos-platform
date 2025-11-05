@@ -1,0 +1,151 @@
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="file-text"></i>
+      </div>
+      <div class="header-text">
+        <h1>Document Store</h1>
+        <p>Manage your RAG documents and knowledge base</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to new_document_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="upload"></i>
+        <span>Upload Document</span>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Stats Cards %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <%# Total Documents %>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="file-text" class="icon-xl text-white"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Documents</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @documents.count %></h3>
+        </div>
+      </div>
+    </div>
+    
+    <%# Collections %>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
+          <i data-lucide="folder" class="icon-xl text-success"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Collections</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @rag_stores.count %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if @documents.any? %>
+    <%# Documents Table %>
+    <div class="admin-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid #1E293B; margin-bottom: 1.5rem;">
+        <h4 style="color: white; font-weight: 600; margin: 0;">Documents</h4>
+      </div>
+      
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Document Name</th>
+              <th>Collection</th>
+              <th>Pages</th>
+              <th>Chunks</th>
+              <th>Uploaded</th>
+              <th>Status</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @documents.each do |document| %>
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <% if document.file_type == 'application/pdf' %>
+                      <i data-lucide="file-text" style="width: 1.25rem; height: 1.25rem; color: #DC2626;"></i>
+                    <% elsif document.file_type&.include?('word') %>
+                      <i data-lucide="file-text" style="width: 1.25rem; height: 1.25rem; color: #2563EB;"></i>
+                    <% else %>
+                      <i data-lucide="file" style="width: 1.25rem; height: 1.25rem; color: #94A3B8;"></i>
+                    <% end %>
+                    <span style="color: #22D3EE; font-weight: 600;"><%= document.original_filename %></span>
+                  </div>
+                </td>
+                <td style="color: white;">
+                  <%= document.rag_store.name %>
+                </td>
+                <td style="color: #94A3B8;">
+                  <%= document.page_count || "-" %>
+                </td>
+                <td style="color: #94A3B8;">
+                  <%= document.chunks_count || 0 %>
+                </td>
+                <td style="color: #94A3B8;">
+                  <%= time_ago_in_words(document.created_at) %> ago
+                </td>
+                <td>
+                  <% if document.processing_completed? %>
+                    <span class="admin-badge admin-badge-online">Indexed</span>
+                  <% elsif document.processing_status == 'processing' %>
+                    <span class="admin-badge admin-badge-warning">Processing</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-default">Pending</span>
+                  <% end %>
+                </td>
+                <td style="text-align: right;">
+                  <div style="display: inline-flex; gap: 0.5rem;">
+                    <% if document.s3_key.present? %>
+                      <%= link_to download_document_path(document), class: "admin-btn admin-btn-sm admin-btn-outline", title: "Download" do %>
+                        <i data-lucide="download"></i>
+                      <% end %>
+                    <% end %>
+                    <%= button_to document_path(document), method: :delete, class: "admin-btn admin-btn-sm admin-btn-outline", 
+                        form: { data: { turbo_confirm: "Are you sure you want to delete this document?" } }, 
+                        title: "Delete" do %>
+                      <i data-lucide="trash-2"></i>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% else %>
+    <%# Empty State %>
+    <div class="admin-card">
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="file-plus"></i>
+        </div>
+        <h3>No Documents Yet</h3>
+        <p>Upload documents to build your knowledge base. Your AI assistant will be able to reference these documents when answering questions.</p>
+        <%= link_to new_document_path, class: "admin-btn admin-btn-primary", style: "margin-top: 1rem;" do %>
+          <i data-lucide="upload"></i>
+          <span>Upload First Document</span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
