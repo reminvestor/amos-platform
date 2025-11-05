@@ -58,3 +58,4 @@ echo "✅ Secrets copied to dev environment!"
 echo ""
 echo "Note: database-url and redis-url will be created by Terraform"
 
+

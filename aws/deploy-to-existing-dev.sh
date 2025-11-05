@@ -196,3 +196,4 @@ echo -e "  http://agent-marketing-dev-alb-1572082392.us-east-1.elb.amazonaws.com
 echo -e "  http://dev.amoslabs.com (once DNS propagates)"
 echo -e "\n${YELLOW}View logs:${NC}"
 echo -e "  aws logs tail /ecs/agent-marketing-dev --follow"
+
