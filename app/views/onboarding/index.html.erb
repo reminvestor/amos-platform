@@ -3,49 +3,49 @@
   <!-- Left Panel - AI Guidance & Tips -->
   <div class="auth-sidebar">
     <div class="auth-brand">
-      <div class="brand-logo">
-        <i class="fas fa-cube text-primary"></i>
+      <div class="brand-logo" style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; font-size: 1.75rem; font-weight: 700; color: white; margin-bottom: 0.5rem;">
+        <i data-lucide="cube" style="width: 2.5rem; height: 2.5rem; color: #6366f1;"></i>
         <span class="brand-text">Amos</span>
       </div>
-      <p class="brand-tagline">Getting AMOS acquainted with your business</p>
+      <p class="brand-tagline" style="color: #9ca3af; margin: 0; font-size: 1rem;">Getting AMOS acquainted with your business</p>
     </div>
-    
+
     <div class="auth-features">
-      <h4 class="mb-4">🤖 Meet AMOS, Your AI Business Automation Assistant</h4>
+      <h4 class="mb-4" style="color: white; font-weight: 600;">Meet AMOS, Your AI Business Automation Assistant</h4>
       <div class="feature-list">
         <div class="feature-item">
-          <i class="fas fa-comments text-primary"></i>
+          <i data-lucide="message-circle" style="font-size: 1.5rem; margin-top: 0.25rem; color: #6366f1;"></i>
           <div>
-            <strong>Conversational Learning</strong>
-            <p>AMOS learns about your business through natural conversation. Just chat like you would with a colleague!</p>
+            <strong style="color: white; display: block; margin-bottom: 0.5rem; font-size: 1.1rem;">Conversational Learning</strong>
+            <p style="color: #9ca3af; margin: 0; line-height: 1.4;">AMOS learns about your business through natural conversation. Just chat like you would with a colleague!</p>
           </div>
         </div>
         <div class="feature-item">
-          <i class="fas fa-brain text-success"></i>
+          <i data-lucide="zap" style="font-size: 1.5rem; margin-top: 0.25rem; color: #4ade80;"></i>
           <div>
-            <strong>Intelligent Adaptation</strong>
-            <p>The more AMOS knows about your business, the better recommendations and content it can create.</p>
+            <strong style="color: white; display: block; margin-bottom: 0.5rem; font-size: 1.1rem;">Intelligent Adaptation</strong>
+            <p style="color: #9ca3af; margin: 0; line-height: 1.4;">The more AMOS knows about your business, the better recommendations and content it can create.</p>
           </div>
         </div>
         <div class="feature-item">
-          <i class="fas fa-magic text-warning"></i>
+          <i data-lucide="wand-2" style="font-size: 1.5rem; margin-top: 0.25rem; color: #f59e0b;"></i>
           <div>
-            <strong>Instant Marketing Materials</strong>
-            <p>Once AMOS understands your business, it can create landing pages, emails, and campaigns in seconds.</p>
+            <strong style="color: white; display: block; margin-bottom: 0.5rem; font-size: 1.1rem;">Instant Marketing Materials</strong>
+            <p style="color: #9ca3af; margin: 0; line-height: 1.4;">Once AMOS understands your business, it can create landing pages, emails, and campaigns in seconds.</p>
           </div>
         </div>
         <div class="feature-item">
-          <i class="fas fa-chart-line text-info"></i>
+          <i data-lucide="trending-up" style="font-size: 1.5rem; margin-top: 0.25rem; color: #06b6d4;"></i>
           <div>
-            <strong>Continuous Optimization</strong>
-            <p>AMOS analyzes performance and suggests improvements to help your marketing efforts succeed.</p>
+            <strong style="color: white; display: block; margin-bottom: 0.5rem; font-size: 1.1rem;">Continuous Optimization</strong>
+            <p style="color: #9ca3af; margin: 0; line-height: 1.4;">AMOS analyzes performance and suggests improvements to help your marketing efforts succeed.</p>
           </div>
         </div>
       </div>
-      
-      <div class="guidance-tips mt-4 p-3" style="background: rgba(99, 102, 241, 0.1); border-radius: 0.5rem; border-left: 4px solid var(--scout-primary);">
-        <h6 class="text-primary mb-2">💡 Pro Tips</h6>
-        <ul class="mb-0 small" style="list-style: none; padding: 0; color: var(--scout-text-muted, #9ca3af);">
+
+      <div class="guidance-tips mt-4 p-3" style="background: rgba(99, 102, 241, 0.1); border-radius: 0.5rem; border-left: 4px solid #6366f1;">
+        <h6 class="text-primary mb-2" style="color: #6366f1; font-weight: 600;">💡 Pro Tips</h6>
+        <ul class="mb-0 small" style="list-style: none; padding: 0; color: #9ca3af;">
           <li class="mb-2">• Share your industry, target audience, and what makes your business unique</li>
           <li class="mb-2">• Mention your goals - lead generation, sales, brand awareness, etc.</li>
           <li class="mb-2">• Tell AMOS about your current marketing challenges</li>
@@ -61,19 +61,19 @@
       <!-- Header with User Info -->
       <div class="onboarding-header">
         <div class="header-title">
-          <h2>Welcome to Amos! 🚀</h2>
-          <p class="text-muted mb-0">Let's get AMOS acquainted with your business</p>
+          <h2 style="margin: 0; color: white;">Welcome to Amos! 🚀</h2>
+          <p style="color: #94A3B8; margin-bottom: 0; font-size: 0.875rem;">Let's get AMOS acquainted with your business</p>
         </div>
         <div class="header-user">
           <div class="dropdown">
-            <button class="btn btn-link text-decoration-none dropdown-toggle" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="color: var(--scout-text-muted, #9ca3af);">
-              <i class="fas fa-user-circle me-2"></i>
+            <button class="btn btn-link text-decoration-none dropdown-toggle" type="button" id="userMenuDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="color: #9ca3af; display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="user-circle" style="width: 1.25rem; height: 1.25rem;"></i>
               <%= current_user.full_name %>
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuDropdown">
               <li>
                 <%= link_to destroy_user_session_path, method: :delete, class: "dropdown-item" do %>
-                  <i class="fas fa-sign-out-alt me-2"></i> Sign Out
+                  <i data-lucide="log-out" style="width: 1rem; height: 1rem; vertical-align: middle; margin-right: 0.5rem;"></i> Sign Out
                 <% end %>
               </li>
             </ul>
@@ -88,11 +88,11 @@
             <div class="message-avatar">
               <% if message[:role] == 'assistant' %>
                 <div class="avatar-circle bg-gradient-primary">
-                  <i class="fas fa-robot text-white"></i>
+                  <i data-lucide="bot" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
                 </div>
               <% else %>
                 <div class="avatar-circle bg-secondary">
-                  <i class="fas fa-user text-white"></i>
+                  <i data-lucide="user" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
                 </div>
               <% end %>
             </div>
@@ -125,7 +125,7 @@
         <div id="typing-indicator" class="message assistant-message" style="display: none;">
           <div class="message-avatar">
             <div class="avatar-circle bg-gradient-primary">
-              <i class="fas fa-robot text-white"></i>
+              <i data-lucide="bot" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
             </div>
           </div>
           <div class="message-content">
@@ -154,7 +154,7 @@
               rows="1"
               maxlength="1000"></textarea>
             <button type="submit" class="send-btn" id="send-button">
-              <i class="fas fa-paper-plane"></i>
+              <i data-lucide="send" style="width: 1.25rem; height: 1.25rem;"></i>
             </button>
           </div>
         </form>
@@ -414,6 +414,11 @@
   30% { opacity: 1; }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .chat-input-area {
   padding: 1.5rem 2rem;
   border-top: 1px solid var(--scout-border, #404448);
@@ -529,9 +534,9 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('🚀 Onboarding: DOMContentLoaded event fired');
-  
+function initializeOnboarding() {
+  console.log('🚀 Onboarding: Initializing onboarding chat');
+
   const messageForm = document.getElementById('message-form');
   const messageInput = document.getElementById('message-input');
   const sendButton = document.getElementById('send-button');
@@ -689,7 +694,7 @@ document.addEventListener('DOMContentLoaded', function() {
       messageElement.innerHTML = `
         <div class="message-avatar">
           <div class="avatar-circle ${isAssistant ? 'bg-gradient-primary' : 'bg-secondary'}">
-            <i class="fas fa-${isAssistant ? 'robot' : 'user'} text-white"></i>
+            <i data-lucide="${isAssistant ? 'bot' : 'user'}" style="width: 1.25rem; height: 1.25rem; color: white;"></i>
           </div>
         </div>
         <div class="message-content">
@@ -709,8 +714,12 @@ document.addEventListener('DOMContentLoaded', function() {
           </div>
         </div>
       `;
-      
+
       chatMessages.appendChild(messageElement);
+      // Reinitialize Lucide icons for newly added elements
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
       scrollToBottom();
     } catch (e) {
       console.error('❌ Error adding message:', e);
@@ -742,14 +751,18 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       if (messageInput) messageInput.disabled = !enabled;
       if (sendButton) sendButton.disabled = !enabled;
-      
+
       if (sendButton) {
         if (enabled) {
-          sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+          sendButton.innerHTML = '<i data-lucide="send" style="width: 1.25rem; height: 1.25rem;"></i>';
           sendButton.className = 'send-btn';
         } else {
-          sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+          sendButton.innerHTML = '<i data-lucide="loader" style="width: 1.25rem; height: 1.25rem; animation: spin 1s linear infinite;"></i>';
           sendButton.className = 'send-btn';
+        }
+        // Reinitialize Lucide icons for dynamically added elements
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
         }
       }
     } catch (e) {
@@ -784,23 +797,23 @@ document.addEventListener('DOMContentLoaded', function() {
   window.completeOnboarding = function() {
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]');
-      
+
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = '/onboarding/complete';
-      
+
       const csrfInput = document.createElement('input');
       csrfInput.type = 'hidden';
       csrfInput.name = 'authenticity_token';
       csrfInput.value = csrfToken ? csrfToken.content : '';
       form.appendChild(csrfInput);
-      
+
       const methodInput = document.createElement('input');
       methodInput.type = 'hidden';
       methodInput.name = '_method';
       methodInput.value = 'PATCH';
       form.appendChild(methodInput);
-      
+
       document.body.appendChild(form);
       form.submit();
     } catch (e) {
@@ -808,5 +821,22 @@ document.addEventListener('DOMContentLoaded', function() {
       window.location.href = '/scout';
     }
   };
+}
+
+// Initialize Lucide icons
+function initializeLucideIcons() {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+}
+
+// Initialize on both DOMContentLoaded (full page load) and turbo:load (Turbo navigation)
+document.addEventListener('DOMContentLoaded', function() {
+  initializeOnboarding();
+  initializeLucideIcons();
+});
+document.addEventListener('turbo:load', function() {
+  initializeOnboarding();
+  initializeLucideIcons();
 });
 </script>

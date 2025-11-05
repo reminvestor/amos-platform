@@ -11,7 +11,7 @@
                    alt="<%= @integration.name %>" 
                    class="rounded me-2" class="icon-2x">
             <% else %>
-              <i class="fas fa-puzzle-piece me-2"></i>
+              <i data-lucide="puzzle" class="me-2"></i>
             <% end %>
             <h5 class="mb-0">Connect to <%= @integration.name %></h5>
           </div>
@@ -67,7 +67,7 @@
             <% else %>
               <%# No auth config found - needs admin setup %>
               <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle"></i>
+                <i data-lucide="alert-triangle"></i>
                 <strong>Authentication not configured</strong><br>
                 This integration hasn't been set up yet. Please contact an administrator to configure the authentication settings for <%= @integration.name %>.
               </div>
@@ -76,7 +76,7 @@
             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
               <a href="<%= integrations_path %>" class="btn btn-secondary me-md-2">Cancel</a>
               <button type="submit" class="btn btn-primary">
-                <i class="fas fa-link"></i> Connect to <%= @integration.name %>
+                <i data-lucide="link"></i> Connect to <%= @integration.name %>
               </button>
             </div>
             
@@ -88,7 +88,7 @@
       <div class="card mt-3">
         <div class="card-body">
           <h6 class="card-title">
-            <i class="fas fa-question-circle text-info"></i> Need Help?
+            <i data-lucide="help-circle" class="text-info"></i> Need Help?
           </h6>
           <p class="card-text small text-muted">
             Having trouble connecting? Check the 

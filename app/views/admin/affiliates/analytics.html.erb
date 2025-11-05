@@ -3,7 +3,7 @@
     <div class="container-fluid py-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0">
-      <i class="fas fa-chart-line me-2"></i> Affiliate Program Analytics
+      <i data-lucide="trending-up" class="me-2"></i> Affiliate Program Analytics
     </h1>
 
     <div class="btn-group" role="group">
@@ -34,7 +34,7 @@
               <small class="text-success"><%= @active_affiliates %> active</small>
             </div>
             <div class="text-primary">
-              <i class="fas fa-users fa-2x"></i>
+              <i data-lucide="users" class="icon-2x"></i>
             </div>
           </div>
         </div>
@@ -51,7 +51,7 @@
               <small class="text-muted">All time</small>
             </div>
             <div class="text-success">
-              <i class="fas fa-dollar-sign fa-2x"></i>
+              <i data-lucide="dollar-sign" class="icon-2x"></i>
             </div>
           </div>
         </div>
@@ -68,7 +68,7 @@
               <small class="text-muted">Commission earned</small>
             </div>
             <div class="text-warning">
-              <i class="fas fa-calendar-alt fa-2x"></i>
+              <i data-lucide="calendar" class="icon-2x"></i>
             </div>
           </div>
         </div>
@@ -85,7 +85,7 @@
               <small class="text-muted"><%= number_with_delimiter(@total_conversions) %> conversions</small>
             </div>
             <div class="text-info">
-              <i class="fas fa-percentage fa-2x"></i>
+              <i data-lucide="percent" class="icon-2x"></i>
             </div>
           </div>
         </div>
@@ -99,7 +99,7 @@
       <div class="card">
         <div class="card-header">
           <h5 class="mb-0">
-            <i class="fas fa-chart-area me-2"></i> Commission Revenue Over Time
+            <i data-lucide="area-chart" class="me-2"></i> Commission Revenue Over Time
           </h5>
         </div>
         <div class="card-body">
@@ -112,7 +112,7 @@
       <div class="card">
         <div class="card-header">
           <h5 class="mb-0">
-            <i class="fas fa-chart-line me-2"></i> Referrals Over Time
+            <i data-lucide="trending-up" class="me-2"></i> Referrals Over Time
           </h5>
         </div>
         <div class="card-body">
@@ -128,7 +128,7 @@
       <div class="card">
         <div class="card-header">
           <h5 class="mb-0">
-            <i class="fas fa-trophy me-2"></i> Top Affiliates by Revenue
+            <i data-lucide="trophy" class="me-2"></i> Top Affiliates by Revenue
           </h5>
         </div>
         <div class="card-body">
@@ -147,11 +147,11 @@
                     <tr>
                       <td>
                         <% if index == 0 %>
-                          <i class="fas fa-trophy text-warning"></i>
+                          <i data-lucide="trophy" class="text-warning"></i>
                         <% elsif index == 1 %>
-                          <i class="fas fa-medal text-secondary"></i>
+                          <i data-lucide="medal" class="text-secondary"></i>
                         <% elsif index == 2 %>
-                          <i class="fas fa-medal text-warning"></i>
+                          <i data-lucide="medal" class="text-warning"></i>
                         <% else %>
                           <%= index + 1 %>
                         <% end %>
@@ -180,7 +180,7 @@
       <div class="card">
         <div class="card-header">
           <h5 class="mb-0">
-            <i class="fas fa-user-plus me-2"></i> Top Affiliates by Referrals
+            <i data-lucide="user-plus" class="me-2"></i> Top Affiliates by Referrals
           </h5>
         </div>
         <div class="card-body">

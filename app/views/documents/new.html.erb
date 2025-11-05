@@ -1,0 +1,141 @@
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="upload"></i>
+      </div>
+      <div class="header-text">
+        <h1>Upload Document</h1>
+        <p>Add a document to your knowledge base</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8 col-xl-6">
+      <div class="admin-card">
+        <%= form_with scope: :document, url: documents_path, local: true, html: { multipart: true } do |form| %>
+          <%# File Upload %>
+          <div style="margin-bottom: 1.5rem;">
+            <label style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem; display: block;">
+              Document File <span style="color: #DC2626;">*</span>
+            </label>
+            <div style="border: 2px dashed #1E293B; border-radius: 0.5rem; padding: 2rem; text-align: center; position: relative;">
+              <%= form.file_field :file, 
+                  id: "document_file",
+                  style: "position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2;",
+                  accept: ".pdf,.doc,.docx,.txt,.md,.html,.json,.csv",
+                  required: true %>
+              <div id="file-upload-text">
+                <i data-lucide="file-up" style="width: 3rem; height: 3rem; color: #64748B; margin-bottom: 1rem;"></i>
+                <p style="color: #94A3B8; margin: 0;">
+                  Drag and drop your file here, or click to browse
+                </p>
+                <p style="color: #64748B; font-size: 0.875rem; margin-top: 0.5rem;">
+                  Supported formats: PDF, Word, TXT, Markdown, HTML, JSON, CSV
+                </p>
+                <p style="color: #64748B; font-size: 0.75rem;">
+                  Maximum file size: 50MB
+                </p>
+              </div>
+              <div id="file-selected" style="display: none;">
+                <i data-lucide="file-check" style="width: 3rem; height: 3rem; color: #22C55E; margin-bottom: 1rem;"></i>
+                <p style="color: white; font-weight: 600; margin: 0;" id="selected-filename"></p>
+                <p style="color: #94A3B8; font-size: 0.875rem; margin-top: 0.25rem;" id="selected-filesize"></p>
+              </div>
+            </div>
+          </div>
+
+          <%# Collection Name %>
+          <div style="margin-bottom: 1.5rem;">
+            <label for="document_collection_name" style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 0.5rem; display: block;">
+              Collection Name
+            </label>
+            <%= form.text_field :collection_name, 
+                id: "document_collection_name",
+                placeholder: "e.g., Product Documentation, HR Policies, etc.",
+                style: "width: 100%; padding: 0.75rem; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem; color: white; font-size: 0.875rem;",
+                value: "Document Library" %>
+            <p style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">
+              Documents will be grouped by collection. Leave as default to use the main library.
+            </p>
+          </div>
+
+          <%# How it Works %>
+          <div style="background: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.5rem;">
+            <h5 style="color: #A78BFA; font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="info" style="width: 1rem; height: 1rem;"></i>
+              How it Works
+            </h5>
+            <ol style="color: #94A3B8; font-size: 0.875rem; margin: 0; padding-left: 1.25rem;">
+              <li>Upload your document (PDF, Word, text files, etc.)</li>
+              <li>Our system will process and index the content</li>
+              <li>Scout can then reference this document when answering questions</li>
+              <li>You can organize documents into collections for better management</li>
+            </ol>
+          </div>
+
+          <%# Form Actions %>
+          <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <%= link_to documents_path, class: "admin-btn admin-btn-outline" do %>
+              <span>Cancel</span>
+            <% end %>
+            <%= form.submit "Upload Document", class: "admin-btn admin-btn-primary", id: "submit-btn" %>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Tips %>
+      <div class="admin-card" style="background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.2);">
+        <h5 style="color: #A78BFA; font-size: 1rem; margin-bottom: 0.75rem;">
+          <i data-lucide="lightbulb" style="width: 1rem; height: 1rem; display: inline-block; margin-right: 0.25rem;"></i>
+          Pro Tips
+        </h5>
+        <ul style="color: #94A3B8; font-size: 0.875rem; margin: 0; padding-left: 1.25rem;">
+          <li>Use descriptive filenames - Scout will reference them when citing sources</li>
+          <li>PDFs work best for maintaining formatting and structure</li>
+          <li>Break large documents into smaller, focused files for better results</li>
+          <li>Update documents regularly to keep your knowledge base current</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+    
+    const fileInput = document.getElementById('document_file');
+    const fileUploadText = document.getElementById('file-upload-text');
+    const fileSelected = document.getElementById('file-selected');
+    const selectedFilename = document.getElementById('selected-filename');
+    const selectedFilesize = document.getElementById('selected-filesize');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          fileUploadText.style.display = 'none';
+          fileSelected.style.display = 'block';
+          selectedFilename.textContent = file.name;
+          selectedFilesize.textContent = formatFileSize(file.size);
+          lucide.createIcons();
+        } else {
+          fileUploadText.style.display = 'block';
+          fileSelected.style.display = 'none';
+        }
+      });
+    }
+    
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+  });
+</script>

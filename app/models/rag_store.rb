@@ -180,8 +180,29 @@ class RagStore < ApplicationRecord
     rag_queries.where('created_at > ?', 24.hours.ago).average(:response_time_ms)&.to_i || 0
   end
 
-  def recently_accessed?
-    last_accessed_at.present? && last_accessed_at > 7.days.ago
+  def recently_accessed?(within: 7.days)
+    last_accessed_at.present? && last_accessed_at > within.ago
+  end
+
+  # Query analytics - detailed metrics
+  def query_count
+    rag_queries.count
+  end
+
+  def average_query_time
+    queries = rag_queries
+    return 0 if queries.count.zero?
+    queries.average(:response_time_ms)&.to_i || 0
+  end
+
+  def has_queries?
+    rag_queries.exists?
+  end
+
+  # Processing time helpers
+  def processing_time_seconds
+    return 0 unless processing_time_ms
+    (processing_time_ms.to_f / 1000).round(1)
   end
 
   private

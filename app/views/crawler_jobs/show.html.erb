@@ -5,12 +5,12 @@
       <div class="card h-100">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">
-            <i class="fas fa-comment-alt me-2"></i>
+            <i data-lucide="message-square" class="me-2"></i>
             Crawler Assistant
           </h5>
           <% if @crawler_job.status == 'ready' || @crawler_job.status == 'failed' %>
             <button id="reset-conversation" class="btn btn-sm btn-outline-secondary">
-              <i class="fas fa-redo me-1"></i> Reset Conversation
+              <i data-lucide="refresh-cw" class="me-1"></i> Reset Conversation
             </button>
           <% end %>
         </div>
@@ -46,7 +46,7 @@
             <% if @crawler_job.conversation_stage == 'url_finding' %>
               <div class="d-flex justify-content-center mb-3">
                 <button id="skip-url-button" class="btn btn-outline-secondary">
-                  <i class="fas fa-forward me-1"></i> Skip URL Discovery
+                  <i data-lucide="fast-forward" class="me-1"></i> Skip URL Discovery
                 </button>
               </div>
             <% end %>
@@ -57,7 +57,7 @@
                           <%= @crawler_job.status == 'generating' || @crawler_job.status == 'testing' || @crawler_job.status == 'improving' || @crawler_job.status == 'fixing' ? 'disabled' : '' %>></textarea>
                 <button type="submit" class="btn btn-primary" 
                         <%= @crawler_job.status == 'generating' || @crawler_job.status == 'testing' || @crawler_job.status == 'improving' || @crawler_job.status == 'fixing' ? 'disabled' : '' %>>
-                  <i class="fas fa-paper-plane"></i>
+                  <i data-lucide="send"></i>
                 </button>
               </div>
               <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
@@ -67,7 +67,7 @@
                 <span class="text-warning">Please wait while I'm working...</span>
               <% elsif @crawler_job.conversation_stage == 'url_finding' %>
                 <small class="text-muted">
-                  <i class="fas fa-lightbulb me-1"></i> Having trouble finding URLs? Type <strong>skip</strong> to continue without web search.
+                  <i data-lucide="lightbulb" class="me-1"></i> Having trouble finding URLs? Type <strong>skip</strong> to continue without web search.
                 </small>
               <% else %>
                 Ask questions, provide details about the websites, or give feedback on the crawler.
@@ -83,7 +83,7 @@
       <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">
-            <i class="fas fa-spider me-2"></i>
+            <i data-lucide="bug" me-2"></i>
             Crawler Status
           </h5>
           <span class="badge <%= status_badge_class(@crawler_job.status) %>" id="job-status-badge">
@@ -93,7 +93,7 @@
         <div class="card-body">
           <% if @crawler_job.status == 'ready' %>
             <div class="alert alert-info mb-3">
-              <i class="fas fa-info-circle me-2"></i>
+              <i data-lucide="info" class="me-2"></i>
               <strong>Tip:</strong> If your crawler has errors, follow these steps:
               <ol class="mb-0 mt-2">
                 <li>Click <strong>Debug</strong> to run the crawler in debug mode (collects error details)</li>
@@ -104,7 +104,7 @@
           <ul class="list-group list-group-flush" id="crawler-pipeline">
             <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'analyzing' || @crawler_job.conversation_stage == 'analyzing' ? 'active' : '' %>" id="pipeline-analyze">
               <span>
-                <i class="fas fa-search me-2"></i> 
+                <i data-lucide="search" class="me-2"></i> 
                 Analyzing Request
               </span>
               <% if @crawler_job.conversation_stage == 'analyzing' %>
@@ -115,7 +115,7 @@
             </li>
             <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.conversation_stage == 'url_finding' ? 'active' : '' %>" id="pipeline-discover">
               <span>
-                <i class="fas fa-globe me-2"></i> 
+                <i data-lucide="globe" class="me-2"></i> 
                 Discovering URLs
               </span>
               <% if @crawler_job.conversation_stage == 'url_finding' %>
@@ -132,7 +132,7 @@
             </li>
             <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'generating' ? 'active' : '' %>" id="pipeline-generate">
               <span>
-                <i class="fas fa-code me-2"></i> 
+                <i data-lucide="code" class="me-2"></i> 
                 Generating Crawler Code
               </span>
               <% if @crawler_job.status == 'generating' %>
@@ -143,7 +143,7 @@
             </li>
             <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'testing' ? 'active' : '' %>" id="pipeline-test">
               <span>
-                <i class="fas fa-vial me-2"></i> 
+                <i data-lucide="flask-conical" me-2"></i> 
                 Testing Crawler
               </span>
               <% if @crawler_job.status == 'testing' %>
@@ -157,7 +157,7 @@
             </li>
             <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'improving' || @crawler_job.status == 'fixing' ? 'active' : '' %>" id="pipeline-improve">
               <span>
-                <i class="fas fa-wrench me-2"></i> 
+                <i data-lucide="wrench" me-2"></i> 
                 Refining Code
               </span>
               <% if @crawler_job.status == 'improving' || @crawler_job.status == 'fixing' %>
@@ -169,7 +169,7 @@
             </li>
             <li class="list-group-item d-flex justify-content-between align-items-center <%= @crawler_job.status == 'ready' ? 'active' : '' %>" id="pipeline-ready">
               <span>
-                <i class="fas fa-check-circle me-2"></i> 
+                <i data-lucide="check-circle" class="me-2"></i> 
                 Ready to Use
               </span>
               <% if @crawler_job.status == 'ready' %>
@@ -177,17 +177,17 @@
                   <span class="badge bg-success me-2">Crawler Ready</span>
                   <%= form_tag debug_crawler_job_path(@crawler_job), method: :post, class: "me-2" do %>
                     <button type="submit" class="btn btn-sm btn-warning">
-                      <i class="fas fa-bug me-1"></i> Debug
+                      <i data-lucide="bug" class="me-1"></i> Debug
                     </button>
                   <% end %>
                   <%= form_tag debug_crawler_job_path(@crawler_job, auto_fix: true), method: :post, class: "me-2" do %>
                     <button type="submit" class="btn btn-sm btn-warning">
-                      <i class="fas fa-wrench me-1"></i> Debug & Fix
+                      <i data-lucide="wrench" class="me-1"></i> Debug & Fix
                     </button>
                   <% end %>
                   <%= form_tag fix_bugs_crawler_job_path(@crawler_job), method: :post, class: "me-2" do %>
                     <button type="submit" class="btn btn-sm btn-info">
-                      <i class="fas fa-wrench me-1"></i> Fix Bugs
+                      <i data-lucide="wrench" class="me-1"></i> Fix Bugs
                     </button>
                   <% end %>
                   <%= button_to 'Run Crawler', execute_crawler_job_path(@crawler_job), method: :post, class: "btn btn-sm btn-primary" %>
@@ -202,7 +202,7 @@
       <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">
-            <i class="fas fa-terminal me-2"></i>
+            <i data-lucide="terminal" me-2"></i>
             Activity Logs
           </h5>
           <div>
@@ -234,7 +234,7 @@
         <div class="card mt-4">
           <div class="card-header">
             <h5 class="mb-0">
-              <i class="fas fa-code me-2"></i>
+              <i data-lucide="code" class="me-2"></i>
               Generated Python Code
             </h5>
           </div>
@@ -248,7 +248,7 @@
           <div class="card mt-4 border-success">
             <div class="card-header bg-success bg-opacity-25">
               <h5 class="mb-0">
-                <i class="fas fa-wrench me-2"></i>
+                <i data-lucide="wrench" me-2"></i>
                 Changes Made
               </h5>
             </div>
@@ -257,7 +257,7 @@
                 <p class="mb-1"><strong>The following improvements were made:</strong></p>
                 <% @crawler_job.fix_explanation.split('. ').each do |fix| %>
                   <div class="d-flex align-items-start mb-2">
-                    <i class="fas fa-check-circle text-success me-2 mt-1"></i>
+                    <i data-lucide="check-circle" class="text-success me-2 mt-1"></i>
                     <span><%= fix.gsub(/\.$/, '') %></span>
                   </div>
                 <% end %>
@@ -418,7 +418,7 @@
       skipUrlButton.addEventListener('click', function() {
         // Disable the button to prevent multiple clicks
         skipUrlButton.disabled = true;
-        skipUrlButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Skipping...';
+        skipUrlButton.innerHTML = '<i data-lucide="loader-2" class="icon-spin me-1"></i> Skipping...';
         
         // Add skip message to chat
         const skipMessageHtml = `
@@ -521,7 +521,7 @@
           
           // Reset button
           skipUrlButton.disabled = false;
-          skipUrlButton.innerHTML = '<i class="fas fa-forward me-1"></i> Skip URL Discovery';
+          skipUrlButton.innerHTML = '<i data-lucide="fast-forward" class="me-1"></i> Skip URL Discovery';
         });
       });
     }

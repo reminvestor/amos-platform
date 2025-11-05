@@ -251,7 +251,7 @@
            data-controller="landing-page-chat" 
            data-landing-page-chat-landing-page-id-value="<%= @landing_page.id %>">
         <div class="chat-header">
-          <h5 class="mb-0"><i class="fas fa-comments me-2"></i> AI Assistant</h5>
+          <h5 class="mb-0"><i data-lucide="message-circle" class="me-2"></i> AI Assistant</h5>
           <p class="text-muted mb-0 small">Chat with AI to make changes to your landing page</p>
         </div>
         
@@ -259,7 +259,7 @@
           <div class="d-flex align-items-center mb-1">
             <small class="text-muted flex-grow-1">Editing:</small>
             <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshSections">
-              <i class="fas fa-sync-alt"></i>
+              <i data-lucide="refresh-cw"></i>
             </button>
           </div>
           <select class="form-select form-select-sm" id="sectionSelector" data-landing-page-chat-target="sectionSelector">
@@ -279,11 +279,11 @@
         <div id="rollback-option" class="alert alert-warning mx-2 mt-2 mb-0 d-none" data-landing-page-chat-target="rollbackOption">
           <div class="d-flex justify-content-between align-items-center">
             <div>
-              <i class="fas fa-exclamation-triangle me-2"></i> 
+              <i data-lucide="alert-triangle" class="me-2"></i> 
               <span>Not happy with the AI changes?</span>
             </div>
             <a href="<%= versions_landing_page_path(@landing_page) %>" class="btn btn-sm btn-outline-dark">
-              <i class="fas fa-history me-1"></i> View Versions
+              <i data-lucide="history" class="me-1"></i> View Versions
             </a>
           </div>
         </div>
@@ -296,7 +296,7 @@
                      aria-label="Message"
                      data-landing-page-chat-target="input">
               <button class="btn btn-primary" type="submit">
-                <i class="fas fa-paper-plane"></i>
+                <i data-lucide="send"></i>
               </button>
             </div>
           </form>

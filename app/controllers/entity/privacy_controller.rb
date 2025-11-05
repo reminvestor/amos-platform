@@ -1,6 +1,4 @@
-class Entity::PrivacyController < ApplicationController
-  before_action :authenticate_user!
-  before_action :require_entity_admin
+class Entity::PrivacyController < Entity::BaseController
 
   def show
     # Privacy settings stored in entity settings
@@ -30,11 +28,6 @@ class Entity::PrivacyController < ApplicationController
 
   private
 
-  def require_entity_admin
-    unless current_user.entity_admin?
-      redirect_to root_path, alert: "You must be an entity admin to manage privacy settings."
-    end
-  end
 
   def default_privacy_settings
     {

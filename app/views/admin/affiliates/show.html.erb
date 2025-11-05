@@ -5,7 +5,7 @@
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center">
         <h1>
-          <i class="fas fa-user-circle"></i> <%= @affiliate.user.full_name %>
+          <i data-lucide="user"></i> <%= @affiliate.user.full_name %>
           <span class="badge bg-<%= case @affiliate.status
             when 'pending' then 'warning'
             when 'active' then 'success'
@@ -16,7 +16,7 @@
           </span>
         </h1>
         <%= link_to admin_affiliates_path, class: "btn btn-outline-secondary" do %>
-          <i class="fas fa-arrow-left"></i> Back to List
+          <i data-lucide="arrow-left"></i> Back to List
         <% end %>
       </div>
     </div>
@@ -126,13 +126,13 @@
         <div class="card-body">
           <% if @affiliate.pending? %>
             <%= button_to approve_admin_affiliate_path(@affiliate), method: :post, class: "btn btn-success mb-2 w-100" do %>
-              <i class="fas fa-check"></i> Approve Affiliate
+              <i data-lucide="check"></i> Approve Affiliate
             <% end %>
           <% end %>
 
           <% if @affiliate.active? %>
             <%= button_to suspend_admin_affiliate_path(@affiliate), method: :post, class: "btn btn-warning mb-2 w-100", data: { confirm: 'Are you sure you want to suspend this affiliate?' } do %>
-              <i class="fas fa-pause"></i> Suspend Affiliate
+              <i data-lucide="pause"></i> Suspend Affiliate
             <% end %>
           <% end %>
 

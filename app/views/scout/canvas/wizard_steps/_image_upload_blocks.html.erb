@@ -9,7 +9,7 @@
       <div class="image-upload-block">
         <div class="image-preview" id="image-preview-1">
           <div class="upload-placeholder">
-            <i class="fas fa-image text-secondary mb-2"></i>
+            <i data-lucide="image" class="text-secondary mb-2"></i>
             <p class="text-dark small mb-0 fw-medium">Image 1</p>
           </div>
         </div>
@@ -18,10 +18,10 @@
           <div class="btn-group-vertical w-100" role="group">
             <input type="file" id="image-file-1" name="image_file_1" accept="image/*" class="d-none">
             <button type="button" class="btn btn-outline-primary btn-sm" onclick="console.log('🔘 Upload button 1 clicked'); document.getElementById('image-file-1').click()">
-              <i class="fas fa-upload me-1"></i> Upload Image
+              <i data-lucide="upload" class="me-1"></i> Upload Image
             </button>
             <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="openMediaLibrary(1)">
-              <i class="fas fa-photo-video me-1"></i> Choose from Library
+              <i data-lucide="camera" class="me-1"></i> Choose from Library
             </button>
             <input type="text" 
                    id="image-prompt-1" 
@@ -38,7 +38,7 @@
       <div class="image-upload-block">
         <div class="image-preview" id="image-preview-2">
           <div class="upload-placeholder">
-            <i class="fas fa-image text-secondary mb-2"></i>
+            <i data-lucide="image" class="text-secondary mb-2"></i>
             <p class="text-dark small mb-0 fw-medium">Image 2</p>
           </div>
         </div>
@@ -47,10 +47,10 @@
           <div class="btn-group-vertical w-100" role="group">
             <input type="file" id="image-file-2" name="image_file_2" accept="image/*" class="d-none">
             <button type="button" class="btn btn-outline-primary btn-sm" onclick="console.log('🔘 Upload button 2 clicked'); document.getElementById('image-file-2').click()">
-              <i class="fas fa-upload me-1"></i> Upload Image
+              <i data-lucide="upload" class="me-1"></i> Upload Image
             </button>
             <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="openMediaLibrary(2)">
-              <i class="fas fa-photo-video me-1"></i> Choose from Library
+              <i data-lucide="camera" class="me-1"></i> Choose from Library
             </button>
             <input type="text" 
                    id="image-prompt-2" 
@@ -67,7 +67,7 @@
       <div class="image-upload-block">
         <div class="image-preview" id="image-preview-3">
           <div class="upload-placeholder">
-            <i class="fas fa-image text-secondary mb-2"></i>
+            <i data-lucide="image" class="text-secondary mb-2"></i>
             <p class="text-dark small mb-0 fw-medium">Image 3</p>
           </div>
         </div>
@@ -76,10 +76,10 @@
           <div class="btn-group-vertical w-100" role="group">
             <input type="file" id="image-file-3" name="image_file_3" accept="image/*" class="d-none">
             <button type="button" class="btn btn-outline-primary btn-sm" onclick="console.log('🔘 Upload button 3 clicked'); document.getElementById('image-file-3').click()">
-              <i class="fas fa-upload me-1"></i> Upload Image
+              <i data-lucide="upload" class="me-1"></i> Upload Image
             </button>
             <button type="button" class="btn btn-outline-secondary btn-sm mt-1" onclick="openMediaLibrary(3)">
-              <i class="fas fa-photo-video me-1"></i> Choose from Library
+              <i data-lucide="camera" class="me-1"></i> Choose from Library
             </button>
             <input type="text" 
                    id="image-prompt-3" 
@@ -95,7 +95,7 @@
   <!-- Design Reference Upload - Below Images -->
   <div class="design-reference-section mt-4">
     <h6 class="mb-2 text-white">
-      <i class="fas fa-palette me-2"></i>
+      <i data-lucide="palette" class="me-2"></i>
       Design Reference (Optional)
     </h6>
     <p class="text-light small mb-3">
@@ -105,7 +105,7 @@
     <div class="design-upload-block">
       <div class="upload-area" id="design-upload-area">
         <div class="upload-placeholder text-center p-3">
-          <i class="fas fa-cloud-upload-alt text-primary mb-2" style="font-size: 2rem;"></i>
+          <i data-lucide="cloud-upload" class="text-primary mb-2 icon-2x"></i>
           <p class="text-dark mb-2">Drop design reference here or click to browse</p>
           <p class="text-muted small mb-0">Supports: Images (JPG, PNG), Documents (PDF, DOC), or website screenshots</p>
         </div>
@@ -129,7 +129,7 @@
   <!-- Hidden fields to store image data for form submission -->
   <input type="hidden" id="images-data" name="images_data" value="">
   <div class="d-flex justify-content-end mt-2">
-    <a href="/image_assets/new" target="_blank" class="small text-decoration-underline"><i class="fas fa-plus me-1"></i>Add images to library</a>
+    <a href="/image_assets/new" target="_blank" class="small text-decoration-underline"><i data-lucide="plus" class="me-1"></i>Add images to library</a>
   </div>
 </div>
 
@@ -170,6 +170,13 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.uploaded-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.375rem;
 }
 
 .image-preview.has-image {
@@ -281,19 +288,21 @@ if (!window.imageUploadBlocksInitialized) {
       uploadArea.innerHTML = `
         <div class="design-file-preview show">
           <div class="d-flex align-items-center">
-            <i class="fas fa-file-${getFileIcon(file.type)} text-primary me-3" style="font-size: 2rem;"></i>
+            <i data-lucide="file-text" class="text-primary me-3 icon-2x"></i>
             <div>
               <p class="text-dark mb-1 fw-medium">${file.name}</p>
               <p class="text-muted small mb-0">${formatFileSize(file.size)} • ${file.type}</p>
             </div>
             <button type="button" class="btn btn-outline-danger btn-sm ms-auto" onclick="clearDesignReference()">
-              <i class="fas fa-times"></i>
+              <i data-lucide="x"></i>
             </button>
           </div>
         </div>
       `;
-      
+
       block.classList.add('has-file');
+      // Re-initialize Lucide icons after dynamic content insertion
+      if (typeof lucide !== 'undefined') lucide.createIcons();
       updateImagesData();
     }
   }
@@ -322,13 +331,15 @@ if (!window.imageUploadBlocksInitialized) {
     if (uploadArea && fileInput && block) {
       uploadArea.innerHTML = `
         <div class="upload-placeholder text-center p-3">
-          <i class="fas fa-cloud-upload-alt text-primary mb-2" style="font-size: 2rem;"></i>
+          <i data-lucide="cloud-upload" class="text-primary mb-2 icon-2x"></i>
           <p class="text-dark mb-2">Drop design reference here or click to browse</p>
           <p class="text-muted small mb-0">Supports: Images (JPG, PNG), Documents (PDF, DOC), or website screenshots</p>
         </div>
       `;
       fileInput.value = '';
       block.classList.remove('has-file');
+      // Re-initialize Lucide icons after dynamic content insertion
+      if (typeof lucide !== 'undefined') lucide.createIcons();
       updateImagesData();
     }
   };
@@ -354,7 +365,7 @@ if (!window.imageUploadBlocksInitialized) {
           const reader = new FileReader();
           reader.onload = function(e) {
             console.log(`📸 File loaded successfully, updating preview for image ${i}`);
-            preview.innerHTML = `<img src="${e.target.result}" alt="Uploaded image ${i}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 0.375rem;">`;
+            preview.innerHTML = `<img src="${e.target.result}" alt="Uploaded image ${i}" class="uploaded-image">`;
             preview.classList.add('has-image');
             block?.classList.add('has-upload');
             console.log(`📸 Preview updated for image ${i}`);
@@ -501,7 +512,7 @@ if (!window.imageUploadBlocksInitialized) {
             const preview = document.getElementById(`image-preview-${slot}`);
             const block = preview?.closest('.image-upload-block');
             if (preview) {
-              preview.innerHTML = `<img src="${url}" alt="Selected image ${slot}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 0.375rem;">`;
+              preview.innerHTML = `<img src="${url}" alt="Selected image ${slot}" class="uploaded-image">`;
               preview.classList.add('has-image');
             }
             block?.classList.add('has-upload');
@@ -524,7 +535,7 @@ if (!window.imageUploadBlocksInitialized) {
       <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title"><i class="fas fa-photo-video me-2"></i>Media Library</h5>
+            <h5 class="modal-title"><i data-lucide="camera" class="me-2"></i>Media Library</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">

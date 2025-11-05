@@ -17,7 +17,20 @@
       "Bash(git fetch:*)",
       "Bash(git merge:*)",
       "Bash(git stash:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(rails test:system:*)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(git clone:*)",
+      "Bash(pkill:*)",
+      "Bash(git checkout:*)",
+      "Bash(curl:*)",
+      "Bash(bundle exec rails:*)",
+      "Bash(ruby -c:*)",
+      "Bash(cat:*)",
+      "Bash(xargs:*)",
+      "Bash(git -C /Users/ryan/Documents/agent_marketing add app/controllers/scout_controller.rb)",
+      "Bash(tee:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

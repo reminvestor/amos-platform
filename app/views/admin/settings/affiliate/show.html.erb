@@ -3,7 +3,7 @@
     <div class="container-fluid">
   <div class="row mb-4">
     <div class="col-12">
-      <h1><i class="fas fa-cog"></i> Affiliate Program Settings</h1>
+      <h1><i data-lucide="settings"></i> Affiliate Program Settings</h1>
     </div>
   </div>
 
@@ -78,7 +78,7 @@
       </div>
       <div class="card-body">
         <div class="alert alert-info">
-          <i class="fas fa-info-circle"></i> Commission structure is currently hardcoded in the application. Contact development team to modify.
+          <i data-lucide="info"></i> Commission structure is currently hardcoded in the application. Contact development team to modify.
         </div>
         <ul class="text-white">
           <li><strong>First Payment Commission:</strong> Paid when referred customer makes first payment</li>
@@ -139,10 +139,10 @@
     <!-- Save Button -->
     <div class="d-flex justify-content-between">
       <%= link_to admin_dashboard_path, class: "btn btn-outline-secondary" do %>
-        <i class="fas fa-arrow-left"></i> Back to Dashboard
+        <i data-lucide="arrow-left"></i> Back to Dashboard
       <% end %>
       <button type="submit" class="btn btn-primary btn-lg">
-        <i class="fas fa-save"></i> Save Settings
+        <i data-lucide="save"></i> Save Settings
       </button>
     </div>
   <% end %>

@@ -1,6 +1,4 @@
-class Entity::PoliciesController < ApplicationController
-  before_action :authenticate_user!
-  before_action :require_entity_admin
+class Entity::PoliciesController < Entity::BaseController
   before_action :set_policy, only: [ :show, :edit, :update, :destroy, :toggle ]
 
   def index
@@ -65,9 +63,4 @@ class Entity::PoliciesController < ApplicationController
     )
   end
 
-  def require_entity_admin
-    unless current_user.entity_admin?
-      redirect_to root_path, alert: "You must be an entity admin to manage policies."
-    end
-  end
 end

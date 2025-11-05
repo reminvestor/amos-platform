@@ -1,5 +1,6 @@
 class ConnectionsController < ApplicationController
   before_action :authenticate_user!
+  layout 'customer_admin'
   include EntityScoped
 
   # POST /connections/:id/test
