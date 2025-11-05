@@ -1,6 +1,6 @@
 # /add-tool Command
 
-Create a new tool with comprehensive tests for the AMOS workflow system.
+Create a new Scout AI tool for the AMOS workflow system.
 
 ## Usage
 
@@ -10,42 +10,38 @@ Create a new tool with comprehensive tests for the AMOS workflow system.
 
 ## What This Command Does
 
-Delegates to the **tool-builder** agent to:
-1. Ask you what the tool should do
-2. Define input/output parameters
-3. Implement the BaseTool class
+Uses the **starting-features** skill to:
+1. Help you design the tool's functionality
+2. Create the tool class extending BaseTool
+3. Implement tool definition and execute method
 4. Write comprehensive unit tests
-5. Verify tool registration in ToolCatalog
+5. Verify auto-registration in ToolCatalog
 
-## Example
+## Examples
 
 ```
 /add-tool Create a tool to export campaign analytics to CSV
 ```
 
-## Agent Task
-
-Use the Task tool with subagent_type: "tool-builder"
-
-Provide this prompt:
 ```
-The user wants to create a new tool: [description]
-
-Please:
-1. Ask the user what exactly this tool should do
-2. Ask what the inputs are (parameters) and what format
-3. Ask what the outputs should be
-4. Ask which models/databases it interacts with
-5. Ask if any external APIs are needed
-6. Implement the tool class in app/services/tools/
-7. Write comprehensive tests in test/services/tools/
-8. Verify it registers in ToolCatalog
-9. Test in Rails console if possible
-
-Return a summary of:
-- Tool file created
-- Test file created
-- Parameters defined
-- Test results
-- Any issues encountered
+/add-tool Build a tool that generates social media posts from blog content
 ```
+
+## Implementation
+
+This command uses the starting-features skill which:
+- Follows AMOS patterns (entity scoping, tool catalog)
+- Generates proper file structure in `app/services/tools/`
+- Creates corresponding test files in `test/services/tools/`
+- Ensures tool auto-discovery works correctly
+
+## Next Steps
+
+After running this command:
+1. Test the tool manually with the `testing-tools-manually` skill
+2. Run tests with `running-tests` skill
+3. Use `/quick-commit` to commit your changes
+
+## Uses Skills
+
+- **starting-features** - Tool scaffolding and implementation guidance
