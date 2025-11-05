@@ -200,11 +200,11 @@
                 <% end %>
               </div>
 
-              <% if @business_profile.business_knowledge.any? %>
+              <% if @business_profile.knowledge_base_data.any? %>
                 <div style="border-top: 1px solid #1E293B; padding-top: 2rem;">
                   <h5 style="color: white; margin-bottom: 1rem;">Existing Knowledge Base</h5>
                   <div style="max-height: 400px; overflow-y: auto;">
-                    <% @business_profile.business_knowledge.each do |section_name, content| %>
+                    <% @business_profile.knowledge_base_data.each do |section_name, content| %>
                       <div class="admin-card" style="background: #0F172A; margin-bottom: 1rem;">
                         <h6 style="color: #A78BFA; margin-bottom: 0.75rem;"><%= section_name %></h6>
                         <div style="color: #94A3B8; font-size: 0.875rem; white-space: pre-wrap;"><%= content %></div>
