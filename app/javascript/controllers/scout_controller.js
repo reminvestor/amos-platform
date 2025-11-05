@@ -644,7 +644,9 @@ export default class extends Controller {
                   // Final response received - hide streaming window and show message
                   finalResponseData = data.data
                   console.log("✅ Final response received, message length:", finalResponseData?.message?.length || 0)
-                  
+                  console.log("📚 Sources in response:", finalResponseData?.sources)
+                  console.log("📦 Full finalResponseData keys:", Object.keys(finalResponseData || {}))
+
                   // Hide streaming window first
                   this.hideStreamingWindow()
                 }
