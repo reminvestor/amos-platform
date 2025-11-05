@@ -538,15 +538,19 @@
 
                   <div class="model-presets">
                     <button class="model-preset-btn" data-power="0">
-                      <span>Faster</span>
+                      <span>Fastest</span>
                       <span class="preset-model">Claude 3.5 Haiku</span>
+                    </button>
+                    <button class="model-preset-btn" data-power="25">
+                      <span>Fast</span>
+                      <span class="preset-model">Claude Haiku 4.5</span>
                     </button>
                     <button class="model-preset-btn active" data-power="50">
                       <span>Balanced</span>
                       <span class="preset-model">Claude 3.5 Sonnet</span>
                     </button>
                     <button class="model-preset-btn" data-power="100">
-                      <span>More Robust</span>
+                      <span>Most Robust</span>
                       <span class="preset-model">Claude Sonnet 4.5</span>
                     </button>
                   </div>
@@ -562,7 +566,7 @@
             <select id="model-select" class="model-select d-none">
               <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
               <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-              <option value="claude-opus-4-1">Claude Opus 4.1</option>
+              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
               <option value="claude-3-haiku" selected>Claude 3.5 Haiku</option>
             </select>
           </div>
@@ -1211,14 +1215,16 @@ document.addEventListener('turbo:load', function() {
   // Model power to Claude model mapping
   const MODEL_MAP = {
     0: { model: 'claude-3-haiku', name: 'Claude 3.5 Haiku' },
+    25: { model: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
     50: { model: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
     100: { model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' }
   };
 
   // Get current model from power level
   function getModelFromPower(power) {
-    if (power <= 25) return MODEL_MAP[0];
-    if (power <= 75) return MODEL_MAP[50];
+    if (power < 12) return MODEL_MAP[0];
+    if (power < 37) return MODEL_MAP[25];
+    if (power < 75) return MODEL_MAP[50];
     return MODEL_MAP[100];
   }
 
@@ -1294,7 +1300,7 @@ document.addEventListener('turbo:load', function() {
       // Update active preset
       presetBtns.forEach(btn => {
         const presetPower = parseInt(btn.dataset.power);
-        const isActive = Math.abs(power - presetPower) < 26;
+        const isActive = Math.abs(power - presetPower) < 13;
         btn.classList.toggle('active', isActive);
       });
 
