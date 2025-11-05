@@ -292,6 +292,27 @@
   outline: none;
 }
 
+/* Password field validation states */
+#user_password.password-invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.15);
+}
+
+#user_password.password-valid {
+  border-color: #10b981;
+  box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.15);
+}
+
+#user_password_confirmation.password-invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.15);
+}
+
+#user_password_confirmation.password-valid {
+  border-color: #10b981;
+  box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.15);
+}
+
 .form-control::placeholder {
   color: var(--scout-text-muted, #9ca3af);
 }
@@ -505,17 +526,42 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordConfirm = passwordConfirmInput.value;
     const MIN_PASSWORD_LENGTH = 10;
 
-    // Only show feedback if user has typed in confirmation field
+    // Check password length validity
+    const passwordLongEnough = password.length >= MIN_PASSWORD_LENGTH;
+    const passwordsMatch = password === passwordConfirm;
+
+    // Update password field styling (always show, even on first char)
+    if (password.length > 0) {
+      if (passwordLongEnough) {
+        passwordInput.classList.remove('password-invalid');
+        passwordInput.classList.add('password-valid');
+      } else {
+        passwordInput.classList.remove('password-valid');
+        passwordInput.classList.add('password-invalid');
+      }
+    } else {
+      passwordInput.classList.remove('password-invalid', 'password-valid');
+    }
+
+    // Only show full feedback if user has typed in confirmation field
     if (passwordConfirm.length === 0) {
+      passwordConfirmInput.classList.remove('password-invalid', 'password-valid');
       passwordMatchIndicator.classList.remove('match', 'no-match');
       passwordMatchMessage.style.display = 'none';
       submitButton.disabled = false;
       return;
     }
 
-    const passwordsMatch = password === passwordConfirm;
-    const passwordLongEnough = password.length >= MIN_PASSWORD_LENGTH;
     const passwordsValid = password.length > 0 && passwordConfirm.length > 0;
+
+    // Update confirmation field styling
+    if (!passwordLongEnough || !passwordsMatch) {
+      passwordConfirmInput.classList.remove('password-valid');
+      passwordConfirmInput.classList.add('password-invalid');
+    } else {
+      passwordConfirmInput.classList.remove('password-invalid');
+      passwordConfirmInput.classList.add('password-valid');
+    }
 
     if (passwordsValid) {
       if (!passwordLongEnough) {
