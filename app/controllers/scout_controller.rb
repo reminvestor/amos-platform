@@ -389,8 +389,6 @@ class ScoutController < ApplicationController
 
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
     Rails.logger.info "Selected model: #{selected_model}" if selected_model
-    puts "🚨 PRODUCTION DEBUG: Scout chat request received - #{Time.current}"
-    STDOUT.flush
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
     Rails.logger.info "Chat context: #{context.inspect}" if context
     Rails.logger.info "File URLs: #{file_urls.inspect}" if file_urls.any?
@@ -406,8 +404,6 @@ class ScoutController < ApplicationController
     response.headers["Connection"] = "keep-alive"
     response.headers["X-Accel-Buffering"] = "no" # Prevent nginx buffering
     response.headers["Access-Control-Allow-Origin"] = "*"
-    puts "🚨 PRODUCTION DEBUG: SSE Headers set - #{Time.current}"
-    STDOUT.flush
 
     # Force the headers to be sent immediately
     response.status = 200
@@ -713,9 +709,7 @@ class ScoutController < ApplicationController
     rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
       # Client disconnected - this is normal, not an error
       Rails.logger.info "Client disconnected during chat stream: #{e.message}"
-      puts "ℹ️ Client disconnected (normal): #{e.message}"
-      STDOUT.flush
-      
+
       # Check if a landing page was created successfully before disconnection
       # This helps users know their request completed even if streaming failed
       if @workflow_engine&.workflow_execution&.status == "completed"
@@ -1117,10 +1111,6 @@ class ScoutController < ApplicationController
 
   def stream_content_chunk(content)
     # Stream individual content chunks for real-time display
-    puts "🚨 PRODUCTION DEBUG: Streaming content chunk: #{content.inspect}"
-    puts "🔍 Content length: #{content.length}, newlines: #{content.count("\n")}"
-    STDOUT.flush
-
     data = JSON.generate({ type: "content", content: content })
     chunk = "data: #{data}\n\n"
 
@@ -1132,23 +1122,14 @@ class ScoutController < ApplicationController
     rescue
       # Ignore flush errors
     end
-
-    puts "✅ Content chunk streamed successfully"
-    STDOUT.flush
   rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
     # Client disconnected - this is normal, not an error
     Rails.logger.info "Client disconnected during content streaming: #{e.message}"
-    puts "ℹ️ Client disconnected (normal): #{e.message}"
-    STDOUT.flush
   rescue => e
     Rails.logger.error "Stream content chunk error: #{e.message}"
-    puts "❌ Stream content chunk error: #{e.message}"
-    STDOUT.flush
   end
 
   def stream_update(message)
-    puts "🚨 PRODUCTION DEBUG: Streaming update: #{message}"
-    STDOUT.flush
     # Create the SSE (Server-Sent Events) format
     # Handle both string and hash data
     data = if message.is_a?(Hash)
@@ -1159,23 +1140,14 @@ class ScoutController < ApplicationController
     chunk = "data: #{data}\n\n"
 
     response.stream.write(chunk)
-
-    puts "✅ Update streamed successfully"
-    STDOUT.flush
   rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
     # Client disconnected - this is normal, not an error
     Rails.logger.info "Client disconnected during streaming: #{e.message}"
-    puts "ℹ️ Client disconnected (normal): #{e.message}"
-    STDOUT.flush
   rescue => e
     Rails.logger.error "Stream update failed: #{e.message}"
-    puts "❌ Stream update failed: #{e.message}"
-    STDOUT.flush
   end
 
   def stream_transient_update(message)
-    puts "🚨 PRODUCTION DEBUG: Streaming transient update: #{message}"
-    STDOUT.flush
     # Create transient messages for progress/tool updates
     data = JSON.generate({
       type: "transient",
