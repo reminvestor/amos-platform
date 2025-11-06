@@ -2115,7 +2115,19 @@ export default class extends Controller {
       console.log('📎 Upload response status:', response.status)
 
       if (!response.ok) {
-        throw new Error('File upload failed')
+        // Try to get error details from response
+        let errorDetails = 'File upload failed'
+        try {
+          const errorData = await response.json()
+          console.error('📎 Upload error response:', errorData)
+          errorDetails = errorData.error || errorDetails
+          if (errorData.details) {
+            console.error('📎 Error details:', errorData.details)
+          }
+        } catch (e) {
+          console.error('📎 Could not parse error response')
+        }
+        throw new Error(errorDetails)
       }
 
       const result = await response.json()
