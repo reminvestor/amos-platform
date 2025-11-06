@@ -1169,7 +1169,7 @@ export default class extends Controller {
         }, 1500); // Give canvas time to load content
       }
       
-      this.showCanvasLoading()
+      this.showCanvasLoading(canvasType)
 
       console.log("📡 Making request to /scout/load_canvas")
       const response = await fetch("/scout/load_canvas", {
@@ -1999,13 +1999,41 @@ export default class extends Controller {
   }
 
   // Separate loading overlay methods for canvas operations
-  showCanvasLoading() {
+  showCanvasLoading(canvasType = 'canvas') {
     if (this.hasLoadingOverlayTarget) {
       this.loadingOverlayTarget.classList.add("active")
-      // Set canvas loading message
-      let messageElement = this.loadingOverlayTarget.querySelector('.loading-spinner p')
+
+      // Set context-specific loading messages
+      const messages = {
+        landing_page_viewer: 'Preparing your landing pages...',
+        landing_page_generator: 'Setting up the builder...',
+        campaign_viewer: 'Loading campaigns...',
+        contact_viewer: 'Fetching contacts...',
+        integrations_manager: 'Loading integrations...',
+        integration_connect: 'Connecting service...',
+        analytics_dashboard: 'Building dashboard...',
+        campaign_editor: 'Opening editor...',
+        email_template_editor: 'Opening template editor...',
+        email_template_viewer: 'Loading templates...'
+      }
+
+      const message = messages[canvasType] || 'Preparing canvas...'
+
+      // Update title
+      let titleElement = this.loadingOverlayTarget.querySelector('.loading-title')
+      if (titleElement) {
+        titleElement.textContent = "Scout is working..."
+      }
+
+      // Update message
+      let messageElement = this.loadingOverlayTarget.querySelector('.loading-message')
       if (messageElement) {
-        messageElement.textContent = "🎨 Loading canvas..."
+        messageElement.textContent = message
+      }
+
+      // Reinitialize Lucide icons in the overlay
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons()
       }
     }
   }

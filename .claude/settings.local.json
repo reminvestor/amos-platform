@@ -3,11 +3,20 @@
     "allow": [
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Skill(dark-theme-redesign)"
+      "Skill(dark-theme-redesign)",
+      "Bash(git pull:*)",
+      "Bash(grep:*)",
+      "Bash(git checkout:*)",
+      "Bash(git worktree add:*)",
+      "Bash(git worktree:*)",
+      "Bash(cat:*)",
+      "Bash(xargs grep:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": [
       "Bash(git push:*)"
     ]
-  }
+  },
+  "model": "claude-haiku-4-5-20251001"
 }

@@ -1,21 +1,21 @@
 module Admin::SystemDocumentsHelper
   def icon_for_content_type(content_type)
-    icon_class = case content_type
-                 when 'application/pdf'
-                   'fa-file-pdf text-danger'
-                 when /word/
-                   'fa-file-word text-primary'
-                 when 'text/markdown'
-                   'fa-file-code text-info'
-                 when /powerpoint|presentation/
-                   'fa-file-powerpoint text-warning'
-                 when /^text\//
-                   'fa-file-alt text-secondary'
-                 else
-                   'fa-file text-muted'
-                 end
+    icon, color = case content_type
+                  when 'application/pdf'
+                    ['file-pdf', 'text-danger']
+                  when /word/
+                    ['file-text', 'text-primary']
+                  when 'text/markdown'
+                    ['code', 'text-info']
+                  when /powerpoint|presentation/
+                    ['file-text', 'text-warning']
+                  when /^text\//
+                    ['file-text', 'text-secondary']
+                  else
+                    ['file', 'text-muted']
+                  end
 
-    content_tag(:i, '', class: "fas #{icon_class} me-2")
+    content_tag(:i, '', class: "me-2 #{color}", data: { lucide: icon })
   end
 
   def status_badge_for_system_document(document)
@@ -23,17 +23,17 @@ module Admin::SystemDocumentsHelper
                                when 'pending'
                                  ['bg-secondary', 'clock', 'Pending']
                                when 'processing'
-                                 ['bg-warning', 'spinner fa-spin', 'Processing...']
+                                 ['bg-warning', 'loader', 'Processing...']
                                when 'indexed'
                                  ['bg-success', 'check-circle', 'Indexed']
                                when 'failed'
-                                 ['bg-danger', 'exclamation-circle', 'Failed']
+                                 ['bg-danger', 'alert-circle', 'Failed']
                                else
-                                 ['bg-secondary', 'question', 'Unknown']
+                                 ['bg-secondary', 'help-circle', 'Unknown']
                                end
 
     content_tag(:span, class: "badge #{badge_class}") do
-      concat content_tag(:i, '', class: "fas fa-#{icon} me-1")
+      concat content_tag(:i, '', class: "me-1", data: { lucide: icon })
       concat text
     end
   end

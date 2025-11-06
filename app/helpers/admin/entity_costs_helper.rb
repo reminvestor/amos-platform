@@ -7,11 +7,11 @@ module Admin::EntityCostsHelper
   def cost_trend_icon(trend)
     case trend
     when 'increasing'
-      content_tag(:i, '', class: 'fas fa-arrow-up text-danger')
+      content_tag(:i, '', class: 'text-danger', data: { lucide: 'arrow-up' })
     when 'decreasing'
-      content_tag(:i, '', class: 'fas fa-arrow-down text-success')
+      content_tag(:i, '', class: 'text-success', data: { lucide: 'arrow-down' })
     else
-      content_tag(:i, '', class: 'fas fa-equals text-secondary')
+      content_tag(:i, '', class: 'text-secondary', data: { lucide: 'minus' })
     end
   end
 
@@ -98,16 +98,16 @@ module Admin::EntityCostsHelper
 
   def cost_category_icon(category)
     icons = {
-      'ai_chat' => 'fas fa-robot',
-      'email' => 'fas fa-envelope',
-      'sms' => 'fas fa-comment-dots',
-      'storage' => 'fas fa-database',
-      'compute' => 'fas fa-microchip',
-      'bandwidth' => 'fas fa-network-wired',
-      'integration' => 'fas fa-plug',
-      'other' => 'fas fa-ellipsis-h'
+      'ai_chat' => 'bot',
+      'email' => 'mail',
+      'sms' => 'message-circle',
+      'storage' => 'database',
+      'compute' => 'cpu',
+      'bandwidth' => 'wifi',
+      'integration' => 'plug',
+      'other' => 'more-horizontal'
     }
 
-    icons[category.to_s] || 'fas fa-question-circle'
+    icons[category.to_s] || 'help-circle'
   end
 end

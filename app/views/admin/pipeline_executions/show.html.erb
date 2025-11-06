@@ -42,7 +42,7 @@
       <% color = AiAgents::Pipeline::StateMachine.state_color(@pipeline_execution.status) %>
       <% icon = AiAgents::Pipeline::StateMachine.state_icon(@pipeline_execution.status) %>
       <span class="badge bg-<%= color %> fs-6">
-        <i class="<%= icon %>"></i>
+        <i data-lucide="<%= icon %>"></i>
         <%= @pipeline_execution.status.titleize %>
       </span>
     </div>
