@@ -2144,6 +2144,22 @@ export default class extends Controller {
         console.log('ℹ️ Duplicate documents found:', duplicateUploads.map(u => u.filename))
       }
 
+      // If a document was uploaded successfully, try to open it in the viewer
+      if (result.urls && result.urls.length > 0) {
+        const documentUploads = result.urls.filter(u => u.asset_type === 'document' && u.asset_id)
+        if (documentUploads.length > 0) {
+          console.log('📄 Opening document viewer for uploaded document:', documentUploads[0])
+          // Add a message to let the user know what's happening
+          this.addMessage('I\'ll open the document viewer for you...', 'ai')
+          // Small delay to ensure the document is ready
+          setTimeout(() => {
+            this.loadCanvas('document_viewer', { 
+              asset_id: documentUploads[0].asset_id 
+            })
+          }, 1000)
+        }
+      }
+
       return result.urls || []
     } catch (error) {
       console.error('❌ File upload error:', error)
