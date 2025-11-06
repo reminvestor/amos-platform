@@ -21,7 +21,7 @@ module Tools
             },
             asset_id: {
               type: 'integer',
-              description: 'ImageAsset ID of the uploaded file'
+              description: 'ImageAsset or RagDocument ID of the uploaded file'
             },
             max_length: {
               type: 'integer',
@@ -49,8 +49,23 @@ module Tools
       begin
         # Find the file
         if asset_id
+          # Try to find as ImageAsset first
           asset = ImageAsset.find_by(id: asset_id, entity: @entity)
-          return error_response("File not found or access denied") unless asset
+          
+          # If not found, try as RagDocument
+          if !asset
+            rag_document = RagDocument.joins(:rag_store).find_by(
+              id: asset_id, 
+              rag_stores: { entity_id: @entity.id }
+            )
+            
+            if rag_document && rag_document.file.attached?
+              # Use RagDocument's attached file
+              asset = rag_document
+            else
+              return error_response("File not found or access denied")
+            end
+          end
           
           # Download the file to a temporary location for processing
           # This ensures compatibility with tools like ImageMagick
@@ -110,8 +125,9 @@ module Tools
           text_content = text_content[0...max_length] + "\n\n[Content truncated - full document has #{text_content.length} characters]"
         end
 
-        # Trigger RAG indexing for this document if not already indexed
-        if asset_id
+        # Trigger RAG indexing for this document if not already indexed (only for ImageAssets)
+        # RagDocuments are already in the RAG system
+        if asset_id && asset.is_a?(ImageAsset)
           enqueue_rag_indexing(asset, filename)
         end
 

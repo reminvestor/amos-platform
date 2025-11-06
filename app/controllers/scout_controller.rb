@@ -2465,7 +2465,7 @@ class ScoutController < ApplicationController
         filename: existing_doc.original_filename,
         content_type: existing_doc.content_type,
         size: existing_doc.file_size_bytes,
-        document_id: existing_doc.id,
+        asset_id: existing_doc.id,
         asset_type: 'document',
         processing: existing_doc.processing_status == 'processing',
         duplicate: true
@@ -2493,7 +2493,7 @@ class ScoutController < ApplicationController
       filename: file.original_filename,
       content_type: file.content_type,
       size: file.size,
-      document_id: rag_document.id,
+      asset_id: rag_document.id,
       asset_type: 'document',
       processing: true
     }
