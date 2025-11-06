@@ -191,9 +191,12 @@ class ScoutController < ApplicationController
       metadata = {}
 
       if file_urls.any?
+        Rails.logger.info "🔍 Scout file_urls: #{file_urls.inspect}"
         # Include asset_id so AMOS can use read_document tool
         file_details = file_urls.map do |f|
-          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+          # Support both asset_id and document_id for backward compatibility
+          id = f['asset_id'] || f['document_id']
+          "📎 #{f['filename']} (asset_id: #{id}, type: #{f['content_type']})"
         end.join(", ")
 
         enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
@@ -439,9 +442,12 @@ class ScoutController < ApplicationController
       metadata = {}
 
       if file_urls.any?
+        Rails.logger.info "🔍 Scout file_urls: #{file_urls.inspect}"
         # Include asset_id so AMOS can use read_document tool
         file_details = file_urls.map do |f|
-          "📎 #{f['filename']} (asset_id: #{f['asset_id']}, type: #{f['content_type']})"
+          # Support both asset_id and document_id for backward compatibility
+          id = f['asset_id'] || f['document_id']
+          "📎 #{f['filename']} (asset_id: #{id}, type: #{f['content_type']})"
         end.join(", ")
 
         enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
