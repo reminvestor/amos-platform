@@ -248,3 +248,4 @@ All data is **entity-scoped** (multi-tenant):
 - `AGENT_ARCHITECTURE.md` - Agent system design
 - `INTEGRATION_ARCHITECTURE_V2.md` - Integration system details
 - `PROMPT_CACHING_GUIDE.md` - Anthropic prompt caching implementation and optimization
+- `UI_UX_STYLE_GUIDE.md` - **MUST READ**: UI/UX best practices, Lucide icon sizing conventions, button styling guidelines
