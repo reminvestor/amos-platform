@@ -16,28 +16,28 @@
         <div class="card-body text-center py-5">
           <% case @platform %>
           <% when 'facebook' %>
-            <i class="fab fa-facebook fa-5x text-primary mb-4"></i>
+            <i data-lucide="facebook" style="width: 5rem; height: 5rem; color: #0A66C2; margin-bottom: 1rem; display: inline-block;"></i>
             <h3>Connect Facebook</h3>
             <p class="mb-4">
               Connecting your Facebook account will allow you to post directly to your Facebook Page
               as well as schedule posts for later. Your login credentials are secure and never stored on our servers.
             </p>
           <% when 'instagram' %>
-            <i class="fab fa-instagram fa-5x text-danger mb-4"></i>
+            <i data-lucide="instagram" style="width: 5rem; height: 5rem; color: #E4405F; margin-bottom: 1rem; display: inline-block;"></i>
             <h3>Connect Instagram</h3>
             <p class="mb-4">
               Connecting your Instagram account will allow you to post directly to your Instagram Business account
               as well as schedule posts for later. Your login credentials are secure and never stored on our servers.
             </p>
           <% when 'linkedin' %>
-            <i class="fab fa-linkedin fa-5x text-primary mb-4"></i>
+            <i data-lucide="linkedin" style="width: 5rem; height: 5rem; color: #0A66C2; margin-bottom: 1rem; display: inline-block;"></i>
             <h3>Connect LinkedIn</h3>
             <p class="mb-4">
               Connecting your LinkedIn account will allow you to post directly to your LinkedIn profile or company page
               as well as schedule posts for later. Your login credentials are secure and never stored on our servers.
             </p>
           <% when 'twitter' %>
-            <i class="fab fa-twitter fa-5x text-info mb-4"></i>
+            <i data-lucide="twitter" style="width: 5rem; height: 5rem; color: #1DA1F2; margin-bottom: 1rem; display: inline-block;"></i>
             <h3>Connect Twitter</h3>
             <p class="mb-4">
               Connecting your Twitter account will allow you to post directly to your Twitter timeline
@@ -46,7 +46,7 @@
           <% end %>
 
           <a href="<%= @oauth_url %>" class="btn btn-lg btn-primary">
-            <i class="fab fa-<%= @platform.downcase %> me-2"></i>
+            <i data-lucide="<%= @platform.downcase %>" style="width: 1rem; height: 1rem; margin-right: 0.5rem; display: inline-block;"></i>
             Authorize <%= @platform.titleize %>
           </a>
           

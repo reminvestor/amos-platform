@@ -13,13 +13,14 @@ module Admin
 
     def category_icon(category)
       icons = {
-        ai: '<i class="fas fa-brain"></i>',
-        voice: '<i class="fas fa-microphone"></i>',
-        integrations: '<i class="fas fa-plug"></i>',
-        infrastructure: '<i class="fas fa-server"></i>',
-        email: '<i class="fas fa-envelope"></i>'
+        ai: 'brain',
+        voice: 'microphone',
+        integrations: 'plug',
+        infrastructure: 'server',
+        email: 'mail'
       }
-      icons[category]&.html_safe || '<i class="fas fa-cog"></i>'.html_safe
+      icon_name = icons[category] || 'settings'
+      content_tag(:i, '', data: { lucide: icon_name })
     end
   end
 end

@@ -457,12 +457,12 @@
               </button>
               <ul class="dropdown-menu dropdown-menu-end">
                 <%= link_to advanced_mode_path, class: "dropdown-item" do %>
-                  <i data-lucide="layout-dashboard" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
+                  <i data-lucide="layout-dashboard" class="icon-md me-2"></i>
                   Advanced Mode
                 <% end %>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item disabled" href="#">
-                  <i data-lucide="settings" style="width: 1rem; height: 1rem; margin-right: 0.5rem;"></i>
+                  <i data-lucide="settings" class="icon-md me-2"></i>
                   Settings (Coming Soon)
                 </a></li>
               </ul>
@@ -539,15 +539,19 @@
 
                   <div class="model-presets">
                     <button class="model-preset-btn" data-power="0">
-                      <span>Faster</span>
+                      <span>Fastest</span>
                       <span class="preset-model">Claude 3.5 Haiku</span>
+                    </button>
+                    <button class="model-preset-btn" data-power="25">
+                      <span>Fast</span>
+                      <span class="preset-model">Claude Haiku 4.5</span>
                     </button>
                     <button class="model-preset-btn active" data-power="50">
                       <span>Balanced</span>
                       <span class="preset-model">Claude 3.5 Sonnet</span>
                     </button>
                     <button class="model-preset-btn" data-power="100">
-                      <span>More Robust</span>
+                      <span>Most Robust</span>
                       <span class="preset-model">Claude Sonnet 4.5</span>
                     </button>
                   </div>
@@ -563,7 +567,7 @@
             <select id="model-select" class="model-select d-none">
               <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
               <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-              <option value="claude-opus-4-1">Claude Opus 4.1</option>
+              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
               <option value="claude-3-haiku" selected>Claude 3.5 Haiku</option>
             </select>
           </div>
@@ -622,13 +626,13 @@
           <div class="layout-controls">
             <div class="layout-presets">
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="15" title="Compact Scout" aria-label="Compact layout">
-                <i data-lucide="minimize-2" aria-hidden="true"></i>
+                <i data-lucide="minimize-2" class="icon-md" aria-hidden="true"></i>
               </button>
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="25" title="Balanced" aria-label="Balanced layout">
-                <i data-lucide="columns" aria-hidden="true"></i>
+                <i data-lucide="columns" class="icon-md" aria-hidden="true"></i>
               </button>
               <button class="preset-btn" data-action="click->scout#setLayoutPreset" data-width="35" title="Wide Scout" aria-label="Wide layout">
-                <i data-lucide="maximize-2" aria-hidden="true"></i>
+                <i data-lucide="maximize-2" class="icon-md" aria-hidden="true"></i>
               </button>
             </div>
             <button class="close-template" data-action="click->scout#closeTemplate" aria-label="Close canvas">
@@ -652,8 +656,16 @@
   <!-- Loading Overlay -->
   <div class="loading-overlay" data-scout-target="loadingOverlay">
     <div class="loading-spinner">
-      <div class="spinner"></div>
-      <p>Scout is thinking...</p>
+      <div class="loading-icon-container">
+        <i data-lucide="wand-2" class="loading-icon"></i>
+      </div>
+      <p class="loading-title">Scout is working...</p>
+      <div class="loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <p class="loading-message"></p>
     </div>
   </div>
 </div>
@@ -1212,14 +1224,16 @@ document.addEventListener('turbo:load', function() {
   // Model power to Claude model mapping
   const MODEL_MAP = {
     0: { model: 'claude-3-haiku', name: 'Claude 3.5 Haiku' },
+    25: { model: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
     50: { model: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
     100: { model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' }
   };
 
   // Get current model from power level
   function getModelFromPower(power) {
-    if (power <= 25) return MODEL_MAP[0];
-    if (power <= 75) return MODEL_MAP[50];
+    if (power < 12) return MODEL_MAP[0];
+    if (power < 37) return MODEL_MAP[25];
+    if (power < 75) return MODEL_MAP[50];
     return MODEL_MAP[100];
   }
 
@@ -1295,7 +1309,7 @@ document.addEventListener('turbo:load', function() {
       // Update active preset
       presetBtns.forEach(btn => {
         const presetPower = parseInt(btn.dataset.power);
-        const isActive = Math.abs(power - presetPower) < 26;
+        const isActive = Math.abs(power - presetPower) < 13;
         btn.classList.toggle('active', isActive);
       });
 
@@ -2258,7 +2272,8 @@ document.addEventListener('turbo:load', function() {
       'create_object': '✨ Create Object',
       'update_object': '✏️ Update Object',
       'link_template_to_campaign': '🔗 Link Template',
-      'create_dynamic_visualization': '📈 Create Visualization'
+      'create_dynamic_visualization': '📈 Create Visualization',
+      'delegate_to_planner': '🎯 Delegate to Planner'
     };
     return toolNames[toolName] || toolName;
   }

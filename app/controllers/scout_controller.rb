@@ -407,8 +407,6 @@ class ScoutController < ApplicationController
 
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
     Rails.logger.info "Selected model: #{selected_model}" if selected_model
-    puts "🚨 PRODUCTION DEBUG: Scout chat request received - #{Time.current}"
-    STDOUT.flush
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
     Rails.logger.info "Chat context: #{context.inspect}" if context
     Rails.logger.info "File URLs: #{file_urls.inspect}" if file_urls.any?
@@ -424,8 +422,6 @@ class ScoutController < ApplicationController
     response.headers["Connection"] = "keep-alive"
     response.headers["X-Accel-Buffering"] = "no" # Prevent nginx buffering
     response.headers["Access-Control-Allow-Origin"] = "*"
-    puts "🚨 PRODUCTION DEBUG: SSE Headers set - #{Time.current}"
-    STDOUT.flush
 
     # Force the headers to be sent immediately
     response.status = 200
@@ -734,9 +730,7 @@ class ScoutController < ApplicationController
     rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
       # Client disconnected - this is normal, not an error
       Rails.logger.info "Client disconnected during chat stream: #{e.message}"
-      puts "ℹ️ Client disconnected (normal): #{e.message}"
-      STDOUT.flush
-      
+
       # Check if a landing page was created successfully before disconnection
       # This helps users know their request completed even if streaming failed
       if @workflow_engine&.workflow_execution&.status == "completed"
@@ -931,37 +925,37 @@ class ScoutController < ApplicationController
           type: "landing_page_viewer",
           name: "Landing Pages",
           description: "View and manage landing pages",
-          icon: "fas fa-globe"
+          icon: "globe"
         },
         {
           type: "contact_viewer",
           name: "Contacts",
           description: "View and manage contacts",
-          icon: "fas fa-users"
+          icon: "users"
         },
         {
           type: "campaign_viewer",
           name: "Campaigns",
           description: "View and manage email campaigns",
-          icon: "fas fa-envelope"
+          icon: "mail"
         },
         {
           type: "integrations_manager",
           name: "Integrations",
           description: "Manage external application connections",
-          icon: "fas fa-plug"
+          icon: "plug"
         },
         {
           type: "integration_connect",
           name: "Connect Integration",
           description: "Connect to an external service",
-          icon: "fas fa-link"
+          icon: "link"
         },
         {
           type: "analytics_dashboard",
           name: "Analytics",
           description: "Marketing performance dashboard",
-          icon: "fas fa-chart-bar"
+          icon: "bar-chart-2"
         }
       ]
 
@@ -972,7 +966,7 @@ class ScoutController < ApplicationController
           type: "landing_page_generator",
           name: recent_page.title || "Recent Landing Page",
           description: "Landing page in progress",
-          icon: "fas fa-edit",
+          icon: "edit-2",
           data: { landing_page_id: recent_page.id }
         }
       end
@@ -1138,10 +1132,6 @@ class ScoutController < ApplicationController
 
   def stream_content_chunk(content)
     # Stream individual content chunks for real-time display
-    puts "🚨 PRODUCTION DEBUG: Streaming content chunk: #{content.inspect}"
-    puts "🔍 Content length: #{content.length}, newlines: #{content.count("\n")}"
-    STDOUT.flush
-
     data = JSON.generate({ type: "content", content: content })
     chunk = "data: #{data}\n\n"
 
@@ -1153,23 +1143,14 @@ class ScoutController < ApplicationController
     rescue
       # Ignore flush errors
     end
-
-    puts "✅ Content chunk streamed successfully"
-    STDOUT.flush
   rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
     # Client disconnected - this is normal, not an error
     Rails.logger.info "Client disconnected during content streaming: #{e.message}"
-    puts "ℹ️ Client disconnected (normal): #{e.message}"
-    STDOUT.flush
   rescue => e
     Rails.logger.error "Stream content chunk error: #{e.message}"
-    puts "❌ Stream content chunk error: #{e.message}"
-    STDOUT.flush
   end
 
   def stream_update(message)
-    puts "🚨 PRODUCTION DEBUG: Streaming update: #{message}"
-    STDOUT.flush
     # Create the SSE (Server-Sent Events) format
     # Handle both string and hash data
     data = if message.is_a?(Hash)
@@ -1180,23 +1161,14 @@ class ScoutController < ApplicationController
     chunk = "data: #{data}\n\n"
 
     response.stream.write(chunk)
-
-    puts "✅ Update streamed successfully"
-    STDOUT.flush
   rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
     # Client disconnected - this is normal, not an error
     Rails.logger.info "Client disconnected during streaming: #{e.message}"
-    puts "ℹ️ Client disconnected (normal): #{e.message}"
-    STDOUT.flush
   rescue => e
     Rails.logger.error "Stream update failed: #{e.message}"
-    puts "❌ Stream update failed: #{e.message}"
-    STDOUT.flush
   end
 
   def stream_transient_update(message)
-    puts "🚨 PRODUCTION DEBUG: Streaming transient update: #{message}"
-    STDOUT.flush
     # Create transient messages for progress/tool updates
     data = JSON.generate({
       type: "transient",
@@ -1537,12 +1509,17 @@ class ScoutController < ApplicationController
     # The old generator canvas is deprecated in favor of interactive task workflow
     <<~HTML
       <div class="alert alert-info text-center p-4">
-        <h5><i class="fas fa-info-circle me-2"></i>Landing Page Creation Updated</h5>
+        <h5><i data-lucide="info" style="display: inline-block; width: 1.25rem; height: 1.25rem; margin-right: 0.5rem;"></i>Landing Page Creation Updated</h5>
         <p class="mb-3">Landing page creation now uses our improved interactive workflow.</p>
         <button class="btn btn-primary" onclick="window.scoutSendMessage?.('Create a landing page')">
-          <i class="fas fa-plus me-2"></i>Start Creating Landing Page
+          <i data-lucide="plus" style="display: inline-block; width: 1.25rem; height: 1.25rem; margin-right: 0.5rem;"></i>Start Creating Landing Page
         </button>
       </div>
+      <script>
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      </script>
     HTML
   end
 
