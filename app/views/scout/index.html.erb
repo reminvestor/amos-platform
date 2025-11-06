@@ -489,6 +489,7 @@
       
       <div class="chat-input-area" data-controller="voice-assistant">
         <form id="message-form" data-scout-target="chatForm" enctype="multipart/form-data">
+          <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
           <div class="attached-files" id="attached-files" style="display: none;">
             <!-- Attached files will be shown here -->
           </div>
