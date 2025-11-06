@@ -1,0 +1,44 @@
+<div class="alert alert-<%= type == 'error' ? 'danger' : type %> alert-dismissible fade show mb-3" role="alert">
+  <% if type == 'success' %>
+    <i data-lucide="check-circle" class="me-2"></i>
+  <% elsif type == 'error' %>
+    <i data-lucide="alert-circle" class="me-2"></i>
+  <% elsif type == 'warning' %>
+    <i data-lucide="alert-triangle" class="me-2"></i>
+  <% else %>
+    <i data-lucide="info" class="me-2"></i>
+  <% end %>
+  <%= message %>
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+
+<script>
+  // Auto-dismiss after 10 seconds
+  setTimeout(() => {
+    const alert = document.querySelector('.alert:last-child');
+    if (alert) {
+      const bsAlert = new bootstrap.Alert(alert);
+      bsAlert.close();
+    }
+  }, 10000);
+  
+  // Re-initialize icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+  
+  // Close modal if success
+  <% if type == 'success' %>
+    const modal = document.getElementById('quickUploadModal');
+    if (modal) {
+      const bsModal = bootstrap.Modal.getInstance(modal);
+      if (bsModal) {
+        bsModal.hide();
+      }
+    }
+    // Reload page after a short delay to show new document
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  <% end %>
+</script>
