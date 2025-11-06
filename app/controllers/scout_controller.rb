@@ -1658,24 +1658,48 @@ class ScoutController < ApplicationController
   end
 
   def render_document_viewer_canvas(data = {})
-    # Load all documents for the entity
-    documents = current_entity.image_assets.order(created_at: :desc)
-
+    Rails.logger.info "🔍 render_document_viewer_canvas called with data: #{data.inspect}"
+    
     # Build document URL from asset_id (single document view)
     if data[:asset_id]
+      # Try to find as ImageAsset first
       asset = ImageAsset.find_by(id: data[:asset_id], entity: current_entity)
+      
+      # If not found, try as RagDocument
+      if !asset
+        rag_document = RagDocument.joins(:rag_store).find_by(
+          id: data[:asset_id], 
+          rag_stores: { entity_id: current_entity.id }
+        )
+        
+        if rag_document && rag_document.file.attached?
+          # Use RagDocument's attached file
+          asset = rag_document
+        end
+      end
+      
       if asset && asset.file.attached?
-        data[:url] = rails_blob_url(asset.file)
-        data[:download_url] = rails_blob_url(asset.file, disposition: 'attachment')
+        # Use rails_blob_path with disposition inline for PDFs
+        data[:url] = rails_blob_path(asset.file, disposition: 'inline')
+        data[:download_url] = rails_blob_path(asset.file, disposition: 'attachment')
         data[:content_type] = asset.file.content_type
         data[:filename] = asset.file.filename.to_s
         data[:size] = asset.file.byte_size
         data[:view_type] = 'single'
+        
+        # Add document-specific data
+        if asset.is_a?(RagDocument)
+          data[:document_id] = asset.id
+          data[:processing_status] = asset.processing_status
+          data[:processing_stage] = asset.processing_stage
+          data[:processing_progress] = asset.processing_progress
+        end
+      else
+        Rails.logger.error "❌ Document not found with asset_id: #{data[:asset_id]}"
       end
     else
-      # Multi-document library view
-      data[:view_type] = 'library'
-      data[:documents] = documents.map do |doc|
+      # Multi-document library view - show both ImageAssets and RagDocuments
+      image_docs = current_entity.image_assets.order(created_at: :desc).map do |doc|
         {
           id: doc.id,
           title: doc.title,
@@ -1683,9 +1707,29 @@ class ScoutController < ApplicationController
           content_type: doc.file.content_type,
           created_at: doc.created_at,
           url: rails_blob_url(doc.file),
-          download_url: rails_blob_url(doc.file, disposition: 'attachment')
+          download_url: rails_blob_url(doc.file, disposition: 'attachment'),
+          source: 'image_asset'
         }
       end
+      
+      rag_docs = RagDocument.joins(:rag_store)
+        .where(rag_stores: { entity_id: current_entity.id })
+        .order(created_at: :desc)
+        .map do |doc|
+          {
+            id: doc.id,
+            title: doc.title || doc.original_filename,
+            size: doc.file_size_bytes,
+            content_type: doc.content_type,
+            created_at: doc.created_at,
+            url: doc.file.attached? ? rails_blob_url(doc.file) : nil,
+            download_url: doc.file.attached? ? rails_blob_url(doc.file, disposition: 'attachment') : nil,
+            source: 'rag_document'
+          }
+        end
+      
+      data[:view_type] = 'library'
+      data[:documents] = (image_docs + rag_docs).sort_by { |d| d[:created_at] }.reverse
     end
 
     render_to_string(
