@@ -1560,18 +1560,48 @@ document.addEventListener('turbo:load', function() {
     const element = document.querySelector('[data-controller="scout"]');
     if (element && window.Stimulus) {
       const application = window.Stimulus || Stimulus;
-      return application.getControllerForElementAndIdentifier(element, 'scout');
+      try {
+        return application.getControllerForElementAndIdentifier(element, 'scout');
+      } catch (e) {
+        console.error('🎮 Error getting scout controller:', e);
+        return null;
+      }
     }
     return null;
   }
   
+  // Ensure scout controller is available when needed
+  async function ensureScoutController() {
+    if (window.scoutController?.processMessage) {
+      return window.scoutController;
+    }
+    
+    // Try to get it again
+    window.scoutController = getScoutController();
+    if (window.scoutController?.processMessage) {
+      return window.scoutController;
+    }
+    
+    // Wait and try one more time
+    await new Promise(resolve => setTimeout(resolve, 500));
+    window.scoutController = getScoutController();
+    
+    return window.scoutController;
+  }
+  
   // Try to get controller immediately and also after a delay
   window.scoutController = getScoutController();
+  console.log('🎮 Scout controller initial check:', window.scoutController);
+  
   if (!window.scoutController) {
+    console.log('🎮 Scout controller not ready, waiting...');
     setTimeout(() => {
       window.scoutController = getScoutController();
-      console.log('Scout controller initialized:', window.scoutController);
+      console.log('🎮 Scout controller after delay:', window.scoutController);
+      console.log('🎮 processMessage available?', window.scoutController?.processMessage);
     }, 500);
+  } else {
+    console.log('🎮 processMessage available?', window.scoutController?.processMessage);
   }
   
   // Note: window.scoutSendMessage is now defined globally outside turbo:load
@@ -2321,16 +2351,18 @@ document.addEventListener('turbo:load', function() {
 
   // Upload files helper function
   async function uploadFiles(files) {
+    console.log('📎 uploadFiles called with', files.length, 'files');
+    
     const formData = new FormData();
     files.forEach((file, index) => {
+      console.log(`📎 Appending file[${index}]:`, file.name, file.type, file.size);
       formData.append(`files[${index}]`, file);
     });
     
     // Add storage choice if available
-    if (window.documentStorageChoice) {
-      formData.append('storage_type', window.documentStorageChoice);
-      console.log('📦 Including storage type:', window.documentStorageChoice);
-    }
+    const storageChoice = window.documentStorageChoice || 'long-term';
+    formData.append('storage_type', storageChoice);
+    console.log('📦 Including storage type:', storageChoice);
     
     try {
       const response = await fetch('/scout/upload_files', {
@@ -2346,9 +2378,11 @@ document.addEventListener('turbo:load', function() {
       }
       
       const result = await response.json();
+      console.log('📎 Upload response:', result);
+      console.log('📎 File URLs:', result.urls);
       return result.urls || [];
     } catch (error) {
-      console.error('File upload error:', error);
+      console.error('❌ File upload error:', error);
       addMessage('Failed to upload files. Please try again.', 'assistant');
       return [];
     }
@@ -3027,12 +3061,27 @@ document.addEventListener('turbo:load', function() {
             await handleInteractiveChat(finalMessage, currentCanvas, attachedFiles);
           } else {
             console.log('⚡ Using streaming mode for:', finalMessage);
-            if (window.scoutController && window.scoutController.processMessage) {
-              await window.scoutController.processMessage(finalMessage, attachedFiles);
+            console.log('📎 Attached files to send:', attachedFiles.length, attachedFiles.map(f => f.name));
+            
+            // Try to ensure scout controller is available
+            const controller = await ensureScoutController();
+            
+            if (controller?.processMessage) {
+              console.log('✅ Scout controller available, calling processMessage');
+              await controller.processMessage(finalMessage, attachedFiles);
             } else {
-              console.error('❌ Scout controller not available!');
-              addMessage('Sorry, the chat system is not ready. Please refresh the page.', 'assistant');
-              throw new Error('Scout controller not available');
+              console.error('❌ Scout controller not available, using fallback!');
+              console.log('❌ window.scoutController:', window.scoutController);
+              
+              // Fallback: Upload files manually and use streaming
+              if (attachedFiles.length > 0) {
+                console.log('📎 Fallback: Uploading files manually');
+                const fileUrls = await uploadFiles(attachedFiles);
+                console.log('📎 Got file URLs:', fileUrls);
+                await handleStreamingChat(finalMessage, getCurrentCanvasContext(), fileUrls);
+              } else {
+                await handleStreamingChat(finalMessage, getCurrentCanvasContext());
+              }
             }
           }
 
