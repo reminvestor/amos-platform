@@ -113,7 +113,7 @@ Set up a new external API integration.
 - Connecting to external services (Stripe, Mailgun, etc.)
 
 ```bash
-/add-integration "Shopify"
+/add-integration "Stripe"
 ```
 
 #### `/add-entity [name]`
