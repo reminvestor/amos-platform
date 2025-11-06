@@ -489,7 +489,7 @@
       
       <div class="chat-input-area" data-controller="voice-assistant">
         <form id="message-form" data-scout-target="chatForm" enctype="multipart/form-data">
-          <div class="attached-files d-none" id="attached-files">
+          <div class="attached-files" id="attached-files" style="display: none;">
             <!-- Attached files will be shown here -->
           </div>
 
@@ -2433,7 +2433,7 @@ document.addEventListener('turbo:load', function() {
   }
 
   // Handle streaming chat
-  async function handleStreamingChat(message, context = null) {
+  async function handleStreamingChat(message, context = null, fileUrls = []) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     // Abort any existing stream before starting a new one
@@ -2477,7 +2477,11 @@ document.addEventListener('turbo:load', function() {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfToken || ''
         },
-        body: JSON.stringify({ message: message, context: context }),
+        body: JSON.stringify({ 
+          message: message, 
+          context: context,
+          file_urls: fileUrls || [] 
+        }),
         signal: signal // Pass abort signal to fetch
       });
 
@@ -2914,9 +2918,10 @@ document.addEventListener('turbo:load', function() {
     console.log('📎 Displaying attached file:', file.name);
     console.log('📎 Container has d-none class:', attachedFilesContainer.classList.contains('d-none'));
 
-    if (attachedFiles.length > 0 && attachedFilesContainer.classList.contains('d-none')) {
-      attachedFilesContainer.classList.remove('d-none');
-      console.log('📎 Container d-none class removed');
+    // Always show the container when there are files
+    if (attachedFilesContainer) {
+      attachedFilesContainer.style.display = 'flex';
+      console.log('📎 Container display after:', attachedFilesContainer.style.display);
     }
 
     const fileDiv = document.createElement('div');
@@ -2960,7 +2965,7 @@ document.addEventListener('turbo:load', function() {
     attachedFiles = attachedFiles.filter(f => f.name !== file.name);
     fileDiv.remove();
     if (attachedFiles.length === 0) {
-      attachedFilesContainer.classList.add('d-none');
+      attachedFilesContainer.style.display = 'none';
     }
   }
   
@@ -3031,7 +3036,7 @@ document.addEventListener('turbo:load', function() {
           // Clear attached files after sending
           attachedFiles = [];
           attachedFilesContainer.innerHTML = '';
-          attachedFilesContainer.classList.add('d-none');
+          attachedFilesContainer.style.display = 'none';
         } catch (error) {
           console.error('Error sending message:', error);
           hideStreamingStatus();
