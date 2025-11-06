@@ -2449,11 +2449,35 @@ class ScoutController < ApplicationController
       store.user = current_user
     end
     
+    # Calculate file hash for duplicate detection
+    file_hash = Digest::SHA256.hexdigest(file.read)
+    file.rewind # Important: rewind after reading
+    
+    Rails.logger.info "Calculated file hash: #{file_hash}"
+    
+    # Check for existing document with same hash
+    existing_doc = rag_store.rag_documents.find_by(file_hash: file_hash)
+    if existing_doc
+      Rails.logger.info "Found existing document with same hash: #{existing_doc.id}"
+      # Return existing document info
+      return {
+        url: rails_blob_url(existing_doc.file),
+        filename: existing_doc.original_filename,
+        content_type: existing_doc.content_type,
+        size: existing_doc.file_size_bytes,
+        document_id: existing_doc.id,
+        asset_type: 'document',
+        processing: existing_doc.processing_status == 'processing',
+        duplicate: true
+      }
+    end
+    
     # Create document with immediate processing
     rag_document = rag_store.rag_documents.create!(
       original_filename: file.original_filename,
       content_type: file.content_type,
       file_size_bytes: file.size,
+      file_hash: file_hash,
       processing_status: 'processing',
       title: file.original_filename
     )
