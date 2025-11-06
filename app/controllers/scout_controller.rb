@@ -302,32 +302,50 @@ class ScoutController < ApplicationController
 
   # Handle file uploads from chat
   def upload_files
+    Rails.logger.info "Scout upload_files called"
+    Rails.logger.info "Params: #{params.inspect}"
+    Rails.logger.info "Files param: #{params[:files].inspect}"
+    
     uploaded_urls = []
     storage_type = params[:storage_type] || 'long-term'
+    Rails.logger.info "Storage type: #{storage_type}"
 
     if params[:files].present?
       params[:files].each do |index, file|
+        Rails.logger.info "Processing file #{index}: #{file.inspect}"
+        
         if file.is_a?(ActionDispatch::Http::UploadedFile)
+          Rails.logger.info "File: #{file.original_filename}, Type: #{file.content_type}, Size: #{file.size}"
+          
           # Route based on file type and storage preference
           if storage_type == 'short-term'
             # Temporary upload - store with a short expiry
+            Rails.logger.info "Handling as temporary upload"
             uploaded_urls << handle_temporary_upload(file)
           else
             # Long-term storage - route to appropriate system
             if image_file?(file)
+              Rails.logger.info "Handling as image upload"
               uploaded_urls << handle_image_upload(file)
             else
+              Rails.logger.info "Handling as document upload"
               uploaded_urls << handle_document_upload(file)
             end
           end
+        else
+          Rails.logger.error "File is not an UploadedFile: #{file.class.name}"
         end
       end
+    else
+      Rails.logger.warn "No files present in params"
     end
 
+    Rails.logger.info "Upload complete, URLs: #{uploaded_urls.inspect}"
     render json: { success: true, urls: uploaded_urls }
   rescue => e
     Rails.logger.error "File upload error: #{e.message}"
-    render json: { success: false, error: e.message }, status: 500
+    Rails.logger.error e.backtrace.join("\n")
+    render json: { success: false, error: e.message, details: e.backtrace.first(5) }, status: 500
   end
 
   def continue_workflow
