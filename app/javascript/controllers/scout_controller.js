@@ -2043,21 +2043,48 @@ export default class extends Controller {
 
   getCSRFToken() {
     // Check for CSRF token in multiple possible locations
-    const csrfToken = document.querySelector('meta[name="csrf-token"]') || 
-                     document.querySelector('meta[name="authenticity_token"]')
     
-    if (csrfToken) {
-      return csrfToken.getAttribute('content')
-    } else {
-      // Try to get from Rails UJS if available
-      const railsToken = document.querySelector('input[name="authenticity_token"]')
-      if (railsToken) {
-        return railsToken.value
+    // Method 1: Meta tag (most common)
+    const metaToken = document.querySelector('meta[name="csrf-token"]')
+    if (metaToken) {
+      const content = metaToken.getAttribute('content') || metaToken.content
+      if (content) {
+        console.log('✅ CSRF token found in meta tag')
+        return content
       }
-      
-      console.warn("⚠️ CSRF token not found! Request may fail.")
-      return ""
     }
+    
+    // Method 2: Alternative meta tag name
+    const altMetaToken = document.querySelector('meta[name="authenticity_token"]')
+    if (altMetaToken) {
+      const content = altMetaToken.getAttribute('content') || altMetaToken.content
+      if (content) {
+        console.log('✅ CSRF token found in alt meta tag')
+        return content
+      }
+    }
+    
+    // Method 3: From Rails form input
+    const formToken = document.querySelector('input[name="authenticity_token"]')
+    if (formToken && formToken.value) {
+      console.log('✅ CSRF token found in form input')
+      return formToken.value
+    }
+    
+    // Method 4: From the Scout form specifically
+    const scoutForm = document.querySelector('#message-form input[name="authenticity_token"]')
+    if (scoutForm && scoutForm.value) {
+      console.log('✅ CSRF token found in Scout form')
+      return scoutForm.value
+    }
+    
+    // Debug output
+    console.error("❌ CSRF token not found! Upload will fail.")
+    console.log("Debug - All meta tags:", Array.from(document.querySelectorAll('meta')).map(m => m.getAttribute('name')))
+    console.log("Debug - CSRF meta element:", document.querySelector('meta[name="csrf-token"]'))
+    console.log("Debug - Form inputs:", Array.from(document.querySelectorAll('input[name="authenticity_token"]')).length)
+    
+    return ""
   }
   
   // Upload files to the server
