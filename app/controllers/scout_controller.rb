@@ -910,37 +910,37 @@ class ScoutController < ApplicationController
           type: "landing_page_viewer",
           name: "Landing Pages",
           description: "View and manage landing pages",
-          icon: "fas fa-globe"
+          icon: "globe"
         },
         {
           type: "contact_viewer",
           name: "Contacts",
           description: "View and manage contacts",
-          icon: "fas fa-users"
+          icon: "users"
         },
         {
           type: "campaign_viewer",
           name: "Campaigns",
           description: "View and manage email campaigns",
-          icon: "fas fa-envelope"
+          icon: "mail"
         },
         {
           type: "integrations_manager",
           name: "Integrations",
           description: "Manage external application connections",
-          icon: "fas fa-plug"
+          icon: "plug"
         },
         {
           type: "integration_connect",
           name: "Connect Integration",
           description: "Connect to an external service",
-          icon: "fas fa-link"
+          icon: "link"
         },
         {
           type: "analytics_dashboard",
           name: "Analytics",
           description: "Marketing performance dashboard",
-          icon: "fas fa-chart-bar"
+          icon: "bar-chart-2"
         }
       ]
 
@@ -951,7 +951,7 @@ class ScoutController < ApplicationController
           type: "landing_page_generator",
           name: recent_page.title || "Recent Landing Page",
           description: "Landing page in progress",
-          icon: "fas fa-edit",
+          icon: "edit-2",
           data: { landing_page_id: recent_page.id }
         }
       end
@@ -1516,12 +1516,17 @@ class ScoutController < ApplicationController
     # The old generator canvas is deprecated in favor of interactive task workflow
     <<~HTML
       <div class="alert alert-info text-center p-4">
-        <h5><i class="fas fa-info-circle me-2"></i>Landing Page Creation Updated</h5>
+        <h5><i data-lucide="info" style="display: inline-block; width: 1.25rem; height: 1.25rem; margin-right: 0.5rem;"></i>Landing Page Creation Updated</h5>
         <p class="mb-3">Landing page creation now uses our improved interactive workflow.</p>
         <button class="btn btn-primary" onclick="window.scoutSendMessage?.('Create a landing page')">
-          <i class="fas fa-plus me-2"></i>Start Creating Landing Page
+          <i data-lucide="plus" style="display: inline-block; width: 1.25rem; height: 1.25rem; margin-right: 0.5rem;"></i>Start Creating Landing Page
         </button>
       </div>
+      <script>
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      </script>
     HTML
   end
 
