@@ -1,30 +1,35 @@
 <!-- Document Viewer Canvas -->
 <div class="document-viewer-container" data-asset-id="<%= canvas_data[:asset_id] %>" data-url="<%= canvas_data[:url] %>">
-  <div class="viewer-header mb-4">
-    <div class="row align-items-center">
-      <div class="col">
-        <h5 class="mb-0">
-          <i data-lucide="<%= canvas_data[:view_type] == 'library' ? 'folder-open' : 'file-text' %>" class="<%= canvas_data[:view_type] == 'library' ? 'text-primary' : 'text-danger' %> me-2" aria-hidden="true"></i>
+  <div class="viewer-header mb-3">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h5 class="mb-0 d-flex align-items-center">
+          <i data-lucide="<%= canvas_data[:view_type] == 'library' ? 'folder-open' : (canvas_data[:content_type]&.include?('pdf') ? 'file-text' : 'file') %>" 
+             class="me-2" 
+             style="width: 1.25rem; height: 1.25rem; color: <%= canvas_data[:view_type] == 'library' ? '#A78BFA' : '#64748B' %>;" 
+             aria-hidden="true"></i>
           <%= canvas_data[:view_type] == 'library' ? 'My Documents' : (canvas_data[:filename] || 'Document') %>
         </h5>
         <% if canvas_data[:view_type] == 'single' && canvas_data[:size] %>
-          <small class="text-muted">
+          <small class="text-muted d-block mt-1">
             <%= number_to_human_size(canvas_data[:size]) %> • <%= canvas_data[:content_type] %>
           </small>
         <% elsif canvas_data[:view_type] == 'library' && canvas_data[:documents] %>
-          <small class="text-muted">
+          <small class="text-muted d-block mt-1">
             <%= pluralize(canvas_data[:documents].length, 'document') %>
           </small>
         <% end %>
       </div>
-      <div class="col-auto">
+      <div class="d-flex gap-2">
         <% if canvas_data[:view_type] == 'single' && canvas_data[:download_url] %>
           <a href="<%= canvas_data[:download_url] %>" class="btn btn-sm btn-outline-primary" download aria-label="Download document">
-            <i data-lucide="download" class="me-1" aria-hidden="true"></i> Download
+            <i data-lucide="download" aria-hidden="true"></i>
+            <span class="d-none d-sm-inline ms-1">Download</span>
           </a>
         <% end %>
         <button class="btn btn-sm btn-outline-secondary" onclick="window.scoutController.goToConversation()" aria-label="Close document viewer">
-          <i data-lucide="x" class="me-1" aria-hidden="true"></i> Close
+          <i data-lucide="x" aria-hidden="true"></i>
+          <span class="d-none d-sm-inline ms-1">Close</span>
         </button>
       </div>
     </div>
@@ -97,28 +102,57 @@
     <% end %>
 
     <!-- Document Viewer -->
-    <div class="document-frame" style="height: 600px;">
-      <% case canvas_data[:content_type] %>
-      <% when 'application/pdf' %>
-        <embed src="<%= canvas_data[:url] %>" type="application/pdf" width="100%" height="100%" />
-      <% when /^image\// %>
-        <div class="text-center p-4">
-          <img src="<%= canvas_data[:url] %>" class="img-fluid" style="max-height: 100%;" />
-        </div>
-      <% when /^text\// %>
-        <div class="p-4 bg-light h-100 overflow-auto">
-          <pre class="mb-0"><%= canvas_data[:extracted_text_preview] || 'Loading...' %></pre>
+    <div class="document-frame" style="height: 600px; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem; overflow: hidden;">
+      <% if canvas_data[:processing_status] == 'processing' && canvas_data[:content_type]&.include?('pdf') %>
+        <%# Show PDF while processing %>
+        <div style="position: relative; height: 100%;">
+          <iframe 
+            src="<%= canvas_data[:url] %>" 
+            style="width: 100%; height: 100%; border: none;"
+            title="<%= canvas_data[:filename] %>">
+          </iframe>
+          <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(15, 23, 42, 0.95); padding: 1rem; border-top: 1px solid #1E293B;">
+            <div class="d-flex align-items-center">
+              <div class="spinner-border spinner-border-sm text-primary me-3" role="status">
+                <span class="visually-hidden">Processing...</span>
+              </div>
+              <div>
+                <strong style="color: white;">Processing Document...</strong>
+                <div class="small text-muted mt-1">
+                  <%= canvas_data[:processing_stage]&.humanize || 'Initializing' %> - 
+                  <%= canvas_data[:processing_progress] || 0 %>% complete
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       <% else %>
-        <div class="text-center p-5">
-          <i data-lucide="file" class="icon-4x text-muted mb-3" aria-hidden="true"></i>
-          <p class="text-muted">This file type cannot be displayed in the browser.</p>
-          <% if canvas_data[:download_url] %>
-            <a href="<%= canvas_data[:download_url] %>" class="btn btn-primary" download aria-label="Download file to view">
-              <i data-lucide="download" class="me-2" aria-hidden="true"></i>Download to View
-            </a>
-          <% end %>
-        </div>
+        <% case canvas_data[:content_type] %>
+        <% when 'application/pdf' %>
+          <iframe 
+            src="<%= canvas_data[:url] %>" 
+            style="width: 100%; height: 100%; border: none;"
+            title="<%= canvas_data[:filename] %>">
+          </iframe>
+        <% when /^image\// %>
+          <div class="text-center p-4" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+            <img src="<%= canvas_data[:url] %>" class="img-fluid" style="max-height: 100%;" alt="<%= canvas_data[:filename] %>" />
+          </div>
+        <% when /^text\// %>
+          <div class="p-4 h-100 overflow-auto" style="background: #0F172A; color: #E2E8F0;">
+            <pre class="mb-0" style="color: #E2E8F0; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;"><%= canvas_data[:extracted_text_preview] || 'Loading...' %></pre>
+          </div>
+        <% else %>
+          <div class="text-center p-5" style="color: #E2E8F0;">
+            <i data-lucide="file" class="mb-3" style="width: 4rem; height: 4rem; color: #64748B;" aria-hidden="true"></i>
+            <p class="text-muted">This file type cannot be displayed in the browser.</p>
+            <% if canvas_data[:download_url] %>
+              <a href="<%= canvas_data[:download_url] %>" class="btn btn-primary mt-3" download aria-label="Download file to view">
+                <i data-lucide="download" class="me-2" aria-hidden="true"></i>Download to View
+              </a>
+            <% end %>
+          </div>
+        <% end %>
       <% end %>
     </div>
 
@@ -143,18 +177,113 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: #0A0E1A;
+  color: #E2E8F0;
+}
+
+.viewer-header {
+  background: #0F172A;
+  border: 1px solid #1E293B;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.viewer-header h5 {
+  color: white;
+  font-weight: 600;
+}
+
+.viewer-header .text-muted {
+  color: #64748B !important;
 }
 
 .document-frame {
   flex: 1;
-  border: 1px solid #dee2e6;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  background: #f8f9fa;
+  background: #0F172A;
 }
 
-.document-frame embed {
-  border: none;
+.document-frame iframe {
+  background: white; /* PDFs render with white background */
+}
+
+/* Buttons */
+.btn-outline-primary {
+  color: #A78BFA;
+  border-color: #A78BFA;
+}
+
+.btn-outline-primary:hover {
+  background-color: #A78BFA;
+  border-color: #A78BFA;
+  color: #0A0E1A;
+}
+
+.btn-outline-secondary {
+  color: #64748B;
+  border-color: #64748B;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #64748B;
+  border-color: #64748B;
+  color: white;
+}
+
+/* Library view styles */
+.document-library .list-group-item {
+  background: #0F172A;
+  border: 1px solid #1E293B;
+  color: #E2E8F0;
+  margin-bottom: 0.5rem;
+}
+
+.document-library .list-group-item:hover {
+  background: rgba(167, 139, 250, 0.1);
+  border-color: #A78BFA;
+}
+
+.document-library h6 {
+  color: white;
+  margin: 0;
+}
+
+/* Processing indicator */
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Alert styles */
+.alert-info {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #93BBFB;
+}
+
+.alert-warning {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #FDE68A;
+}
+
+/* Status cards */
+.card.border-info {
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  color: #E2E8F0;
+}
+
+.card-body {
+  color: #E2E8F0;
+}
+
+/* Progress bar */
+.progress {
+  background-color: #1E293B;
+}
+
+.progress-bar {
+  background-color: #A78BFA;
 }
 </style>
 
