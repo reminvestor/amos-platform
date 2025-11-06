@@ -23,6 +23,12 @@ production:
     class: Rag::ArchiveOldDocumentsJob
     queue: maintenance
     schedule: at 3am every sunday
+  
+  # Clean up temporary uploads every hour
+  cleanup_temporary_uploads:
+    class: CleanupTemporaryUploadsJob
+    queue: maintenance
+    schedule: every hour
 
 # Development environment - run less frequently to avoid noise
 development:
@@ -35,6 +41,12 @@ development:
   # Health check once per hour in dev
   rag_health_check:
     class: Rag::HealthCheckJob
+    queue: maintenance
+    schedule: every hour
+  
+  # Clean up temporary uploads every hour
+  cleanup_temporary_uploads:
+    class: CleanupTemporaryUploadsJob
     queue: maintenance
     schedule: every hour
 

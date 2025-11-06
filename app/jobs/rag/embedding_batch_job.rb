@@ -159,6 +159,18 @@ module Rag
     end
 
     def check_rag_store_completion(rag_store)
+      # Check all documents in the store for completion
+      rag_store.rag_documents.where(processing_status: 'processing').find_each do |document|
+        if document.rag_chunks.where(embedding: nil).count == 0 && document.rag_chunks.any?
+          # All chunks for this document have embeddings
+          document.update!(processing_status: 'completed')
+          Rails.logger.info "✅ Document ##{document.id} processing completed"
+        else
+          # Still processing, broadcast progress update
+          document.broadcast_progress_update
+        end
+      end
+
       return unless rag_store.all_chunks_embedded?
 
       Rails.logger.info "🎉 All chunks embedded for RagStore ##{rag_store.id}"

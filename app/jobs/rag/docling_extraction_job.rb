@@ -43,11 +43,19 @@ module Rag
         # Check if docling is available
         unless docling_available?
           Rails.logger.warn "⚠️  Docling not available, using fallback processor"
+          
+          # Update document to show we're switching to fallback
+          rag_document.update!(
+            docling_metadata: rag_document.docling_metadata.merge(
+              'fallback_reason' => 'Docling not available'
+            )
+          )
+          rag_document.broadcast_progress_update
+          
           queue_fallback_processor(rag_document.id)
           processing_job.update!(
             status: :completed,
-            completed_at: Time.current,
-            metadata: { fallback: true, reason: 'docling_unavailable' }
+            completed_at: Time.current
           )
           return
         end
@@ -57,17 +65,13 @@ module Rag
         docling_output = process_with_docling(temp_file.path)
         processing_time_ms = ((Time.current - start_time) * 1000).to_i
 
-        # Store docling output in S3
-        docling_s3_path = store_docling_output(rag_store, rag_document, docling_output)
-
         # Update document with metadata
-        update_document_metadata(rag_document, docling_output, docling_s3_path)
+        update_document_metadata(rag_document, docling_output)
 
         # Update rag_store with processing info
         rag_store.update!(
           processing_method: 'docling',
-          processing_time_ms: processing_time_ms,
-          s3_docling_output_path: docling_s3_path
+          processing_time_ms: processing_time_ms
         ) if rag_store.respond_to?(:processing_method=)
 
         # Queue chunking job
@@ -76,12 +80,11 @@ module Rag
         # Mark as completed
         processing_job.update!(
           status: :completed,
-          completed_at: Time.current,
-          metadata: {
-            processing_time_ms: processing_time_ms,
-            page_count: docling_output.dig('metadata', 'page_count') || docling_output['num_pages']
-          }
+          completed_at: Time.current
         )
+
+        # Broadcast progress update
+        rag_document.broadcast_progress_update
 
         Rails.logger.info "✅ DoclingExtractionJob: Completed in #{processing_time_ms}ms"
 
@@ -94,8 +97,7 @@ module Rag
         processing_job.update!(
           status: :failed,
           error_message: e.message,
-          completed_at: Time.current,
-          metadata: { fallback_queued: true }
+          completed_at: Time.current
         )
 
       rescue => e
@@ -122,36 +124,34 @@ module Rag
         job_id: job_id,
         job_type: 'docling_extraction',
         status: :processing,
-        started_at: Time.current,
-        metadata: {
-          rag_document_id: rag_document.id,
-          filename: rag_document.original_filename
-        }
+        started_at: Time.current
       )
     end
 
     def download_from_s3(rag_document, rag_store)
-      s3_client = Aws::S3::Client.new
-      bucket = ENV.fetch('RAG_BUCKET', ENV.fetch('AWS_S3_BUCKET', 'amos-rag-storage'))
+      unless rag_document.file.attached?
+        raise DoclingError, "No file attached to document"
+      end
 
       # Create temp file with correct extension
       extension = File.extname(rag_document.original_filename)
       temp_file = Tempfile.new(['document', extension])
+      temp_file.binmode # Set to binary mode for binary files like PDFs
 
-      Rails.logger.info "  Downloading from S3: #{rag_store.s3_raw_path}"
+      Rails.logger.info "  Downloading file via Active Storage"
 
-      s3_client.get_object(
-        bucket: bucket,
-        key: rag_store.s3_raw_path,
-        response_target: temp_file.path
-      )
+      # Download the file to the temp file
+      rag_document.file.blob.download { |chunk| temp_file.write(chunk) }
+      temp_file.rewind
 
       temp_file
-    rescue Aws::S3::Errors::NoSuchKey => e
-      raise DoclingError, "Document not found in S3: #{e.message}"
     end
 
     def docling_available?
+      # For now, always return false to use fallback processor
+      # TODO: Re-enable once docling is properly installed
+      return false
+      
       # Check if DoclingBridgeService exists and is available
       if defined?(DoclingBridgeService)
         DoclingBridgeService.available?
@@ -213,39 +213,7 @@ module Rag
       options.join(' ')
     end
 
-    def store_docling_output(rag_store, rag_document, output)
-      s3_client = Aws::S3::Client.new
-      bucket = ENV.fetch('RAG_BUCKET', ENV.fetch('AWS_S3_BUCKET', 'amos-rag-storage'))
-
-      # Generate S3 key for docling output
-      s3_key = generate_docling_s3_key(rag_store, rag_document)
-
-      Rails.logger.info "  Storing docling output in S3: #{s3_key}"
-
-      s3_client.put_object(
-        bucket: bucket,
-        key: s3_key,
-        body: output.to_json,
-        content_type: 'application/json',
-        server_side_encryption: 'AES256',
-        metadata: {
-          'rag-document-id' => rag_document.id.to_s,
-          'generated-at' => Time.current.iso8601
-        }
-      )
-
-      s3_key
-    end
-
-    def generate_docling_s3_key(rag_store, rag_document)
-      if rag_store.entity_id.present?
-        "entities/#{rag_store.entity_id}/docling_output/#{rag_store.id}/#{rag_document.id}_output.json"
-      else
-        "system/#{rag_store.app_name || 'general'}/docling_output/#{rag_store.id}/#{rag_document.id}_output.json"
-      end
-    end
-
-    def update_document_metadata(rag_document, docling_output, docling_s3_path)
+    def update_document_metadata(rag_document, docling_output)
       # Extract key metadata from docling output
       metadata = {
         docling_version: docling_output.dig('metadata', 'docling_version'),
@@ -253,8 +221,7 @@ module Rag
         has_tables: docling_output['tables']&.any?,
         table_count: docling_output['tables']&.length || 0,
         has_images: docling_output['images']&.any?,
-        image_count: docling_output['images']&.length || 0,
-        s3_path: docling_s3_path
+        image_count: docling_output['images']&.length || 0
       }
 
       rag_document.update!(
