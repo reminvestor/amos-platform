@@ -93,11 +93,16 @@ app/views/
 
 ## Checklist for Library Consolidation
 
-- [ ] Search the codebase for all occurrences of the library
+- [ ] Search the codebase for all occurrences of the library **in HTML/ERB files**
+- [ ] **Also search Ruby services/tools for hardcoded icon classes or library references**
+  - Look for: `"fa fa-"`, `'fa-'`, `class="icon`, `font-awesome` in `.rb` files
+  - Check files that dynamically generate HTML with embedded styles/classes
+  - Example: visualization tools, dynamic form builders, templating services
 - [ ] Identify all files/layouts using the same library
 - [ ] Check if versions are consistent (if not, upgrade all to latest)
 - [ ] Create appropriate partial file(s)
 - [ ] Replace all original imports with `<%= render 'path/to/partial' %>`
+- [ ] **Update hardcoded references** - Replace FA icon classes in Ruby code with Lucide or mapped alternatives
 - [ ] Verify all pages still load correctly
 - [ ] Commit with clear message indicating consolidation
 
@@ -134,7 +139,32 @@ Before adding `<script>` or `<link>` tags for external CDN resources:
 4. **Document** - Add comment indicating consolidation level and pages using it
 5. **Update this guide** - Add to the consolidation checklist above
 
-## References
+## Edge Cases & Advanced Scenarios
+
+### Icon Libraries in Ruby Code
+
+When icon libraries (Font Awesome, Material Icons, etc.) are **hardcoded in Ruby services**, tools, or dynamic HTML generators:
+
+```ruby
+# ❌ BAD: Hardcoded Font Awesome icon classes
+def generate_widget(title, icon)
+  "<i class='#{icon}'></i><span>#{title}</span>"
+end
+
+# ✅ GOOD: Use mapped icon alternatives or Lucide
+def generate_widget(title, icon_name)
+  lucide_icon = map_icon_to_lucide(icon_name)
+  "<i data-lucide=\"#{lucide_icon}\"></i><span>#{title}</span>"
+end
+```
+
+**Always check:**
+- `app/services/**/*.rb` - Dynamic content generation
+- `app/jobs/**/*.rb` - Background job outputs
+- `app/lib/**/*.rb` - Utility functions generating HTML
+- Any file with `"<i class="` or `'<i class='` patterns
+
+### References
 
 - Rails Guides: Asset Pipeline
 - Rails Conventions: Partial Naming
