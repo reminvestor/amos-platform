@@ -2137,6 +2137,12 @@ export default class extends Controller {
         console.log('✅ RAG stores created:', result.rag_stores_created)
         console.log('✅ Message:', result.message)
       }
+      
+      // Check for duplicate uploads
+      const duplicateUploads = result.urls ? result.urls.filter(u => u.duplicate) : []
+      if (duplicateUploads.length > 0) {
+        console.log('ℹ️ Duplicate documents found:', duplicateUploads.map(u => u.filename))
+      }
 
       return result.urls || []
     } catch (error) {
