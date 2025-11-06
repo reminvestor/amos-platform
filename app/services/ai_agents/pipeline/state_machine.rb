@@ -137,35 +137,35 @@ module AiAgents::Pipeline
       end
     end
 
-    # Get state icon (Font Awesome)
+    # Get state icon (Lucide)
     def self.state_icon(state)
       case state.to_s
       when 'new'
-        'fa-file'
+        'file'
       when 'clarifying'
-        'fa-question-circle'
+        'help-circle'
       when 'planning'
-        'fa-map'
+        'map'
       when 'implementing'
-        'fa-code'
+        'code'
       when 'review'
-        'fa-search'
+        'search'
       when 'testing'
-        'fa-vial'
+        'beaker'
       when 'dev', 'staging', 'prod'
-        'fa-rocket'
+        'rocket'
       when 'awaiting_prod_approval'
-        'fa-pause-circle'
+        'pause-circle'
       when 'done'
-        'fa-check-circle'
+        'check-circle'
       when 'failed'
-        'fa-times-circle'
+        'x-circle'
       when 'rolled_back'
-        'fa-undo'
+        'undo'
       when 'blocked'
-        'fa-ban'
+        'ban'
       else
-        'fa-circle'
+        'circle'
       end
     end
 
