@@ -1,0 +1,70 @@
+<tr data-document-id="<%= document.id %>">
+  <td>
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <i data-lucide="<%= document.content_type_icon %>" style="width: 1.25rem; height: 1.25rem; color: #94A3B8;"></i>
+      <div>
+        <%= link_to document.display_title, document_path(document), class: "text-info" %>
+        <small class="d-block text-muted" style="font-size: 0.75rem;">
+          Collection: <%= document.rag_store.name %>
+        </small>
+      </div>
+    </div>
+  </td>
+  <td class="document-status">
+    <% if document.processing_status == 'processing' %>
+      <div class="d-flex align-items-center gap-2">
+        <div class="spinner-border spinner-border-sm text-primary" role="status">
+          <span class="visually-hidden">Processing...</span>
+        </div>
+        <div>
+          <small class="text-primary d-block"><%= document.processing_stage.humanize %></small>
+          <div class="progress" style="height: 4px; width: 80px;">
+            <div class="progress-bar bg-primary" role="progressbar" style="width: <%= document.processing_progress %>%"></div>
+          </div>
+        </div>
+      </div>
+    <% elsif document.processing_status == 'failed' %>
+      <span class="badge bg-danger">Failed</span>
+      <%= button_to retry_processing_document_path(document), 
+          method: :post, 
+          class: "btn btn-sm btn-link text-primary p-0 ms-2",
+          style: "font-size: 0.75rem;",
+          data: { turbo_frame: "_top" } do %>
+        <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+        Retry
+      <% end %>
+    <% else %>
+      <span class="badge bg-success">Ready</span>
+    <% end %>
+  </td>
+  <td>
+    <% document.document_subjects.first(2).each do |subject| %>
+      <span class="badge badge-secondary"><%= subject.name %></span>
+    <% end %>
+  </td>
+  <td>
+    <% document.document_tags.first(3).each do |tag| %>
+      <span class="badge badge-<%= tag.category || 'custom' %>" 
+            style="background-color: <%= tag.display_color %>20; color: <%= tag.display_color %>;">
+        <%= tag.name %>
+      </span>
+    <% end %>
+  </td>
+  <td style="color: #94A3B8;"><%= document.file_size_human %></td>
+  <td style="color: #94A3B8;"><%= time_ago_in_words(document.created_at) %> ago</td>
+  <td style="text-align: right;">
+    <div style="display: inline-flex; gap: 0.5rem;">
+      <%= link_to document_path(document), class: "admin-btn admin-btn-sm admin-btn-ghost" do %>
+        <i data-lucide="eye"></i>
+      <% end %>
+      <%= link_to download_document_path(document), class: "admin-btn admin-btn-sm admin-btn-ghost" do %>
+        <i data-lucide="download"></i>
+      <% end %>
+      <%= button_to document_path(document), method: :delete, 
+          class: "admin-btn admin-btn-sm admin-btn-ghost",
+          form: { data: { turbo_confirm: "Are you sure?" } } do %>
+        <i data-lucide="trash-2"></i>
+      <% end %>
+    </div>
+  </td>
+</tr>

@@ -1,0 +1,50 @@
+<%= form_with scope: :document, url: documents_path, data: { turbo_stream: true }, html: { multipart: true, id: 'quick-upload-form' } do |f| %>
+  <div class="modal-body">
+    <div class="admin-form-group">
+      <%= f.label :file, "Select Document", class: "admin-label" %>
+      <%= f.file_field :file, class: "admin-file-input", required: true %>
+      <small class="form-text text-muted">PDF, Word, Excel, Text, or Image files up to 50MB</small>
+    </div>
+    
+    <div class="admin-form-group">
+      <%= f.label :collection_name, "Collection", class: "admin-label" %>
+      <% collections = current_entity.rag_stores
+                              .where(app_name: 'documents', store_type: 'entity')
+                              .where.not("name LIKE '%.pdf' OR name LIKE '%.doc%' OR name LIKE '%.xls%' OR name LIKE '%.txt'")
+                              .distinct.pluck(:name).sort %>
+      <% default_collection = "Document Library" %>
+      <% unless collections.include?(default_collection) %>
+        <% collections = [default_collection] + collections %>
+      <% end %>
+      <%= f.select :collection_name, 
+          options_for_select(collections.map { |c| [c, c] }, selected: default_collection),
+          {}, 
+          class: "admin-select", 
+          required: true %>
+      <small class="form-text text-muted">Select a collection for this document</small>
+    </div>
+    
+    <div class="admin-form-group">
+      <%= f.label :tags, "Tags (Optional)", class: "admin-label" %>
+      <%= f.text_field :tags, class: "admin-input", placeholder: "contract, 2024, draft (comma separated)" %>
+    </div>
+  </div>
+  <div class="modal-footer admin-card-footer">
+    <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Cancel</button>
+    <%= f.submit "Upload", class: "admin-btn admin-btn-primary", data: { disable_with: "Uploading..." } %>
+  </div>
+<% end %>
+
+<script>
+  // Add upload progress indicator and debug collection selection
+  document.getElementById('quick-upload-form')?.addEventListener('submit', function(e) {
+    const collectionSelect = this.querySelector('select[name="document[collection_name]"]');
+    console.log('Selected collection:', collectionSelect?.value);
+    
+    const submitBtn = this.querySelector('input[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.value = "Uploading...";
+    }
+  });
+</script>

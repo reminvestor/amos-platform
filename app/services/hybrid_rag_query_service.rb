@@ -315,6 +315,7 @@ class HybridRagQueryService
 
     {
       id: chunk.id,
+      object: chunk, # Add reference to the chunk object
       content: chunk.content,
       chunk: chunk,
       source: source,
@@ -357,17 +358,23 @@ class HybridRagQueryService
   end
 
   def format_chunk(chunk_data)
-    chunk = chunk_data[:chunk]
-
+    # Handle both direct chunk object and annotated chunk data
+    chunk = chunk_data[:chunk] || chunk_data[:object]
+    
+    return chunk_data if chunk.nil? # Already formatted
+    
     {
       id: chunk.id,
+      rag_document_id: chunk.rag_document_id,
       content: chunk.content,
       similarity_score: chunk_data[:similarity_score],
+      combined_score: chunk_data[:combined_score],
       source: chunk_data[:source],
+      document_title: chunk.rag_document&.display_title,
       metadata: {
-        filename: chunk.rag_document.original_filename,
-        page: chunk.metadata['page'],
-        section: chunk.metadata['section_title'],
+        filename: chunk.rag_document&.original_filename,
+        page: chunk.metadata&.dig('page'),
+        section: chunk.metadata&.dig('section_title'),
         chunk_type: chunk.chunk_type
       }
     }

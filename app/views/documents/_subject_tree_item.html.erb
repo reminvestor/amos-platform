@@ -1,0 +1,12 @@
+<%= link_to documents_path(subject_id: subject.id), 
+    class: "subject-item #{'active' if current_subject_id == subject.id} #{'ms-3' if subject.parent_id}" do %>
+  <i data-lucide="<%= subject.display_icon %>"></i>
+  <span><%= subject.name %></span>
+  <span class="badge"><%= subject.documents_count %></span>
+<% end %>
+
+<% if subject.children.any? %>
+  <% subject.children.ordered.each do |child| %>
+    <%= render 'subject_tree_item', subject: child, current_subject_id: current_subject_id %>
+  <% end %>
+<% end %>

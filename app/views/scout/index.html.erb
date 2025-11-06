@@ -2985,9 +2985,18 @@ document.addEventListener('turbo:load', function() {
     const finalMessage = message || 'Please process these files';
     console.log('📤 Submitting with message:', finalMessage, 'and', attachedFiles.length, 'files');
 
-    // If files are attached, show storage choice modal first
+    // If files are attached, handle upload
     if (attachedFiles.length > 0) {
-      console.log('📎 Files attached, showing storage choice modal');
+      console.log('📎 Files attached, processing upload');
+      
+      // Skip modal for now - default to long-term storage
+      const skipModal = true; // Can be made a user preference later
+      
+      if (skipModal) {
+        // Default to long-term storage for Scout uploads
+        window.documentStorageChoice = 'long-term';
+        console.log('📎 Auto-selecting long-term storage for Scout documents');
+      }
 
       // Store the continuation function
       window.pendingFileUpload = async function() {
@@ -3037,10 +3046,33 @@ document.addEventListener('turbo:load', function() {
           }
         }
       };
-
+      
+      // If skipping modal, proceed directly
+      if (skipModal) {
+        window.pendingFileUpload();
+        return;
+      }
+      
+      // Otherwise show the modal
+      const modalElement = document.getElementById('document-storage-modal');
+      if (!modalElement) {
+        console.error('📎 Storage modal not found! Defaulting to long-term storage');
+        window.documentStorageChoice = 'long-term';
+        window.pendingFileUpload();
+        return;
+      }
+      
       // Show the modal
-      const storageModal = new bootstrap.Modal(document.getElementById('document-storage-modal'));
-      storageModal.show();
+      try {
+        const storageModal = new bootstrap.Modal(modalElement);
+        storageModal.show();
+        console.log('📎 Storage modal shown successfully');
+      } catch (error) {
+        console.error('📎 Failed to show storage modal:', error);
+        // Fallback to long-term storage
+        window.documentStorageChoice = 'long-term';
+        window.pendingFileUpload();
+      }
       return; // Wait for user choice
     }
 
@@ -3182,6 +3214,14 @@ document.addEventListener('turbo:load', function() {
     radioButtons.forEach(radio => radio.checked = false);
     storageOptions.forEach(opt => opt.classList.remove('border-primary'));
     confirmBtn.disabled = true;
+    
+    // If modal is closed without selection, default to long-term storage
+    if (window.pendingFileUpload && !window.documentStorageChoice) {
+      console.log('📎 Modal closed without selection, defaulting to long-term storage');
+      window.documentStorageChoice = 'long-term';
+      window.pendingFileUpload();
+    }
+    
     window.documentStorageChoice = null;
     window.pendingFileUpload = null;
   });
@@ -3239,7 +3279,7 @@ document.addEventListener('turbo:load', function() {
                 </div>
                 <div>
                   <h6 class="mb-1">Just for this conversation</h6>
-                  <small class="text-muted">Temporary access for current chat session only. Document will be removed when you close this conversation.</small>
+                  <small class="text-muted">Temporary access for current chat session only. Document expires after 24 hours.</small>
                 </div>
               </div>
             </label>
@@ -3256,7 +3296,12 @@ document.addEventListener('turbo:load', function() {
                 </div>
                 <div>
                   <h6 class="mb-1">Add to my knowledge base</h6>
-                  <small class="text-muted">Permanent storage. I'll remember this document across all future conversations and can reference it anytime.</small>
+                  <small class="text-muted">
+                    <% if true # Always show both types since JS will route correctly %>
+                      Images → Image Library (for websites & emails)<br/>
+                      Documents → Document Store (for AI knowledge)
+                    <% end %>
+                  </small>
                 </div>
               </div>
             </label>

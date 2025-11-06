@@ -53,6 +53,15 @@ module Rag
         )
 
         Rails.logger.info "✅ Created #{chunks.length} chunks for document ##{rag_document.id}"
+        
+        # If no chunks were created (e.g., empty document), mark as completed
+        if chunks.empty?
+          rag_document.update!(processing_status: 'completed')
+          Rails.logger.warn "⚠️  No chunks created for document ##{rag_document.id} - marking as completed"
+        else
+          # Broadcast progress update
+          rag_document.broadcast_progress_update
+        end
 
       rescue => e
         Rails.logger.error "❌ ChunkingJob failed for document ##{rag_document_id}: #{e.message}"

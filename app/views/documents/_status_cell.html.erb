@@ -1,0 +1,25 @@
+<% if document.processing_status == 'processing' %>
+  <div class="d-flex align-items-center gap-2">
+    <div class="spinner-border spinner-border-sm text-primary" role="status">
+      <span class="visually-hidden">Processing...</span>
+    </div>
+    <div>
+      <small class="text-primary d-block"><%= document.processing_stage.humanize %></small>
+      <div class="progress" style="height: 4px; width: 80px;">
+        <div class="progress-bar bg-primary" role="progressbar" style="width: <%= document.processing_progress %>%"></div>
+      </div>
+    </div>
+  </div>
+<% elsif document.processing_status == 'failed' %>
+  <span class="badge bg-danger">Failed</span>
+  <%= button_to retry_processing_document_path(document), 
+      method: :post, 
+      class: "btn btn-sm btn-link text-primary p-0 ms-2",
+      style: "font-size: 0.75rem;",
+      data: { turbo_frame: "_top" } do %>
+    <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+    Retry
+  <% end %>
+<% else %>
+  <span class="badge bg-success">Ready</span>
+<% end %>
