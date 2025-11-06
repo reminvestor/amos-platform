@@ -6,7 +6,12 @@
       "Skill(dark-theme-redesign)",
       "Bash(git pull:*)",
       "Bash(grep:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git worktree add:*)",
+      "Bash(git worktree:*)",
+      "Bash(cat:*)",
+      "Bash(xargs grep:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": [
