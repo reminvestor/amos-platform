@@ -694,6 +694,11 @@
   transition: all 0.2s ease;
   font-size: 0.8rem;
 
+  i, svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
   &:hover {
     background: rgba(30, 41, 59, 0.5);
     color: #cbd5e1;
@@ -821,6 +826,11 @@
   font-size: 0.8rem;
   cursor: pointer;
   transition: background 0.2s ease;
+
+  i, svg {
+    width: 1rem;
+    height: 1rem;
+  }
 }
 
 .suggestion-btn:hover {
@@ -1109,6 +1119,11 @@
   cursor: pointer;
   font-size: 0.75rem;
   transition: all 0.2s ease;
+
+  i, svg {
+    width: 1rem;
+    height: 1rem;
+  }
 }
 
 .preset-btn:hover,
