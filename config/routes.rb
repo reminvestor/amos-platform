@@ -136,12 +136,40 @@ Rails.application.routes.draw do
       end
     end
     
-    # Document store for RAG
-    resources :documents, only: [ :index, :new, :create, :destroy ] do
+  # Document store for RAG
+    resources :documents do
       member do
         get :download
+        post :add_tags
+        post :assign_subjects
+        post :retry_processing
+      end
+      collection do
+        get :search
       end
     end
+  
+  # Document organization
+  resources :document_subjects do
+    member do
+      post :move
+    end
+  end
+  
+  resources :document_tags do
+    member do
+      post :merge
+    end
+    collection do
+      get :suggest
+    end
+  end
+  
+  resources :saved_searches do
+    member do
+      post :run
+    end
+  end
     resources :email_templates do
       member do
         post :test_email

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_01_195949) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_05_163253) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -566,6 +566,45 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_01_195949) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "document_analytics", force: :cascade do |t|
+    t.bigint "rag_document_id", null: false
+    t.date "date", null: false
+    t.integer "view_count", default: 0
+    t.integer "query_count", default: 0
+    t.float "relevance_score_avg"
+    t.integer "chunk_retrieval_count", default: 0
+    t.integer "unique_users", default: 0
+    t.integer "download_count", default: 0
+    t.jsonb "search_queries", default: []
+    t.jsonb "user_breakdown", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["date", "view_count"], name: "index_document_analytics_on_date_and_view_count"
+    t.index ["date"], name: "index_document_analytics_on_date"
+    t.index ["rag_document_id", "date"], name: "index_document_analytics_on_rag_document_id_and_date", unique: true
+    t.index ["rag_document_id"], name: "index_document_analytics_on_rag_document_id"
+  end
+
+  create_table "document_annotations", force: :cascade do |t|
+    t.bigint "rag_document_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "page_number"
+    t.jsonb "position"
+    t.text "content", null: false
+    t.string "annotation_type"
+    t.string "color"
+    t.boolean "resolved", default: false
+    t.bigint "resolved_by_id"
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["rag_document_id", "page_number"], name: "index_document_annotations_on_rag_document_id_and_page_number"
+    t.index ["rag_document_id"], name: "index_document_annotations_on_rag_document_id"
+    t.index ["resolved_by_id"], name: "index_document_annotations_on_resolved_by_id"
+    t.index ["user_id", "created_at"], name: "index_document_annotations_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_document_annotations_on_user_id"
+  end
+
   create_table "document_chunks", force: :cascade do |t|
     t.bigint "knowledge_document_id", null: false
     t.text "content", null: false
@@ -577,6 +616,76 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_01_195949) do
     t.index ["embedding"], name: "index_document_chunks_on_embedding", opclass: :vector_cosine_ops, using: :ivfflat
     t.index ["knowledge_document_id", "chunk_index"], name: "index_document_chunks_on_knowledge_document_id_and_chunk_index"
     t.index ["knowledge_document_id"], name: "index_document_chunks_on_knowledge_document_id"
+  end
+
+  create_table "document_relationships", force: :cascade do |t|
+    t.bigint "source_document_id", null: false
+    t.bigint "target_document_id", null: false
+    t.string "relationship_type", null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["relationship_type"], name: "index_document_relationships_on_relationship_type"
+    t.index ["source_document_id", "target_document_id", "relationship_type"], name: "idx_doc_relationship_unique", unique: true
+    t.index ["source_document_id"], name: "index_document_relationships_on_source_document_id"
+    t.index ["target_document_id"], name: "index_document_relationships_on_target_document_id"
+  end
+
+  create_table "document_subject_assignments", force: :cascade do |t|
+    t.bigint "rag_document_id", null: false
+    t.bigint "document_subject_id", null: false
+    t.bigint "assigned_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assigned_by_id"], name: "index_document_subject_assignments_on_assigned_by_id"
+    t.index ["document_subject_id"], name: "index_document_subject_assignments_on_document_subject_id"
+    t.index ["rag_document_id", "document_subject_id"], name: "idx_doc_subject_unique", unique: true
+    t.index ["rag_document_id"], name: "index_document_subject_assignments_on_rag_document_id"
+  end
+
+  create_table "document_subjects", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.bigint "parent_id"
+    t.string "color", limit: 7
+    t.string "icon", limit: 50
+    t.jsonb "metadata", default: {}
+    t.jsonb "rules", default: {}
+    t.boolean "is_smart_folder", default: false
+    t.integer "position", default: 0
+    t.integer "documents_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "name", "parent_id"], name: "index_document_subjects_on_entity_id_and_name_and_parent_id", unique: true
+    t.index ["entity_id", "position"], name: "index_document_subjects_on_entity_id_and_position"
+    t.index ["entity_id"], name: "index_document_subjects_on_entity_id"
+    t.index ["is_smart_folder"], name: "index_document_subjects_on_is_smart_folder"
+    t.index ["parent_id"], name: "index_document_subjects_on_parent_id"
+  end
+
+  create_table "document_tag_assignments", force: :cascade do |t|
+    t.bigint "rag_document_id", null: false
+    t.bigint "document_tag_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["document_tag_id"], name: "index_document_tag_assignments_on_document_tag_id"
+    t.index ["rag_document_id", "document_tag_id"], name: "idx_doc_tag_unique", unique: true
+    t.index ["rag_document_id"], name: "index_document_tag_assignments_on_rag_document_id"
+  end
+
+  create_table "document_tags", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "name", limit: 100, null: false
+    t.string "category", limit: 50
+    t.string "color", limit: 7
+    t.integer "usage_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "category"], name: "index_document_tags_on_entity_id_and_category"
+    t.index ["entity_id", "name", "category"], name: "index_document_tags_on_entity_id_and_name_and_category", unique: true
+    t.index ["entity_id"], name: "index_document_tags_on_entity_id"
+    t.index ["usage_count"], name: "index_document_tags_on_usage_count"
   end
 
   create_table "dripped_campaigns", force: :cascade do |t|
@@ -1381,14 +1490,37 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_01_195949) do
     t.string "processing_status"
     t.datetime "deleted_at"
     t.jsonb "metadata", default: {}
+    t.string "title", limit: 500
+    t.text "summary"
+    t.string "author"
+    t.date "document_date"
+    t.string "language", limit: 10, default: "en"
+    t.boolean "ocr_performed", default: false
+    t.integer "view_count", default: 0
+    t.integer "download_count", default: 0
+    t.datetime "last_accessed_at", precision: nil
+    t.bigint "last_accessed_by_id"
+    t.integer "version", default: 1
+    t.bigint "parent_document_id"
+    t.boolean "is_latest_version", default: true
+    t.tsvector "full_text_search_vector"
+    t.jsonb "keywords", default: []
+    t.jsonb "custom_metadata", default: {}
+    t.index ["author"], name: "index_rag_documents_on_author"
     t.index ["bedrock_ingestion_status"], name: "index_rag_documents_on_bedrock_ingestion_status"
     t.index ["deleted_at"], name: "index_rag_documents_on_deleted_at"
+    t.index ["document_date"], name: "index_rag_documents_on_document_date"
     t.index ["file_hash"], name: "index_rag_documents_on_file_hash"
+    t.index ["full_text_search_vector"], name: "index_rag_documents_on_full_text_search_vector", using: :gin
+    t.index ["is_latest_version"], name: "index_rag_documents_on_is_latest_version"
+    t.index ["language"], name: "index_rag_documents_on_language"
+    t.index ["parent_document_id"], name: "index_rag_documents_on_parent_document_id"
     t.index ["processing_status"], name: "index_rag_documents_on_processing_status"
     t.index ["rag_store_id", "file_hash"], name: "index_rag_documents_on_rag_store_id_and_file_hash"
     t.index ["rag_store_id"], name: "index_rag_documents_on_rag_store_id"
     t.index ["textract_job_id"], name: "index_rag_documents_on_textract_job_id"
     t.index ["textract_status"], name: "index_rag_documents_on_textract_status"
+    t.index ["view_count"], name: "index_rag_documents_on_view_count"
   end
 
   create_table "rag_processing_jobs", force: :cascade do |t|
@@ -1495,6 +1627,24 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_01_195949) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["landing_page_id"], name: "index_rich_text_sections_on_landing_page_id"
+  end
+
+  create_table "saved_searches", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.jsonb "query_params", null: false
+    t.boolean "alert_enabled", default: false
+    t.string "alert_frequency"
+    t.datetime "last_run_at"
+    t.datetime "last_alert_at"
+    t.integer "result_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["alert_enabled", "last_run_at"], name: "index_saved_searches_on_alert_enabled_and_last_run_at"
+    t.index ["entity_id", "user_id"], name: "index_saved_searches_on_entity_id_and_user_id"
+    t.index ["entity_id"], name: "index_saved_searches_on_entity_id"
+    t.index ["user_id"], name: "index_saved_searches_on_user_id"
   end
 
   create_table "scout_conversations", force: :cascade do |t|
@@ -2161,7 +2311,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_01_195949) do
   add_foreign_key "custom_models", "users"
   add_foreign_key "custom_plugins", "entities"
   add_foreign_key "custom_plugins", "users"
+  add_foreign_key "document_analytics", "rag_documents"
+  add_foreign_key "document_annotations", "rag_documents"
+  add_foreign_key "document_annotations", "users"
+  add_foreign_key "document_annotations", "users", column: "resolved_by_id"
   add_foreign_key "document_chunks", "knowledge_documents"
+  add_foreign_key "document_relationships", "rag_documents", column: "source_document_id"
+  add_foreign_key "document_relationships", "rag_documents", column: "target_document_id"
+  add_foreign_key "document_subject_assignments", "document_subjects"
+  add_foreign_key "document_subject_assignments", "rag_documents"
+  add_foreign_key "document_subject_assignments", "users", column: "assigned_by_id"
+  add_foreign_key "document_subjects", "document_subjects", column: "parent_id"
+  add_foreign_key "document_subjects", "entities"
+  add_foreign_key "document_tag_assignments", "document_tags"
+  add_foreign_key "document_tag_assignments", "rag_documents"
+  add_foreign_key "document_tags", "entities"
   add_foreign_key "dripped_campaigns", "campaigns", column: "follow_up_campaign_id"
   add_foreign_key "dripped_campaigns", "campaigns", column: "original_campaign_id"
   add_foreign_key "email_deliveries", "campaigns"
@@ -2228,7 +2392,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_01_195949) do
   add_foreign_key "plugin_usages", "users"
   add_foreign_key "policy_rules", "entities"
   add_foreign_key "rag_chunks", "rag_documents"
+  add_foreign_key "rag_documents", "rag_documents", column: "parent_document_id"
   add_foreign_key "rag_documents", "rag_stores"
+  add_foreign_key "rag_documents", "users", column: "last_accessed_by_id"
   add_foreign_key "rag_processing_jobs", "rag_stores"
   add_foreign_key "rag_queries", "entities"
   add_foreign_key "rag_queries", "rag_stores"
@@ -2238,6 +2404,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_01_195949) do
   add_foreign_key "referrals", "entities", column: "referred_entity_id"
   add_foreign_key "referrals", "users", column: "referred_user_id"
   add_foreign_key "rich_text_sections", "landing_pages"
+  add_foreign_key "saved_searches", "entities"
+  add_foreign_key "saved_searches", "users"
   add_foreign_key "scout_conversations", "entities"
   add_foreign_key "scout_conversations", "users"
   add_foreign_key "scout_messages", "entities"

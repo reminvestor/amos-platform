@@ -68,6 +68,9 @@ gem "thruster", require: false
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 1.2"
 
+# Counter caching for document counts
+gem "counter_culture", "~> 3.5"
+
 # Vector database support for RAG
 gem "neighbor", "~> 0.5"
 

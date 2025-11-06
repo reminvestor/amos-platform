@@ -303,26 +303,23 @@ class ScoutController < ApplicationController
   # Handle file uploads from chat
   def upload_files
     uploaded_urls = []
+    storage_type = params[:storage_type] || 'long-term'
 
     if params[:files].present?
       params[:files].each do |index, file|
         if file.is_a?(ActionDispatch::Http::UploadedFile)
-          # Create ImageAsset for each uploaded file
-          image_asset = ImageAsset.create!(
-            entity: current_entity,
-            user: current_user,
-            title: file.original_filename,
-            file: file,
-            source: "upload"
-          )
-
-          uploaded_urls << {
-            url: rails_blob_url(image_asset.file),
-            filename: file.original_filename,
-            content_type: file.content_type,
-            size: file.size,
-            asset_id: image_asset.id
-          }
+          # Route based on file type and storage preference
+          if storage_type == 'short-term'
+            # Temporary upload - store with a short expiry
+            uploaded_urls << handle_temporary_upload(file)
+          else
+            # Long-term storage - route to appropriate system
+            if image_file?(file)
+              uploaded_urls << handle_image_upload(file)
+            else
+              uploaded_urls << handle_document_upload(file)
+            end
+          end
         end
       end
     end
@@ -2356,5 +2353,129 @@ class ScoutController < ApplicationController
     end
 
     status_response
+  end
+  
+  # Search documents for Scout
+  def search_documents(query)
+    return [] if query.blank?
+    
+    service = DocumentSearchService.new(current_entity)
+    results = service.search(query: query, filters: {})
+    
+    # Format results for Scout
+    results[:documents].map do |doc|
+      {
+        id: doc.id,
+        title: doc.display_title,
+        content_preview: doc.summary || doc.extracted_text&.truncate(200),
+        url: document_path(doc),
+        type: doc.rag_store.name,
+        relevance_score: results[:search_type] == 'semantic' ? 'high' : 'medium'
+      }
+    end
+  end
+  
+  # Search image assets
+  def search_images(query)
+    return [] if query.blank?
+    
+    images = current_entity.image_assets
+                          .where("title ILIKE :query OR description ILIKE :query", query: "%#{query}%")
+                          .limit(10)
+                          
+    images.map do |img|
+      {
+        id: img.id,
+        title: img.title,
+        url: rails_blob_url(img.file),
+        thumbnail_url: rails_blob_url(img.file.variant(resize_to_fit: [200, 200])),
+        type: 'image'
+      }
+    end
+  end
+  
+  private
+  
+  def image_file?(file)
+    %w[image/jpeg image/jpg image/png image/gif image/webp image/svg+xml].include?(file.content_type)
+  end
+  
+  def handle_image_upload(file)
+    # Create ImageAsset for images
+    image_asset = ImageAsset.create!(
+      entity: current_entity,
+      user: current_user,
+      title: file.original_filename,
+      file: file,
+      source: "chat"
+    )
+
+    {
+      url: rails_blob_url(image_asset.file),
+      filename: file.original_filename,
+      content_type: file.content_type,
+      size: file.size,
+      asset_id: image_asset.id,
+      asset_type: 'image'
+    }
+  end
+  
+  def handle_document_upload(file)
+    # Find or create Scout collection
+    rag_store = current_entity.rag_stores.find_or_create_by!(
+      name: "Scout Chat Documents",
+      app_name: "scout",
+      store_type: "entity"
+    ) do |store|
+      store.status = "active"
+      store.user = current_user
+    end
+    
+    # Create document with immediate processing
+    rag_document = rag_store.rag_documents.create!(
+      original_filename: file.original_filename,
+      content_type: file.content_type,
+      file_size_bytes: file.size,
+      processing_status: 'processing',
+      title: file.original_filename
+    )
+    
+    # Attach file and process
+    rag_document.file.attach(file)
+    
+    # Queue document processing
+    Rag::DocumentPipelineJob.perform_later(rag_document.id, auto_categorize: true)
+    
+    {
+      url: rails_blob_url(rag_document.file),
+      filename: file.original_filename,
+      content_type: file.content_type,
+      size: file.size,
+      document_id: rag_document.id,
+      asset_type: 'document',
+      processing: true
+    }
+  end
+  
+  def handle_temporary_upload(file)
+    # Create a temporary blob with expiry
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: file,
+      filename: file.original_filename,
+      content_type: file.content_type,
+      metadata: { 
+        temporary: true,
+        expires_at: 24.hours.from_now
+      }
+    )
+    
+    {
+      url: rails_blob_url(blob),
+      filename: file.original_filename,
+      content_type: file.content_type,
+      size: file.size,
+      temporary: true,
+      asset_type: 'temporary'
+    }
   end
 end
