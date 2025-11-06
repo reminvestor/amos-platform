@@ -49,11 +49,17 @@ module Tools
       begin
         # Find the file
         if asset_id
+          Rails.logger.info "🔍 ReadDocumentTool: Looking for asset_id: #{asset_id}"
+          
           # Try to find as ImageAsset first
           asset = ImageAsset.find_by(id: asset_id, entity: @entity)
           
-          # If not found, try as RagDocument
-          if !asset
+          if asset
+            Rails.logger.info "✅ Found as ImageAsset: #{asset.id}"
+          else
+            # If not found, try as RagDocument
+            Rails.logger.info "🔍 Not found as ImageAsset, trying RagDocument..."
+            
             rag_document = RagDocument.joins(:rag_store).find_by(
               id: asset_id, 
               rag_stores: { entity_id: @entity.id }
@@ -62,7 +68,9 @@ module Tools
             if rag_document && rag_document.file.attached?
               # Use RagDocument's attached file
               asset = rag_document
+              Rails.logger.info "✅ Found as RagDocument: #{rag_document.id}"
             else
+              Rails.logger.error "❌ Asset not found as ImageAsset or RagDocument"
               return error_response("File not found or access denied")
             end
           end
