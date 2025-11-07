@@ -1,202 +1,202 @@
-<div class="scout-canvas campaign-viewer">
-  <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h4 class="mb-1">
-        <i data-lucide="mail" class="text-primary me-2" aria-hidden="true"></i>
-        Email Campaigns
-      </h4>
-      <p class="text-muted mb-0">Manage your email marketing campaigns</p>
-    </div>
-    <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="scoutViewTemplates()" aria-label="View email templates">
-        <i data-lucide="file-text" class="me-1" aria-hidden="true"></i>
+<div style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem;">
+  <!-- Page Header -->
+  <div style="margin-bottom: 2rem;">
+    <h1 style="color: #FFFFFF; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+      <i data-lucide="mail" style="width: 2rem; height: 2rem;"></i>
+      Email Campaigns
+    </h1>
+    <p style="color: #94A3B8; margin-bottom: 0;">Manage your email marketing campaigns</p>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <div></div>
+    <div style="display: flex; gap: 0.5rem;">
+      <button onclick="scoutViewTemplates()" 
+              aria-label="View email templates"
+              style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500;">
+        <i data-lucide="file-text" style="width: 1rem; height: 1rem;"></i>
         Templates
       </button>
-      <button class="btn btn-primary" onclick="scoutCreateCampaign()" aria-label="Create new campaign">
-        <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
+      <button onclick="scoutCreateCampaign()" 
+              aria-label="Create new campaign"
+              style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500;">
+        <i data-lucide="plus" style="width: 1rem; height: 1rem;"></i>
         Create Campaign
       </button>
     </div>
   </div>
   
   <!-- Campaign Stats -->
-  <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="stat-card bg-light border-0 h-100">
-        <div class="stat-card-body p-3">
-          <div class="d-flex align-items-center">
-            <div class="stat-icon bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-              <i data-lucide="mail" class="text-primary" aria-hidden="true"></i>
-            </div>
-            <div>
-              <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:total_campaigns]) %></div>
-              <div class="stat-label text-muted small">Total Campaigns</div>
-            </div>
-          </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(167, 139, 250, 0.05) 100%); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Total Campaigns</p>
+          <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= number_with_delimiter(stats[:total_campaigns]) %></p>
+        </div>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(124, 58, 237, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="mail" style="width: 1.25rem; height: 1.25rem; color: #A78BFA;"></i>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="stat-card bg-light border-0 h-100">
-        <div class="stat-card-body p-3">
-          <div class="d-flex align-items-center">
-            <div class="stat-icon bg-success bg-opacity-10 rounded-circle p-2 me-3">
-              <i data-lucide="send" class="text-success" aria-hidden="true"></i>
-            </div>
-            <div>
-              <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:sent_campaigns]) %></div>
-              <div class="stat-label text-muted small">Sent</div>
-            </div>
-          </div>
+
+    <div style="background: linear-gradient(135deg, rgba(74, 222, 128, 0.2) 0%, rgba(74, 222, 128, 0.05) 100%); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Sent</p>
+          <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= number_with_delimiter(stats[:sent_campaigns]) %></p>
+        </div>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(74, 222, 128, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="send" style="width: 1.25rem; height: 1.25rem; color: #4ade80;"></i>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="stat-card bg-light border-0 h-100">
-        <div class="stat-card-body p-3">
-          <div class="d-flex align-items-center">
-            <div class="stat-icon bg-warning bg-opacity-10 rounded-circle p-2 me-3">
-              <i data-lucide="file-edit" class="text-warning" aria-hidden="true"></i>
-            </div>
-            <div>
-              <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:draft_campaigns]) %></div>
-              <div class="stat-label text-muted small">Drafts</div>
-            </div>
-          </div>
+
+    <div style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(250, 204, 21, 0.05) 100%); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Drafts</p>
+          <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= number_with_delimiter(stats[:draft_campaigns]) %></p>
+        </div>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(250, 204, 21, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="file-edit" style="width: 1.25rem; height: 1.25rem; color: #facc15;"></i>
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="stat-card bg-light border-0 h-100">
-        <div class="stat-card-body p-3">
-          <div class="d-flex align-items-center">
-            <div class="stat-icon bg-info bg-opacity-10 rounded-circle p-2 me-3">
-              <i data-lucide="trending-up" class="text-info" aria-hidden="true"></i>
-            </div>
-            <div>
-              <% avg_open_rate = campaigns.select { |c| c.mailgun_stats.present? }
-                                         .map { |c| 
-                                           sent = c.mailgun_stats['sent'] || 0
-                                           opened = c.mailgun_stats['opened'] || 0
-                                           sent > 0 ? (opened.to_f / sent * 100) : 0
-                                         }
-                                         .then { |rates| rates.any? ? rates.sum / rates.size : 0 } %>
-              <div class="stat-number h5 mb-0"><%= number_with_precision(avg_open_rate, precision: 1) %>%</div>
-              <div class="stat-label text-muted small">Avg Open Rate</div>
-            </div>
-          </div>
+
+    <div style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.2) 0%, rgba(34, 211, 238, 0.05) 100%); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Avg Open Rate</p>
+          <% avg_open_rate = campaigns.select { |c| c.mailgun_stats.present? }
+                                     .map { |c| 
+                                       sent = c.mailgun_stats['sent'] || 0
+                                       opened = c.mailgun_stats['opened'] || 0
+                                       sent > 0 ? (opened.to_f / sent * 100) : 0
+                                     }
+                                     .then { |rates| rates.any? ? rates.sum / rates.size : 0 } %>
+          <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= number_with_precision(avg_open_rate, precision: 1) %>%</p>
+        </div>
+        <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="trending-up" style="width: 1.25rem; height: 1.25rem; color: #22D3EE;"></i>
         </div>
       </div>
     </div>
   </div>
   
   <!-- Filters -->
-  <div class="row mb-4">
-    <div class="col-md-4">
-      <div class="input-group">
-        <span class="input-group-text"><i data-lucide="search" aria-hidden="true"></i></span>
-        <input type="text" class="form-control" id="campaignSearch"
-               placeholder="Search campaigns by name or subject"
-               aria-label="Search campaigns">
-      </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div style="position: relative;">
+      <i data-lucide="search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 1.25rem; height: 1.25rem; color: #64748B; pointer-events: none;"></i>
+      <input type="text" 
+             id="campaignSearch"
+             placeholder="Search campaigns..."
+             style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.75rem; background-color: #1A1F35; border: 1px solid #1E293B; border-radius: 0.5rem; color: #FFFFFF; font-size: 0.875rem;"
+             aria-label="Search campaigns">
     </div>
-    <div class="col-md-3">
-      <select class="form-select" id="campaignStatusFilter">
-        <option value="">All Statuses</option>
-        <option value="draft">Draft</option>
-        <option value="sent">Sent</option>
-        <option value="scheduled">Scheduled</option>
-      </select>
-    </div>
-    <div class="col-md-3">
-      <select class="form-select" id="campaignGroupFilter">
-        <option value="">All Groups</option>
-        <% entity.contact_groups.each do |group| %>
-          <option value="<%= group.id %>"><%= group.name %></option>
-        <% end %>
-      </select>
-    </div>
-    <div class="col-md-2">
-      <select class="form-select" id="campaignSortFilter">
-        <option value="recent">Most Recent</option>
-        <option value="performance">Best Performance</option>
-        <option value="name">Alphabetical</option>
-      </select>
-    </div>
+    <select id="campaignStatusFilter" style="width: 100%; padding: 0.75rem 1rem; background-color: #1A1F35; border: 1px solid #1E293B; border-radius: 0.5rem; color: #FFFFFF; font-size: 0.875rem;">
+      <option value="">All Statuses</option>
+      <option value="draft">Draft</option>
+      <option value="sent">Sent</option>
+      <option value="scheduled">Scheduled</option>
+    </select>
+    <select id="campaignGroupFilter" style="width: 100%; padding: 0.75rem 1rem; background-color: #1A1F35; border: 1px solid #1E293B; border-radius: 0.5rem; color: #FFFFFF; font-size: 0.875rem;">
+      <option value="">All Groups</option>
+      <% entity.contact_groups.each do |group| %>
+        <option value="<%= group.id %>"><%= group.name %></option>
+      <% end %>
+    </select>
+    <select id="campaignSortFilter" style="width: 100%; padding: 0.75rem 1rem; background-color: #1A1F35; border: 1px solid #1E293B; border-radius: 0.5rem; color: #FFFFFF; font-size: 0.875rem;">
+      <option value="recent">Most Recent</option>
+      <option value="performance">Best Performance</option>
+      <option value="name">Alphabetical</option>
+    </select>
   </div>
   
   <% if campaigns.any? %>
     <!-- Campaigns Table -->
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">
-          <i data-lucide="list" class="me-2" aria-hidden="true"></i>
+    <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; overflow: hidden;">
+      <div style="background: #0A0E1A; border-bottom: 1px solid #1E293B; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <h6 style="color: #FFFFFF; margin: 0; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="list" style="width: 1rem; height: 1rem;"></i>
           Campaigns
         </h6>
-        <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-outline-secondary" onclick="scoutExportCampaigns()" aria-label="Export campaigns">
-            <i data-lucide="download" class="me-1" aria-hidden="true"></i>
+        <div style="display: flex; gap: 0.5rem;">
+          <button onclick="scoutExportCampaigns()" 
+                  aria-label="Export campaigns"
+                  style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
+            <i data-lucide="download" style="width: 0.875rem; height: 0.875rem;"></i>
             Export
           </button>
-          <button class="btn btn-sm btn-outline-primary" onclick="scoutAnalyzeCampaigns()" aria-label="Analyze campaigns">
-            <i data-lucide="bar-chart" class="me-1" aria-hidden="true"></i>
+          <button onclick="scoutAnalyzeCampaigns()" 
+                  aria-label="Analyze campaigns"
+                  style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
+            <i data-lucide="bar-chart" style="width: 0.875rem; height: 0.875rem;"></i>
             Analyze
           </button>
         </div>
       </div>
-      <div class="table-responsive">
-        <table class="table table-hover mb-0" id="campaignsTable">
-          <thead class="table-light">
-            <tr>
-              <th>Campaign</th>
-              <th>Status</th>
-              <th>Target Group</th>
-              <th>Performance</th>
-              <th>Sent Date</th>
-              <th width="120">Actions</th>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: #0A0E1A; border-bottom: 1px solid #1E293B;">
+              <th style="padding: 1rem; text-align: left; color: #94A3B8; font-weight: 600; font-size: 0.875rem;">Campaign</th>
+              <th style="padding: 1rem; text-align: left; color: #94A3B8; font-weight: 600; font-size: 0.875rem;">Status</th>
+              <th style="padding: 1rem; text-align: left; color: #94A3B8; font-weight: 600; font-size: 0.875rem;">Target Group</th>
+              <th style="padding: 1rem; text-align: left; color: #94A3B8; font-weight: 600; font-size: 0.875rem;">Performance</th>
+              <th style="padding: 1rem; text-align: left; color: #94A3B8; font-weight: 600; font-size: 0.875rem;">Sent Date</th>
+              <th style="padding: 1rem; text-align: left; color: #94A3B8; font-weight: 600; font-size: 0.875rem; width: 120px;">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="campaignsTable">
             <% campaigns.each do |campaign| %>
-              <tr data-campaign-id="<%= campaign.id %>">
-                <td>
-                  <div class="campaign-info">
-                    <div class="fw-medium mb-1">
+              <tr data-campaign-id="<%= campaign.id %>" style="border-bottom: 1px solid #1E293B; transition: background-color 0.2s ease;" onmouseover="this.style.backgroundColor='#0A0E1A';" onmouseout="this.style.backgroundColor='';">
+                <td style="padding: 1rem;">
+                  <div>
+                    <div style="color: #FFFFFF; font-weight: 600; margin-bottom: 0.25rem;">
                       <%= campaign.name.present? ? campaign.name : "Untitled Campaign" %>
                     </div>
-                    <small class="text-muted">
+                    <small style="color: #64748B; font-size: 0.75rem;">
                       <%= campaign.email_template&.subject.present? ? truncate(campaign.email_template.subject, length: 50) : (campaign.description.present? ? truncate(campaign.description, length: 50) : "No subject") %>
                     </small>
                   </div>
                 </td>
-                <td>
-                  <span class="badge <%= 
+                <td style="padding: 1rem;">
+                  <span style="background: <%= 
                     case campaign.status
-                    when 'sent' then 'bg-success'
-                    when 'draft' then 'bg-warning'
-                    when 'scheduled' then 'bg-info'
-                    else 'bg-secondary'
+                    when 'sent' then 'rgba(74, 222, 128, 0.2)'
+                    when 'draft' then 'rgba(250, 204, 21, 0.2)'
+                    when 'scheduled' then 'rgba(34, 211, 238, 0.2)'
+                    else 'rgba(100, 116, 139, 0.2)'
                     end
-                  %>">
+                  %>; color: <%= 
+                    case campaign.status
+                    when 'sent' then 'rgb(74, 222, 128)'
+                    when 'draft' then 'rgb(250, 204, 21)'
+                    when 'scheduled' then '#22D3EE'
+                    else 'rgb(100, 116, 139)'
+                    end
+                  %>; padding: 0.25rem 0.75rem; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600;">
                     <%= campaign.status.titleize %>
                   </span>
                 </td>
-                <td>
+                <td style="padding: 1rem;">
                   <% if campaign.contact_groups.any? %>
-                    <% campaign.contact_groups.each do |group| %>
-                      <span class="badge bg-light text-dark">
-                        <%= group.name %>
-                      </span>
-                    <% end %>
-                    <br>
-                    <small class="text-muted">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.25rem;">
+                      <% campaign.contact_groups.each do |group| %>
+                        <span style="background: rgba(124, 58, 237, 0.2); color: #A78BFA; padding: 0.25rem 0.5rem; border-radius: 0.375rem; font-size: 0.75rem;">
+                          <%= group.name %>
+                        </span>
+                      <% end %>
+                    </div>
+                    <small style="color: #64748B; font-size: 0.75rem;">
                       <%= pluralize(campaign.contacts.count, 'contact') %>
                     </small>
                   <% else %>
-                    <span class="text-muted">No group</span>
+                    <span style="color: #64748B;">No group</span>
                   <% end %>
                 </td>
-                <td>
+                <td style="padding: 1rem;">
                   <% if campaign.mailgun_stats.present? %>
                     <% 
                       sent = campaign.mailgun_stats['sent'] || 0
@@ -207,85 +207,86 @@
                       open_rate = sent > 0 ? (opened.to_f / sent * 100) : 0
                       click_rate = sent > 0 ? (clicked.to_f / sent * 100) : 0
                     %>
-                    <div class="performance-metrics">
-                      <div class="d-flex justify-content-between small">
-                        <span>Sent:</span>
-                        <strong><%= number_with_delimiter(sent) %></strong>
+                    <div style="font-size: 0.875rem;">
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                        <span style="color: #94A3B8;">Sent:</span>
+                        <strong style="color: #FFFFFF;"><%= number_with_delimiter(sent) %></strong>
                       </div>
-                      <div class="d-flex justify-content-between small">
-                        <span>Open Rate:</span>
-                        <strong class="<%= open_rate > 20 ? 'text-success' : open_rate > 10 ? 'text-warning' : 'text-danger' %>">
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                        <span style="color: #94A3B8;">Open Rate:</span>
+                        <strong style="color: <%= open_rate > 20 ? 'rgb(74, 222, 128)' : open_rate > 10 ? 'rgb(250, 204, 21)' : 'rgb(248, 113, 113)' %>;">
                           <%= number_with_precision(open_rate, precision: 1) %>%
                         </strong>
                       </div>
-                      <div class="d-flex justify-content-between small">
-                        <span>Click Rate:</span>
-                        <strong class="<%= click_rate > 3 ? 'text-success' : click_rate > 1 ? 'text-warning' : 'text-danger' %>">
+                      <div style="display: flex; justify-content: space-between;">
+                        <span style="color: #94A3B8;">Click Rate:</span>
+                        <strong style="color: <%= click_rate > 3 ? 'rgb(74, 222, 128)' : click_rate > 1 ? 'rgb(250, 204, 21)' : 'rgb(248, 113, 113)' %>;">
                           <%= number_with_precision(click_rate, precision: 1) %>%
                         </strong>
                       </div>
                     </div>
                   <% else %>
-                    <span class="text-muted small">No data</span>
+                    <span style="color: #64748B; font-size: 0.875rem;">No data</span>
                   <% end %>
                 </td>
-                <td>
+                <td style="padding: 1rem;">
                   <% if campaign.sent_at.present? %>
-                    <small class="text-muted">
+                    <small style="color: #64748B;">
                       <%= campaign.sent_at.strftime("%b %d, %Y") %><br>
                       <%= time_ago_in_words(campaign.sent_at) %> ago
                     </small>
                   <% elsif campaign.scheduled_at.present? %>
-                    <small class="text-info">
+                    <small style="color: #22D3EE;">
                       Scheduled for<br>
                       <%= campaign.scheduled_at.strftime("%b %d, %Y at %l:%M %p") %>
                     </small>
                   <% else %>
-                    <small class="text-muted">
+                    <small style="color: #64748B;">
                       Created <%= time_ago_in_words(campaign.created_at) %> ago
                     </small>
                   <% end %>
                 </td>
-                <td>
-                  <div class="btn-group" role="group">
-                    <button class="btn btn-sm btn-outline-secondary"
-                            onclick="scoutViewCampaign(<%= campaign.id %>)"
-                            aria-label="View <%= campaign.name %> details">
-                      <i data-lucide="eye" aria-hidden="true"></i>
+                <td style="padding: 1rem;">
+                  <div style="display: flex; gap: 0.25rem;">
+                    <button onclick="scoutViewCampaign(<%= campaign.id %>)"
+                            aria-label="View <%= campaign.name %> details"
+                            style="background: transparent; color: #22D3EE; border: 1px solid #22D3EE; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
+                      <i data-lucide="eye" style="width: 0.875rem; height: 0.875rem;"></i>
                     </button>
                     <% if campaign.status == 'draft' %>
-                      <button class="btn btn-sm btn-outline-primary"
-                              onclick="scoutEditCampaign(<%= campaign.id %>)"
-                              aria-label="Edit <%= campaign.name %>">
-                        <i data-lucide="pencil" aria-hidden="true"></i>
+                      <button onclick="scoutEditCampaign(<%= campaign.id %>)"
+                              aria-label="Edit <%= campaign.name %>"
+                              style="background: transparent; color: #A78BFA; border: 1px solid #A78BFA; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem;">
+                        <i data-lucide="pencil" style="width: 0.875rem; height: 0.875rem;"></i>
                       </button>
                     <% end %>
                     <div class="dropdown">
-                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                      <button class="btn btn-sm"
                               data-bs-toggle="dropdown"
-                              aria-label="More actions for <%= campaign.name %>">
-                        <i data-lucide="more-horizontal" aria-hidden="true"></i>
+                              aria-label="More actions for <%= campaign.name %>"
+                              style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.375rem 0.75rem; border-radius: 0.375rem;">
+                        <i data-lucide="more-horizontal" style="width: 0.875rem; height: 0.875rem;"></i>
                       </button>
-                      <ul class="dropdown-menu">
+                      <ul class="dropdown-menu" style="background: #1A1F35; border: 1px solid #1E293B;">
                         <% if campaign.status == 'sent' %>
-                          <li><a class="dropdown-item" href="#" onclick="scoutAnalyzeCampaign(<%= campaign.id %>)">
-                            <i data-lucide="trending-up" class="me-2" aria-hidden="true"></i>View Analytics
+                          <li><a class="dropdown-item" href="#" onclick="scoutAnalyzeCampaign(<%= campaign.id %>)" style="color: #FFFFFF;">
+                            <i data-lucide="trending-up" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>View Analytics
                           </a></li>
-                          <li><a class="dropdown-item" href="#" onclick="scoutDuplicateCampaign(<%= campaign.id %>)">
-                            <i data-lucide="copy" class="me-2" aria-hidden="true"></i>Duplicate
+                          <li><a class="dropdown-item" href="#" onclick="scoutDuplicateCampaign(<%= campaign.id %>)" style="color: #FFFFFF;">
+                            <i data-lucide="copy" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Duplicate
                           </a></li>
                         <% end %>
                         <% if campaign.status == 'draft' %>
-                          <li><a class="dropdown-item" href="#" onclick="scoutSendCampaign(<%= campaign.id %>)">
-                            <i data-lucide="send" class="me-2" aria-hidden="true"></i>Send Campaign
+                          <li><a class="dropdown-item" href="#" onclick="scoutSendCampaign(<%= campaign.id %>)" style="color: #FFFFFF;">
+                            <i data-lucide="send" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Send Campaign
                           </a></li>
-                          <li><a class="dropdown-item" href="#" onclick="scoutScheduleCampaign(<%= campaign.id %>)">
-                            <i data-lucide="clock" class="me-2" aria-hidden="true"></i>Schedule
+                          <li><a class="dropdown-item" href="#" onclick="scoutScheduleCampaign(<%= campaign.id %>)" style="color: #FFFFFF;">
+                            <i data-lucide="clock" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Schedule
                           </a></li>
                         <% end %>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="#" onclick="scoutDeleteCampaign(<%= campaign.id %>)">
-                          <i data-lucide="trash-2" class="me-2" aria-hidden="true"></i>Delete
+                        <li><hr class="dropdown-divider" style="border-color: #1E293B;"></li>
+                        <li><a class="dropdown-item" href="#" onclick="scoutDeleteCampaign(<%= campaign.id %>)" style="color: rgb(248, 113, 113);">
+                          <i data-lucide="trash-2" style="width: 0.875rem; height: 0.875rem; margin-right: 0.5rem;"></i>Delete
                         </a></li>
                       </ul>
                     </div>
@@ -296,41 +297,47 @@
           </tbody>
         </table>
       </div>
-      <div class="card-footer bg-light">
-        <div class="d-flex justify-content-between align-items-center">
-          <small class="text-muted">
-            Showing <%= campaigns.count %> of <%= stats[:total_campaigns] %> campaigns
-          </small>
-          <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-secondary" onclick="scoutLoadMoreCampaigns()" aria-label="Load more campaigns">
-              Load More
-            </button>
-            <button class="btn btn-sm btn-primary" onclick="scoutCreateCampaign()" aria-label="Create new campaign">
-              <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
-              Create Campaign
-            </button>
-          </div>
+      <div style="background: #0A0E1A; border-top: 1px solid #1E293B; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <small style="color: #64748B;">
+          Showing <%= campaigns.count %> of <%= stats[:total_campaigns] %> campaigns
+        </small>
+        <div style="display: flex; gap: 0.5rem;">
+          <button onclick="scoutLoadMoreCampaigns()" 
+                  aria-label="Load more campaigns"
+                  style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+            Load More
+          </button>
+          <button onclick="scoutCreateCampaign()" 
+                  aria-label="Create new campaign"
+                  style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.375rem 0.75rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500;">
+            <i data-lucide="plus" style="width: 0.875rem; height: 0.875rem;"></i>
+            Create Campaign
+          </button>
         </div>
       </div>
     </div>
   <% else %>
     <!-- Empty State -->
-    <div class="empty-state text-center py-5">
-      <div class="empty-icon mb-3">
-        <i data-lucide="mail" class="text-muted icon-2x" aria-hidden="true" style="font-size: 4rem;"></i>
+    <div style="text-align: center; padding: 3rem 0; max-width: 600px; margin: 0 auto;">
+      <div style="margin-bottom: 1.5rem;">
+        <i data-lucide="mail" style="width: 4rem; height: 4rem; color: #64748B;"></i>
       </div>
-      <h5 class="text-muted">No campaigns yet</h5>
-      <p class="text-muted mb-4">
+      <h5 style="color: #94A3B8; margin-bottom: 1rem;">No campaigns yet</h5>
+      <p style="color: #64748B; margin-bottom: 2rem;">
         Start reaching your audience by creating your first email campaign.<br>
         Email campaigns are a powerful way to engage customers and drive conversions.
       </p>
-      <div class="d-flex gap-2 justify-content-center">
-        <button class="btn btn-primary" onclick="scoutCreateCampaign()" aria-label="Create your first campaign">
-          <i data-lucide="plus" class="me-2" aria-hidden="true"></i>
+      <div style="display: flex; gap: 0.5rem; justify-content: center;">
+        <button onclick="scoutCreateCampaign()" 
+                aria-label="Create your first campaign"
+                style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+          <i data-lucide="plus" style="width: 1rem; height: 1rem;"></i>
           Create Your First Campaign
         </button>
-        <button class="btn btn-outline-secondary" onclick="scoutViewTemplates()" aria-label="Browse email templates">
-          <i data-lucide="file-text" class="me-2" aria-hidden="true"></i>
+        <button onclick="scoutViewTemplates()" 
+                aria-label="Browse email templates"
+                style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.75rem 1.5rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+          <i data-lucide="file-text" style="width: 1rem; height: 1rem;"></i>
           Browse Templates
         </button>
       </div>
@@ -414,13 +421,17 @@ document.addEventListener('DOMContentLoaded', function() {
   if (sortFilter) {
     sortFilter.addEventListener('change', sortCampaigns);
   }
+  
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 });
 
 function filterCampaigns() {
   const searchTerm = document.getElementById('campaignSearch')?.value.toLowerCase() || '';
   const statusFilter = document.getElementById('campaignStatusFilter')?.value || '';
   const groupFilter = document.getElementById('campaignGroupFilter')?.value || '';
-  const rows = document.querySelectorAll('#campaignsTable tbody tr');
+  const rows = document.querySelectorAll('#campaignsTable tr');
   
   rows.forEach(row => {
     const campaignName = row.querySelector('td:nth-child(1)')?.textContent.toLowerCase() || '';
@@ -459,53 +470,10 @@ function debounce(func, wait) {
     timeout = setTimeout(later, wait);
   };
 }
+
+document.addEventListener('turbo:load', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
 </script>
-
-<style>
-.campaign-info {
-  min-width: 200px;
-}
-
-.performance-metrics {
-  min-width: 120px;
-  font-size: 0.875rem;
-}
-
-.stat-card {
-  transition: transform 0.2s ease;
-  cursor: pointer;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-}
-
-.table tbody tr {
-  transition: background-color 0.2s ease;
-}
-
-.table tbody tr:hover {
-  background-color: rgba(0, 0, 0, 0.02);
-}
-
-.empty-state {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.badge {
-  font-size: 0.75rem;
-}
-
-.performance-metrics .text-success {
-  color: #198754 !important;
-}
-
-.performance-metrics .text-warning {
-  color: #ffc107 !important;
-}
-
-.performance-metrics .text-danger {
-  color: #dc3545 !important;
-}
-</style> 
