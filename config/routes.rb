@@ -136,7 +136,7 @@ Rails.application.routes.draw do
       end
     end
     
-  # Document store for RAG
+    # Document store for RAG
     resources :documents do
       member do
         get :download
@@ -149,27 +149,27 @@ Rails.application.routes.draw do
       end
     end
   
-  # Document organization
-  resources :document_subjects do
-    member do
-      post :move
+    # Document organization
+    resources :document_subjects do
+      member do
+        post :move
+      end
     end
-  end
-  
-  resources :document_tags do
-    member do
-      post :merge
+    
+    resources :document_tags do
+      member do
+        post :merge
+      end
+      collection do
+        get :suggest
+      end
     end
-    collection do
-      get :suggest
+    
+    resources :saved_searches do
+      member do
+        post :run
+      end
     end
-  end
-  
-  resources :saved_searches do
-    member do
-      post :run
-    end
-  end
     resources :email_templates do
       member do
         post :test_email
