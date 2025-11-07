@@ -2439,8 +2439,6 @@ class ScoutController < ApplicationController
     end
   end
   
-  private
-  
   def image_file?(file)
     %w[image/jpeg image/jpg image/png image/gif image/webp image/svg+xml].include?(file.content_type)
   end

@@ -24,7 +24,11 @@
       "Bash(timeout 5 curl:*)",
       "Bash(git clone:*)",
       "Bash(pkill:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(curl:*)",
+      "Bash(bundle exec rails:*)",
+      "Bash(ruby -c:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": [
