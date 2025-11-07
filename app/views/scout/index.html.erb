@@ -3104,7 +3104,7 @@ document.addEventListener('turbo:load', function() {
           // Clear attached files after sending
           attachedFiles = [];
           attachedFilesContainer.innerHTML = '';
-          attachedFilesContainer.classList.add('d-none');
+          attachedFilesContainer.style.display = 'none';
         } catch (error) {
           console.error('Error sending message:', error);
           hideStreamingStatus();
