@@ -708,7 +708,10 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
           aws_s3_bucket.storage.arn,
           "${aws_s3_bucket.storage.arn}/*",
           aws_s3_bucket.rag_storage.arn,
-          "${aws_s3_bucket.rag_storage.arn}/*"
+          "${aws_s3_bucket.rag_storage.arn}/*",
+          # Also include the bucket name used by the app (without account ID suffix)
+          "arn:aws:s3:::${var.app_name}-rag-storage",
+          "arn:aws:s3:::${var.app_name}-rag-storage/*"
         ]
       }
     ]
