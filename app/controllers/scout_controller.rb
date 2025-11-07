@@ -466,6 +466,9 @@ class ScoutController < ApplicationController
       # Track sources used in tool responses
       sources_used = {}
 
+      # Track sources used in tool responses
+      sources_used = {}
+
       # Set up progress callback for streaming updates
       interactive_service.on_progress do |progress_data|
         # Handle both string and hash formats
