@@ -437,4 +437,61 @@ document.addEventListener('DOMContentLoaded', () => {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* Targeted fixes for contrast issues in both light and dark modes */
+.analytics-dashboard h4,
+.analytics-dashboard h5,
+.analytics-dashboard h6 {
+  color: var(--scout-text, #1f2937) !important;
+}
+
+.analytics-dashboard .card-header {
+  background-color: var(--scout-secondary, #f8f9fa) !important;
+}
+
+.analytics-dashboard .card-header h6 {
+  color: var(--scout-text, #1f2937) !important;
+  font-weight: 600;
+}
+
+.analytics-dashboard .activity-title {
+  color: var(--scout-text, #1f2937) !important;
+  font-weight: 600;
+}
+
+.analytics-dashboard .activity-meta {
+  color: var(--scout-text-muted, #6b7280) !important;
+}
+
+.analytics-dashboard .metric-label {
+  color: var(--scout-text-muted, #6c757d) !important;
+}
+
+.analytics-dashboard .campaign-info h6 {
+  color: var(--scout-text, #1f2937) !important;
+}
+
+.analytics-dashboard .btn-outline-secondary {
+  color: var(--scout-text, #374151) !important;
+  border-color: var(--scout-border, #d1d5db) !important;
+  background-color: var(--scout-secondary, #ffffff) !important;
+}
+
+.analytics-dashboard .btn-outline-secondary:hover {
+  color: #ffffff !important;
+  background-color: #374151 !important;
+  border-color: #374151 !important;
+}
+
+.analytics-dashboard .btn-outline-secondary.active {
+  color: #ffffff !important;
+  background-color: #6366f1 !important;
+  border-color: #6366f1 !important;
+}
+
+.analytics-dashboard .form-select {
+  color: var(--scout-text, #1f2937) !important;
+  background-color: var(--scout-secondary, #ffffff) !important;
+  border-color: var(--scout-border, #d1d5db) !important;
+}
 </style>
