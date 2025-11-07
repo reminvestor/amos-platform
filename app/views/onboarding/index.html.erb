@@ -857,13 +857,13 @@ function initializeLucideIcons() {
   }
 }
 
+// Initialize everything on page load
+function initializePage() {
+  initializeOnboarding();
+  initializeLucideIcons();
+}
+
 // Initialize on both DOMContentLoaded (full page load) and turbo:load (Turbo navigation)
-document.addEventListener('DOMContentLoaded', function() {
-  initializeOnboarding();
-  initializeLucideIcons();
-});
-document.addEventListener('turbo:load', function() {
-  initializeOnboarding();
-  initializeLucideIcons();
-});
+document.addEventListener('DOMContentLoaded', initializePage);
+document.addEventListener('turbo:load', initializePage);
 </script>
