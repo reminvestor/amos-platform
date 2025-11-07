@@ -7,94 +7,94 @@
     <%= csp_meta_tag %>
 
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-    <link rel="stylesheet" href="/assets/admin_dark.css" data-turbo-track="reload">
-    <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+        <link rel="stylesheet" href="/assets/admin_dark.css" data-turbo-track="reload">
+        <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
 
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+        <!-- Lucide Icons -->
+        <script src="https://unpkg.com/lucide@latest"></script>
 
-    <style>
-      /* User dropdown styling */
-      .user-dropdown-btn:hover {
-        background: rgba(255, 255, 255, 0.05) !important;
-      }
-      
-      .user-dropdown-btn:focus {
-        outline: none;
-        box-shadow: none;
-      }
-      
-      .admin-sidebar .dropdown-menu {
-        background: #0F172A;
-        border: 1px solid #1E293B;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        min-width: 220px;
-        margin-bottom: 0.5rem;
-      }
-      
-      .admin-sidebar .dropdown-item {
-        color: #94A3B8;
-        padding: 0.5rem 1rem;
-        display: flex;
-        align-items: center;
-        transition: all 0.2s ease;
-      }
-      
-      .admin-sidebar .dropdown-item:hover {
-        background: rgba(255, 255, 255, 0.05);
-        color: white;
-        text-decoration: none;
-      }
-      
-      .admin-sidebar .dropdown-item.text-danger {
-        color: #EF4444;
-      }
-      
-      .admin-sidebar .dropdown-item.text-danger:hover {
-        background: rgba(239, 68, 68, 0.1);
-        color: #EF4444;
-      }
-      
-      .admin-sidebar .dropdown-divider {
-        border-color: #1E293B;
-        margin: 0.5rem 0;
-      }
-      
-      /* Collapsed state adjustments */
-      .admin-sidebar.collapsed .user-dropdown-btn span,
-      .admin-sidebar.collapsed .user-dropdown-btn > div > div {
-        display: none;
-      }
-      
-      .admin-sidebar.collapsed .user-dropdown-btn {
-        justify-content: center;
-        padding: 0.75rem 0;
-      }
-      
-      .admin-sidebar.collapsed .dropdown-menu {
-        position: absolute;
-        left: 100%;
-        bottom: 0;
-        margin-left: 0.5rem;
-        margin-bottom: 0;
-      }
-      
-      /* Ensure hamburger button is styled correctly */
-      .hamburger-toggle {
-        background: transparent;
-        border: none;
-        color: #94A3B8;
-        padding: 0.5rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-      
-      .hamburger-toggle:hover {
-        background: rgba(255, 255, 255, 0.05);
-        color: white;
-        border-radius: 0.375rem;
-      }
-    </style>
+        <style>
+          /* User dropdown styling */
+          .user-dropdown-btn:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+          }
+          
+          .user-dropdown-btn:focus {
+            outline: none;
+            box-shadow: none;
+          }
+          
+          .admin-sidebar .dropdown-menu {
+            background: #0F172A;
+            border: 1px solid #1E293B;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            min-width: 220px;
+            margin-bottom: 0.5rem;
+          }
+          
+          .admin-sidebar .dropdown-item {
+            color: #94A3B8;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s ease;
+          }
+          
+          .admin-sidebar .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            text-decoration: none;
+          }
+          
+          .admin-sidebar .dropdown-item.text-danger {
+            color: #EF4444;
+          }
+          
+          .admin-sidebar .dropdown-item.text-danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: #EF4444;
+          }
+          
+          .admin-sidebar .dropdown-divider {
+            border-color: #1E293B;
+            margin: 0.5rem 0;
+          }
+          
+          /* Collapsed state adjustments */
+          .admin-sidebar.collapsed .user-dropdown-btn span,
+          .admin-sidebar.collapsed .user-dropdown-btn > div > div {
+            display: none;
+          }
+          
+          .admin-sidebar.collapsed .user-dropdown-btn {
+            justify-content: center;
+            padding: 0.75rem 0;
+          }
+          
+          .admin-sidebar.collapsed .dropdown-menu {
+            position: absolute;
+            left: 100%;
+            bottom: 0;
+            margin-left: 0.5rem;
+            margin-bottom: 0;
+          }
+          
+          /* Ensure hamburger button is styled correctly */
+          .hamburger-toggle {
+            background: transparent;
+            border: none;
+            color: #94A3B8;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+          
+          .hamburger-toggle:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-radius: 0.375rem;
+          }
+        </style>
   </head>
 
   <body class="admin-dark">
@@ -318,7 +318,6 @@
           // Re-initialize icons after DOM changes
           setTimeout(() => lucide.createIcons(), 100);
         });
-        
       }
 
       function initThemeToggle() {
