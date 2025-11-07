@@ -154,6 +154,15 @@
               <% end %>
             <% end %>
 
+            <%= button_to reset_password_admin_user_path(@user),
+                method: :post,
+                class: "admin-btn admin-btn-outline w-100",
+                style: "border-color: #3b82f6; color: #60a5fa;",
+                form: { data: { turbo_confirm: "Reset password for #{@user.full_name}? A temporary password will be generated and emailed to the user." } } do %>
+              <i data-lucide="key"></i>
+              <span>Reset Password</span>
+            <% end %>
+
             <%= button_to admin_user_path(@user),
                 method: :delete,
                 class: "admin-btn admin-btn-outline w-100",
