@@ -36,6 +36,9 @@ class RagDocument < ApplicationRecord
   # Attribute aliases for backward compatibility
   alias_attribute :file_size, :file_size_bytes
 
+  # Attribute aliases for backward compatibility
+  alias_attribute :file_size, :file_size_bytes
+
   # Validations
   validates :file_hash, presence: true
   validates :original_filename, presence: true
