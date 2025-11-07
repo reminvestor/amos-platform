@@ -582,6 +582,7 @@ Rails.application.routes.draw do
       member do
         post :make_admin
         post :revoke_admin
+        post :reset_password
       end
     end
 
