@@ -212,11 +212,11 @@ class SecurityAuditor
       next if file.include?('admin/') # Admin controllers handled separately
       next if file.include?('application_controller')
 
-      controller_name = File.basename(file, '.rb')
-      content = File.read(file, encoding: 'UTF-8')
+      controller_name = File.basename(file, '.rb').camelize
+      content = File.read(file)
 
       # Skip public controllers
-      next if PUBLIC_CONTROLLERS.any? { |pc| file.downcase.include?(pc.downcase) }
+      next if PUBLIC_CONTROLLERS.any? { |pc| file.include?(pc.underscore) }
 
       # Check for EntityScoped concern or manual entity filtering
       unless content.include?('EntityScoped') ||
@@ -239,21 +239,19 @@ class SecurityAuditor
     @stats[:models_scanned] = model_files.size
 
     model_files.each do |file|
-      model_name = File.basename(file, '.rb')
-      # Convert filename to class name format (user.rb -> User)
-      class_name = model_name.split('_').map(&:capitalize).join
-      next if SYSTEM_MODELS.include?(class_name)
-      next if model_name.include?('application_record')
+      model_name = File.basename(file, '.rb').camelize
+      next if SYSTEM_MODELS.include?(model_name)
+      next if model_name.include?('ApplicationRecord')
 
-      content = File.read(file, encoding: 'UTF-8')
+      content = File.read(file)
 
       # Check for belongs_to :entity
       unless content.include?('belongs_to :entity')
         add_issue(
-          title: "Model #{class_name} Missing Entity Association",
+          title: "Model #{model_name} Missing Entity Association",
           severity: SEVERITY_HIGH,
           risk: "Model data not scoped to entities, potential data leakage",
-          fix: "Add 'belongs_to :entity' to #{class_name} model",
+          fix: "Add 'belongs_to :entity' to #{model_name} model",
           location: file,
           category: :entity_isolation
         )
@@ -273,8 +271,8 @@ class SecurityAuditor
     admin_controller_files.each do |file|
       next if file.include?('base_controller') # BaseController is the security layer
 
-      controller_name = File.basename(file, '.rb')
-      content = File.read(file, encoding: 'UTF-8')
+      controller_name = File.basename(file, '.rb').camelize
+      content = File.read(file)
 
       # Check inheritance from Admin::BaseController
       unless content.match?(/class\s+Admin::\w+\s+<\s+Admin::BaseController/)
@@ -293,7 +291,7 @@ class SecurityAuditor
     # Check Admin::BaseController for authenticate_admin!
     base_controller_path = Rails.root.join('app', 'controllers', 'admin', 'base_controller.rb')
     if File.exist?(base_controller_path)
-      content = File.read(base_controller_path, encoding: 'UTF-8')
+      content = File.read(base_controller_path)
 
       unless content.include?('authenticate_admin!')
         add_issue(
@@ -331,7 +329,7 @@ class SecurityAuditor
     # Check User model for role enumeration
     user_model_path = Rails.root.join('app', 'models', 'user.rb')
     if File.exist?(user_model_path)
-      content = File.read(user_model_path, encoding: 'UTF-8')
+      content = File.read(user_model_path)
 
       unless content.include?('enum') && (content.include?('role') || content.include?('roles'))
         add_issue(
@@ -348,7 +346,7 @@ class SecurityAuditor
     # Check EntityUser for role enforcement
     entity_user_path = Rails.root.join('app', 'models', 'entity_user.rb')
     if File.exist?(entity_user_path)
-      content = File.read(entity_user_path, encoding: 'UTF-8')
+      content = File.read(entity_user_path)
 
       unless content.include?('enum') && content.include?('role')
         add_issue(
@@ -366,7 +364,7 @@ class SecurityAuditor
     controller_files = Dir.glob(Rails.root.join('app', 'controllers', '**', '*_controller.rb'))
 
     controller_files.each do |file|
-      content = File.read(file, encoding: 'UTF-8')
+      content = File.read(file)
 
       # Check for destroy/delete actions without authorization
       if content.match?(/def\s+(destroy|delete)\s*$/)
@@ -396,7 +394,7 @@ class SecurityAuditor
     # Check User model for plaintext API key storage
     user_model_path = Rails.root.join('app', 'models', 'user.rb')
     if File.exist?(user_model_path)
-      content = File.read(user_model_path, encoding: 'UTF-8')
+      content = File.read(user_model_path)
 
       if content.include?('api_key')
         # Check if API keys are hashed
@@ -419,7 +417,7 @@ class SecurityAuditor
     # Check for OAuth token encryption
     connection_model_path = Rails.root.join('app', 'models', 'connection.rb')
     if File.exist?(connection_model_path)
-      content = File.read(connection_model_path, encoding: 'UTF-8')
+      content = File.read(connection_model_path)
 
       if content.include?('access_token') || content.include?('refresh_token')
         unless content.include?('encrypts') || content.include?('attr_encrypted')
@@ -437,7 +435,7 @@ class SecurityAuditor
 
     # Check for secure token comparison
     if File.exist?(user_model_path)
-      content = File.read(user_model_path, encoding: 'UTF-8')
+      content = File.read(user_model_path)
 
       if content.include?('api_key ==') || content.include?('token ==')
         add_issue(
@@ -461,7 +459,7 @@ class SecurityAuditor
     # Check ApplicationController for authenticate_user!
     app_controller_path = Rails.root.join('app', 'controllers', 'application_controller.rb')
     if File.exist?(app_controller_path)
-      content = File.read(app_controller_path, encoding: 'UTF-8')
+      content = File.read(app_controller_path)
 
       unless content.include?('before_action :authenticate_user!')
         add_issue(
@@ -479,7 +477,7 @@ class SecurityAuditor
     # Check Devise configuration
     devise_config_path = Rails.root.join('config', 'initializers', 'devise.rb')
     if File.exist?(devise_config_path)
-      content = File.read(devise_config_path, encoding: 'UTF-8')
+      content = File.read(devise_config_path)
 
       # Check for account lockout
       unless content.include?('config.lock_strategy')
