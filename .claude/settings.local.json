@@ -30,7 +30,9 @@
       "Bash(ruby -c:*)",
       "Bash(cat:*)",
       "Bash(xargs:*)",
-      "Bash(git -C /Users/ryan/Documents/agent_marketing add app/controllers/scout_controller.rb)"
+      "Bash(git -C /Users/ryan/Documents/agent_marketing add app/controllers/scout_controller.rb)",
+      "Bash(tee:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": [
