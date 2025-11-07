@@ -11,7 +11,16 @@
       "Bash(git worktree:*)",
       "Bash(cat:*)",
       "Bash(xargs grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(docker compose:*)",
+      "Bash(ruby -v:*)",
+      "Bash(rbenv versions:*)",
+      "Bash(timeout 60 bash -c:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(git diff:*)",
+      "Bash(rails test:system:*)"
     ],
     "deny": [],
     "ask": [
