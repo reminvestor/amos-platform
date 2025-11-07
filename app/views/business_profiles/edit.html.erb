@@ -20,8 +20,59 @@
   </div>
 
   <div class="row">
-    <div class="col-xl-10 col-lg-12">
+    <div class="col-12">
       <div class="admin-card">
+        <style>
+          /* Tab styling for admin dark theme */
+          .nav-tabs {
+            border-bottom: 1px solid #1E293B;
+            margin-bottom: 2rem;
+          }
+          
+          .nav-tabs .nav-link {
+            color: #94A3B8;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+          }
+          
+          .nav-tabs .nav-link:hover {
+            color: white;
+            background: transparent;
+            border-color: transparent;
+          }
+          
+          .nav-tabs .nav-link.active {
+            color: #A78BFA;
+            background: transparent;
+            border-color: #A78BFA;
+          }
+          
+          .nav-tabs .nav-link i {
+            width: 1rem;
+            height: 1rem;
+          }
+          
+          /* Alert styling */
+          .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #EF4444;
+          }
+          
+          .alert-info {
+            background: rgba(124, 58, 237, 0.1);
+            border: 1px solid rgba(124, 58, 237, 0.2);
+            color: #A78BFA;
+          }
+        </style>
         
         <ul class="nav nav-tabs" id="profileTabs" role="tablist">
           <li class="nav-item" role="presentation">
@@ -137,12 +188,10 @@
                 <p style="color: #94A3B8; font-size: 0.875rem;">Scout will use this information when creating marketing content.</p>
                 
                 <%= form_with url: add_knowledge_business_profile_path, method: :post, local: true do |f| %>
-                  <div class="admin-form-group">
-                    <%= f.label :section_name, "Section Name", class: "admin-label" %>
-                    <%= f.text_field :section_name, class: "admin-input", placeholder: "e.g., Product Features, Awards, Team" %>
+                  <div class="admin-form-group mb-3">
+                    <%= f.text_field :section_name, class: "admin-input", placeholder: "Section Name (e.g., Product Features, Awards, Team)" %>
                   </div>
-                  <div class="admin-form-group">
-                    <%= f.label :content, "Content", class: "admin-label" %>
+                  <div class="admin-form-group mb-3">
                     <%= f.text_area :content, class: "admin-input", rows: 5, placeholder: "Add detailed information about this section..." %>
                   </div>
                   <div class="text-end">
