@@ -2181,7 +2181,7 @@ export default class extends Controller {
           this.addMessage('I\'ll open the document viewer for you...', 'ai')
           // Small delay to ensure the document is ready
           setTimeout(() => {
-            this.loadCanvas('document_viewer', { 
+            this.loadScoutCanvas('document_viewer', { 
               asset_id: documentUploads[0].asset_id 
             })
           }, 1000)
