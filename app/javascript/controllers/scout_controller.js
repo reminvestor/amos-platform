@@ -715,13 +715,8 @@ export default class extends Controller {
         this.streamingMessageElement = null
 
         // Render source attribution badges if sources are available
-        console.log("🔍 Checking for sources in finalResponseData...")
-        console.log("📊 finalResponseData:", finalResponseData)
         if (finalResponseData && finalResponseData.sources && finalResponseData.sources.length > 0) {
-          console.log("✅ Found sources! Rendering badges:", finalResponseData.sources)
           this.renderSourceBadges(finalResponseData.sources)
-        } else {
-          console.log("⚠️ No sources found. finalResponseData.sources:", finalResponseData?.sources)
         }
 
         // Check if Scout suggested a canvas to load
@@ -803,9 +798,7 @@ export default class extends Controller {
   // Render source attribution badges below the AI message
   renderSourceBadges(sources) {
     try {
-      console.log("🎭 RENDERSOURCEBADGES CALLED!")
       console.log("📊 Rendering source badges:", sources)
-      console.log("📊 Sources array length:", sources?.length || 0)
 
       // Find the last AI message
       const messages = this.chatMessagesTarget.querySelectorAll('.message')
