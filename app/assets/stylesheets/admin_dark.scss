@@ -55,13 +55,17 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
       white-space: nowrap;
     }
     
-    // Collapse all sections when sidebar is collapsed
-    nav .collapse {
+    // Hide all sections when sidebar is collapsed
+    nav .nav-section-content {
       display: none !important;
     }
     
-    nav .nav-section-header {
+    nav .nav-section-header.nav-toggle {
       pointer-events: none;
+      
+      .toggle-icon {
+        display: none;
+      }
     }
 
     .sidebar-logo {
@@ -190,7 +194,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
           color: $admin-text-muted;
         }
         
-        &[aria-expanded="true"] .toggle-icon {
+        &[data-expanded="true"] .toggle-icon {
           transform: rotate(180deg);
         }
       }
@@ -202,10 +206,10 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
       font-size: 0.875rem;
     }
     
-    // Sub-items indentation
-    .nav-sub-item {
-      padding-left: 2.5rem !important;
-      font-size: 0.875rem;
+    // Section content
+    .nav-section-content {
+      overflow: hidden;
+      transition: all 0.3s ease;
     }
 
     .nav-item {

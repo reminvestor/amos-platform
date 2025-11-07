@@ -123,11 +123,11 @@
           <% end %>
 
           <%# Marketing Section %>
-          <a class="nav-section-header nav-toggle" data-bs-toggle="collapse" href="#marketingMenu" role="button" aria-expanded="true">
+          <div class="nav-section-header nav-toggle" data-section="marketingMenu" data-expanded="true">
             <span>Marketing</span>
             <i data-lucide="chevron-down" class="toggle-icon"></i>
-          </a>
-          <div class="collapse show" id="marketingMenu">
+          </div>
+          <div class="nav-section-content" id="marketingMenu">
             <%= link_to campaigns_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'campaigns'}" do %>
               <i data-lucide="mail"></i>
               <span>Campaigns</span>
@@ -143,30 +143,13 @@
               <span>Landing Pages</span>
             <% end %>
           </div>
-<<<<<<< HEAD
-          <%= link_to campaigns_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'campaigns'}" do %>
-            <i data-lucide="mail"></i>
-            <span>Campaigns</span>
-          <% end %>
-
-          <%= link_to email_templates_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'email_templates'}" do %>
-            <i data-lucide="file-text"></i>
-            <span>Email Templates</span>
-          <% end %>
-
-          <%= link_to landing_pages_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'landing_pages'}" do %>
-            <i data-lucide="layout"></i>
-            <span>Landing Pages</span>
-          <% end %>
-=======
->>>>>>> 6081eb1 (Add collapsible sidebar sections and rename integrations)
 
           <%# Contacts Section %>
-          <a class="nav-section-header nav-toggle" data-bs-toggle="collapse" href="#contactsMenu" role="button" aria-expanded="true">
+          <div class="nav-section-header nav-toggle" data-section="contactsMenu" data-expanded="true">
             <span>Contacts</span>
             <i data-lucide="chevron-down" class="toggle-icon"></i>
-          </a>
-          <div class="collapse show" id="contactsMenu">
+          </div>
+          <div class="nav-section-content" id="contactsMenu">
             <%= link_to contacts_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'contacts'}" do %>
               <i data-lucide="users"></i>
               <span>All Contacts</span>
@@ -177,16 +160,6 @@
               <span>Contact Groups</span>
             <% end %>
           </div>
-<<<<<<< HEAD
-          <%= link_to contacts_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'contacts'}" do %>
-            <i data-lucide="users"></i>
-            <span>All Contacts</span>
-          <% end %>
-
-          <%= link_to contact_groups_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'contact_groups'}" do %>
-            <i data-lucide="users-2"></i>
-            <span>Contact Groups</span>
-          <% end %>
 
           <%# Media Assets Section %>
           <div class="nav-section-header">
@@ -196,28 +169,26 @@
             <i data-lucide="image"></i>
             <span>Image Library</span>
           <% end %>
-=======
 
           <%# Integrations Section %>
-          <a class="nav-section-header nav-toggle" data-bs-toggle="collapse" href="#integrationsMenu" role="button" aria-expanded="false">
+          <div class="nav-section-header nav-toggle" data-section="integrationsMenu" data-expanded="false">
             <span>Integrations</span>
             <i data-lucide="chevron-down" class="toggle-icon"></i>
-          </a>
-          <div class="collapse" id="integrationsMenu">
+          </div>
+          <div class="nav-section-content" id="integrationsMenu" style="display: none;">
             <%= link_to customer_integrations_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'social_media_accounts' || request.path == customer_integrations_path}" do %>
               <i data-lucide="plug"></i>
               <span>All Integrations</span>
             <% end %>
           </div>
->>>>>>> 6081eb1 (Add collapsible sidebar sections and rename integrations)
 
           <%# Entity Settings - Only for Entity Admins %>
           <% if current_user.entity_admin? %>
-            <a class="nav-section-header nav-toggle" data-bs-toggle="collapse" href="#settingsMenu" role="button" aria-expanded="false">
+            <div class="nav-section-header nav-toggle" data-section="settingsMenu" data-expanded="false">
               <span>Settings</span>
               <i data-lucide="chevron-down" class="toggle-icon"></i>
-            </a>
-            <div class="collapse" id="settingsMenu">
+            </div>
+            <div class="nav-section-content" id="settingsMenu" style="display: none;">
               <%= link_to entity_users_path, class: "nav-item nav-sub-item #{'active' if request.path.start_with?('/entity/users')}" do %>
                 <i data-lucide="user-cog"></i>
                 <span>Team Members</span>
@@ -238,32 +209,6 @@
                 <span>Usage & Billing</span>
               <% end %>
             </div>
-<<<<<<< HEAD
-            <%= link_to customer_integrations_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'social_media_accounts' || request.path == customer_integrations_path}" do %>
-              <i data-lucide="plug"></i>
-              <span>Integrations</span>
-            <% end %>
-            <%= link_to entity_users_path, class: "nav-item nav-sub-item #{'active' if request.path.start_with?('/entity/users')}" do %>
-              <i data-lucide="user-cog"></i>
-              <span>Team Members</span>
-            <% end %>
-
-            <%= link_to entity_policies_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'policies'}" do %>
-              <i data-lucide="shield"></i>
-              <span>Policies</span>
-            <% end %>
-
-            <%= link_to entity_privacy_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'privacy'}" do %>
-              <i data-lucide="lock"></i>
-              <span>Privacy Settings</span>
-            <% end %>
-
-            <%= link_to entity_observability_path, class: "nav-item nav-sub-item #{'active' if request.path == '/entity/observability'}" do %>
-              <i data-lucide="bar-chart-3"></i>
-              <span>Usage & Billing</span>
-            <% end %>
-=======
->>>>>>> 6081eb1 (Add collapsible sidebar sections and rename integrations)
           <% end %>
         </nav>
 
@@ -387,29 +332,42 @@
           setTimeout(() => lucide.createIcons(), 100);
         });
         
-        // Handle dropdown state persistence
+        // Handle custom dropdown functionality
         const navToggles = document.querySelectorAll('.nav-toggle');
         navToggles.forEach(toggle => {
-          const targetId = toggle.getAttribute('href').substring(1);
-          const savedState = localStorage.getItem(`navCollapse_${targetId}`);
+          const sectionId = toggle.getAttribute('data-section');
+          const content = document.getElementById(sectionId);
+          const icon = toggle.querySelector('.toggle-icon');
+          
+          // Load saved state
+          const savedState = localStorage.getItem(`navCollapse_${sectionId}`);
+          let isExpanded = toggle.getAttribute('data-expanded') === 'true';
           
           if (savedState !== null) {
-            const target = document.getElementById(targetId);
-            if (savedState === 'true') {
-              target.classList.add('show');
-              toggle.setAttribute('aria-expanded', 'true');
-            } else {
-              target.classList.remove('show');
-              toggle.setAttribute('aria-expanded', 'false');
-            }
+            isExpanded = savedState === 'true';
           }
           
-          // Save state when toggled
+          // Set initial state
+          if (isExpanded) {
+            content.style.display = 'block';
+            toggle.setAttribute('data-expanded', 'true');
+          } else {
+            content.style.display = 'none';
+            toggle.setAttribute('data-expanded', 'false');
+          }
+          
+          // Handle click
           toggle.addEventListener('click', (e) => {
-            setTimeout(() => {
-              const expanded = toggle.getAttribute('aria-expanded') === 'true';
-              localStorage.setItem(`navCollapse_${targetId}`, expanded);
-            }, 100);
+            e.preventDefault();
+            const currentlyExpanded = toggle.getAttribute('data-expanded') === 'true';
+            const newExpanded = !currentlyExpanded;
+            
+            // Toggle display
+            content.style.display = newExpanded ? 'block' : 'none';
+            toggle.setAttribute('data-expanded', newExpanded);
+            
+            // Save state
+            localStorage.setItem(`navCollapse_${sectionId}`, newExpanded);
           });
         });
       }
