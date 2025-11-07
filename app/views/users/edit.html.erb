@@ -21,7 +21,6 @@
 
   <div class="row">
     <div class="col-md-8 mx-auto">
-<<<<<<< HEAD
       <div class="admin-card">
         <%= form_with(model: @user, local: true) do |form| %>
           <% if @user.errors.any? %>
@@ -43,22 +42,6 @@
               <div class="admin-form-group">
                 <%= form.label :first_name, class: "admin-label" %>
                 <%= form.text_field :first_name, class: "admin-input", placeholder: "Your first name" %>
-=======
-      <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-          <h4 class="mb-0"><i data-lucide="user-pen" me-2"></i>Edit Profile</h4>
-        </div>
-        <div class="card-body">
-          <%= form_with(model: @user, local: true, class: "needs-validation") do |form| %>
-            <% if @user.errors.any? %>
-              <div class="alert alert-danger">
-                <h5><i data-lucide="alert-triangle" class="me-2"></i><%= pluralize(@user.errors.count, "error") %> prohibited this update:</h5>
-                <ul>
-                  <% @user.errors.full_messages.each do |message| %>
-                    <li><%= message %></li>
-                  <% end %>
-                </ul>
->>>>>>> 8528f6c (Convert Font Awesome icons to Lucide icons (batch 2/3))
               </div>
             </div>
             <div class="col-md-6">
@@ -132,41 +115,6 @@
               <i data-lucide="users"></i>
               <span>Team Members</span>
             <% end %>
-<<<<<<< HEAD
-=======
-
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <%= form.label :first_name, class: "form-label" %>
-                  <%= form.text_field :first_name, class: "form-control", placeholder: "Your first name" %>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="form-group">
-                  <%= form.label :last_name, class: "form-label" %>
-                  <%= form.text_field :last_name, class: "form-control", placeholder: "Your last name" %>
-                </div>
-              </div>
-            </div>
-
-            <div class="form-group mb-3">
-              <%= form.label :email, class: "form-label" %>
-              <%= form.email_field :email, class: "form-control", placeholder: "your.email@example.com" %>
-              <div class="form-text text-muted">
-                <i data-lucide="info" class="me-1"></i>Changing your email will require confirmation.
-              </div>
-            </div>
-
-            <div class="d-flex justify-content-between mt-4">
-              <%= link_to user_path(@user), class: "btn btn-outline-secondary" do %>
-                <i data-lucide="arrow-left" class="me-1"></i>Back to Profile
-              <% end %>
-              <%= form.submit "Update Profile", class: "btn btn-primary" do %>
-                <i data-lucide="save" class="me-1"></i>Update Profile
-              <% end %>
-            </div>
->>>>>>> 8528f6c (Convert Font Awesome icons to Lucide icons (batch 2/3))
           <% end %>
         </div>
       </div>
