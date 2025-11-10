@@ -2,7 +2,8 @@ class IntegrationCredential < ApplicationRecord
   belongs_to :connection
 
   # Encryption - Rails 7+ built-in encryption
-  encrypts :credentials
+  # TODO: Configure encryption keys in production before enabling
+  # encrypts :credentials
 
   # Parse JSON credentials
   def credentials
