@@ -466,6 +466,11 @@ export default class extends Controller {
       this.deepgramSocket.onopen = () => {
         console.log("✅ Deepgram WebSocket connected")
         this.isListening = true
+        
+        // Clear transcription display when starting to listen
+        document.dispatchEvent(new CustomEvent('voice:interim', {
+          detail: { text: "" }
+        }))
 
         // Start performance tracking
         this.performanceMetrics.speechStartTime = performance.now()
@@ -704,6 +709,11 @@ export default class extends Controller {
     this.transcriptBufferTimeout = null
 
     console.log(`🎯 Processing complete transcript: "${completeTranscript}"`)
+    
+    // Emit event for voice mode UI
+    document.dispatchEvent(new CustomEvent('voice:final', {
+      detail: { text: completeTranscript }
+    }))
 
     // Check if TTS is currently playing and if the transcript matches what it's saying
     if (window.ttsManager && window.ttsManager.isPlaying) {
@@ -959,6 +969,11 @@ export default class extends Controller {
    * Show interim transcript
    */
   showInterimTranscript(text) {
+    // Emit event for voice mode UI
+    document.dispatchEvent(new CustomEvent('voice:interim', {
+      detail: { text: text }
+    }))
+    
     // Show in a temporary UI element
     if (this.hasStatusTarget) {
       this.statusTarget.textContent = `Listening: "${text}"`

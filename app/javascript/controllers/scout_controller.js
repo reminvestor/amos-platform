@@ -172,6 +172,8 @@ export default class extends Controller {
 
     const messageDiv = document.createElement("div")
     messageDiv.className = `message ${role}-message`
+    const messageId = `msg-${Date.now()}`
+    messageDiv.id = messageId
 
     // Use Lucide icons for avatars
     const avatarIcon = role === "ai" ? "bot" : "user"
@@ -197,6 +199,13 @@ export default class extends Controller {
     `
 
     this.chatMessagesTarget.appendChild(messageDiv)
+
+    // Also add to voice mode chat if it exists
+    const voiceModeChat = document.getElementById('voice-mode-chat-messages')
+    if (voiceModeChat) {
+      const clonedMessage = messageDiv.cloneNode(true)
+      voiceModeChat.appendChild(clonedMessage)
+    }
 
     // Initialize Lucide icons for the new message
     if (typeof lucide !== 'undefined') {
@@ -632,11 +641,30 @@ export default class extends Controller {
                         }
                         targetBubble.innerHTML = this.md.render(this.currentStreamingContent)
                         this.streamingMessageElement = targetBubble
+                        
+                        // Also update voice mode chat if it exists
+                        const messageContainer = targetBubble.closest('.message')
+                        if (messageContainer && messageContainer.id) {
+                          const voiceModeMessage = document.querySelector(`#voice-mode-chat-messages #${messageContainer.id}`)
+                          if (voiceModeMessage) {
+                            const voiceModeBubble = voiceModeMessage.querySelector('.message-bubble')
+                            if (voiceModeBubble) {
+                              voiceModeBubble.innerHTML = this.md.render(this.currentStreamingContent)
+                            }
+                          }
+                        }
                       } else {
                         // Remove empty message bubble if no content
                         const messageContainer = targetBubble.closest('.message')
                         if (messageContainer && !targetBubble.textContent.trim()) {
                           messageContainer.remove()
+                          // Also remove from voice mode chat
+                          if (messageContainer.id) {
+                            const voiceModeMessage = document.querySelector(`#voice-mode-chat-messages #${messageContainer.id}`)
+                            if (voiceModeMessage) {
+                              voiceModeMessage.remove()
+                            }
+                          }
                         }
                       }
                     } else {
@@ -1099,6 +1127,15 @@ export default class extends Controller {
     // Load user profile canvas instead of redirecting
     this.loadScoutCanvas("user_profile", {})
   }
+  
+  openVoiceSettings() {
+    console.log("🎤 Opening voice settings")
+    // Load user profile canvas and scroll to voice settings
+    this.loadScoutCanvas("user_profile", {})
+    
+    // Mark that we should scroll to voice settings after load
+    this.scrollToVoiceSettingsOnLoad = true
+  }
 
   logout() {
     console.log("🚪 Logging out")
@@ -1208,6 +1245,23 @@ export default class extends Controller {
         // Re-initialize Lucide icons for dynamically loaded canvas content
         if (typeof lucide !== 'undefined') {
           lucide.createIcons()
+        }
+        
+        // Check if we need to scroll to voice settings
+        if (this.scrollToVoiceSettingsOnLoad && canvasType === 'user_profile') {
+          this.scrollToVoiceSettingsOnLoad = false
+          setTimeout(() => {
+            const voiceSettingsCard = document.querySelector('[data-controller="voice-settings"]')?.closest('.card')
+            if (voiceSettingsCard) {
+              voiceSettingsCard.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              // Add a highlight effect
+              voiceSettingsCard.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.5)'
+              setTimeout(() => {
+                voiceSettingsCard.style.transition = 'box-shadow 0.5s ease'
+                voiceSettingsCard.style.boxShadow = ''
+              }, 2000)
+            }
+          }, 500)
         }
 
         // Store current canvas info

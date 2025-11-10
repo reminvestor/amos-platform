@@ -42,7 +42,7 @@ export default class extends Controller {
     if (typeof lucide !== 'undefined') lucide.createIcons()
     
     const voiceId = document.getElementById('voice_id').value
-    const engine = document.getElementById('engine').value
+    const engine = document.getElementById('engine')?.value || 'neural'
     const speed = parseFloat(document.getElementById('speed').value)
     const volume = parseFloat(document.getElementById('volume').value)
     
@@ -191,6 +191,12 @@ export default class extends Controller {
           if (prefs.enabled !== undefined) {
             window.ttsManager.isEnabled = prefs.enabled
             console.log('💾 Updated enabled:', prefs.enabled)
+            
+            // Update the TTS button in the Scout interface
+            if (window.updateTTSButton && typeof window.updateTTSButton === 'function') {
+              window.updateTTSButton()
+              console.log('💾 Updated TTS button state')
+            }
           }
           if (prefs.voice_id) {
             window.ttsManager.setVoice(prefs.voice_id)

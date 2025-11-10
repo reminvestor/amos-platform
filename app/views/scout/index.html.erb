@@ -421,6 +421,10 @@
         <i data-lucide="user"></i>
         <span class="nav-text">Profile</span>
       </div>
+      <div class="nav-item" data-action="click->scout#openVoiceSettings">
+        <i data-lucide="mic" style="color: #A78BFA;"></i>
+        <span class="nav-text">Voice Settings</span>
+      </div>
       <div class="nav-item" data-action="click->scout#logout">
         <i data-lucide="log-out"></i>
         <span class="nav-text">Logout</span>
@@ -447,8 +451,8 @@
               <i data-lucide="history" aria-hidden="true"></i>
             </button>
 
-            <button class="header-icon-btn" id="tts-toggle-btn" title="Toggle voice output" aria-label="Toggle voice output">
-              <i data-lucide="volume-2" aria-hidden="true"></i>
+            <button class="header-icon-btn text-muted" id="tts-toggle-btn" title="Voice Mode OFF (click to turn on)" aria-label="Toggle voice output">
+              <i data-lucide="volume-x" aria-hidden="true"></i>
             </button>
 
             <div class="dropdown">
@@ -1179,6 +1183,252 @@
     clear: both !important;
   }
   
+  /* Voice Mode Styles */
+  .voice-mode-view {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    background-color: #0A0E1A;
+  }
+
+  .voice-mode-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* Tab buttons */
+  .voice-mode-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: #1A1F35;
+    border-bottom: 1px solid #1E293B;
+  }
+
+  .voice-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: #94A3B8;
+    border: 1px solid #1E293B;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .voice-tab:hover {
+    background: rgba(124, 58, 237, 0.1);
+    border-color: rgba(124, 58, 237, 0.3);
+    color: #A78BFA;
+  }
+
+  .voice-tab.active {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(167, 139, 250, 0.1) 100%);
+    border-color: #7C3AED;
+    color: #A78BFA;
+  }
+
+  .voice-tab i {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* Voice mode content */
+  .voice-mode-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    padding: 2rem;
+  }
+  
+  /* Voice mode text section */
+  .voice-text-section {
+    background-color: #0A0E1A;
+    color: #FFFFFF;
+  }
+  
+  .voice-text-section #voice-mode-chat-messages {
+    height: 100%;
+    overflow-y: auto;
+    padding: 1rem;
+  }
+
+  .voice-avatar-large {
+    background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(124, 58, 237, 0.3);
+  }
+
+  .voice-avatar-large svg {
+    color: white;
+  }
+
+  .voice-waves-large {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 80px;
+  }
+
+  .voice-wave-large {
+    width: 6px;
+    background: linear-gradient(to top, #7C3AED, #A78BFA);
+    border-radius: 3px;
+    animation: voice-wave-animation 1.2s ease-in-out infinite;
+  }
+
+  .voice-wave-large.voice-wave-1 {
+    height: 30px;
+    animation-delay: 0s;
+  }
+
+  .voice-wave-large.voice-wave-2 {
+    height: 50px;
+    animation-delay: 0.15s;
+  }
+
+  .voice-wave-large.voice-wave-3 {
+    height: 40px;
+    animation-delay: 0.3s;
+  }
+
+  .voice-wave-large.voice-wave-4 {
+    height: 60px;
+    animation-delay: 0.45s;
+  }
+
+  .voice-wave-large.voice-wave-5 {
+    height: 35px;
+    animation-delay: 0.6s;
+  }
+
+  .voice-status-large {
+    color: #A78BFA;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  .voice-instructions {
+    color: #94A3B8;
+    font-size: 1rem;
+    text-align: center;
+    max-width: 400px;
+  }
+
+  /* Voice transcription display */
+  .voice-transcription {
+    margin-top: 2rem;
+    padding: 1rem 2rem;
+    background: rgba(124, 58, 237, 0.1);
+    border: 1px solid rgba(124, 58, 237, 0.2);
+    border-radius: 2rem;
+    min-width: 400px;
+    min-height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+  
+  .voice-transcription.listening {
+    animation: transcription-pulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes transcription-pulse {
+    0%, 100% {
+      border-color: rgba(124, 58, 237, 0.2);
+      box-shadow: 0 0 0 0 rgba(124, 58, 237, 0);
+    }
+    50% {
+      border-color: rgba(124, 58, 237, 0.4);
+      box-shadow: 0 0 20px 5px rgba(124, 58, 237, 0.2);
+    }
+  }
+
+  .voice-transcription-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #FFFFFF;
+    font-size: 1.1rem;
+  }
+
+  .voice-transcription-text {
+    font-weight: 500;
+    text-align: center;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+  }
+
+  .voice-transcription-text.active {
+    opacity: 1;
+    color: #A78BFA;
+  }
+
+  @keyframes voice-wave-animation {
+    0%, 100% {
+      transform: scaleY(0.5);
+      opacity: 0.5;
+    }
+    50% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+  }
+
+  /* Voice mode active state */
+  .voice-mode-active .chat-input-area {
+    opacity: 0.7;
+  }
+
+  /* Voice button pulsing animation */
+  .voice-pulse-animation {
+    position: relative;
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0% {
+      box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(124, 58, 237, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(124, 58, 237, 0);
+    }
+  }
+  
+  /* Voice mode indicator */
+  .voice-mode-indicator {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(167, 139, 250, 0.05) 100%);
+    border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+    margin-bottom: 1rem;
+  }
+  
+  /* Voice mode active button state */
+  .voice-mode-on {
+    transition: all 0.3s ease;
+  }
+  
+  .voice-mode-on:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+  }
+  
   </style>
 
 <!-- JavaScript for Scout Chat -->
@@ -1360,17 +1610,27 @@ document.addEventListener('turbo:load', function() {
     if (!ttsToggleBtn || !ttsManager) return;
 
     if (ttsManager.isEnabled) {
+      // Voice mode ON - make it clear with purple background
       ttsToggleBtn.classList.remove('text-muted');
+      ttsToggleBtn.classList.add('voice-mode-on');
       ttsToggleBtn.innerHTML = '<i data-lucide="volume-2"></i>';
-      ttsToggleBtn.title = 'Voice output enabled (click to mute)';
+      ttsToggleBtn.title = 'Voice Mode ON (click to turn off)';
+      ttsToggleBtn.style.background = 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)';
+      ttsToggleBtn.style.color = 'white';
+      ttsToggleBtn.style.border = '1px solid #7C3AED';
       // Re-initialize Lucide icon
       if (typeof lucide !== 'undefined') {
         lucide.createIcons();
       }
     } else {
+      // Voice mode OFF - subdued appearance
       ttsToggleBtn.classList.add('text-muted');
+      ttsToggleBtn.classList.remove('voice-mode-on');
       ttsToggleBtn.innerHTML = '<i data-lucide="volume-x"></i>';
-      ttsToggleBtn.title = 'Voice output disabled (click to enable)';
+      ttsToggleBtn.title = 'Voice Mode OFF (click to turn on)';
+      ttsToggleBtn.style.background = '';
+      ttsToggleBtn.style.color = '';
+      ttsToggleBtn.style.border = '';
       // Re-initialize Lucide icon
       if (typeof lucide !== 'undefined') {
         lucide.createIcons();
@@ -1378,15 +1638,331 @@ document.addEventListener('turbo:load', function() {
     }
   }
   
+  // Make updateTTSButton globally accessible
+  window.updateTTSButton = updateTTSButton;
+  
   // Handle TTS toggle
   if (ttsToggleBtn) {
-    ttsToggleBtn.addEventListener('click', function() {
+    ttsToggleBtn.addEventListener('click', async function() {
       const tts = initTTS();
       if (tts) {
         tts.toggle();
         updateTTSButton();
+        
+        // When enabling voice mode, also activate dictation
+        if (tts.isEnabled) {
+          console.log('🎤 Voice mode enabled - activating dictation');
+          
+          // Find the voice assistant button and click it to start dictation
+          const voiceBtn = document.querySelector('[data-action="click->voice-assistant#toggleVoice"]');
+          if (voiceBtn && !voiceBtn.classList.contains('active')) {
+            voiceBtn.click();
+          }
+          
+          // Show voice mode UI
+          showVoiceModeUI();
+          
+          // Ensure transcription shows listening state
+          updateVoiceTranscription('', false);
+        } else {
+          // Hide voice mode UI when disabling
+          hideVoiceModeUI();
+          
+          // Also stop dictation if active
+          const voiceBtn = document.querySelector('[data-action="click->voice-assistant#toggleVoice"]');
+          if (voiceBtn && voiceBtn.classList.contains('active')) {
+            voiceBtn.click();
+          }
+        }
       }
     });
+  }
+  
+  // Voice Mode UI functions
+  function showVoiceModeUI() {
+    console.log('🎙️ Showing voice mode UI');
+    
+    // Add voice mode class to chat container
+    const chatContainer = document.querySelector('#workspace');
+    if (chatContainer) {
+      chatContainer.classList.add('voice-mode-active');
+    }
+    
+    // Get chat messages element
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInputArea = document.querySelector('.chat-input-area');
+    
+    // Create voice mode view if it doesn't exist
+    let voiceModeView = document.querySelector('.voice-mode-view');
+    if (!voiceModeView) {
+      voiceModeView = document.createElement('div');
+      voiceModeView.className = 'voice-mode-view';
+      voiceModeView.innerHTML = `
+        <div class="voice-mode-container">
+          <div class="voice-mode-tabs">
+            <button class="voice-tab active" onclick="showVoiceView()">
+              <i data-lucide="mic"></i>
+              Voice
+            </button>
+            <button class="voice-tab" onclick="showTextView()">
+              <i data-lucide="message-square"></i>
+              Text
+            </button>
+          </div>
+          
+          <div class="voice-mode-content">
+            <div class="voice-avatar-large">
+              <i data-lucide="bot" style="width: 60px; height: 60px;"></i>
+            </div>
+            <div class="voice-waves-large">
+              <div class="voice-wave-large voice-wave-1"></div>
+              <div class="voice-wave-large voice-wave-2"></div>
+              <div class="voice-wave-large voice-wave-3"></div>
+              <div class="voice-wave-large voice-wave-4"></div>
+              <div class="voice-wave-large voice-wave-5"></div>
+            </div>
+            <div class="voice-status-large">Voice Mode Active</div>
+            <div class="voice-instructions">Say "Hey Amos" followed by your command</div>
+            <div class="voice-transcription listening">
+              <div class="voice-transcription-content">
+                <i data-lucide="mic-2" style="width: 1rem; height: 1rem; opacity: 0.6;"></i>
+                <span class="voice-transcription-text">Listening...</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="voice-text-section" style="display: none; flex: 1; overflow-y: auto; padding: 1rem;">
+            <!-- Chat messages will be moved here -->
+          </div>
+        </div>
+      `;
+      
+      // Insert after chat messages parent
+      chatMessages.parentNode.insertBefore(voiceModeView, chatMessages.nextSibling);
+    }
+    
+    // Move chat messages into the voice mode text section
+    const textSection = voiceModeView.querySelector('.voice-text-section');
+    if (textSection && chatMessages) {
+      // Clone the chat messages to preserve the original
+      const chatClone = chatMessages.cloneNode(true);
+      chatClone.id = 'voice-mode-chat-messages';
+      textSection.innerHTML = '';
+      textSection.appendChild(chatClone);
+      
+      // Hide the original chat messages
+      chatMessages.style.display = 'none';
+      
+      // Ensure all messages have IDs for proper syncing
+      const originalMessages = chatMessages.querySelectorAll('.message');
+      const clonedMessages = chatClone.querySelectorAll('.message');
+      originalMessages.forEach((msg, index) => {
+        if (!msg.id) {
+          msg.id = `msg-${Date.now()}-${index}`;
+          if (clonedMessages[index]) {
+            clonedMessages[index].id = msg.id;
+          }
+        }
+      });
+    }
+    
+    // Hide input area when in voice mode
+    if (chatInputArea) {
+      chatInputArea.style.display = 'none';
+    }
+    
+    // Show voice mode view
+    voiceModeView.style.display = 'flex';
+    
+    // Initialize lucide icons
+    setTimeout(() => {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }, 0);
+  }
+  
+  // Show voice view (hide text)
+  window.showVoiceView = function() {
+    console.log('🎙️ Switching to voice view');
+    const voiceModeView = document.querySelector('.voice-mode-view');
+    if (!voiceModeView) return;
+    
+    // Hide chat messages completely within voice mode container
+    const chatSection = voiceModeView.querySelector('.voice-text-section');
+    const voiceSection = voiceModeView.querySelector('.voice-mode-content');
+    
+    if (chatSection) chatSection.style.display = 'none';
+    if (voiceSection) voiceSection.style.display = 'flex';
+    
+    // Update tab states
+    const tabs = document.querySelectorAll('.voice-tab');
+    tabs.forEach(tab => tab.classList.remove('active'));
+    document.querySelector('.voice-tab:first-child')?.classList.add('active');
+  }
+  
+  // Show text view (show chat messages)
+  window.showTextView = function() {
+    console.log('📝 Switching to text view');
+    const voiceModeView = document.querySelector('.voice-mode-view');
+    if (!voiceModeView) return;
+    
+    // Show chat messages within voice mode container
+    const chatSection = voiceModeView.querySelector('.voice-text-section');
+    const voiceSection = voiceModeView.querySelector('.voice-mode-content');
+    
+    if (chatSection) chatSection.style.display = 'block';
+    if (voiceSection) voiceSection.style.display = 'none';
+    
+    // Update tab states
+    const tabs = document.querySelectorAll('.voice-tab');
+    tabs.forEach(tab => tab.classList.remove('active'));
+    document.querySelector('.voice-tab:last-child')?.classList.add('active');
+    
+    // Scroll to bottom to show latest messages
+    scrollToBottom();
+  }
+  
+  function hideVoiceModeUI() {
+    console.log('🎙️ Hiding voice mode UI');
+    
+    // Remove voice mode class
+    const chatContainer = document.querySelector('#workspace');
+    if (chatContainer) {
+      chatContainer.classList.remove('voice-mode-active');
+    }
+    
+    // Show original chat messages again
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+      chatMessages.style.display = '';
+    }
+    
+    // Show input area again
+    const chatInputArea = document.querySelector('.chat-input-area');
+    if (chatInputArea) {
+      chatInputArea.style.display = '';
+    }
+    
+    // Hide voice mode view
+    const voiceModeView = document.querySelector('.voice-mode-view');
+    if (voiceModeView) {
+      voiceModeView.style.display = 'none';
+    }
+    
+    // Remove any inline voice visualizations
+    const visualizations = document.querySelectorAll('.voice-visualization');
+    visualizations.forEach(v => v.remove());
+  }
+  
+  // Create voice visualization element
+  function createVoiceVisualization() {
+    const viz = document.createElement('div');
+    viz.className = 'voice-visualization';
+    viz.innerHTML = `
+      <div class="voice-animation-container">
+        <div class="voice-avatar">
+          <i data-lucide="bot" style="width: 40px; height: 40px;"></i>
+        </div>
+        <div class="voice-waves">
+          <div class="voice-wave voice-wave-1"></div>
+          <div class="voice-wave voice-wave-2"></div>
+          <div class="voice-wave voice-wave-3"></div>
+        </div>
+        <div class="voice-status">Amos is speaking...</div>
+      </div>
+    `;
+    
+    // Initialize lucide icons
+    setTimeout(() => {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }, 0);
+    
+    return viz;
+  }
+  
+  // Listen for TTS events to update voice mode status
+  document.addEventListener('tts:playing', (e) => {
+    console.log('🔊 TTS playing event:', e.detail);
+    
+    // Update voice status text when AI is speaking
+    const voiceStatus = document.querySelector('.voice-status-large');
+    if (voiceStatus) {
+      voiceStatus.textContent = 'Amos is speaking...';
+      voiceStatus.style.color = '#7C3AED';
+    }
+    
+    // Speed up animation when speaking
+    const waves = document.querySelectorAll('.voice-wave-large');
+    waves.forEach(wave => {
+      wave.style.animationDuration = '0.6s';
+    });
+  });
+  
+  document.addEventListener('tts:stopped', (e) => {
+    console.log('🔇 TTS stopped event');
+    
+    // Update voice status text when AI stops speaking
+    const voiceStatus = document.querySelector('.voice-status-large');
+    if (voiceStatus) {
+      voiceStatus.textContent = 'Voice Mode Active';
+      voiceStatus.style.color = '#A78BFA';
+    }
+    
+    // Slow down animation
+    const waves = document.querySelectorAll('.voice-wave-large');
+    waves.forEach(wave => {
+      wave.style.animationDuration = '1.2s';
+    });
+  });
+  
+  // Listen for voice transcription events
+  document.addEventListener('voice:interim', (e) => {
+    console.log('🎤 Voice interim:', e.detail);
+    updateVoiceTranscription(e.detail.text, false);
+  });
+  
+  document.addEventListener('voice:final', (e) => {
+    console.log('🎯 Voice final:', e.detail);
+    updateVoiceTranscription(e.detail.text, true);
+  });
+  
+  // Update voice transcription display
+  function updateVoiceTranscription(text, isFinal) {
+    const transcriptionText = document.querySelector('.voice-transcription-text');
+    const transcriptionContainer = document.querySelector('.voice-transcription');
+    if (!transcriptionText) return;
+    
+    if (!text || text.trim() === '') {
+      transcriptionText.textContent = 'Listening...';
+      transcriptionText.classList.remove('active');
+      // Add listening pulse animation
+      if (transcriptionContainer) {
+        transcriptionContainer.classList.add('listening');
+      }
+    } else {
+      // Remove listening pulse when we have text
+      if (transcriptionContainer) {
+        transcriptionContainer.classList.remove('listening');
+      }
+      
+      transcriptionText.textContent = `"${text}"`;
+      if (isFinal) {
+        transcriptionText.classList.add('active');
+        // Remove active state after a moment
+        setTimeout(() => {
+          transcriptionText.classList.remove('active');
+          transcriptionText.textContent = 'Listening...';
+          if (transcriptionContainer) {
+            transcriptionContainer.classList.add('listening');
+          }
+        }, 2000);
+      } else {
+        transcriptionText.classList.add('active');
+      }
+    }
   }
   
   // Initialize TTS on page load
@@ -1666,6 +2242,12 @@ document.addEventListener('turbo:load', function() {
   function scrollToBottom() {
     if (chatMessages && chatMessages.scrollHeight !== undefined) {
       chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    // Also scroll voice mode chat if it exists
+    const voiceModeChat = document.getElementById('voice-mode-chat-messages');
+    if (voiceModeChat && voiceModeChat.scrollHeight !== undefined) {
+      voiceModeChat.scrollTop = voiceModeChat.scrollHeight;
     }
   }
 

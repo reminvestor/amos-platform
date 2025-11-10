@@ -5,7 +5,7 @@
 export default class TTSAudioManager {
   constructor() {
     // Initialize with defaults, then load user preferences
-    this.isEnabled = true
+    this.isEnabled = false  // Default to OFF
     this.voiceId = 'Matthew'
     this.playbackRate = 1.0
     this.volume = 1.0
@@ -163,6 +163,7 @@ export default class TTSAudioManager {
       this.currentlyPlayingText = null
       // Dispatch event when TTS stops
       window.dispatchEvent(new CustomEvent('tts:stop'))
+      document.dispatchEvent(new CustomEvent('tts:stopped'))
       return
     }
     
@@ -173,6 +174,14 @@ export default class TTSAudioManager {
     // Dispatch event when TTS starts playing
     window.dispatchEvent(new CustomEvent('tts:start', { 
       detail: { text: audioData.text }
+    }))
+    
+    // Also dispatch the playing event that the UI listens for
+    document.dispatchEvent(new CustomEvent('tts:playing', { 
+      detail: { 
+        text: audioData.text,
+        messageId: audioData.messageId 
+      }
     }))
     
     try {
@@ -369,6 +378,7 @@ export default class TTSAudioManager {
     
     // Dispatch stop event
     window.dispatchEvent(new CustomEvent('tts:stop'))
+    document.dispatchEvent(new CustomEvent('tts:stopped'))
     
     // Call interrupt callback if set
     if (this.interruptCallback) {
