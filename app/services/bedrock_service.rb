@@ -2,6 +2,7 @@ require "aws-sdk-bedrockruntime"
 require "json"
 
 class BedrockService
+  include AgentLightningInstrumentable
 
   attr_reader :model_registry
 
@@ -260,6 +261,9 @@ class BedrockService
 
     Rails.logger.info "Sending request to Bedrock Claude (#{model_id})"
 
+    # Track timing for Agent Lightning
+    start_time = Time.current
+
     begin
       response = @client.invoke_model(
         model_id: model_id,
@@ -316,22 +320,134 @@ class BedrockService
         Rails.logger.info "🔍 Response preview: #{content[0..500]}"
       end
 
+      # Record LLM call to Agent Lightning for training data
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        parsed_actions = parse_response_actions(content)
+        success_score = calculate_success_score(content, "success")
+        agent_role = determine_agent_role(role: "executor")
+
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: agent_role,
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: content,
+          input_tokens: response_body.dig("usage", "input_tokens") || 0,
+          output_tokens: response_body.dig("usage", "output_tokens") || 0,
+          latency_ms: latency_ms,
+          status: "success",
+          parsed_actions: parsed_actions,
+          success_score: success_score
+        )
+      end
+
       content
     rescue Aws::BedrockRuntime::Errors::ThrottlingException => e
       Rails.logger.error "Bedrock throttling: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Throttling: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.request_id })
     rescue Aws::BedrockRuntime::Errors::ServiceUnavailableException => e
       Rails.logger.error "Bedrock unavailable: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Service unavailable: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockUnavailableError.new(context: { request_id: e.context&.request_id })
     rescue Timeout::Error, Seahorse::Client::NetworkingError => e
       Rails.logger.error "Bedrock timeout: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Timeout: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockTimeoutError.new(context: { error: e.class.name })
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock API Error: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "API Error: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.request_id })
     rescue StandardError => e
       Rails.logger.error "Unexpected error from Bedrock: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Unexpected error: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockError.new("Unexpected error: #{e.message}", context: { error_class: e.class.name })
     end
   end
