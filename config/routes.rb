@@ -618,6 +618,17 @@ Rails.application.routes.draw do
       get "errors", to: "metrics#errors"
       get "performance", to: "metrics#performance"
     end
+
+    # Agent Lightning Dashboard
+    resources :agent_lightning, only: [] do
+      collection do
+        get :dashboard, as: :dashboard
+        post :train_now, as: :train_now
+        get :metrics, as: :metrics
+        get :training_history, as: :training_history
+        get :export_data, as: :export_data
+      end
+    end
   end
 
   # Common routes (regardless of subdomain)
