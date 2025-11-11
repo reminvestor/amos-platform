@@ -1,0 +1,604 @@
+<div id="parallel-tasks-panel" class="parallel-tasks-panel" data-conversation-id="<%= raw (@session_id || @canvas_data&.dig('session_id')) %>" data-canvas-loaded="<%= Time.now.to_i %>">
+  <div class="panel-header">
+    <h4>
+      <i data-lucide="layers" style="width: 1.25rem; height: 1.25rem; color: #A78BFA;"></i>
+      Parallel Tasks
+    </h4>
+    <button onclick="testAddTask()" style="background: #A78BFA; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; cursor: pointer;">Test Add</button>
+  </div>
+  
+  <div class="tasks-container" id="parallel-tasks-list">
+    <!-- Tasks will be dynamically added here -->
+    <div class="no-tasks-placeholder" id="no-tasks-placeholder">
+      <i data-lucide="loader" class="loading-icon"></i>
+      <span>Loading tasks...</span>
+    </div>
+  </div>
+</div>
+
+<style>
+.parallel-tasks-panel {
+  background: #111827;
+  border: 1px solid #1F2937;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+  margin-bottom: 1rem;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #1F2937;
+}
+
+.panel-header h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: #F3F4F6;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+
+.tasks-container {
+  padding: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.tasks-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tasks-container::-webkit-scrollbar-track {
+  background: #1F2937;
+}
+
+.tasks-container::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 4px;
+}
+
+.task-item {
+  background: #1F2937;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.task-item.new {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.task-title {
+  font-size: 0.9rem;
+  color: #E5E7EB;
+  font-weight: 500;
+}
+
+.task-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.task-status.queued {
+  background: rgba(156, 163, 175, 0.2);
+  color: #9CA3AF;
+}
+
+.task-status.active {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60A5FA;
+}
+
+.task-status.completed {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ADE80;
+}
+
+.task-status.failed {
+  background: rgba(239, 68, 68, 0.2);
+  color: #F87171;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 6px;
+  background: #374151;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #8B5CF6 0%, #A78BFA 100%);
+  transition: width 0.3s ease;
+}
+
+.task-message {
+  font-size: 0.75rem;
+  color: #9CA3AF;
+  margin-top: 0.25rem;
+}
+
+.task-dependencies {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.dependency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  background: #374151;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  color: #9CA3AF;
+}
+
+/* Dependency types */
+.dependency-badge.blocking {
+  border-color: #F87171;
+}
+
+.dependency-badge.informational {
+  border-color: #60A5FA;
+}
+
+.dependency-badge.optional {
+  border-color: #9CA3AF;
+}
+
+/* Dependency statuses */
+.dependency-badge.pending {
+  background: rgba(251, 191, 36, 0.2);
+  color: #FCD34D;
+}
+
+.dependency-badge.satisfied {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ADE80;
+}
+
+.dependency-badge.failed {
+  background: rgba(239, 68, 68, 0.2);
+  color: #F87171;
+}
+
+.no-tasks-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #6B7280;
+  padding: 2rem;
+  font-size: 0.875rem;
+}
+
+.no-tasks-placeholder .loading-icon {
+  width: 1rem;
+  height: 1rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.progress-bar {
+  background: #A78BFA;
+}
+
+.task-item.active .progress-bar {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+</style>
+
+<script>
+// Initialize immediately since this is a canvas
+console.log('🚀 Initializing parallel tasks canvas');
+
+// Test function
+window.testAddTask = function() {
+  console.log('🧪 Testing addOrUpdateTask function');
+  addOrUpdateTask({
+    task_id: 'test-' + Date.now(),
+    task_type: 'background',
+    description: 'Test Task ' + new Date().toLocaleTimeString(),
+    status: 'active',
+    progress: Math.floor(Math.random() * 100),
+    message: 'This is a test task'
+  });
+};
+
+window.addOrUpdateTask = function addOrUpdateTask(taskData) {
+  console.log('🔧 addOrUpdateTask called with:', taskData);
+  const container = document.getElementById('parallel-tasks-list');
+  if (!container) {
+    console.error('❌ Container #parallel-tasks-list not found!');
+    console.error('❌ Document body:', document.body.innerHTML.substring(0, 500));
+    return;
+  }
+  
+  // Remove placeholder if it exists
+  const placeholder = document.getElementById('no-tasks-placeholder');
+  if (placeholder) {
+    placeholder.remove();
+  }
+  
+  let taskElement = container.querySelector(`[data-task-id="${taskData.task_id}"]`);
+  const isNew = !taskElement;
+  console.log(`Task ${taskData.task_id} is ${isNew ? 'new' : 'existing'}`);
+  
+  if (isNew) {
+    taskElement = document.createElement('div');
+    taskElement.className = 'task-item new';
+    taskElement.setAttribute('data-task-id', taskData.task_id);
+    container.appendChild(taskElement);
+    console.log('✅ New task element appended to container');
+    console.log('📊 Container now has', container.children.length, 'children');
+  }
+  
+  // Update status
+  const statusClass = (taskData.status || 'queued').toLowerCase();
+  taskElement.className = `task-item ${isNew ? 'new' : ''} ${statusClass}`;
+  
+  // Build content
+  // Store or update description
+  if (taskData.description) {
+    taskElement.dataset.description = taskData.description;
+  }
+  const description = taskData.description || taskElement.dataset.description || 'Task ' + taskData.task_id;
+  
+  // Create simple HTML first
+  taskElement.innerHTML = `
+    <div class="task-header">
+      <div class="task-title">${description}</div>
+      <span class="task-status ${statusClass}">
+        ${taskData.status || 'Queued'}
+      </span>
+    </div>
+    ${taskData.progress !== undefined ? `
+      <div class="progress-bar-container">
+        <div class="progress-bar" style="width: ${taskData.progress}%"></div>
+      </div>
+    ` : ''}
+    ${taskData.message ? `<div class="task-message">${taskData.message}</div>` : ''}
+  `;
+  
+  // Log what we created
+  console.log('📝 Created task HTML:', taskElement.outerHTML);
+  
+  // Reinitialize lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+  
+  // Canvas is already showing, no need to show panel
+  
+  // Remove 'new' class after animation
+  setTimeout(() => {
+    taskElement.classList.remove('new');
+  }, 300);
+};
+
+function getStatusIcon(status) {
+  const icons = {
+    queued: 'clock',
+    active: 'loader',
+    completed: 'check-circle',
+    failed: 'x-circle'
+  };
+  return icons[status] || 'circle';
+}
+
+// Initialize canvas
+function initializeParallelTasksCanvas() {
+  console.log('🎯 Parallel Tasks Canvas initialized');
+  console.log('📊 Canvas data:', <%= raw @canvas_data.to_json %>);
+  console.log('🆔 Session ID:', '<%= raw @session_id %>');
+
+  // Initialize tasks from canvas data if available
+  <% if @canvas_data && @canvas_data['tasks'] %>
+    console.log('📦 Initializing parallel tasks from canvas data - found', <%= raw @canvas_data['tasks'].length.to_json %>, 'tasks');
+    
+    // Try to add tasks immediately
+    const container = document.getElementById('parallel-tasks-list');
+    if (container) {
+      console.log('✅ Container found, adding tasks immediately');
+      <% @canvas_data['tasks'].each do |task| %>
+        console.log('➕ Adding task', <%= raw task['id'].to_json %>, ':', <%= raw task['description'].to_json %>);
+        addOrUpdateTask({
+          task_id: <%= raw task['id'].to_json %>,
+          task_type: <%= raw task['type'].to_json %>,
+          description: <%= raw task['description'].to_json %>,
+          status: <%= raw task['status'].to_json %>,
+          progress: <%= raw (task['progress'] || 0).to_json %>,
+          dependencies: <%= raw (task['dependencies'] || []).to_json %>
+        });
+      <% end %>
+    } else {
+      console.error('❌ Container not found immediately, trying after timeout');
+      // Fallback with timeout
+      setTimeout(() => {
+        const container = document.getElementById('parallel-tasks-list');
+        if (!container) {
+          console.error('❌ Container still not found after timeout!');
+          return;
+        }
+        
+        <% @canvas_data['tasks'].each do |task| %>
+          console.log('➕ Adding task (delayed) <%= task['id'] %>: <%= task['description'] %>');
+          addOrUpdateTask({
+            task_id: <%= raw task['id'].to_json %>,
+            task_type: <%= raw task['type'].to_json %>,
+            description: <%= raw task['description'].to_json %>,
+            status: <%= raw task['status'].to_json %>,
+            progress: <%= raw (task['progress'] || 0).to_json %>,
+            dependencies: <%= raw (task['dependencies'] || []).to_json %>
+          });
+        <% end %>
+      }, 200);
+    }
+  <% else %>
+    console.log('❌ No canvas data or tasks found');
+  <% end %>
+
+  // ActionCable subscription for task updates
+  const sessionId = '<%= raw (@session_id || @canvas_data&.dig('session_id')) %>';
+  console.log('🔌 Setting up ActionCable subscription for session:', sessionId);
+  
+  // Debug current subscriptions
+  console.log('📊 Current App:', window.App);
+  console.log('📊 Current App.cable:', window.App?.cable);
+  console.log('📊 Current App.cable subscriptions:', window.App?.cable?.subscriptions);
+  
+  // Try parent window's App if not available in current context
+  let cableApp = window.App;
+  if (!cableApp || !cableApp.cable) {
+    console.log('🔍 Trying parent window App...');
+    cableApp = window.parent?.App;
+  }
+  
+  // Ensure we have ActionCable
+  if (!sessionId) {
+    console.error('❌ No session ID available for ActionCable subscription');
+    return;
+  }
+  
+  if (!cableApp || !cableApp.cable) {
+    console.error('❌ ActionCable not available (App.cable is undefined)');
+    console.log('Window.App:', window.App);
+    console.log('Parent Window.App:', window.parent?.App);
+    return;
+  }
+  
+  const App = cableApp; // Use the found App
+  
+  // Check if consumer is connected
+  console.log('📡 ActionCable consumer connected?', App.cable.connection?.consumer?.connection?.isOpen());
+  
+  // Create a unique subscription for this canvas
+  const subscriptionName = `parallelTasksCanvas_${sessionId}`;
+  
+  // Cleanup any existing subscription
+  if (window[subscriptionName]) {
+    console.log('🧹 Cleaning up existing subscription');
+    window[subscriptionName].unsubscribe();
+  }
+  
+  console.log('📡 Creating new ActionCable subscription with params:', { channel: "ScoutChannel", session_id: sessionId });
+  
+  // Check if there's already a subscription for this session
+  const existingSubscription = App.cable.subscriptions.subscriptions.find(sub => {
+    try {
+      const identifier = JSON.parse(sub.identifier);
+      return identifier.channel === "ScoutChannel" && identifier.session_id === sessionId;
+    } catch (e) {
+      return false;
+    }
+  });
+  
+  if (existingSubscription) {
+    console.log('🔄 Found existing ScoutChannel subscription, reusing it');
+    window[subscriptionName] = existingSubscription;
+    
+    // Override the received method to handle our canvas updates
+    const originalReceived = existingSubscription.received;
+    existingSubscription.received = function(data) {
+      console.log("📨 CANVAS: Intercepted data:", data);
+      
+      // Call original handler if it exists
+      if (originalReceived && typeof originalReceived === 'function') {
+        originalReceived.call(this, data);
+      }
+      
+      // Handle canvas-specific updates
+      handleCanvasUpdate(data);
+    };
+  } else {
+    console.log('📡 Creating new ScoutChannel subscription');
+    
+    // Try creating subscription
+    try {
+      window[subscriptionName] = App.cable.subscriptions.create(
+        { channel: "ScoutChannel", session_id: sessionId },
+        {
+          connected() {
+            console.log("✅ CANVAS: Connected to ScoutChannel for session:", sessionId);
+            console.log("✅ Subscription identifier:", this.identifier);
+            console.log("✅ Consumer subscriptions:", App.cable.subscriptions.subscriptions);
+          },
+          disconnected() {
+            console.log("❌ CANVAS: Disconnected from ScoutChannel");
+          },
+          rejected() {
+            console.error("❌ CANVAS: Subscription rejected by server");
+          },
+          received(data) {
+            console.log("📨 CANVAS: Received data:", data);
+            handleCanvasUpdate(data);
+          }
+        }
+      );
+      
+      console.log('📡 Subscription created:', window[subscriptionName]);
+    } catch (error) {
+      console.error('❌ Failed to create ActionCable subscription:', error);
+    }
+  }
+  
+  // Handle canvas updates (shared function)
+  function handleCanvasUpdate(data) {
+    console.log("📨 CANVAS: Processing update:", data);
+    
+    // Handle different message types
+    switch(data.type) {
+          case 'task_progress':
+            console.log(`📊 CANVAS: Task ${data.task_id} progress: ${data.progress}% - ${data.message}`);
+            // Update the UI
+            addOrUpdateTask({
+              task_id: data.task_id,
+              task_type: data.task_type,
+              description: data.description,
+              status: data.status || 'active',
+              progress: data.progress,
+              message: data.message
+            });
+            break;
+            
+          case 'task_completed':
+            console.log(`✅ CANVAS: Task ${data.task_id} completed`);
+            addOrUpdateTask({
+              task_id: data.task_id,
+              description: data.description,
+              status: 'completed',
+              progress: 100,
+              message: 'Completed'
+            });
+            break;
+            
+          case 'task_failed':
+            console.log(`❌ CANVAS: Task ${data.task_id} failed: ${data.error}`);
+            addOrUpdateTask({
+              task_id: data.task_id,
+              description: data.description,
+              status: 'failed',
+              progress: 100,
+              message: data.error || 'Failed'
+            });
+            break;
+            
+          case 'canvas_test':
+            console.log("✅ CANVAS TEST: Received test broadcast:", data);
+            break;
+            
+        default:
+          console.log("Unknown message type:", data.type);
+      }
+  }
+  
+  // Initialize lucide icons
+  if (typeof lucide !== 'undefined') {
+    console.log('🎨 Initializing lucide icons');
+    lucide.createIcons();
+  } else {
+    console.error('❌ Lucide not available');
+  }
+  
+  // Log final state
+  const finalContainer = document.getElementById('parallel-tasks-list');
+  console.log('🏁 Final state - container exists:', !!finalContainer);
+  console.log('🏁 Final state - child elements:', finalContainer ? finalContainer.children.length : 'N/A');
+}
+
+// Make initialization function global for debugging
+window.initializeParallelTasksCanvas = initializeParallelTasksCanvas;
+
+// Initialize immediately and on DOM ready
+console.log('🚀 Starting initialization...');
+initializeParallelTasksCanvas();
+
+// Also initialize on DOM ready in case we're too early
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeParallelTasksCanvas);
+}
+
+// Debug function to check state
+window.debugParallelTasks = function() {
+  const panel = document.getElementById('parallel-tasks-panel');
+  const container = document.getElementById('parallel-tasks-list');
+  const sessionId = panel?.dataset?.conversationId;
+  console.log('Panel exists:', !!panel);
+  console.log('Container exists:', !!container);
+  console.log('Session ID:', sessionId);
+  console.log('Tasks count:', container ? container.querySelectorAll('.task-item').length : 'N/A');
+  console.log('Container children:', container ? container.children : 'N/A');
+  console.log('ActionCable subscriptions:', App.cable?.subscriptions?.subscriptions);
+  return { panel, container, sessionId };
+};
+
+// Test function to manually trigger a task update
+window.testTaskUpdate = function(taskId = 539) {
+  const update = {
+    type: 'task_progress',
+    task_id: taskId,
+    task_type: 'background',
+    description: 'Test task update',
+    status: 'active',
+    progress: Math.floor(Math.random() * 100),
+    message: 'Manual test update at ' + new Date().toLocaleTimeString()
+  };
+  
+  console.log('🧪 Manually triggering task update:', update);
+  
+  // Find any subscription that might handle this
+  const subscriptions = App.cable?.subscriptions?.subscriptions || [];
+  subscriptions.forEach((sub, index) => {
+    console.log(`Subscription ${index}:`, sub.identifier);
+    if (sub.received && typeof sub.received === 'function') {
+      console.log(`Calling received() on subscription ${index}`);
+      sub.received(update);
+    }
+  });
+};
+</script>

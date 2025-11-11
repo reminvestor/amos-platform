@@ -533,6 +533,13 @@ export default class extends Controller {
                     }
                     this.addMessage(data.content, 'ai')
                   }
+                } else if (data.type === 'enable_chat') {
+                  // Re-enable chat immediately after parallel processing starts
+                  console.log('💬 Enabling chat for continued conversation')
+                  this.enableChatInput()
+                  if (data.message) {
+                    console.log('📢 Chat enabled message:', data.message)
+                  }
                 } else if (data.type === 'load_canvas') {
                   // Streamed instruction to load a canvas immediately
                   try {
@@ -1113,6 +1120,14 @@ export default class extends Controller {
   loadContactsCanvas() {
     console.log("👥 Loading contacts canvas")
     this.loadScoutCanvas("contact_viewer", {})
+  }
+  
+  loadParallelTasksCanvas() {
+    console.log("🔄 Loading parallel tasks canvas")
+    const sessionId = document.querySelector('[data-scout-session-id]')?.dataset.scoutSessionId || 
+                      this.chatMessagesTarget?.dataset.sessionId ||
+                      'current_session'
+    this.loadScoutCanvas("parallel_tasks", { session_id: sessionId })
   }
 
   // Profile and settings methods
@@ -2054,6 +2069,12 @@ export default class extends Controller {
 
   // Separate loading overlay methods for canvas operations
   showCanvasLoading(canvasType = 'canvas') {
+    // Don't show blocking overlay for parallel tasks canvas
+    if (canvasType === 'parallel_tasks') {
+      console.log("⚡ Non-blocking load for parallel tasks canvas")
+      return
+    }
+    
     if (this.hasLoadingOverlayTarget) {
       this.loadingOverlayTarget.classList.add("active")
 
@@ -2068,7 +2089,8 @@ export default class extends Controller {
         analytics_dashboard: 'Building dashboard...',
         campaign_editor: 'Opening editor...',
         email_template_editor: 'Opening template editor...',
-        email_template_viewer: 'Loading templates...'
+        email_template_viewer: 'Loading templates...',
+        parallel_tasks: 'Loading task monitor...'
       }
 
       const message = messages[canvasType] || 'Preparing canvas...'
