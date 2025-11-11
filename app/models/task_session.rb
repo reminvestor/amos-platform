@@ -2,6 +2,15 @@ class TaskSession < ApplicationRecord
   belongs_to :user
   has_many :task_events, dependent: :destroy
   has_one :workflow_execution, dependent: :destroy
+  
+  # Parallel processing relationships
+  has_many :task_dependencies, dependent: :destroy
+  has_many :depends_on_tasks, through: :task_dependencies, source: :depends_on_task
+  has_many :dependent_task_relationships, 
+           class_name: 'TaskDependency', 
+           foreign_key: 'depends_on_task_id',
+           dependent: :destroy
+  has_many :dependent_tasks, through: :dependent_task_relationships, source: :task_session
 
   # Status enums
   enum :status, {
@@ -25,6 +34,10 @@ class TaskSession < ApplicationRecord
   # Scopes
   scope :recent, -> { order(created_at: :desc) }
   scope :for_user, ->(user) { where(user: user) }
+  scope :parallel_tasks, -> { where.not(parent_conversation_id: nil) }
+  scope :by_priority, -> { order(priority: :desc, created_at: :asc) }
+  scope :ready_to_execute, -> { where(status: 'active').where('started_at IS NULL') }
+  scope :in_progress, -> { where(status: 'active').where.not(started_at: nil) }
 
   # Event logging
   def add_event(type, payload = {})
@@ -67,6 +80,64 @@ class TaskSession < ApplicationRecord
     save!
   end
 
+  # Parallel processing helpers
+  def ready_for_execution?
+    return false unless status == 'active'
+    return false if started_at.present? # Already started
+    
+    # Check if all blocking dependencies are satisfied
+    task_dependencies.blocking.all?(&:satisfied?)
+  end
+  
+  def has_failed_dependencies?
+    task_dependencies.any?(&:failed?)
+  end
+  
+  def estimated_duration_ms
+    metadata['estimated_duration_ms'] || 5000 # Default 5 seconds
+  end
+  
+  def update_progress(progress, message = nil)
+    update!(
+      progress: progress,
+      state: state.merge(
+        last_progress_update: Time.current,
+        last_progress_message: message
+      )
+    )
+  end
+  
+  # Get all results from dependencies
+  def dependency_results
+    results = {}
+    
+    depends_on_tasks.completed.each do |task|
+      if task.state['result']
+        results[task.id] = task.state['result']
+      end
+    end
+    
+    results
+  end
+  
+  # Check if this is a voice-related task
+  def voice_task?
+    task_type&.start_with?('voice_')
+  end
+  
+  # Calculate actual priority for queue ordering
+  def effective_priority
+    base = priority || 5
+    
+    # Boost priority for voice tasks
+    base += 5 if voice_task?
+    
+    # Slight boost for tasks with waiting dependents
+    base += 1 if dependent_tasks.any?
+    
+    base
+  end
+  
   # Workflow helpers
   def mark_step_complete(step_id)
     add_event("step_completed", { step_id: step_id, completed_at: Time.current })

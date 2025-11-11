@@ -61,6 +61,11 @@
             <span>AI Pipeline</span>
           <% end %>
 
+          <%= link_to admin_parallel_tasks_path, class: "nav-item #{'active' if controller_name == 'parallel_tasks'}" do %>
+            <i data-lucide="layers"></i>
+            <span>Parallel Tasks</span>
+          <% end %>
+
           <%= link_to admin_observability_ai_usage_path, class: "nav-item #{'active' if request.path.start_with?('/admin/observability')}" do %>
             <i data-lucide="bar-chart-3"></i>
             <span>Observability</span>

@@ -585,6 +585,14 @@ Rails.application.routes.draw do
         post :reset_password
       end
     end
+    
+    # Parallel task monitoring
+    resources :parallel_tasks, only: [:index, :show] do
+      member do
+        post :cancel
+        post :retry
+      end
+    end
 
     # Admin user management
     resources :admin_users do

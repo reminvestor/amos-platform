@@ -13,6 +13,7 @@ class ScoutController < ApplicationController
   def index
     @session_id = session[:scout_session_id] ||= SecureRandom.uuid
     @conversation_history = persisted_history_last_k(10)
+    @show_parallel_tasks = true
 
     # Load available RAG stores for the entity
     @rag_stores = RagLoaderService.load_for_entity(current_entity)
@@ -205,14 +206,6 @@ class ScoutController < ApplicationController
 
       # Save user message with file info
       save_scout_message("user", enhanced_message, metadata: metadata)
-
-      # Initialize interactive task service
-      interactive_service = InteractiveTaskService.new(current_user, current_entity, @session_id)
-
-      # Add file URLs to context if present
-      if file_urls.any?
-        interactive_service.set_context(attached_files: file_urls)
-      end
 
       # Capture workflow messages during progress
       workflow_message = nil
@@ -458,16 +451,12 @@ class ScoutController < ApplicationController
       conversation_history = persisted_history_last_k(20)
       stream_update("📚 Loading conversation history (#{conversation_history.length} messages)")
 
-      # Use InteractiveTaskService with streaming updates
-      stream_update("🧠 Analyzing your request...")
-      stream_update("📋 Detecting task mode and preparing workflow...")
-      interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id], model: selected_model)
-
       # Track sources used in tool responses
       sources_used = {}
+      interactive_service = nil  # Will be initialized based on processing type
 
-      # Set up progress callback for streaming updates
-      interactive_service.on_progress do |progress_data|
+      # Define progress callback that will be used if we create InteractiveTaskService
+      progress_callback = lambda do |progress_data|
         # Handle both string and hash formats
         if progress_data.is_a?(String)
           # Simple string message
@@ -623,17 +612,120 @@ class ScoutController < ApplicationController
       if current_canvas&.dig("data", "awaiting_approval") && is_approval_response?(user_message)
         stream_update("📋 Processing your plan feedback...")
         approval_action = extract_approval_action(user_message)
+        
+        # Initialize service for plan approval if not already done
+        interactive_service ||= InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id], model: selected_model)
+        interactive_service.on_progress(&progress_callback)
+        
         result = interactive_service.handle_plan_approval(approval_action, user_message)
       else
-        # Process message using InteractiveTaskService
-        stream_update("🎯 Processing your request...")
+        # Check if we should use parallel processing
+        if should_use_parallel_processing?(user_message, file_urls)
+          stream_update("🚀 **Activating parallel processing** to handle your multi-part request efficiently...")
+          
+          # Use ParallelTaskOrchestrator instead
+          orchestrator = ParallelTaskOrchestrator.new(current_user, current_entity, @session_id)
+          
+          # Create tasks from the request
+          tasks = orchestrator.process_request(user_message, {
+            voice_mode: false,
+            current_canvas: current_canvas,
+            recent_history: conversation_history,
+            file_urls: file_urls
+          })
+          
+          # Stream the parallel execution start
+          stream_update({
+            type: 'parallel_execution_start',
+            execution_id: SecureRandom.uuid,
+            task_count: tasks.length,
+            tasks: tasks.map { |t| 
+              {
+                id: t.id,
+                type: t.task_type,
+                description: t.metadata['description']
+              }
+            }
+          })
+          
+          # Load the parallel tasks canvas
+          stream_update({
+            type: 'load_canvas',
+            canvas: 'parallel_tasks',
+            canvas_data: {
+              session_id: @session_id,
+              tasks: tasks.map { |t| 
+                {
+                  id: t.id,
+                  type: t.task_type,
+                  description: t.metadata['description'],
+                  status: t.status,
+                  progress: t.progress || 0,
+                  dependencies: t.task_dependencies.map { |d|
+                    {
+                      id: d.id,
+                      depends_on_task_id: d.depends_on_task_id,
+                      relationship_type: d.relationship_type,
+                      dependency_type: d.dependency_type,
+                      status: d.status
+                    }
+                  }
+                }
+              }
+            }
+          })
+          
+          # Don't claim success yet - tasks are just queued
+          result = { 
+            success: true, 
+            message: "I'm processing #{tasks.length} tasks in parallel. You can continue chatting or work on other things while I handle these in the background. Check the parallel tasks panel for real-time progress.",
+            mode: "parallel",
+            message_already_saved: false,
+            canvas_type: 'parallel_tasks',
+            canvas_data: {
+              session_id: @session_id,
+              tasks: tasks.map { |t| 
+                {
+                  id: t.id,
+                  type: t.task_type,
+                  description: t.metadata['description'],
+                  status: t.status,
+                  progress: t.progress || 0,
+                  dependencies: t.task_dependencies.map { |d|
+                    {
+                      id: d.id,
+                      depends_on_task_id: d.depends_on_task_id,
+                      relationship_type: d.relationship_type,
+                      dependency_type: d.dependency_type,
+                      status: d.status
+                    }
+                  }
+                }
+              }
+            }
+          }
+          
+          # Immediately enable chat for continued conversation
+          stream_update({
+            type: 'enable_chat',
+            message: 'Feel free to ask other questions while I work on these tasks!'
+          })
+        else
+          # Process message using InteractiveTaskService
+          stream_update("🧠 Analyzing your request...")
+          stream_update("📋 Detecting task mode and preparing workflow...")
+          
+          # Initialize InteractiveTaskService for sequential processing
+          interactive_service = InteractiveTaskService.new(current_user, current_entity, session[:scout_session_id], model: selected_model)
+          interactive_service.on_progress(&progress_callback)
+          
+          # Add file URLs to context if present
+          if file_urls.any?
+            interactive_service.set_context(attached_files: file_urls)
+          end
 
-        # Add file URLs to context if present
-        if file_urls.any?
-          interactive_service.set_context(attached_files: file_urls)
+          result = interactive_service.process_message(user_message, conversation_history, current_canvas)
         end
-
-        result = interactive_service.process_message(user_message, conversation_history, current_canvas)
       end
 
       # Handle the response from InteractiveTaskService
@@ -646,7 +738,7 @@ class ScoutController < ApplicationController
 
         # Handle canvas loading (if not already done during streaming)
         canvas = result[:canvas_type] || result[:canvas]
-        if canvas && canvas != "conversation" && result[:mode] != "autonomous"
+        if canvas && canvas != "conversation" && result[:mode] != "autonomous" && result[:mode] != "parallel"
           stream_update({
             type: "load_canvas",
             canvas: canvas,
@@ -891,6 +983,57 @@ class ScoutController < ApplicationController
       when "integration_operations"
         canvas_content = render_integration_operations(canvas_data)
         canvas_title = "Integration Operations"
+      when "parallel_tasks"
+        @session_id = canvas_data['session_id'] || params[:session_id]
+        
+        # Load all active tasks for the current user
+        active_tasks = TaskSession.where(
+          user: current_user,
+          status: ['active', 'pending', 'queued']
+        ).includes(:task_dependencies).order(created_at: :desc).limit(50)
+        
+        # Also load recently completed tasks (last hour)
+        recent_completed = TaskSession.where(
+          user: current_user,
+          status: 'completed',
+          completed_at: 1.hour.ago..Time.current
+        ).order(completed_at: :desc).limit(20)
+        
+        all_tasks = (active_tasks + recent_completed).sort_by(&:created_at).reverse
+        
+        # Serialize tasks for the canvas
+        tasks_data = all_tasks.map do |task|
+          {
+            id: task.id,
+            type: task.task_type,
+            description: task.metadata['description'],
+            status: task.status,
+            progress: task.progress || 0,
+            created_at: task.created_at,
+            parent_conversation_id: task.parent_conversation_id,
+            dependencies: task.task_dependencies.map { |d|
+              {
+                id: d.id,
+                depends_on_task_id: d.depends_on_task_id,
+                relationship_type: d.relationship_type,
+                dependency_type: d.dependency_type,
+                status: d.status
+              }
+            }
+          }
+        end
+        
+        @canvas_data = canvas_data.merge('tasks' => tasks_data)
+        
+        Rails.logger.info "ScoutController: Loading parallel tasks canvas with #{active_tasks.count} active tasks"
+        
+        canvas_content = render_to_string(
+          partial: "scout/canvas/parallel_tasks",
+          locals: {
+            canvas_data: @canvas_data
+          }
+        )
+        canvas_title = "Task Monitor"
       else
         canvas_content = render_default_canvas
         canvas_title = ""
@@ -2186,6 +2329,69 @@ class ScoutController < ApplicationController
 
   private
 
+  def should_use_parallel_processing?(message, attached_files = [])
+    # Determine if request is complex enough for parallel processing
+    return true if attached_files.present? && attached_files.length > 1  # Changed from > 2 to > 1
+    
+    # Voice mode always uses parallel for immediate response
+    return true if params[:voice_mode] == 'true'
+    
+    # Check for multi-part requests - more inclusive patterns
+    return true if message.match?(/\band\s+(also|then)/i)  # "and also", "and then"
+    return true if message.match?(/\b(both|multiple|several)\b/i)
+    return true if message.match?(/(pull|fetch|get|show|give).*\band.*?(overview|summary|list|analyze)/i)
+    return true if message.match?(/analyze.*schedule|schedule.*analyze/i)
+    return true if message.match?(/compare.*create|create.*compare/i)
+    return true if message.scan(/\?/).count > 1  # Changed from > 2 to > 1
+    
+    # Check for lists of items
+    return true if message.match?(/\b(first|second|third|1\.|2\.|3\.)\b/i)
+    
+    # Check for specific complex patterns
+    complex_patterns = [
+      /analyze.*campaigns?.*(?:and|then|also|plus).*(?:schedule|create|send|give|show)/i,
+      /(?:gather|collect|compile|pull|fetch).*data.*(?:and|then|also).*(?:report|analyze|overview)/i,
+      /research.*market.*(?:and|then).*(?:create|draft)/i,
+      /(top|best|highest).*\d+.*(?:and|also|plus).*(?:overview|summary|analyze)/i,  # "top 10 X and also Y"
+      /\w+\s+(?:and|&)\s+\w+/i  # Simple "X and Y" pattern
+    ]
+    
+    is_complex = complex_patterns.any? { |pattern| message.match?(pattern) }
+    
+    # Log decision for debugging
+    if is_complex
+      Rails.logger.info "🚀 Parallel processing triggered for: #{message[0..100]}..."
+    else
+      Rails.logger.info "🔄 Sequential processing for: #{message[0..100]}..."
+      Rails.logger.info "Patterns checked: attached_files=#{attached_files.length}, and/also=#{message.match?(/\band\s+(also|then)/i)}, pull/and=#{message.match?(/(pull|fetch|get|show|give).*\band.*?(overview|summary|list|analyze)/i)}"
+    end
+    
+    is_complex
+  end
+  
+  def stream_voice_task_progress(tasks)
+    tasks.each do |task|
+      next if task.task_type == 'voice_immediate' # Already handled
+      
+      # Stream progress updates for background tasks
+      stream_update({
+        type: 'task_progress',
+        task_id: task.id,
+        task_type: task.task_type,
+        description: task.metadata['description'],
+        status: 'queued'
+      })
+    end
+  end
+  
+  
+  def get_recent_history(limit = 5)
+    ScoutConversation.for_session(@session_id)
+                     .recent
+                     .limit(limit)
+                     .map(&:to_ai_message)
+  end
+  
   def extract_response_sources(tools_used)
     # Extract source information from tools_used array
     # Specifically looks for read_document tool calls which indicate RAG/document sources
