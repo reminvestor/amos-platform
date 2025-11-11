@@ -122,7 +122,7 @@ class LightningStoreServiceTest < ActiveSupport::TestCase
     trace.reload
     assert_equal "completed", trace.status
     assert_equal 5000, trace.duration_ms
-    assert_equal { result: "success" }, trace.output_data
+    assert_equal({ result: "success" }, trace.output_data)
   end
 
   test "should record reward signal" do
