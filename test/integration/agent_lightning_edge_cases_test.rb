@@ -235,7 +235,7 @@ class AgentLightningEdgeCasesTest < ActionDispatch::IntegrationTest
     lightning_store.complete_trace(output_data: {})  # Empty output
 
     trace.reload
-    assert_equal {}, trace.input_data.merge(trace.output_data)
+    assert_equal({}, trace.input_data.merge(trace.output_data))
   end
 
   test "handles duplicate trace_id prevention" do
