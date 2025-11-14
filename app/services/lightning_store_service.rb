@@ -70,6 +70,13 @@ class LightningStoreService
       cost_estimate: (@trace.cost_estimate || 0) + (call.cost || 0)
     )
 
+<<<<<<< HEAD
+=======
+    # Phase 3: Emit span to Agent Lightning in real-time
+    emit_llm_call_span(call)
+
+    Rails.logger.info "⚡ LLM call recorded successfully - call_id: #{call.call_id}, tokens: #{call.total_tokens}, cost: $#{call.cost}"
+>>>>>>> e4709206 (Implement Agent Lightning Phases 2-4: Store Adapter, Real-time Span Emission, and VERL Training)
     call
   end
 
@@ -107,6 +114,9 @@ class LightningStoreService
       started_at: Time.current,
       completed_at: status != "running" ? Time.current : nil
     )
+
+    # Phase 3: Emit span to Agent Lightning in real-time
+    emit_tool_execution_span(execution)
 
     execution
   end
@@ -276,6 +286,66 @@ class LightningStoreService
         total_cost: trace.total_cost,
         duration_ms: trace.duration_ms
       }
+    end
+  end
+
+  # Phase 3: Emit LLM call as span to Agent Lightning service
+  def emit_llm_call_span(llm_call)
+    return unless @trace && PythonAgentLightningClient.available?
+
+    begin
+      span_data = {
+        name: llm_call.agent_role || "llm_call",
+        type: "llm_call",
+        model: llm_call.model,
+        input_tokens: llm_call.input_tokens,
+        output_tokens: llm_call.output_tokens,
+        total_tokens: llm_call.total_tokens,
+        cost: llm_call.cost,
+        latency_ms: llm_call.latency_ms,
+        status: llm_call.status
+      }
+
+      PythonAgentLightningClient.add_span(
+        @trace.trace_id,
+        0,
+        span_data
+      )
+
+      Rails.logger.debug("✅ Emitted LLM call span to Agent Lightning: #{llm_call.call_id}")
+    rescue PythonAgentLightningClient::ServiceUnavailableError => e
+      Rails.logger.warn("Could not emit LLM span - service unavailable: #{e.message}")
+    rescue => e
+      Rails.logger.warn("Error emitting LLM span: #{e.message}")
+    end
+  end
+
+  # Phase 3: Emit tool execution as span to Agent Lightning service
+  def emit_tool_execution_span(tool_execution)
+    return unless @trace && PythonAgentLightningClient.available?
+
+    begin
+      span_data = {
+        name: "tool:#{tool_execution.tool_name}",
+        type: "tool_execution",
+        tool_name: tool_execution.tool_name,
+        tool_category: tool_execution.tool_category,
+        duration_ms: tool_execution.execution_time_ms,
+        status: tool_execution.status,
+        error: tool_execution.error_message
+      }
+
+      PythonAgentLightningClient.add_span(
+        @trace.trace_id,
+        0,
+        span_data
+      )
+
+      Rails.logger.debug("✅ Emitted tool span to Agent Lightning: #{tool_execution.execution_id}")
+    rescue PythonAgentLightningClient::ServiceUnavailableError => e
+      Rails.logger.warn("Could not emit tool span - service unavailable: #{e.message}")
+    rescue => e
+      Rails.logger.warn("Error emitting tool span: #{e.message}")
     end
   end
 
