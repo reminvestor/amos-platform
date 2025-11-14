@@ -25,6 +25,7 @@ class ScoutGenericToolsServiceV2
     @sources = [] # Track sources from tool responses
     @model_used = nil # Track actual model used (may differ from requested due to fallback)
     @model_name = nil # Human-readable model name
+    @canvas_already_broadcast = false # Track if canvas was broadcast during tool execution
   end
 
   def set_context(context = {})
@@ -33,6 +34,7 @@ class ScoutGenericToolsServiceV2
 
   def process_message_with_tools_streaming(user_message, progress_callback, conversation_history = [], current_canvas = nil)
     @stop_after_delegation = false # Reset flag at start
+    @canvas_already_broadcast = false # Reset canvas broadcast flag
     begin
       # Build system prompt
       system_prompt = build_system_prompt(current_canvas)
@@ -798,8 +800,8 @@ class ScoutGenericToolsServiceV2
       delegation_occurred: @stop_after_delegation || false
     }
     
-    # Only include canvas info if a canvas was suggested
-    if @suggested_canvas
+    # Only include canvas info if it wasn't already broadcast
+    if @suggested_canvas && !@canvas_already_broadcast
       response[:canvas_type] = @suggested_canvas
       response[:canvas_data] = @canvas_data
     else
@@ -820,27 +822,28 @@ class ScoutGenericToolsServiceV2
     canvas_name = args["canvas_name"] || args[:canvas_name]
     canvas_data = args["canvas_data"] || args[:canvas_data] || {}
 
-    # Load canvas immediately via progress callback
+    # CRITICAL: Send canvas update IMMEDIATELY via progress callback
+    # This ensures it arrives BEFORE any response message
     if progress_callback
-      # First notify that we're loading the canvas
-      progress_callback.call({
-        type: "intermediate_message",
-        content: "Loading #{canvas_name.gsub('_', ' ')}...",
-        role: "assistant"
-      })
-
-      # Then send the canvas update
+      # Send the canvas update FIRST - no intermediate message
       progress_callback.call({
         type: "canvas_update",
         canvas_type: canvas_name,
         canvas_data: canvas_data
       })
+      
+      # Small delay to ensure canvas broadcast completes first
+      sleep(0.1)
     end
 
+    # Always set the canvas so it's included in the final response as backup
     safe_load_canvas(canvas_name, canvas_data)
-    # Return success without setting canvas_type in response to avoid double broadcast
-    # The canvas update was already sent via progress_callback above
-    { success: true, message: nil, canvas_already_broadcast: true }
+    
+    # Mark that we already broadcast this canvas to prevent double broadcast
+    @canvas_already_broadcast = true
+    
+    # Return success
+    { success: true, message: nil }
   end
 
   def safe_load_canvas(canvas_name, data = {})

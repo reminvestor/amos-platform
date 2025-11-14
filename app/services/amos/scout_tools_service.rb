@@ -128,9 +128,14 @@ module Amos
       )
       
       # Check for canvas updates
+      Rails.logger.info "[Scout Tools] Final result structure: #{result.keys}" if result.is_a?(Hash)
+      Rails.logger.info "[Scout Tools] Canvas type in result: #{result[:canvas_type]}" if result.is_a?(Hash)
+      
+      # Only broadcast canvas update if it wasn't already broadcast during tool execution
+      # (canvas_type: "conversation" means no canvas was suggested or it was already broadcast)
       if result.is_a?(Hash) && result[:canvas_type].present? && result[:canvas_type] != "conversation"
         Rails.logger.info "[Scout Tools] Canvas update suggested: #{result[:canvas_type]}"
-        # Always broadcast the canvas update at the end
+        # This should rarely happen now since canvas broadcasts happen during tool execution
         yield({ 
           type: 'canvas_update', 
           canvas_type: result[:canvas_type], 

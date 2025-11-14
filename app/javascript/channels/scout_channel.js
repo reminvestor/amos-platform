@@ -42,6 +42,11 @@ document.addEventListener('turbo:load', function() {
     received(data) {
       console.log("📨 ScoutChannel: Received:", data)
       
+      // Special logging for load_canvas to debug production issue
+      if (data.type === 'load_canvas') {
+        console.log("🎨 LOAD_CANVAS MESSAGE RECEIVED:", JSON.stringify(data))
+      }
+      
       // Handle different message types
       switch(data.type) {
         // ==== AMOS MESSAGE TYPES ====
