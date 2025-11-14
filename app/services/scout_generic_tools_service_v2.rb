@@ -216,14 +216,15 @@ class ScoutGenericToolsServiceV2
     if tool_context[:canvas_suggestion]
       safe_load_canvas(tool_context[:canvas_suggestion], tool_context[:canvas_data] || {})
       
-      # For dynamic_canvas, don't broadcast immediately - wait for final response
-      # Other canvases can load immediately
-      if progress_callback && @suggested_canvas && @suggested_canvas != "dynamic_canvas"
+      # Broadcast canvas update immediately for all canvas types
+      if progress_callback && @suggested_canvas
         progress_callback.call({
           type: "canvas_update",
           canvas_type: @suggested_canvas,
           canvas_data: @canvas_data
         })
+        # Mark that we've already broadcast this canvas
+        @canvas_already_broadcast = true
       end
     end
 
