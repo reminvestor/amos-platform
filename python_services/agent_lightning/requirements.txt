@@ -1,6 +1,6 @@
 # Agent Lightning Python Service Requirements
 # Core Framework
-agent-lightning>=0.1.0
+agentlightning>=0.2.2
 
 # Web Framework
 fastapi>=0.115.0
