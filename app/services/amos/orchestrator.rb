@@ -415,10 +415,10 @@ module Amos
         end
         
         if chunk.is_a?(Hash) && chunk[:type] == 'canvas_update'
-          Rails.logger.info "[Amos] Canvas update from tools: #{chunk[:canvas]}"
+          Rails.logger.info "[Amos] Canvas update from tools: #{chunk[:canvas_type] || chunk[:canvas]}"
           ScoutChannel.broadcast_to(@session_id, {
             type: 'load_canvas',
-            canvas: chunk[:canvas],
+            canvas: chunk[:canvas_type] || chunk[:canvas],
             canvas_data: chunk[:canvas_data]
           })
         elsif chunk.is_a?(Hash) && chunk[:content]

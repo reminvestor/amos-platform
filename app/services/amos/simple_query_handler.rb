@@ -130,7 +130,7 @@ module Amos
             # Handle canvas updates by broadcasting them
             Rails.logger.info "[Scout] Canvas update: #{chunk[:canvas_type]}"
             # Pass the canvas update through for the orchestrator to handle
-            yield({ type: 'canvas_update', canvas: chunk[:canvas_type], canvas_data: chunk[:canvas_data] }) if block_given?
+            yield({ type: 'canvas_update', canvas_type: chunk[:canvas_type], canvas_data: chunk[:canvas_data] }) if block_given?
           elsif chunk[:type] == "tool_start" || chunk[:type] == "tool_use"
             # Log tool usage but don't stream it
             Rails.logger.info "[Scout] Using tool: #{chunk[:name] || chunk[:tool_name]}"
