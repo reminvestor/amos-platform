@@ -1444,6 +1444,12 @@ export default class extends Controller {
       console.log(`📦 Canvas data:`, canvasData)
       console.log(`🔄 Force refresh:`, forceRefresh)
       
+      // If canvasType is null, undefined, or empty, don't change the canvas
+      if (!canvasType || canvasType === null || canvasType === '') {
+        console.log("⚠️ Canvas type is empty/null, keeping current canvas")
+        return
+      }
+      
       // Check if we're already on this exact canvas (skip check if forceRefresh is true)
       if (!forceRefresh && this.currentCanvas && 
           this.currentCanvas.type === canvasType && 

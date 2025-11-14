@@ -948,6 +948,13 @@ class ScoutController < ApplicationController
     canvas_type = params[:canvas_type]
     canvas_data = params[:canvas_data] || {}
 
+    # If canvas_type is nil or empty, don't change the canvas
+    if canvas_type.blank?
+      Rails.logger.info "Scout: Canvas type is blank, keeping current canvas"
+      render json: { success: false, error: "Canvas type not specified" }, status: :bad_request
+      return
+    end
+
     begin
       Rails.logger.info "Scout: Loading canvas - Type: #{canvas_type}, Data: #{canvas_data}"
 
