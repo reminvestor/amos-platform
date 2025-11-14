@@ -100,3 +100,4 @@ TODO.md
 # Security audit reports (generated output)
 security_audit_report*.txt
 security_report*.txt
+.claude/.hook-logs
