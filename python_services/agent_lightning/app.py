@@ -6,9 +6,12 @@ It receives trace data from the Rails application and performs training with the
 """
 import asyncio
 import logging
+import os
+import shutil
 from contextlib import asynccontextmanager
 from typing import Dict, Any, Optional
 import time
+from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
@@ -37,6 +40,19 @@ logger = logging.getLogger(__name__)
 store: Optional[Any] = None
 store_server: Optional[Any] = None
 training_jobs: Dict[str, Dict[str, Any]] = {}
+
+# Phase 5: Startup time for uptime tracking
+startup_time: float = time.time()
+
+# Phase 5: Metrics tracking
+metrics_data: Dict[str, Any] = {
+    "total_training_jobs": 0,
+    "completed_jobs": 0,
+    "failed_jobs": 0,
+    "total_rollouts_created": 0,
+    "total_spans_added": 0,
+    "total_api_errors": 0
+}
 
 
 # Pydantic models for API requests
@@ -119,16 +135,85 @@ app = FastAPI(
 )
 
 
-@app.get("/health", response_model=HealthResponse)
+@app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return HealthResponse(
-        status="healthy",
-        agent_lightning_available=AGENT_LIGHTNING_AVAILABLE,
-        store_initialized=store is not None,
-        store_server_running=store_server is not None,
-        active_training_jobs=len(training_jobs)
-    )
+    """
+    Phase 5: Enhanced health check with diagnostics
+
+    Returns detailed health information for monitoring
+    """
+    # Check database connectivity (Phase 5 diagnostic)
+    db_healthy = False
+    db_error = None
+    try:
+        adapter = RailsStoreAdapter(settings.database_url)
+        await adapter.connect()
+        await adapter.disconnect()
+        db_healthy = True
+    except Exception as e:
+        db_error = str(e)
+        logger.warn(f"Database health check failed: {e}")
+
+    # Get disk space (Phase 5 monitoring)
+    try:
+        stat = shutil.disk_usage(settings.checkpoint_dir)
+        disk_available_mb = stat.free / (1024 * 1024)
+    except Exception as e:
+        disk_available_mb = 0
+        logger.warn(f"Could not check disk space: {e}")
+
+    # Overall status
+    overall_status = "healthy"
+    if not db_healthy:
+        overall_status = "degraded"
+    if not AGENT_LIGHTNING_AVAILABLE:
+        overall_status = "degraded"
+
+    return {
+        "status": overall_status,
+        "timestamp": datetime.now().isoformat(),
+        "uptime_seconds": time.time() - startup_time,
+        "agent_lightning_available": AGENT_LIGHTNING_AVAILABLE,
+        "store_initialized": store is not None,
+        "store_server_running": store_server is not None,
+        "database_connected": db_healthy,
+        "database_error": db_error,
+        "active_training_jobs": len(training_jobs),
+        "running_jobs": len([j for j in training_jobs.values() if j['status'] == 'running']),
+        "disk_available_mb": disk_available_mb,
+        "rollouts_in_store": len(store.rollouts) if store else 0,
+        "metrics": {
+            "total_training_jobs": metrics_data["total_training_jobs"],
+            "completed_jobs": metrics_data["completed_jobs"],
+            "failed_jobs": metrics_data["failed_jobs"],
+            "api_errors": metrics_data["total_api_errors"]
+        }
+    }
+
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    """
+    Phase 5: Prometheus-style metrics endpoint for monitoring
+
+    Provides metrics suitable for scraping by Prometheus/Grafana
+    """
+    uptime = time.time() - startup_time
+    success_rate = 0
+    if metrics_data["total_training_jobs"] > 0:
+        success_rate = (metrics_data["completed_jobs"] / metrics_data["total_training_jobs"]) * 100
+
+    return {
+        "uptime_seconds": uptime,
+        "training_jobs_total": metrics_data["total_training_jobs"],
+        "training_jobs_completed": metrics_data["completed_jobs"],
+        "training_jobs_failed": metrics_data["failed_jobs"],
+        "training_jobs_running": len([j for j in training_jobs.values() if j['status'] == 'running']),
+        "training_success_rate_percent": success_rate,
+        "store_rollouts_total": len(store.rollouts) if store else 0,
+        "api_errors_total": metrics_data["total_api_errors"],
+        "agent_lightning_available": AGENT_LIGHTNING_AVAILABLE
+    }
 
 
 @app.get("/")
@@ -141,6 +226,7 @@ async def root():
         "agent_lightning_available": AGENT_LIGHTNING_AVAILABLE,
         "endpoints": {
             "health": "/health",
+            "metrics": "/metrics",
             "rollouts": "/api/rollouts",
             "spans": "/api/spans",
             "training": "/api/training/*"
@@ -225,9 +311,11 @@ async def start_training(
     """
     Start a new training job
 
-    Phase 2: Fetches traces from Rails DB using store adapter, converts to rollouts, and starts VERL training
+    Phase 2: Fetches traces from Rails DB using store adapter
+    Phase 5: Enhanced error handling and metrics tracking
     """
     if not AGENT_LIGHTNING_AVAILABLE or not store:
+        metrics_data["total_api_errors"] += 1
         raise HTTPException(
             status_code=503,
             detail="Agent Lightning not available"
@@ -247,8 +335,10 @@ async def start_training(
             "config": training_request.config
         }
 
-        # Schedule training in background
-        # Phase 2: Now uses RailsStoreAdapter to load training data from database
+        # Phase 5: Update total training jobs counter
+        metrics_data["total_training_jobs"] += 1
+
+        # Schedule training in background with Phase 5 retry logic
         background_tasks.add_task(
             run_training_job,
             job_id,
@@ -264,6 +354,7 @@ async def start_training(
         }
 
     except Exception as e:
+        metrics_data["total_api_errors"] += 1
         logger.error(f"❌ Failed to start training: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -286,6 +377,44 @@ async def list_training_jobs():
     }
 
 
+@app.get("/api/training/{job_id}/optimized-prompts")
+async def get_optimized_prompts(job_id: str):
+    """
+    Phase 6: Get optimized prompts from a completed training job
+
+    Returns the optimized prompts extracted from VERL training results
+    so they can be applied back to Rails workflow templates
+    """
+    job = training_jobs.get(job_id)
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Training job not found")
+
+    if job['status'] != 'completed':
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job is {job['status']}, not completed yet"
+        )
+
+    results = job.get('results', {})
+
+    if results.get('status') == 'failed':
+        raise HTTPException(
+            status_code=400,
+            detail=f"Training job failed: {results.get('error')}"
+        )
+
+    return {
+        "job_id": job_id,
+        "entity_id": job['entity_id'],
+        "status": "ready",
+        "optimized_prompts": results.get('optimized_prompts', {}),
+        "improvement_percentage": results.get('overall_improvement', 0),
+        "training_metrics": results.get('training_metrics', {}),
+        "completed_at": job.get('completed_at')
+    }
+
+
 async def run_training_job(
     job_id: str,
     entity_id: int,
@@ -293,65 +422,94 @@ async def run_training_job(
     trace_ids: Optional[list[str]] = None
 ):
     """
-    Background task to run training
+    Background task to run training with Phase 5 error recovery
 
     Phase 2: Load traces from Rails DB using store adapter
     Phase 3: Span emission is handled in Rails service
     Phase 4: Real VERL training with Agent Lightning Trainer
+    Phase 5: Automatic retry with exponential backoff
     """
-    adapter = None
-    try:
-        training_jobs[job_id]["status"] = "running"
-        logger.info(f"Running training job {job_id}")
+    # Phase 5: Retry logic with exponential backoff
+    max_retries = 3
+    retry_count = 0
 
-        # Phase 2: Load training data from Rails DB
-        adapter = RailsStoreAdapter(settings.database_url)
-
+    while retry_count < max_retries:
+        adapter = None
         try:
-            # Populate store with real training data
-            result = await adapter.load_traces_for_training(
-                entity_id=entity_id,
-                trace_ids=trace_ids,
-                store=store
-            )
+            training_jobs[job_id]["status"] = "running"
+            if retry_count > 0:
+                logger.info(f"Training job {job_id} - Retry attempt {retry_count}")
+            else:
+                logger.info(f"Running training job {job_id}")
 
-            logger.info(f"✅ Loaded training data: {result}")
-            training_jobs[job_id]["data_loaded"] = result
+            # Phase 2: Load training data from Rails DB
+            adapter = RailsStoreAdapter(settings.database_url)
+
+            try:
+                # Populate store with real training data
+                result = await adapter.load_traces_for_training(
+                    entity_id=entity_id,
+                    trace_ids=trace_ids,
+                    store=store
+                )
+
+                logger.info(f"✅ Loaded training data: {result}")
+                training_jobs[job_id]["data_loaded"] = result
+
+            except Exception as e:
+                logger.error(f"Failed to load training data from database: {e}")
+                # Continue anyway - we'll train with empty store
+                training_jobs[job_id]["data_loaded"] = {
+                    "success": False,
+                    "error": str(e)
+                }
+
+            # Phase 4: Real VERL Training with Agent Lightning
+            if store and AGENT_LIGHTNING_AVAILABLE:
+                logger.info(f"Starting Phase 4: Real VERL training...")
+                training_result = await run_real_training(job_id, entity_id, config)
+                training_jobs[job_id]["results"] = training_result
+            else:
+                logger.warning("Agent Lightning not available - skipping real training")
+                # Simulate training for testing
+                await asyncio.sleep(2)
+                training_jobs[job_id]["results"] = {
+                    "message": "Training simulation (Agent Lightning unavailable)",
+                    "entity_id": entity_id
+                }
+
+            training_jobs[job_id]["status"] = "completed"
+            training_jobs[job_id]["completed_at"] = time.time()
+            logger.info(f"✅ Training job {job_id} completed")
+
+            # Phase 5: Update metrics
+            metrics_data["completed_jobs"] += 1
+            return  # Success
 
         except Exception as e:
-            logger.error(f"Failed to load training data from database: {e}")
-            # Continue anyway - we'll train with empty store
-            training_jobs[job_id]["data_loaded"] = {
-                "success": False,
-                "error": str(e)
-            }
+            retry_count += 1
+            logger.warning(f"Training job {job_id} failed (attempt {retry_count}/{max_retries}): {e}")
 
-        # Phase 4: Real VERL Training with Agent Lightning
-        if store and AGENT_LIGHTNING_AVAILABLE:
-            logger.info(f"Starting Phase 4: Real VERL training...")
-            training_result = await run_real_training(job_id, entity_id, config)
-            training_jobs[job_id]["results"] = training_result
-        else:
-            logger.warning("Agent Lightning not available - skipping real training")
-            # Simulate training for testing
-            await asyncio.sleep(2)
-            training_jobs[job_id]["results"] = {
-                "message": "Training simulation (Agent Lightning unavailable)",
-                "entity_id": entity_id
-            }
+            if retry_count >= max_retries:
+                logger.error(f"Training job {job_id} failed after {max_retries} attempts")
+                training_jobs[job_id]["status"] = "failed"
+                training_jobs[job_id]["error"] = f"Failed after {max_retries} retries: {e}"
 
-        training_jobs[job_id]["status"] = "completed"
-        training_jobs[job_id]["completed_at"] = time.time()
-        logger.info(f"✅ Training job {job_id} completed")
+                # Phase 5: Update failure metrics
+                metrics_data["failed_jobs"] += 1
+                return
 
-    except Exception as e:
-        logger.error(f"❌ Training job {job_id} failed: {e}")
-        training_jobs[job_id]["status"] = "failed"
-        training_jobs[job_id]["error"] = str(e)
+            # Phase 5: Exponential backoff before retry
+            backoff_seconds = 2 ** retry_count
+            logger.info(f"Retrying in {backoff_seconds} seconds...")
+            await asyncio.sleep(backoff_seconds)
 
-    finally:
-        if adapter:
-            await adapter.disconnect()
+        finally:
+            if adapter:
+                try:
+                    await adapter.disconnect()
+                except:
+                    pass
 
 
 async def run_real_training(job_id: str, entity_id: int, config: Dict[str, Any]) -> Dict[str, Any]:

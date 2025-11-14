@@ -138,6 +138,21 @@ class PythonAgentLightningClient
       end
     end
 
+    # Phase 6: Get optimized prompts from a training job
+    def get_optimized_prompts(job_id)
+      raise ServiceUnavailableError unless available?
+
+      response = HTTParty.get(
+        "#{BASE_URL}/api/training/#{job_id}/optimized-prompts",
+        timeout: 10
+      )
+
+      handle_response(response)
+    rescue HTTParty::Error, Timeout::Error => e
+      Rails.logger.error("Failed to get optimized prompts: #{e.message}")
+      raise ServiceUnavailableError, "Python service unavailable: #{e.message}"
+    end
+
     private
 
     def handle_response(response)
