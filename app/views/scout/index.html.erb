@@ -1545,6 +1545,32 @@ document.addEventListener('turbo:load', function() {
       originalHandleUpdate(data);
     }
   };
+  
+  // Handle workflow tasks that need user input
+  window.handleTaskNeedsInput = function(data) {
+    console.log("📋 Task needs user input:", data);
+    
+    // Add the message to chat with special styling
+    const content = `### 📋 ${data.description || 'Workflow Task'}\n\n${data.message}`;
+    
+    // Add to chat
+    if (typeof addMessage === 'function') {
+      addMessage(content, 'ai', new Date(data.timestamp));
+    }
+    
+    // Store the task ID for response routing
+    window.activeWorkflowTask = data.task_id;
+  };
+  
+  // Stream content from tasks to chat
+  window.streamTaskContent = function(data) {
+    console.log("📝 Streaming task content:", data);
+    
+    // Add content to chat
+    if (typeof addMessage === 'function') {
+      addMessage(data.content, data.role || 'ai', new Date(data.timestamp));
+    }
+  };
 
   const messageForm = document.getElementById('message-form');
   const messageInput = document.getElementById('message-input');

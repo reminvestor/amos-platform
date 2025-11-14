@@ -98,9 +98,15 @@ class TaskExecutionJob < ApplicationJob
   end
   
   def service_for_task_type
-    # All task types use the GenericTaskService which 
-    # intelligently routes to appropriate Scout tools based on task context
-    GenericTaskService.new(@task)
+    case @task.task_type
+    when 'interactive_workflow'
+      # Use specialized service for interactive workflows
+      InteractiveWorkflowTaskService.new(@task)
+    else
+      # All other task types use the GenericTaskService which 
+      # intelligently routes to appropriate Scout tools based on task context
+      GenericTaskService.new(@task)
+    end
   end
   
   def broadcast_progress(progress, message = nil)
@@ -109,7 +115,7 @@ class TaskExecutionJob < ApplicationJob
     Rails.logger.info "[TaskExecutionJob] Broadcasting progress for task #{@task.id}: #{progress}% - #{message}"
     
     # Always broadcast to Scout channel for UI updates
-    ScoutChannel.broadcast_to(
+    ::ScoutChannel.broadcast_to(
       @task.parent_conversation_id,
       {
         type: 'task_progress',
@@ -162,7 +168,7 @@ class TaskExecutionJob < ApplicationJob
     end
     
       # Broadcast task completed event
-      ScoutChannel.broadcast_to(
+      ::ScoutChannel.broadcast_to(
         @task.parent_conversation_id,
         {
           type: 'task_completed',
@@ -178,7 +184,7 @@ class TaskExecutionJob < ApplicationJob
       
       # Also broadcast task result to main chat
       if result[:response].present?
-        ScoutChannel.broadcast_to(
+        ::ScoutChannel.broadcast_to(
           @task.parent_conversation_id,
           {
             type: 'task_result',
@@ -225,7 +231,7 @@ class TaskExecutionJob < ApplicationJob
     )
     
     # Broadcast task failed event
-    ScoutChannel.broadcast_to(
+    ::ScoutChannel.broadcast_to(
       @task.parent_conversation_id,
       {
         type: 'task_failed',

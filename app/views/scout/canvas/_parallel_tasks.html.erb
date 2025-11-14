@@ -1,53 +1,74 @@
-<div id="parallel-tasks-panel" class="parallel-tasks-panel" data-conversation-id="<%= raw (@session_id || @canvas_data&.dig('session_id')) %>" data-canvas-loaded="<%= Time.now.to_i %>">
-  <div class="panel-header">
-    <h4>
-      <i data-lucide="layers" style="width: 1.25rem; height: 1.25rem; color: #A78BFA;"></i>
-      Parallel Tasks
-    </h4>
-    <button onclick="testAddTask()" style="background: #A78BFA; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; cursor: pointer;">Test Add</button>
+<div style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem;">
+  <!-- Page Header -->
+  <div style="margin-bottom: 2rem;">
+    <h1 style="color: #FFFFFF; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+      <i data-lucide="layers" class="icon-2x" style="color: #A78BFA;"></i>
+      Task Monitor
+    </h1>
+    <p style="color: #94A3B8; margin-bottom: 0;">Monitor active background tasks and agent workflows</p>
   </div>
-  
-  <div class="tasks-container" id="parallel-tasks-list">
-    <!-- Tasks will be dynamically added here -->
-    <div class="no-tasks-placeholder" id="no-tasks-placeholder">
-      <i data-lucide="loader" class="loading-icon"></i>
-      <span>Loading tasks...</span>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <span style="background: #7C3AED; color: white; padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600;">
+        <span id="task-count">0</span> Active
+      </span>
+    </div>
+    <button onclick="refreshTasks()" title="Refresh" 
+            style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500;">
+      <i data-lucide="refresh-cw" class="icon-md"></i>
+      Refresh
+    </button>
+  </div>
+
+  <div id="parallel-tasks-panel" class="parallel-tasks-panel" data-conversation-id="<%= raw (@session_id || @canvas_data&.dig('session_id')) %>" data-canvas-loaded="<%= Time.now.to_i %>" data-canvas-type="parallel_tasks">
+    <div class="tasks-container" id="parallel-tasks-list">
+      <!-- Tasks will be dynamically added here -->
+      <div class="empty-state" id="empty-state">
+        <i data-lucide="inbox" class="icon-3x empty-icon"></i>
+        <p>No active tasks</p>
+        <span>Tasks will appear here when agents start working</span>
+      </div>
     </div>
   </div>
 </div>
 
 <style>
 .parallel-tasks-panel {
-  background: #111827;
-  border: 1px solid #1F2937;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
-  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  background: #1A1F35;
+  border: 1px solid #1E293B;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  min-height: calc(100vh - 12rem);
 }
 
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid #1F2937;
-}
-
-.panel-header h4 {
-  display: flex;
+.refresh-btn {
+  background: transparent;
+  border: 1px solid #1E293B;
+  color: #94A3B8;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  margin: 0;
-  color: #F3F4F6;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
+/* Hover effect removed for simplicity */
+
+/* Icon sizing is handled by icon classes */
 
 .tasks-container {
-  padding: 1rem;
-  max-height: 400px;
+  flex: 1;
+  padding: 1.5rem;
   overflow-y: auto;
+  background: transparent;
 }
 
 .tasks-container::-webkit-scrollbar {
@@ -55,162 +76,166 @@
 }
 
 .tasks-container::-webkit-scrollbar-track {
-  background: #1F2937;
-}
-
-.tasks-container::-webkit-scrollbar-thumb {
-  background: #374151;
+  background: #0F1522;
   border-radius: 4px;
 }
 
-.task-item {
-  background: #1F2937;
-  border: 1px solid #374151;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  margin-bottom: 0.75rem;
-  transition: all 0.3s ease;
+.tasks-container::-webkit-scrollbar-thumb {
+  background: #1E293B;
+  border-radius: 4px;
 }
 
+.tasks-container::-webkit-scrollbar-thumb:hover {
+  background: #7C3AED;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #94A3B8;
+}
+
+.empty-icon {
+  display: block;
+  margin: 0 auto 1rem;
+  opacity: 0.3;
+  color: #94A3B8;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #FFFFFF;
+}
+
+.empty-state span {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #94A3B8;
+}
+
+.task-item {
+  background: #1A1F35;
+  color: #FFFFFF;
+  border: 1px solid #1E293B;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 0.75rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.task-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #64748B;
+  transition: background 0.3s ease;
+}
+
+.task-item.running::before,
+.task-item.active::before,
+.task-item.processing::before {
+  background: #7C3AED;
+}
+
+.task-item.completed::before {
+  background: #10b981;
+}
+
+.task-item.failed::before {
+  background: #ef4444;
+}
+
+.task-item.waiting_for_input::before {
+  background: #f59e0b;
+}
+
+/* Hover effect removed for simplicity */
+
 .task-item.new {
-  animation: slideIn 0.3s ease;
+  animation: slideIn 0.4s ease;
 }
 
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateX(-20px);
+    transform: translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
 .task-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 0.75rem;
 }
 
+.task-info {
+  flex: 1;
+  margin-right: 1rem;
+}
+
+.task-type {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #94A3B8;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
 .task-title {
-  font-size: 0.9rem;
-  color: #E5E7EB;
+  font-size: 0.875rem;
+  color: #FFFFFF;
   font-weight: 500;
+  line-height: 1.4;
 }
 
 .task-status {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.375rem;
   font-size: 0.75rem;
-  font-weight: 500;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-}
-
-.task-status.queued {
-  background: rgba(156, 163, 175, 0.2);
-  color: #9CA3AF;
-}
-
-.task-status.active {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60A5FA;
-}
-
-.task-status.completed {
-  background: rgba(34, 197, 94, 0.2);
-  color: #4ADE80;
-}
-
-.task-status.failed {
-  background: rgba(239, 68, 68, 0.2);
-  color: #F87171;
-}
-
-.progress-bar-container {
-  width: 100%;
-  height: 6px;
-  background: #374151;
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-}
-
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #8B5CF6 0%, #A78BFA 100%);
-  transition: width 0.3s ease;
-}
-
-.task-message {
-  font-size: 0.75rem;
-  color: #9CA3AF;
-  margin-top: 0.25rem;
-}
-
-.task-dependencies {
-  margin-top: 0.5rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
-
-.dependency-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.125rem 0.5rem;
-  background: #374151;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
   border-radius: 9999px;
-  font-size: 0.7rem;
-  color: #9CA3AF;
+  white-space: nowrap;
+  border: 1px solid transparent;
 }
 
-/* Dependency types */
-.dependency-badge.blocking {
-  border-color: #F87171;
+.status-icon {
+  /* Icon sizing handled by icon classes */
 }
 
-.dependency-badge.informational {
-  border-color: #60A5FA;
+.task-status.queued,
+.task-status.pending {
+  background: rgba(100, 116, 139, 0.1);
+  border-color: #64748B;
+  color: #94A3B8;
 }
 
-.dependency-badge.optional {
-  border-color: #9CA3AF;
+.task-status.running,
+.task-status.active,
+.task-status.processing {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: #7C3AED;
+  color: #A78BFA;
 }
 
-/* Dependency statuses */
-.dependency-badge.pending {
-  background: rgba(251, 191, 36, 0.2);
-  color: #FCD34D;
-}
-
-.dependency-badge.satisfied {
-  background: rgba(34, 197, 94, 0.2);
-  color: #4ADE80;
-}
-
-.dependency-badge.failed {
-  background: rgba(239, 68, 68, 0.2);
-  color: #F87171;
-}
-
-.no-tasks-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  color: #6B7280;
-  padding: 2rem;
-  font-size: 0.875rem;
-}
-
-.no-tasks-placeholder .loading-icon {
-  width: 1rem;
-  height: 1rem;
+.task-status.running .status-icon,
+.task-status.processing .status-icon {
   animation: spin 1s linear infinite;
 }
 
@@ -219,50 +244,305 @@
   to { transform: rotate(360deg); }
 }
 
-.progress-bar {
-  background: #A78BFA;
+.task-status.completed {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+  color: #10b981;
 }
 
-.task-item.active .progress-bar {
+.task-status.failed {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.task-status.waiting_for_input {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.task-status.canceling,
+.task-status.canceled {
+  background: rgba(100, 116, 139, 0.1);
+  border-color: #64748B;
+  color: #94A3B8;
+}
+
+.task-status.canceling .status-icon {
+  animation: spin 1s linear infinite;
+}
+
+.progress-section {
+  margin-bottom: 0.75rem;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.375rem;
+}
+
+.progress-label {
+  font-size: 0.75rem;
+  color: #94A3B8;
+}
+
+.progress-value {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 6px;
+  background: #0F1522;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar {
+  height: 100%;
+  background: #7C3AED;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.task-item.running .progress-bar::after,
+.task-item.processing .progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.task-message {
+  font-size: 0.8125rem;
+  color: #94A3B8;
+  line-height: 1.4;
+  margin-top: 0.5rem;
+}
+
+.task-item.failed .task-message {
+  color: #ef4444;
+}
+
+.task-details {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #1E293B;
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.task-item.expanded .task-details {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 0.8125rem;
+  color: #FFFFFF;
+}
+
+.expand-indicator {
+  margin-left: 0.5rem;
+  transition: transform 0.3s ease;
+  display: inline-block;
+  opacity: 0.8;
+  color: #94A3B8;
+}
+
+.task-item.expanded .expand-indicator {
+  transform: rotate(180deg);
+}
+
+.task-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.task-action-btn {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid #1E293B;
+  background: #0F1522;
+  color: #FFFFFF;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Hover effect removed for simplicity */
+
+.cancel-btn {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #ef4444;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.cancel-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* Agent-specific styling */
+.task-item[data-agent-type="landing_page_agent"] .task-type {
+  color: #A78BFA;
+}
+
+.task-item[data-agent-type="landing_page_agent"]::before {
+  background: #7C3AED;
+}
+
+.task-item[data-agent-type="email_campaign_agent"] .task-type {
+  color: #3b82f6;
+}
+
+.task-item[data-agent-type="email_campaign_agent"]::before {
+  background: #3b82f6;
+}
+
+.task-item[data-agent-type="contact_enrichment_agent"] .task-type {
+  color: #10b981;
+}
+
+.task-item[data-agent-type="contact_enrichment_agent"]::before {
+  background: #10b981;
+}
+
+/* Pulse animation for active tasks */
+.task-item.running::before,
+.task-item.processing::before {
   animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
+  50% { opacity: 0.6; }
+}
+
+/* Refresh animation */
+.refresh-btn.spinning i {
+  animation: spin 0.5s ease;
 }
 </style>
 
 <script>
 // Initialize immediately since this is a canvas
-console.log('🚀 Initializing parallel tasks canvas');
+console.log('🚀 Initializing improved parallel tasks canvas');
 
-// Test function
-window.testAddTask = function() {
-  console.log('🧪 Testing addOrUpdateTask function');
-  addOrUpdateTask({
-    task_id: 'test-' + Date.now(),
-    task_type: 'background',
-    description: 'Test Task ' + new Date().toLocaleTimeString(),
-    status: 'active',
-    progress: Math.floor(Math.random() * 100),
-    message: 'This is a test task'
-  });
-};
+// Track active tasks count
+let activeTasksCount = 0;
 
-window.addOrUpdateTask = function addOrUpdateTask(taskData) {
-  console.log('🔧 addOrUpdateTask called with:', taskData);
+// Update task count in header
+function updateTaskCount() {
+  const tasks = document.querySelectorAll('.task-item');
+  const activeTasks = document.querySelectorAll('.task-item.running, .task-item.processing, .task-item.waiting_for_input');
+  const countElement = document.getElementById('task-count');
+  if (countElement) {
+    countElement.textContent = activeTasks.length;
+    activeTasksCount = activeTasks.length;
+  }
+}
+
+// Refresh tasks (placeholder for future functionality)
+function refreshTasks() {
+  const btn = event.currentTarget;
+  btn.classList.add('spinning');
+  setTimeout(() => {
+    btn.classList.remove('spinning');
+  }, 500);
+  
+  console.log('🔄 Refreshing tasks...');
+  // Could trigger a refresh from the server here
+}
+
+// Get status icon based on status
+function getStatusIcon(status) {
+  const icons = {
+    queued: 'clock',
+    pending: 'clock',
+    running: 'loader-2',
+    active: 'loader-2',
+    processing: 'loader-2',
+    completed: 'check-circle',
+    failed: 'x-circle',
+    waiting_for_input: 'message-circle',
+    canceling: 'loader-2',
+    canceled: 'ban'
+  };
+  return icons[status] || 'circle';
+}
+
+// Format agent type for display
+function formatAgentType(type) {
+  if (!type) return 'Task';
+  return type.replace(/_agent$/, '')
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+// Add or update task
+window.addOrUpdateTask = function addOrUpdateTask(taskData, isInitialLoad = false) {
+  console.log('🔧 addOrUpdateTask called with:', taskData, 'Initial load:', isInitialLoad);
   const container = document.getElementById('parallel-tasks-list');
   if (!container) {
     console.error('❌ Container #parallel-tasks-list not found!');
-    console.error('❌ Document body:', document.body.innerHTML.substring(0, 500));
     return;
   }
   
-  // Remove placeholder if it exists
-  const placeholder = document.getElementById('no-tasks-placeholder');
-  if (placeholder) {
-    placeholder.remove();
+  // Remove empty state if it exists
+  const emptyState = document.getElementById('empty-state');
+  if (emptyState) {
+    emptyState.remove();
   }
   
   let taskElement = container.querySelector(`[data-task-id="${taskData.task_id}"]`);
@@ -273,332 +553,355 @@ window.addOrUpdateTask = function addOrUpdateTask(taskData) {
     taskElement = document.createElement('div');
     taskElement.className = 'task-item new';
     taskElement.setAttribute('data-task-id', taskData.task_id);
-    container.appendChild(taskElement);
-    console.log('✅ New task element appended to container');
-    console.log('📊 Container now has', container.children.length, 'children');
+    if (taskData.task_type || taskData.agent_type) {
+      taskElement.setAttribute('data-agent-type', taskData.task_type || taskData.agent_type);
+    }
+    
+    // For initial load, append to preserve order. For real-time updates, prepend to show at top
+    if (isInitialLoad) {
+      container.appendChild(taskElement);
+      console.log('✅ New task element appended to container (initial load)');
+    } else {
+      container.insertBefore(taskElement, container.firstChild);
+      console.log('✅ New task element prepended to container (real-time update)');
+    }
   }
   
   // Update status
-  const statusClass = (taskData.status || 'queued').toLowerCase();
-  taskElement.className = `task-item ${isNew ? 'new' : ''} ${statusClass}`;
+  const status = (taskData.status || 'queued').toLowerCase();
+  taskElement.className = `task-item ${isNew ? 'new' : ''} ${status}`;
   
-  // Build content
   // Store or update description
   if (taskData.description) {
     taskElement.dataset.description = taskData.description;
   }
   const description = taskData.description || taskElement.dataset.description || 'Task ' + taskData.task_id;
   
-  // Create simple HTML first
+  // Store task data on element
+  taskElement.taskData = taskData;
+  
+  // Calculate elapsed time
+  const startTime = taskData.started_at || taskElement.dataset.startedAt || new Date().toISOString();
+  if (!taskElement.dataset.startedAt) {
+    taskElement.dataset.startedAt = startTime;
+  }
+  
+  // Format progress
+  const progress = taskData.progress || 0;
+  const showProgress = status === 'running' || status === 'processing' || status === 'active';
+  
+  // Create HTML
   taskElement.innerHTML = `
     <div class="task-header">
-      <div class="task-title">${description}</div>
-      <span class="task-status ${statusClass}">
-        ${taskData.status || 'Queued'}
+      <div class="task-info">
+        <div class="task-type">${formatAgentType(taskData.task_type || taskData.agent_type)}</div>
+        <div class="task-title" onclick="window.toggleTaskExpand('${taskData.task_id}')">
+          ${description}
+          <span class="expand-indicator">▼</span>
+        </div>
+      </div>
+      <span class="task-status ${status}">
+        <i data-lucide="${getStatusIcon(status)}" class="icon-sm status-icon"></i>
+        ${status.replace(/_/g, ' ')}
       </span>
     </div>
-    ${taskData.progress !== undefined ? `
-      <div class="progress-bar-container">
-        <div class="progress-bar" style="width: ${taskData.progress}%"></div>
+    ${showProgress ? `
+      <div class="progress-section">
+        <div class="progress-info">
+          <span class="progress-label">Progress</span>
+          <span class="progress-value">${progress}%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" style="width: ${progress}%"></div>
+        </div>
       </div>
     ` : ''}
     ${taskData.message ? `<div class="task-message">${taskData.message}</div>` : ''}
+    <div class="task-details">
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">Task ID</span>
+          <span class="detail-value">${String(taskData.task_id).substring(0, 8)}...</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Started</span>
+          <span class="detail-value">${new Date(startTime).toLocaleTimeString()}</span>
+        </div>
+        ${taskData.agent_name ? `
+          <div class="detail-item">
+            <span class="detail-label">Agent</span>
+            <span class="detail-value">${taskData.agent_name}</span>
+          </div>
+        ` : ''}
+        <div class="detail-item">
+          <span class="detail-label">Duration</span>
+          <span class="detail-value" data-start-time="${startTime}">${calculateDuration(startTime)}</span>
+        </div>
+      </div>
+      ${taskData.error ? `
+        <div class="task-message" style="color: #ef4444; margin-top: 0.75rem;">
+          <strong>Error:</strong> ${taskData.error}
+        </div>
+      ` : ''}
+      ${(status === 'running' || status === 'processing' || status === 'waiting_for_input' || status === 'queued' || status === 'pending') ? `
+        <div class="task-actions">
+          <button class="task-action-btn cancel-btn" onclick="cancelTask('${taskData.task_id}')">
+            <i data-lucide="x-circle" class="icon-sm"></i>
+            Cancel Task
+          </button>
+        </div>
+      ` : ''}
+    </div>
   `;
-  
-  // Log what we created
-  console.log('📝 Created task HTML:', taskElement.outerHTML);
   
   // Reinitialize lucide icons
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
   
-  // Canvas is already showing, no need to show panel
+  // Update task count
+  updateTaskCount();
   
   // Remove 'new' class after animation
-  setTimeout(() => {
-    taskElement.classList.remove('new');
-  }, 300);
+  if (isNew) {
+    setTimeout(() => {
+      taskElement.classList.remove('new');
+    }, 400);
+  }
+  
+  // Auto-expand failed tasks
+  if (status === 'failed' && !taskElement.classList.contains('expanded')) {
+    taskElement.classList.add('expanded');
+  }
 };
 
-function getStatusIcon(status) {
-  const icons = {
-    queued: 'clock',
-    active: 'loader',
-    completed: 'check-circle',
-    failed: 'x-circle'
-  };
-  return icons[status] || 'circle';
+// Calculate duration from start time
+function calculateDuration(startTime) {
+  const start = new Date(startTime);
+  const now = new Date();
+  const diff = Math.floor((now - start) / 1000);
+  
+  if (diff < 60) return `${diff}s`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ${diff % 60}s`;
+  return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
+}
+
+// Toggle task expand/collapse
+window.toggleTaskExpand = function(taskId) {
+  const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+  if (taskElement) {
+    taskElement.classList.toggle('expanded');
+  }
+};
+
+// Handle canvas updates
+window.handleCanvasUpdate = function(data) {
+  console.log("📨 CANVAS: Processing update:", data);
+  
+  // Handle different message types
+  switch(data.type) {
+    case 'task_progress':
+      console.log(`📊 CANVAS: Task ${data.task_id} progress: ${data.progress}% - ${data.message}`);
+      console.log('📊 CANVAS: Full task data:', data);
+      addOrUpdateTask({
+        task_id: data.task_id,
+        task_type: data.task_type || data.agent_type,
+        agent_type: data.agent_type || data.task_type,
+        description: data.description || 'Processing task...',
+        status: data.status || 'running',
+        progress: data.progress || 0,
+        message: data.message || 'Working...',
+        started_at: data.started_at || new Date().toISOString()
+      });
+      break;
+      
+    case 'task_completed':
+      console.log(`✅ CANVAS: Task ${data.task_id} completed`);
+      addOrUpdateTask({
+        task_id: data.task_id,
+        description: data.description,
+        status: 'completed',
+        progress: 100,
+        message: data.message || 'Task completed successfully'
+      });
+      break;
+      
+    case 'task_failed':
+      console.log(`❌ CANVAS: Task ${data.task_id} failed: ${data.error}`);
+      addOrUpdateTask({
+        task_id: data.task_id,
+        description: data.description,
+        status: 'failed',
+        progress: data.progress || 0,
+        message: data.error || 'Task failed',
+        error: data.error
+      });
+      break;
+      
+    default:
+      console.log("Unknown message type:", data.type);
+  }
+};
+
+// Update durations every second
+setInterval(() => {
+  document.querySelectorAll('[data-start-time]').forEach(el => {
+    const startTime = el.getAttribute('data-start-time');
+    if (startTime) {
+      el.textContent = calculateDuration(startTime);
+    }
+  });
+}, 1000);
+
+// Cancel task function
+window.cancelTask = function(taskId) {
+  if (!confirm('Are you sure you want to cancel this task?')) {
+    return;
+  }
+  
+  console.log(`🚫 Canceling task: ${taskId}`);
+  
+  // Extract the actual job ID (remove 'amos-' prefix if present)
+  const jobId = taskId.startsWith('amos-') ? taskId.substring(5) : taskId;
+  
+  // Update UI immediately to show canceling status
+  const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+  if (taskElement) {
+    taskElement.className = 'task-item canceling';
+    const statusElement = taskElement.querySelector('.task-status');
+    if (statusElement) {
+      statusElement.className = 'task-status canceling';
+      statusElement.innerHTML = '<i data-lucide="loader-2" class="icon-sm status-icon"></i> Canceling...';
+      lucide.createIcons();
+    }
+  }
+  
+  // Send cancel request to server
+  fetch('/scout/cancel_job', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+    },
+    body: JSON.stringify({ job_id: jobId })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log(`✅ Task ${taskId} canceled successfully`);
+      // Update task status to canceled
+      addOrUpdateTask({
+        task_id: taskId,
+        status: 'canceled',
+        message: 'Task was canceled',
+        progress: 0
+      });
+    } else {
+      console.error(`❌ Failed to cancel task: ${data.error}`);
+      alert(`Failed to cancel task: ${data.error || 'Unknown error'}`);
+      // Restore previous status if cancellation failed
+      if (taskElement && taskElement.taskData) {
+        addOrUpdateTask(taskElement.taskData);
+      }
+    }
+  })
+  .catch(error => {
+    console.error('❌ Error canceling task:', error);
+    alert('Failed to cancel task. Please try again.');
+    // Restore previous status
+    if (taskElement && taskElement.taskData) {
+      addOrUpdateTask(taskElement.taskData);
+    }
+  });
+};
+
+// Make functions globally available
+window.toggleTaskExpand = toggleTaskExpand;
+window.refreshTasks = refreshTasks;
+window.addOrUpdateTask = addOrUpdateTask;
+window.handleCanvasUpdate = handleCanvasUpdate;
+window.cancelTask = cancelTask;
+
+// Keep track of all subscriptions for different sessions
+window.parallelTaskSubscriptions = window.parallelTaskSubscriptions || new Map();
+
+// Subscribe to current session for updates
+const currentSessionId = '<%= raw (@session_id || @canvas_data&.dig('session_id')) %>';
+if (currentSessionId) {
+  console.log('🔌 Session ID for subscription:', currentSessionId);
+  
+  // The parent Scout controller should already have the subscription
+  // We just need to ensure our handler is called
+  if (window.handleParallelTaskUpdate) {
+    console.log('✅ Found parent handleParallelTaskUpdate function');
+  }
 }
 
 // Initialize canvas
 function initializeParallelTasksCanvas() {
-  console.log('🎯 Parallel Tasks Canvas initialized');
+  console.log('🎯 Improved Parallel Tasks Canvas initialized');
   console.log('📊 Canvas data:', <%= raw @canvas_data.to_json %>);
-  console.log('🆔 Session ID:', '<%= raw @session_id %>');
 
   // Initialize tasks from canvas data if available
   <% if @canvas_data && @canvas_data['tasks'] %>
-    console.log('📦 Initializing parallel tasks from canvas data - found', <%= raw @canvas_data['tasks'].length.to_json %>, 'tasks');
+    console.log('📦 Initializing tasks from canvas data - found', <%= raw @canvas_data['tasks'].length.to_json %>, 'tasks');
     
-    // Try to add tasks immediately
-    const container = document.getElementById('parallel-tasks-list');
-    if (container) {
-      console.log('✅ Container found, adding tasks immediately');
-      <% @canvas_data['tasks'].each do |task| %>
-        console.log('➕ Adding task', <%= raw task['id'].to_json %>, ':', <%= raw task['description'].to_json %>);
-        addOrUpdateTask({
-          task_id: <%= raw task['id'].to_json %>,
-          task_type: <%= raw task['type'].to_json %>,
-          description: <%= raw task['description'].to_json %>,
-          status: <%= raw task['status'].to_json %>,
-          progress: <%= raw (task['progress'] || 0).to_json %>,
-          dependencies: <%= raw (task['dependencies'] || []).to_json %>
-        });
-      <% end %>
-    } else {
-      console.error('❌ Container not found immediately, trying after timeout');
-      // Fallback with timeout
-      setTimeout(() => {
-        const container = document.getElementById('parallel-tasks-list');
-        if (!container) {
-          console.error('❌ Container still not found after timeout!');
-          return;
-        }
-        
-        <% @canvas_data['tasks'].each do |task| %>
-          console.log('➕ Adding task (delayed) <%= task['id'] %>: <%= task['description'] %>');
-          addOrUpdateTask({
-            task_id: <%= raw task['id'].to_json %>,
-            task_type: <%= raw task['type'].to_json %>,
-            description: <%= raw task['description'].to_json %>,
-            status: <%= raw task['status'].to_json %>,
-            progress: <%= raw (task['progress'] || 0).to_json %>,
-            dependencies: <%= raw (task['dependencies'] || []).to_json %>
-          });
-        <% end %>
-      }, 200);
-    }
+    <% @canvas_data['tasks'].each do |task| %>
+      console.log('➕ Adding task', <%= raw task.to_json %>);
+      addOrUpdateTask({
+        task_id: <%= raw (task['id'] || task['job_id']).to_json %>,
+        task_type: <%= raw (task['type'] || task['agent_type']).to_json %>,
+        agent_type: <%= raw (task['agent_type'] || task['type']).to_json %>,
+        description: <%= raw (task['description'] || task['task']).to_json %>,
+        status: <%= raw task['status'].to_json %>,
+        progress: <%= raw (task['progress'] || 0).to_json %>,
+        message: <%= raw task['status_message'].to_json %>,
+        started_at: <%= raw task['created_at'].to_json %>
+      }, true);  // Pass true for initial load
+    <% end %>
   <% else %>
-    console.log('❌ No canvas data or tasks found');
+    console.log('📦 No initial tasks to display');
   <% end %>
-
-  // ActionCable subscription for task updates
-  const sessionId = '<%= raw (@session_id || @canvas_data&.dig('session_id')) %>';
-  console.log('🔌 Setting up ActionCable subscription for session:', sessionId);
   
-  // Debug current subscriptions
-  console.log('📊 Current App:', window.App);
-  console.log('📊 Current App.cable:', window.App?.cable);
-  console.log('📊 Current App.cable subscriptions:', window.App?.cable?.subscriptions);
-  
-  // Try parent window's App if not available in current context
-  let cableApp = window.App;
-  if (!cableApp || !cableApp.cable) {
-    console.log('🔍 Trying parent window App...');
-    cableApp = window.parent?.App;
-  }
-  
-  // Ensure we have ActionCable
-  if (!sessionId) {
-    console.error('❌ No session ID available for ActionCable subscription');
-    return;
-  }
-  
-  if (!cableApp || !cableApp.cable) {
-    console.error('❌ ActionCable not available (App.cable is undefined)');
-    console.log('Window.App:', window.App);
-    console.log('Parent Window.App:', window.parent?.App);
-    return;
-  }
-  
-  const App = cableApp; // Use the found App
-  
-  // Check if consumer is connected
-  console.log('📡 ActionCable consumer connected?', App.cable.connection?.consumer?.connection?.isOpen());
-  
-  // Create a unique subscription for this canvas
-  const subscriptionName = `parallelTasksCanvas_${sessionId}`;
-  
-  // Cleanup any existing subscription
-  if (window[subscriptionName]) {
-    console.log('🧹 Cleaning up existing subscription');
-    window[subscriptionName].unsubscribe();
-  }
-  
-  console.log('📡 Creating new ActionCable subscription with params:', { channel: "ScoutChannel", session_id: sessionId });
-  
-  // Check if there's already a subscription for this session
-  const existingSubscription = App.cable.subscriptions.subscriptions.find(sub => {
-    try {
-      const identifier = JSON.parse(sub.identifier);
-      return identifier.channel === "ScoutChannel" && identifier.session_id === sessionId;
-    } catch (e) {
-      return false;
-    }
-  });
-  
-  if (existingSubscription) {
-    console.log('🔄 Found existing ScoutChannel subscription, reusing it');
-    window[subscriptionName] = existingSubscription;
-    
-    // Override the received method to handle our canvas updates
-    const originalReceived = existingSubscription.received;
-    existingSubscription.received = function(data) {
-      console.log("📨 CANVAS: Intercepted data:", data);
-      
-      // Call original handler if it exists
-      if (originalReceived && typeof originalReceived === 'function') {
-        originalReceived.call(this, data);
-      }
-      
-      // Handle canvas-specific updates
-      handleCanvasUpdate(data);
-    };
-  } else {
-    console.log('📡 Creating new ScoutChannel subscription');
-    
-    // Try creating subscription
-    try {
-      window[subscriptionName] = App.cable.subscriptions.create(
-        { channel: "ScoutChannel", session_id: sessionId },
-        {
-          connected() {
-            console.log("✅ CANVAS: Connected to ScoutChannel for session:", sessionId);
-            console.log("✅ Subscription identifier:", this.identifier);
-            console.log("✅ Consumer subscriptions:", App.cable.subscriptions.subscriptions);
-          },
-          disconnected() {
-            console.log("❌ CANVAS: Disconnected from ScoutChannel");
-          },
-          rejected() {
-            console.error("❌ CANVAS: Subscription rejected by server");
-          },
-          received(data) {
-            console.log("📨 CANVAS: Received data:", data);
-            handleCanvasUpdate(data);
-          }
-        }
-      );
-      
-      console.log('📡 Subscription created:', window[subscriptionName]);
-    } catch (error) {
-      console.error('❌ Failed to create ActionCable subscription:', error);
-    }
-  }
-  
-  // Handle canvas updates (shared function)
-  function handleCanvasUpdate(data) {
-    console.log("📨 CANVAS: Processing update:", data);
-    
-    // Handle different message types
-    switch(data.type) {
-          case 'task_progress':
-            console.log(`📊 CANVAS: Task ${data.task_id} progress: ${data.progress}% - ${data.message}`);
-            // Update the UI
-            addOrUpdateTask({
-              task_id: data.task_id,
-              task_type: data.task_type,
-              description: data.description,
-              status: data.status || 'active',
-              progress: data.progress,
-              message: data.message
-            });
-            break;
-            
-          case 'task_completed':
-            console.log(`✅ CANVAS: Task ${data.task_id} completed`);
-            addOrUpdateTask({
-              task_id: data.task_id,
-              description: data.description,
-              status: 'completed',
-              progress: 100,
-              message: 'Completed'
-            });
-            break;
-            
-          case 'task_failed':
-            console.log(`❌ CANVAS: Task ${data.task_id} failed: ${data.error}`);
-            addOrUpdateTask({
-              task_id: data.task_id,
-              description: data.description,
-              status: 'failed',
-              progress: 100,
-              message: data.error || 'Failed'
-            });
-            break;
-            
-          case 'canvas_test':
-            console.log("✅ CANVAS TEST: Received test broadcast:", data);
-            break;
-            
-        default:
-          console.log("Unknown message type:", data.type);
-      }
-  }
+  // Also load Amos jobs from server data
+  <% if @amos_jobs.present? %>
+    console.log('📦 Loading <%= @amos_jobs.count %> Amos jobs...');
+    // Iterate through jobs in order (already sorted desc by created_at)
+    <% @amos_jobs.each do |job| %>
+      addOrUpdateTask({
+        task_id: 'amos-<%= job.job_id %>',
+        task_type: '<%= job.agent_type %>',
+        agent_type: '<%= job.agent_type %>',
+        description: <%= raw (job.input_data&.dig('task') || job.agent_type.humanize).to_json %>,
+        status: '<%= job.status %>',
+        progress: <%= job.progress || 0 %>,
+        message: <%= raw (job.status_message || '').to_json %>,
+        started_at: '<%= job.created_at.iso8601 %>'
+      }, true);  // Pass true for initial load
+    <% end %>
+  <% end %>
   
   // Initialize lucide icons
   if (typeof lucide !== 'undefined') {
-    console.log('🎨 Initializing lucide icons');
     lucide.createIcons();
-  } else {
-    console.error('❌ Lucide not available');
   }
   
-  // Log final state
-  const finalContainer = document.getElementById('parallel-tasks-list');
-  console.log('🏁 Final state - container exists:', !!finalContainer);
-  console.log('🏁 Final state - child elements:', finalContainer ? finalContainer.children.length : 'N/A');
+  // Update initial count
+  updateTaskCount();
 }
 
-// Make initialization function global for debugging
-window.initializeParallelTasksCanvas = initializeParallelTasksCanvas;
-
-// Initialize immediately and on DOM ready
-console.log('🚀 Starting initialization...');
+// Initialize immediately
 initializeParallelTasksCanvas();
 
-// Also initialize on DOM ready in case we're too early
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeParallelTasksCanvas);
-}
-
-// Debug function to check state
+// Debug function
 window.debugParallelTasks = function() {
   const panel = document.getElementById('parallel-tasks-panel');
   const container = document.getElementById('parallel-tasks-list');
-  const sessionId = panel?.dataset?.conversationId;
+  const tasks = container ? container.querySelectorAll('.task-item') : [];
   console.log('Panel exists:', !!panel);
   console.log('Container exists:', !!container);
-  console.log('Session ID:', sessionId);
-  console.log('Tasks count:', container ? container.querySelectorAll('.task-item').length : 'N/A');
-  console.log('Container children:', container ? container.children : 'N/A');
-  console.log('ActionCable subscriptions:', App.cable?.subscriptions?.subscriptions);
-  return { panel, container, sessionId };
-};
-
-// Test function to manually trigger a task update
-window.testTaskUpdate = function(taskId = 539) {
-  const update = {
-    type: 'task_progress',
-    task_id: taskId,
-    task_type: 'background',
-    description: 'Test task update',
-    status: 'active',
-    progress: Math.floor(Math.random() * 100),
-    message: 'Manual test update at ' + new Date().toLocaleTimeString()
-  };
-  
-  console.log('🧪 Manually triggering task update:', update);
-  
-  // Find any subscription that might handle this
-  const subscriptions = App.cable?.subscriptions?.subscriptions || [];
-  subscriptions.forEach((sub, index) => {
-    console.log(`Subscription ${index}:`, sub.identifier);
-    if (sub.received && typeof sub.received === 'function') {
-      console.log(`Calling received() on subscription ${index}`);
-      sub.received(update);
-    }
-  });
+  console.log('Tasks count:', tasks.length);
+  console.log('Active tasks:', activeTasksCount);
+  return { panel, container, tasks };
 };
 </script>

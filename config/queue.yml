@@ -31,6 +31,13 @@ default: &default
       polling_interval: 0.5
       priority: 5
 
+    # Agents queue - AI agent jobs (landing pages, emails, etc)
+    - queues: agents
+      threads: 2
+      processes: <%= ENV.fetch("AGENT_WORKERS", 1) %>
+      polling_interval: 0.5
+      priority: 4
+
     # Default queue - all other jobs
     - queues: default
       threads: 3

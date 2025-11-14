@@ -415,6 +415,8 @@ class ScoutController < ApplicationController
     response.headers["Connection"] = "keep-alive"
     response.headers["X-Accel-Buffering"] = "no" # Prevent nginx buffering
     response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # Don't set Transfer-Encoding manually - Rails handles this automatically with ActionController::Live
 
     # Force the headers to be sent immediately
     response.status = 200
@@ -425,6 +427,20 @@ class ScoutController < ApplicationController
       
       # Send immediate response to establish streaming
       stream_update("💬 Message received")
+      
+      # ===== NEW AMOS INTEGRATION =====
+      # Initialize Amos orchestrator
+      @orchestrator = initialize_amos_orchestrator
+      
+      # Set up real-time streaming from Amos
+      setup_amos_streaming
+      
+      # Process message through Amos
+      process_through_amos(user_message, file_urls, current_canvas, selected_model)
+      
+      # ===== END AMOS INTEGRATION =====
+      
+      return # Early return - Amos handles everything
 
       # Build enhanced message if files are attached
       enhanced_message = user_message
@@ -775,6 +791,43 @@ class ScoutController < ApplicationController
             workflow_spec: result[:workflow_spec]
           }
         end
+        
+        # Check if parallel tasks were created (workflow executed as parallel task)
+        if result[:parallel_tasks]
+          Rails.logger.info "🚀 Workflow queued as parallel task"
+          
+          # Stream the parallel execution start
+          stream_update({
+            type: 'parallel_execution_start',
+            execution_id: SecureRandom.uuid,
+            task_count: result[:parallel_tasks].length,
+            tasks: result[:parallel_tasks].map { |t| 
+              {
+                id: t.id,
+                type: t.task_type,
+                description: t.metadata['description']
+              }
+            }
+          })
+          
+          # Load the parallel tasks canvas
+          stream_update({
+            type: 'load_canvas',
+            canvas: 'parallel_tasks',
+            canvas_data: {
+              session_id: @session_id,
+              tasks: result[:parallel_tasks]
+            }
+          })
+          
+          # Enable the chat for continued conversation
+          stream_update({
+            type: 'enable_chat'
+          })
+          
+          # Monitor the parallel tasks
+          monitor_parallel_tasks(result[:parallel_tasks])
+        end
       else
         # Handle error case
         error_message = result[:error] || "An error occurred while processing your request."
@@ -863,6 +916,26 @@ class ScoutController < ApplicationController
   end
 
   # Template/Canvas Actions for Intelligent Canvas
+  # Get task statuses for refresh
+  def task_statuses
+    task_ids = params[:task_ids] || []
+    
+    tasks = TaskSession.where(id: task_ids, user: current_user)
+                       .includes(:task_dependencies)
+    
+    render json: {
+      tasks: tasks.map do |task|
+        {
+          id: task.id,
+          task_type: task.task_type,
+          status: task.status,
+          progress: task.progress,
+          metadata: task.metadata
+        }
+      end
+    }
+  end
+  
   def load_canvas
     canvas_type = params[:canvas_type]
     canvas_data = params[:canvas_data] || {}
@@ -895,15 +968,18 @@ class ScoutController < ApplicationController
       when "contact_viewer"
         canvas_content = render_contact_canvas(canvas_data)
         canvas_title = "Contacts"
-      when "campaign_viewer"
+      when "campaign_viewer", "email_campaign_viewer"
         canvas_content = render_campaign_canvas(canvas_data)
-        canvas_title = "Campaigns"
+        canvas_title = "Email Campaigns"
       when "analytics_dashboard"
         canvas_content = render_analytics_canvas(canvas_data)
         canvas_title = "Analytics Dashboard"
       when 'document_viewer'
         canvas_content = render_document_viewer_canvas(canvas_data)
         canvas_title = "Document Viewer"
+      when 'document_search_results'
+        canvas_content = render_document_search_results_canvas(canvas_data)
+        canvas_title = "Document Search Results"
       when 'contact_generator'
         canvas_content = render_contact_generator(canvas_data)
         canvas_title = "Create Contact"
@@ -999,16 +1075,26 @@ class ScoutController < ApplicationController
           completed_at: 1.hour.ago..Time.current
         ).order(completed_at: :desc).limit(20)
         
-        all_tasks = (active_tasks + recent_completed).sort_by(&:created_at).reverse
+        # Load Amos jobs for the current user (most recent 20)
+        @amos_jobs = Amos::JobRecord.joins("INNER JOIN scout_messages ON scout_messages.session_id = amos_jobs.session_id")
+                                    .where(scout_messages: { user_id: current_user.id })
+                                    .where("amos_jobs.created_at > ?", 24.hours.ago)
+                                    .distinct
+                                    .order(created_at: :desc)
+                                    .limit(20)
+        
+        # Combine and sort all tasks in descending order (newest first)
+        all_tasks = (active_tasks + recent_completed).sort_by { |task| task.created_at }.reverse
         
         # Serialize tasks for the canvas
         tasks_data = all_tasks.map do |task|
           {
             id: task.id,
             type: task.task_type,
-            description: task.metadata['description'],
+            description: task.metadata['description'] || "Task #{task.id}",
             status: task.status,
             progress: task.progress || 0,
+            metadata: task.metadata,
             created_at: task.created_at,
             parent_conversation_id: task.parent_conversation_id,
             dependencies: task.task_dependencies.map { |d|
@@ -1022,6 +1108,29 @@ class ScoutController < ApplicationController
             }
           }
         end
+        
+        # Add Amos jobs to the task list
+        amos_tasks = @amos_jobs.map do |job|
+          {
+            id: "amos-#{job.job_id}",
+            type: job.agent_type,
+            description: job.input_data&.dig('task') || job.status_message || "#{job.agent_type.humanize} Job",
+            status: job.status,
+            progress: job.progress || (job.status == 'completed' ? 100 : 0),
+            metadata: {
+              job_id: job.job_id,
+              agent_type: job.agent_type,
+              started_at: job.started_at,
+              completed_at: job.completed_at
+            },
+            created_at: job.created_at,
+            parent_conversation_id: job.session_id,
+            dependencies: []
+          }
+        end
+        
+        tasks_data += amos_tasks
+        tasks_data = tasks_data.sort_by { |t| t[:created_at] }.reverse
         
         @canvas_data = canvas_data.merge('tasks' => tasks_data)
         
@@ -1118,6 +1227,67 @@ class ScoutController < ApplicationController
     rescue => e
       Rails.logger.error "Available canvases error: #{e.message}"
       render json: { canvases: [] }
+    end
+  end
+  
+  def cancel_job
+    job_id = params[:job_id]
+    
+    if job_id.blank?
+      render json: { success: false, error: 'Job ID is required' }, status: 400
+      return
+    end
+    
+    Rails.logger.info "[Scout] Attempting to cancel job: #{job_id}"
+    
+    begin
+      # Find the Amos job record
+      amos_job = Amos::JobRecord.find_by(job_id: job_id)
+      
+      if amos_job
+        # Update Amos job status
+        amos_job.update!(
+          status: 'canceled',
+          status_message: 'Task was canceled by user',
+          completed_at: Time.current,
+          error_data: { canceled: true, canceled_at: Time.current }
+        )
+        
+        # Find and cancel the SolidQueue job
+        # Look for jobs with this job_id in the arguments
+        solid_queue_jobs = SolidQueue::Job
+          .where(queue_name: 'agents', finished_at: nil)
+          .where("arguments::text LIKE ?", "%#{job_id}%")
+        
+        solid_queue_jobs.each do |job|
+          Rails.logger.info "[Scout] Canceling SolidQueue job #{job.id}"
+          # Mark as finished with the current time
+          job.update!(finished_at: Time.current)
+          
+          # Remove from ready executions if present
+          SolidQueue::ReadyExecution.where(job_id: job.id).destroy_all
+          
+          # Remove from claimed executions if present
+          SolidQueue::ClaimedExecution.where(job_id: job.id).destroy_all
+        end
+        
+        # Broadcast status update
+        ScoutChannel.broadcast_to(session[:scout_session_id], {
+          type: 'task_progress',
+          job_id: "amos-#{job_id}",
+          task_id: "amos-#{job_id}",
+          status: 'canceled',
+          message: 'Task was canceled by user'
+        })
+        
+        render json: { success: true, message: 'Job canceled successfully' }
+      else
+        render json: { success: false, error: 'Job not found' }, status: 404
+      end
+    rescue => e
+      Rails.logger.error "[Scout] Error canceling job: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      render json: { success: false, error: e.message }, status: 500
     end
   end
 
@@ -1304,6 +1474,14 @@ class ScoutController < ApplicationController
     chunk = "data: #{data}\n\n"
 
     response.stream.write(chunk)
+    
+    # Force flush to ensure immediate delivery
+    begin
+      response.stream.flush if response.stream.respond_to?(:flush)
+    rescue => e
+      # Ignore flush errors - client might have disconnected
+      Rails.logger.debug "Flush failed (normal if client disconnected): #{e.message}"
+    end
   rescue IOError, Errno::EPIPE, Errno::ECONNRESET => e
     # Client disconnected - this is normal, not an error
     Rails.logger.info "Client disconnected during streaming: #{e.message}"
@@ -1461,6 +1639,26 @@ class ScoutController < ApplicationController
     else
       Rails.logger.info "❌ No processing job status found to send"
     end
+  end
+
+  def monitor_parallel_tasks(tasks)
+    Rails.logger.info "👀 Monitoring #{tasks.length} parallel tasks"
+    
+    # Stream initial task status
+    tasks.each do |task|
+      stream_update({
+        type: 'task_progress',
+        task_id: task.id,
+        task_type: task.task_type,
+        description: task.metadata['description'],
+        status: 'queued',
+        progress: 0,
+        timestamp: Time.current.iso8601
+      })
+    end
+    
+    # The actual monitoring happens via ActionCable in TaskExecutionJob
+    # This method just sets up the initial state
   end
 
   def current_entity
@@ -1811,8 +2009,6 @@ class ScoutController < ApplicationController
         if asset.is_a?(RagDocument)
           data[:document_id] = asset.id
           data[:processing_status] = asset.processing_status
-          data[:processing_stage] = asset.processing_stage
-          data[:processing_progress] = asset.processing_progress
         end
       else
         Rails.logger.error "❌ Document not found with asset_id: #{data[:asset_id]}"
@@ -1838,7 +2034,7 @@ class ScoutController < ApplicationController
         .map do |doc|
           {
             id: doc.id,
-            title: doc.title || doc.original_filename,
+            title: doc.original_filename,
             size: doc.file_size_bytes,
             content_type: doc.content_type,
             created_at: doc.created_at,
@@ -1854,6 +2050,61 @@ class ScoutController < ApplicationController
 
     render_to_string(
       partial: 'scout/canvas/document_viewer',
+      locals: {
+        entity: current_entity,
+        user: current_user,
+        canvas_data: data
+      }
+    )
+  end
+  
+  def render_document_search_results_canvas(data = {})
+    Rails.logger.info "🔍 render_document_search_results_canvas called with data: #{data.inspect}"
+    
+    # Extract search query and results from data
+    search_query = data[:query] || ""
+    search_results = data[:results] || []
+    
+    # If we have document IDs from search results, fetch full document details
+    if search_results.is_a?(Array) && search_results.any?
+      # Fetch documents by ID
+      documents = []
+      
+      # Look for RagDocuments first
+      rag_docs = RagDocument.joins(:rag_store)
+        .where(id: search_results.map { |r| r[:document_id] || r[:id] })
+        .where(rag_stores: { entity_id: current_entity.id })
+      
+      rag_docs.each do |doc|
+        result_item = search_results.find { |r| (r[:document_id] || r[:id]).to_i == doc.id }
+        documents << {
+          id: doc.id,
+          title: (result_item && result_item[:document_title]) || doc.original_filename,
+          filename: doc.original_filename,
+          content_type: doc.content_type,
+          size: doc.file_size_bytes,
+          relevance_score: (result_item && result_item[:relevance_score]) || (result_item && result_item[:score]) || 1.0,
+          snippet: (result_item && result_item[:snippet]) || (result_item && result_item[:text]) || "No preview available",
+          created_at: doc.created_at,
+          url: doc.file.attached? ? rails_blob_url(doc.file, disposition: 'inline') : nil,
+          download_url: doc.file.attached? ? rails_blob_url(doc.file, disposition: 'attachment') : nil
+        }
+      end
+      
+      # Sort by relevance score
+      documents.sort_by! { |doc| -(doc[:relevance_score] || 0) }
+      
+      data[:documents] = documents
+    else
+      data[:documents] = []
+    end
+    
+    data[:query] = search_query
+    data[:total_results] = data[:documents].count
+    
+    render_to_string(
+      partial: "scout/canvas/document_search_results",
+      formats: [:html],
       locals: {
         entity: current_entity,
         user: current_user,
@@ -2336,6 +2587,9 @@ class ScoutController < ApplicationController
     # Voice mode always uses parallel for immediate response
     return true if params[:voice_mode] == 'true'
     
+    # Workflows will be detected by the AI and handled through parallel processing automatically
+    # No need to duplicate pattern matching here
+    
     # Check for multi-part requests - more inclusive patterns
     return true if message.match?(/\band\s+(also|then)/i)  # "and also", "and then"
     return true if message.match?(/\b(both|multiple|several)\b/i)
@@ -2711,8 +2965,7 @@ class ScoutController < ApplicationController
       content_type: file.content_type,
       file_size_bytes: file.size,
       file_hash: file_hash,
-      processing_status: 'processing',
-      title: file.original_filename
+      processing_status: 'processing'
     )
     
     # Attach file and process
@@ -2753,4 +3006,149 @@ class ScoutController < ApplicationController
       asset_type: 'temporary'
     }
   end
+  
+  # ===== AMOS INTEGRATION METHODS =====
+  
+  def initialize_amos_orchestrator
+    # Create or retrieve Amos orchestrator for this session
+    # Pass the actual request host so callbacks work correctly
+    Amos::Orchestrator.new(current_user, current_entity, @session_id, 
+      request_host: request.host_with_port
+    )
+  end
+  
+  def setup_amos_streaming
+    # Set up a callback to stream Amos responses back through SSE
+    @orchestrator.on_stream do |response|
+      case response[:type]
+      when 'assistant_message', 'amos_response'
+        # Only stream if this is a streaming chunk, not the complete message
+        # Complete messages are handled by ActionCable separately
+        if response[:metadata]&.dig(:streaming)
+          Rails.logger.debug "[Scout SSE] Streaming chunk to frontend: #{response[:content][0..20]}..."
+          stream_update(response[:content])
+          
+          # Chunks are now properly paced at the source
+          # No additional delay needed here
+        elsif response[:metadata]&.dig(:complete)
+          # Complete message - just save it, don't stream it
+          # The UI already has this content from streaming chunks
+          save_scout_message("assistant", response[:content])
+        elsif !response[:metadata]&.dig(:streaming) && !response[:metadata]&.dig(:already_saved)
+          # Non-streaming message (like delegation acknowledgments)
+          stream_update(response[:content])
+          save_scout_message("assistant", response[:content])
+        end
+        
+      when 'job_status'
+        # Stream job status updates
+        stream_update({
+          type: 'job_status',
+          job_id: response[:job_id],
+          status: response[:status],
+          message: response[:message],
+          progress: response[:progress]
+        })
+        
+      when 'input_request'
+        # Handle input requests from agents
+        stream_update({
+          type: 'input_request',
+          job_id: response[:job_id],
+          prompt: response[:prompt],
+          options: response[:options]
+        })
+        
+      when 'canvas_update'
+        # Handle canvas updates
+        stream_update({
+          type: 'load_canvas',
+          canvas: response[:canvas],
+          canvas_data: response[:canvas_data]
+        })
+        
+      when 'error'
+        # Stream errors
+        stream_update("❌ #{response[:message]}")
+      end
+    end
+  end
+  
+    def process_through_amos(message, file_urls, canvas, model_preference)
+      # Build metadata for Amos - ensure canvas is a regular hash
+      canvas_hash = if canvas.is_a?(ActionController::Parameters)
+                      canvas.permit!.to_h
+                    elsif canvas.respond_to?(:to_h)
+                      canvas.to_h
+                    else
+                      canvas || {}
+                    end
+      
+      metadata = {
+        attached_files: file_urls,
+        canvas: canvas_hash,
+        model_preference: model_preference,
+        voice_mode: params[:voice_mode] == 'true'
+      }
+    
+    # Build enhanced message if files are attached
+    enhanced_message = message
+    if file_urls.any?
+      Rails.logger.info "🔍 AMOS file_urls: #{file_urls.inspect}"
+      # Include asset_id so AMOS can use read_document tool
+      file_details = file_urls.map do |f|
+        # Support both asset_id and document_id for backward compatibility
+        id = f['asset_id'] || f['document_id']
+        processing_note = f['processing'] ? " - PROCESSING" : ""
+        "📎 #{f['filename']} (asset_id: #{id}, type: #{f['content_type']}#{processing_note})"
+      end.join(", ")
+
+      enhanced_message = "#{message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding. If a document shows PROCESSING, it may still be extracting content."
+      metadata[:file_urls] = file_urls
+    end
+    
+    # Save enhanced user message
+    save_scout_message("user", enhanced_message)
+    
+    # Process through Amos with enhanced message
+    @orchestrator.process_message(enhanced_message, source: :user, metadata: metadata)
+    
+    # Wait for Amos to complete processing
+    wait_for_amos_completion
+    
+  rescue => e
+    Rails.logger.error "[Scout] Amos processing error: #{e.message}"
+    Rails.logger.error e.backtrace.join("\n")
+    stream_update("❌ An error occurred while processing your request. Please try again.")
+  end
+  
+  def wait_for_amos_completion
+    # Keep the connection alive while Amos processes
+    # This replaces the complex parallel processing logic
+    timeout = 5.minutes
+    start_time = Time.current
+    
+    loop do
+      # Check if all jobs are complete
+      active_jobs = @orchestrator.query_job_status.select { |j| 
+        j[:status][:status].in?(['queued', 'running', 'waiting_for_input'])
+      }
+      
+      break if active_jobs.empty?
+      
+      # Check timeout
+      if Time.current - start_time > timeout
+        Rails.logger.warn "[Scout] Amos processing timeout after #{timeout}"
+        stream_update("⏱️ Processing is taking longer than expected. Tasks will continue in the background.")
+        break
+      end
+      
+      # Send keepalive
+      response.stream.write(":\n\n") rescue nil
+      
+      sleep 0.5
+    end
+  end
+  
+  # ===== END AMOS INTEGRATION =====
 end
