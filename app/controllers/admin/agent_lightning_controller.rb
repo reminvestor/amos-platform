@@ -1,200 +1,280 @@
 module Admin
   class AgentLightningController < ApplicationController
-    include EntityScoped
     before_action :check_admin_access
 
     def dashboard
-      @entity = current_entity
-      @config = @entity.agent_lightning_config || create_default_config
+      # Platform-wide stats across all entities
+      all_entities = Entity.includes(:agent_lightning_config).all
 
-      # Current Status
-      @traces = @entity.agent_lightning_traces
-      @total_traces = @traces.count
-      @completed_traces = @traces.where(status: 'completed').count
-      @failed_traces = @traces.where(status: 'failed').count
-      @traces_with_rewards = @traces.with_reward.count
-      @traces_ready_for_training = @traces.where(included_in_training: false).with_reward.count
+      # Overall platform stats
+      @total_traces = AgentLightningTrace.count
+      @total_entities = all_entities.count
+      @entities_with_lightning = all_entities.select { |e| e.agent_lightning_config.present? }.count
 
-      # Recent Metrics (Last 100 traces)
-      @recent_traces = @traces.recent.limit(100)
-      if @recent_traces.any?
-        @success_rate = ((@recent_traces.count { |t| t.reward_signal && t.reward_signal > 0.7 }.to_f / @recent_traces.count) * 100).round(1)
-        @avg_tokens = @recent_traces.average(:token_count).round(0)
-        @avg_cost = @recent_traces.average(:cost_estimate).round(4)
-        @avg_duration = @recent_traces.average(:duration_ms).round(0)
-        @total_cost = @recent_traces.sum(:cost_estimate).round(2)
+      # Aggregate metrics
+      all_traces = AgentLightningTrace.where("created_at > ?", 30.days.ago)
+      if all_traces.any?
+        @success_rate = ((all_traces.count { |t| t.reward_signal && t.reward_signal > 0.7 }.to_f / all_traces.count) * 100).round(1)
+        @avg_tokens = all_traces.average(:token_count)&.round(0) || 0
+        @avg_cost = all_traces.average(:cost_estimate)&.round(4) || 0.0
+        @total_cost = all_traces.sum(:cost_estimate).round(2)
       else
         @success_rate = 0
         @avg_tokens = 0
         @avg_cost = 0.0
-        @avg_duration = 0
         @total_cost = 0.0
       end
 
-      # Training Status
-      @last_training_job = @entity.agent_training_jobs.completed.recent.first
-      @training_history = @entity.agent_training_jobs.completed.recent.limit(10)
+      # Per-entity breakdown (calculate for all entities for totals)
+      all_entity_stats = all_entities.map do |entity|
+        config = entity.agent_lightning_config
+        traces = entity.agent_lightning_traces.where("created_at > ?", 30.days.ago)
+        cost_savings = config&.cost_savings
 
-      # Next Training
-      @next_training_at = if @config.last_training_at
-        @config.last_training_at + @config.retrain_frequency_hours.hours
-      else
-        "Not scheduled yet"
-      end
+        {
+          entity: entity,
+          config: config,
+          total_traces: traces.count,
+          success_rate: traces.any? ? ((traces.count { |t| t.reward_signal && t.reward_signal > 0.7 }.to_f / traces.count) * 100).round(1) : 0,
+          total_cost: traces.sum(:cost_estimate).round(2),
+          total_tokens: traces.sum(:token_count),
+          last_trace_at: traces.maximum(:created_at),
+          enabled: config&.enabled? || false,
+          ready_for_training: config&.ready_for_training? || false,
+          cost_savings: cost_savings
+        }
+      end.sort_by { |s| s[:total_traces] }.reverse
 
-      @ready_for_training = @config.ready_for_training?
+      # Platform-wide cost savings
+      @total_monthly_savings = all_entity_stats.sum { |s| s[:cost_savings]&.dig(:estimated_monthly_savings) || 0 }
+      @entities_with_savings = all_entity_stats.count { |s| s[:cost_savings].present? }
 
-      # Recent Recommendations
-      if @last_training_job && @last_training_job.training_results['recommended_changes']
-        @recommendations = @last_training_job.training_results['recommended_changes']
-      else
-        @recommendations = []
-      end
+      # Platform-wide trace analysis (using traces since detailed LLM calls don't exist yet)
+      recent_traces = AgentLightningTrace.where("created_at > ?", 30.days.ago)
+      if recent_traces.any?
+        @llm_success_rate = ((recent_traces.where(status: 'completed').count.to_f / recent_traces.count) * 100).round(1)
+        @avg_latency = recent_traces.average(:duration_ms)&.round(0) || 0
 
-      # LLM Call Analysis
-      @llm_calls = @entity.agent_llm_calls.recent.limit(500)
-      if @llm_calls.any?
-        @llm_success_rate = ((@llm_calls.count { |c| c.status == 'success' }.to_f / @llm_calls.count) * 100).round(1)
-        @avg_latency = @llm_calls.average(:latency_ms).round(0)
-        @llm_by_role = @llm_calls.group_by(&:agent_role).map do |role, calls|
-          {
-            role: role,
-            count: calls.count,
-            success_rate: ((calls.count { |c| c.status == 'success' }.to_f / calls.count) * 100).round(1),
-            avg_tokens: calls.average(:total_tokens).round(0),
-            total_cost: calls.sum(:cost).round(4)
-          }
-        end
-      end
-
-      # Tool Analysis
-      @tool_executions = @entity.agent_tool_executions.recent.limit(500)
-      if @tool_executions.any?
-        @tool_success_rate = ((@tool_executions.count { |e| e.status == 'success' }.to_f / @tool_executions.count) * 100).round(1)
-        @top_tools = @tool_executions.group_by(&:tool_name)
-          .map { |tool, execs|
-            {
-              name: tool,
-              count: execs.count,
-              success_rate: ((execs.count { |e| e.status == 'success' }.to_f / execs.count) * 100).round(1)
-            }
-          }
-          .sort_by { |t| t[:count] }
+        # Get model breakdown for latency
+        @model_latencies = recent_traces
+          .where.not(model_used: nil)
+          .group(:model_used)
+          .average(:duration_ms)
+          .transform_values { |v| v&.round(0) || 0 }
+          .sort_by { |k, v| v }
           .reverse
-          .first(5)
+      else
+        @llm_success_rate = 0
+        @avg_latency = 0
+        @model_latencies = {}
       end
 
-      # Training Ready Check
-      @training_checks = {
-        enabled: @config.enabled?,
-        enough_traces: @traces_ready_for_training >= @config.min_traces_for_training,
-        retrain_due: @config.should_retrain?
-      }
-      @can_train_now = @training_checks[:enabled] && @training_checks[:enough_traces] && @training_checks[:retrain_due]
+      # Paginate entity stats for table display (15 per page)
+      page = params[:page].to_i
+      page = 1 if page < 1
+      per_page = 15
+      start_index = (page - 1) * per_page
+      end_index = start_index + per_page - 1
+
+      paginated_stats = all_entity_stats[start_index..end_index] || []
+
+      # Create a paginated array wrapper for Kaminari
+      @entity_stats = Kaminari.paginate_array(all_entity_stats, total_count: all_entity_stats.length)
+                              .page(page)
+                              .per(per_page)
+
+      # Recent training jobs across all entities
+      @recent_training_jobs = AgentTrainingJob.includes(:entity).completed.order(completed_at: :desc).limit(10)
     end
 
     def train_now
-      @entity = current_entity
+      @entity = Entity.find(params[:entity_id])
       service = AgentLightningTrainingService.new(@entity)
 
-      unless service.config.ready_for_training?
-        redirect_to admin_agent_lightning_dashboard_path, alert: "Entity not ready for training. Check status page."
+      unless service.config&.ready_for_training?
+        redirect_to dashboard_admin_agent_lightning_index_path, alert: "Entity not ready for training. Check status page."
         return
       end
 
       result = service.execute_training
 
       if result[:success]
-        redirect_to admin_agent_lightning_dashboard_path, notice: "✅ Training completed! Improvement: +#{result[:improvement]}%"
+        redirect_to dashboard_admin_agent_lightning_index_path, notice: "✅ Training completed for #{@entity.name}! Improvement: +#{result[:improvement]}%"
       else
-        redirect_to admin_agent_lightning_dashboard_path, alert: "❌ Training failed: #{result[:error]}"
+        redirect_to dashboard_admin_agent_lightning_index_path, alert: "❌ Training failed for #{@entity.name}: #{result[:error]}"
+      end
+    end
+
+    def train_all
+      # Find all entities ready for training
+      ready_entities = Entity.includes(:agent_lightning_config).select do |entity|
+        entity.agent_lightning_config&.ready_for_training?
+      end
+
+      if ready_entities.empty?
+        redirect_to dashboard_admin_agent_lightning_index_path, alert: "No entities are ready for training yet."
+        return
+      end
+
+      # Train each entity and collect results
+      results = ready_entities.map do |entity|
+        service = AgentLightningTrainingService.new(entity)
+        result = service.execute_training
+        { entity: entity, result: result }
+      end
+
+      # Build summary message
+      successes = results.count { |r| r[:result][:success] }
+      failures = results.count { |r| !r[:result][:success] }
+      total_improvement = results.select { |r| r[:result][:success] }.sum { |r| r[:result][:improvement] || 0 }
+      avg_improvement = successes > 0 ? (total_improvement / successes).round(1) : 0
+
+      if successes > 0 && failures == 0
+        redirect_to dashboard_admin_agent_lightning_index_path,
+                    notice: "✅ Successfully trained #{successes} #{successes == 1 ? 'entity' : 'entities'}! Average improvement: +#{avg_improvement}%"
+      elsif successes > 0 && failures > 0
+        redirect_to dashboard_admin_agent_lightning_index_path,
+                    notice: "⚡ Trained #{successes} entities (+#{avg_improvement}% avg), #{failures} failed. Check logs for details."
+      else
+        redirect_to dashboard_admin_agent_lightning_index_path,
+                    alert: "❌ Training failed for all #{failures} entities. Check system logs."
       end
     end
 
     def metrics
-      @entity = current_entity
+      # Platform-wide metrics if no entity specified
       @days = (params[:days] || 30).to_i
-      @config = @entity.agent_lightning_config
 
-      @traces = @entity.agent_lightning_traces.where("created_at > ?", @days.days.ago)
+      if params[:entity_id]
+        # Entity-specific metrics
+        @entity = Entity.find(params[:entity_id])
+        @config = @entity.agent_lightning_config
+        @traces = @entity.agent_lightning_traces.where("created_at > ?", @days.days.ago)
+      else
+        # Platform-wide metrics
+        @entity = nil
+        @traces = AgentLightningTrace.where("created_at > ?", @days.days.ago)
+      end
 
       if @traces.empty?
-        redirect_to admin_agent_lightning_dashboard_path, alert: "No traces found in the last #{@days} days"
+        redirect_to dashboard_admin_agent_lightning_index_path, alert: "No traces found in the last #{@days} days"
         return
       end
 
       # Overall Stats
       @total_traces = @traces.count
       @success_rate = ((@traces.count { |t| t.reward_signal && t.reward_signal > 0.7 }.to_f / @traces.count) * 100).round(1)
-      @avg_reward = @traces.average(:reward_signal).round(2)
+      @avg_reward = @traces.average(:reward_signal)&.round(2) || 0
+      @completed_traces_count = @traces.where(status: 'completed').count
 
       # Token & Cost
       @total_tokens = @traces.sum(:token_count)
-      @avg_tokens = @traces.average(:token_count).round(0)
+      @avg_tokens = @traces.average(:token_count)&.round(0) || 0
       @total_cost = @traces.sum(:cost_estimate).round(2)
-      @avg_cost = @traces.average(:cost_estimate).round(4)
+      @avg_cost = @traces.average(:cost_estimate)&.round(4) || 0.0
 
       # Performance
       @total_duration_minutes = (@traces.sum(:duration_ms) / 1000 / 60).round(1)
-      @avg_duration = @traces.average(:duration_ms).round(0)
-      @min_duration = @traces.minimum(:duration_ms)
-      @max_duration = @traces.maximum(:duration_ms)
+      @avg_duration = @traces.average(:duration_ms)&.round(0) || 0
+      @min_duration = @traces.minimum(:duration_ms) || 0
+      @max_duration = @traces.maximum(:duration_ms) || 0
 
-      # LLM Analysis
-      @llm_calls = @entity.agent_llm_calls.where("called_at > ?", @days.days.ago)
-      if @llm_calls.any?
-        @llm_success_rate = ((@llm_calls.count { |c| c.status == 'success' }.to_f / @llm_calls.count) * 100).round(1)
-        @avg_latency = @llm_calls.average(:latency_ms).round(0)
-        @llm_by_role = @llm_calls.group_by(&:agent_role).map do |role, calls|
-          {
-            role: role,
-            count: calls.count,
-            success_rate: ((calls.count { |c| c.status == 'success' }.to_f / calls.count) * 100).round(1),
-            avg_tokens: calls.average(:total_tokens).round(0),
-            total_cost: calls.sum(:cost).round(4)
-          }
+      # Performance Distribution (for progress bar)
+      @duration_distribution = {
+        fast: (@traces.where('duration_ms < 1000').count.to_f / @total_traces * 100).round,
+        medium: (@traces.where('duration_ms >= 1000 AND duration_ms < 5000').count.to_f / @total_traces * 100).round,
+        slow: (@traces.where('duration_ms >= 5000 AND duration_ms < 10000').count.to_f / @total_traces * 100).round,
+        very_slow: (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round
+      }
+
+      # LLM Analysis (from trace-level data)
+      completed_traces = @traces.where(status: 'completed')
+      if completed_traces.any?
+        @llm_success_rate = ((completed_traces.count.to_f / @traces.count) * 100).round(1)
+        @avg_latency = @traces.average(:duration_ms)&.round(0) || 0
+      else
+        @llm_success_rate = 0
+        @avg_latency = 0
+      end
+
+      # Tool Analysis (extract from intermediate_steps JSON)
+      tool_data = {}
+      @traces.each do |trace|
+        next unless trace.intermediate_steps.is_a?(Array)
+
+        trace.intermediate_steps.each do |step|
+          tool_name = step['tool'] || step[:tool]
+          next unless tool_name
+
+          tool_data[tool_name] ||= { count: 0, successes: 0, total_time: 0 }
+          tool_data[tool_name][:count] += 1
+          tool_data[tool_name][:successes] += 1 if step['status'] == 'success' || step[:status] == 'success'
+          tool_data[tool_name][:total_time] += (step['latency_ms'] || step[:latency_ms] || 0)
         end
       end
 
-      # Tool Analysis
-      @tool_executions = @entity.agent_tool_executions.where("started_at > ?", @days.days.ago)
-      if @tool_executions.any?
-        @tool_success_rate = ((@tool_executions.count { |e| e.status == 'success' }.to_f / @tool_executions.count) * 100).round(1)
-        @top_tools = @tool_executions.group_by(&:tool_name)
-          .map { |tool, execs|
-            {
-              name: tool,
-              count: execs.count,
-              success_rate: ((execs.count { |e| e.status == 'success' }.to_f / execs.count) * 100).round(1),
-              avg_time: execs.average(:execution_time_ms).round(0)
-            }
+      if tool_data.any?
+        @top_tools = tool_data.map do |name, data|
+          {
+            name: name,
+            count: data[:count],
+            success_rate: ((data[:successes].to_f / data[:count]) * 100).round(1),
+            avg_time: (data[:total_time].to_f / data[:count]).round(0)
           }
-          .sort_by { |t| t[:count] }
-          .reverse
-          .first(10)
+        end.sort_by { |t| t[:count] }.reverse.first(10)
+
+        total_tool_calls = tool_data.values.sum { |d| d[:count] }
+        total_successes = tool_data.values.sum { |d| d[:successes] }
+        @tool_success_rate = ((total_successes.to_f / total_tool_calls) * 100).round(1)
+        @failed_tool_executions = total_tool_calls - total_successes
+      else
+        @top_tools = []
+        @tool_success_rate = 0
+        @failed_tool_executions = 0
       end
     end
 
     def training_history
-      @entity = current_entity
-      @training_jobs = @entity.agent_training_jobs.order(completed_at: :desc).page(params[:page]).per(20)
+      # Show all training jobs across all entities
+      @training_jobs = AgentTrainingJob.includes(:entity).order(completed_at: :desc).page(params[:page]).per(20)
     end
 
     def export_data
-      @entity = current_entity
-      service = AgentLightningTrainingService.new(@entity)
-      training_data = service.get_training_data
+      # Export platform-wide or entity-specific data
+      if params[:entity_id]
+        @entity = Entity.find(params[:entity_id])
+        service = AgentLightningTrainingService.new(@entity)
+        training_data = service.get_training_data
 
-      export = {
-        entity_name: @entity.name,
-        entity_id: @entity.id,
-        exported_at: Time.current.iso8601,
-        total_traces: training_data.count,
-        traces: training_data
-      }
+        export = {
+          entity_name: @entity.name,
+          entity_id: @entity.id,
+          exported_at: Time.current.iso8601,
+          total_traces: training_data.count,
+          traces: training_data
+        }
+
+        filename = "agent_lightning_training_data_#{@entity.id}_#{Time.current.strftime('%Y%m%d_%H%M%S')}.json"
+      else
+        # Platform-wide export
+        export = {
+          platform: "all_entities",
+          exported_at: Time.current.iso8601,
+          entities: Entity.includes(:agent_lightning_traces).map do |entity|
+            {
+              entity_id: entity.id,
+              entity_name: entity.name,
+              total_traces: entity.agent_lightning_traces.count,
+              config: entity.agent_lightning_config&.as_json
+            }
+          end
+        }
+
+        filename = "agent_lightning_platform_data_#{Time.current.strftime('%Y%m%d_%H%M%S')}.json"
+      end
 
       send_data JSON.pretty_generate(export),
-        filename: "agent_lightning_training_data_#{@entity.id}_#{Time.current.strftime('%Y%m%d_%H%M%S')}.json",
+        filename: filename,
         type: 'application/json'
     end
 
@@ -204,27 +284,6 @@ module Admin
       unless current_user.admin?
         redirect_to root_path, alert: "Access denied"
       end
-    end
-
-    def create_default_config
-      current_entity.create_agent_lightning_config!(
-        enabled: true,
-        mode: "observing",
-        training_strategy: "prompt_optimization",
-        retrain_frequency_hours: 24,
-        trace_retention_days: 90,
-        min_traces_for_training: 100,
-        optimization_targets: {
-          "reduce_token_usage" => 0.3,
-          "improve_success_rate" => 0.5,
-          "reduce_latency" => 0.2
-        },
-        learning_parameters: {
-          "learning_rate" => 0.001,
-          "batch_size" => 32,
-          "num_epochs" => 3
-        }
-      )
     end
   end
 end
