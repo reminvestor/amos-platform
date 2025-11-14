@@ -837,7 +837,9 @@ class ScoutGenericToolsServiceV2
     end
 
     safe_load_canvas(canvas_name, canvas_data)
-    { success: true, message: nil } # No additional message needed
+    # Return success without setting canvas_type in response to avoid double broadcast
+    # The canvas update was already sent via progress_callback above
+    { success: true, message: nil, canvas_already_broadcast: true }
   end
 
   def safe_load_canvas(canvas_name, data = {})
