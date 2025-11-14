@@ -1429,12 +1429,11 @@ class ScoutController < ApplicationController
     asset = current_entity.image_assets.find_by(id: asset_id)
     
     if !asset
-      # Try to find as RagDocument
-      rag_document = current_entity.rag_stores
-                                  .joins(:rag_documents)
-                                  .where(rag_documents: { id: asset_id })
-                                  .select('rag_documents.*')
-                                  .first
+      # Try to find as RagDocument - query RagDocument model directly
+      rag_document = RagDocument.joins(:rag_store)
+                               .where(rag_stores: { entity_id: current_entity.id })
+                               .where(id: asset_id)
+                               .first
       
       if rag_document
         # Convert RagDocument status to expected format
@@ -1442,7 +1441,7 @@ class ScoutController < ApplicationController
           indexed: rag_document.processing_status == 'indexed',
           processing_status: rag_document.processing_status,
           chunk_count: rag_document.rag_chunks.count,
-          error: rag_document.last_error
+          error: nil  # RagDocument doesn't have an error field
         }
       end
       
