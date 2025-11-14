@@ -74,6 +74,11 @@ class LandingPage < ApplicationRecord
 
   # === PUBLIC METHODS ===
 
+  # Use slug as the URL parameter instead of ID
+  def to_param
+    slug
+  end
+
   # Get the full URL for this landing page
   # @param base_url [String] Base URL (e.g., "https://mysite.com")
   # @return [String] Full URL to the landing page
