@@ -3179,8 +3179,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
         business_profile&.id
       )
 
-      # Set canvas refresh data
-      @suggested_canvas = "landing_page_details"
+      # Set canvas refresh data - use editor for updates
+      @suggested_canvas = "landing_page_editor"
       @canvas_data = { landing_page_id: landing_page.id }
 
       {
@@ -3195,8 +3195,8 @@ When the user explicitly asks to "load", "show", "open" or "view" a specific can
           job_id: job.job_id
         },
         message: "Successfully started content update for landing page '#{landing_page.title}'. Changes will be applied shortly.",
-        canvas: "landing_page_details",
-        canvas_data: { landing_page_id: landing_page.id }
+        canvas: @suggested_canvas,
+        canvas_data: @canvas_data
       }
     rescue ActiveRecord::RecordNotFound
       { error: "Landing page with ID #{landing_page_id} not found" }

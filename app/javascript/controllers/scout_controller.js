@@ -1565,8 +1565,8 @@ export default class extends Controller {
       this.sendScoutMessage(message)
     }
 
-    window.scoutLoadCanvas = (canvasType, canvasData = {}) => {
-      this.loadScoutCanvas(canvasType, canvasData)
+    window.scoutLoadCanvas = (canvasType, canvasData = {}, forceRefresh = false) => {
+      this.loadScoutCanvas(canvasType, canvasData, forceRefresh)
     }
 
     window.scoutRefreshCanvas = () => {

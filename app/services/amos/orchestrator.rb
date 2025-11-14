@@ -48,6 +48,11 @@ module Amos
       # Add to context
       @context.add_message(source, content, metadata)
       
+      # Log canvas metadata if present
+      if metadata[:canvas]
+        Rails.logger.info "[Amos] Canvas metadata passed to context: #{metadata[:canvas].inspect}"
+      end
+      
       # Determine intent and complexity
       intent = analyze_intent(content)
       
