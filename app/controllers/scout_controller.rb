@@ -1425,8 +1425,29 @@ class ScoutController < ApplicationController
     asset_id = params[:asset_id]
     return render json: { error: "asset_id required" }, status: :bad_request if asset_id.blank?
 
+    # Check for both ImageAsset and RagDocument
     asset = current_entity.image_assets.find_by(id: asset_id)
-    return render json: { error: "Document not found" }, status: :not_found unless asset
+    
+    if !asset
+      # Try to find as RagDocument
+      rag_document = current_entity.rag_stores
+                                  .joins(:rag_documents)
+                                  .where(rag_documents: { id: asset_id })
+                                  .select('rag_documents.*')
+                                  .first
+      
+      if rag_document
+        # Convert RagDocument status to expected format
+        return render json: {
+          indexed: rag_document.processing_status == 'indexed',
+          processing_status: rag_document.processing_status,
+          chunk_count: rag_document.rag_chunks.count,
+          error: rag_document.last_error
+        }
+      end
+      
+      return render json: { error: "Document not found" }, status: :not_found
+    end
 
     status = calculate_document_status(asset)
     render json: status
