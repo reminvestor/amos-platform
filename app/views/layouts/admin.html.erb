@@ -70,6 +70,11 @@
             <i data-lucide="bar-chart-3"></i>
             <span>Observability</span>
           <% end %>
+
+          <%= link_to dashboard_admin_agent_lightning_index_path, class: "nav-item #{'active' if request.path.start_with?('/admin/agent_lightning')}" do %>
+            <i data-lucide="zap"></i>
+            <span>Agent Lightning</span>
+          <% end %>
         </nav>
 
         <%# Bottom Actions %>
@@ -90,6 +95,30 @@
           <% end %>
         </div>
       </aside>
+
+      <%# Flash Messages %>
+      <% if notice.present? || alert.present? %>
+        <div style="position: fixed; top: 5rem; right: 1rem; z-index: 9999; max-width: 500px;">
+          <% if notice %>
+            <div class="admin-alert admin-alert-success" style="margin-bottom: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);">
+              <div class="alert-content">
+                <i data-lucide="check-circle"></i>
+                <span><%= notice %></span>
+              </div>
+              <button class="alert-close" onclick="this.parentElement.remove(); lucide.createIcons();">×</button>
+            </div>
+          <% end %>
+          <% if alert %>
+            <div class="admin-alert admin-alert-error" style="margin-bottom: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);">
+              <div class="alert-content">
+                <i data-lucide="alert-circle"></i>
+                <span><%= alert %></span>
+              </div>
+              <button class="alert-close" onclick="this.parentElement.remove(); lucide.createIcons();">×</button>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
 
       <%# Main Content Area %>
       <%= yield %>
