@@ -401,6 +401,14 @@ class ScoutController < ApplicationController
     Rails.logger.info "Scout streaming chat - Session: #{@session_id}, User: #{current_user.id}, Message: #{user_message}"
     Rails.logger.info "Selected model: #{selected_model}" if selected_model
     Rails.logger.info "Current canvas context: #{current_canvas.inspect}" if current_canvas
+    
+    # Log specific landing page details if on landing page editor
+    if current_canvas && current_canvas["type"] == "landing_page_editor"
+      landing_page_id = current_canvas["data"] && current_canvas["data"]["landing_page_id"]
+      Rails.logger.info "🎯 Landing Page Editor Canvas - ID: #{landing_page_id}"
+      Rails.logger.info "🎯 Canvas Data Details: #{current_canvas["data"].inspect}"
+    end
+    
     Rails.logger.info "Chat context: #{context.inspect}" if context
     Rails.logger.info "File URLs: #{file_urls.inspect}" if file_urls.any?
 

@@ -15,6 +15,9 @@ module Amos
       # Use the existing ScoutGenericToolsServiceV2 with main_chat loadout
       service = create_scout_service
       
+      # Get the current canvas from the most recent message's metadata
+      current_canvas = @context.recent_messages(1).first&.dig(:metadata, :canvas)
+      
       # Set context including attached files if present
       context_data = {
         query: query,
@@ -42,6 +45,9 @@ module Amos
       
       service.set_context(context_data)
       
+      # Pass the current canvas to the Scout service
+      Rails.logger.info "[Scout Tools] Current canvas from context: #{current_canvas.inspect}" if current_canvas
+      
       # Process with tools (non-streaming)
       # Note: V2 requires streaming callback, so we collect the response
       accumulated_response = ""
@@ -61,7 +67,8 @@ module Amos
             accumulated_response += chunk
           end
         },
-        @context.recent_messages(10)
+        @context.recent_messages(10),
+        current_canvas  # Pass the canvas as the 4th parameter
       )
       
       # Return the final response or accumulated content
@@ -78,6 +85,9 @@ module Amos
     def process_query_streaming(query, &block)
       # Use ScoutGenericToolsServiceV2 with main_chat loadout for streaming
       service = create_scout_service
+      
+      # Get the current canvas from the most recent message's metadata
+      current_canvas = @context.recent_messages(1).first&.dig(:metadata, :canvas)
       
       # Set context including attached files if present
       context_data = {
@@ -106,12 +116,26 @@ module Amos
       
       service.set_context(context_data)
       
+      # Pass the current canvas to the Scout service
+      Rails.logger.info "[Scout Tools] Current canvas from context: #{current_canvas.inspect}" if current_canvas
+      
       # Process with streaming
       result = service.process_message_with_tools_streaming(
         query,
         ->(chunk) { yield chunk if block_given? },
-        @context.recent_messages(10)
+        @context.recent_messages(10),
+        current_canvas  # Pass the canvas as the 4th parameter
       )
+      
+      # Check for canvas updates
+      if result.is_a?(Hash) && result[:canvas_type] && result[:canvas_type] != "conversation"
+        Rails.logger.info "[Scout Tools] Canvas update suggested: #{result[:canvas_type]}"
+        yield({ 
+          type: 'canvas_update', 
+          canvas: result[:canvas_type], 
+          canvas_data: result[:canvas_data] || {}
+        }) if block_given?
+      end
       
       # Check if delegation occurred and there's no continuation
       if result.is_a?(Hash) && result[:final_response].is_a?(Hash)

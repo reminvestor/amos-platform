@@ -70,6 +70,33 @@ module Tools
           )
         )
 
+        # Broadcast canvas reload to refresh the editor
+        # Find the user's recent sessions
+        # Use subquery approach to avoid PostgreSQL DISTINCT/ORDER BY conflict
+        recent_messages = ScoutMessage.where(user_id: user.id)
+                                     .order(created_at: :desc)
+                                     .limit(50)
+                                     
+        recent_sessions = recent_messages.pluck(:session_id).uniq.take(5)
+                                     
+        Rails.logger.info "🔍 Broadcasting canvas reload for landing page #{landing_page.id} to sessions: #{recent_sessions.inspect}"
+        
+        # Broadcast canvas reload to all recent sessions
+        recent_sessions.each do |session_id|
+          begin
+            ScoutChannel.broadcast_to(session_id, {
+              type: 'load_canvas',
+              canvas_name: 'landing_page_editor',
+              canvas_data: { landing_page_id: landing_page.id },
+              force_refresh: true,
+              message: "Landing page has been updated successfully!"
+            })
+            Rails.logger.info "📡 Broadcast canvas reload to session: #{session_id}"
+          rescue => e
+            Rails.logger.warn "⚠️  Failed to broadcast to session #{session_id}: #{e.message}"
+          end
+        end
+
         success_response(
           id: landing_page.id,
           title: landing_page.title,

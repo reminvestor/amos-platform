@@ -251,6 +251,12 @@ class ScoutGenericToolsServiceV2
     canvas_type = canvas["type"] || canvas[:type]
     canvas_data = canvas["data"] || canvas[:data] || {}
     
+    # Log canvas details for debugging
+    if canvas_type == "landing_page_editor"
+      Rails.logger.info "🎯 Scout Canvas Context - Type: #{canvas_type}"
+      Rails.logger.info "🎯 Scout Canvas Data: #{canvas_data.inspect}"
+    end
+    
     # Format based on canvas type
     case canvas_type
     when "document_viewer"
@@ -262,6 +268,7 @@ class ScoutGenericToolsServiceV2
       "CURRENT VIEW: Document search results for '#{query}'"
     when "landing_page_editor"
       page_id = canvas_data["landing_page_id"] || canvas_data[:landing_page_id]
+      Rails.logger.info "🎯 Scout Landing Page Editor ID: #{page_id}"
       "CURRENT VIEW: Landing page editor (ID: #{page_id})"
     when "campaign_viewer", "email_campaign_viewer"
       "CURRENT VIEW: Email campaigns list"
@@ -470,10 +477,12 @@ class ScoutGenericToolsServiceV2
       • When agents send questions through you → Present them conversationally as "To create the perfect [thing], I need to know:"
       
       🔍 CONTEXT-SENSITIVE RESPONSES:
-      • When user says "this", "it", "the document" → Refer to CURRENT VIEW
+      • When user says "this", "it", "the document", "the canvas I am on" → Refer to CURRENT VIEW
       • On document_viewer: "explain this" = explain the specific document shown
       • On search results: "show it" = show the most relevant result
       • On any list view: "this" = the currently selected/highlighted item
+      • On landing_page_editor: "the canvas I am on" = the landing page being edited (use the ID from canvas data)
+      • When user references the current canvas, ALWAYS use the canvas data provided in CURRENT VIEW
       • ALWAYS check the CURRENT VIEW before searching for new data
     PROMPT
 

@@ -98,8 +98,9 @@ document.addEventListener('turbo:load', function() {
           // Handle canvas updates from Amos
           console.log("ScoutChannel: Canvas update:", data)
           const canvasName = data.canvas_name || data.canvas
+          const forceRefresh = data.force_refresh || false
           if (window.scoutLoadCanvas) {
-            window.scoutLoadCanvas(canvasName, data.canvas_data)
+            window.scoutLoadCanvas(canvasName, data.canvas_data, forceRefresh)
           } else if (window.loadCanvas) {
             window.loadCanvas(canvasName, data.canvas_data)
           } else {
