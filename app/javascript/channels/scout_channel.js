@@ -99,6 +99,13 @@ document.addEventListener('turbo:load', function() {
           console.log("ScoutChannel: Canvas update:", data)
           const canvasName = data.canvas_name || data.canvas
           const forceRefresh = data.force_refresh || false
+          
+          // Skip if canvasName is empty/null
+          if (!canvasName) {
+            console.log("ScoutChannel: Canvas name is empty/null, skipping canvas update")
+            break
+          }
+          
           if (window.scoutLoadCanvas) {
             window.scoutLoadCanvas(canvasName, data.canvas_data, forceRefresh)
           } else if (window.loadCanvas) {
