@@ -118,7 +118,7 @@ class VoiceFollowupJob < ApplicationJob
     cleaned.gsub!(/\*\*(.+?)\*\*/, '\1') # Bold
     cleaned.gsub!(/\*(.+?)\*/, '\1')     # Italic
     cleaned.gsub!(/`(.+?)`/, '\1')       # Code
-    cleaned.gsub!(/#{1,6}\s+/, '')       # Headers
+    cleaned.gsub!(/^#+\s+/, '')           # Headers
     
     # Simplify lists for voice
     cleaned.gsub!(/^[-*]\s+/, '• ')      # Bullet points
