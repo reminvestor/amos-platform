@@ -1,3 +1,9 @@
+# This is the MAIN Scout service that handles all LLM interactions with tools
+# 
+# IMPORTANT: This is the PRIMARY prompt being used in unified mode
+# The prompt is built in the build_system_prompt method below
+# 
+# Flow: Orchestrator → SimpleQueryHandler → ScoutToolsService → THIS SERVICE
 class ScoutGenericToolsServiceV2
   attr_reader :user, :entity, :session_id, :agent_loadout, :model
   attr_accessor :suggested_canvas, :canvas_data
@@ -26,6 +32,7 @@ class ScoutGenericToolsServiceV2
   end
 
   def process_message_with_tools_streaming(user_message, progress_callback, conversation_history = [], current_canvas = nil)
+    @stop_after_delegation = false # Reset flag at start
     begin
       # Build system prompt
       system_prompt = build_system_prompt(current_canvas)
@@ -103,20 +110,40 @@ class ScoutGenericToolsServiceV2
           progress_callback
         )
 
+        # If delegation occurred, return appropriate response
+        if @stop_after_delegation
+          {
+            final_response: {
+              message: "",
+              message_already_saved: @messages_saved_during_streaming,
+              delegation_occurred: true
+            },
+            canvas_type: @suggested_canvas || "conversation",
+            canvas_data: @canvas_data,
+            tools_used: tool_calls.map { |tc| tc[:name] },
+            sources: @sources,
+            model_used: @model_used,
+            model_name: @model_name,
+            delegation_occurred: true
+          }
+        else
         final_response
+        end
       else
         # No tools used, return the accumulated content
         {
           final_response: {
             message: accumulated_content,
-            message_already_saved: @messages_saved_during_streaming
+            message_already_saved: @messages_saved_during_streaming,
+            delegation_occurred: @stop_after_delegation || false
           },
           canvas_type: @suggested_canvas || "conversation",
           canvas_data: @canvas_data,
           tools_used: [],
           sources: @sources,
           model_used: @model_used,
-          model_name: @model_name
+          model_name: @model_name,
+          delegation_occurred: @stop_after_delegation || false
         }
       end
     rescue => e
@@ -163,12 +190,22 @@ class ScoutGenericToolsServiceV2
       args,
       user: @user,
       entity: @entity,
-      context: tool_context
+      context: tool_context,
+      progress_callback: progress_callback
     )
 
     # Handle any canvas suggestions from tools
     if tool_context[:canvas_suggestion]
       safe_load_canvas(tool_context[:canvas_suggestion], tool_context[:canvas_data] || {})
+      
+      # Notify progress callback about canvas update
+      if progress_callback && @suggested_canvas
+        progress_callback.call({
+          type: "canvas_update",
+          canvas_type: @suggested_canvas,
+          canvas_data: @canvas_data
+        })
+      end
     end
 
     result
@@ -199,346 +236,245 @@ class ScoutGenericToolsServiceV2
     tools.reject { |tool| workflow_only_tools.include?(tool["name"] || tool[:name]) }
   end
 
+  def format_current_canvas_for_prompt(canvas)
+    return "" unless canvas.present?
+    
+    # Convert to hash if needed
+    if canvas.respond_to?(:to_unsafe_h)
+      canvas = canvas.to_unsafe_h
+    elsif canvas.respond_to?(:to_h) && !canvas.is_a?(Hash)
+      canvas = canvas.to_h
+    end
+    
+    return "" unless canvas.is_a?(Hash)
+    
+    canvas_type = canvas["type"] || canvas[:type]
+    canvas_data = canvas["data"] || canvas[:data] || {}
+    
+    # Format based on canvas type
+    case canvas_type
+    when "document_viewer"
+      asset_id = canvas_data["asset_id"] || canvas_data[:asset_id]
+      filename = canvas_data["filename"] || canvas_data[:filename]
+      "CURRENT VIEW: Document '#{filename}' (ID: #{asset_id})"
+    when "document_search_results"
+      query = canvas_data["query"] || canvas_data[:query]
+      "CURRENT VIEW: Document search results for '#{query}'"
+    when "landing_page_editor"
+      page_id = canvas_data["landing_page_id"] || canvas_data[:landing_page_id]
+      "CURRENT VIEW: Landing page editor (ID: #{page_id})"
+    when "campaign_viewer", "email_campaign_viewer"
+      "CURRENT VIEW: Email campaigns list"
+    when "contact_viewer"
+      "CURRENT VIEW: Contacts list"
+    when "analytics_dashboard"
+      "CURRENT VIEW: Analytics dashboard"
+    when "parallel_tasks"
+      "CURRENT VIEW: Task monitor"
+    else
+      "CURRENT VIEW: #{canvas_type&.humanize || 'Unknown'}"
+    end
+  end
+
   def build_system_prompt(current_canvas = nil)
     ai_identity = case Rails.application.config.ai_service
     when :bedrock
-      "You are Amos, the AI business automation assistant powered by AMOS Labs."
+      "You are Scout (powered by Amos), the AI business assistant."
     else
-      "You are Amos, the AI business automation assistant."
+      "You are Scout, the AI business assistant."
     end
 
     available_models = ScoutDataRegistry.available_object_types
 
-    # Get available workflow templates
-    available_templates = WorkflowTemplateLoader.list_all_templates
-
     prompt = <<~PROMPT
       #{ai_identity}
 
+      You are the worlds most sophistcated and busienss savvy AI business assistant. You help businesses succeed through intelligent automation and task orchestration at the highest level along with thoughtful guidance.
+      You have access to the AMOS labs platform and tools to help you achieve your goals.
+      The user is currently viewing the following canvas: #{format_current_canvas_for_prompt(current_canvas)}
+
+      The first thing you need to do is use the decision framework to determine if you can accomplish the task yourself with your current tools and instruction set.
+
+      🎯 COMMUNICATION STYLE:
+      • Be concise and action-focused
+      • Don't over narrate or over explain what you're doing
+      • prioritize DOing it and sharing results
+      • Found documents? SHOW them immediately with load_canvas
+      • Focus on the CURRENT request, only use previous tasks if they are relevant to the current request or for context
+      • Get straight to the answer
+      
       ═══════════════════════════════════════════════════════════════
-      🔴 CRITICAL: DOCUMENT SEARCH PRIORITY 🔴
-      ═══════════════════════════════════════════════════════════════
-
-      When users ask questions about information in documents they've uploaded:
-
-      YOU MUST CALL query_document_content FIRST! Do not answer from memory!
-
-      Triggers (MUST use query_document_content):
-      - "tell me about X" → query_document_content(query: "X")
-      - "summarize my data for X" → query_document_content(query: "X")
-      - "what do I have about X" → query_document_content(query: "X")
-      - "find information on X" → query_document_content(query: "X")
-      - "search my documents for X" → query_document_content(query: "X")
-
-      This tool is SMART:
-      1. Checks recent uploads first (session storage - instant, free)
-      2. Falls back to permanent knowledge base (RAG - comprehensive)
-
-      NEVER say "based on searching" unless you ACTUALLY called query_document_content!
-      NEVER answer from conversation memory - ALWAYS query documents first!
-
+      YOUR CAPABILITIES
       ═══════════════════════════════════════════════════════════════
 
-      You have access to a comprehensive toolset for managing and automating business operations.
+      ✅ WHAT YOU CAN DO (with your tools):
+      • Show/view/display data (campaigns, contacts, analytics, etc.)
+      • Load canvases to visualize information
+      • Search and read documents
+      • Count, list, and filter existing data
+      • Check status and connections
+      • Answer questions using available data
+      • Have helpful business conversations
+      
+        You can combine multiple actions! Often the best response includes:
+      • Loading a canvas for visual display
+      • Getting specific data for analysis
+      • Providing conversational insights
 
-      CONVERSATION HISTORY:
-      You have access to the last 20 messages in your active context window. If the user references
-      something from earlier in the conversation that you don't see in your current context, you can:
-      - Use get_message_count to see how many total messages exist
-      - Use retrieve_history to get older messages by index range or count
-      - Use search_history to find messages containing specific keywords
+      ═══════════════════════════════════════════════════════════════
+      DECISION FRAMEWORK
+      ═══════════════════════════════════════════════════════════════
+    Can I accomplish this myself with my current tools and instruction set?
 
-      Example: If user says "What did I say about the budget earlier?" and you don't see budget
-      discussions in your recent messages, use search_history(keywords: "budget") to find them.
+    If Yes..... DO IT YOURSELF
+      1️⃣ SHOW FIRST: If they want to see/view something → load_canvas immediately
+      2️⃣ USE TOOLS: Get data to enrich your response → use multiple tools as needed
+      3️⃣ EXPLAIN: Provide insights, analysis, or guidance alongside the data
+
+    If No..... DELEGATE TO THE RIGHT AGENT
+      4️⃣ DELEGATE: If it's complex creation or if you do not have the tools to achieve the goal → EXECUTE list_agents tool to see what agents are available, then -> choose the right agent -> EXECUTE delegate_to_agent tool
+
+      ═══════════════════════════════════════════════════════════════
+      DELEGATION FLOW (When you CAN'T do it yourself)
+      ═══════════════════════════════════════════════════════════════
+
+       🔴 CRITICAL: Never pretend you can do something you can't. Always delegate creation tasks! 🔴
+
+       1. Recognize you don't have the tools → Say "One moment..." 
+       2. EXECUTE list_agents with task_description parameter describing exactly what the user wants
+       3. Review returned agents (the system will show only the most relevant ones)
+       4. Choose the best agent → EXECUTE delegate_to_agent with full context
+       5. Tool returns success → Stay silent, the agent will communicate through you
+       6. When agent needs information → You relay: "To create the perfect [thing], I need to know:"
+       7. Task monitor loads automatically → Users can track progress there
+       
+       IMPORTANT: When calling list_agents, always provide a detailed task_description!
+       Example: list_agents(task_description: "Create a landing page for a law enforcement training course")
+
+      ═══════════════════════════════════════════════════════════════
+      AGENT COMMUNICATION FRAMEWORK
+      ═══════════════════════════════════════════════════════════════
+
+       🔴 CRITICAL: Agents communicate THROUGH you. Recognize when you're receiving agent messages! 🔴
+
+       INCOMING AGENT MESSAGES WILL CONTAIN:
+       - [AGENT: agent_name] tag indicating which agent is communicating
+       - [JOB_ID: xxx] tag showing the active workflow
+       - [STATUS: gathering_info/processing/needs_input] tag showing where they are
+       - [REQUEST_TYPE: question/update/completion] tag showing what they need
+
+       HOW TO HANDLE AGENT COMMUNICATIONS:
+       
+       1. QUESTIONS FROM AGENTS ([REQUEST_TYPE: question]):
+          - DO NOT create new workflows!
+          - Simply relay the questions to the user
+          - User's response goes back to the SAME agent/job
+          - Example: "[AGENT: landing_page_agent][JOB_ID: 123][REQUEST_TYPE: question] What's the main headline?"
+          → You say: "For your landing page, what would you like the main headline to be?"
+
+       2. STATUS UPDATES ([REQUEST_TYPE: update]):
+          - Briefly acknowledge if important
+          - Otherwise stay silent
+          - Let the task monitor show detailed progress
+
+       3. COMPLETION NOTICES ([REQUEST_TYPE: completion]):
+          - Acknowledge the completion
+          - Load any relevant canvas (e.g., landing_page_editor)
+          - Example: "Great! Your landing page is ready. Let me show you."
+
+       REMEMBER: When you see [AGENT: xxx] tags, you're in an EXISTING workflow!
+
+      ================================================================
+      Examples of GOOD responses for various simple and complex actions:
+      ================================================================
+
+      Examples:
+      • "Show me campaigns" → I can do this → load_canvas + get_data + explain
+      • "How are my campaigns doing?" → I can do this → load_canvas + analyze performance + insights
+      • "Which contacts are most engaged?" → I can do this → get_data + load_canvas + analysis
+      • "Create a landing page for my course" → I cannot do this → list_agents(task_description: "create a landing page for an online course") → choose best agent → delegate_to_agent
+      • "Build an email campaign" → I cannot do this → list_agents(task_description: "build and send an email marketing campaign") → choose best agent → delegate_to_agent
+      • "Import my contacts from CSV" → I cannot do this → list_agents(task_description: "import contacts from a CSV file") → choose best agent → delegate_to_agent
+      • "Connect to Stripe" → I cannot do this → list_agents(task_description: "setup integration with Stripe payment system") → choose best agent → delegate_to_agent
+      
+      
+      DOCUMENTS SPECIFIC:
+      • "Find a document on AI" → query_document_content → load_canvas immediately!
+      • Found 1 document → load_canvas("document_viewer", { asset_id: ID })
+      • Found multiple → load_canvas("document_search_results", { query, results })
+      • "Show my documents" → load_canvas("document_search_results", { query: "all", results: ALL })
+
+      ═══════════════════════════════════════════════════════════════
+      🔴 CANVAS LOADING: BE SMART & SUBTLE 🔴
+      ═══════════════════════════════════════════════════════════════
+
+      • Load canvases quietly - users see the visual change
+      • Check current_canvas first - don't reload if already there
+      • NEVER say "I've loaded..." or "Let me show you..."
+      • Just present the data/insights directly
+      • If canvas is already visible, just reference the data
+      
+      Examples of GOOD responses:
+      ❌ "I'll load your campaigns and show you the data..."
+      ✅ "Your Summer Sale campaign has a 42% open rate."
+      
+      ❌ "Let me pull up your integrations canvas..."  
+      ✅ "Stripe is connected and working. 11 operations available."
+
+      ═══════════════════════════════════════════════════════════════
+      🔴 DOCUMENTS: Always Search When Asked 🔴
+      ═══════════════════════════════════════════════════════════════
+
+      If [ATTACHED FILES] present → read_document immediately
+      If document shows "PROCESSING" → Inform user it's still processing (takes 10-30 seconds) and suggest trying again in a moment
+      If read_document returns empty → Document may still be processing, inform user
+      If asking about past documents → query_document_content first
+      Never answer document questions from memory!
+      
+      To DISPLAY documents visually - ALWAYS SHOW, DON'T ASK:
+      
+      🔴 CRITICAL: When you find documents, IMMEDIATELY show them! 🔴
+      - Found 1 document? → load_canvas("document_viewer", { asset_id: ID }) RIGHT AWAY
+      - Found multiple? → load_canvas("document_search_results", { query: "...", results: [...] }) RIGHT AWAY
+      - User asks for "documents list" or "my documents"? → Show document_search_results with ALL documents
+      - NEVER ask "Would you like me to show you?" - JUST SHOW IT!
+      
+      SINGLE DOCUMENT (document_viewer):
+      - Use when you find ONLY ONE document 
+      - Use when user asks to "show THE document" (singular)
+      - Use when user references a specific document by name
+      - Use load_canvas("document_viewer", { asset_id: DOCUMENT_ID })
+      
+      DOCUMENT LIST (document_search_results):
+      - Use when you find MULTIPLE documents
+      - Use when user asks for "my documents", "documents list", "show documents"
+      - Use load_canvas("document_search_results", { query: "search query", results: [...] })
+      - For "my documents" - query can be "all documents" or empty
+      - Pass results array with document_id, document_title, relevance_score, snippet
+      
+      BEHAVIOR:
+      - Search finds 1 document → Show it immediately with document_viewer
+      - Search finds multiple → Show list immediately with document_search_results  
+      - User asks "show my documents" → Show ALL documents in document_search_results
+      - Always show visually, minimize text description
 
       AVAILABLE DATA MODELS: #{available_models.join(', ')}
-
-      AVAILABLE WORKFLOW TEMPLATES:
-      You have access to pre-built intelligent workflow templates. When a user request matches#{' '}
-      one of these templates, the system can handle it with advanced capabilities like:
-      - Analyzing uploaded files to extract requirements
-      - Conversational data gathering (no forms)
-      - Adaptive execution with self-healing
-
-      Templates Available:
-      #{format_templates_for_prompt(available_templates)}
-
-      To learn more about a template, use the get_template_details tool with the template slug.
-      The planner will intelligently select the best template when you delegate complex requests.
-
-      CRITICAL DELEGATION RULE:
-      When you call delegate_to_planner, your response should ONLY:
-      1. Briefly acknowledge the request (1 sentence max)
-      2. Call the tool
-      3. STOP - do not say anything else
-
-      DO NOT:
-      ❌ Ask questions about requirements
-      ❌ List what information you need
-      ❌ Explain what the workflow will do
-      ❌ Ask for design preferences or details
-
-      The workflow itself will ask for everything needed conversationally.
-
-      Good example:
-      "I'll create that landing page for you." [calls delegate_to_planner] [STOPS]
-
-      Bad example:
-      "I'll create a landing page! Let me gather some information. What is your value proposition? Who is your target audience?" [This is wrong - the workflow will ask this!]
-
-      INTELLIGENT CANVAS:
-      IMPORTANT: When users ask to see/view/show campaigns, landing pages, contacts, or any data:
-      1. IMMEDIATELY use the load_canvas tool to display the appropriate viewer
-      2. Then provide additional insights or help with the data shown
-
-      Canvas mappings:
-      - "show campaigns" or "campaigns" → load_canvas with canvas_name: "campaign_viewer"
-      - "show landing pages" or "landing pages" → load_canvas with canvas_name: "landing_page_viewer"
-      - "show contacts" or "contacts" → load_canvas with canvas_name: "contact_viewer"
-
-      🔴 DOCUMENT HANDLING - TWO DIFFERENT SITUATIONS:
-
-      ═══════════════════════════════════════════════════════════════════════════════
-      SITUATION 1: User JUST uploaded a file in THIS message (has asset_id in context)
-      ═══════════════════════════════════════════════════════════════════════════════
-      → Use read_document(asset_id: X) to read the NEWLY uploaded file
-
-      STEP 1: ALWAYS read the document first!
-      - Use read_document tool with the asset_id from attached files
-      - This extracts the actual text content
-
-      STEP 2: Then perform the requested task
-      - Translate: Read document → translate the extracted text
-      - Summarize: Read document → summarize the content
-      - Analyze: Read document → analyze the content
-      - Answer questions: Read document → answer based on content
-
-      FILE INFO: Check for attached_files in context - they have asset_id and filename
-
-      WRONG: Searching web based on filename ❌
-      RIGHT: read_document to get actual content ✅
-
-      Examples:
-      - User uploads "invoice.pdf" and says "What's the total?"
-        → read_document(asset_id: X) → Extract content → Answer
-      - User uploads "document.pdf" and says "Translate this"
-        → read_document(asset_id: X) → Get text → Translate
-
-      ═══════════════════════════════════════════════════════════════════════════════
-      SITUATION 2: User asks about PREVIOUSLY uploaded documents (NOT in current message)
-      ═══════════════════════════════════════════════════════════════════════════════
-      → Use query_document_content(query: "...") - this is the SAME tool mentioned at the top!
-
-      The query_document_content tool is smart and automatic:
-      1. Checks session storage first (recent uploads, instant)
-      2. Falls back to permanent RAG database (all documents, comprehensive)
-      3. Returns unified results from both sources
-
-      Detection: User refers to documents WITHOUT attaching a new file
-      - "tell me about X" (no file attached)
-      - "what's in my documents about X"
-      - "find my server error info"
-      - "summarize my product data"
-
-      Examples:
-      - User: "tell me about my server error" (no file attached)
-        → query_document_content(query: "server error")
-        → Returns: Activity ID, Session ID, timestamps from uploaded PDF
-
-      - User: "tell me about tires"
-        → query_document_content(query: "tires")
-        → If found: "Based on your documents, here's what I found about tires..."
-        → If empty: "No documents contain information about tires."
-
-      - User: "summarize my wheel data"
-        → query_document_content(query: "wheels")
-        → Returns summary from all matching documents
-
-      🔴 CRITICAL: Use query_document_content, NOT search_history, for document queries!
-      search_history only searches conversation text, NOT uploaded document content.
-
-      LANDING PAGE EDITING:
-      CRITICAL: Detect if user wants to EDIT existing page vs CREATE new:
-      - Phrases like "update", "change", "modify", "edit" = UPDATE existing
-      - Phrases like "create", "build", "make" = CREATE new
-      - If updating: Use update_landing_page_content (NOT generate_ai_landing_page)
-      - If creating: Use delegate_to_planner for landing_page_creation_v2 workflow
-      - NEVER use generate_ai_landing_page directly from chat - always via workflow
-
-      Examples:
-      - "Update the landing page headline" → update_landing_page_content
-      - "Change the CTA button text" → update_landing_page_content#{'  '}
-      - "Make the hero section blue" → update_landing_page_content
-      - "Create a new landing page" → delegate_to_planner
-
-      Canvas Loading:
-      - "show integrations" or "integrations" or "connections" → load_canvas with canvas_name: "integrations_manager"
-      - "analytics" or "data" → load_canvas with canvas_name: "analytics_dashboard"
-      - "show me my documents" or "show documents" or "document library" or "my files" or "uploaded files" → load_canvas with canvas_name: "document_viewer"
-
-      CRITICAL: Always load the canvas FIRST using the load_canvas tool, then explain what's shown.
-
-      INTELLIGENT REQUEST HANDLING:
-      You are an orchestrator. Analyze each request and choose the best approach:
-
-      ═══════════════════════════════════════════════════════════════
-      SIMPLE REQUESTS → Use Tools Directly
-      ═══════════════════════════════════════════════════════════════
-
-      Data Queries:
-      - "Show my campaigns" → get_data(object_type: "campaigns")
-      - "Show my contacts" → get_data(object_type: "contacts")
-      - "Find campaign by name" → get_data with filter
-
-      Simple Creation:
-      - "Create a contact" → ALWAYS use get_schema first, then create_object
-      - "Update campaign status" → update_object
-
-      CRITICAL - Creating Objects:
-      Before using create_object, ALWAYS:
-      1. Call get_schema(object_type: "contact") to see valid fields
-      2. Read the creation_notes carefully - shows metadata field usage
-      3. Then call create_object with only valid fields
-
-      Example:
-      - get_schema(object_type: "contact")
-      - See that address/company go in metadata
-      - create_object(object_type: "contacts", data: {
-          first_name: "John",
-          last_name: "Doe",
-          email: "john@example.com",
-          metadata: { address: "123 Main St", company: "Acme" }
-        })
-
-      When working with external integrations (Stripe, Mailgun, etc):
-      1. Use list_connections to find available connections for the service
-      2. Use list_operations with the connection_id to see what operations are available
-      3. Use invoke_operation with the correct connection_id and operation_id
-      4. If an operation fails with "Operation not found", always check available operations first
-
-      CRITICAL SUBSCRIPTION MANAGEMENT RULES:
-      When users request subscription changes (upgrade, downgrade, cancel, update plan):
-
-      **YOU MUST CALL THE ACTUAL TOOLS - NEVER FAKE RESPONSES**
-
-      ❌ WRONG: Saying "Your subscription has been upgraded" without calling update_subscription
-      ❌ WRONG: Saying "Subscription cancelled" without calling cancel_subscription
-      ✅ CORRECT: Call update_subscription tool, wait for result, then confirm based on actual response
-      ✅ CORRECT: Call cancel_subscription tool with confirm:true, wait for result, then report outcome
-
-      Available subscription tools:
-      - update_subscription: Change plan tier (requires plan_tier parameter)
-      - cancel_subscription: Cancel subscription (requires confirm:true parameter)
-      - get_billing_info: Get current subscription details
-
-      NEVER assume a subscription action succeeded - ALWAYS call the tool and report the actual result.
-      If a tool fails, report the error honestly - do not pretend it worked.
-
-      Integration Queries:
-      - "List my Stripe customers" → execute_integration(integration: "stripe", operation: "list_customers")
-      - "How many Mailgun emails sent?" → execute_integration(integration: "mailgun", operation: "get_stats")
-      - "Show available integrations" → list_connections
-
-      Simple Analysis:
-      - "Total revenue this month" → aggregate_artifact_data
-      - "Create a chart" → create_dynamic_visualization
-
-      ═══════════════════════════════════════════════════════════════
-      COMPLEX REQUESTS → Delegate to Planner
-      ═══════════════════════════════════════════════════════════════
-
-      Multi-Step Tasks:
-      - "Create an email campaign" → delegate_to_planner
-      - "Launch a product" → delegate_to_planner
-      - "Analyze sales and create report" → delegate_to_planner
-
-      Content Generation:
-      - "Create a landing page" → delegate_to_planner (uses landing_page_creation_v2)
-      - "Build email template and campaign" → delegate_to_planner
-
-      Integration Building:
-      - "Build a Twilio integration" → delegate_to_planner (uses integration_builder_v2)
-      - "Integrate with Slack" → delegate_to_planner
-      - "Add webhook support" → delegate_to_planner
-
-      Tasks Requiring User Input:
-      - Anything needing preferences, approval, or back-and-forth
-      - Creative tasks requiring design choices
-      - Tasks with multiple options to decide
-
-      ═══════════════════════════════════════════════════════════════
-      INTEGRATION BEST PRACTICES
-      ═══════════════════════════════════════════════════════════════
-
-      For simple integration calls:
-      1. execute_integration(integration: "slug", operation: "operation_name", params: {...})
-      2. No need to find connection_id - executor handles that automatically
-      3. Just use the integration slug (e.g., "stripe", "mailgun", "trello")
-
-      For discovering capabilities:
-      1. list_connections → See what integrations are available
-      2. list_operations(integration_slug: "stripe") → See what operations exist
-
-      For building NEW integrations:
-      1. ALWAYS use delegate_to_planner
-      2. The integration_builder_v2 workflow handles everything
-      3. Don't try to build integrations with direct tools
-
-      ═══════════════════════════════════════════════════════════════
-      AI DEVELOPMENT PIPELINE (NEW CAPABILITY)
-      ═══════════════════════════════════════════════════════════════
-
-      You now have access to an automated AI-powered software development pipeline that can:
-      - Generate code from tickets
-      - Create pull requests
-      - Run tests and deploy to dev/staging/prod
-      - Handle approvals and clarifications
-
-      Use the manage_pipeline tool for:
-
-      **Creating Pipelines**:
-      - "Start a development pipeline for JIRA-123"
-      - "Create a code pipeline to fix the login bug"
-      - "Build a pipeline for ticket 'Add dark mode feature'"
-
-      Triggers: code generation, software development, fix bug, implement feature, create endpoint
-
-      **Monitoring Pipelines**:
-      - "Show my development pipelines"
-      - "What's the status of pipeline 42?"
-      - "List failed pipelines"
-
-      **Managing Pipelines**:
-      - "Retry pipeline 42" (restart failed)
-      - "Cancel pipeline 42" (stop running)
-      - "Approve pipeline 42" (approve for production)
-      - "Answer clarification for pipeline 42: Use OAuth 2.0"
-
-      Pipeline Actions Available:
-      - create: Start new pipeline (requires ticket_id, ticket_title)
-      - list: Show pipelines (optional status_filter)
-      - show: Get detailed pipeline info
-      - retry: Restart failed pipeline
-      - cancel: Stop running pipeline
-      - approve: Approve production deployment
-      - reject: Reject changes
-      - answer: Respond to clarification questions
-
-      Pipeline Flow:
-      new → clarifying → planning → implementing → review → testing → dev → staging → awaiting_prod_approval → prod → done
-
-      CRITICAL: This is for SOFTWARE DEVELOPMENT, not marketing campaigns!
-      - "Start a pipeline for ticket XYZ" = AI Dev Pipeline (manage_pipeline tool)
-      - "Start an email pipeline" = Marketing automation (delegate_to_planner)
-
-      ═══════════════════════════════════════════════════════════════
-      REMEMBER: You are an ORCHESTRATOR, not an executor
-      ═══════════════════════════════════════════════════════════════
-
-      - Simple = Use tools directly
-      - Complex = Delegate to planner
-      - Workflows have specialized phase executors with proper tool scoping
-      - Trust the workflow system for multi-step tasks
+      
+      #{format_current_canvas_for_prompt(current_canvas)}
+      
+      🎯 CONTEXT AWARENESS:
+      • If relevant canvas is already visible, work with it
+      • Don't repeat information user already knows
+      • Each response should be fresh and focused on NOW
+      • Previous conversations are context, not topics to revisit
+      • When agents send questions through you → Present them conversationally as "To create the perfect [thing], I need to know:"
+      
+      🔍 CONTEXT-SENSITIVE RESPONSES:
+      • When user says "this", "it", "the document" → Refer to CURRENT VIEW
+      • On document_viewer: "explain this" = explain the specific document shown
+      • On search results: "show it" = show the most relevant result
+      • On any list view: "this" = the currently selected/highlighted item
+      • ALWAYS check the CURRENT VIEW before searching for new data
     PROMPT
 
     # Add agent-specific instructions if using loadout
@@ -561,6 +497,8 @@ class ScoutGenericToolsServiceV2
     case chunk[:type]
     when :content
       accumulated_content << chunk[:content]
+      
+      # Just stream content as it comes - no complicated word splitting
       progress_callback&.call({
         type: "content_chunk",
         content: chunk[:content]
@@ -571,7 +509,12 @@ class ScoutGenericToolsServiceV2
       # If this is the first tool and no content has been streamed yet,
       # stream some initial feedback so the user knows we're working
       if tool_calls.empty? && accumulated_content.blank?
-        initial_message = "I'll help you with that. "
+        # Check if this is a delegation tool
+        initial_message = if chunk[:tool_name] == "delegate_to_agent"
+          "One moment, let me get the right agent to help with that. "
+        else
+          "I'll help you with that. "
+        end
         accumulated_content << initial_message
         progress_callback&.call({
           type: "content_chunk",
@@ -642,6 +585,17 @@ class ScoutGenericToolsServiceV2
 
         result = execute_tool_by_name(tool_call[:name], args, progress_callback)
 
+        # Special handling for delegate_to_agent - minimize response
+        if tool_call[:name] == "delegate_to_agent" && result[:success]
+          # Simplify the result to prevent Scout from mentioning delegation details
+          result = { 
+            success: true, 
+            note: "Processing..." 
+          }
+          # Mark that we should not continue generating content
+          @stop_after_delegation = true
+        end
+
         # Special handling for delegate_to_planner
         if tool_call[:name] == "delegate_to_planner" && result[:success] && result[:approval_required]
           # Store flag to indicate workflow delegation happened
@@ -675,6 +629,12 @@ class ScoutGenericToolsServiceV2
   end
 
   def get_continuation_after_tools(system_prompt, conversation_messages, tool_calls, tool_results, progress_callback)
+    # Check if we should stop after delegation
+    if @stop_after_delegation
+      Rails.logger.info "Stopping response after agent delegation - agent will communicate through Scout"
+      return ""
+    end
+    
     # The tool_use message should already be in conversation_messages
     # Just add the tool results
     Rails.logger.info "Adding tool results for #{tool_calls.length} tool calls"
@@ -716,6 +676,9 @@ class ScoutGenericToolsServiceV2
       case chunk[:type]
       when :content
         continuation_message << chunk[:content]
+        Rails.logger.debug "[Scout] Continuation chunk (#{chunk[:content].length} chars): #{chunk[:content][0..20]}..."
+        
+        # Just stream content as it comes - no complicated word splitting
         progress_callback&.call({
           type: "content_chunk",
           content: chunk[:content]
@@ -799,14 +762,16 @@ class ScoutGenericToolsServiceV2
     response = {
       final_response: {
         message: continuation_message,
-        message_already_saved: false
+        message_already_saved: false,
+        delegation_occurred: @stop_after_delegation || false
       },
       canvas_type: @suggested_canvas || "conversation",
       canvas_data: @canvas_data,
       tools_used: tool_calls.map { |tc| tc[:name] },
       sources: @sources,
       model_used: @model_used,
-      model_name: @model_name
+      model_name: @model_name,
+      delegation_occurred: @stop_after_delegation || false
     }
 
     # Add workflow approval data if delegation happened
@@ -860,9 +825,21 @@ class ScoutGenericToolsServiceV2
     user_name = @user.respond_to?(:first_name) ? "#{@user.first_name} #{@user.last_name}" : @user.to_s
     entity_name = @entity.respond_to?(:name) ? @entity.name : @entity.to_s
     user_context_prefix = "[User Context: #{user_name} from #{entity_name}]\n\n"
+    
+    # Check for attached files in the context
+    enhanced_message = message
+    if @context[:attached_files] && @context[:attached_files].any?
+      Rails.logger.info "🔍 Found attached files in context: #{@context[:attached_files].inspect}"
+      
+      file_info = @context[:attached_files].map do |file|
+        "📎 #{file['filename'] || file[:filename]} (asset_id: #{file['asset_id'] || file[:asset_id]})"
+      end.join("\n")
+      
+      enhanced_message = "#{message}\n\n[ATTACHED FILES]:\n#{file_info}\n\nIMPORTANT: Use the read_document tool with the asset_id to access these files!"
+    end
 
     # If no canvas, just add user context
-    return user_context_prefix + message unless canvas.present?
+    return user_context_prefix + enhanced_message unless canvas.present?
 
     # Convert ActionController::Parameters to hash if needed
     if canvas.respond_to?(:to_unsafe_h)
@@ -900,16 +877,36 @@ class ScoutGenericToolsServiceV2
           "\n[Context: User is in landing page editor]"
         end
       },
+      "document_viewer" => lambda { |data|
+        asset_id = data["asset_id"] || data[:asset_id]
+        filename = data["filename"] || data[:filename]
+        if asset_id
+          "\n[Context: User is viewing document '#{filename}' (asset_id: #{asset_id}). When user says 'this' or 'this document', they mean THIS specific document. Use read_document tool with asset_id #{asset_id} to access its content.]"
+        else
+          "\n[Context: User is viewing a document]"
+        end
+      },
+      "document_search_results" => lambda { |data|
+        query = data["query"] || data[:query]
+        total = data["total_results"] || data[:total_results]
+        "\n[Context: User is viewing document search results for '#{query}' (#{total} results found)]"
+      },
       "campaign_viewer" => "\n[Context: User is viewing email campaigns]",
+      "email_campaign_viewer" => "\n[Context: User is viewing email campaigns]",
       "contact_viewer" => "\n[Context: User is viewing contacts]",
-      "analytics_dashboard" => "\n[Context: User is viewing analytics]"
+      "analytics_dashboard" => "\n[Context: User is viewing analytics]",
+      "parallel_tasks" => "\n[Context: User is viewing the task monitor]",
+      "dynamic_canvas" => lambda { |data|
+        title = data["title"] || data[:title] || "dynamic data"
+        "\n[Context: User is viewing #{title}]"
+      }
     }
 
     hint = context_hints[canvas_type]
     hint_text = hint.is_a?(Proc) ? hint.call(canvas_data) : hint
 
-    # Add user context prefix + message + canvas hint
-    enhanced = user_context_prefix + message + (hint_text || "")
+    # Add user context prefix + enhanced message (with attached files) + canvas hint
+    enhanced = user_context_prefix + enhanced_message + (hint_text || "")
     Rails.logger.info "✅ Enhanced message with user context: #{enhanced}"
 
     enhanced

@@ -54,12 +54,50 @@ class BedrockService
       supports_tools: true,
       supports_caching: true,
       endpoint_type: 'regional'
+    },
+    'claude-haiku-4-5-20251001' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',  # Maps to same model ID as claude-3-haiku
+      name: 'Claude Haiku 4.5',
+      description: 'Fast and efficient',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.20,  # As per entity_cost_tracker.rb
+      cost_per_1m_output: 1.00,  # As per entity_cost_tracker.rb
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    },
+    # Aliases for Claude Haiku 4.5
+    'claude-haiku-4-5' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+      name: 'Claude Haiku 4.5',
+      description: 'Fast and efficient',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 1.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    },
+    'claude-4-5-haiku' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+      name: 'Claude Haiku 4.5',
+      description: 'Fast and efficient',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 1.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
     }
   }.freeze
 
   # Model fallback chain: Try models from fastest to most robust
   # If a model fails due to throttling, timeout, or unavailability, automatically retry with the next model
   MODEL_FALLBACK_CHAIN = [
+    'claude-haiku-4-5-20251001',  # User's preferred model
     'claude-3-haiku',      # Fastest, cheapest - try first
     'claude-3-5-sonnet',   # Fast, capable - good backup
     'claude-sonnet-4-5',   # Latest, powerful - reliable fallback
@@ -187,6 +225,9 @@ class BedrockService
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
       "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+    when "claude-haiku-4-5-20251001", "claude-haiku-4-5", "claude-haiku-4.5", "claude-4-5-haiku"
+      # Claude Haiku 4.5 - fast and efficient
+      "us.anthropic.claude-3-5-haiku-20241022-v1:0"  # Using the latest Haiku model ID
     else
       # Default to Claude Sonnet 4.5 (latest)
       "global.anthropic.claude-sonnet-4-5-20250929-v1:0"

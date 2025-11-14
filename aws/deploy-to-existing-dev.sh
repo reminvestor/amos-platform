@@ -197,3 +197,5 @@ echo -e "  http://dev.amoslabs.com (once DNS propagates)"
 echo -e "\n${YELLOW}View logs:${NC}"
 echo -e "  aws logs tail /ecs/agent-marketing-dev --follow"
 
+
+

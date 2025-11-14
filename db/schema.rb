@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_11_050138) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -248,6 +248,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_11_050138) do
     t.index ["scout_message_id"], name: "index_ai_usage_logs_on_scout_message_id"
     t.index ["user_id", "created_at"], name: "index_ai_usage_logs_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_ai_usage_logs_on_user_id"
+  end
+
+  create_table "amos_jobs", force: :cascade do |t|
+    t.string "job_id", null: false
+    t.string "agent_type", null: false
+    t.string "session_id", null: false
+    t.string "status", default: "queued", null: false
+    t.string "status_message"
+    t.integer "progress", default: 0
+    t.jsonb "input_data", default: {}
+    t.jsonb "result_data", default: {}
+    t.jsonb "error_data", default: {}
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_type"], name: "index_amos_jobs_on_agent_type"
+    t.index ["created_at"], name: "index_amos_jobs_on_created_at"
+    t.index ["job_id"], name: "index_amos_jobs_on_job_id", unique: true
+    t.index ["session_id", "status"], name: "index_amos_jobs_on_session_id_and_status"
+    t.index ["session_id"], name: "index_amos_jobs_on_session_id"
+    t.index ["status"], name: "index_amos_jobs_on_status"
   end
 
   create_table "analytics_connections", force: :cascade do |t|

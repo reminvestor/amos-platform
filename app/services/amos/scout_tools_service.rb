@@ -1,0 +1,149 @@
+# Scout Tools Service - Uses existing main_chat agent loadout
+# Handles data fetching, displaying, and basic operations
+# Complex creation tasks are still delegated to specialized agents
+
+module Amos
+  class ScoutToolsService
+    def initialize(context)
+      @context = context
+      @user = context.user
+      @entity = context.entity
+      @session_id = context.session_id
+    end
+    
+    def process_query(query)
+      # Use the existing ScoutGenericToolsServiceV2 with main_chat loadout
+      service = create_scout_service
+      
+      # Set context including attached files if present
+      context_data = {
+        query: query,
+        entity: @entity.attributes,
+        recent_messages: @context.recent_messages(5)
+      }
+      
+      # Check if query mentions attached files and extract asset IDs
+      if query.match?(/\[Attached Files:.*asset_id:\s*(\d+)/i)
+        Rails.logger.info "[Scout Tools] Detected attached files in query"
+        # Extract file info from the query
+        attached_files = []
+        query.scan(/📎\s*([^(]+)\s*\(asset_id:\s*(\d+)(?:,\s*type:\s*([^)]+))?\)/i).each do |match|
+          attached_files << {
+            filename: match[0].strip,
+            asset_id: match[1],
+            content_type: match[2]&.strip
+          }
+        end
+        if attached_files.any?
+          context_data[:attached_files] = attached_files
+          Rails.logger.info "[Scout Tools] Extracted #{attached_files.size} attached files: #{attached_files.inspect}"
+        end
+      end
+      
+      service.set_context(context_data)
+      
+      # Process with tools (non-streaming)
+      # Note: V2 requires streaming callback, so we collect the response
+      accumulated_response = ""
+      result = service.process_message_with_tools_streaming(
+        query,
+        ->(chunk) { 
+          # Handle different chunk types
+          if chunk.is_a?(Hash)
+            if chunk[:type] == "content_chunk"
+              accumulated_response += chunk[:content] || ""
+            elsif chunk[:type] == "intermediate_message"
+              # Optionally handle tool messages
+              Rails.logger.info "[Scout] Tool message: #{chunk[:content]}"
+            end
+          elsif chunk.is_a?(String)
+            # Some chunks might be plain strings
+            accumulated_response += chunk
+          end
+        },
+        @context.recent_messages(10)
+      )
+      
+      # Return the final response or accumulated content
+      if result.is_a?(Hash) && result[:final_response] && result[:final_response][:message]
+        result[:final_response][:message]
+      else
+        accumulated_response
+      end
+    rescue => e
+      Rails.logger.error "[Scout Tools] Error: #{e.message}"
+      nil
+    end
+    
+    def process_query_streaming(query, &block)
+      # Use ScoutGenericToolsServiceV2 with main_chat loadout for streaming
+      service = create_scout_service
+      
+      # Set context including attached files if present
+      context_data = {
+        query: query,
+        entity: @entity.attributes,
+        recent_messages: @context.recent_messages(5)
+      }
+      
+      # Check if query mentions attached files and extract asset IDs
+      if query.match?(/\[Attached Files:.*asset_id:\s*(\d+)/i)
+        Rails.logger.info "[Scout Tools Streaming] Detected attached files in query"
+        # Extract file info from the query
+        attached_files = []
+        query.scan(/📎\s*([^(]+)\s*\(asset_id:\s*(\d+)(?:,\s*type:\s*([^)]+))?\)/i).each do |match|
+          attached_files << {
+            filename: match[0].strip,
+            asset_id: match[1],
+            content_type: match[2]&.strip
+          }
+        end
+        if attached_files.any?
+          context_data[:attached_files] = attached_files
+          Rails.logger.info "[Scout Tools Streaming] Extracted #{attached_files.size} attached files: #{attached_files.inspect}"
+        end
+      end
+      
+      service.set_context(context_data)
+      
+      # Process with streaming
+      result = service.process_message_with_tools_streaming(
+        query,
+        ->(chunk) { yield chunk if block_given? },
+        @context.recent_messages(10)
+      )
+      
+      # Check if delegation occurred and there's no continuation
+      if result.is_a?(Hash) && result[:final_response].is_a?(Hash)
+        # If delegation occurred, there might be no message
+        if result[:delegation_occurred] || result[:final_response][:delegation_occurred]
+          nil
+        else
+          result[:final_response][:message]
+        end
+      else
+        nil
+      end
+    end
+    
+    private
+    
+    def create_scout_service
+      # Use the existing main_chat agent loadout from AgentLoadout model
+      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+      
+      # Create service with the loadout
+      ScoutGenericToolsServiceV2.new(
+        @user,
+        @entity,
+        @session_id,
+        agent_loadout: main_chat_loadout,
+        model: model_preference
+      )
+    end
+    
+    def model_preference
+      @context.recent_messages.last&.dig(:metadata, :model_preference) || "claude-haiku-4-5-20251001"
+    end
+  end
+end

@@ -17,7 +17,8 @@ class TaskSession < ApplicationRecord
     active: "active",
     completed: "completed",
     failed: "failed",
-    cancelled: "cancelled"
+    cancelled: "cancelled",
+    paused: "paused"
   }
 
   # Session type enums

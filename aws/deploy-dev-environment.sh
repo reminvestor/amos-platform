@@ -44,3 +44,5 @@ echo "   - Check service: aws ecs describe-services --cluster agent-marketing-de
 echo "   - Run migrations: aws ecs execute-command --cluster agent-marketing-dev-cluster --task TASK_ID --container agent-marketing-dev --interactive --command '/bin/bash'"
 
 
+
+

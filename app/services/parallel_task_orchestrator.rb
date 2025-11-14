@@ -6,6 +6,7 @@ class ParallelTaskOrchestrator
     voice_followup: { queue: 'critical', model: 'claude-sonnet-4-5', max_wait_ms: 3000 },
     background: { queue: 'default', model: 'claude-sonnet-4-5', max_wait_ms: nil },
     interactive: { queue: 'default', model: 'claude-opus-4-1', max_wait_ms: nil },
+    interactive_workflow: { queue: 'default', model: 'claude-sonnet-4-5', max_wait_ms: nil },
     scheduled: { queue: 'maintenance', model: 'claude-haiku', max_wait_ms: nil },
     analysis: { queue: 'embeddings', model: 'claude-opus-4-1', max_wait_ms: nil }
   }.freeze
@@ -34,6 +35,21 @@ class ParallelTaskOrchestrator
     end
     
     created_tasks
+  end
+  
+  # Process a pre-created task specification (for workflows)
+  def process_task_spec(task_spec)
+    # Create task sessions from the spec
+    created_tasks = create_task_sessions(task_spec)
+    
+    # Queue all tasks for parallel execution
+    queue_tasks(created_tasks)
+    
+    {
+      success: true,
+      message: "Processing #{created_tasks.length} tasks in parallel.",
+      tasks: created_tasks
+    }
   end
 
   private
@@ -114,8 +130,9 @@ class ParallelTaskOrchestrator
             "dependencies": []
           },
           {
-            "type": "background", 
-            "description": "Second task description",
+            "type": "interactive_workflow",
+            "description": "Create landing page with user guidance",
+            "workflow_type": "landing_page_wizard",
             "dependencies": []
           }
         ]
@@ -125,7 +142,11 @@ class ParallelTaskOrchestrator
       - Each distinct action should be a separate task
       - Tasks with no dependencies can run in parallel
       - Keep descriptions short and clear
-      - Use type "background" for most tasks
+      - Use type "background" for data fetching, analysis, queries
+      - Use type "interactive_workflow" for tasks that need user input like:
+        * Creating landing pages (workflow_type: "landing_page_wizard")
+        * Creating campaigns (workflow_type: "campaign_wizard")
+        * Creating email templates (workflow_type: "email_template_wizard")
       - Return valid JSON only, no explanations
     PROMPT
   end
@@ -144,7 +165,7 @@ class ParallelTaskOrchestrator
       task_session = TaskSession.create!(
         user: @user,
         status: 'active',
-        session_type: 'autonomous',
+        session_type: task_type == 'interactive_workflow' ? 'interactive' : 'autonomous',
         parent_conversation_id: @parent_conversation_id,
         task_type: task_type,
         priority: calculate_priority(task_type),
@@ -154,8 +175,10 @@ class ParallelTaskOrchestrator
           estimated_duration_ms: task_spec[:estimated_duration_ms] || 5000,
           required_tools: task_spec[:required_tools] || [],
           immediate_response: task_plan[:immediate_response],
-          index: index
-        }
+          index: index,
+          workflow_type: task_spec[:workflow_type] || task_spec['workflow_type'],
+          interactive: task_type == 'interactive_workflow'
+        }.merge(task_spec[:metadata] || {})
       )
       
       tasks << task_session
