@@ -128,7 +128,7 @@ module Amos
       )
       
       # Check for canvas updates
-      if result.is_a?(Hash) && result[:canvas_type] && result[:canvas_type] != "conversation"
+      if result.is_a?(Hash) && result[:canvas_type].present? && result[:canvas_type] != "conversation"
         Rails.logger.info "[Scout Tools] Canvas update suggested: #{result[:canvas_type]}"
         yield({ 
           type: 'canvas_update', 

@@ -112,39 +112,55 @@ class ScoutGenericToolsServiceV2
 
         # If delegation occurred, return appropriate response
         if @stop_after_delegation
-          {
+          response = {
             final_response: {
               message: "",
               message_already_saved: @messages_saved_during_streaming,
               delegation_occurred: true
             },
-            canvas_type: @suggested_canvas || "conversation",
-            canvas_data: @canvas_data,
             tools_used: tool_calls.map { |tc| tc[:name] },
             sources: @sources,
             model_used: @model_used,
             model_name: @model_name,
             delegation_occurred: true
           }
+          
+          # Only include canvas info if a canvas was suggested
+          if @suggested_canvas
+            response[:canvas_type] = @suggested_canvas
+            response[:canvas_data] = @canvas_data
+          else
+            response[:canvas_type] = "conversation"
+          end
+          
+          response
         else
         final_response
         end
       else
         # No tools used, return the accumulated content
-        {
+        response = {
           final_response: {
             message: accumulated_content,
             message_already_saved: @messages_saved_during_streaming,
             delegation_occurred: @stop_after_delegation || false
           },
-          canvas_type: @suggested_canvas || "conversation",
-          canvas_data: @canvas_data,
           tools_used: [],
           sources: @sources,
           model_used: @model_used,
           model_name: @model_name,
           delegation_occurred: @stop_after_delegation || false
         }
+        
+        # Only include canvas info if a canvas was suggested
+        if @suggested_canvas
+          response[:canvas_type] = @suggested_canvas
+          response[:canvas_data] = @canvas_data
+        else
+          response[:canvas_type] = "conversation"
+        end
+        
+        response
       end
     rescue => e
       Rails.logger.error "ScoutGenericToolsServiceV2 error: #{e.message}"
@@ -774,14 +790,20 @@ class ScoutGenericToolsServiceV2
         message_already_saved: false,
         delegation_occurred: @stop_after_delegation || false
       },
-      canvas_type: @suggested_canvas || "conversation",
-      canvas_data: @canvas_data,
       tools_used: tool_calls.map { |tc| tc[:name] },
       sources: @sources,
       model_used: @model_used,
       model_name: @model_name,
       delegation_occurred: @stop_after_delegation || false
     }
+    
+    # Only include canvas info if a canvas was suggested
+    if @suggested_canvas
+      response[:canvas_type] = @suggested_canvas
+      response[:canvas_data] = @canvas_data
+    else
+      response[:canvas_type] = "conversation"
+    end
 
     # Add workflow approval data if delegation happened
     if @workflow_delegated

@@ -9,7 +9,7 @@ class CustomAgentDefinition < ApplicationRecord
   validates :agent_type, presence: true
   
   # Status for agent definitions
-  enum status: {
+  enum :status, {
     draft: 0,
     active: 1,
     disabled: 2
