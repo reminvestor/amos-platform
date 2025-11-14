@@ -1,6 +1,5 @@
 module Admin
-  class AgentLightningController < ApplicationController
-    before_action :check_admin_access
+  class AgentLightningController < Admin::BaseController
 
     def dashboard
       # Platform-wide stats across all entities
@@ -234,6 +233,85 @@ module Admin
       end
     end
 
+    def models_performance
+      # Analyze performance by AI model across all entities or for a specific entity
+      entity_id = params[:entity_id]
+      time_range = params[:time_range]&.to_i&.days&.ago || 30.days.ago
+
+      # Get all LLM calls in the time range
+      base_scope = AgentLlmCall.where("called_at > ?", time_range)
+      base_scope = base_scope.where(entity_id: entity_id) if entity_id.present?
+
+      # Group by model to get performance metrics
+      model_stats = base_scope.group(:model).select(
+        'model',
+        'COUNT(*) as total_calls',
+        'AVG(latency_ms) as avg_latency',
+        'AVG(total_tokens) as avg_tokens',
+        'SUM(cost) as total_cost',
+        'AVG(cost) as avg_cost',
+        'SUM(CASE WHEN status = \'success\' THEN 1 ELSE 0 END) as successful_calls'
+      ).map do |stat|
+        success_rate = stat.total_calls > 0 ? (stat.successful_calls.to_f / stat.total_calls * 100).round(1) : 0
+
+        {
+          model: stat.model,
+          display_name: format_model_name(stat.model),
+          total_calls: stat.total_calls,
+          success_rate: success_rate,
+          avg_latency: stat.avg_latency&.round(0) || 0,
+          avg_tokens: stat.avg_tokens&.round(0) || 0,
+          avg_cost: stat.avg_cost&.round(4) || 0.0,
+          total_cost: stat.total_cost&.round(2) || 0.0
+        }
+      end.sort_by { |s| s[:total_calls] }.reverse
+
+      @model_stats = model_stats
+
+      # Per-entity breakdown for each model
+      if entity_id.blank?
+        @entity_breakdown = {}
+        model_stats.each do |model_stat|
+          model = model_stat[:model]
+
+          entity_data = base_scope.where(model: model).group(:entity_id).select(
+            'entity_id',
+            'COUNT(*) as calls',
+            'AVG(latency_ms) as latency',
+            'SUM(cost) as cost'
+          ).map do |ed|
+            entity = Entity.find(ed.entity_id)
+            {
+              entity_name: entity.name,
+              entity_id: ed.entity_id,
+              calls: ed.calls,
+              avg_latency: ed.latency&.round(0) || 0,
+              total_cost: ed.cost&.round(2) || 0.0
+            }
+          end.sort_by { |e| e[:calls] }.reverse.first(10)
+
+          @entity_breakdown[model] = entity_data
+        end
+      end
+
+      # Overall platform stats
+      @total_llm_calls = base_scope.count
+      @overall_success_rate = base_scope.where(status: 'success').count.to_f / [@total_llm_calls, 1].max * 100
+      @overall_success_rate = @overall_success_rate.round(1)
+      @total_platform_cost = base_scope.sum(:cost).round(2)
+
+      # Time range options for filter
+      @time_range_days = (Time.current - time_range).to_i / 1.day.to_i
+
+      # Entity options for filter
+      @entities = Entity.joins(:agent_llm_calls).distinct.order(:name)
+      @selected_entity_id = entity_id
+
+      # Generate charts data
+      @token_usage_chart = generate_token_usage_chart(base_scope, time_range)
+      @cost_chart = generate_cost_chart(base_scope, time_range)
+    end
+
     def training_history
       # Show all training jobs across all entities
       @training_jobs = AgentTrainingJob.includes(:entity).order(completed_at: :desc).page(params[:page]).per(20)
@@ -280,10 +358,102 @@ module Admin
 
     private
 
-    def check_admin_access
-      unless current_user.admin?
-        redirect_to root_path, alert: "Access denied"
+    def format_model_name(model_id)
+      case model_id
+      when /sonnet-4-5/
+        'Claude Sonnet 4.5'
+      when /opus-4/
+        'Claude Opus 4'
+      when /3-5-sonnet/
+        'Claude 3.5 Sonnet'
+      when /haiku/
+        'Claude Haiku'
+      when /gpt-4/
+        'GPT-4'
+      when /gpt-3/
+        'GPT-3.5'
+      else
+        model_id.to_s.split('.').last&.titleize || 'Unknown Model'
       end
     end
+
+    def generate_token_usage_chart(scope, time_range)
+      # Determine grouping based on time range
+      days_diff = (Time.current - time_range).to_i / 1.day.to_i
+      group_by = days_diff <= 1 ? 'hour' : 'day'
+
+      time_groups = case group_by
+      when "hour"
+        24.times.map { |h| h.hours.ago.beginning_of_hour }
+      else
+        days_diff.times.map { |d| d.days.ago.beginning_of_day }
+      end
+
+      # Use database aggregation
+      input_tokens_by_time = scope
+        .group("DATE_TRUNC('#{group_by}', called_at)")
+        .sum(:input_tokens)
+
+      output_tokens_by_time = scope
+        .group("DATE_TRUNC('#{group_by}', called_at)")
+        .sum(:output_tokens)
+
+      {
+        labels: time_groups.reverse.map { |t| format_time_label(t, group_by) },
+        datasets: [
+          {
+            label: "Input Tokens",
+            data: time_groups.reverse.map { |time| input_tokens_by_time[time] || 0 },
+            backgroundColor: "rgba(59, 130, 246, 0.5)"
+          },
+          {
+            label: "Output Tokens",
+            data: time_groups.reverse.map { |time| output_tokens_by_time[time] || 0 },
+            backgroundColor: "rgba(16, 185, 129, 0.5)"
+          }
+        ]
+      }
+    end
+
+    def generate_cost_chart(scope, time_range)
+      # Determine grouping based on time range
+      days_diff = (Time.current - time_range).to_i / 1.day.to_i
+      group_by = days_diff <= 1 ? 'hour' : 'day'
+
+      time_groups = case group_by
+      when "hour"
+        24.times.map { |h| h.hours.ago.beginning_of_hour }
+      else
+        days_diff.times.map { |d| d.days.ago.beginning_of_day }
+      end
+
+      # Use database aggregation
+      cost_by_time = scope
+        .group("DATE_TRUNC('#{group_by}', called_at)")
+        .sum(:cost)
+
+      {
+        labels: time_groups.reverse.map { |t| format_time_label(t, group_by) },
+        datasets: [
+          {
+            label: "Cost ($)",
+            data: time_groups.reverse.map { |time| (cost_by_time[time] || 0).round(2) },
+            borderColor: "rgb(239, 68, 68)",
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            fill: true
+          }
+        ]
+      }
+    end
+
+    def format_time_label(time, group_by)
+      case group_by
+      when "hour"
+        time.strftime("%-l %p")
+      else
+        time.strftime("%b %-d")
+      end
+    end
+
   end
 end
