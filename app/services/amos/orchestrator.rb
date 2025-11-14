@@ -169,8 +169,9 @@ module Amos
         clean_response = "To create the perfect landing page, I need to know:\n\n#{question_content}"
         
         # Broadcast the response to the user
-        # Use complete: true but not from_agent so it displays properly
-        broadcast_to_user(clean_response, { complete: true })
+        # Don't mark as complete or it will be filtered out
+        # The frontend will display it as a standalone message
+        broadcast_to_user(clean_response, {})
         
         # Save as assistant message
         save_assistant_message(clean_response)
