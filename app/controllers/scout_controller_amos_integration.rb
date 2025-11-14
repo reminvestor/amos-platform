@@ -61,13 +61,13 @@ class ScoutControllerAmosIntegration
   # Example: Tool execution
   def execute_with_tools_old
     # Initialize service
-    service = ScoutGenericToolsServiceV2.new(...)
+    # service = ScoutGenericToolsServiceV2.new(user, entity, session_id)
     
     # Complex tool selection
-    tools = select_tools_for_request(message)
+    # tools = select_tools_for_request(message)
     
     # Execute
-    result = service.process_message_with_tools(...)
+    # result = service.process_message_with_tools(message, tools)
     
     # Handle result
     # ... lots of code
@@ -83,13 +83,13 @@ class ScoutControllerAmosIntegration
   # Example: Workflow execution
   def handle_workflow_old
     # Detect workflow need
-    if message.match?(/landing.*page/i)
-      # Initialize workflow service
-      workflow_service = InteractiveTaskService.new(...)
-      
-      # Complex workflow handling
-      # ... 100+ lines of code
-    end
+    # if message.match?(/landing.*page/i)
+    #   # Initialize workflow service
+    #   workflow_service = InteractiveTaskService.new(user, entity, session_id)
+    #   
+    #   # Complex workflow handling
+    #   # ... 100+ lines of code
+    # end
   end
   
   # New: Workflows are just another agent type
