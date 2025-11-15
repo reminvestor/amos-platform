@@ -203,6 +203,40 @@ These tests follow the same patterns as existing tests in the codebase:
 - Support parallel test execution
 - Work with existing test fixtures
 
+## Fallback Mechanism
+
+The integration includes automatic fallback from Eleven Labs to Deepgram with comprehensive logging:
+
+### How It Works
+1. **Primary Provider**: Eleven Labs Scribe v2 is attempted first
+2. **Fallback Trigger**: If Eleven Labs fails to connect:
+   - Network error
+   - API credentials invalid
+   - Service unavailable
+   - Connection timeout
+3. **Fallback Provider**: Deepgram automatically takes over
+4. **User Notification**: Status message indicates which provider is active
+5. **Logging**: Detailed console logs track which provider was used
+
+### Logging Output Example
+```
+🚀 Attempting STT provider connection (priority: Eleven Labs → Deepgram)...
+1️⃣ Attempting Eleven Labs Scribe v2 (primary provider)...
+⚠️ Eleven Labs Scribe v2 unavailable, attempting fallback...
+   Error: Connection timeout
+   Reason: Eleven Labs API unreachable or credentials invalid
+2️⃣ Attempting Deepgram (fallback provider)...
+✅ Deepgram connected successfully in 245ms
+📊 STT Provider: Deepgram (fallback)
+ℹ️ Note: Using fallback provider. Eleven Labs will be retried on next session.
+```
+
+### Session End Logging
+When voice session ends, the provider used is logged:
+```
+📊 Session used STT provider: Deepgram (fallback)
+```
+
 ## Continuous Integration
 
 These tests are compatible with:
@@ -215,8 +249,13 @@ These tests are compatible with:
 
 Potential additional test coverage:
 1. JavaScript WebSocket connection tests (browser automation)
-2. End-to-end voice transcription tests (with mock Eleven Labs API)
-3. Performance benchmarks
-4. Load testing for concurrent sessions
+   - Test Eleven Labs → Deepgram fallback scenario
+   - Test connection timeouts
+   - Test error recovery
+2. End-to-end voice transcription tests (with mock providers)
+3. Performance benchmarks for provider switching
+4. Load testing for concurrent sessions with provider failover
 5. Error recovery and reconnection tests
-6. Audio quality validation tests
+6. Audio quality validation for each provider
+7. Provider health check mechanism
+8. Metrics collection for fallback usage tracking

@@ -234,12 +234,54 @@ All data is **entity-scoped** (multi-tenant):
 4. Check tool catalog: `Tools::ToolCatalog.instance.all_tools.keys`
 5. Review streaming logs in browser console for event stream
 
+## Voice Assistant System
+
+The application includes a sophisticated voice-to-text transcription system with intelligent fallback capabilities.
+
+**Speech-to-Text Providers**:
+1. **Primary**: Eleven Labs Scribe v2 Realtime
+   - Ultra-low latency (~150ms)
+   - 90+ language support
+   - Superior accuracy across accents and tones
+   - Technical vocabulary and proper noun recognition
+   - WebSocket-based real-time streaming
+
+2. **Fallback**: Deepgram (automatic failover)
+   - Active fallback if Eleven Labs unavailable
+   - Seamless provider switching with user notification
+   - Comprehensive logging for monitoring
+
+**Architecture**:
+- **Service**: `ElevenLabsTranscriptionService` - Credential and config management
+- **Controller**: `Api::Voice::VoiceSessionsController` - Session and credential endpoints
+- **Frontend**: `VoiceAssistantController` - WebSocket management and fallback logic
+
+**Key Features**:
+- Pre-initialized credentials for instant mic activation
+- Automatic provider fallback with logging
+- 16-bit PCM audio at 16kHz (telephony quality)
+- Voice Activity Detection (VAD)
+- Partial and final transcript handling
+- Multi-language configuration
+- Keyword boosting for business terms
+
+**Configuration**:
+- `ELEVEN_LABS_API_KEY` - Required for primary provider
+- `DEEPGRAM_API_KEY` - For fallback provider (optional but recommended)
+- See `.env.example` for full voice configuration
+
+**Monitoring**:
+- Check browser console for provider selection logs
+- Session logs indicate which STT provider was used
+- Format: `📊 Session used STT provider: Eleven Labs Scribe v2` or `Deepgram (fallback)`
+
 ## UI Architecture
 
 - **Backend**: Rails 8 with Turbo/Stimulus
 - **Frontend**: Bootstrap 5, minimal JavaScript
 - **Chat Interface**: Stimulus controller (`app/javascript/controllers/chat_controller.js`)
 - **Canvas System**: Dynamic UI loading (landing page editor, campaign dashboard)
+- **Voice Input**: WebSocket-based real-time transcription (`app/javascript/controllers/voice_assistant_controller.js`)
 
 ## Documentation Files
 
