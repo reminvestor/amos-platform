@@ -29,6 +29,7 @@ export default class extends Controller {
     this.voiceSessionId = null
     this.elevenLabsSocket = null  // Eleven Labs Scribe v2 WebSocket (primary STT)
     this.deepgramSocket = null     // Deepgram WebSocket (fallback STT)
+    this.currentSTTProvider = null // Track which STT provider is active
     this.mediaStream = null
     this.audioContext = null
     this.voiceChannel = null
@@ -143,9 +144,8 @@ export default class extends Controller {
         // Connect Action Cable in parallel with WebSocket setup
         this.connectVoiceChannel() // Fire and forget
 
-        // Use cached Eleven Labs Scribe v2 credentials for instant connection
-        console.log("⚡ Using pre-fetched Eleven Labs Scribe v2 credentials (INSTANT)")
-        await this.connectElevenLabs(elevenLabsCreds)
+        // Attempt Eleven Labs first (primary), with Deepgram fallback
+        await this.connectWithFallback(elevenLabsCreds)
 
       } else {
         // Fallback: initialize normally if pre-init failed
@@ -162,12 +162,13 @@ export default class extends Controller {
         ])
 
         console.log("✅ All services connected")
-        await this.connectElevenLabs(elevenLabsCreds)
+        // Attempt Eleven Labs first (primary), with Deepgram fallback
+        await this.connectWithFallback(elevenLabsCreds)
       }
 
       const initTime = performance.now() - startTime
       console.log(`⚡ TOTAL INITIALIZATION: ${initTime.toFixed(0)}ms`)
-      console.log("✅ Eleven Labs WebSocket connected")
+      console.log(`✅ STT Provider Connected (${this.currentSTTProvider})`)
 
       this.isActive = true
       this.updateStatus("🎤 Listening... Say 'Hey Amos' + your command")
@@ -249,6 +250,12 @@ export default class extends Controller {
     // Exit continuous mode
     this.continuousMode = false
     this.waitingForWakeWord = false
+
+    // Log which provider was active during session
+    if (this.currentSTTProvider) {
+      console.log(`📊 Session used STT provider: ${this.currentSTTProvider}`)
+      this.currentSTTProvider = null
+    }
 
     // Stop audio capture
     if (this.mediaStream) {
@@ -642,6 +649,59 @@ export default class extends Controller {
       // Timeout if connection takes too long
       setTimeout(() => reject(new Error("Eleven Labs connection timeout")), 10000)
     })
+  }
+
+  /**
+   * Connect to STT provider with fallback
+   * Attempts Eleven Labs Scribe v2 first, falls back to Deepgram if unavailable
+   * Logs which provider is being used for monitoring/debugging
+   */
+  async connectWithFallback(elevenLabsCreds) {
+    console.log("🚀 Attempting STT provider connection (priority: Eleven Labs → Deepgram)...")
+
+    try {
+      console.log("1️⃣ Attempting Eleven Labs Scribe v2 (primary provider)...")
+      const startTime = performance.now()
+
+      await this.connectElevenLabs(elevenLabsCreds)
+
+      const connectionTime = performance.now() - startTime
+      this.currentSTTProvider = "Eleven Labs Scribe v2"
+      console.log(`✅ Eleven Labs connected successfully in ${connectionTime.toFixed(0)}ms`)
+      console.log(`📊 STT Provider: ${this.currentSTTProvider}`)
+
+    } catch (elevenLabsError) {
+      console.warn("⚠️ Eleven Labs Scribe v2 unavailable, attempting fallback...")
+      console.error("   Error:", elevenLabsError.message)
+      console.log("   Reason: Eleven Labs API unreachable or credentials invalid")
+
+      try {
+        console.log("2️⃣ Attempting Deepgram (fallback provider)...")
+        const startTime = performance.now()
+
+        // Fetch Deepgram credentials from server
+        const deepgramCreds = await this.getDeepgramCredentials()
+        await this.connectDeepgram(deepgramCreds)
+
+        const connectionTime = performance.now() - startTime
+        this.currentSTTProvider = "Deepgram (fallback)"
+        console.log(`✅ Deepgram connected successfully in ${connectionTime.toFixed(0)}ms`)
+        console.log(`📊 STT Provider: ${this.currentSTTProvider}`)
+        console.log(`ℹ️ Note: Using fallback provider. Eleven Labs will be retried on next session.`)
+
+        // Notify user that fallback is active
+        this.updateStatus("🎤 Listening (using Deepgram)... Say 'Hey Amos' + your command")
+
+      } catch (deepgramError) {
+        console.error("❌ Both STT providers failed!")
+        console.error("   Eleven Labs error:", elevenLabsError.message)
+        console.error("   Deepgram error:", deepgramError.message)
+
+        const errorMsg = "Voice input unavailable - both STT providers failed. Please try again."
+        this.updateStatus(errorMsg)
+        throw new Error(errorMsg)
+      }
+    }
   }
 
   /**
