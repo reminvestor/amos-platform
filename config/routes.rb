@@ -30,6 +30,15 @@ Rails.application.routes.draw do
           patch :end
         end
       end
+
+      # Voice Health Monitoring
+      namespace :health do
+        get :status           # Overall health status
+        get :providers        # Provider-specific status
+        get :metrics          # Usage and performance metrics
+        get :optimization     # Optimization recommendations
+        post :prewarm         # Manually trigger pre-warming
+      end
     end
     
     # Text-to-Speech API

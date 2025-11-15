@@ -236,7 +236,7 @@ All data is **entity-scoped** (multi-tenant):
 
 ## Voice Assistant System
 
-The application includes a sophisticated voice-to-text transcription system with intelligent fallback capabilities.
+The application includes a sophisticated voice-to-text transcription system with intelligent fallback capabilities, health monitoring, error recovery, and performance optimization.
 
 **Speech-to-Text Providers**:
 1. **Primary**: Eleven Labs Scribe v2 Realtime
@@ -251,29 +251,50 @@ The application includes a sophisticated voice-to-text transcription system with
    - Seamless provider switching with user notification
    - Comprehensive logging for monitoring
 
-**Architecture**:
-- **Service**: `ElevenLabsTranscriptionService` - Credential and config management
-- **Controller**: `Api::Voice::VoiceSessionsController` - Session and credential endpoints
-- **Frontend**: `VoiceAssistantController` - WebSocket management and fallback logic
+**Core Services**:
+- `ElevenLabsTranscriptionService` - Credential and config management
+- `VoiceProviderHealthService` - Health monitoring and status tracking
+- `VoiceConnectionRetryService` - Error recovery with exponential backoff and circuit breaker
+- `VoiceMetricsService` - Usage analytics, performance tracking, comparative analysis
+- `VoiceConnectionOptimizer` - Performance optimization (caching, prewarming, pooling)
+
+**Controllers**:
+- `Api::Voice::VoiceSessionsController` - Session and credential endpoints
+- `Api::Voice::HealthController` - Health monitoring and analytics endpoints
 
 **Key Features**:
 - Pre-initialized credentials for instant mic activation
-- Automatic provider fallback with logging
+- Automatic provider fallback with intelligent retry logic (exponential backoff)
+- Circuit breaker pattern to prevent cascading failures
 - 16-bit PCM audio at 16kHz (telephony quality)
 - Voice Activity Detection (VAD)
 - Partial and final transcript handling
-- Multi-language configuration
-- Keyword boosting for business terms
+- Multi-language configuration and keyword boosting
+- Real-time health monitoring
+- Comprehensive metrics and analytics
+- Performance optimization (credential caching, connection pre-warming)
+
+**Health Monitoring Endpoints**:
+- `GET /api/voice/health/status` - Overall system health
+- `GET /api/voice/health/providers` - Provider-specific status and metrics
+- `GET /api/voice/health/metrics?days=7` - Usage and performance analytics
+- `GET /api/voice/health/optimization` - Optimization recommendations
+- `POST /api/voice/health/prewarm` - Manual connection pre-warming
 
 **Configuration**:
 - `ELEVEN_LABS_API_KEY` - Required for primary provider
 - `DEEPGRAM_API_KEY` - For fallback provider (optional but recommended)
 - See `.env.example` for full voice configuration
 
-**Monitoring**:
-- Check browser console for provider selection logs
-- Session logs indicate which STT provider was used
+**Monitoring & Debugging**:
+- Health endpoint: `/api/voice/health/status`
+- Metrics dashboard: `/api/voice/health/metrics`
+- Optimization guide: `/api/voice/health/optimization`
+- Browser console for provider logs
 - Format: `📊 Session used STT provider: Eleven Labs Scribe v2` or `Deepgram (fallback)`
+
+**Documentation**:
+- `docs/VOICE_SYSTEM_MONITORING.md` - Complete guide to monitoring, optimization, and troubleshooting
 
 ## UI Architecture
 
@@ -291,3 +312,4 @@ The application includes a sophisticated voice-to-text transcription system with
 - `INTEGRATION_ARCHITECTURE_V2.md` - Integration system details
 - `PROMPT_CACHING_GUIDE.md` - Anthropic prompt caching implementation and optimization
 - `UI_UX_STYLE_GUIDE.md` - **MUST READ**: UI/UX best practices, Lucide icon sizing conventions, button styling guidelines
+- `VOICE_SYSTEM_MONITORING.md` - Voice system health, monitoring, analytics, and optimization
