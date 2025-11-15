@@ -27,7 +27,8 @@ export default class extends Controller {
     this.waitingForWakeWord = false  // Waiting for next "Hey Amos"
 
     this.voiceSessionId = null
-    this.deepgramSocket = null
+    this.elevenLabsSocket = null  // Eleven Labs Scribe v2 WebSocket (primary STT)
+    this.deepgramSocket = null     // Deepgram WebSocket (fallback STT)
     this.mediaStream = null
     this.audioContext = null
     this.voiceChannel = null
@@ -40,7 +41,8 @@ export default class extends Controller {
 
     // Pre-initialization cache
     this.cachedSession = null
-    this.cachedDeepgramCreds = null
+    this.cachedElevenLabsCreds = null  // Cache Eleven Labs credentials (primary STT)
+    this.cachedDeepgramCreds = null    // Cache Deepgram credentials (fallback)
     this.isPreInitialized = false
 
     // Performance tracking
@@ -59,6 +61,7 @@ export default class extends Controller {
   /**
    * Pre-initialize session and credentials on page load
    * This makes mic button activation nearly instant
+   * Fetches Eleven Labs credentials (primary STT provider)
    */
   async preInitialize() {
     try {
@@ -68,14 +71,14 @@ export default class extends Controller {
       this.cachedSession = await this.createVoiceSession()
       console.log("✅ Pre-initialized session:", this.cachedSession.session_id)
 
-      // Pre-fetch Deepgram credentials
-      this.cachedDeepgramCreds = await fetch(`/api/voice/sessions/${this.cachedSession.session_id}/deepgram_key`, {
+      // Pre-fetch Eleven Labs Scribe v2 credentials (primary STT)
+      this.cachedElevenLabsCreds = await fetch(`/api/voice/sessions/${this.cachedSession.session_id}/eleven_labs_credentials`, {
         headers: {
           "X-CSRF-Token": this.csrfToken()
         }
       }).then(r => r.json())
 
-      console.log("✅ Pre-fetched Deepgram credentials")
+      console.log("✅ Pre-fetched Eleven Labs Scribe v2 credentials")
       this.isPreInitialized = true
       console.log("🎉 Voice assistant pre-initialized! Mic button will be instant.")
 
@@ -127,9 +130,12 @@ export default class extends Controller {
         console.log("⚡ Using pre-initialized session (INSTANT):", this.cachedSession.session_id)
         this.voiceSessionId = this.cachedSession.session_id
 
+        // Use cached Eleven Labs credentials (primary STT provider)
+        const elevenLabsCreds = this.cachedElevenLabsCreds
+
         // Clear cache after using it (session will be ended after use)
-        const deepgramCreds = this.cachedDeepgramCreds
         this.cachedSession = null
+        this.cachedElevenLabsCreds = null
         this.cachedDeepgramCreds = null
         this.isPreInitialized = false
         console.log("🔄 Cache cleared (will re-initialize after this session)")
@@ -137,9 +143,9 @@ export default class extends Controller {
         // Connect Action Cable in parallel with WebSocket setup
         this.connectVoiceChannel() // Fire and forget
 
-        // Use cached Deepgram credentials
-        console.log("⚡ Using pre-fetched Deepgram credentials (INSTANT)")
-        await this.connectDeepgram(deepgramCreds)
+        // Use cached Eleven Labs Scribe v2 credentials for instant connection
+        console.log("⚡ Using pre-fetched Eleven Labs Scribe v2 credentials (INSTANT)")
+        await this.connectElevenLabs(elevenLabsCreds)
 
       } else {
         // Fallback: initialize normally if pre-init failed
@@ -150,18 +156,18 @@ export default class extends Controller {
 
         // Parallelize operations
         console.log("Step 3: Connecting services in parallel...")
-        const [deepgramCreds, _] = await Promise.all([
-          this.getDeepgramCredentials(),
+        const [elevenLabsCreds, _] = await Promise.all([
+          this.getElevenLabsCredentials(),
           this.connectVoiceChannel()
         ])
 
         console.log("✅ All services connected")
-        await this.connectDeepgram(deepgramCreds)
+        await this.connectElevenLabs(elevenLabsCreds)
       }
 
       const initTime = performance.now() - startTime
       console.log(`⚡ TOTAL INITIALIZATION: ${initTime.toFixed(0)}ms`)
-      console.log("✅ Deepgram WebSocket connected")
+      console.log("✅ Eleven Labs WebSocket connected")
 
       this.isActive = true
       this.updateStatus("🎤 Listening... Say 'Hey Amos' + your command")
@@ -251,7 +257,16 @@ export default class extends Controller {
       console.log("✅ Microphone stopped")
     }
 
-    // Close Deepgram connection gracefully
+    // Close Eleven Labs connection gracefully (primary STT provider)
+    if (this.elevenLabsSocket) {
+      if (this.elevenLabsSocket.readyState === WebSocket.OPEN) {
+        this.elevenLabsSocket.close(1000, "User ended session") // Normal closure
+        console.log("✅ Eleven Labs WebSocket closed gracefully")
+      }
+      this.elevenLabsSocket = null
+    }
+
+    // Close Deepgram connection gracefully (fallback - if still open)
     if (this.deepgramSocket) {
       if (this.deepgramSocket.readyState === WebSocket.OPEN) {
         this.deepgramSocket.close(1000, "User ended session") // Normal closure
@@ -318,6 +333,19 @@ export default class extends Controller {
     return await response.json()
   }
 
+  /**
+   * Get Eleven Labs Scribe v2 credentials
+   */
+  async getElevenLabsCredentials() {
+    const response = await fetch(`/api/voice/sessions/${this.voiceSessionId}/eleven_labs_credentials`, {
+      headers: {
+        "X-CSRF-Token": this.csrfToken()
+      }
+    })
+
+    if (!response.ok) throw new Error("Failed to get Eleven Labs credentials")
+    return await response.json()
+  }
 
   /**
    * End voice session
@@ -532,6 +560,219 @@ export default class extends Controller {
         }
       }
     })
+  }
+
+  /**
+   * Connect to Eleven Labs Scribe v2 WebSocket (real-time speech-to-text)
+   * Features:
+   * - Ultra-low latency (~150ms)
+   * - 90+ language support
+   * - High accuracy across accents
+   * - Supports PCM and μ-law encoding
+   */
+  connectElevenLabs(creds) {
+    return new Promise((resolve, reject) => {
+      console.log("🔗 Eleven Labs config:", creds.config)
+
+      // Build WebSocket URL with API key in query parameter
+      const wsUrl = `${creds.websocket_url}?api_key=${creds.api_key}`
+
+      console.log("🔗 Connecting to Eleven Labs Scribe v2 WebSocket...")
+      this.elevenLabsSocket = new WebSocket(wsUrl)
+
+      this.elevenLabsSocket.onopen = () => {
+        console.log("✅ Eleven Labs WebSocket connected")
+        this.isListening = true
+
+        // Clear transcription display when starting to listen
+        document.dispatchEvent(new CustomEvent('voice:interim', {
+          detail: { text: "" }
+        }))
+
+        // Start performance tracking
+        this.performanceMetrics.speechStartTime = performance.now()
+        console.log("⏱️ Performance tracking started")
+
+        // Send initial config
+        this.elevenLabsSocket.send(JSON.stringify({
+          type: "request_init",
+          config: {
+            ...creds.config,
+            enable_speaker_diarization: false
+          }
+        }))
+
+        this.streamAudioToElevenLabs()
+        resolve()
+      }
+
+      this.elevenLabsSocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          this.handleElevenLabsMessage(data)
+        } catch (e) {
+          console.error("Failed to parse Eleven Labs message:", e)
+        }
+      }
+
+      this.elevenLabsSocket.onerror = (error) => {
+        console.error("❌ Eleven Labs WebSocket error:", error)
+        this.updateStatus("Eleven Labs connection failed - check console")
+        reject(error)
+      }
+
+      this.elevenLabsSocket.onclose = (event) => {
+        console.log("🔌 Eleven Labs WebSocket closed", {
+          code: event.code,
+          reason: event.reason,
+          wasClean: event.wasClean
+        })
+        this.isListening = false
+
+        if (event.code !== 1000 && this.isActive) {
+          console.error(`❌ Eleven Labs closed abnormally`)
+          console.error(`   Code: ${event.code}`)
+          console.error(`   Reason: ${event.reason || "Unknown"}`)
+          this.updateStatus(`Connection error: ${event.reason || "Unknown"}`)
+        } else if (event.code === 1000) {
+          console.log("✅ Eleven Labs WebSocket closed normally")
+        }
+      }
+
+      // Timeout if connection takes too long
+      setTimeout(() => reject(new Error("Eleven Labs connection timeout")), 10000)
+    })
+  }
+
+  /**
+   * Stream audio to Eleven Labs
+   */
+  async streamAudioToElevenLabs() {
+    const source = this.audioContext.createMediaStreamSource(this.mediaStream)
+    const processor = this.audioContext.createScriptProcessor(4096, 1, 1)
+
+    let audioChunkCount = 0
+    const needsResampling = this.audioContext.sampleRate !== 16000
+
+    if (needsResampling) {
+      console.log(`🔄 Resampling from ${this.audioContext.sampleRate}Hz to 16000Hz for Eleven Labs`)
+    }
+
+    processor.onaudioprocess = (e) => {
+      if (!this.isListening || !this.elevenLabsSocket || this.elevenLabsSocket.readyState !== WebSocket.OPEN) {
+        return
+      }
+
+      const inputData = e.inputBuffer.getChannelData(0)
+
+      let resampledData = inputData
+
+      // Simple resampling if needed
+      if (needsResampling) {
+        const resampleRatio = 16000 / this.audioContext.sampleRate
+        const newLength = Math.floor(inputData.length * resampleRatio)
+        resampledData = new Float32Array(newLength)
+
+        for (let i = 0; i < newLength; i++) {
+          const srcIndex = i / resampleRatio
+          const srcIndexFloor = Math.floor(srcIndex)
+          const srcIndexCeil = Math.ceil(srcIndex)
+          const fraction = srcIndex - srcIndexFloor
+
+          if (srcIndexCeil < inputData.length) {
+            resampledData[i] = inputData[srcIndexFloor] * (1 - fraction) + inputData[srcIndexCeil] * fraction
+          } else {
+            resampledData[i] = inputData[srcIndexFloor]
+          }
+        }
+      }
+
+      // Convert to 16-bit PCM
+      const pcmData = new Int16Array(resampledData.length)
+      for (let i = 0; i < resampledData.length; i++) {
+        pcmData[i] = Math.max(-32768, Math.min(32767, resampledData[i] * 32768))
+      }
+
+      if (pcmData.byteLength === 0) {
+        console.warn("⚠️ Empty audio buffer, skipping")
+        return
+      }
+
+      // Send to Eleven Labs as binary data
+      try {
+        this.elevenLabsSocket.send(pcmData.buffer)
+
+        audioChunkCount++
+        if (audioChunkCount <= 3) {
+          console.log(`📤 Sent audio chunk #${audioChunkCount}, size: ${pcmData.buffer.byteLength} bytes`)
+        }
+      } catch (error) {
+        console.error("❌ Failed to send audio to Eleven Labs:", error)
+      }
+
+      // Voice Activity Detection
+      const volume = this.calculateVolume(inputData)
+      this.handleVAD(volume)
+    }
+
+    try {
+      source.connect(processor)
+      processor.connect(this.audioContext.destination)
+      console.log("🎙️ Audio processor connected and streaming to Eleven Labs")
+    } catch (error) {
+      console.error("❌ Failed to connect audio processor:", error)
+      this.updateStatus("Audio error - please refresh and try again")
+      this.stopListening()
+      throw error
+    }
+  }
+
+  /**
+   * Handle Eleven Labs messages
+   * Eleven Labs Scribe v2 Realtime message format
+   */
+  handleElevenLabsMessage(data) {
+    console.log("📥 Eleven Labs message:", data)
+
+    switch (data.type) {
+      case "transcript":
+        // Partial or final transcript
+        const transcript = data.transcript
+        const isFinal = data.is_final
+
+        if (transcript) {
+          if (isFinal) {
+            // Track transcript latency
+            this.performanceMetrics.transcriptReceivedTime = performance.now()
+            const transcriptLatency = this.performanceMetrics.transcriptReceivedTime - this.performanceMetrics.speechStartTime
+            console.log("✅ Final transcript from Eleven Labs:", transcript)
+            console.log(`⏱️ Transcript latency: ${transcriptLatency.toFixed(0)}ms`)
+
+            // Buffer transcript
+            this.addToTranscriptBuffer(transcript)
+          } else {
+            // Interim transcript
+            console.log("💬 Interim transcript:", transcript)
+            this.showInterimTranscript(transcript)
+          }
+        }
+        break
+
+      case "error":
+        console.error("❌ Eleven Labs error:", data.error_message)
+        this.updateStatus(`Error: ${data.error_message}`)
+        break
+
+      case "ping":
+        // Respond to keepalive ping
+        if (this.elevenLabsSocket?.readyState === WebSocket.OPEN) {
+          this.elevenLabsSocket.send(JSON.stringify({ type: "pong" }))
+        }
+        break
+
+      default:
+        console.log("📨 Eleven Labs message type:", data.type)
+    }
   }
 
   /**
