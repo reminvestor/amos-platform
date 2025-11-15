@@ -26,6 +26,7 @@ Rails.application.routes.draw do
       resources :sessions, only: [:create, :show], controller: "voice_sessions", param: :id do
         member do
           get :deepgram_key
+          get :eleven_labs_credentials
           patch :end
         end
       end

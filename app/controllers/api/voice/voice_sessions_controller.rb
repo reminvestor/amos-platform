@@ -12,8 +12,8 @@ module Api
     # - PATCH /api/voice/sessions/:id/end - End session
     class VoiceSessionsController < ApplicationController
       before_action :authenticate_user!
-      before_action :set_voice_session, only: [ :show, :deepgram_key, :polly_credentials, :pause, :resume, :end ]
-      before_action :authorize_session_access, only: [ :show, :deepgram_key, :polly_credentials, :pause, :resume, :end ]
+      before_action :set_voice_session, only: [ :show, :deepgram_key, :eleven_labs_credentials, :polly_credentials, :pause, :resume, :end ]
+      before_action :authorize_session_access, only: [ :show, :deepgram_key, :eleven_labs_credentials, :polly_credentials, :pause, :resume, :end ]
 
       # POST /api/voice/sessions
       def create
@@ -62,6 +62,17 @@ module Api
         Rails.logger.error "Failed to get Deepgram credentials: #{e.message}"
         Rails.logger.error e.backtrace.join("\n")
         render json: { error: "Failed to get Deepgram credentials: #{e.message}" }, status: :internal_server_error
+      end
+
+      # GET /api/voice/sessions/:id/eleven_labs_credentials
+      def eleven_labs_credentials
+        service = ElevenLabsTranscriptionService.new(@voice_session)
+
+        render json: service.connection_params
+      rescue => e
+        Rails.logger.error "Failed to get Eleven Labs credentials: #{e.message}"
+        Rails.logger.error e.backtrace.join("\n")
+        render json: { error: "Failed to get Eleven Labs credentials: #{e.message}" }, status: :internal_server_error
       end
 
       # GET /api/voice/sessions/:id/polly_credentials
