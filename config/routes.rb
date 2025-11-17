@@ -406,6 +406,7 @@ Rails.application.routes.draw do
   post "scout/chat_interactive", to: "scout#chat_interactive"
   post "scout/continue_workflow", to: "scout#continue_workflow"
   post "scout/approve_workflow", to: "scout#approve_workflow"
+  post "scout/task_statuses", to: "scout#task_statuses"
   post "scout/upload_files", to: "scout#upload_files"
   get "scout/history", to: "scout#history" # paginated history
   delete "scout/conversation", to: "scout#clear_conversation"
@@ -417,6 +418,7 @@ Rails.application.routes.draw do
   # Scout Intelligent Canvas routes
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
+  post "scout/cancel_job", to: "scout#cancel_job"
 
   # Document indexing status API
   get "scout/document-status/:asset_id", to: "scout#document_indexing_status"
@@ -596,6 +598,14 @@ Rails.application.routes.draw do
         post :reset_password
       end
     end
+    
+    # Parallel task monitoring
+    resources :parallel_tasks, only: [:index, :show] do
+      member do
+        post :cancel
+        post :retry
+      end
+    end
 
     # Admin user management
     resources :admin_users do
@@ -619,9 +629,23 @@ Rails.application.routes.draw do
       get "errors", to: "metrics#errors"
       get "performance", to: "metrics#performance"
     end
+
+    # Agent Lightning Dashboard
+    resources :agent_lightning, only: [] do
+      collection do
+        get :dashboard, as: :dashboard
+        post :train_now, as: :train_now
+        get :metrics, as: :metrics
+        get :training_history, as: :training_history
+        get :export_data, as: :export_data
+      end
+    end
   end
 
   # Common routes (regardless of subdomain)
+  # Amos Integration - needs to be accessible from any subdomain for agent callbacks
+  post "amos/callback/:session_id", to: "amos#callback", as: :amos_callback
+  
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   get "up" => "rails/health#show", as: :rails_health_check
 

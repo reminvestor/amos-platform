@@ -79,6 +79,21 @@ Rails.application.configure do
 
   # Replace the default in-process memory cache store with a durable alternative.
   # config.cache_store = :solid_cache_store
+  
+  # Use Redis for caching to share data between web and worker processes
+  config.cache_store = :redis_cache_store, { 
+    url: ENV["REDIS_URL"] || ENV["ELASTICACHE_REDIS_URL"],
+    namespace: "amos_prod_cache",
+    expires_in: 90.minutes,
+    connect_timeout: 3,
+    read_timeout: 1,
+    write_timeout: 1,
+    reconnect_attempts: 1,
+    error_handler: -> (method:, returning:, exception:) {
+      Rails.logger.error "[Redis Cache Error] #{method} failed: #{exception.class} - #{exception.message}"
+      nil # Return nil on errors to prevent crashes
+    }
+  }
 
   # Replace the default in-process and non-durable queuing backend for Active Job.
   config.active_job.queue_adapter = :solid_queue

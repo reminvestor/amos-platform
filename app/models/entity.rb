@@ -51,11 +51,20 @@ class Entity < ApplicationRecord
 
   # Subscription tracking
   has_many :subscription_events, dependent: :destroy
-  
+
   # RAG and Knowledge Base
   has_many :knowledge_documents, dependent: :destroy
   has_many :conversation_embeddings, dependent: :destroy
   has_many :integration_embeddings, dependent: :destroy
+
+  # Agent Lightning - RL-based optimization
+  has_many :agent_lightning_traces, dependent: :destroy
+  has_many :agent_llm_calls, dependent: :destroy
+  has_many :agent_tool_executions, dependent: :destroy
+  has_many :agent_phase_executions, dependent: :destroy
+  has_many :agent_rewards, dependent: :destroy
+  has_many :agent_training_jobs, dependent: :destroy
+  has_one :agent_lightning_config, dependent: :destroy
   
   # Subscription status accessor
   def subscription_status

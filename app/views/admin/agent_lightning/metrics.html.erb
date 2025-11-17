@@ -1,0 +1,255 @@
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h1>📊 Agent Lightning Metrics</h1>
+      <p class="text-muted"><%= @entity.name %> (Last <%= @days %> days)</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <% [7, 30, 60, 90].each do |days| %>
+        <% if days == @days %>
+          <span class="badge bg-primary"><%= days %> days</span>
+        <% else %>
+          <%= link_to days.to_s + " days", admin_agent_lightning_metrics_path(days: days), class: "btn btn-sm btn-outline-secondary" %>
+        <% end %>
+      <% end %>
+      <%= link_to "← Back", admin_agent_lightning_dashboard_path, class: "btn btn-outline-secondary" %>
+    </div>
+  </div>
+
+  <!-- Overall Statistics -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">📈 Overall Statistics</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          <div class="alert alert-info mb-0">
+            <h6 class="mb-1">Total Traces</h6>
+            <h3 class="mb-0"><%= @total_traces %></h3>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="alert alert-success mb-0">
+            <h6 class="mb-1">Success Rate</h6>
+            <h3 class="mb-0"><%= @success_rate %>%</h3>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="alert alert-warning mb-0">
+            <h6 class="mb-1">Avg Reward</h6>
+            <h3 class="mb-0"><%= @avg_reward %></h3>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="alert alert-secondary mb-0">
+            <h6 class="mb-1">Completed</h6>
+            <h3 class="mb-0"><%= @traces.where(status: 'completed').count %></h3>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Token & Cost Analysis -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">💰 Token & Cost Analysis</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h6>Token Usage</h6>
+          <div class="list-group list-group-flush">
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <span>Total Tokens</span>
+              <strong><%= @total_tokens %></strong>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <span>Average/Trace</span>
+              <strong><%= @avg_tokens %></strong>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <h6>Cost Analysis</h6>
+          <div class="list-group list-group-flush">
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <span>Total Cost</span>
+              <strong class="text-danger">$<%= @total_cost %></strong>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <span>Average/Trace</span>
+              <strong class="text-danger">$<%= @avg_cost %></strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Performance Analysis -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">⚡ Performance Analysis</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h6>Duration Metrics</h6>
+          <div class="list-group list-group-flush">
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <span>Total Duration</span>
+              <strong><%= @total_duration_minutes %> min</strong>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <span>Average Duration</span>
+              <strong><%= @avg_duration %>ms</strong>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <span>Minimum Duration</span>
+              <strong><%= @min_duration %>ms</strong>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <span>Maximum Duration</span>
+              <strong><%= @max_duration %>ms</strong>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <h6>Performance Distribution</h6>
+          <div class="progress mb-3" style="height: 30px;">
+            <div class="progress-bar bg-success" style="width: <%= (@traces.where('duration_ms < 1000').count.to_f / @total_traces * 100).round %>%">
+              <1s
+            </div>
+            <div class="progress-bar bg-info" style="width: <%= (@traces.where('duration_ms >= 1000 AND duration_ms < 5000').count.to_f / @total_traces * 100).round %>%">
+              1-5s
+            </div>
+            <div class="progress-bar bg-warning" style="width: <%= (@traces.where('duration_ms >= 5000 AND duration_ms < 10000').count.to_f / @total_traces * 100).round %>%">
+              5-10s
+            </div>
+            <div class="progress-bar bg-danger" style="width: <%= (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round %>%">
+              >10s
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LLM Call Analysis -->
+  <% if @llm_calls && @llm_calls.any? %>
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">🤖 LLM Call Analysis</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <div class="alert alert-success mb-0">
+              <h6 class="mb-1">Success Rate</h6>
+              <h3 class="mb-0"><%= @llm_success_rate %>%</h3>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="alert alert-info mb-0">
+              <h6 class="mb-1">Total Calls</h6>
+              <h3 class="mb-0"><%= @llm_calls.count %></h3>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="alert alert-warning mb-0">
+              <h6 class="mb-1">Avg Latency</h6>
+              <h3 class="mb-0"><%= @avg_latency %>ms</h3>
+            </div>
+          </div>
+        </div>
+
+        <h6>By Agent Role:</h6>
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Count</th>
+              <th>Success Rate</th>
+              <th>Avg Tokens</th>
+              <th>Total Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @llm_by_role.each do |role_data| %>
+              <tr>
+                <td><span class="badge bg-secondary"><%= role_data[:role] %></span></td>
+                <td><%= role_data[:count] %></td>
+                <td>
+                  <span class="badge bg-<%= role_data[:success_rate] > 85 ? 'success' : (role_data[:success_rate] > 70 ? 'warning' : 'danger') %>">
+                    <%= role_data[:success_rate] %>%
+                  </span>
+                </td>
+                <td><code><%= role_data[:avg_tokens] %></code></td>
+                <td><strong class="text-warning">$<%= role_data[:total_cost] %></strong></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Tool Execution Analysis -->
+  <% if @tool_executions && @tool_executions.any? %>
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">🔧 Tool Execution Analysis</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <div class="alert alert-success mb-0">
+              <h6 class="mb-1">Success Rate</h6>
+              <h3 class="mb-0"><%= @tool_success_rate %>%</h3>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="alert alert-info mb-0">
+              <h6 class="mb-1">Total Executions</h6>
+              <h3 class="mb-0"><%= @tool_executions.count %></h3>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="alert alert-warning mb-0">
+              <h6 class="mb-1">Failed</h6>
+              <h3 class="mb-0"><%= @tool_executions.where(status: 'error').count %></h3>
+            </div>
+          </div>
+        </div>
+
+        <h6>Top 10 Tools:</h6>
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>Tool</th>
+              <th>Executions</th>
+              <th>Success Rate</th>
+              <th>Avg Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @top_tools.each do |tool| %>
+              <tr>
+                <td><code><%= tool[:name] %></code></td>
+                <td><%= tool[:count] %></td>
+                <td>
+                  <span class="badge bg-<%= tool[:success_rate] > 85 ? 'success' : (tool[:success_rate] > 70 ? 'warning' : 'danger') %>">
+                    <%= tool[:success_rate] %>%
+                  </span>
+                </td>
+                <td><code><%= tool[:avg_time] %>ms</code></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+</div>

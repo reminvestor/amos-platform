@@ -2,6 +2,7 @@ require "aws-sdk-bedrockruntime"
 require "json"
 
 class BedrockService
+  include AgentLightningInstrumentable
 
   attr_reader :model_registry
 
@@ -54,12 +55,50 @@ class BedrockService
       supports_tools: true,
       supports_caching: true,
       endpoint_type: 'regional'
+    },
+    'claude-haiku-4-5-20251001' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',  # Maps to same model ID as claude-3-haiku
+      name: 'Claude Haiku 4.5',
+      description: 'Fast and efficient',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.20,  # As per entity_cost_tracker.rb
+      cost_per_1m_output: 1.00,  # As per entity_cost_tracker.rb
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    },
+    # Aliases for Claude Haiku 4.5
+    'claude-haiku-4-5' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+      name: 'Claude Haiku 4.5',
+      description: 'Fast and efficient',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 1.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    },
+    'claude-4-5-haiku' => {
+      id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
+      name: 'Claude Haiku 4.5',
+      description: 'Fast and efficient',
+      max_tokens: 8192,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 1.00,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
     }
   }.freeze
 
   # Model fallback chain: Try models from fastest to most robust
   # If a model fails due to throttling, timeout, or unavailability, automatically retry with the next model
   MODEL_FALLBACK_CHAIN = [
+    'claude-haiku-4-5-20251001',  # User's preferred model
     'claude-3-haiku',      # Fastest, cheapest - try first
     'claude-3-5-sonnet',   # Fast, capable - good backup
     'claude-sonnet-4-5',   # Latest, powerful - reliable fallback
@@ -187,6 +226,9 @@ class BedrockService
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
       "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+    when "claude-haiku-4-5-20251001", "claude-haiku-4-5", "claude-haiku-4.5", "claude-4-5-haiku"
+      # Claude Haiku 4.5 - fast and efficient
+      "us.anthropic.claude-3-5-haiku-20241022-v1:0"  # Using the latest Haiku model ID
     else
       # Default to Claude Sonnet 4.5 (latest)
       "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
@@ -218,6 +260,9 @@ class BedrockService
     request_body[:system] = final_system_prompt if final_system_prompt.present?
 
     Rails.logger.info "Sending request to Bedrock Claude (#{model_id})"
+
+    # Track timing for Agent Lightning
+    start_time = Time.current
 
     begin
       response = @client.invoke_model(
@@ -275,22 +320,134 @@ class BedrockService
         Rails.logger.info "🔍 Response preview: #{content[0..500]}"
       end
 
+      # Record LLM call to Agent Lightning for training data
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        parsed_actions = parse_response_actions(content)
+        success_score = calculate_success_score(content, "success")
+        agent_role = determine_agent_role(role: "executor")
+
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: agent_role,
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: content,
+          input_tokens: response_body.dig("usage", "input_tokens") || 0,
+          output_tokens: response_body.dig("usage", "output_tokens") || 0,
+          latency_ms: latency_ms,
+          status: "success",
+          parsed_actions: parsed_actions,
+          success_score: success_score
+        )
+      end
+
       content
     rescue Aws::BedrockRuntime::Errors::ThrottlingException => e
       Rails.logger.error "Bedrock throttling: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Throttling: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.request_id })
     rescue Aws::BedrockRuntime::Errors::ServiceUnavailableException => e
       Rails.logger.error "Bedrock unavailable: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Service unavailable: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockUnavailableError.new(context: { request_id: e.context&.request_id })
     rescue Timeout::Error, Seahorse::Client::NetworkingError => e
       Rails.logger.error "Bedrock timeout: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Timeout: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockTimeoutError.new(context: { error: e.class.name })
     rescue Aws::BedrockRuntime::Errors::ServiceError => e
       Rails.logger.error "Bedrock API Error: #{e.message}"
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "API Error: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.request_id })
     rescue StandardError => e
       Rails.logger.error "Unexpected error from Bedrock: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
+
+      # Record failure to Agent Lightning
+      if @entity && @user && should_record_lightning_trace?
+        latency_ms = ((Time.current - start_time) * 1000).to_i
+        record_llm_call_to_lightning(
+          model: model,
+          agent_role: "executor",
+          system_prompt: final_system_prompt,
+          user_messages: formatted_messages,
+          response_content: nil,
+          input_tokens: 0,
+          output_tokens: 0,
+          latency_ms: latency_ms,
+          status: "error",
+          error_message: "Unexpected error: #{e.message}"
+        )
+      end
+
       raise AmosErrors::BedrockError.new("Unexpected error: #{e.message}", context: { error_class: e.class.name })
     end
   end

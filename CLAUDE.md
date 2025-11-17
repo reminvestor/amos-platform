@@ -304,8 +304,31 @@ The application includes a sophisticated voice-to-text transcription system with
 - **Canvas System**: Dynamic UI loading (landing page editor, campaign dashboard)
 - **Voice Input**: WebSocket-based real-time transcription (`app/javascript/controllers/voice_assistant_controller.js`)
 
+## Agent Lightning - RL-Based Agent Optimization
+
+The platform now includes **Agent Lightning integration** for continuous improvement of AI agents using reinforcement learning. This system:
+
+- **Collects execution traces**: Records all LLM calls, tool usage, and workflow execution data automatically
+- **Trains on success patterns**: Uses hierarchical RL to identify and reinforce effective behavior
+- **Optimizes prompts**: Automatically improves system prompts and instructions based on performance metrics
+- **Minimal overhead**: Instrumentation is automatic, non-blocking, and transparent
+
+**Key Components:**
+- `LightningStoreService` - Collects and manages training data from agent executions
+- `AgentLightningTrainingService` - Orchestrates prompt optimization and RL training
+- `RunAgentLightningTrainingJob` - Background job for periodic training (scheduled daily)
+- Database models for storing traces, rewards, and training jobs
+
+**Quick Setup:**
+1. Run migrations: `rails db:migrate`
+2. Configure per entity: `entity.create_agent_lightning_config!(enabled: true, ...)`
+3. Training runs automatically via scheduled job or manually via `AgentLightningTrainingService.new(entity).execute_training`
+
+See `docs/AGENT_LIGHTNING_INTEGRATION.md` for comprehensive setup, usage, and configuration guide.
+
 ## Documentation Files
 
+- `AGENT_LIGHTNING_INTEGRATION.md` - **NEW**: RL-based agent optimization and prompt improvement
 - `WORKFLOW_V2_EXECUTIVE_SUMMARY.md` - V2 architecture overview
 - `V2_PURE_IMPLEMENTATION.md` - Implementation details
 - `AGENT_ARCHITECTURE.md` - Agent system design

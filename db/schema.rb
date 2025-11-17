@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_05_163253) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -248,6 +248,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_05_163253) do
     t.index ["scout_message_id"], name: "index_ai_usage_logs_on_scout_message_id"
     t.index ["user_id", "created_at"], name: "index_ai_usage_logs_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_ai_usage_logs_on_user_id"
+  end
+
+  create_table "amos_jobs", force: :cascade do |t|
+    t.string "job_id", null: false
+    t.string "agent_type", null: false
+    t.string "session_id", null: false
+    t.string "status", default: "queued", null: false
+    t.string "status_message"
+    t.integer "progress", default: 0
+    t.jsonb "input_data", default: {}
+    t.jsonb "result_data", default: {}
+    t.jsonb "error_data", default: {}
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_type"], name: "index_amos_jobs_on_agent_type"
+    t.index ["created_at"], name: "index_amos_jobs_on_created_at"
+    t.index ["job_id"], name: "index_amos_jobs_on_job_id", unique: true
+    t.index ["session_id", "status"], name: "index_amos_jobs_on_session_id_and_status"
+    t.index ["session_id"], name: "index_amos_jobs_on_session_id"
+    t.index ["status"], name: "index_amos_jobs_on_status"
   end
 
   create_table "analytics_connections", force: :cascade do |t|
@@ -1656,6 +1678,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_05_163253) do
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "parallel_task_ids", default: []
+    t.jsonb "aggregated_results"
     t.index ["entity_id"], name: "index_scout_conversations_on_entity_id"
     t.index ["user_id"], name: "index_scout_conversations_on_user_id"
   end
@@ -2024,6 +2048,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_05_163253) do
     t.index ["key"], name: "index_system_settings_on_key", unique: true
   end
 
+  create_table "task_dependencies", force: :cascade do |t|
+    t.bigint "task_session_id", null: false
+    t.bigint "depends_on_task_id", null: false
+    t.string "relationship_type", default: "blocks"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "dependency_type", default: "blocking", null: false
+    t.string "status", default: "pending", null: false
+    t.index ["dependency_type"], name: "index_task_dependencies_on_dependency_type"
+    t.index ["depends_on_task_id"], name: "index_task_dependencies_on_depends_on_task_id"
+    t.index ["status"], name: "index_task_dependencies_on_status"
+    t.index ["task_session_id", "depends_on_task_id"], name: "idx_on_task_session_id_depends_on_task_id_dfb947b090", unique: true
+    t.index ["task_session_id"], name: "index_task_dependencies_on_task_session_id"
+  end
+
   create_table "task_events", force: :cascade do |t|
     t.bigint "task_session_id", null: false
     t.string "event_type", null: false
@@ -2047,9 +2086,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_05_163253) do
     t.string "workflow_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "parent_conversation_id"
+    t.string "task_type"
+    t.integer "priority", default: 5
+    t.string "model_preference"
+    t.string "assigned_worker_id"
+    t.integer "progress", default: 0
+    t.datetime "started_at"
+    t.datetime "estimated_completion_at"
+    t.datetime "completed_at"
+    t.text "error_message"
+    t.index ["assigned_worker_id", "status"], name: "index_task_sessions_on_assigned_worker_id_and_status"
     t.index ["created_at"], name: "index_task_sessions_on_created_at"
+    t.index ["parent_conversation_id"], name: "index_task_sessions_on_parent_conversation_id"
     t.index ["session_type"], name: "index_task_sessions_on_session_type"
+    t.index ["status", "priority"], name: "index_task_sessions_on_status_and_priority"
     t.index ["status"], name: "index_task_sessions_on_status"
+    t.index ["task_type"], name: "index_task_sessions_on_task_type"
     t.index ["user_id", "status"], name: "index_task_sessions_on_user_id_and_status"
     t.index ["user_id"], name: "index_task_sessions_on_user_id"
   end
@@ -2436,6 +2489,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_05_163253) do
   add_foreign_key "subscription_events", "entities"
   add_foreign_key "system_documents", "rag_stores"
   add_foreign_key "system_documents", "users", column: "uploaded_by_id"
+  add_foreign_key "task_dependencies", "task_sessions"
+  add_foreign_key "task_dependencies", "task_sessions", column: "depends_on_task_id"
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
   add_foreign_key "tenant_quotas", "entities"

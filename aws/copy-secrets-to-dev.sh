@@ -59,3 +59,5 @@ echo ""
 echo "Note: database-url and redis-url will be created by Terraform"
 
 
+
+

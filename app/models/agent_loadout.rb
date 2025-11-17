@@ -12,7 +12,7 @@ class AgentLoadout
     # Main chat agent (AMOS) - Reduced tool set for better decision making
     "main_chat" => {
       tool_allowlist: [
-        'delegate_to_planner',        # Complex multi-step tasks
+       # 'delegate_to_planner',        # Complex multi-step tasks
         'get_schema',                 # Check field structure before creating
         'get_data',                   # Simple data queries
         'create_object',              # Simple object creation
@@ -21,21 +21,23 @@ class AgentLoadout
         'execute_integration',        # Simple integration calls
         'list_operations',            # Discover integration capabilities
         'list_connections',           # See available integrations
-        'query_metric',               # Analytics queries
-        'list_metrics',               # Discover metrics
+        #'query_metric',               # Analytics queries
+        #'list_metrics',               # Discover metrics
         'explain_query',              # Explain analytics queries
         'read_document',              # Read uploaded PDFs/docs
         'query_document_content',     # Search uploaded documents (session + RAG)
         'query_rag_store',            # Query RAG knowledge base
         'load_canvas',                # UI interactions
-        'aggregate_artifact_data',    # Simple aggregations
+       # 'aggregate_artifact_data',    # Simple aggregations
         'create_dynamic_visualization', # Quick visualizations
         'get_workflow_context',       # Access uploaded files
-        'get_my_ai_usage',           # Usage tracking
+      #  'get_my_ai_usage',           # Usage tracking
         'retrieve_history',           # Retrieve older conversation messages
         'get_message_count',          # Get total message count
         'search_history',             # Search conversation history
-        'manage_pipeline'             # AI Development Pipeline management
+      #  'manage_pipeline',            # AI Development Pipeline management
+        'list_available_agents',      # Discover available specialized agents
+        'delegate_to_agent'           # Delegate tasks to specialized agents
       ],
       canvas_allowlist: [ "*" ],
       data_scopes: { read: [ "*" ], write: [ "*" ] },

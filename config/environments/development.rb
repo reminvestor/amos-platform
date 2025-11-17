@@ -31,14 +31,19 @@ Rails.application.configure do
   end
 
   # Change to :null_store to avoid any caching.
-  config.cache_store = :memory_store
+  # Use Redis for development to share cache between processes (web and worker)
+  config.cache_store = :redis_cache_store, { 
+    url: ENV["REDIS_URL"] || "redis://localhost:6379/0",
+    namespace: "amos_dev_cache"
+  }
 
   # Store uploaded files - use Amazon S3 if AWS credentials are available, otherwise local
   config.active_storage.service = ENV['AWS_ACCESS_KEY_ID'].present? ? :amazon : :local
 
   # Set Active Storage URL host in development
   config.active_storage.service_urls_expire_in = 1.hour
-  Rails.application.routes.default_url_options[:host] = "app.app.localhost:5001"
+  Rails.application.routes.default_url_options[:host] = "localhost"
+  Rails.application.routes.default_url_options[:port] = 5001
 
   # Don't care if the mailer can't send.
   config.action_mailer.raise_delivery_errors = true

@@ -1,0 +1,7 @@
+# Agent Lightning Python Service Requirements
+# Core Framework (includes fastapi, uvicorn, pydantic, httpx, python-dotenv, python-multipart, etc.)
+agentlightning>=0.2.2
+
+# Database drivers (not included in agentlightning)
+asyncpg>=0.30.0
+psycopg2-binary>=2.9.10

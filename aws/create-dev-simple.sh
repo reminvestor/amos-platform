@@ -58,3 +58,5 @@ echo ""
 echo "Or run the full Terraform after fixing variables!"
 
 
+
+
