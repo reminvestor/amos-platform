@@ -1,6 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 import consumer from "../channels/consumer"
 
+// Cache bust: v3 models + comprehensive error handling - 2025-11-17b
+
 /**
  * VoiceAssistantController - Handles voice input for Scout chat
  *
@@ -27,7 +29,7 @@ export default class extends Controller {
     this.waitingForWakeWord = false  // Waiting for next "Hey Amos"
 
     this.voiceSessionId = null
-    this.elevenLabsSocket = null  // Eleven Labs Scribe v2 WebSocket (primary STT)
+    this.elevenLabsSocket = null  // Eleven Labs Scribe v3 WebSocket (primary STT)
     this.deepgramSocket = null     // Deepgram WebSocket (fallback STT)
     this.currentSTTProvider = null // Track which STT provider is active
     this.mediaStream = null
@@ -40,10 +42,9 @@ export default class extends Controller {
     this.transcriptBuffer = ""
     this.transcriptBufferTimeout = null
 
-    // Pre-initialization cache
+    // Pre-initialization cache (Eleven Labs only - Deepgram loaded on-demand if needed)
     this.cachedSession = null
     this.cachedElevenLabsCreds = null  // Cache Eleven Labs credentials (primary STT)
-    this.cachedDeepgramCreds = null    // Cache Deepgram credentials (fallback)
     this.isPreInitialized = false
 
     // Performance tracking
@@ -72,14 +73,14 @@ export default class extends Controller {
       this.cachedSession = await this.createVoiceSession()
       console.log("✅ Pre-initialized session:", this.cachedSession.session_id)
 
-      // Pre-fetch Eleven Labs Scribe v2 credentials (primary STT)
+      // Pre-fetch Eleven Labs Scribe v3 credentials (primary STT)
       this.cachedElevenLabsCreds = await fetch(`/api/voice/sessions/${this.cachedSession.session_id}/eleven_labs_credentials`, {
         headers: {
           "X-CSRF-Token": this.csrfToken()
         }
       }).then(r => r.json())
 
-      console.log("✅ Pre-fetched Eleven Labs Scribe v2 credentials")
+      console.log("✅ Pre-fetched Eleven Labs Scribe v3 credentials")
       this.isPreInitialized = true
       console.log("🎉 Voice assistant pre-initialized! Mic button will be instant.")
 
@@ -137,7 +138,6 @@ export default class extends Controller {
         // Clear cache after using it (session will be ended after use)
         this.cachedSession = null
         this.cachedElevenLabsCreds = null
-        this.cachedDeepgramCreds = null
         this.isPreInitialized = false
         console.log("🔄 Cache cleared (will re-initialize after this session)")
 
@@ -341,7 +341,7 @@ export default class extends Controller {
   }
 
   /**
-   * Get Eleven Labs Scribe v2 credentials
+   * Get Eleven Labs Scribe v3 credentials
    */
   async getElevenLabsCredentials() {
     const response = await fetch(`/api/voice/sessions/${this.voiceSessionId}/eleven_labs_credentials`, {
@@ -419,8 +419,13 @@ export default class extends Controller {
   - Scout Processing: ${scoutProcessingTime.toFixed(0)}ms
   - TOTAL: ${totalLatency.toFixed(0)}ms`)
 
-        // Add response to Scout chat UI (no voice synthesis)
+        // Add response to Scout chat UI
         this.addMessageToScoutChat("assistant", data.content)
+
+        // Read response aloud using TTS when voice mode is active
+        if (this.isActive) {
+          this.synthesizeSpeech(data.content)
+        }
         break
 
       case "partial_response":
@@ -531,11 +536,17 @@ export default class extends Controller {
       }
 
       this.deepgramSocket.onclose = (event) => {
-        console.log("🔌 Deepgram WebSocket closed", {
-          code: event.code,
-          reason: event.reason,
-          wasClean: event.wasClean
-        })
+        // Only log if Deepgram was actively being used (not just pre-initialized)
+        const wasActiveProvider = this.currentSTTProvider && this.currentSTTProvider.includes("Deepgram")
+
+        if (wasActiveProvider) {
+          console.log("🔌 Deepgram WebSocket closed", {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean
+          })
+        }
+
         this.isListening = false
 
         // Common close codes explained
@@ -555,22 +566,24 @@ export default class extends Controller {
 
         const reason = closeReasons[event.code] || 'Unknown reason'
 
-        // Only show error if this wasn't a graceful shutdown
-        if (event.code !== 1000 && this.isActive) {
-          console.error(`❌ Deepgram closed abnormally`)
-          console.error(`   Code: ${event.code}`)
-          console.error(`   Reason: ${event.reason || reason}`)
-          console.error(`   This usually means authentication failed or bad configuration`)
-          this.updateStatus(`Connection error: ${reason}`)
-        } else if (event.code === 1000) {
-          console.log("✅ Deepgram WebSocket closed normally")
+        // Only show messages if Deepgram was the active provider
+        if (wasActiveProvider) {
+          if (event.code !== 1000 && this.isActive) {
+            console.error(`❌ Deepgram closed abnormally`)
+            console.error(`   Code: ${event.code}`)
+            console.error(`   Reason: ${event.reason || reason}`)
+            console.error(`   This usually means authentication failed or bad configuration`)
+            this.updateStatus(`Connection error: ${reason}`)
+          } else if (event.code === 1000) {
+            console.log("✅ Deepgram WebSocket closed normally")
+          }
         }
       }
     })
   }
 
   /**
-   * Connect to Eleven Labs Scribe v2 WebSocket (real-time speech-to-text)
+   * Connect to Eleven Labs Scribe v3 WebSocket (real-time speech-to-text)
    * Features:
    * - Ultra-low latency (~150ms)
    * - 90+ language support
@@ -584,7 +597,7 @@ export default class extends Controller {
       // Build WebSocket URL with API key in query parameter
       const wsUrl = `${creds.websocket_url}?api_key=${creds.api_key}`
 
-      console.log("🔗 Connecting to Eleven Labs Scribe v2 WebSocket...")
+      console.log("🔗 Connecting to Eleven Labs Scribe v3 WebSocket...")
       this.elevenLabsSocket = new WebSocket(wsUrl)
 
       this.elevenLabsSocket.onopen = () => {
@@ -653,25 +666,25 @@ export default class extends Controller {
 
   /**
    * Connect to STT provider with fallback
-   * Attempts Eleven Labs Scribe v2 first, falls back to Deepgram if unavailable
+   * Attempts Eleven Labs Scribe v3 first, falls back to Deepgram if unavailable
    * Logs which provider is being used for monitoring/debugging
    */
   async connectWithFallback(elevenLabsCreds) {
     console.log("🚀 Attempting STT provider connection (priority: Eleven Labs → Deepgram)...")
 
     try {
-      console.log("1️⃣ Attempting Eleven Labs Scribe v2 (primary provider)...")
+      console.log("1️⃣ Attempting Eleven Labs Scribe v3 (primary provider)...")
       const startTime = performance.now()
 
       await this.connectElevenLabs(elevenLabsCreds)
 
       const connectionTime = performance.now() - startTime
-      this.currentSTTProvider = "Eleven Labs Scribe v2"
+      this.currentSTTProvider = "Eleven Labs Scribe v3"
       console.log(`✅ Eleven Labs connected successfully in ${connectionTime.toFixed(0)}ms`)
       console.log(`📊 STT Provider: ${this.currentSTTProvider}`)
 
     } catch (elevenLabsError) {
-      console.warn("⚠️ Eleven Labs Scribe v2 unavailable, attempting fallback...")
+      console.warn("⚠️ Eleven Labs Scribe v3 unavailable, attempting fallback...")
       console.error("   Error:", elevenLabsError.message)
       console.log("   Reason: Eleven Labs API unreachable or credentials invalid")
 
@@ -789,7 +802,7 @@ export default class extends Controller {
 
   /**
    * Handle Eleven Labs messages
-   * Eleven Labs Scribe v2 Realtime message format
+   * Eleven Labs Scribe v3 Realtime message format
    */
   handleElevenLabsMessage(data) {
     console.log("📥 Eleven Labs message:", data)
@@ -818,9 +831,34 @@ export default class extends Controller {
         }
         break
 
+      case "auth_error":
+        console.error("❌ Eleven Labs authentication error:", data.message || data.error_message)
+        this.updateStatus("Connection issue - please try again")
+        this.handleElevenLabsError("auth_error", data.message || data.error_message)
+        break
+
+      case "quota_exceeded":
+        console.error("❌ Eleven Labs quota exceeded:", data.message || data.error_message)
+        this.updateStatus("Switching to backup service...")
+        this.handleElevenLabsError("quota_exceeded", data.message || data.error_message)
+        break
+
+      case "transcriber_error":
+        console.error("❌ Eleven Labs transcriber error:", data.message || data.error_message)
+        this.updateStatus("Connection issue - retrying...")
+        this.handleElevenLabsError("transcriber_error", data.message || data.error_message)
+        break
+
+      case "input_error":
+        console.error("❌ Eleven Labs input error:", data.message || data.error_message)
+        this.updateStatus("Audio issue - retrying...")
+        this.handleElevenLabsError("input_error", data.message || data.error_message)
+        break
+
       case "error":
-        console.error("❌ Eleven Labs error:", data.error_message)
-        this.updateStatus(`Error: ${data.error_message}`)
+        console.error("❌ Eleven Labs error:", data.message || data.error_message)
+        this.updateStatus("Connection issue - retrying...")
+        this.handleElevenLabsError("error", data.message || data.error_message)
         break
 
       case "ping":
@@ -832,6 +870,130 @@ export default class extends Controller {
 
       default:
         console.log("📨 Eleven Labs message type:", data.type)
+    }
+  }
+
+  /**
+   * Handle Eleven Labs errors with appropriate recovery strategy
+   * Implements fallback to Deepgram for recoverable errors
+   * Logs errors to backend silently for monitoring
+   */
+  async handleElevenLabsError(errorType, errorMessage) {
+    console.log(`🔧 Handling Eleven Labs error: ${errorType}`)
+
+    // Log error to backend silently (don't expose third-party details to user)
+    this.logErrorToBackend(errorType, errorMessage, "eleven_labs")
+
+    // Close Eleven Labs socket if still open
+    if (this.elevenLabsSocket) {
+      try {
+        this.elevenLabsSocket.close()
+      } catch (e) {
+        console.warn("⚠️ Error closing Eleven Labs socket:", e)
+      }
+      this.elevenLabsSocket = null
+    }
+
+    // Determine if we should attempt fallback to Deepgram
+    const shouldFallback = this.shouldFallbackToDeepgram(errorType)
+
+    if (shouldFallback && this.isActive) {
+      console.log("🔄 Attempting fallback to Deepgram after Eleven Labs error")
+      this.updateStatus("Switching to backup transcription service...")
+
+      try {
+        // Fetch Deepgram credentials on-demand
+        const response = await fetch('/api/voice/sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+          }
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const deepgramCreds = {
+            websocket_url: data.deepgram_websocket_url,
+            api_key: data.deepgram_api_key
+          }
+
+          await this.connectDeepgram(deepgramCreds)
+          this.currentSTTProvider = "Deepgram (fallback)"
+          console.log(`✅ Fallback successful - now using ${this.currentSTTProvider}`)
+          this.updateStatus("Connected to backup service")
+        } else {
+          throw new Error(`Failed to fetch Deepgram credentials: ${response.status}`)
+        }
+      } catch (fallbackError) {
+        console.error("❌ Fallback to Deepgram failed:", fallbackError)
+        this.updateStatus("Voice assistant unavailable - please try again later")
+        this.fullStop()
+      }
+    } else {
+      // Non-recoverable error or user stopped - just stop
+      console.log("⛔ Error not recoverable or user stopped - stopping voice assistant")
+      this.fullStop()
+    }
+  }
+
+  /**
+   * Determine if we should attempt fallback to Deepgram based on error type
+   */
+  shouldFallbackToDeepgram(errorType) {
+    switch (errorType) {
+      case "quota_exceeded":
+      case "transcriber_error":
+        // These errors can be recovered by switching providers
+        return true
+
+      case "auth_error":
+        // Auth errors won't be fixed by switching providers (same backend)
+        return false
+
+      case "input_error":
+        // Input format errors might persist with Deepgram too
+        // But worth trying in case it's Eleven Labs specific
+        return true
+
+      case "error":
+        // Generic errors - try fallback
+        return true
+
+      default:
+        return false
+    }
+  }
+
+  /**
+   * Log voice errors to backend for monitoring
+   * Sends error details to server without disrupting user experience
+   */
+  async logErrorToBackend(errorType, errorMessage, provider) {
+    if (!this.voiceSessionId) {
+      console.warn("⚠️ Cannot log error - no voice session ID")
+      return
+    }
+
+    try {
+      await fetch(`/api/voice/sessions/${this.voiceSessionId}/log_error`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({
+          error_type: errorType,
+          error_message: errorMessage,
+          provider: provider
+        })
+      })
+      console.log(`📊 Error logged to backend: ${errorType}`)
+    } catch (error) {
+      // Fail silently - don't disrupt user experience
+      console.warn("⚠️ Failed to log error to backend:", error)
     }
   }
 
@@ -1364,6 +1526,138 @@ export default class extends Controller {
       this.updateStatus("Session timed out")
       this.fullStop()
     }, 5 * 60 * 1000)  // 5 minutes
+  }
+
+  /**
+   * Synthesize speech from text using Eleven Labs TTS
+   * Uses Eleven Labs for both STT (Scribe v3) and TTS for consistency
+   */
+  async synthesizeSpeech(text) {
+    try {
+      console.log("🔊 Synthesizing speech with Eleven Labs for:", text.substring(0, 50) + "...")
+
+      // Get Eleven Labs API key
+      const apiKey = await this.getElevenLabsApiKey()
+
+      // Use Eleven Labs TTS API - Adam voice (professional, clear)
+      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'audio/mpeg',
+          'Content-Type': 'application/json',
+          'xi-api-key': apiKey
+        },
+        body: JSON.stringify({
+          text: text,
+          model_id: "eleven_v3", // Latest v3 model - human-like and expressive
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0.0,
+            use_speaker_boost: true
+          }
+        })
+      })
+
+      if (!response.ok) {
+        console.error("❌ Eleven Labs TTS failed:", response.status, response.statusText)
+        // Fall back to AWS Polly
+        await this.synthesizeSpeechPolly(text)
+        return
+      }
+
+      // Get audio data as blob
+      const audioBlob = await response.blob()
+      const audioUrl = URL.createObjectURL(audioBlob)
+
+      // Play audio
+      const audio = new Audio(audioUrl)
+      audio.play()
+
+      console.log("✅ Playing Eleven Labs TTS")
+
+      // Clean up blob URL after playing
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl)
+        console.log("🔇 Speech playback completed")
+      }
+
+    } catch (error) {
+      console.error("❌ Eleven Labs TTS error, falling back to Polly:", error)
+      await this.synthesizeSpeechPolly(text)
+    }
+  }
+
+  /**
+   * Fallback: AWS Polly TTS
+   */
+  async synthesizeSpeechPolly(text) {
+    try {
+      console.log("🔊 Using AWS Polly TTS fallback...")
+
+      const response = await fetch('/api/tts/synthesize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': this.csrfToken()
+        },
+        body: JSON.stringify({
+          text: text,
+          voice_id: 'Matthew',
+          speech_marks: false
+        })
+      })
+
+      if (!response.ok) {
+        console.error("❌ Polly TTS failed:", response.statusText)
+        return
+      }
+
+      const audioBlob = await response.blob()
+      const audioUrl = URL.createObjectURL(audioBlob)
+      const audio = new Audio(audioUrl)
+      audio.play()
+
+      console.log("✅ Playing Polly TTS")
+
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl)
+        console.log("🔇 Speech playback completed")
+      }
+
+    } catch (error) {
+      console.error("❌ Polly TTS error:", error)
+    }
+  }
+
+  /**
+   * Get Eleven Labs API key
+   */
+  async getElevenLabsApiKey() {
+    // Use cached credentials if available
+    if (this.cachedElevenLabsCreds && this.cachedElevenLabsCreds.api_key) {
+      return this.cachedElevenLabsCreds.api_key
+    }
+
+    // Otherwise fetch from backend
+    try {
+      const sessionId = this.voiceSessionId || this.cachedSession?.session_id
+      if (!sessionId) {
+        throw new Error("No voice session available")
+      }
+
+      const response = await fetch(`/api/voice/sessions/${sessionId}/eleven_labs_credentials`, {
+        headers: {
+          "X-CSRF-Token": this.csrfToken()
+        }
+      })
+
+      const creds = await response.json()
+      return creds.api_key
+    } catch (error) {
+      console.error("❌ Failed to get Eleven Labs API key:", error)
+      throw error
+    }
   }
 
   /**

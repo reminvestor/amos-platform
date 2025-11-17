@@ -28,6 +28,7 @@ Rails.application.routes.draw do
           get :deepgram_key
           get :eleven_labs_credentials
           patch :end
+          post :log_error
         end
       end
 
