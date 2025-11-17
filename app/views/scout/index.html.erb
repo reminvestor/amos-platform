@@ -1,4 +1,27 @@
 <style>
+  /* Task badge for active task count */
+  .task-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #7C3AED;
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 16px;
+    text-align: center;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(0.95); }
+  }
+  
+  .nav-item { position: relative; }
+  
   /* Tool activity panel styles - DEPRECATED: Now integrated into task progress canvas */
   /* Keeping CSS for backward compatibility but panel is no longer displayed */
   .tool-activity-panel {
@@ -359,7 +382,7 @@
   }
 </style>
 
-<div id="workspace" class="workspace conversation-mode" data-controller="scout">
+<div id="workspace" class="workspace conversation-mode" data-controller="scout" data-scout-session-id="<%= @session_id %>">
   <!-- Collapsed Side Navigation -->
   <nav class="side-nav collapsed" data-scout-target="sideNav">
     <div class="side-nav-header">
@@ -377,6 +400,11 @@
         <div class="nav-item active" data-action="click->scout#goToConversation">
           <i data-lucide="home"></i>
           <span class="nav-text">Dashboard</span>
+        </div>
+        <div class="nav-item" data-action="click->scout#loadParallelTasksCanvas" title="View running background tasks">
+          <i data-lucide="workflow"></i>
+          <span class="nav-text">Active Tasks</span>
+          <span id="active-task-count" class="task-badge" style="display: none;">0</span>
         </div>
         <div class="nav-item" data-template-type="landing_page" data-action="click->scout#loadLandingPagesCanvas">
           <i data-lucide="globe"></i>
@@ -1456,6 +1484,93 @@ document.addEventListener('turbo:load', function() {
     }
   }
   initializeLucideIcons();
+  
+  // Handle task results streaming from parallel processing
+  window.streamTaskResult = function(data) {
+    console.log("📝 Streaming task result:", data);
+    
+    // Format the task result message
+    const header = `### Task Completed: ${data.description}\n\n`;
+    const content = header + (data.content || 'Task completed successfully');
+    
+    // Add to chat using the global addMessage function
+    if (typeof addMessage === 'function') {
+      addMessage(content, 'ai', new Date(data.timestamp));
+    } else {
+      console.error("Could not find addMessage function");
+    }
+  };
+  
+  // Track active tasks for badge update
+  window.activeTasks = window.activeTasks || new Map();
+  
+  // Update task count badge
+  function updateTaskBadge() {
+    const badge = document.getElementById('active-task-count');
+    if (badge) {
+      const activeCount = Array.from(window.activeTasks.values()).filter(task => 
+        task.status === 'active' || task.status === 'pending'
+      ).length;
+      
+      badge.textContent = activeCount;
+      badge.style.display = activeCount > 0 ? 'block' : 'none';
+      
+      // Pulse animation when tasks are active
+      if (activeCount > 0) {
+        badge.classList.add('pulse');
+      } else {
+        badge.classList.remove('pulse');
+      }
+    }
+  }
+  
+  // Override handleParallelTaskUpdate to track active tasks
+  const originalHandleUpdate = window.handleParallelTaskUpdate;
+  window.handleParallelTaskUpdate = function(data) {
+    // Track task status
+    if (data.task_id) {
+      if (data.type === 'task_completed' || data.type === 'task_failed') {
+        window.activeTasks.delete(data.task_id);
+      } else if (data.type === 'task_progress' || data.type === 'parallel_execution_start') {
+        window.activeTasks.set(data.task_id, {
+          status: data.status || 'active',
+          description: data.description
+        });
+      }
+      updateTaskBadge();
+    }
+    
+    // Call original handler
+    if (originalHandleUpdate) {
+      originalHandleUpdate(data);
+    }
+  };
+  
+  // Handle workflow tasks that need user input
+  window.handleTaskNeedsInput = function(data) {
+    console.log("📋 Task needs user input:", data);
+    
+    // Add the message to chat with special styling
+    const content = `### 📋 ${data.description || 'Workflow Task'}\n\n${data.message}`;
+    
+    // Add to chat
+    if (typeof addMessage === 'function') {
+      addMessage(content, 'ai', new Date(data.timestamp));
+    }
+    
+    // Store the task ID for response routing
+    window.activeWorkflowTask = data.task_id;
+  };
+  
+  // Stream content from tasks to chat
+  window.streamTaskContent = function(data) {
+    console.log("📝 Streaming task content:", data);
+    
+    // Add content to chat
+    if (typeof addMessage === 'function') {
+      addMessage(data.content, data.role || 'ai', new Date(data.timestamp));
+    }
+  };
 
   const messageForm = document.getElementById('message-form');
   const messageInput = document.getElementById('message-input');
@@ -3165,6 +3280,14 @@ document.addEventListener('turbo:load', function() {
                 } else {
                   console.warn('⚠️ No streaming message element or no content:', { streamingMessage: !!streamingMessage, content: !!data.content });
                 }
+              } else if (data.type === 'parallel_execution_start' || 
+                         data.type === 'task_progress' || 
+                         data.type === 'task_completed' || 
+                         data.type === 'task_failed') {
+                // Route to parallel tasks canvas if it's loaded
+                if (window.handleParallelTaskUpdate) {
+                  window.handleParallelTaskUpdate(data);
+                }
               } else if (data.type === 'intermediate_message') {
                 // Add intermediate message that was saved before tool usage
                 // But only if it wasn't already streamed to prevent duplicates
@@ -3988,4 +4111,6 @@ document.addEventListener('turbo:load', function() {
       </div>
     </div>
   </div>
-</div> 
+</div>
+
+<!-- Parallel Tasks Panel is now loaded dynamically as a canvas --> 

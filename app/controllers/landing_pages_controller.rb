@@ -136,7 +136,7 @@ class LandingPagesController < ApplicationController
   end
 
   def inline_edit
-    @landing_page = current_entity.landing_pages.find(params[:id])
+    @landing_page = current_entity.landing_pages.find_by!(slug: params[:id])
   end
 
   def update
@@ -267,7 +267,7 @@ class LandingPagesController < ApplicationController
   end
 
   def get_chat_messages
-    @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find(params[:id])
+    @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find_by!(slug: params[:id])
     messages = @landing_page.landing_page_chat_messages.order(created_at: :asc)
 
     render json: {
@@ -331,7 +331,7 @@ class LandingPagesController < ApplicationController
   private
 
   def set_landing_page
-    @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find(params[:id])
+    @landing_page = current_user.landing_pages.where(entity_id: current_entity.id).find_by!(slug: params[:id])
   end
 
   def strip_editing_attributes(html_content)

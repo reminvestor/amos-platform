@@ -56,7 +56,60 @@ module Rag
           # Download document from S3 and extract
           temp_file = download_from_s3(rag_document, rag_store)
           start_time = Time.current
+          
+          # First try simple text extraction (fast & free for native PDFs)
           content = extract_content(temp_file.path, rag_document.content_type)
+          
+          # Check if we got meaningful text (more than 100 chars per page is usually native PDF)
+          min_chars_per_page = 100
+          expected_min_content = min_chars_per_page # Assume at least 1 page
+          
+          if content.strip.length < expected_min_content && dual_mode_ocr_available?
+            Rails.logger.info "  Simple extraction returned minimal text (#{content.strip.length} chars), likely scanned PDF"
+            Rails.logger.info "  Falling back to OCR with DualModeService"
+            
+            # Use OCR for scanned documents
+            ocr_service = Ocr::DualModeService.new(rag_store.entity)
+            ocr_result = ocr_service.process_document(temp_file.path, {
+              provider: 'auto', # Let service decide (Textract for forms/invoices, etc)
+              document_type: detect_document_type(rag_document.original_filename),
+              extract_tables: true,
+              extract_forms: true,
+              create_chunks: false # We'll handle chunking ourselves
+            })
+            
+            if ocr_result[:success]
+              extracted_text = ocr_result[:raw_text] || ocr_result.dig(:result, :raw_text) || ''
+              if extracted_text.strip.length > content.strip.length
+                Rails.logger.info "  OCR extracted more content (#{extracted_text.length} chars vs #{content.length})"
+                content = extracted_text
+                
+                # Store OCR metadata
+                rag_document.update!(
+                  docling_metadata: (rag_document.docling_metadata || {}).merge(
+                    'ocr_used' => true,
+                    'ocr_provider' => ocr_result[:provider].to_s,
+                    'ocr_confidence' => ocr_result.dig(:metadata, :average_confidence),
+                    'page_count' => ocr_result.dig(:metadata, :page_count),
+                    'extraction_method' => 'ocr_fallback'
+                  )
+                )
+              else
+                Rails.logger.info "  OCR didn't improve extraction, using simple text"
+              end
+            else
+              Rails.logger.warn "  OCR failed: #{ocr_result[:error]}, using simple extraction"
+            end
+          else
+            Rails.logger.info "  Simple extraction returned #{content.length} chars (native PDF)"
+            rag_document.update!(
+              docling_metadata: (rag_document.docling_metadata || {}).merge(
+                'ocr_used' => false,
+                'extraction_method' => 'simple_text'
+              )
+            )
+          end
+          
           processing_time_ms = ((Time.current - start_time) * 1000).to_i
         end
 
@@ -68,11 +121,13 @@ module Rag
           Rails.logger.info "  Document already has #{existing_chunks.count} chunks, skipping chunk creation"
           saved_chunks = existing_chunks.to_a
         else
-          # Create simple chunks
+          # Create chunks from the extracted content (including OCR content)
           chunks = create_simple_chunks(content)
+          Rails.logger.info "  Created #{chunks.length} chunks from extracted content"
           
-          # Save chunks directly to database
+          # Save chunks directly to database (this stores them in rag_chunks table)
           saved_chunks = save_chunks(rag_document, chunks)
+          Rails.logger.info "  Saved #{saved_chunks.length} chunks to vector database"
         end
 
         # Update metadata
@@ -306,6 +361,25 @@ module Rag
       # not stored as a column
 
       saved_chunks
+    end
+
+    def dual_mode_ocr_available?
+      defined?(Ocr::DualModeService) &&
+        (ENV['OCR_PROVIDER'].present? || ENV['TEXTRACT_ENABLED'] == 'true')
+    end
+
+    def detect_document_type(filename)
+      filename_lower = filename.downcase
+      
+      return 'invoice' if filename_lower.include?('invoice')
+      return 'receipt' if filename_lower.include?('receipt')
+      return 'contract' if filename_lower.include?('contract') || filename_lower.include?('agreement')
+      return 'form' if filename_lower.include?('form') || filename_lower.include?('application')
+      return 'id' if filename_lower.include?('license') || filename_lower.include?('passport') || filename_lower.include?('id')
+      return 'statement' if filename_lower.include?('statement')
+      return 'report' if filename_lower.include?('report')
+      
+      'general'
     end
 
     def queue_embeddings(chunks)

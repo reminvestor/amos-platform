@@ -1,4 +1,4 @@
-web: env RUBY_DEBUG_OPEN=true bin/rails server -p 5001
+web: env RUBY_DEBUG_OPEN=true WEB_CONCURRENCY=0 RAILS_MIN_THREADS=5 RAILS_MAX_THREADS=5 bin/rails server -p 5001
 js: yarn build --watch
 css: yarn watch:css
 worker: SOLID_QUEUE_LOG_LEVEL=debug bin/solid_queue

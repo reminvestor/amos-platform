@@ -22,8 +22,10 @@ module Agents
                   [ "workflow_context", "conversation_history", "entity_profile", "direct_conversation" ]
       end
 
-      # Process each source
-      sources.each do |source|
+      # Process each source (except direct_conversation which we handle last)
+      sources_to_check = sources.reject { |s| s.to_s == "direct_conversation" }
+      
+      sources_to_check.each do |source|
         Rails.logger.info "📍 Checking source: #{source}"
 
         case source.to_s
@@ -35,21 +37,18 @@ module Agents
           @gathered_data.merge!(check_entity_profile)
         when "web_search"
           @gathered_data.merge!(check_web_search)
-        when "direct_conversation"
-          # Check conversation for data FIRST
-          conversation_data = check_conversation_history
-          @gathered_data.merge!(conversation_data)
-
-          # Only ask if we STILL need input after checking conversation
-          if needs_user_input?
-            # Store partial data before asking for more
-            store_phase_output(@gathered_data, "extracted_data")
-            return ask_user_conversationally
-          end
         end
 
-        # Check if we have everything
-        break if check_completion_criteria
+        # Log what we've gathered so far
+        Rails.logger.info "📊 Required: #{required_fields.length}, Gathered: #{@gathered_data.keys.length}, Missing: #{missing_fields.length}"
+      end
+
+      # Now check if we still need to ask the user
+      if sources.include?("direct_conversation") && needs_user_input?
+        Rails.logger.info "💭 Need to ask user for: #{missing_fields.join(', ')}"
+        # Store partial data before asking for more
+        store_phase_output(@gathered_data, "extracted_data")
+        return ask_user_conversationally
       end
 
       # Store all gathered data
@@ -282,10 +281,16 @@ module Agents
       # Add subdomain
       gathered['subdomain'] = entity.subdomain if entity.subdomain.present?
 
-      # Check business profile for style guidelines
+      # Check business profile for style guidelines and business info
       if user&.business_profile
         profile = user.business_profile
-
+        
+        # Add business info
+        gathered['value_proposition'] = profile.description if profile.description.present?
+        gathered['target_audience'] = profile.target_audience if profile.target_audience.present?
+        gathered['tone_of_voice'] = profile.tone_of_voice if profile.tone_of_voice.present?
+        gathered['industry'] = profile.industry if profile.industry.present?
+        
         # Add style guidelines if present
         if profile.style_guidelines.present?
           Rails.logger.info "🎨 Found style guidelines in business profile"
@@ -296,7 +301,14 @@ module Agents
           gathered['brand_colors'] = guidelines['colors'] if guidelines['colors'].present?
           gathered['typography'] = guidelines['typography'] if guidelines['typography'].present?
           gathered['design_aesthetic'] = guidelines['aesthetic'] if guidelines['aesthetic'].present?
+          gathered['design_style'] = guidelines['aesthetic'] || 'Modern'
+        else
+          # Default design style if not in guidelines
+          gathered['design_style'] = 'Modern'
         end
+        
+        # Default call to action if not found elsewhere
+        gathered['call_to_action'] ||= 'Get Started'
       end
 
 
@@ -420,7 +432,7 @@ module Agents
 
       {
         success: true,
-        status: "awaiting_input",
+        status: "paused",
         conversational: true,
         fields_needed: missing.map { |m| m[:field] },
         message: prompt,

@@ -105,9 +105,11 @@ namespace :solid_queue do
     # Configure Rails logger to include both console AND file output
     log_level = ENV.fetch("SOLID_QUEUE_LOG_LEVEL", "info").upcase
 
-    # Create a console logger
+    # Create a console logger with immediate flushing
     console_logger = ActiveSupport::Logger.new(STDOUT)
     console_logger.level = ActiveSupport::Logger.const_get(log_level)
+    # Ensure immediate output
+    STDOUT.sync = true
     console_logger.formatter = proc do |severity, datetime, progname, msg|
       time = datetime.strftime("%Y-%m-%d %H:%M:%S")
       "[#{time}] [#{severity}] #{msg}\n"

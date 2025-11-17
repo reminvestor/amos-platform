@@ -130,6 +130,11 @@ gem "anthropic", "~> 0.1.0"  # Add Anthropic gem for Claude
 # Rate limiting and API protection
 gem "rack-attack", "~> 6.7"
 
+# Agent Lightning integration for RL-based optimization
+gem "agentlightning", "~> 0.1.0"  # Agent Lightning framework for RL training
+gem "opentelemetry-api", "~> 1.3"  # Distributed tracing support
+gem "opentelemetry-instrumentation-base", "~> 0.22"  # Base instrumentation framework
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"

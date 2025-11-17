@@ -1,0 +1,393 @@
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h1>🔬 Agent Lightning Dashboard</h1>
+      <p class="text-muted"><%= @entity.name %></p>
+    </div>
+    <div class="col-md-4 text-end">
+      <% if @can_train_now %>
+        <%= button_to "🚀 Train Now", admin_agent_lightning_train_now_path, method: :post, class: "btn btn-success" %>
+      <% else %>
+        <button class="btn btn-secondary" disabled>Train Not Ready</button>
+      <% end %>
+      <%= link_to "📊 Metrics", admin_agent_lightning_metrics_path, class: "btn btn-info" %>
+      <%= link_to "📤 Export", admin_agent_lightning_export_data_path, class: "btn btn-outline-secondary" %>
+    </div>
+  </div>
+
+  <!-- Configuration Status -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">📋 Configuration</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <p><strong>Status:</strong> <span class="badge <%= @config.enabled? ? 'bg-success' : 'bg-danger' %>"><%= @config.enabled? ? 'Enabled' : 'Disabled' %></span></p>
+          <p><strong>Mode:</strong> <code><%= @config.mode %></code></p>
+          <p><strong>Strategy:</strong> <code><%= @config.training_strategy %></code></p>
+        </div>
+        <div class="col-md-6">
+          <p><strong>Retrain Every:</strong> <%= @config.retrain_frequency_hours %> hours</p>
+          <p><strong>Last Training:</strong> <%= @config.last_training_at&.strftime('%Y-%m-%d %H:%M:%S') || 'Never' %></p>
+          <p><strong>Next Training:</strong> <code><%= @next_training_at.is_a?(String) ? @next_training_at : @next_training_at.strftime('%Y-%m-%d %H:%M:%S') %></code></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Training Readiness -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">✅ Training Readiness</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          <div class="alert <%= @training_checks[:enabled] ? 'alert-success' : 'alert-danger' %>" role="alert">
+            <strong>Enabled:</strong> <%= @training_checks[:enabled] ? '✅ Yes' : '❌ No' %>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="alert <%= @training_checks[:enough_traces] ? 'alert-success' : 'alert-warning' %>" role="alert">
+            <strong>Traces Ready:</strong> <%= @training_checks[:enough_traces] ? "✅ #{@traces_ready_for_training} traces" : "⏳ #{@traces_ready_for_training}/#{@config.min_traces_for_training}" %>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="alert <%= @training_checks[:retrain_due] ? 'alert-success' : 'alert-info' %>" role="alert">
+            <strong>Retrain Due:</strong> <%= @training_checks[:retrain_due] ? '✅ Yes' : '⏳ Not yet' %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Metrics -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h6 class="card-title text-muted">Success Rate</h6>
+          <h3 class="card-text text-success"><%= @success_rate %>%</h3>
+          <small class="text-muted"><%= @recent_traces.count %> recent traces</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h6 class="card-title text-muted">Avg Tokens</h6>
+          <h3 class="card-text text-info"><%= @avg_tokens %></h3>
+          <small class="text-muted">Per trace</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h6 class="card-title text-muted">Avg Cost</h6>
+          <h3 class="card-text text-warning">$<%= @avg_cost %></h3>
+          <small class="text-muted">Per trace</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h6 class="card-title text-muted">Avg Duration</h6>
+          <h3 class="card-text text-secondary"><%= @avg_duration %>ms</h3>
+          <small class="text-muted">Per trace</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- RL Training Health Indicators -->
+  <div class="admin-card" style="margin-bottom: 2rem;">
+    <div style="padding-bottom: 1rem; border-bottom: 1px solid #1E293B; margin-bottom: 1.5rem;">
+      <h3 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;">
+        <i data-lucide="activity" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        RL Training Health
+      </h3>
+      <p style="color: #64748B; font-size: 0.875rem; margin: 0.5rem 0 0 0;">Platform-wide training status and performance</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+      <!-- Last Training Status -->
+      <div style="padding: 0.75rem; background: <%= @last_training_status == 'completed' ? 'rgba(34, 197, 94, 0.05)' : @last_training_status == 'failed' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(234, 179, 8, 0.05)' %>; border: 1px solid <%= @last_training_status == 'completed' ? 'rgba(34, 197, 94, 0.2)' : @last_training_status == 'failed' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(234, 179, 8, 0.2)' %>; border-radius: 0.5rem;">
+        <div style="color: #64748B; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Last Training</div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 1.125rem; font-weight: 600; color: <%= @last_training_status == 'completed' ? '#22C55E' : @last_training_status == 'failed' ? '#EF4444' : '#EAB308' %>;">
+            <%= @last_training_status&.titleize || 'Never' %>
+          </span>
+          <i data-lucide="<%= @last_training_status == 'completed' ? 'check-circle' : @last_training_status == 'failed' ? 'x-circle' : 'clock' %>" style="width: 1.5rem; height: 1.5rem; color: <%= @last_training_status == 'completed' ? '#22C55E' : @last_training_status == 'failed' ? '#EF4444' : '#EAB308' %>;"></i>
+        </div>
+        <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">
+          <% if @last_training_at %>
+            <%= time_ago_in_words(@last_training_at) %> ago
+          <% else %>
+            No training runs yet
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Performance Trend -->
+      <div style="padding: 0.75rem; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 0.5rem;">
+        <div style="color: #64748B; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Performance Trend</div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 1.125rem; font-weight: 600; color: white;">
+            <% if @improvement_trend %>
+              <%= @improvement_trend.to_s.titleize %>
+              <%= @improvement_trend == :improving ? '↗' : @improvement_trend == :declining ? '↘' : '→' %>
+            <% else %>
+              Not enough data
+            <% end %>
+          </span>
+          <i data-lucide="trending-up" style="width: 1.5rem; height: 1.5rem; color: #3B82F6;"></i>
+        </div>
+        <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">
+          <% if @last_improvement %>
+            Last: <%= @last_improvement > 0 ? '+' : '' %><%= @last_improvement %>%
+          <% else %>
+            No recent training
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Training Success Rate -->
+      <div style="padding: 0.75rem; background: rgba(168, 85, 247, 0.05); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 0.5rem;">
+        <div style="color: #64748B; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Training Jobs</div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 1.125rem; font-weight: 600; color: white;">
+            <%= @successful_training_jobs %> / <%= @total_training_jobs %>
+          </span>
+          <i data-lucide="zap" style="width: 1.5rem; height: 1.5rem; color: #A855F7;"></i>
+        </div>
+        <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">
+          <%= @training_success_rate %>% success rate
+        </div>
+      </div>
+
+      <!-- Available Traces -->
+      <div style="padding: 0.75rem; background: rgba(236, 72, 153, 0.05); border: 1px solid rgba(236, 72, 153, 0.2); border-radius: 0.5rem;">
+        <div style="color: #64748B; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Available Traces</div>
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 1.125rem; font-weight: 600; color: white;">
+            <%= number_with_delimiter(@total_available_traces) %>
+          </span>
+          <i data-lucide="database" style="width: 1.5rem; height: 1.5rem; color: #EC4899;"></i>
+        </div>
+        <div style="color: #64748B; font-size: 0.75rem; margin-top: 0.25rem;">
+          Ready for next training
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trace Statistics -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">📊 Trace Statistics</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          <p><strong>Total Traces:</strong> <code><%= @total_traces %></code></p>
+        </div>
+        <div class="col-md-3">
+          <p><strong>Completed:</strong> <code><%= @completed_traces %></code></p>
+        </div>
+        <div class="col-md-3">
+          <p><strong>Failed:</strong> <code><%= @failed_traces %></code></p>
+        </div>
+        <div class="col-md-3">
+          <p><strong>With Rewards:</strong> <code><%= @traces_with_rewards %></code></p>
+        </div>
+      </div>
+      <div class="progress" style="height: 25px;">
+        <% if @total_traces > 0 %>
+          <div class="progress-bar bg-success" style="width: <%= (@completed_traces.to_f / @total_traces * 100).round %>%">
+            Completed <%= @completed_traces %>
+          </div>
+          <div class="progress-bar bg-danger" style="width: <%= (@failed_traces.to_f / @total_traces * 100).round %>%">
+            Failed <%= @failed_traces %>
+          </div>
+        <% else %>
+          <div class="progress-bar bg-secondary w-100">No traces yet</div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cost Summary -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">💰 Cost Summary (Last 100 traces)</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h4 class="text-warning">Total Cost: $<%= @total_cost %></h4>
+        </div>
+        <div class="col-md-6">
+          <h4 class="text-info">Average Cost: $<%= @avg_cost %> per trace</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Last Training Job -->
+  <% if @last_training_job %>
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">🚀 Last Training Job</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <p><strong>Date:</strong> <%= @last_training_job.completed_at.strftime('%Y-%m-%d %H:%M:%S') %></p>
+            <p><strong>Type:</strong> <code><%= @last_training_job.job_type %></code></p>
+            <p><strong>Traces Used:</strong> <%= @last_training_job.traces_used %></p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Status:</strong> <span class="badge bg-success"><%= @last_training_job.status %></span></p>
+            <p><strong>Improvement:</strong> <strong class="text-success">+<%= @last_training_job.improvement_score %>%</strong></p>
+          </div>
+        </div>
+
+        <% if @recommendations.any? %>
+          <hr />
+          <h6>📌 Recommendations:</h6>
+          <ul>
+            <% @recommendations.each do |rec| %>
+              <li>
+                <strong><%= rec['category'] %></strong> (<span class="badge <%= rec['priority'] == 'high' ? 'bg-danger' : 'bg-warning' %>"><%= rec['priority'] %></span>)
+                <br />
+                <em><%= rec['recommendation'] %></em>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- LLM Call Analysis -->
+  <% if @llm_calls && @llm_calls.any? %>
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">🤖 LLM Call Analysis (Last 500 calls)</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <p><strong>Success Rate:</strong> <span class="badge bg-success"><%= @llm_success_rate %>%</span></p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Avg Latency:</strong> <code><%= @avg_latency %>ms</code></p>
+          </div>
+        </div>
+
+        <h6>By Agent Role:</h6>
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Count</th>
+              <th>Success Rate</th>
+              <th>Avg Tokens</th>
+              <th>Total Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @llm_by_role.each do |role_data| %>
+              <tr>
+                <td><code><%= role_data[:role] %></code></td>
+                <td><%= role_data[:count] %></td>
+                <td><span class="badge bg-success"><%= role_data[:success_rate] %>%</span></td>
+                <td><%= role_data[:avg_tokens] %></td>
+                <td>$<%= role_data[:total_cost] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Top Tools -->
+  <% if @top_tools && @top_tools.any? %>
+    <div class="card">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">🔧 Top Tools (Last 500 executions)</h5>
+      </div>
+      <div class="card-body">
+        <p><strong>Overall Success Rate:</strong> <span class="badge bg-success"><%= @tool_success_rate %>%</span></p>
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Tool</th>
+              <th>Executions</th>
+              <th>Success Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @top_tools.each do |tool| %>
+              <tr>
+                <td><code><%= tool[:name] %></code></td>
+                <td><%= tool[:count] %></td>
+                <td><span class="badge bg-<%= tool[:success_rate] > 80 ? 'success' : 'warning' %>"><%= tool[:success_rate] %>%</span></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Training History -->
+  <div class="card mt-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">📜 Training History (Last 10)</h5>
+    </div>
+    <div class="card-body">
+      <% if @training_history.any? %>
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Strategy</th>
+              <th>Traces Used</th>
+              <th>Improvement</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @training_history.each do |job| %>
+              <tr>
+                <td><%= job.completed_at.strftime('%Y-%m-%d %H:%M') %></td>
+                <td><code><%= job.job_type %></code></td>
+                <td><%= job.traces_used %></td>
+                <td><strong class="text-success">+<%= job.improvement_score %>%</strong></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% else %>
+        <p class="text-muted">No training jobs yet</p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  }
+  .card-header {
+    border-bottom: 1px solid #e9ecef;
+  }
+  .progress {
+    background-color: #f0f0f0;
+  }
+</style>

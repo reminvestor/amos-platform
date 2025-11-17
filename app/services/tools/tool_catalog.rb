@@ -64,8 +64,16 @@ module Tools
               type: "string",
               description: "The name of the canvas to load",
               enum: [ "campaign_viewer", "analytics_dashboard", "landing_page_viewer",
-                     "contact_viewer", "email_template_viewer", "task_progress",
-                     "dynamic_canvas", "integrations_manager" ]
+                     "contact_viewer", "email_template_viewer", "email_campaign_viewer", 
+                     "task_progress", "parallel_tasks", "dynamic_canvas", 
+                     "integrations_manager", "landing_page_editor", "document_viewer",
+                     "document_search_results" ]
+            },
+            canvas_data: {
+              type: "object",
+              description: "Optional data to pass to the canvas (e.g., campaign_id, landing_page_id)",
+              properties: {},
+              additionalProperties: true
             }
           },
           required: [ "canvas_name" ]
@@ -106,16 +114,16 @@ module Tools
     end
 
     # Get tool instance
-    def get_tool(name, context = {})
+    def get_tool(name, user: nil, entity: nil, context: {}, progress_callback: nil)
       tool_info = @tools[name]
       return nil unless tool_info
 
-      tool_info[:class].new(**context)
+      tool_info[:class].new(user: user, entity: entity, context: context, progress_callback: progress_callback)
     end
 
     # Execute a tool
-    def execute_tool(name, args, context = {})
-      tool = get_tool(name, context)
+    def execute_tool(name, args, user: nil, entity: nil, context: {}, progress_callback: nil)
+      tool = get_tool(name, user: user, entity: entity, context: context, progress_callback: progress_callback)
       return { success: false, error: "Unknown tool: #{name}" } unless tool
 
       tool.execute(args)
