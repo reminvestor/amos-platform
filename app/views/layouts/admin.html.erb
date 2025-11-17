@@ -61,10 +61,27 @@
             <span>AI Pipeline</span>
           <% end %>
 
-          <%= link_to admin_observability_ai_usage_path, class: "nav-item #{'active' if request.path.start_with?('/admin/observability')}" do %>
-            <i data-lucide="bar-chart-3"></i>
-            <span>Observability</span>
-          <% end %>
+          <div class="nav-group #{'active' if request.path.start_with?('/admin/observability')}">
+            <div class="nav-item nav-group-header">
+              <i data-lucide="bar-chart-3"></i>
+              <span>Observability</span>
+              <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </div>
+            <div class="nav-submenu">
+              <%= link_to admin_observability_ai_usage_path, class: "nav-subitem #{'active' if current_page?(admin_observability_ai_usage_path)}" do %>
+                <span>AI Usage</span>
+              <% end %>
+              <%= link_to admin_observability_workflows_path, class: "nav-subitem #{'active' if current_page?(admin_observability_workflows_path)}" do %>
+                <span>Workflows</span>
+              <% end %>
+              <%= link_to admin_observability_performance_path, class: "nav-subitem #{'active' if current_page?(admin_observability_performance_path)}" do %>
+                <span>Performance</span>
+              <% end %>
+              <%= link_to admin_observability_errors_path, class: "nav-subitem #{'active' if current_page?(admin_observability_errors_path)}" do %>
+                <span>Errors</span>
+              <% end %>
+            </div>
+          </div>
         </nav>
 
         <%# Bottom Actions %>
@@ -99,11 +116,13 @@
       document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
         initSidebarToggle();
+        initNavGroups();
       });
 
       document.addEventListener('turbo:load', () => {
         lucide.createIcons();
         initSidebarToggle();
+        initNavGroups();
       });
 
       function initSidebarToggle() {
@@ -125,6 +144,24 @@
 
           // Re-initialize icons after DOM changes
           setTimeout(() => lucide.createIcons(), 100);
+        });
+      }
+
+      function initNavGroups() {
+        // Handle nav group dropdowns
+        document.querySelectorAll('.nav-group-header').forEach(header => {
+          header.addEventListener('click', (e) => {
+            const navGroup = header.parentElement;
+            navGroup.classList.toggle('expanded');
+
+            // Re-initialize icons after DOM changes
+            setTimeout(() => lucide.createIcons(), 100);
+          });
+        });
+
+        // Auto-expand active nav groups
+        document.querySelectorAll('.nav-group.active').forEach(group => {
+          group.classList.add('expanded');
         });
       }
     </script>

@@ -110,6 +110,8 @@ class VoiceProviderHealthService
   def check_eleven_labs_health
     start_time = Time.current
     begin
+      # Note: Many Eleven Labs API keys are scoped to specific endpoints (e.g., transcription only)
+      # and may not have user_read permission. We test with /v1/user but handle permission errors gracefully.
       response = HTTParty.get(
         "https://api.elevenlabs.io/v1/user",
         headers: {
@@ -129,6 +131,40 @@ class VoiceProviderHealthService
           timestamp: Time.current,
           message: "Eleven Labs API responding normally"
         }
+      elsif response.code == 401
+        # Check if it's a permission error (key is valid but lacks user_read permission)
+        begin
+          error_detail = JSON.parse(response.body)
+          if error_detail.dig("detail", "status") == "missing_permissions"
+            # API key is valid but lacks this specific permission - still usable for transcription
+            {
+              status: "healthy",
+              provider: "eleven_labs",
+              available: true,
+              latency_ms: latency,
+              timestamp: Time.current,
+              message: "Eleven Labs API key valid (limited permissions)"
+            }
+          else
+            {
+              status: "unhealthy",
+              provider: "eleven_labs",
+              available: false,
+              latency_ms: latency,
+              timestamp: Time.current,
+              error: "HTTP #{response.code}: #{response.message}"
+            }
+          end
+        rescue JSON::ParserError
+          {
+            status: "unhealthy",
+            provider: "eleven_labs",
+            available: false,
+            latency_ms: latency,
+            timestamp: Time.current,
+            error: "HTTP #{response.code}: #{response.message}"
+          }
+        end
       else
         {
           status: "unhealthy",

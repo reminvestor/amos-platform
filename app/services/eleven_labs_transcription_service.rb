@@ -1,16 +1,16 @@
-# ElevenLabsTranscriptionService handles Eleven Labs Scribe v2 API integration for real-time transcription
+# ElevenLabsTranscriptionService handles Eleven Labs Scribe v3 API integration for real-time transcription
 #
 # Responsibilities:
-# - Generate WebSocket URLs for Scribe v2 Realtime connections
+# - Generate WebSocket URLs for Scribe v3 Realtime connections
 # - Build WebSocket configuration with optimal parameters
 # - Handle real-time transcript streaming
 # - Support multiple languages
 #
 # Features:
-# - Ultra-low latency (~150ms) real-time transcription
-# - 90+ language support
-# - High accuracy across accents and tones
-# - Partial and final transcripts
+# - Ultra-low latency (~100ms) real-time transcription with v3
+# - 100+ language support
+# - Enhanced accuracy across accents and tones
+# - Partial and final transcripts with improved punctuation
 #
 # Usage:
 #   service = ElevenLabsTranscriptionService.new(voice_session)
@@ -18,9 +18,12 @@
 #   url = service.websocket_url
 class ElevenLabsTranscriptionService
   ELEVEN_LABS_API_URL = "https://api.elevenlabs.io".freeze
-  ELEVEN_LABS_WEBSOCKET_URL = "wss://api.elevenlabs.io/v1/convai/conversation".freeze
+  ELEVEN_LABS_WEBSOCKET_URL = "wss://api.elevenlabs.io/v1/scribe/v3/realtime".freeze
   DEFAULT_LANGUAGE = "en".freeze
-  DEFAULT_MODEL = "scribe-v2-realtime".freeze
+  DEFAULT_MODEL = "scribe-v3-realtime".freeze
+  DEFAULT_ENCODING = "pcm_16000".freeze
+  DEFAULT_SAMPLE_RATE = 16000
+  DEFAULT_CHANNELS = 1
 
   attr_reader :voice_session
 
@@ -35,25 +38,29 @@ class ElevenLabsTranscriptionService
   # @return [Hash] WebSocket configuration
   def websocket_config(language: nil, keywords: [])
     config = {
-      # Audio format settings
-      encoding: "pcm_16bit", # 16-bit PCM encoding
-      sample_rate: 16000, # Telephony quality (16kHz)
-      channels: 1,
+      # Audio format settings (configurable for different quality needs)
+      encoding: ENV.fetch("ELEVEN_LABS_ENCODING", DEFAULT_ENCODING),
+      sample_rate: ENV.fetch("ELEVEN_LABS_SAMPLE_RATE", DEFAULT_SAMPLE_RATE.to_s).to_i,
+      channels: ENV.fetch("ELEVEN_LABS_CHANNELS", DEFAULT_CHANNELS.to_s).to_i,
 
       # Model and language
-      model: DEFAULT_MODEL,
-      language: language || DEFAULT_LANGUAGE,
+      model: ENV.fetch("ELEVEN_LABS_MODEL", DEFAULT_MODEL),
+      language: language || ENV.fetch("ELEVEN_LABS_LANGUAGE", DEFAULT_LANGUAGE),
 
       # Transcription features
-      punctuate: true,
-      include_partial_results: true,
+      punctuate: ENV.fetch("ELEVEN_LABS_PUNCTUATE", "true") == "true",
+      include_partial_results: ENV.fetch("ELEVEN_LABS_PARTIAL_RESULTS", "true") == "true",
 
       # Advanced features
-      enable_speaker_diarization: false, # Set to true if speaker identification needed
-      enable_sentiment_analysis: false, # Set to true if sentiment detection needed
+      enable_speaker_diarization: ENV.fetch("ELEVEN_LABS_SPEAKER_DIARIZATION", "false") == "true",
+      enable_sentiment_analysis: ENV.fetch("ELEVEN_LABS_SENTIMENT_ANALYSIS", "false") == "true",
 
       # Performance tuning
-      latency_optimized: true # Optimized for ~150ms latency
+      latency_optimized: ENV.fetch("ELEVEN_LABS_LATENCY_OPTIMIZED", "true") == "true",
+
+      # Timeout settings
+      max_duration: ENV.fetch("ELEVEN_LABS_MAX_DURATION", "300").to_i,
+      silence_timeout: ENV.fetch("ELEVEN_LABS_SILENCE_TIMEOUT", "20").to_i
     }
 
     # Add keywords for improved recognition (if provided)
