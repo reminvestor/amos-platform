@@ -84,6 +84,31 @@ module Admin
 
       # Recent training jobs across all entities
       @recent_training_jobs = AgentTrainingJob.includes(:entity).completed.order(completed_at: :desc).limit(10)
+
+# Platform-wide training job health metrics
+all_training_jobs = AgentTrainingJob.all
+@total_training_jobs = all_training_jobs.count
+@successful_training_jobs = all_training_jobs.where(status: 'completed').count
+@failed_training_jobs = all_training_jobs.where(status: 'failed').count
+@training_success_rate = @total_training_jobs > 0 ? ((@successful_training_jobs.to_f / @total_training_jobs) * 100).round(1) : 0
+
+# Last training status
+last_job = all_training_jobs.order(created_at: :desc).first
+@last_training_status = last_job&.status
+@last_training_at = last_job&.completed_at || last_job&.created_at
+
+# Calculate platform-wide improvement trend
+recent_successful = all_training_jobs.where(status: 'completed').order(completed_at: :desc).limit(2)
+@improvement_trend = calculate_improvement_trend(recent_successful)
+@last_improvement = recent_successful.first&.improvement_score_change&.round(2)
+
+# Calculate traces available for training (across all entities)
+@total_available_traces = all_entities.sum do |entity|
+  next 0 unless entity.agent_lightning_config&.enabled?
+  traces = entity.agent_lightning_traces.where("created_at > ?", 30.days.ago)
+  traces.where(status: ['completed', 'failed'], included_in_training: false)
+        .where.not(reward_signal: nil).count
+end
     end
 
     def train_now
@@ -456,4 +481,17 @@ module Admin
     end
 
   end
+
+    def calculate_improvement_trend(recent_successful_jobs)
+      return nil if recent_successful_jobs.count < 2
+
+      jobs_array = recent_successful_jobs.to_a
+      latest = jobs_array[0]&.improvement_score_change || 0
+      previous = jobs_array[1]&.improvement_score_change || 0
+
+      return :improving if latest > previous
+      return :declining if latest < previous
+      :stable
+    end
+
 end
