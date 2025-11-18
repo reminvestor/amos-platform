@@ -1,8 +1,8 @@
-<div style="padding: 2rem;">
+<div class="admin-p-xl">
   <!-- Page Header -->
   <div class="admin-page-header">
     <div class="header-left">
-      <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+      <div class="header-icon">
         <i data-lucide="workflow"></i>
       </div>
       <div class="header-text">
@@ -12,7 +12,7 @@
     </div>
 
     <div class="header-actions">
-      <div style="display: flex; gap: 0.5rem;">
+      <div class="d-flex admin-flex-gap-sm">
         <%= link_to admin_observability_workflows_path(time_range: 1), class: "admin-btn admin-btn-sm #{params[:time_range] == '1' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
           <span>24 Hours</span>
         <% end %>
@@ -27,135 +27,94 @@
   </div>
 
   <!-- Summary Cards -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="list-checks" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Workflows</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_workflows) %></h3>
-        </div>
-      </div>
-    </div>
-
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Completed</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@completed_workflows) %></h3>
-        </div>
-      </div>
-    </div>
-
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="x-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(248, 113, 113);"></i>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Failed</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@failed_workflows) %></h3>
-        </div>
-      </div>
-    </div>
-
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="trending-up" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Success Rate</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @success_rate %>%</h3>
-        </div>
-      </div>
-    </div>
+  <div class="admin-stats-grid">
+    <%= render 'admin/shared/stat_card', icon: 'list-checks', label: 'Total Workflows', value: number_with_delimiter(@total_workflows), style: 'purple-gradient', aria_label: 'Total workflows count' %>
+    <%= render 'admin/shared/stat_card', icon: 'check-circle', label: 'Completed', value: number_with_delimiter(@completed_workflows), style: 'success', aria_label: 'Completed workflows count' %>
+    <%= render 'admin/shared/stat_card', icon: 'x-circle', label: 'Failed', value: number_with_delimiter(@failed_workflows), style: 'error', aria_label: 'Failed workflows count' %>
+    <%= render 'admin/shared/stat_card', icon: 'trending-up', label: 'Success Rate', value: "#{@success_rate}%", style: 'info', aria_label: 'Workflow success rate percentage' %>
   </div>
 
   <!-- Workflow Trend Chart -->
-  <div class="admin-card" style="margin-bottom: 2rem;" data-turbo-cache="false">
-    <h3 class="card-title">
-      <i data-lucide="bar-chart" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+  <div class="admin-card admin-mb-xl" data-turbo-cache="false">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="bar-chart" class="admin-icon-md d-inline-block align-middle me-2" aria-hidden="true"></i>
       Workflow Execution Trend
     </h3>
-    <div style="height: 300px; position: relative;">
+    <div class="admin-chart-container">
       <canvas id="workflowTrendChart"></canvas>
     </div>
   </div>
 
   <!-- Workflows by Template and Entity -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+  <div class="admin-content-grid">
     <div class="admin-card">
-      <h3 class="card-title">
-        <i data-lucide="file-text" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+      <h3 class="card-title m-0 admin-mb-lg">
+        <i data-lucide="file-text" class="admin-icon-md d-inline-block align-middle me-2" aria-hidden="true"></i>
         Top Workflow Templates
       </h3>
 
       <% if @workflows_by_template.any? %>
-        <div style="overflow-x: auto;">
+        <div class="admin-overflow-auto">
           <table class="admin-table">
+            <%= admin_table_caption("Top workflow templates by execution count") %>
             <thead>
               <tr>
                 <th>Template Name</th>
-                <th style="text-align: right;">Executions</th>
+                <th class="admin-text-right">Executions</th>
               </tr>
             </thead>
             <tbody>
               <% @workflows_by_template.each do |template_name, count| %>
                 <tr>
-                  <td style="color: white;"><%= template_name || "Unknown" %></td>
-                  <td style="text-align: right; color: #22D3EE;"><%= number_with_delimiter(count) %></td>
+                  <td class="text-white"><%= template_name || "Unknown" %></td>
+                  <td class="admin-text-right admin-text-cyan"><%= number_with_delimiter(count) %></td>
                 </tr>
               <% end %>
             </tbody>
           </table>
         </div>
       <% else %>
-        <p style="color: #64748B; text-align: center; padding: 2rem; margin: 0;">No workflow data available</p>
+        <p class="admin-text-muted admin-text-center admin-p-xl m-0">No workflow data available</p>
       <% end %>
     </div>
 
     <div class="admin-card">
-      <h3 class="card-title">
-        <i data-lucide="building" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+      <h3 class="card-title m-0 admin-mb-lg">
+        <i data-lucide="building" class="admin-icon-md d-inline-block align-middle me-2" aria-hidden="true"></i>
         Top Entities by Usage
       </h3>
 
       <% if @workflows_by_entity.any? %>
-        <div style="overflow-x: auto;">
+        <div class="admin-overflow-auto">
           <table class="admin-table">
+            <%= admin_table_caption("Top entities by workflow usage count") %>
             <thead>
               <tr>
                 <th>Entity Name</th>
-                <th style="text-align: right;">Workflows</th>
+                <th class="admin-text-right">Workflows</th>
               </tr>
             </thead>
             <tbody>
               <% @workflows_by_entity.each do |entity_name, count| %>
                 <tr>
-                  <td style="color: white;"><%= entity_name %></td>
-                  <td style="text-align: right; color: #22D3EE;"><%= number_with_delimiter(count) %></td>
+                  <td class="text-white"><%= entity_name %></td>
+                  <td class="admin-text-right admin-text-cyan"><%= number_with_delimiter(count) %></td>
                 </tr>
               <% end %>
             </tbody>
           </table>
         </div>
       <% else %>
-        <p style="color: #64748B; text-align: center; padding: 2rem; margin: 0;">No entity data available</p>
+        <p class="admin-text-muted admin-text-center admin-p-xl m-0">No entity data available</p>
       <% end %>
     </div>
   </div>
 
   <!-- Recent Workflows -->
   <div class="admin-card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-      <h3 class="card-title" style="margin: 0;">
-        <i data-lucide="history" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+    <div class="d-flex justify-content-between align-items-center admin-mb-lg">
+      <h3 class="card-title m-0">
+        <i data-lucide="history" class="admin-icon-md d-inline-block align-middle me-2" aria-hidden="true"></i>
         Recent Workflow Executions
       </h3>
 
@@ -172,8 +131,9 @@
     </div>
 
     <% if @workflows.any? %>
-      <div style="overflow-x: auto;">
+      <div class="admin-overflow-auto">
         <table class="admin-table">
+          <%= admin_table_caption("Recent workflow executions with ID, template, entity, user, status, start time, and duration") %>
           <thead>
             <tr>
               <th>ID</th>
@@ -188,23 +148,13 @@
           <tbody>
             <% @workflows.each do |workflow| %>
               <tr>
-                <td><code style="color: #22D3EE;">#<%= workflow.id %></code></td>
-                <td style="color: white;"><%= workflow.workflow_template_id || "Ad-hoc" %></td>
-                <td style="color: #94A3B8;"><%= workflow.entity&.name || "N/A" %></td>
-                <td style="color: #94A3B8;"><%= workflow.user&.email || "System" %></td>
-                <td>
-                  <% if workflow.status == "completed" %>
-                    <span class="admin-badge admin-badge-online">COMPLETED</span>
-                  <% elsif workflow.status == "failed" %>
-                    <span class="admin-badge admin-badge-offline">FAILED</span>
-                  <% elsif workflow.status == "in_progress" %>
-                    <span class="admin-badge admin-badge-cyan">IN PROGRESS</span>
-                  <% else %>
-                    <span class="admin-badge admin-badge-default"><%= workflow.status.upcase %></span>
-                  <% end %>
-                </td>
-                <td style="color: #94A3B8;"><%= time_ago_in_words(workflow.created_at) %> ago</td>
-                <td style="color: #94A3B8;">
+                <td><code class="admin-text-cyan">#<%= workflow.id %></code></td>
+                <td class="text-white"><%= workflow.workflow_template_id || "Ad-hoc" %></td>
+                <td class="admin-text-secondary"><%= workflow.entity&.name || "N/A" %></td>
+                <td class="admin-text-secondary"><%= workflow.user&.email || "System" %></td>
+                <td><%= admin_status_badge(workflow.status) %></td>
+                <td class="admin-text-secondary"><%= time_ago_in_words(workflow.created_at) %> ago</td>
+                <td class="admin-text-secondary">
                   <% if workflow.updated_at && workflow.created_at %>
                     <%= distance_of_time_in_words(workflow.created_at, workflow.updated_at) %>
                   <% else %>
@@ -217,7 +167,7 @@
         </table>
       </div>
       <% if @workflows.count >= 100 %>
-        <p style="color: #64748B; text-align: center; margin-top: 1.5rem; margin-bottom: 0; font-size: 0.875rem;">
+        <p class="admin-text-muted admin-text-center admin-mt-lg mb-0 admin-text-sm">
           Showing first 100 workflows. Use filters to narrow results.
         </p>
       <% end %>
