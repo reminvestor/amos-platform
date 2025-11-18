@@ -145,10 +145,10 @@ class Admin::ObservabilityController < Admin::BaseController
   end
 
   def ai_usage
-    # Redirect to Agent Lightning Model Performance page
+    # Redirect to Agent Lightning Metrics page
     # AI Usage metrics are now consolidated under Agent Lightning
-    redirect_to models_performance_admin_agent_lightning_index_path,
-                notice: "AI Usage metrics have been moved to Agent Lightning Model Performance"
+    redirect_to metrics_admin_agent_lightning_index_path,
+                notice: "AI Usage metrics have been moved to Agent Lightning Metrics"
   end
 
   private
