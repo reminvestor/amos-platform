@@ -641,6 +641,20 @@ Rails.application.routes.draw do
         get :export_data, as: :export_data
       end
     end
+
+    # Agent Plugins Management
+    resources :agent_plugins do
+      member do
+        post :activate
+        post :deactivate
+        get :test
+        post :run_test
+        post :clone
+      end
+      collection do
+        get :analytics
+      end
+    end
   end
 
   # Common routes (regardless of subdomain)

@@ -34,7 +34,9 @@
       "Bash(tee:*)",
       "Bash(grep:*)",
       "Bash(timeout 10 docker compose exec:*)",
-      "SlashCommand(/ux)"
+      "SlashCommand(/ux)",
+      "Bash(rails generate migration:*)",
+      "Bash(bin/rails generate:*)"
     ],
     "deny": [],
     "ask": [
