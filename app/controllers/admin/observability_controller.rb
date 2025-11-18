@@ -175,6 +175,7 @@ class Admin::ObservabilityController < Admin::BaseController
     @performance_events
       .where(event_type: event_type)
       .where.not("metadata->>'duration' IS NULL")
+      .to_a
       .sort_by { |e| (e.metadata&.dig("duration") || 0).to_f }
       .reverse
       .first(limit)
