@@ -231,6 +231,8 @@ class Admin::AgentPluginsController < Admin::BaseController
       :agent_class,
       :priority,
       :entity_id,
+      :model_name,
+      :model_config,
       :configuration,
       :system_prompt,
       :capabilities_definition,
