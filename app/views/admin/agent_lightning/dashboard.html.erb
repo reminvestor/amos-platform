@@ -2,61 +2,29 @@
   <div class="row mb-4">
     <div class="col-md-8">
       <h1>🔬 Agent Lightning Dashboard</h1>
-      <p class="text-muted"><%= @entity.name %></p>
+      <p class="text-muted">Platform-wide Overview</p>
     </div>
     <div class="col-md-4 text-end">
-      <% if @can_train_now %>
-        <%= button_to "🚀 Train Now", admin_agent_lightning_train_now_path, method: :post, class: "btn btn-success" %>
-      <% else %>
-        <button class="btn btn-secondary" disabled>Train Not Ready</button>
-      <% end %>
-      <%= link_to "📊 Metrics", admin_agent_lightning_metrics_path, class: "btn btn-info" %>
-      <%= link_to "📤 Export", admin_agent_lightning_export_data_path, class: "btn btn-outline-secondary" %>
+      <%= link_to "📊 Metrics", metrics_admin_agent_lightning_index_path, class: "btn btn-info" %>
+      <%= link_to "📤 Export", export_data_admin_agent_lightning_index_path, class: "btn btn-outline-secondary" %>
     </div>
   </div>
 
-  <!-- Configuration Status -->
+  <!-- Platform Statistics -->
   <div class="card mb-4">
     <div class="card-header bg-light">
-      <h5 class="mb-0">📋 Configuration</h5>
-    </div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6">
-          <p><strong>Status:</strong> <span class="badge <%= @config.enabled? ? 'bg-success' : 'bg-danger' %>"><%= @config.enabled? ? 'Enabled' : 'Disabled' %></span></p>
-          <p><strong>Mode:</strong> <code><%= @config.mode %></code></p>
-          <p><strong>Strategy:</strong> <code><%= @config.training_strategy %></code></p>
-        </div>
-        <div class="col-md-6">
-          <p><strong>Retrain Every:</strong> <%= @config.retrain_frequency_hours %> hours</p>
-          <p><strong>Last Training:</strong> <%= @config.last_training_at&.strftime('%Y-%m-%d %H:%M:%S') || 'Never' %></p>
-          <p><strong>Next Training:</strong> <code><%= @next_training_at.is_a?(String) ? @next_training_at : @next_training_at.strftime('%Y-%m-%d %H:%M:%S') %></code></p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Training Readiness -->
-  <div class="card mb-4">
-    <div class="card-header bg-light">
-      <h5 class="mb-0">✅ Training Readiness</h5>
+      <h5 class="mb-0">📊 Platform Statistics</h5>
     </div>
     <div class="card-body">
       <div class="row">
         <div class="col-md-4">
-          <div class="alert <%= @training_checks[:enabled] ? 'alert-success' : 'alert-danger' %>" role="alert">
-            <strong>Enabled:</strong> <%= @training_checks[:enabled] ? '✅ Yes' : '❌ No' %>
-          </div>
+          <p><strong>Entities with Lightning:</strong> <code><%= @entities_with_lightning %></code></p>
         </div>
         <div class="col-md-4">
-          <div class="alert <%= @training_checks[:enough_traces] ? 'alert-success' : 'alert-warning' %>" role="alert">
-            <strong>Traces Ready:</strong> <%= @training_checks[:enough_traces] ? "✅ #{@traces_ready_for_training} traces" : "⏳ #{@traces_ready_for_training}/#{@config.min_traces_for_training}" %>
-          </div>
+          <p><strong>Total Traces:</strong> <code><%= number_with_delimiter(@total_traces) %></code></p>
         </div>
         <div class="col-md-4">
-          <div class="alert <%= @training_checks[:retrain_due] ? 'alert-success' : 'alert-info' %>" role="alert">
-            <strong>Retrain Due:</strong> <%= @training_checks[:retrain_due] ? '✅ Yes' : '⏳ Not yet' %>
-          </div>
+          <p><strong>Available for Training:</strong> <code><%= number_with_delimiter(@total_available_traces) %></code></p>
         </div>
       </div>
     </div>
