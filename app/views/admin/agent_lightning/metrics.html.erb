@@ -1,8 +1,8 @@
-<div style="padding: 2rem;">
+<div class="admin-p-xl">
   <!-- Page Header -->
   <div class="admin-page-header">
     <div class="header-left">
-      <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+      <div class="header-icon">
         <i data-lucide="bar-chart-3"></i>
       </div>
       <div class="header-text">
@@ -12,10 +12,10 @@
     </div>
 
     <div class="header-actions">
-      <div style="display: flex; gap: 0.5rem;">
+      <div class="d-flex admin-flex-gap-sm">
         <% [7, 30, 60, 90].each do |days| %>
           <% if days == @days %>
-            <span class="admin-badge admin-badge-cyan" style="padding: 0.5rem 1rem; font-size: 0.875rem;"><%= days %> days</span>
+            <span class="admin-badge admin-badge-cyan admin-btn-sm"><%= days %> days</span>
           <% else %>
             <%= link_to days.to_s + " days", metrics_admin_agent_lightning_index_path(days: days), class: "admin-btn admin-btn-sm admin-btn-outline" %>
           <% end %>
@@ -29,54 +29,11 @@
   </div>
 
   <!-- Overall Statistics -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="activity" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Traces</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_traces) %></h3>
-        </div>
-      </div>
-    </div>
-
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="trending-up" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Success Rate</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @success_rate %>%</h3>
-        </div>
-      </div>
-    </div>
-
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="award" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21);"></i>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Avg Reward</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @avg_reward %></h3>
-        </div>
-      </div>
-    </div>
-
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Completed</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@completed_traces_count) %></h3>
-        </div>
-      </div>
-    </div>
+  <div class="admin-stats-grid">
+    <%= render 'admin/shared/stat_card', icon: 'activity', label: 'Total Traces', value: number_with_delimiter(@total_traces), style: 'purple-gradient', aria_label: 'Total traces count' %>
+    <%= render 'admin/shared/stat_card', icon: 'trending-up', label: 'Success Rate', value: "#{@success_rate}%", style: 'success', aria_label: 'Success rate percentage' %>
+    <%= render 'admin/shared/stat_card', icon: 'award', label: 'Avg Reward', value: @avg_reward, style: 'warning', aria_label: 'Average reward score' %>
+    <%= render 'admin/shared/stat_card', icon: 'check-circle', label: 'Completed', value: number_with_delimiter(@completed_traces_count), style: 'info', aria_label: 'Completed traces count' %>
   </div>
 
   <!-- Token & Cost Analysis -->
