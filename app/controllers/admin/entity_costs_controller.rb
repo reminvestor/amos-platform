@@ -1,8 +1,6 @@
 # app/controllers/admin/entity_costs_controller.rb
-class Admin::EntityCostsController < ApplicationController
-  before_action :authenticate_admin!
+class Admin::EntityCostsController < Admin::BaseController
   before_action :set_entity, only: [:show, :export]
-  layout 'admin'
 
   def index
     @entities = Entity.includes(:entity_cost_summaries)
@@ -76,8 +74,6 @@ class Admin::EntityCostsController < ApplicationController
   end
 
   def bulk_analysis
-    authenticate_admin!
-
     # Analyze costs across all entities
     @analysis_period = params[:period] || 'monthly'
     @category_filter = params[:category]
@@ -102,12 +98,6 @@ class Admin::EntityCostsController < ApplicationController
 
   def set_entity
     @entity = Entity.find(params[:id])
-  end
-
-  def authenticate_admin!
-    unless current_user&.admin?
-      redirect_to root_path, alert: 'Not authorized to access admin area'
-    end
   end
 
   def calculate_total_costs(entities, start_date, end_date)

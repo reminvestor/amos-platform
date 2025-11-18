@@ -6,8 +6,7 @@
 # - Re-indexing documents
 # - Deleting documents
 #
-class Admin::SystemDocumentsController < ApplicationController
-  before_action :require_admin!
+class Admin::SystemDocumentsController < Admin::BaseController
   before_action :set_system_document, only: [:show, :destroy, :reindex, :download]
 
   def index
@@ -123,12 +122,6 @@ class Admin::SystemDocumentsController < ApplicationController
       :subcategory,
       :description
     )
-  end
-
-  def require_admin!
-    unless current_user&.admin?
-      redirect_to root_path, alert: "Access denied. Admin privileges required."
-    end
   end
 
   # S3 helper methods

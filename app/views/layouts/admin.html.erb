@@ -195,9 +195,15 @@
             e.stopPropagation();
 
             const navGroup = newHeader.parentElement;
+            const groupName = newHeader.querySelector('span')?.textContent?.trim() || 'unknown';
+
             navGroup.classList.toggle('expanded');
 
-            console.log('Nav group toggled:', navGroup.classList.contains('expanded'));
+            // Save expanded state to localStorage
+            const isExpanded = navGroup.classList.contains('expanded');
+            localStorage.setItem(`navGroup_${groupName}_expanded`, isExpanded);
+
+            console.log('Nav group toggled:', groupName, isExpanded);
 
             // Re-initialize icons after DOM changes
             setTimeout(() => {
@@ -208,9 +214,21 @@
           });
         });
 
-        // Auto-expand active nav groups
-        document.querySelectorAll('.nav-group.active').forEach(group => {
-          group.classList.add('expanded');
+        // Restore expanded state from localStorage or auto-expand active groups
+        document.querySelectorAll('.nav-group').forEach(group => {
+          const header = group.querySelector('.nav-group-header');
+          const groupName = header?.querySelector('span')?.textContent?.trim() || 'unknown';
+          const savedState = localStorage.getItem(`navGroup_${groupName}_expanded`);
+
+          // If we have a saved state, use it; otherwise expand if active
+          if (savedState !== null) {
+            if (savedState === 'true') {
+              group.classList.add('expanded');
+            }
+          } else if (group.classList.contains('active')) {
+            group.classList.add('expanded');
+            localStorage.setItem(`navGroup_${groupName}_expanded`, 'true');
+          }
         });
       }
     </script>
