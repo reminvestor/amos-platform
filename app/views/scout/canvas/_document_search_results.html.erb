@@ -81,19 +81,30 @@
               </div>
 
               <!-- Actions -->
-              <% if doc[:download_url] %>
-                <div class="d-flex gap-2 ms-3">
-                  <a href="<%= doc[:download_url] %>" 
-                     class="btn btn-sm" 
+              <div class="d-flex gap-2 ms-3">
+                <% if doc[:url] %>
+                  <a href="<%= doc[:url] %>"
+                     target="_blank"
+                     class="btn btn-sm"
                      style="background-color: #334155; color: #E2E8F0; border: none;"
-                     download 
+                     onclick="event.stopPropagation();"
+                     title="View document in new window">
+                    <i data-lucide="eye" style="width: 1rem; height: 1rem;" aria-hidden="true"></i>
+                    <span class="d-none d-sm-inline ms-1">View</span>
+                  </a>
+                <% end %>
+                <% if doc[:download_url] %>
+                  <a href="<%= doc[:download_url] %>"
+                     class="btn btn-sm"
+                     style="background-color: #334155; color: #E2E8F0; border: none;"
+                     download
                      onclick="event.stopPropagation();"
                      title="Download document">
                     <i data-lucide="download" style="width: 1rem; height: 1rem;" aria-hidden="true"></i>
                     <span class="d-none d-sm-inline ms-1">Download</span>
                   </a>
-                </div>
-              <% end %>
+                <% end %>
+              </div>
             </div>
           </div>
         <% end %>
