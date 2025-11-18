@@ -158,6 +158,9 @@
           </h3>
         </div>
         <div class="admin-card-body">
+          <div class="alert alert-info mb-3">
+            <strong>What are capabilities?</strong> Capabilities define what this agent can do (e.g., "email_generation", "content_analysis"). Scout uses capabilities to find the right agent for each task.
+          </div>
           <div id="capabilities-container">
             <%= f.fields_for :agent_capabilities do |capability_form| %>
               <div class="capability-field mb-4 p-3 border rounded">
@@ -203,10 +206,17 @@
         <div class="admin-card-header">
           <h3 class="admin-card-title">
             <i data-lucide="wrench" class="icon-sm"></i>
-            Required Tools
+            Tools
           </h3>
         </div>
         <div class="admin-card-body">
+          <div class="alert alert-info mb-3">
+            <strong>What are tools?</strong> Tools are actions your agent can take (e.g., send emails, fetch data, create campaigns). Select which tools this agent needs.
+            <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#availableToolsModal">
+              <i data-lucide="help-circle" class="icon-sm"></i> Browse all available tools
+            </a>
+          </div>
+
           <div id="tools-container">
             <%= f.fields_for :agent_tools do |tool_form| %>
               <div class="tool-field mb-3 p-2 border rounded">
@@ -236,12 +246,50 @@
             <i data-lucide="plus" class="icon-sm"></i>
             Add Tool
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-          <div class="mt-3">
-            <small class="text-muted">
-              <strong>Common tools:</strong> get_data, create_object, update_object, web_search_tool, generate_ai_landing_page
-            </small>
+  <!-- Available Tools Modal -->
+  <div class="modal fade" id="availableToolsModal" tabindex="-1" aria-labelledby="availableToolsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="availableToolsModalLabel">
+            <i data-lucide="wrench" class="icon-sm"></i>
+            Available Tools
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <input type="text" id="tool-search" class="form-control" placeholder="Search tools...">
           </div>
+          <div id="tools-list" class="list-group">
+            <% Tools::ToolCatalog.instance.all_tools.each do |tool_name, tool_class| %>
+              <% definition = tool_class.definition %>
+              <div class="list-group-item list-group-item-action tool-item" data-tool-name="<%= tool_name %>" style="cursor: pointer;">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h6 class="mb-1"><code><%= tool_name %></code></h6>
+                    <p class="mb-1 small"><%= definition[:description] %></p>
+                    <% if definition[:parameters][:properties] %>
+                      <small class="text-muted">
+                        Parameters: <%= definition[:parameters][:properties].keys.join(', ') %>
+                      </small>
+                    <% end %>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-primary add-this-tool">
+                    <i data-lucide="plus" class="icon-sm"></i>
+                  </button>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
@@ -357,6 +405,63 @@
           field.remove();
         }
       }
+
+      // Add tool from modal
+      if (e.target.closest('.add-this-tool')) {
+        e.preventDefault();
+        const toolItem = e.target.closest('.tool-item');
+        const toolName = toolItem.dataset.toolName;
+
+        // Add tool to form
+        const container = document.getElementById('tools-container');
+        const time = new Date().getTime();
+        const template = `
+          <div class="tool-field mb-3 p-2 border rounded">
+            <input type="hidden" name="agent_plugin[agent_tools_attributes][${time}][_destroy]" value="false">
+
+            <div class="row align-items-center">
+              <div class="col-md-7">
+                <input type="text" name="agent_plugin[agent_tools_attributes][${time}][tool_name]" class="form-control form-control-sm" value="${toolName}" readonly>
+              </div>
+              <div class="col-md-3">
+                <div class="form-check">
+                  <input type="checkbox" name="agent_plugin[agent_tools_attributes][${time}][required]" class="form-check-input" value="1" checked>
+                  <label class="form-check-label small">Required</label>
+                </div>
+              </div>
+              <div class="col-md-2 text-end">
+                <a href="#" class="btn btn-sm btn-outline-danger remove-tool">
+                  <i data-lucide="x" class="icon-sm"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', template);
+        lucide.createIcons();
+
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('availableToolsModal'));
+        if (modal) modal.hide();
+      }
+    });
+
+    // Tool search functionality
+    document.getElementById('tool-search')?.addEventListener('input', function(e) {
+      const searchTerm = e.target.value.toLowerCase();
+      const toolItems = document.querySelectorAll('.tool-item');
+
+      toolItems.forEach(item => {
+        const toolName = item.dataset.toolName.toLowerCase();
+        const description = item.querySelector('p').textContent.toLowerCase();
+        const matches = toolName.includes(searchTerm) || description.includes(searchTerm);
+        item.style.display = matches ? '' : 'none';
+      });
+    });
+
+    // Refresh lucide icons when modal opens
+    document.getElementById('availableToolsModal')?.addEventListener('shown.bs.modal', function() {
+      lucide.createIcons();
     });
   });
 </script>
