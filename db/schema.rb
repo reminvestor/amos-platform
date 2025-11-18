@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_18_214819) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -182,6 +182,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["conversation_id"], name: "index_agent_activities_on_conversation_id"
+  end
+
+  create_table "agent_capabilities", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.string "capability_name", null: false
+    t.jsonb "contract_schema", default: {}
+    t.text "implementation_notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id", "capability_name"], name: "index_agent_capabilities_on_plugin_and_name", unique: true
+    t.index ["agent_plugin_id"], name: "index_agent_capabilities_on_agent_plugin_id"
+    t.index ["capability_name"], name: "index_agent_capabilities_on_capability_name"
   end
 
   create_table "agent_executions", force: :cascade do |t|
@@ -397,6 +409,52 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
     t.index ["workflow_execution_id"], name: "index_agent_phase_executions_on_workflow_execution_id"
   end
 
+  create_table "agent_plugin_executions", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.bigint "workflow_execution_id"
+    t.bigint "user_id", null: false
+    t.string "status", default: "running", null: false
+    t.jsonb "input_context", default: {}
+    t.jsonb "output_result", default: {}
+    t.integer "duration_ms"
+    t.integer "tokens_used", default: 0
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id", "status"], name: "index_agent_plugin_executions_on_agent_plugin_id_and_status"
+    t.index ["agent_plugin_id"], name: "index_agent_plugin_executions_on_agent_plugin_id"
+    t.index ["started_at"], name: "index_agent_plugin_executions_on_started_at"
+    t.index ["status"], name: "index_agent_plugin_executions_on_status"
+    t.index ["user_id", "created_at"], name: "index_agent_plugin_executions_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_agent_plugin_executions_on_user_id"
+    t.index ["workflow_execution_id"], name: "index_agent_plugin_executions_on_workflow_execution_id"
+  end
+
+  create_table "agent_plugins", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.string "role", null: false
+    t.text "description"
+    t.string "version", default: "1.0.0"
+    t.string "status", default: "draft", null: false
+    t.string "agent_class", default: "Agents::Specialized::ExecutorAgent"
+    t.jsonb "configuration", default: {}
+    t.jsonb "system_prompt", default: {}
+    t.jsonb "capabilities_definition", default: {}
+    t.integer "priority", default: 50
+    t.bigint "entity_id"
+    t.datetime "last_activated_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_agent_plugins_on_entity_id"
+    t.index ["priority"], name: "index_agent_plugins_on_priority"
+    t.index ["role"], name: "index_agent_plugins_on_role"
+    t.index ["slug"], name: "index_agent_plugins_on_slug", unique: true
+    t.index ["status"], name: "index_agent_plugins_on_status"
+  end
+
   create_table "agent_rewards", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "agent_lightning_trace_id", null: false
@@ -414,6 +472,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
     t.index ["entity_id"], name: "index_agent_rewards_on_entity_id"
     t.index ["reward_type", "assigned_at"], name: "index_agent_rewards_on_reward_type_and_assigned_at"
     t.index ["user_id"], name: "index_agent_rewards_on_user_id"
+  end
+
+  create_table "agent_template_bindings", force: :cascade do |t|
+    t.bigint "workflow_template_id", null: false
+    t.bigint "agent_plugin_id", null: false
+    t.string "phase"
+    t.boolean "required", default: false
+    t.integer "execution_order", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id"], name: "index_agent_template_bindings_on_agent_plugin_id"
+    t.index ["workflow_template_id", "agent_plugin_id", "phase"], name: "index_agent_template_bindings_unique", unique: true
+    t.index ["workflow_template_id", "phase"], name: "idx_on_workflow_template_id_phase_15a4218812"
+    t.index ["workflow_template_id"], name: "index_agent_template_bindings_on_workflow_template_id"
   end
 
   create_table "agent_tool_executions", force: :cascade do |t|
@@ -443,6 +515,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
     t.index ["entity_id"], name: "index_agent_tool_executions_on_entity_id"
     t.index ["execution_id"], name: "index_agent_tool_executions_on_execution_id", unique: true
     t.index ["started_at"], name: "index_agent_tool_executions_on_started_at"
+  end
+
+  create_table "agent_tools", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.string "tool_name", null: false
+    t.boolean "required", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id", "tool_name"], name: "index_agent_tools_on_plugin_and_tool", unique: true
+    t.index ["agent_plugin_id"], name: "index_agent_tools_on_agent_plugin_id"
+    t.index ["tool_name"], name: "index_agent_tools_on_tool_name"
   end
 
   create_table "agent_training_jobs", force: :cascade do |t|
@@ -2562,6 +2645,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
   add_foreign_key "affiliates", "admin_users", column: "approved_by_id"
   add_foreign_key "affiliates", "users"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
+  add_foreign_key "agent_capabilities", "agent_plugins"
   add_foreign_key "agent_executions", "pipeline_executions"
   add_foreign_key "agent_lightning_configs", "entities"
   add_foreign_key "agent_lightning_optimizations", "agent_training_jobs"
@@ -2578,12 +2662,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
   add_foreign_key "agent_phase_executions", "agent_lightning_traces"
   add_foreign_key "agent_phase_executions", "entities"
   add_foreign_key "agent_phase_executions", "workflow_executions"
+  add_foreign_key "agent_plugin_executions", "agent_plugins"
+  add_foreign_key "agent_plugin_executions", "users"
+  add_foreign_key "agent_plugin_executions", "workflow_executions"
+  add_foreign_key "agent_plugins", "entities"
   add_foreign_key "agent_rewards", "agent_lightning_traces"
   add_foreign_key "agent_rewards", "entities"
   add_foreign_key "agent_rewards", "users"
+  add_foreign_key "agent_template_bindings", "agent_plugins"
+  add_foreign_key "agent_template_bindings", "workflow_templates"
   add_foreign_key "agent_tool_executions", "agent_lightning_traces"
   add_foreign_key "agent_tool_executions", "agent_llm_calls"
   add_foreign_key "agent_tool_executions", "entities"
+  add_foreign_key "agent_tools", "agent_plugins"
   add_foreign_key "agent_training_jobs", "entities"
   add_foreign_key "ai_usage_logs", "entities"
   add_foreign_key "ai_usage_logs", "scout_messages"
