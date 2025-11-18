@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_18_214819) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_18_221956) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -434,11 +434,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_214819) do
   create_table "agent_plugins", force: :cascade do |t|
     t.string "name", null: false
     t.string "slug", null: false
-    t.string "role", null: false
+    t.string "role", default: "executor"
     t.text "description"
     t.string "version", default: "1.0.0"
     t.string "status", default: "draft", null: false
-    t.string "agent_class", default: "Agents::Specialized::ExecutorAgent"
+    t.string "agent_class"
     t.jsonb "configuration", default: {}
     t.jsonb "system_prompt", default: {}
     t.jsonb "capabilities_definition", default: {}

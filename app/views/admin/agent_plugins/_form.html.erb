@@ -38,66 +38,69 @@
             <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Describe what this agent does..." %>
           </div>
 
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <%= f.label :role, class: "form-label" %>
-              <%= f.select :role,
-                options_for_select([
-                  ['Executor', 'executor'],
-                  ['Planner', 'planner'],
-                  ['Analyst', 'analyst'],
-                  ['Verifier', 'verifier'],
-                  ['Fixer', 'fixer'],
-                  ['Custom', 'custom']
-                ], agent_plugin.role),
-                {},
-                class: 'form-select',
-                required: true %>
-              <small class="form-text text-muted">Agent's purpose: executor (takes action), planner (creates plans), analyst (reviews data), verifier (checks quality), fixer (resolves issues)</small>
-            </div>
-
-            <div class="col-md-6 mb-3">
-              <%= f.label :status, class: "form-label" %>
-              <%= f.select :status,
-                options_for_select([
-                  ['Draft', 'draft'],
-                  ['Active', 'active'],
-                  ['Deprecated', 'deprecated']
-                ], agent_plugin.status),
-                {},
-                class: 'form-select' %>
-              <small class="form-text text-muted">Draft = testing only, Active = available for workflows, Deprecated = archived</small>
-            </div>
+          <div class="mb-3">
+            <%= f.label :status, class: "form-label" %>
+            <%= f.select :status,
+              options_for_select([
+                ['Draft', 'draft'],
+                ['Active', 'active'],
+                ['Deprecated', 'deprecated']
+              ], agent_plugin.status),
+              {},
+              class: 'form-select' %>
+            <small class="form-text text-muted">Draft = testing only, Active = available for workflows, Deprecated = archived</small>
           </div>
 
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <%= f.label :version, class: "form-label" %>
-              <%= f.text_field :version, class: "form-control", placeholder: "1.0.0" %>
-              <small class="form-text text-muted">Semantic versioning (X.Y.Z)</small>
-            </div>
-
-            <div class="col-md-6 mb-3">
-              <%= f.label :priority, class: "form-label" %>
-              <%= f.number_field :priority, class: "form-control", min: 0, max: 100, value: agent_plugin.priority || 50 %>
-              <small class="form-text text-muted">When multiple agents match, higher priority wins (0-100, default 50)</small>
-            </div>
+          <div class="alert alert-info mb-3">
+            <i data-lucide="sparkles" class="icon-sm"></i>
+            <strong>Smart Agent Selection:</strong> Scout and Agent Lightning RL will automatically learn which agents work best for different tasks over time. You just need to define what the agent does!
           </div>
 
-          <!-- Advanced: Agent Class -->
+          <!-- Advanced Settings -->
           <details class="mb-3">
             <summary class="form-label" style="cursor: pointer; user-select: none;">
-              <i data-lucide="code" class="icon-sm"></i>
-              Advanced: Custom Ruby Class (Optional)
+              <i data-lucide="settings" class="icon-sm"></i>
+              Advanced Settings (Optional)
             </summary>
             <div class="mt-2 p-3 border rounded bg-light">
-              <%= f.label :agent_class, "Agent Class", class: "form-label small" %>
-              <%= f.text_field :agent_class, class: "form-control", placeholder: "Leave blank for default behavior" %>
-              <small class="form-text text-muted">
-                For developers: Full Ruby class path (e.g., Agents::Specialized::ExecutorAgent).
-                <strong>Leave blank unless you've implemented custom agent code.</strong>
-                The system will use the standard agent executor with your prompt and tools.
-              </small>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <%= f.label :role, class: "form-label small" %>
+                  <%= f.select :role,
+                    options_for_select([
+                      ['Executor (default)', 'executor'],
+                      ['Planner', 'planner'],
+                      ['Analyst', 'analyst'],
+                      ['Verifier', 'verifier'],
+                      ['Fixer', 'fixer'],
+                      ['Custom', 'custom']
+                    ], agent_plugin.role || 'executor'),
+                    {},
+                    class: 'form-select' %>
+                  <small class="form-text text-muted">Agent Lightning will learn the optimal role</small>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <%= f.label :priority, class: "form-label small" %>
+                  <%= f.number_field :priority, class: "form-control", min: 0, max: 100, value: agent_plugin.priority || 50 %>
+                  <small class="form-text text-muted">Initial hint (0-100), RL will optimize</small>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <%= f.label :version, class: "form-label small" %>
+                <%= f.text_field :version, class: "form-control", placeholder: "1.0.0" %>
+                <small class="form-text text-muted">Semantic versioning (X.Y.Z)</small>
+              </div>
+
+              <div class="mb-0">
+                <%= f.label :agent_class, "Custom Ruby Class", class: "form-label small" %>
+                <%= f.text_field :agent_class, class: "form-control", placeholder: "Leave blank for standard execution" %>
+                <small class="form-text text-muted">
+                  For developers only: Full Ruby class path (e.g., Agents::Specialized::ExecutorAgent).
+                  <strong>Leave blank to use standard executor.</strong>
+                </small>
+              </div>
             </div>
           </details>
         </div>
