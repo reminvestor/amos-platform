@@ -131,7 +131,8 @@ gem "anthropic", "~> 0.1.0"  # Add Anthropic gem for Claude
 gem "rack-attack", "~> 6.7"
 
 # Agent Lightning integration for RL-based optimization
-gem "agentlightning", "~> 0.1.0"  # Agent Lightning framework for RL training
+# Note: Agent Lightning is a Python service (python_services/agent_lightning)
+# No Ruby gem needed - Rails communicates via HTTP API
 gem "opentelemetry-api", "~> 1.3"  # Distributed tracing support
 gem "opentelemetry-instrumentation-base", "~> 0.22"  # Base instrumentation framework
 

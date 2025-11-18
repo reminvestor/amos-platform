@@ -8,7 +8,7 @@ import asyncpg
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
-from .models import RailsTrace, RailsLlmCall, RailsToolExecution
+from models import RailsTrace, RailsLlmCall, RailsToolExecution
 
 logger = logging.getLogger(__name__)
 
