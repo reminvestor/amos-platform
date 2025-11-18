@@ -29,6 +29,12 @@
             <span class="d-none d-sm-inline ms-1">Back to Search</span>
           </button>
         <% end %>
+        <% if canvas_data[:view_type] == 'single' && canvas_data[:url] %>
+          <a href="<%= canvas_data[:url] %>" target="_blank" class="btn btn-sm btn-outline-secondary" aria-label="Open in new tab">
+            <i data-lucide="external-link" aria-hidden="true"></i>
+            <span class="d-none d-sm-inline ms-1">View</span>
+          </a>
+        <% end %>
         <% if canvas_data[:view_type] == 'single' && canvas_data[:download_url] %>
           <a href="<%= canvas_data[:download_url] %>" class="btn btn-sm btn-outline-secondary" download aria-label="Download document">
             <i data-lucide="download" aria-hidden="true"></i>
@@ -60,7 +66,12 @@
                 </div>
               </div>
               <div class="flex-shrink-0">
-                <a href="<%= doc[:download_url] %>" class="btn btn-sm btn-outline-secondary ms-2" download
+                <button class="btn btn-sm btn-outline-secondary ms-2"
+                        onclick="event.stopPropagation(); window.scoutLoadCanvas('document_viewer', {asset_id: <%= doc[:id] %>});"
+                        aria-label="View document">
+                  <i data-lucide="eye" aria-hidden="true"></i>
+                </button>
+                <a href="<%= doc[:download_url] %>" class="btn btn-sm btn-outline-secondary" download
                    onclick="event.stopPropagation();" aria-label="Download file">
                   <i data-lucide="download" aria-hidden="true"></i>
                 </a>

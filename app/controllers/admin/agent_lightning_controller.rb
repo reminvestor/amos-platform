@@ -28,7 +28,6 @@ module Admin
       all_entity_stats = all_entities.map do |entity|
         config = entity.agent_lightning_config
         traces = entity.agent_lightning_traces.where("created_at > ?", 30.days.ago)
-        cost_savings = config&.cost_savings
 
         {
           entity: entity,
@@ -39,14 +38,13 @@ module Admin
           total_tokens: traces.sum(:token_count),
           last_trace_at: traces.maximum(:created_at),
           enabled: config&.enabled? || false,
-          ready_for_training: config&.ready_for_training? || false,
-          cost_savings: cost_savings
+          ready_for_training: config&.ready_for_training? || false
         }
       end.sort_by { |s| s[:total_traces] }.reverse
 
-      # Platform-wide cost savings
-      @total_monthly_savings = all_entity_stats.sum { |s| s[:cost_savings]&.dig(:estimated_monthly_savings) || 0 }
-      @entities_with_savings = all_entity_stats.count { |s| s[:cost_savings].present? }
+      # Platform-wide cost savings (placeholder - TODO: implement cost savings calculation)
+      @total_monthly_savings = 0
+      @entities_with_savings = 0
 
       # Platform-wide trace analysis (using traces since detailed LLM calls don't exist yet)
       recent_traces = AgentLightningTrace.where("created_at > ?", 30.days.ago)
