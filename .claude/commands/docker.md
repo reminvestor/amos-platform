@@ -1,16 +1,23 @@
-# Docker Management
+# /docker Command
 
-Manage Docker containers for development environment.
+Manage Docker development environment.
 
-## Description
+## Usage
 
-Interactive menu for Docker operations including:
-- Start/stop all services
-- View container logs
-- Execute commands in containers
-- Restart individual services
-- Reset containers
-- Database operations via Docker
+```
+/docker [action]
+```
+
+## What This Command Does
+
+Invokes the **Managing Docker Development** skill to:
+- ✅ Start/stop all services (web, db, redis, mailhog)
+- ✅ View container logs
+- ✅ Execute commands in containers
+- ✅ Restart individual services
+- ✅ Reset and cleanup containers
+- ✅ Check service status
+- ✅ Database operations via Docker
 
 ## Services Managed
 
@@ -19,52 +26,45 @@ Interactive menu for Docker operations including:
 - **redis** - Cache and job queue
 - **mailhog** - Email testing
 
-## When to Use
+## Examples
 
-- Starting development session
-- Stopping when done
-- Debugging service issues
-- Running commands in containers
-- Database operations
-- Checking logs
-
-## Interactive Menu
-
-```bash
-.claude/skills/managing-docker-development/scripts/docker-action.sh
 ```
+# Start all services
+/docker start
 
-Options:
-1. Start all services
-2. Stop all services
-3. View logs
-4. Execute command in container
-5. Restart specific service
-6. Reset and cleanup
-7. Status check
+# View logs
+/docker logs
+
+# Execute command in container
+/docker exec web rails console
+
+# Check status
+/docker status
+
+# Stop all services
+/docker stop
+
+# Reset and cleanup
+/docker reset
+```
 
 ## Common Tasks
 
 **View Rails logs:**
 ```
-Select: 3 (View logs)
-Select: web (Rails container)
+/docker logs web
 ```
 
 **Open Rails console:**
 ```
-Select: 4 (Execute command)
-Select: web
-Command: rails console
+/docker exec web rails console
 ```
 
 **Check database:**
 ```
-Select: 4 (Execute command)
-Select: db
-Command: psql -U postgres -d agent_marketing_dev
+/docker exec db psql -U postgres -d agent_marketing_dev
 ```
 
-## Status
+## Instructions
 
-Returns running/stopped status for all services.
+Use the Skill tool to invoke the `managing-docker-development` skill to manage Docker services based on the user's request. If no specific action is provided, show available Docker commands and current service status.

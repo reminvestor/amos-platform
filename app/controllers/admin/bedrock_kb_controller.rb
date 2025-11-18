@@ -1,6 +1,5 @@
 # Admin controller for managing AWS Bedrock Knowledge Bases
-class Admin::BedrockKbController < ApplicationController
-  before_action :authenticate_admin!
+class Admin::BedrockKbController < Admin::BaseController
   before_action :set_entity, only: [:show, :create_kb, :enable, :disable, :sync]
 
   def index
@@ -73,12 +72,5 @@ class Admin::BedrockKbController < ApplicationController
 
   def set_entity
     @entity = Entity.find(params[:id] || params[:entity_id])
-  end
-
-  def authenticate_admin!
-    unless current_user&.admin?
-      flash[:error] = "Access denied"
-      redirect_to root_path
-    end
   end
 end

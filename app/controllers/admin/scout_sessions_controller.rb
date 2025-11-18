@@ -1,7 +1,5 @@
 # Admin controller for managing Scout conversation sessions
-class Admin::ScoutSessionsController < ApplicationController
-  before_action :authenticate_user!
-  before_action :require_admin
+class Admin::ScoutSessionsController < Admin::BaseController
 
   # GET /admin/scout_sessions
   def index
@@ -112,11 +110,4 @@ class Admin::ScoutSessionsController < ApplicationController
     end
   end
 
-  private
-
-  def require_admin
-    unless current_user.admin?
-      redirect_to chat_mode_path, alert: 'Admin access required'
-    end
-  end
 end
