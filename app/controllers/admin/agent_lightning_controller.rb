@@ -281,6 +281,9 @@ end
         very_slow: (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round
       }
 
+      # LLM Call Analysis - set @llm_calls for the view
+      @llm_calls = @traces.limit(500)
+
       # LLM Analysis (from trace-level data)
       completed_traces = @traces.where(status: 'completed')
       if completed_traces.any?
@@ -290,6 +293,29 @@ end
         @llm_success_rate = 0
         @avg_latency = 0
       end
+
+      # LLM by role calculation
+      @llm_by_role = []
+      role_stats = {}
+
+      @llm_calls.each do |trace|
+        role = trace.metadata.dig('agent_role') || trace.trace_type || 'unknown'
+        role_stats[role] ||= { count: 0, successful: 0, total_tokens: 0, total_cost: 0 }
+        role_stats[role][:count] += 1
+        role_stats[role][:successful] += 1 if trace.status == 'completed'
+        role_stats[role][:total_tokens] += trace.token_count.to_i
+        role_stats[role][:total_cost] += trace.cost_estimate.to_f
+      end
+
+      @llm_by_role = role_stats.map do |role, stats|
+        {
+          role: role,
+          count: stats[:count],
+          success_rate: stats[:count] > 0 ? ((stats[:successful].to_f / stats[:count]) * 100).round(1) : 0,
+          avg_tokens: stats[:count] > 0 ? (stats[:total_tokens].to_f / stats[:count]).round(0) : 0,
+          total_cost: stats[:total_cost].round(4)
+        }
+      end.sort_by { |r| r[:count] }.reverse
 
       # Tool Analysis (extract from intermediate_steps JSON)
       tool_data = {}
@@ -326,6 +352,9 @@ end
         @tool_success_rate = 0
         @failed_tool_executions = 0
       end
+
+      # Set @tool_executions as an empty relation for the view to check
+      @tool_executions = AgentToolExecution.none
     end
 
     def models_performance
