@@ -186,12 +186,25 @@
       function initNavGroups() {
         // Handle nav group dropdowns
         document.querySelectorAll('.nav-group-header').forEach(header => {
-          header.addEventListener('click', (e) => {
-            const navGroup = header.parentElement;
+          // Remove any existing listeners by cloning
+          const newHeader = header.cloneNode(true);
+          header.parentNode.replaceChild(newHeader, header);
+
+          newHeader.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const navGroup = newHeader.parentElement;
             navGroup.classList.toggle('expanded');
 
+            console.log('Nav group toggled:', navGroup.classList.contains('expanded'));
+
             // Re-initialize icons after DOM changes
-            setTimeout(() => lucide.createIcons(), 100);
+            setTimeout(() => {
+              if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+              }
+            }, 100);
           });
         });
 
