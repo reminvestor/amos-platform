@@ -1,285 +1,295 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">
-      <i data-lucide="workflow" class="me-2"></i> Workflow Monitoring
-    </h1>
+<div style="padding: 2rem;">
+  <!-- Page Header -->
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+        <i data-lucide="workflow"></i>
+      </div>
+      <div class="header-text">
+        <h1>Workflow Monitoring</h1>
+        <p>Real-time workflow execution tracking and analytics</p>
+      </div>
+    </div>
 
-    <div class="btn-group" role="group">
-      <%= link_to admin_observability_workflows_path(time_range: 1),
-                  class: "btn btn-sm #{params[:time_range] == '1' ? 'btn-primary' : 'btn-outline-primary'}" do %>
-        Last 24 Hours
-      <% end %>
-      <%= link_to admin_observability_workflows_path(time_range: 7),
-                  class: "btn btn-sm #{params[:time_range] == '7' || params[:time_range].nil? ? 'btn-primary' : 'btn-outline-primary'}" do %>
-        Last 7 Days
-      <% end %>
-      <%= link_to admin_observability_workflows_path(time_range: 30),
-                  class: "btn btn-sm #{params[:time_range] == '30' ? 'btn-primary' : 'btn-outline-primary'}" do %>
-        Last 30 Days
-      <% end %>
+    <div class="header-actions">
+      <div style="display: flex; gap: 0.5rem;">
+        <%= link_to admin_observability_workflows_path(time_range: 1), class: "admin-btn admin-btn-sm #{params[:time_range] == '1' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>24 Hours</span>
+        <% end %>
+        <%= link_to admin_observability_workflows_path(time_range: 7), class: "admin-btn admin-btn-sm #{params[:time_range] == '7' || params[:time_range].nil? ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>7 Days</span>
+        <% end %>
+        <%= link_to admin_observability_workflows_path(time_range: 30), class: "admin-btn admin-btn-sm #{params[:time_range] == '30' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>30 Days</span>
+        <% end %>
+      </div>
     </div>
   </div>
 
   <!-- Summary Cards -->
-  <div class="row g-4 mb-4">
-    <div class="col-md-3">
-      <div class="card border-primary">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="flex-grow-1">
-              <h6 class="text-muted mb-1">Total Workflows</h6>
-              <h2 class="mb-0"><%= number_with_delimiter(@total_workflows) %></h2>
-            </div>
-            <div class="text-primary">
-              <i data-lucide="list-checks" class="icon-2x"></i>
-            </div>
-          </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="list-checks" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Workflows</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_workflows) %></h3>
         </div>
       </div>
     </div>
 
-    <div class="col-md-3">
-      <div class="card border-success">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="flex-grow-1">
-              <h6 class="text-muted mb-1">Completed</h6>
-              <h2 class="mb-0"><%= number_with_delimiter(@completed_workflows) %></h2>
-            </div>
-            <div class="text-success">
-              <i data-lucide="check-circle" class="icon-2x"></i>
-            </div>
-          </div>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Completed</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@completed_workflows) %></h3>
         </div>
       </div>
     </div>
 
-    <div class="col-md-3">
-      <div class="card border-danger">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="flex-grow-1">
-              <h6 class="text-muted mb-1">Failed</h6>
-              <h2 class="mb-0"><%= number_with_delimiter(@failed_workflows) %></h2>
-            </div>
-            <div class="text-danger">
-              <i data-lucide="x-circle" class="icon-2x"></i>
-            </div>
-          </div>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="x-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(248, 113, 113);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Failed</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@failed_workflows) %></h3>
         </div>
       </div>
     </div>
 
-    <div class="col-md-3">
-      <div class="card border-info">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="flex-grow-1">
-              <h6 class="text-muted mb-1">Success Rate</h6>
-              <h2 class="mb-0"><%= @success_rate %>%</h2>
-            </div>
-            <div class="text-info">
-              <i data-lucide="trending-up" class="icon-2x"></i>
-            </div>
-          </div>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="trending-up" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Success Rate</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @success_rate %>%</h3>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Workflow Trend Chart -->
-  <div class="row g-4 mb-4">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i data-lucide="bar-chart" class="me-2"></i> Workflow Execution Trend
-          </h5>
-        </div>
-        <div class="card-body">
-          <canvas id="workflowTrendChart" style="height: 300px;"></canvas>
-        </div>
-      </div>
+  <div class="admin-card" style="margin-bottom: 2rem;" data-turbo-cache="false">
+    <h3 class="card-title">
+      <i data-lucide="bar-chart" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+      Workflow Execution Trend
+    </h3>
+    <div style="height: 300px; position: relative;">
+      <canvas id="workflowTrendChart"></canvas>
     </div>
   </div>
 
   <!-- Workflows by Template and Entity -->
-  <div class="row g-4 mb-4">
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i data-lucide="file-text" class="me-2"></i> Top Workflow Templates
-          </h5>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="file-text" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Top Workflow Templates
+      </h3>
+
+      <% if @workflows_by_template.any? %>
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Template Name</th>
+                <th style="text-align: right;">Executions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @workflows_by_template.each do |template_name, count| %>
+                <tr>
+                  <td style="color: white;"><%= template_name || "Unknown" %></td>
+                  <td style="text-align: right; color: #22D3EE;"><%= number_with_delimiter(count) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
         </div>
-        <div class="card-body">
-          <% if @workflows_by_template.any? %>
-            <div class="table-responsive">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Template Name</th>
-                    <th class="text-end">Executions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @workflows_by_template.each do |template_name, count| %>
-                    <tr>
-                      <td><%= template_name || "Unknown" %></td>
-                      <td class="text-end"><%= number_with_delimiter(count) %></td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <p class="text-muted mb-0">No workflow data available</p>
-          <% end %>
-        </div>
-      </div>
+      <% else %>
+        <p style="color: #64748B; text-align: center; padding: 2rem; margin: 0;">No workflow data available</p>
+      <% end %>
     </div>
 
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i data-lucide="building" class="me-2"></i> Top Entities by Usage
-          </h5>
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="building" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Top Entities by Usage
+      </h3>
+
+      <% if @workflows_by_entity.any? %>
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Entity Name</th>
+                <th style="text-align: right;">Workflows</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @workflows_by_entity.each do |entity_name, count| %>
+                <tr>
+                  <td style="color: white;"><%= entity_name %></td>
+                  <td style="text-align: right; color: #22D3EE;"><%= number_with_delimiter(count) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
         </div>
-        <div class="card-body">
-          <% if @workflows_by_entity.any? %>
-            <div class="table-responsive">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Entity Name</th>
-                    <th class="text-end">Workflows</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @workflows_by_entity.each do |entity_name, count| %>
-                    <tr>
-                      <td><%= entity_name %></td>
-                      <td class="text-end"><%= number_with_delimiter(count) %></td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <p class="text-muted mb-0">No entity data available</p>
-          <% end %>
-        </div>
-      </div>
+      <% else %>
+        <p style="color: #64748B; text-align: center; padding: 2rem; margin: 0;">No entity data available</p>
+      <% end %>
     </div>
   </div>
 
   <!-- Recent Workflows -->
-  <div class="row g-4">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">
-            <i data-lucide="history" class="me-2"></i> Recent Workflow Executions
-          </h5>
-          <div class="btn-group btn-group-sm">
-            <%= link_to "All", admin_observability_workflows_path(time_range: params[:time_range]),
-                        class: "btn #{@status_filter.nil? ? 'btn-primary' : 'btn-outline-primary'}" %>
-            <%= link_to "Completed", admin_observability_workflows_path(time_range: params[:time_range], status: "completed"),
-                        class: "btn #{@status_filter == 'completed' ? 'btn-success' : 'btn-outline-success'}" %>
-            <%= link_to "Failed", admin_observability_workflows_path(time_range: params[:time_range], status: "failed"),
-                        class: "btn #{@status_filter == 'failed' ? 'btn-danger' : 'btn-outline-danger'}" %>
-            <%= link_to "In Progress", admin_observability_workflows_path(time_range: params[:time_range], status: "in_progress"),
-                        class: "btn #{@status_filter == 'in_progress' ? 'btn-info' : 'btn-outline-info'}" %>
-          </div>
-        </div>
-        <div class="card-body">
-          <% if @workflows.any? %>
-            <div class="table-responsive">
-              <table class="table table-hover table-sm">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Template</th>
-                    <th>Entity</th>
-                    <th>User</th>
-                    <th>Status</th>
-                    <th>Started</th>
-                    <th>Duration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @workflows.each do |workflow| %>
-                    <tr>
-                      <td><code>#<%= workflow.id %></code></td>
-                      <td><%= workflow.workflow_template_id || "Ad-hoc" %></td>
-                      <td><%= workflow.entity&.name || "N/A" %></td>
-                      <td><%= workflow.user&.email || "System" %></td>
-                      <td>
-                        <% if workflow.status == "completed" %>
-                          <span class="badge bg-success">Completed</span>
-                        <% elsif workflow.status == "failed" %>
-                          <span class="badge bg-danger">Failed</span>
-                        <% elsif workflow.status == "in_progress" %>
-                          <span class="badge bg-info">In Progress</span>
-                        <% else %>
-                          <span class="badge bg-secondary"><%= workflow.status %></span>
-                        <% end %>
-                      </td>
-                      <td><%= time_ago_in_words(workflow.created_at) %> ago</td>
-                      <td>
-                        <% if workflow.updated_at && workflow.created_at %>
-                          <%= distance_of_time_in_words(workflow.created_at, workflow.updated_at) %>
-                        <% else %>
-                          N/A
-                        <% end %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-            <% if @workflows.count >= 100 %>
-              <p class="text-muted text-center mt-3 mb-0">
-                <small>Showing first 100 workflows. Use filters to narrow results.</small>
-              </p>
-            <% end %>
-          <% else %>
-            <p class="text-muted mb-0">No workflows found matching the selected filters</p>
-          <% end %>
-        </div>
+  <div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h3 class="card-title" style="margin: 0;">
+        <i data-lucide="history" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Recent Workflow Executions
+      </h3>
+
+      <div class="admin-tabs">
+        <%= link_to "All", admin_observability_workflows_path(time_range: params[:time_range]),
+                    class: "admin-tab #{@status_filter.nil? ? 'admin-tab-active' : ''}" %>
+        <%= link_to "Completed", admin_observability_workflows_path(time_range: params[:time_range], status: "completed"),
+                    class: "admin-tab #{@status_filter == 'completed' ? 'admin-tab-active' : ''}" %>
+        <%= link_to "Failed", admin_observability_workflows_path(time_range: params[:time_range], status: "failed"),
+                    class: "admin-tab #{@status_filter == 'failed' ? 'admin-tab-active' : ''}" %>
+        <%= link_to "In Progress", admin_observability_workflows_path(time_range: params[:time_range], status: "in_progress"),
+                    class: "admin-tab #{@status_filter == 'in_progress' ? 'admin-tab-active' : ''}" %>
       </div>
     </div>
+
+    <% if @workflows.any? %>
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Template</th>
+              <th>Entity</th>
+              <th>User</th>
+              <th>Status</th>
+              <th>Started</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @workflows.each do |workflow| %>
+              <tr>
+                <td><code style="color: #22D3EE;">#<%= workflow.id %></code></td>
+                <td style="color: white;"><%= workflow.workflow_template_id || "Ad-hoc" %></td>
+                <td style="color: #94A3B8;"><%= workflow.entity&.name || "N/A" %></td>
+                <td style="color: #94A3B8;"><%= workflow.user&.email || "System" %></td>
+                <td>
+                  <% if workflow.status == "completed" %>
+                    <span class="admin-badge admin-badge-online">COMPLETED</span>
+                  <% elsif workflow.status == "failed" %>
+                    <span class="admin-badge admin-badge-offline">FAILED</span>
+                  <% elsif workflow.status == "in_progress" %>
+                    <span class="admin-badge admin-badge-cyan">IN PROGRESS</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-default"><%= workflow.status.upcase %></span>
+                  <% end %>
+                </td>
+                <td style="color: #94A3B8;"><%= time_ago_in_words(workflow.created_at) %> ago</td>
+                <td style="color: #94A3B8;">
+                  <% if workflow.updated_at && workflow.created_at %>
+                    <%= distance_of_time_in_words(workflow.created_at, workflow.updated_at) %>
+                  <% else %>
+                    N/A
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <% if @workflows.count >= 100 %>
+        <p style="color: #64748B; text-align: center; margin-top: 1.5rem; margin-bottom: 0; font-size: 0.875rem;">
+          Showing first 100 workflows. Use filters to narrow results.
+        </p>
+      <% end %>
+    <% else %>
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="inbox"></i>
+        </div>
+        <h3>No workflows found</h3>
+        <p>No workflows match the selected filters</p>
+      </div>
+    <% end %>
   </div>
 </div>
 
-<!-- Consolidated Chart.js -->
-<%= render 'admin/chart_js' %>
+<!-- Chart.js Configuration -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-  // Workflow Trend Chart
-  const workflowCtx = document.getElementById('workflowTrendChart');
-  new Chart(workflowCtx, {
-    type: 'bar',
-    data: <%= raw @workflow_trend_chart.to_json %>,
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: { stacked: true },
-        y: {
-          stacked: true,
-          beginAtZero: true
-        }
-      },
-      plugins: {
-        legend: {
-          position: 'bottom'
-        }
-      }
+  function initializeWorkflowCharts() {
+    // Dark theme colors
+    Chart.defaults.color = '#94A3B8';
+    Chart.defaults.borderColor = '#1E293B';
+
+    // Get canvas element
+    const workflowCanvas = document.getElementById('workflowTrendChart');
+
+    // Destroy existing chart if it exists
+    if (workflowCanvas && Chart.getChart(workflowCanvas)) {
+      Chart.getChart(workflowCanvas).destroy();
     }
-  });
+
+    // Create chart
+    if (workflowCanvas) {
+      new Chart(workflowCanvas, {
+        type: 'bar',
+        data: <%= raw @workflow_trend_chart.to_json %>,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              stacked: true,
+              grid: { color: '#1E293B' }
+            },
+            y: {
+              stacked: true,
+              beginAtZero: true,
+              grid: { color: '#1E293B' }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#94A3B8' }
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+
+  // Run on both DOMContentLoaded and turbo:load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeWorkflowCharts);
+  } else {
+    initializeWorkflowCharts();
+  }
+
+  document.addEventListener('turbo:load', initializeWorkflowCharts);
 </script>
-  </div>
-</div>
