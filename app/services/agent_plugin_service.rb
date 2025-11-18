@@ -139,11 +139,13 @@ class AgentPluginService
   def validate_agent(agent_plugin)
     errors = []
 
-    # Validate agent class exists
-    begin
-      agent_plugin.agent_class.constantize
-    rescue NameError
-      errors << "Invalid agent class: #{agent_plugin.agent_class}"
+    # Validate agent class exists (only if custom class specified)
+    if agent_plugin.agent_class.present?
+      begin
+        agent_plugin.agent_class.constantize
+      rescue NameError
+        errors << "Invalid agent class: #{agent_plugin.agent_class}"
+      end
     end
 
     # Validate capabilities have proper contracts
