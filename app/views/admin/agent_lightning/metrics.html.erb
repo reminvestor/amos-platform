@@ -9,10 +9,10 @@
         <% if days == @days %>
           <span class="badge bg-primary"><%= days %> days</span>
         <% else %>
-          <%= link_to days.to_s + " days", admin_agent_lightning_metrics_path(days: days), class: "btn btn-sm btn-outline-secondary" %>
+          <%= link_to days.to_s + " days", metrics_admin_agent_lightning_index_path(days: days), class: "btn btn-sm btn-outline-secondary" %>
         <% end %>
       <% end %>
-      <%= link_to "← Back", admin_agent_lightning_dashboard_path, class: "btn btn-outline-secondary" %>
+      <%= link_to "← Back", dashboard_admin_agent_lightning_index_path, class: "btn btn-outline-secondary" %>
     </div>
   </div>
 
