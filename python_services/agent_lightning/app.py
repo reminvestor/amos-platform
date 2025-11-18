@@ -181,7 +181,7 @@ async def health_check():
         "active_training_jobs": len(training_jobs),
         "running_jobs": len([j for j in training_jobs.values() if j['status'] == 'running']),
         "disk_available_mb": disk_available_mb,
-        "rollouts_in_store": len(store.rollouts) if store else 0,
+        "rollouts_in_store": len(await store.query_rollouts()) if store else 0,
         "metrics": {
             "total_training_jobs": metrics_data["total_training_jobs"],
             "completed_jobs": metrics_data["completed_jobs"],

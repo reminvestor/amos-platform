@@ -207,6 +207,150 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
     t.index ["status"], name: "index_agent_executions_on_status"
   end
 
+  create_table "agent_lightning_configs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.boolean "enabled", default: true
+    t.string "mode", default: "observing", null: false
+    t.string "training_strategy", default: "prompt_optimization", null: false
+    t.integer "retrain_frequency_hours", default: 24, null: false
+    t.datetime "last_training_at"
+    t.integer "trace_retention_days", default: 90, null: false
+    t.integer "min_traces_for_training", default: 100, null: false
+    t.jsonb "optimization_targets", default: {}, null: false
+    t.jsonb "learning_parameters", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_agent_lightning_configs_on_entity_id", unique: true
+  end
+
+  create_table "agent_lightning_optimizations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "agent_training_job_id"
+    t.string "optimization_id", null: false
+    t.string "status", default: "pending", null: false
+    t.jsonb "before_prompts", default: {}, null: false
+    t.jsonb "after_prompts", default: {}, null: false
+    t.decimal "improvement_percentage", precision: 5, scale: 2, default: "0.0"
+    t.integer "templates_updated", default: 0
+    t.jsonb "templates_modified", default: [], null: false
+    t.jsonb "context_types_optimized", default: [], null: false
+    t.integer "prompts_optimized", default: 0
+    t.datetime "applied_at"
+    t.datetime "rolled_back_at"
+    t.integer "rollback_count", default: 0
+    t.jsonb "metadata", default: {}, null: false
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_training_job_id"], name: "index_agent_lightning_optimizations_on_agent_training_job_id"
+    t.index ["entity_id", "created_at"], name: "idx_on_entity_id_created_at_1d14b8f4ff"
+    t.index ["entity_id"], name: "index_agent_lightning_optimizations_on_entity_id"
+    t.index ["optimization_id"], name: "index_agent_lightning_optimizations_on_optimization_id", unique: true
+    t.index ["status", "created_at"], name: "index_agent_lightning_optimizations_on_status_and_created_at"
+    t.index ["status"], name: "index_agent_lightning_optimizations_on_status"
+  end
+
+  create_table "agent_lightning_traces", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "workflow_execution_id"
+    t.bigint "task_session_id"
+    t.string "trace_id", null: false
+    t.string "trace_type", null: false
+    t.string "status", default: "pending", null: false
+    t.jsonb "input_data", default: {}, null: false
+    t.jsonb "output_data", default: {}, null: false
+    t.jsonb "intermediate_steps", default: [], null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.integer "token_count"
+    t.decimal "cost_estimate", precision: 10, scale: 6
+    t.integer "duration_ms"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.decimal "reward_signal", precision: 10, scale: 6
+    t.string "reward_source"
+    t.text "reward_explanation"
+    t.integer "template_version"
+    t.string "model_used"
+    t.boolean "included_in_training", default: false
+    t.datetime "training_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_agent_lightning_traces_on_created_at"
+    t.index ["entity_id", "trace_type", "status"], name: "idx_on_entity_id_trace_type_status_0da9c597e6"
+    t.index ["entity_id"], name: "index_agent_lightning_traces_on_entity_id"
+    t.index ["status", "included_in_training"], name: "idx_on_status_included_in_training_06ffceb35c"
+    t.index ["task_session_id"], name: "index_agent_lightning_traces_on_task_session_id"
+    t.index ["trace_id"], name: "index_agent_lightning_traces_on_trace_id", unique: true
+    t.index ["user_id"], name: "index_agent_lightning_traces_on_user_id"
+    t.index ["workflow_execution_id"], name: "index_agent_lightning_traces_on_workflow_execution_id"
+  end
+
+  create_table "agent_lightning_webhook_logs", force: :cascade do |t|
+    t.bigint "agent_lightning_webhook_id", null: false
+    t.string "event_type", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.string "status", default: "pending", null: false
+    t.text "error_message"
+    t.datetime "completed_at"
+    t.integer "response_code"
+    t.text "response_body"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_lightning_webhook_id"], name: "idx_on_agent_lightning_webhook_id_07468d8cc5"
+    t.index ["created_at"], name: "index_agent_lightning_webhook_logs_on_created_at"
+    t.index ["event_type"], name: "index_agent_lightning_webhook_logs_on_event_type"
+    t.index ["status"], name: "index_agent_lightning_webhook_logs_on_status"
+  end
+
+  create_table "agent_lightning_webhooks", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "event_type", null: false
+    t.string "url", null: false
+    t.jsonb "headers", default: {}, null: false
+    t.boolean "active", default: true
+    t.integer "total_calls", default: 0
+    t.integer "successful_calls", default: 0
+    t.integer "failed_calls", default: 0
+    t.datetime "last_triggered_at"
+    t.text "last_error"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_agent_lightning_webhooks_on_active"
+    t.index ["entity_id", "event_type"], name: "index_agent_lightning_webhooks_on_entity_id_and_event_type", unique: true
+    t.index ["entity_id"], name: "index_agent_lightning_webhooks_on_entity_id"
+    t.index ["event_type"], name: "index_agent_lightning_webhooks_on_event_type"
+  end
+
+  create_table "agent_llm_calls", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "agent_lightning_trace_id"
+    t.string "call_id", null: false
+    t.string "model", null: false
+    t.string "agent_role", null: false
+    t.jsonb "system_prompt", default: {}, null: false
+    t.jsonb "user_messages", default: [], null: false
+    t.jsonb "response_content", default: {}, null: false
+    t.integer "input_tokens", default: 0, null: false
+    t.integer "output_tokens", default: 0, null: false
+    t.integer "total_tokens", default: 0, null: false
+    t.integer "latency_ms", default: 0, null: false
+    t.decimal "cost", precision: 10, scale: 8
+    t.string "status", null: false
+    t.text "error_message"
+    t.jsonb "parsed_actions"
+    t.boolean "actions_executed_successfully"
+    t.decimal "success_score", precision: 10, scale: 6
+    t.datetime "called_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_lightning_trace_id"], name: "index_agent_llm_calls_on_agent_lightning_trace_id"
+    t.index ["call_id"], name: "index_agent_llm_calls_on_call_id", unique: true
+    t.index ["called_at"], name: "index_agent_llm_calls_on_called_at"
+    t.index ["entity_id", "agent_role", "status"], name: "index_agent_llm_calls_on_entity_id_and_agent_role_and_status"
+    t.index ["entity_id"], name: "index_agent_llm_calls_on_entity_id"
+  end
+
   create_table "agent_messages", force: :cascade do |t|
     t.string "sender_id", null: false
     t.string "recipient_id", null: false
@@ -224,6 +368,104 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
     t.index ["sender_id"], name: "index_agent_messages_on_sender_id"
     t.index ["task_session_id", "created_at"], name: "index_agent_messages_on_task_session_id_and_created_at"
     t.index ["task_session_id"], name: "index_agent_messages_on_task_session_id"
+  end
+
+  create_table "agent_phase_executions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "workflow_execution_id"
+    t.bigint "agent_lightning_trace_id"
+    t.string "phase_id", null: false
+    t.string "phase_type", null: false
+    t.string "status", null: false
+    t.integer "attempts", default: 1, null: false
+    t.integer "duration_ms", default: 0, null: false
+    t.jsonb "phase_input", default: {}, null: false
+    t.jsonb "phase_output", default: {}, null: false
+    t.boolean "met_success_criteria"
+    t.decimal "phase_success_score", precision: 10, scale: 6
+    t.text "failure_reason"
+    t.integer "max_retries", default: 3, null: false
+    t.jsonb "retry_history", default: [], null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_lightning_trace_id"], name: "index_agent_phase_executions_on_agent_lightning_trace_id"
+    t.index ["entity_id", "workflow_execution_id", "phase_id"], name: "idx_on_entity_id_workflow_execution_id_phase_id_b263fb0f73"
+    t.index ["entity_id"], name: "index_agent_phase_executions_on_entity_id"
+    t.index ["started_at"], name: "index_agent_phase_executions_on_started_at"
+    t.index ["workflow_execution_id"], name: "index_agent_phase_executions_on_workflow_execution_id"
+  end
+
+  create_table "agent_rewards", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "agent_lightning_trace_id", null: false
+    t.bigint "user_id"
+    t.string "reward_type", null: false
+    t.decimal "reward_value", precision: 10, scale: 6, null: false
+    t.text "reason"
+    t.jsonb "metadata", default: {}, null: false
+    t.string "source", null: false
+    t.datetime "assigned_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_lightning_trace_id"], name: "index_agent_rewards_on_agent_lightning_trace_id"
+    t.index ["entity_id", "agent_lightning_trace_id"], name: "index_agent_rewards_on_entity_id_and_agent_lightning_trace_id"
+    t.index ["entity_id"], name: "index_agent_rewards_on_entity_id"
+    t.index ["reward_type", "assigned_at"], name: "index_agent_rewards_on_reward_type_and_assigned_at"
+    t.index ["user_id"], name: "index_agent_rewards_on_user_id"
+  end
+
+  create_table "agent_tool_executions", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "agent_lightning_trace_id"
+    t.bigint "agent_llm_call_id"
+    t.string "execution_id", null: false
+    t.string "tool_name", null: false
+    t.string "tool_category", null: false
+    t.jsonb "input_arguments", default: {}, null: false
+    t.jsonb "output_result", default: {}, null: false
+    t.string "status", null: false
+    t.integer "execution_time_ms", default: 0, null: false
+    t.text "error_message"
+    t.boolean "result_met_expectations"
+    t.decimal "execution_quality_score", precision: 10, scale: 6
+    t.integer "sequence_number", default: 0, null: false
+    t.integer "parent_tool_execution_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_lightning_trace_id"], name: "index_agent_tool_executions_on_agent_lightning_trace_id"
+    t.index ["agent_llm_call_id"], name: "index_agent_tool_executions_on_agent_llm_call_id"
+    t.index ["entity_id", "tool_name", "status"], name: "idx_on_entity_id_tool_name_status_997c991bff"
+    t.index ["entity_id"], name: "index_agent_tool_executions_on_entity_id"
+    t.index ["execution_id"], name: "index_agent_tool_executions_on_execution_id", unique: true
+    t.index ["started_at"], name: "index_agent_tool_executions_on_started_at"
+  end
+
+  create_table "agent_training_jobs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "job_id", null: false
+    t.string "job_type", null: false
+    t.string "status", default: "pending", null: false
+    t.jsonb "training_config", default: {}, null: false
+    t.jsonb "model_config", default: {}, null: false
+    t.integer "traces_used", default: 0, null: false
+    t.integer "total_traces_available", default: 0, null: false
+    t.jsonb "training_results", default: {}, null: false
+    t.decimal "improvement_score", precision: 10, scale: 6
+    t.text "error_message"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "scheduled_for"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "status"], name: "index_agent_training_jobs_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_agent_training_jobs_on_entity_id"
+    t.index ["job_id"], name: "index_agent_training_jobs_on_job_id", unique: true
+    t.index ["scheduled_for"], name: "index_agent_training_jobs_on_scheduled_for"
   end
 
   create_table "ai_usage_logs", force: :cascade do |t|
@@ -1787,6 +2029,81 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
     t.index ["user_id"], name: "index_shared_plugins_on_user_id"
   end
 
+  create_table "skill_configs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "skill_name", null: false
+    t.boolean "enabled", default: true, null: false
+    t.string "active_version"
+    t.jsonb "config", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id", "skill_name"], name: "index_skill_configs_on_entity_id_and_skill_name", unique: true
+    t.index ["entity_id"], name: "index_skill_configs_on_entity_id"
+  end
+
+  create_table "skill_execution_logs", force: :cascade do |t|
+    t.string "execution_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "skill_name", null: false
+    t.string "skill_version"
+    t.string "skill_type"
+    t.string "skill_category"
+    t.string "request_hash"
+    t.integer "request_length"
+    t.integer "word_count"
+    t.integer "complexity_score"
+    t.string "model_used"
+    t.integer "tools_count"
+    t.jsonb "tools_used"
+    t.float "duration"
+    t.boolean "success", default: true, null: false
+    t.string "error_type"
+    t.integer "time_of_day"
+    t.integer "day_of_week"
+    t.string "session_id"
+    t.string "predicted_model"
+    t.float "predicted_duration"
+    t.float "user_feedback"
+    t.jsonb "features", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_skill_execution_logs_on_created_at"
+    t.index ["entity_id", "skill_name", "created_at"], name: "idx_on_entity_id_skill_name_created_at_2f5c8b245f"
+    t.index ["entity_id"], name: "index_skill_execution_logs_on_entity_id"
+    t.index ["execution_id"], name: "index_skill_execution_logs_on_execution_id"
+    t.index ["features"], name: "index_skill_execution_logs_on_features", using: :gin
+    t.index ["skill_name", "created_at"], name: "index_skill_execution_logs_on_skill_name_and_created_at"
+    t.index ["success"], name: "index_skill_execution_logs_on_success"
+    t.index ["user_feedback"], name: "index_skill_execution_logs_on_user_feedback"
+    t.index ["user_id"], name: "index_skill_execution_logs_on_user_id"
+  end
+
+  create_table "skill_requests", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.string "skill_name"
+    t.string "custom_skill_name"
+    t.text "description", null: false
+    t.text "use_case"
+    t.string "priority", default: "medium"
+    t.string "status", default: "pending"
+    t.text "admin_notes"
+    t.integer "approved_by_id"
+    t.datetime "reviewed_at"
+    t.datetime "completed_at"
+    t.integer "vote_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_skill_requests_on_created_at"
+    t.index ["entity_id", "status"], name: "index_skill_requests_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_skill_requests_on_entity_id"
+    t.index ["priority"], name: "index_skill_requests_on_priority"
+    t.index ["skill_name"], name: "index_skill_requests_on_skill_name"
+    t.index ["status"], name: "index_skill_requests_on_status"
+    t.index ["user_id"], name: "index_skill_requests_on_user_id"
+  end
+
   create_table "sms_campaigns", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.string "name", null: false
@@ -2321,7 +2638,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
   add_foreign_key "affiliates", "users"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
   add_foreign_key "agent_executions", "pipeline_executions"
+  add_foreign_key "agent_lightning_configs", "entities"
+  add_foreign_key "agent_lightning_optimizations", "agent_training_jobs"
+  add_foreign_key "agent_lightning_optimizations", "entities"
+  add_foreign_key "agent_lightning_traces", "entities"
+  add_foreign_key "agent_lightning_traces", "task_sessions"
+  add_foreign_key "agent_lightning_traces", "users"
+  add_foreign_key "agent_lightning_traces", "workflow_executions"
+  add_foreign_key "agent_lightning_webhook_logs", "agent_lightning_webhooks"
+  add_foreign_key "agent_lightning_webhooks", "entities"
+  add_foreign_key "agent_llm_calls", "agent_lightning_traces"
+  add_foreign_key "agent_llm_calls", "entities"
   add_foreign_key "agent_messages", "task_sessions"
+  add_foreign_key "agent_phase_executions", "agent_lightning_traces"
+  add_foreign_key "agent_phase_executions", "entities"
+  add_foreign_key "agent_phase_executions", "workflow_executions"
+  add_foreign_key "agent_rewards", "agent_lightning_traces"
+  add_foreign_key "agent_rewards", "entities"
+  add_foreign_key "agent_rewards", "users"
+  add_foreign_key "agent_tool_executions", "agent_lightning_traces"
+  add_foreign_key "agent_tool_executions", "agent_llm_calls"
+  add_foreign_key "agent_tool_executions", "entities"
+  add_foreign_key "agent_training_jobs", "entities"
   add_foreign_key "ai_usage_logs", "entities"
   add_foreign_key "ai_usage_logs", "scout_messages"
   add_foreign_key "ai_usage_logs", "users"
@@ -2472,6 +2810,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_12_000000) do
   add_foreign_key "shared_models", "entities"
   add_foreign_key "shared_plugins", "custom_plugins"
   add_foreign_key "shared_plugins", "users"
+  add_foreign_key "skill_configs", "entities"
+  add_foreign_key "skill_execution_logs", "entities"
+  add_foreign_key "skill_execution_logs", "users"
+  add_foreign_key "skill_requests", "entities"
+  add_foreign_key "skill_requests", "users"
   add_foreign_key "sms_campaigns", "entities"
   add_foreign_key "sms_deliveries", "contacts"
   add_foreign_key "sms_deliveries", "sms_campaigns"
