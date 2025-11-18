@@ -66,11 +66,10 @@
                 </div>
               </div>
               <div class="flex-shrink-0">
-                <button class="btn btn-sm btn-outline-secondary ms-2"
-                        onclick="event.stopPropagation(); window.scoutLoadCanvas('document_viewer', {asset_id: <%= doc[:id] %>});"
-                        aria-label="View document">
+                <a href="<%= doc[:url] %>" target="_blank" class="btn btn-sm btn-outline-secondary ms-2"
+                   onclick="event.stopPropagation();" aria-label="View document in new window">
                   <i data-lucide="eye" aria-hidden="true"></i>
-                </button>
+                </a>
                 <a href="<%= doc[:download_url] %>" class="btn btn-sm btn-outline-secondary" download
                    onclick="event.stopPropagation();" aria-label="Download file">
                   <i data-lucide="download" aria-hidden="true"></i>
