@@ -32,7 +32,9 @@
       "Bash(xargs:*)",
       "Bash(git -C /Users/ryan/Documents/agent_marketing add app/controllers/scout_controller.rb)",
       "Bash(tee:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(timeout 10 docker compose exec:*)",
+      "SlashCommand(/ux)"
     ],
     "deny": [],
     "ask": [
