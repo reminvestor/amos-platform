@@ -1,97 +1,156 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid">
-  <div class="d-flex align-items-center mb-3">
-    <h1 class="h3 mb-0">Observability • Errors</h1>
-  </div>
-
-  <div class="row g-3 mb-4">
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <div class="text-muted small">Total Errors (last <%= (@time_range / 1.day).to_i %> days)</div>
-          <div class="fs-3 fw-semibold"><%= @total_errors || 0 %></div>
-        </div>
+<div style="padding: 2rem;">
+  <!-- Page Header -->
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #EF4444 0%, #F87171 100%);">
+        <i data-lucide="alert-circle"></i>
+      </div>
+      <div class="header-text">
+        <h1>Error Monitoring</h1>
+        <p>Real-time error tracking and diagnostics (last <%= (@time_range / 1.day).to_i %> days)</p>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <div class="text-muted small">Error Rate %</div>
-          <div class="fs-3 fw-semibold"><%= @error_rate || 0 %>%</div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span>Errors by Type</span>
-    </div>
-    <div class="card-body">
-      <% if @errors_by_type.present? %>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle">
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th class="text-end">Count</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @errors_by_type.each do |type, count| %>
-                <tr>
-                  <td><%= type %></td>
-                  <td class="text-end"><%= count %></td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% else %>
-        <div class="text-muted">No error data available for the selected range.</div>
+    <div class="header-actions">
+      <%= link_to admin_observability_workflows_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back to Workflows</span>
       <% end %>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span>Recent Errors</span>
-    </div>
-    <div class="card-body">
-      <% if @recent_errors.respond_to?(:any?) ? @recent_errors.any? : @recent_errors.to_a.any? %>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle">
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Entity</th>
-                <th>User</th>
-                <th>Type</th>
-                <th>Message</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @recent_errors.each do |e| %>
-                <% metadata = (e.respond_to?(:metadata) ? e.metadata : {}) || {} %>
-                <tr>
-                  <td class="text-nowrap"><%= e.respond_to?(:created_at) ? e.created_at&.strftime('%Y-%m-%d %H:%M') : '-' %></td>
-                  <td><%= e.respond_to?(:entity) ? e.entity&.name : '-' %></td>
-                  <td><%= e.respond_to?(:user) ? e.user&.email : '-' %></td>
-                  <td><%= metadata["error_type"] || metadata["type"] || "Unknown" %></td>
-                  <td class="text-truncate" style="max-width: 420px"><%= metadata["message"] || metadata["error"] || "" %></td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+  <!-- Summary Cards -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="x-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(248, 113, 113);"></i>
         </div>
-      <% else %>
-        <div class="text-muted">No recent errors.</div>
-      <% end %>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Errors</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_errors || 0) %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="percent" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Error Rate</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @error_rate || 0 %>%</h3>
+        </div>
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- Errors by Type -->
+  <div class="admin-card" style="margin-bottom: 2rem;">
+    <h3 class="card-title">
+      <i data-lucide="list" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+      Errors by Type
+    </h3>
+
+    <% if @errors_by_type.present? %>
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th style="text-align: right;">Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @errors_by_type.each do |type, count| %>
+              <tr>
+                <td style="color: white;">
+                  <span class="admin-badge admin-badge-offline"><%= type %></span>
+                </td>
+                <td style="text-align: right; color: rgb(248, 113, 113); font-weight: 600;"><%= number_with_delimiter(count) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="check-circle"></i>
+        </div>
+        <h3>No errors found</h3>
+        <p>No errors recorded in the selected time range</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Recent Errors -->
+  <div class="admin-card">
+    <h3 class="card-title">
+      <i data-lucide="history" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+      Recent Errors
+    </h3>
+
+    <% if @recent_errors.respond_to?(:any?) ? @recent_errors.any? : @recent_errors.to_a.any? %>
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Entity</th>
+              <th>User</th>
+              <th>Type</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_errors.each do |e| %>
+              <% metadata = (e.respond_to?(:metadata) ? e.metadata : {}) || {} %>
+              <tr>
+                <td style="color: #94A3B8; white-space: nowrap;"><%= e.respond_to?(:created_at) ? e.created_at&.strftime('%Y-%m-%d %H:%M') : '-' %></td>
+                <td style="color: white;"><%= e.respond_to?(:entity) ? e.entity&.name : '-' %></td>
+                <td style="color: #94A3B8;"><%= e.respond_to?(:user) ? e.user&.email : '-' %></td>
+                <td>
+                  <span class="admin-badge admin-badge-offline"><%= metadata["error_type"] || metadata["type"] || "Unknown" %></span>
+                </td>
+                <td style="color: rgb(248, 113, 113); max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  <%= metadata["message"] || metadata["error"] || "" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if @recent_errors.count >= 50 %>
+        <p style="color: #64748B; text-align: center; margin-top: 1.5rem; margin-bottom: 0; font-size: 0.875rem;">
+          Showing first 50 errors. Use filters to narrow results.
+        </p>
+      <% end %>
+    <% else %>
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="check-circle"></i>
+        </div>
+        <h3>No recent errors</h3>
+        <p>System is running smoothly with no errors</p>
+      </div>
+    <% end %>
   </div>
 </div>
 
+<!-- Initialize Lucide Icons -->
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
 
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
