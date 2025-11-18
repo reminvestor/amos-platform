@@ -1,225 +1,250 @@
-<div class="container-fluid">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h1 class="h3 mb-0 text-gray-800">
-        <i data-lucide="gauge" class="text-info me-2"></i>Performance Monitoring
-      </h1>
-      <p class="text-muted">Track system performance and response times</p>
+<div style="padding: 2rem;">
+  <!-- Page Header -->
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%);">
+        <i data-lucide="gauge"></i>
+      </div>
+      <div class="header-text">
+        <h1>Performance Monitoring</h1>
+        <p>Track system performance and response times</p>
+      </div>
     </div>
-    
-    <div class="btn-group" role="group">
-      <%= link_to admin_observability_performance_path(time_range: 1), class: "btn btn-sm btn-outline-primary #{'active' if params[:time_range] == '1'}" do %>
-        24h
-      <% end %>
-      <%= link_to admin_observability_performance_path(time_range: 7), class: "btn btn-sm btn-outline-primary #{'active' if params[:time_range].nil? || params[:time_range] == '7'}" do %>
-        7d
-      <% end %>
-      <%= link_to admin_observability_performance_path(time_range: 30), class: "btn btn-sm btn-outline-primary #{'active' if params[:time_range] == '30'}" do %>
-        30d
-      <% end %>
+
+    <div class="header-actions">
+      <div style="display: flex; gap: 0.5rem;">
+        <%= link_to admin_observability_performance_path(time_range: 1), class: "admin-btn admin-btn-sm #{params[:time_range] == '1' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>24h</span>
+        <% end %>
+        <%= link_to admin_observability_performance_path(time_range: 7), class: "admin-btn admin-btn-sm #{params[:time_range].nil? || params[:time_range] == '7' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>7d</span>
+        <% end %>
+        <%= link_to admin_observability_performance_path(time_range: 30), class: "admin-btn admin-btn-sm #{params[:time_range] == '30' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>30d</span>
+        <% end %>
+      </div>
     </div>
   </div>
 
   <!-- Performance Metrics -->
-  <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="text-muted small">Total Workflows</div>
-              <h3 class="mb-0"><%= number_with_delimiter(@total_workflows) %></h3>
-            </div>
-            <div class="text-primary">
-              <i data-lucide="list-checks" class="icon-2x"></i>
-            </div>
-          </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="list-checks" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Workflows</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_workflows) %></h3>
         </div>
       </div>
     </div>
-    
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="text-muted small">Success Rate</div>
-              <h3 class="mb-0"><%= @success_rate %>%</h3>
-            </div>
-            <div class="<%= @success_rate >= 95 ? 'text-success' : 'text-warning' %>">
-              <i data-lucide="check-circle" class="icon-2x"></i>
-            </div>
-          </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: <%= @success_rate >= 95 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)' %>; border: 1px solid <%= @success_rate >= 95 ? 'rgba(34, 197, 94, 0.2)' : 'rgba(234, 179, 8, 0.2)' %>; display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: <%= @success_rate >= 95 ? 'rgb(74, 222, 128)' : 'rgb(250, 204, 21)' %>;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Success Rate</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @success_rate %>%</h3>
         </div>
       </div>
     </div>
-    
-    <div class="col-md-2">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">Avg Workflow</div>
-          <h4 class="mb-0"><%= @avg_workflow_duration %>ms</h4>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="workflow" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Avg Workflow</p>
+          <h3 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= @avg_workflow_duration %>ms</h3>
         </div>
       </div>
     </div>
-    
-    <div class="col-md-2">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">Avg Phase</div>
-          <h4 class="mb-0"><%= @avg_phase_duration %>ms</h4>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="git-branch" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Avg Phase</p>
+          <h3 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= @avg_phase_duration %>ms</h3>
         </div>
       </div>
     </div>
-    
-    <div class="col-md-2">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="text-muted small">Avg Tool</div>
-          <h4 class="mb-0"><%= @avg_tool_duration %>ms</h4>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="tool" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Avg Tool</p>
+          <h3 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= @avg_tool_duration %>ms</h3>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="row mb-4">
+  <!-- Charts Row -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
     <!-- Performance Trend Chart -->
-    <% if @performance_chart && @performance_chart[:data]&.any? %>
-      <div class="col-md-8">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white">
-            <h5 class="mb-0">Performance Trend</h5>
-          </div>
-          <div class="card-body">
-            <canvas id="performanceTrendChart" height="100"></canvas>
-          </div>
+    <% if @performance_chart && @performance_chart[:datasets]&.any? %>
+      <div class="admin-card" data-turbo-cache="false">
+        <h3 class="card-title">
+          <i data-lucide="trending-up" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+          Performance Trend
+        </h3>
+        <div style="height: 300px; position: relative;">
+          <canvas id="performanceTrendChart"></canvas>
         </div>
       </div>
     <% end %>
-    
+
     <!-- Error Rate Chart -->
-    <% if @error_rate_chart && @error_rate_chart[:data]&.any? %>
-      <div class="col-md-4">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white">
-            <h5 class="mb-0">Error Rate</h5>
-          </div>
-          <div class="card-body">
-            <canvas id="errorRateChart" height="200"></canvas>
-          </div>
+    <% if @error_rate_chart && @error_rate_chart[:datasets]&.any? %>
+      <div class="admin-card" data-turbo-cache="false">
+        <h3 class="card-title">
+          <i data-lucide="alert-circle" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+          Error Rate
+        </h3>
+        <div style="height: 300px; position: relative;">
+          <canvas id="errorRateChart"></canvas>
         </div>
       </div>
     <% end %>
   </div>
 
   <!-- Slowest Operations -->
-  <div class="row">
-    <div class="col-md-6">
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white">
-          <h5 class="mb-0">Slowest Workflows</h5>
-        </div>
-        <div class="card-body">
-            <% if @slowest_workflows.any? %>
-            <div class="list-group list-group-flush">
-              <% @slowest_workflows.each do |workflow| %>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                  <div>
-                    <small class="text-muted">#<%= workflow.id %></small>
-                    <div><%= workflow.entity&.name || "N/A" %></div>
-                    <small class="text-muted"><%= workflow.workflow_template_id || "Ad-hoc" %></small>
-                  </div>
-                  <% if workflow.started_at && workflow.completed_at %>
-                    <span class="badge bg-warning"><%= ((workflow.completed_at - workflow.started_at) * 1000).round %>ms</span>
-                  <% else %>
-                    <span class="badge bg-secondary">N/A</span>
-                  <% end %>
-                </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+    <!-- Slowest Workflows -->
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="clock" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Slowest Workflows
+      </h3>
+
+      <% if @slowest_workflows.any? %>
+        <div class="admin-detail-list">
+          <% @slowest_workflows.each do |workflow| %>
+            <div class="detail-item">
+              <div>
+                <code style="color: #22D3EE; background: rgba(34, 211, 238, 0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; margin-right: 0.5rem;">#<%= workflow.id %></code>
+                <span style="color: white;"><%= workflow.entity&.name || "N/A" %></span>
+                <div style="color: #64748B; font-size: 0.875rem; margin-top: 0.25rem;"><%= workflow.workflow_template_id || "Ad-hoc" %></div>
+              </div>
+              <% if workflow.started_at && workflow.completed_at %>
+                <span class="admin-badge admin-badge-warning"><%= ((workflow.completed_at - workflow.started_at) * 1000).round %>ms</span>
+              <% else %>
+                <span class="admin-badge admin-badge-default">N/A</span>
               <% end %>
             </div>
-          <% else %>
-            <p class="text-muted text-center mb-0">No data available</p>
           <% end %>
         </div>
-      </div>
+      <% else %>
+        <div class="admin-empty-state">
+          <div class="empty-icon">
+            <i data-lucide="check-circle"></i>
+          </div>
+          <h3>No slow workflows</h3>
+          <p>All workflows are performing well</p>
+        </div>
+      <% end %>
     </div>
-    
-    <div class="col-md-6">
-      <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white">
-          <h5 class="mb-0">Slowest Tool Calls</h5>
-        </div>
-        <div class="card-body">
-          <% if @slowest_tools.any? %>
-            <div class="list-group list-group-flush">
-              <% @slowest_tools.each do |event| %>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                  <div>
-                    <small class="text-muted">#<%= event.id %></small>
-                    <div><%= event.metadata&.dig('tool') || "Unknown tool" %></div>
-                  </div>
-                  <span class="badge bg-warning"><%= event.duration_ms %>ms</span>
-                </div>
-              <% end %>
+
+    <!-- Slowest Tool Calls -->
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="clock" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Slowest Tool Calls
+      </h3>
+
+      <% if @slowest_tools.any? %>
+        <div class="admin-detail-list">
+          <% @slowest_tools.each do |event| %>
+            <div class="detail-item">
+              <div>
+                <code style="color: #22D3EE; background: rgba(34, 211, 238, 0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; margin-right: 0.5rem;">#<%= event.id %></code>
+                <span style="color: white;"><%= event.metadata&.dig('tool') || "Unknown tool" %></span>
+              </div>
+              <span class="admin-badge admin-badge-warning"><%= event.metadata&.dig('duration')&.to_i || 0 %>ms</span>
             </div>
-          <% else %>
-            <p class="text-muted text-center mb-0">No data available</p>
           <% end %>
         </div>
-      </div>
+      <% else %>
+        <div class="admin-empty-state">
+          <div class="empty-icon">
+            <i data-lucide="check-circle"></i>
+          </div>
+          <h3>No slow tool calls</h3>
+          <p>All tools are performing well</p>
+        </div>
+      <% end %>
     </div>
   </div>
 </div>
 
-<% if @performance_chart && @performance_chart[:data]&.any? %>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const ctx = document.getElementById('performanceTrendChart');
-      if (ctx && window.Chart) {
-        new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: <%= raw @performance_chart[:labels].to_json %>,
-            datasets: [{
-              label: 'Avg Workflow Duration (ms)',
-              data: <%= raw @performance_chart[:data].to_json %>,
-              borderColor: 'rgb(13, 110, 253)',
-              backgroundColor: 'rgba(13, 110, 253, 0.1)',
-              tension: 0.4,
-              fill: true
-            }]
-          },
+<!-- Chart.js Configuration -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  function initializePerformanceCharts() {
+    // Dark theme colors
+    Chart.defaults.color = '#94A3B8';
+    Chart.defaults.borderColor = '#1E293B';
+
+    // Performance Trend Chart
+    <% if @performance_chart && @performance_chart[:datasets]&.any? %>
+      const perfCanvas = document.getElementById('performanceTrendChart');
+      if (perfCanvas && Chart.getChart(perfCanvas)) {
+        Chart.getChart(perfCanvas).destroy();
+      }
+
+      if (perfCanvas) {
+        new Chart(perfCanvas, {
+          type: 'bar',
+          data: <%= raw @performance_chart.to_json %>,
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                display: true
-              }
-            },
             scales: {
+              x: {
+                stacked: true,
+                grid: { color: '#1E293B' }
+              },
               y: {
+                stacked: true,
                 beginAtZero: true,
+                grid: { color: '#1E293B' },
                 ticks: {
                   callback: function(value) {
                     return value + 'ms';
                   }
                 }
               }
+            },
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: '#94A3B8' }
+              }
             }
           }
         });
       }
-    });
-  </script>
-<% end %>
+    <% end %>
 
-<% if @error_rate_chart && @error_rate_chart[:data]&.any? %>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const ctx = document.getElementById('errorRateChart');
-      if (ctx && window.Chart) {
-        new Chart(ctx, {
+    // Error Rate Chart
+    <% if @error_rate_chart && @error_rate_chart[:datasets]&.any? %>
+      const errorCanvas = document.getElementById('errorRateChart');
+      if (errorCanvas && Chart.getChart(errorCanvas)) {
+        Chart.getChart(errorCanvas).destroy();
+      }
+
+      if (errorCanvas) {
+        new Chart(errorCanvas, {
           type: 'doughnut',
           data: {
             labels: ['Success', 'Errors'],
@@ -229,9 +254,14 @@
                 <%= @failed_workflows %>
               ],
               backgroundColor: [
-                'rgb(25, 135, 84)',
-                'rgb(220, 53, 69)'
-              ]
+                'rgba(34, 197, 94, 0.8)',
+                'rgba(239, 68, 68, 0.8)'
+              ],
+              borderColor: [
+                'rgb(34, 197, 94)',
+                'rgb(239, 68, 68)'
+              ],
+              borderWidth: 2
             }]
           },
           options: {
@@ -239,13 +269,27 @@
             maintainAspectRatio: false,
             plugins: {
               legend: {
-                position: 'bottom'
+                position: 'bottom',
+                labels: { color: '#94A3B8' }
               }
             }
           }
         });
       }
-    });
-  </script>
-<% end %>
+    <% end %>
 
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+
+  // Run on both DOMContentLoaded and turbo:load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePerformanceCharts);
+  } else {
+    initializePerformanceCharts();
+  }
+
+  document.addEventListener('turbo:load', initializePerformanceCharts);
+</script>
