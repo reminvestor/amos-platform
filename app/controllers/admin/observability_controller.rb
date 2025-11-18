@@ -85,6 +85,13 @@ class Admin::ObservabilityController < Admin::BaseController
     # Performance over time chart
     @performance_chart = generate_performance_chart
 
+    # Get error events for error rate chart
+    @error_events = ObservabilityEvent
+                      .where(event_type: ["error", "exception", "workflow_error"])
+                      .or(ObservabilityEvent.where("metadata->>'status' IN (?)", ["failed", "error"]))
+                      .where("created_at > ?", @time_range.ago)
+                      .order(created_at: :desc)
+
     # Error rate chart
     @error_rate_chart = generate_error_trend_chart
 

@@ -1,136 +1,191 @@
-<div class="container-fluid py-4">
-  <div class="row mb-4">
-    <div class="col-md-8">
-      <h1>📊 Agent Lightning Metrics</h1>
-      <p class="text-muted"><%= @entity ? @entity.name : "Platform-wide" %> (Last <%= @days %> days)</p>
+<div style="padding: 2rem;">
+  <!-- Page Header -->
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+        <i data-lucide="bar-chart-3"></i>
+      </div>
+      <div class="header-text">
+        <h1>Agent Lightning Metrics</h1>
+        <p><%= @entity ? @entity.name : "Platform-wide" %> (Last <%= @days %> days)</p>
+      </div>
     </div>
-    <div class="col-md-4 text-end">
-      <% [7, 30, 60, 90].each do |days| %>
-        <% if days == @days %>
-          <span class="badge bg-primary"><%= days %> days</span>
-        <% else %>
-          <%= link_to days.to_s + " days", metrics_admin_agent_lightning_index_path(days: days), class: "btn btn-sm btn-outline-secondary" %>
+
+    <div class="header-actions">
+      <div style="display: flex; gap: 0.5rem;">
+        <% [7, 30, 60, 90].each do |days| %>
+          <% if days == @days %>
+            <span class="admin-badge admin-badge-cyan" style="padding: 0.5rem 1rem; font-size: 0.875rem;"><%= days %> days</span>
+          <% else %>
+            <%= link_to days.to_s + " days", metrics_admin_agent_lightning_index_path(days: days), class: "admin-btn admin-btn-sm admin-btn-outline" %>
+          <% end %>
         <% end %>
-      <% end %>
-      <%= link_to "← Back", dashboard_admin_agent_lightning_index_path, class: "btn btn-outline-secondary" %>
+        <%= link_to dashboard_admin_agent_lightning_index_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+          <i data-lucide="arrow-left"></i>
+          <span>Back</span>
+        <% end %>
+      </div>
     </div>
   </div>
 
   <!-- Overall Statistics -->
-  <div class="card mb-4">
-    <div class="card-header bg-light">
-      <h5 class="mb-0">📈 Overall Statistics</h5>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="activity" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Traces</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_traces) %></h3>
+        </div>
+      </div>
     </div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-3">
-          <div class="alert alert-info mb-0">
-            <h6 class="mb-1">Total Traces</h6>
-            <h3 class="mb-0"><%= @total_traces %></h3>
-          </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="trending-up" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
         </div>
-        <div class="col-md-3">
-          <div class="alert alert-success mb-0">
-            <h6 class="mb-1">Success Rate</h6>
-            <h3 class="mb-0"><%= @success_rate %>%</h3>
-          </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Success Rate</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @success_rate %>%</h3>
         </div>
-        <div class="col-md-3">
-          <div class="alert alert-warning mb-0">
-            <h6 class="mb-1">Avg Reward</h6>
-            <h3 class="mb-0"><%= @avg_reward %></h3>
-          </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="award" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21);"></i>
         </div>
-        <div class="col-md-3">
-          <div class="alert alert-secondary mb-0">
-            <h6 class="mb-1">Completed</h6>
-            <h3 class="mb-0"><%= @traces.where(status: 'completed').count %></h3>
-          </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Avg Reward</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @avg_reward %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Completed</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@completed_traces_count) %></h3>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Token & Cost Analysis -->
-  <div class="card mb-4">
-    <div class="card-header bg-light">
-      <h5 class="mb-0">💰 Token & Cost Analysis</h5>
-    </div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6">
-          <h6>Token Usage</h6>
-          <div class="list-group list-group-flush">
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-              <span>Total Tokens</span>
-              <strong><%= @total_tokens %></strong>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-              <span>Average/Trace</span>
-              <strong><%= @avg_tokens %></strong>
-            </div>
-          </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="cpu" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Token Usage
+      </h3>
+      <div class="admin-detail-list">
+        <div class="detail-item">
+          <span class="detail-label">Total Tokens</span>
+          <span class="detail-value"><%= number_with_delimiter(@total_tokens) %></span>
         </div>
-        <div class="col-md-6">
-          <h6>Cost Analysis</h6>
-          <div class="list-group list-group-flush">
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-              <span>Total Cost</span>
-              <strong class="text-danger">$<%= @total_cost %></strong>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-              <span>Average/Trace</span>
-              <strong class="text-danger">$<%= @avg_cost %></strong>
-            </div>
-          </div>
+        <div class="detail-item">
+          <span class="detail-label">Average per Trace</span>
+          <span class="detail-value"><%= number_with_delimiter(@avg_tokens) %></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="dollar-sign" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Cost Analysis
+      </h3>
+      <div class="admin-detail-list">
+        <div class="detail-item">
+          <span class="detail-label">Total Cost</span>
+          <span class="detail-value" style="color: rgb(248, 113, 113);">$<%= @total_cost %></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Average per Trace</span>
+          <span class="detail-value" style="color: rgb(248, 113, 113);">$<%= @avg_cost %></span>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Performance Analysis -->
-  <div class="card mb-4">
-    <div class="card-header bg-light">
-      <h5 class="mb-0">⚡ Performance Analysis</h5>
-    </div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6">
-          <h6>Duration Metrics</h6>
-          <div class="list-group list-group-flush">
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-              <span>Total Duration</span>
-              <strong><%= @total_duration_minutes %> min</strong>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-              <span>Average Duration</span>
-              <strong><%= @avg_duration %>ms</strong>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-              <span>Minimum Duration</span>
-              <strong><%= @min_duration %>ms</strong>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-              <span>Maximum Duration</span>
-              <strong><%= @max_duration %>ms</strong>
-            </div>
+  <div class="admin-card" style="margin-bottom: 2rem;">
+    <h3 class="card-title">
+      <i data-lucide="zap" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+      Performance Analysis
+    </h3>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+      <div>
+        <h6 style="color: #94A3B8; font-size: 0.875rem; font-weight: 600; margin-bottom: 1rem;">Duration Metrics</h6>
+        <div class="admin-detail-list">
+          <div class="detail-item">
+            <span class="detail-label">Total Duration</span>
+            <span class="detail-value"><%= @total_duration_minutes %> min</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Average Duration</span>
+            <span class="detail-value"><%= @avg_duration %>ms</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Minimum Duration</span>
+            <span class="detail-value"><%= @min_duration %>ms</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Maximum Duration</span>
+            <span class="detail-value"><%= @max_duration %>ms</span>
           </div>
         </div>
-        <div class="col-md-6">
-          <h6>Performance Distribution</h6>
-          <div class="progress mb-3" style="height: 30px;">
-            <div class="progress-bar bg-success" style="width: <%= (@traces.where('duration_ms < 1000').count.to_f / @total_traces * 100).round %>%">
-              <1s
-            </div>
-            <div class="progress-bar bg-info" style="width: <%= (@traces.where('duration_ms >= 1000 AND duration_ms < 5000').count.to_f / @total_traces * 100).round %>%">
+      </div>
+
+      <div>
+        <h6 style="color: #94A3B8; font-size: 0.875rem; font-weight: 600; margin-bottom: 1rem;">Performance Distribution</h6>
+        <div style="background: #0F172A; border-radius: 0.5rem; height: 2rem; overflow: hidden; display: flex;">
+          <div style="background: rgb(74, 222, 128); width: <%= (@traces.where('duration_ms < 1000').count.to_f / @total_traces * 100).round %>%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem; font-weight: 600;">
+            <% if (@traces.where('duration_ms < 1000').count.to_f / @total_traces * 100).round > 10 %>
+              &lt;1s
+            <% end %>
+          </div>
+          <div style="background: #22D3EE; width: <%= (@traces.where('duration_ms >= 1000 AND duration_ms < 5000').count.to_f / @total_traces * 100).round %>%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem; font-weight: 600;">
+            <% if (@traces.where('duration_ms >= 1000 AND duration_ms < 5000').count.to_f / @total_traces * 100).round > 10 %>
               1-5s
-            </div>
-            <div class="progress-bar bg-warning" style="width: <%= (@traces.where('duration_ms >= 5000 AND duration_ms < 10000').count.to_f / @total_traces * 100).round %>%">
+            <% end %>
+          </div>
+          <div style="background: rgb(250, 204, 21); width: <%= (@traces.where('duration_ms >= 5000 AND duration_ms < 10000').count.to_f / @total_traces * 100).round %>%; display: flex; align-items: center; justify-content: center; color: #0A0E1A; font-size: 0.75rem; font-weight: 600;">
+            <% if (@traces.where('duration_ms >= 5000 AND duration_ms < 10000').count.to_f / @total_traces * 100).round > 10 %>
               5-10s
-            </div>
-            <div class="progress-bar bg-danger" style="width: <%= (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round %>%">
-              >10s
-            </div>
+            <% end %>
+          </div>
+          <div style="background: rgb(248, 113, 113); width: <%= (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round %>%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem; font-weight: 600;">
+            <% if (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round > 10 %>
+              &gt;10s
+            <% end %>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 1rem;">
+          <div style="text-align: center;">
+            <div style="width: 0.75rem; height: 0.75rem; background: rgb(74, 222, 128); border-radius: 0.125rem; margin: 0 auto 0.25rem;"></div>
+            <span style="color: #64748B; font-size: 0.75rem;">&lt;1s (<%= (@traces.where('duration_ms < 1000').count.to_f / @total_traces * 100).round %>%)</span>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 0.75rem; height: 0.75rem; background: #22D3EE; border-radius: 0.125rem; margin: 0 auto 0.25rem;"></div>
+            <span style="color: #64748B; font-size: 0.75rem;">1-5s (<%= (@traces.where('duration_ms >= 1000 AND duration_ms < 5000').count.to_f / @total_traces * 100).round %>%)</span>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 0.75rem; height: 0.75rem; background: rgb(250, 204, 21); border-radius: 0.125rem; margin: 0 auto 0.25rem;"></div>
+            <span style="color: #64748B; font-size: 0.75rem;">5-10s (<%= (@traces.where('duration_ms >= 5000 AND duration_ms < 10000').count.to_f / @total_traces * 100).round %>%)</span>
+          </div>
+          <div style="text-align: center;">
+            <div style="width: 0.75rem; height: 0.75rem; background: rgb(248, 113, 113); border-radius: 0.125rem; margin: 0 auto 0.25rem;"></div>
+            <span style="color: #64748B; font-size: 0.75rem;">&gt;10s (<%= (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round %>%)</span>
           </div>
         </div>
       </div>
@@ -139,55 +194,74 @@
 
   <!-- LLM Call Analysis -->
   <% if @llm_calls && @llm_calls.any? %>
-    <div class="card mb-4">
-      <div class="card-header bg-light">
-        <h5 class="mb-0">🤖 LLM Call Analysis</h5>
-      </div>
-      <div class="card-body">
-        <div class="row mb-3">
-          <div class="col-md-4">
-            <div class="alert alert-success mb-0">
-              <h6 class="mb-1">Success Rate</h6>
-              <h3 class="mb-0"><%= @llm_success_rate %>%</h3>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="alert alert-info mb-0">
-              <h6 class="mb-1">Total Calls</h6>
-              <h3 class="mb-0"><%= @llm_calls.count %></h3>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="alert alert-warning mb-0">
-              <h6 class="mb-1">Avg Latency</h6>
-              <h3 class="mb-0"><%= @avg_latency %>ms</h3>
+    <div class="admin-card" style="margin-bottom: 2rem;">
+      <h3 class="card-title">
+        <i data-lucide="cpu" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        LLM Call Analysis
+      </h3>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="admin-card" style="background: rgba(34, 197, 94, 0.05); border-color: rgba(34, 197, 94, 0.1);">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem; color: rgb(74, 222, 128);"></i>
+            <div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">Success Rate</p>
+              <h4 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= @llm_success_rate %>%</h4>
             </div>
           </div>
         </div>
 
-        <h6>By Agent Role:</h6>
-        <table class="table table-hover">
+        <div class="admin-card" style="background: rgba(34, 211, 238, 0.05); border-color: rgba(34, 211, 238, 0.1);">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <i data-lucide="activity" style="width: 1.25rem; height: 1.25rem; color: #22D3EE;"></i>
+            <div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">Total Calls</p>
+              <h4 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@llm_calls.count) %></h4>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-card" style="background: rgba(234, 179, 8, 0.05); border-color: rgba(234, 179, 8, 0.1);">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <i data-lucide="clock" style="width: 1.25rem; height: 1.25rem; color: rgb(250, 204, 21);"></i>
+            <div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">Avg Latency</p>
+              <h4 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= @avg_latency %>ms</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h6 style="color: #94A3B8; font-size: 0.875rem; font-weight: 600; margin-bottom: 1rem;">By Agent Role</h6>
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
           <thead>
             <tr>
               <th>Role</th>
-              <th>Count</th>
-              <th>Success Rate</th>
-              <th>Avg Tokens</th>
-              <th>Total Cost</th>
+              <th style="text-align: right;">Count</th>
+              <th style="text-align: right;">Success Rate</th>
+              <th style="text-align: right;">Avg Tokens</th>
+              <th style="text-align: right;">Total Cost</th>
             </tr>
           </thead>
           <tbody>
             <% @llm_by_role.each do |role_data| %>
               <tr>
-                <td><span class="badge bg-secondary"><%= role_data[:role] %></span></td>
-                <td><%= role_data[:count] %></td>
                 <td>
-                  <span class="badge bg-<%= role_data[:success_rate] > 85 ? 'success' : (role_data[:success_rate] > 70 ? 'warning' : 'danger') %>">
-                    <%= role_data[:success_rate] %>%
-                  </span>
+                  <span class="admin-badge admin-badge-default"><%= role_data[:role] %></span>
                 </td>
-                <td><code><%= role_data[:avg_tokens] %></code></td>
-                <td><strong class="text-warning">$<%= role_data[:total_cost] %></strong></td>
+                <td style="text-align: right; color: white;"><%= number_with_delimiter(role_data[:count]) %></td>
+                <td style="text-align: right;">
+                  <% if role_data[:success_rate] > 85 %>
+                    <span class="admin-badge admin-badge-online"><%= role_data[:success_rate] %>%</span>
+                  <% elsif role_data[:success_rate] > 70 %>
+                    <span class="admin-badge admin-badge-warning"><%= role_data[:success_rate] %>%</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-offline"><%= role_data[:success_rate] %>%</span>
+                  <% end %>
+                </td>
+                <td style="text-align: right;"><code style="color: #22D3EE; background: rgba(34, 211, 238, 0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem;"><%= number_with_delimiter(role_data[:avg_tokens]) %></code></td>
+                <td style="text-align: right; color: rgb(250, 204, 21); font-weight: 600;">$<%= role_data[:total_cost] %></td>
               </tr>
             <% end %>
           </tbody>
@@ -197,54 +271,71 @@
   <% end %>
 
   <!-- Tool Execution Analysis -->
-  <% if @tool_executions && @tool_executions.any? %>
-    <div class="card mb-4">
-      <div class="card-header bg-light">
-        <h5 class="mb-0">🔧 Tool Execution Analysis</h5>
-      </div>
-      <div class="card-body">
-        <div class="row mb-3">
-          <div class="col-md-4">
-            <div class="alert alert-success mb-0">
-              <h6 class="mb-1">Success Rate</h6>
-              <h3 class="mb-0"><%= @tool_success_rate %>%</h3>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="alert alert-info mb-0">
-              <h6 class="mb-1">Total Executions</h6>
-              <h3 class="mb-0"><%= @tool_executions.count %></h3>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="alert alert-warning mb-0">
-              <h6 class="mb-1">Failed</h6>
-              <h3 class="mb-0"><%= @tool_executions.where(status: 'error').count %></h3>
+  <% if @top_tools && @top_tools.any? %>
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="tool" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Tool Execution Analysis
+      </h3>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="admin-card" style="background: rgba(34, 197, 94, 0.05); border-color: rgba(34, 197, 94, 0.1);">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem; color: rgb(74, 222, 128);"></i>
+            <div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">Success Rate</p>
+              <h4 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= @tool_success_rate %>%</h4>
             </div>
           </div>
         </div>
 
-        <h6>Top 10 Tools:</h6>
-        <table class="table table-hover">
+        <div class="admin-card" style="background: rgba(34, 211, 238, 0.05); border-color: rgba(34, 211, 238, 0.1);">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <i data-lucide="layers" style="width: 1.25rem; height: 1.25rem; color: #22D3EE;"></i>
+            <div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">Total Executions</p>
+              <h4 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@top_tools.sum { |t| t[:count] }) %></h4>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-card" style="background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.1);">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <i data-lucide="x-circle" style="width: 1.25rem; height: 1.25rem; color: rgb(248, 113, 113);"></i>
+            <div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">Failed</p>
+              <h4 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@failed_tool_executions) %></h4>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h6 style="color: #94A3B8; font-size: 0.875rem; font-weight: 600; margin-bottom: 1rem;">Top 10 Tools</h6>
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
           <thead>
             <tr>
               <th>Tool</th>
-              <th>Executions</th>
-              <th>Success Rate</th>
-              <th>Avg Time</th>
+              <th style="text-align: right;">Executions</th>
+              <th style="text-align: right;">Success Rate</th>
+              <th style="text-align: right;">Avg Time</th>
             </tr>
           </thead>
           <tbody>
             <% @top_tools.each do |tool| %>
               <tr>
-                <td><code><%= tool[:name] %></code></td>
-                <td><%= tool[:count] %></td>
-                <td>
-                  <span class="badge bg-<%= tool[:success_rate] > 85 ? 'success' : (tool[:success_rate] > 70 ? 'warning' : 'danger') %>">
-                    <%= tool[:success_rate] %>%
-                  </span>
+                <td><code style="color: #22D3EE; background: rgba(34, 211, 238, 0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem;"><%= tool[:name] %></code></td>
+                <td style="text-align: right; color: white;"><%= number_with_delimiter(tool[:count]) %></td>
+                <td style="text-align: right;">
+                  <% if tool[:success_rate] > 85 %>
+                    <span class="admin-badge admin-badge-online"><%= tool[:success_rate] %>%</span>
+                  <% elsif tool[:success_rate] > 70 %>
+                    <span class="admin-badge admin-badge-warning"><%= tool[:success_rate] %>%</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-offline"><%= tool[:success_rate] %>%</span>
+                  <% end %>
                 </td>
-                <td><code><%= tool[:avg_time] %>ms</code></td>
+                <td style="text-align: right;"><code style="color: #94A3B8; background: rgba(148, 163, 184, 0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.875rem;"><%= tool[:avg_time] %>ms</code></td>
               </tr>
             <% end %>
           </tbody>
@@ -253,3 +344,18 @@
     </div>
   <% end %>
 </div>
+
+<!-- Initialize Lucide Icons -->
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
