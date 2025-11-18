@@ -12,14 +12,16 @@
     </div>
 
     <div class="header-actions">
-      <%= link_to new_admin_agent_plugin_path, class: "admin-btn admin-btn-primary" do %>
-        <i data-lucide="plus"></i>
-        <span>Create Agent</span>
-      <% end %>
-      <%= link_to analytics_admin_agent_plugins_path, class: "admin-btn admin-btn-secondary" do %>
-        <i data-lucide="bar-chart-3"></i>
-        <span>Analytics</span>
-      <% end %>
+      <div class="d-flex flex-wrap admin-flex-gap-sm">
+        <%= link_to new_admin_agent_plugin_path, class: "admin-btn admin-btn-primary" do %>
+          <i data-lucide="plus"></i>
+          <span>Create Agent</span>
+        <% end %>
+        <%= link_to analytics_admin_agent_plugins_path, class: "admin-btn admin-btn-secondary" do %>
+          <i data-lucide="bar-chart-3"></i>
+          <span>Analytics</span>
+        <% end %>
+      </div>
     </div>
   </div>
 
