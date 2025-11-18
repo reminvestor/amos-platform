@@ -1,0 +1,234 @@
+<div class="admin-p-xl">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <%= link_to admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-sm admin-btn-outline", style: "margin-right: 1rem;" do %>
+        <i data-lucide="arrow-left"></i>
+      <% end %>
+      <div class="header-icon">
+        <i data-lucide="play"></i>
+      </div>
+      <div class="header-text">
+        <h1>Test Agent Plugin</h1>
+        <p><%= @agent_plugin.name %></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Left: Test Input -->
+    <div class="col-md-6">
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h3 class="admin-card-title">
+            <i data-lucide="edit" class="icon-sm"></i>
+            Test Configuration
+          </h3>
+        </div>
+        <div class="admin-card-body">
+          <form id="test-form">
+            <div class="mb-3">
+              <label class="form-label">Test Method</label>
+              <select id="test-method" class="form-select">
+                <option value="run">Run with Prompt</option>
+                <option value="execute_goal">Execute Goal</option>
+              </select>
+            </div>
+
+            <div class="mb-3" id="prompt-input">
+              <label class="form-label">Prompt</label>
+              <textarea id="test-prompt" class="form-control font-monospace" rows="4" placeholder="Generate a sales email for...">Generate a sales email for John Smith at Acme Corp about improving their marketing automation</textarea>
+            </div>
+
+            <div class="mb-3" id="goal-input" style="display: none;">
+              <label class="form-label">Goal</label>
+              <input type="text" id="test-goal" class="form-control" placeholder="Generate a sales email">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Context (JSON)</label>
+              <textarea id="test-context" class="form-control font-monospace" rows="8">{
+  "lead_name": "John Smith",
+  "company_name": "Acme Corp",
+  "pain_points": ["manual processes", "low conversion rates"]
+}</textarea>
+              <small class="form-text text-muted">Additional context for the agent</small>
+            </div>
+
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i data-lucide="play" class="icon-sm"></i>
+                Run Test
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Test Output -->
+    <div class="col-md-6">
+      <div class="admin-card">
+        <div class="admin-card-header">
+          <h3 class="admin-card-title">
+            <i data-lucide="terminal" class="icon-sm"></i>
+            Test Results
+          </h3>
+        </div>
+        <div class="admin-card-body">
+          <div id="test-output" class="d-none">
+            <div class="alert alert-info" id="loading-state">
+              <div class="d-flex align-items-center gap-2">
+                <div class="spinner-border spinner-border-sm" role="status"></div>
+                <span>Running test...</span>
+              </div>
+            </div>
+
+            <div id="success-state" class="d-none">
+              <div class="alert alert-success">
+                <i data-lucide="check-circle" class="icon-sm"></i>
+                Test completed successfully!
+              </div>
+              <div class="mb-3">
+                <label class="form-label small text-muted">Result:</label>
+                <pre id="result-output" class="bg-light p-3 rounded font-monospace small"></pre>
+              </div>
+            </div>
+
+            <div id="error-state" class="d-none">
+              <div class="alert alert-danger">
+                <i data-lucide="alert-circle" class="icon-sm"></i>
+                Test failed
+              </div>
+              <div class="mb-3">
+                <label class="form-label small text-muted">Error:</label>
+                <pre id="error-output" class="bg-danger text-white p-3 rounded font-monospace small"></pre>
+              </div>
+            </div>
+          </div>
+
+          <div id="initial-state">
+            <div class="text-center text-muted py-5">
+              <i data-lucide="flask" class="icon-xl mb-3 d-block mx-auto" style="width: 64px; height: 64px;"></i>
+              <p>Configure your test and click "Run Test" to see results</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent Info -->
+      <div class="admin-card mt-4">
+        <div class="admin-card-header">
+          <h3 class="admin-card-title">
+            <i data-lucide="info" class="icon-sm"></i>
+            Agent Information
+          </h3>
+        </div>
+        <div class="admin-card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-4">Role</dt>
+            <dd class="col-sm-8"><span class="badge bg-secondary"><%= @agent_plugin.role.titleize %></span></dd>
+
+            <dt class="col-sm-4">Status</dt>
+            <dd class="col-sm-8">
+              <span class="badge bg-<%= @agent_plugin.status == 'active' ? 'success' : 'warning' %>">
+                <%= @agent_plugin.status.titleize %>
+              </span>
+            </dd>
+
+            <dt class="col-sm-4">Capabilities</dt>
+            <dd class="col-sm-8">
+              <% @agent_plugin.agent_capabilities.each do |cap| %>
+                <code class="small d-block"><%= cap.capability_name %></code>
+              <% end %>
+            </dd>
+
+            <dt class="col-sm-4">Required Tools</dt>
+            <dd class="col-sm-8">
+              <% @agent_plugin.agent_tools.required.each do |tool| %>
+                <code class="small d-block"><%= tool.tool_name %></code>
+              <% end %>
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+
+    // Toggle between prompt and goal inputs
+    document.getElementById('test-method')?.addEventListener('change', function(e) {
+      const promptInput = document.getElementById('prompt-input');
+      const goalInput = document.getElementById('goal-input');
+
+      if (e.target.value === 'execute_goal') {
+        promptInput.style.display = 'none';
+        goalInput.style.display = 'block';
+      } else {
+        promptInput.style.display = 'block';
+        goalInput.style.display = 'none';
+      }
+    });
+
+    // Handle test form submission
+    document.getElementById('test-form')?.addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const testOutput = document.getElementById('test-output');
+      const initialState = document.getElementById('initial-state');
+      const loadingState = document.getElementById('loading-state');
+      const successState = document.getElementById('success-state');
+      const errorState = document.getElementById('error-state');
+
+      // Show loading
+      initialState.classList.add('d-none');
+      testOutput.classList.remove('d-none');
+      loadingState.classList.remove('d-none');
+      successState.classList.add('d-none');
+      errorState.classList.add('d-none');
+
+      const testMethod = document.getElementById('test-method').value;
+      const testPrompt = document.getElementById('test-prompt').value;
+      const testGoal = document.getElementById('test-goal').value;
+      const testContext = document.getElementById('test-context').value;
+
+      try {
+        const formData = new FormData();
+        formData.append('test_method', testMethod);
+        formData.append('test_prompt', testPrompt);
+        formData.append('test_goal', testGoal);
+        formData.append('test_context', testContext);
+
+        const response = await fetch('<%= run_test_admin_agent_plugin_path(@agent_plugin) %>', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+          }
+        });
+
+        const result = await response.json();
+
+        loadingState.classList.add('d-none');
+
+        if (result.success) {
+          successState.classList.remove('d-none');
+          document.getElementById('result-output').textContent = JSON.stringify(result.result, null, 2);
+        } else {
+          errorState.classList.remove('d-none');
+          document.getElementById('error-output').textContent = result.error + '\n\nBacktrace:\n' + (result.backtrace || []).join('\n');
+        }
+
+        lucide.createIcons();
+      } catch (error) {
+        loadingState.classList.add('d-none');
+        errorState.classList.remove('d-none');
+        document.getElementById('error-output').textContent = 'Network error: ' + error.message;
+        lucide.createIcons();
+      }
+    });
+  });
+</script>
