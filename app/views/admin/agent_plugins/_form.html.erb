@@ -88,6 +88,21 @@
               </div>
 
               <div class="mb-3">
+                <%= f.label :model_name, "AI Model", class: "form-label small" %>
+                <%= f.select :model_name,
+                  options_for_select([
+                    ['Claude Sonnet 4 (default - balanced)', 'claude-sonnet-4'],
+                    ['Claude Haiku 4 (fast, cheap)', 'claude-haiku-4'],
+                    ['Claude Opus 4 (best quality)', 'claude-opus-4']
+                  ], agent_plugin.model_name || 'claude-sonnet-4'),
+                  {},
+                  class: 'form-select' %>
+                <small class="form-text text-muted">
+                  Choose model based on task complexity: Haiku for simple/fast, Sonnet for balanced, Opus for highest quality
+                </small>
+              </div>
+
+              <div class="mb-3">
                 <%= f.label :version, class: "form-label small" %>
                 <%= f.text_field :version, class: "form-control", placeholder: "1.0.0" %>
                 <small class="form-text text-muted">Semantic versioning (X.Y.Z)</small>

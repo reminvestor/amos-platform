@@ -117,29 +117,35 @@ class Agents::StandardPluginExecutor
   end
 
   def execute_with_bedrock(prompt, context_data)
+    # Determine which model to use
+    model_name = get_model_name
+
     bedrock_service = BedrockService.new(
       entity: context[:entity],
-      user: context[:user]
+      user: context[:user],
+      model: model_name
     )
 
     # Get available tools for this agent
     tools = get_available_tools
 
+    # Build bedrock call options
+    call_options = {
+      prompt: prompt,
+      max_tokens: config[:max_tokens] || 4096,
+      temperature: config[:temperature] || 0.7
+    }.merge(get_model_config)
+
     # Execute with tool calling if tools are available
     if tools.present?
       result = bedrock_service.call_with_tools(
-        prompt: prompt,
+        **call_options,
         tools: tools,
-        context: context_data,
-        max_tokens: config[:max_tokens] || 4096
+        context: context_data
       )
     else
       # Simple text generation without tools
-      result = bedrock_service.call(
-        prompt: prompt,
-        max_tokens: config[:max_tokens] || 4096,
-        temperature: config[:temperature] || 0.7
-      )
+      result = bedrock_service.call(**call_options)
     end
 
     result
@@ -170,5 +176,19 @@ class Agents::StandardPluginExecutor
   rescue => e
     Rails.logger.warn "Failed to load tools for agent: #{e.message}"
     []
+  end
+
+  def get_model_name
+    return nil unless context[:agent_plugin]
+
+    # Agent's model preference, or fall back to config
+    context[:agent_plugin].model_name || config[:model] || 'claude-sonnet-4'
+  end
+
+  def get_model_config
+    return {} unless context[:agent_plugin]
+
+    # Additional model-specific configuration
+    context[:agent_plugin].model_config || {}
   end
 end
