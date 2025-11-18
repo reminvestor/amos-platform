@@ -86,7 +86,7 @@ class Admin::ObservabilityController < Admin::BaseController
     @performance_chart = generate_performance_chart
 
     # Error rate chart
-    @error_rate_chart = generate_error_rate_chart
+    @error_rate_chart = generate_error_trend_chart
 
     # Slowest operations
     @slowest_workflows = find_slowest_operations("workflow_execution", 10)
