@@ -110,7 +110,18 @@ class AgentPlugin < ApplicationRecord
   end
 
   def instantiate(context = {})
-    # Dynamically load the agent class
+    # Use standard executor if no custom class specified
+    if agent_class.blank?
+      return Agents::StandardPluginExecutor.new(
+        role: role.to_sym,
+        capabilities: capability_names,
+        system_prompt: system_prompt,
+        config: configuration.merge(context.fetch(:config, {})),
+        context: context.merge(agent_plugin: self)
+      )
+    end
+
+    # Dynamically load the custom agent class
     klass = agent_class.constantize
 
     # Build agent with configuration
