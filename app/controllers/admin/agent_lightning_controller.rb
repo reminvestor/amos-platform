@@ -124,25 +124,26 @@ end
       # LLM call analysis (platform-wide)
       @llm_calls = AgentLightningTrace.where("created_at > ?", 30.days.ago).limit(500)
 
-      # Group by agent role (extract from context if available)
+      # Group by trace type (workflow phase/executor)
       @llm_by_role = []
       role_stats = {}
 
       @llm_calls.each do |trace|
-        role = trace.agent_role || 'unknown'
+        # Extract role from metadata or use trace_type
+        role = trace.metadata.dig('agent_role') || trace.trace_type || 'unknown'
         role_stats[role] ||= { count: 0, successful: 0, total_tokens: 0, total_cost: 0 }
         role_stats[role][:count] += 1
         role_stats[role][:successful] += 1 if trace.status == 'completed'
-        role_stats[role][:total_tokens] += trace.token_count || 0
-        role_stats[role][:total_cost] += trace.cost_estimate || 0
+        role_stats[role][:total_tokens] += trace.token_count.to_i
+        role_stats[role][:total_cost] += trace.cost_estimate.to_f
       end
 
       @llm_by_role = role_stats.map do |role, stats|
         {
           role: role,
           count: stats[:count],
-          success_rate: ((stats[:successful].to_f / stats[:count]) * 100).round(1),
-          avg_tokens: (stats[:total_tokens].to_f / stats[:count]).round(0),
+          success_rate: stats[:count] > 0 ? ((stats[:successful].to_f / stats[:count]) * 100).round(1) : 0,
+          avg_tokens: stats[:count] > 0 ? (stats[:total_tokens].to_f / stats[:count]).round(0) : 0,
           total_cost: stats[:total_cost].round(4)
         }
       end.sort_by { |r| r[:count] }.reverse
