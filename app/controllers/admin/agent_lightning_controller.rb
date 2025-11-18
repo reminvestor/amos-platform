@@ -95,10 +95,9 @@ last_job = all_training_jobs.order(created_at: :desc).first
 @last_training_status = last_job&.status
 @last_training_at = last_job&.completed_at || last_job&.created_at
 
-# Calculate platform-wide improvement trend
-recent_successful = all_training_jobs.where(status: 'completed').order(completed_at: :desc).limit(2)
-@improvement_trend = calculate_improvement_trend(recent_successful)
-@last_improvement = recent_successful.first&.improvement_score_change&.round(2)
+# Calculate platform-wide improvement trend (placeholder - TODO: implement)
+@improvement_trend = nil
+@last_improvement = recent_successful_jobs = all_training_jobs.where(status: 'completed').order(completed_at: :desc).limit(1).first&.improvement_score&.round(2)
 
 # Calculate traces available for training (across all entities)
 @total_available_traces = all_entities.sum do |entity|
@@ -479,17 +478,5 @@ end
     end
 
   end
-
-    def calculate_improvement_trend(recent_successful_jobs)
-      return nil if recent_successful_jobs.count < 2
-
-      jobs_array = recent_successful_jobs.to_a
-      latest = jobs_array[0]&.improvement_score_change || 0
-      previous = jobs_array[1]&.improvement_score_change || 0
-
-      return :improving if latest > previous
-      return :declining if latest < previous
-      :stable
-    end
 
 end
