@@ -47,7 +47,7 @@
           <% canvas_data[:documents].each do |doc| %>
             <div class="list-group-item list-group-item-action d-flex align-items-center py-3" style="cursor: pointer;"
                  data-asset-id="<%= doc[:id] %>"
-                 onclick="window.scoutController?.loadCanvas('document_viewer', {asset_id: <%= doc[:id] %>})">
+                 onclick="window.scoutLoadCanvas('document_viewer', {asset_id: <%= doc[:id] %>})">
               <div class="flex-grow-1">
                 <div class="d-flex align-items-center">
                   <i data-lucide="file" class="text-secondary me-2" style="width: 20px; height: 20px;" aria-hidden="true"></i>
