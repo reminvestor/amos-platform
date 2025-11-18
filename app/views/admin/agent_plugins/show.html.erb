@@ -1,0 +1,344 @@
+<div class="admin-page">
+  <div class="admin-header">
+    <div class="admin-header-content">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <%= link_to admin_agent_plugins_path, class: "text-muted" do %>
+          <i data-lucide="arrow-left" class="icon-sm"></i>
+        <% end %>
+        <h1 class="admin-title mb-0">
+          <i data-lucide="bot" class="icon-lg"></i>
+          <%= @agent_plugin.name %>
+        </h1>
+      </div>
+      <p class="admin-subtitle"><%= @agent_plugin.description %></p>
+    </div>
+    <div class="admin-header-actions">
+      <%= link_to test_admin_agent_plugin_path(@agent_plugin), class: "btn btn-info" do %>
+        <i data-lucide="play" class="icon-sm"></i>
+        Test Agent
+      <% end %>
+      <%= link_to edit_admin_agent_plugin_path(@agent_plugin), class: "btn btn-secondary" do %>
+        <i data-lucide="edit" class="icon-sm"></i>
+        Edit
+      <% end %>
+      <% if @agent_plugin.status == 'active' %>
+        <%= button_to deactivate_admin_agent_plugin_path(@agent_plugin), class: "btn btn-warning" do %>
+          <i data-lucide="pause" class="icon-sm"></i>
+          Deactivate
+        <% end %>
+      <% else %>
+        <%= button_to activate_admin_agent_plugin_path(@agent_plugin), class: "btn btn-success" do %>
+          <i data-lucide="check" class="icon-sm"></i>
+          Activate
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Status Banner -->
+  <div class="alert alert-<%= @agent_plugin.status == 'active' ? 'success' : @agent_plugin.status == 'draft' ? 'warning' : 'secondary' %> mb-4">
+    <div class="d-flex align-items-center gap-3">
+      <i data-lucide="<%= @agent_plugin.status == 'active' ? 'check-circle' : @agent_plugin.status == 'draft' ? 'edit' : 'archive' %>" class="icon-lg"></i>
+      <div>
+        <strong>Status: <%= @agent_plugin.status.titleize %></strong>
+        <div class="small">
+          <% if @agent_plugin.status == 'active' %>
+            This agent is active and will be used by the workflow engine
+          <% elsif @agent_plugin.status == 'draft' %>
+            This agent is in draft mode and won't be used in workflows
+          <% else %>
+            This agent is deprecated and should not be used
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Performance Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <%= render 'admin/shared/stat_card',
+        icon: 'zap',
+        value: @stats[:total_executions],
+        label: 'Total Executions',
+        color: 'primary' %>
+    </div>
+    <div class="col-md-3">
+      <%= render 'admin/shared/stat_card',
+        icon: 'trending-up',
+        value: "#{@stats[:success_rate]}%",
+        label: 'Success Rate',
+        color: @stats[:success_rate] > 90 ? 'success' : @stats[:success_rate] > 70 ? 'warning' : 'danger' %>
+    </div>
+    <div class="col-md-3">
+      <%= render 'admin/shared/stat_card',
+        icon: 'clock',
+        value: "#{@stats[:avg_duration_ms]}ms",
+        label: 'Avg Duration',
+        color: 'info' %>
+    </div>
+    <div class="col-md-3">
+      <%= render 'admin/shared/stat_card',
+        icon: 'cpu',
+        value: number_to_human(@stats[:total_tokens]),
+        label: 'Total Tokens',
+        color: 'secondary' %>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Left Column: Details -->
+    <div class="col-md-6">
+      <!-- Agent Details -->
+      <div class="admin-card mb-4">
+        <div class="admin-card-header">
+          <h3 class="admin-card-title">
+            <i data-lucide="info" class="icon-sm"></i>
+            Agent Details
+          </h3>
+        </div>
+        <div class="admin-card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-4">Slug</dt>
+            <dd class="col-sm-8"><code><%= @agent_plugin.slug %></code></dd>
+
+            <dt class="col-sm-4">Role</dt>
+            <dd class="col-sm-8"><span class="badge bg-secondary"><%= @agent_plugin.role.titleize %></span></dd>
+
+            <dt class="col-sm-4">Version</dt>
+            <dd class="col-sm-8"><%= @agent_plugin.version %></dd>
+
+            <dt class="col-sm-4">Priority</dt>
+            <dd class="col-sm-8">
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height: 10px;">
+                  <div class="progress-bar" role="progressbar" style="width: <%= @agent_plugin.priority %>%"></div>
+                </div>
+                <span><%= @agent_plugin.priority %>/100</span>
+              </div>
+            </dd>
+
+            <dt class="col-sm-4">Agent Class</dt>
+            <dd class="col-sm-8"><code class="small"><%= @agent_plugin.agent_class %></code></dd>
+
+            <dt class="col-sm-4">Scope</dt>
+            <dd class="col-sm-8">
+              <% if @agent_plugin.system_wide? %>
+                <span class="badge bg-info">System-wide</span>
+              <% else %>
+                <span class="badge bg-secondary">Entity-specific</span>
+              <% end %>
+            </dd>
+
+            <dt class="col-sm-4">Last Activated</dt>
+            <dd class="col-sm-8">
+              <%= @agent_plugin.last_activated_at ? l(@agent_plugin.last_activated_at, format: :short) : 'Never' %>
+            </dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Capabilities -->
+      <div class="admin-card mb-4">
+        <div class="admin-card-header">
+          <h3 class="admin-card-title">
+            <i data-lucide="zap" class="icon-sm"></i>
+            Capabilities (<%= @capabilities.count %>)
+          </h3>
+        </div>
+        <div class="admin-card-body">
+          <% if @capabilities.any? %>
+            <div class="list-group list-group-flush">
+              <% @capabilities.each do |capability| %>
+                <div class="list-group-item px-0">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="mb-1"><code><%= capability.capability_name %></code></h6>
+                      <% if capability.implementation_notes.present? %>
+                        <small class="text-muted"><%= capability.implementation_notes %></small>
+                      <% end %>
+                    </div>
+                  </div>
+                  <% if capability.contract_schema.present? && capability.contract_schema['inputs'] %>
+                    <div class="mt-2">
+                      <small class="text-muted d-block mb-1">Contract:</small>
+                      <pre class="bg-light p-2 rounded small mb-0"><%= JSON.pretty_generate(capability.contract_schema) %></pre>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted mb-0">No capabilities defined</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Tools -->
+      <div class="admin-card mb-4">
+        <div class="admin-card-header">
+          <h3 class="admin-card-title">
+            <i data-lucide="wrench" class="icon-sm"></i>
+            Tools (<%= @tools.count %>)
+          </h3>
+        </div>
+        <div class="admin-card-body">
+          <% if @tools.any? %>
+            <div class="d-flex flex-wrap gap-2">
+              <% @tools.each do |tool| %>
+                <span class="badge bg-<%= tool.required? ? 'danger' : 'secondary' %> fs-6">
+                  <i data-lucide="<%= tool.required? ? 'alert-circle' : 'tool' %>" class="icon-sm"></i>
+                  <%= tool.tool_name %>
+                </span>
+              <% end %>
+            </div>
+            <small class="text-muted d-block mt-2">
+              <i data-lucide="alert-circle" class="icon-sm"></i> = Required
+            </small>
+          <% else %>
+            <p class="text-muted mb-0">No tools configured</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Executions & Analytics -->
+    <div class="col-md-6">
+      <!-- Recent Executions -->
+      <div class="admin-card mb-4">
+        <div class="admin-card-header">
+          <h3 class="admin-card-title">
+            <i data-lucide="activity" class="icon-sm"></i>
+            Recent Executions
+          </h3>
+        </div>
+        <div class="admin-card-body">
+          <% if @executions.any? %>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Status</th>
+                    <th>Duration</th>
+                    <th>Tokens</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @executions.each do |execution| %>
+                    <tr>
+                      <td><small><%= time_ago_in_words(execution.created_at) %> ago</small></td>
+                      <td>
+                        <span class="badge bg-<%= execution.status == 'completed' ? 'success' : execution.status == 'failed' ? 'danger' : 'warning' %>">
+                          <%= execution.status %>
+                        </span>
+                      </td>
+                      <td><small><%= execution.duration_ms || '-' %>ms</small></td>
+                      <td><small><%= number_to_human(execution.tokens_used) %></small></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <p class="text-muted mb-0">No executions yet</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Template Bindings -->
+      <div class="admin-card mb-4">
+        <div class="admin-card-header">
+          <h3 class="admin-card-title">
+            <i data-lucide="git-branch" class="icon-sm"></i>
+            Workflow Bindings (<%= @template_bindings.count %>)
+          </h3>
+        </div>
+        <div class="admin-card-body">
+          <% if @template_bindings.any? %>
+            <div class="list-group list-group-flush">
+              <% @template_bindings.each do |binding| %>
+                <div class="list-group-item px-0">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong><%= binding.workflow_template.name %></strong>
+                      <div class="small text-muted">Phase: <%= binding.phase %></div>
+                    </div>
+                    <% if binding.required %>
+                      <span class="badge bg-danger">Required</span>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-muted mb-0">Not bound to any workflows</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Configuration -->
+      <% if @agent_plugin.configuration.present? %>
+        <div class="admin-card mb-4">
+          <div class="admin-card-header">
+            <h3 class="admin-card-title">
+              <i data-lucide="settings" class="icon-sm"></i>
+              Configuration
+            </h3>
+          </div>
+          <div class="admin-card-body">
+            <pre class="bg-light p-3 rounded mb-0"><%= JSON.pretty_generate(@agent_plugin.configuration) %></pre>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- System Prompt -->
+      <% if @agent_plugin.system_prompt.present? %>
+        <div class="admin-card mb-4">
+          <div class="admin-card-header">
+            <h3 class="admin-card-title">
+              <i data-lucide="message-square" class="icon-sm"></i>
+              System Prompt
+            </h3>
+          </div>
+          <div class="admin-card-body">
+            <pre class="bg-light p-3 rounded mb-0"><%= @agent_plugin.system_prompt['prompt'] || JSON.pretty_generate(@agent_plugin.system_prompt) %></pre>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Danger Zone -->
+  <div class="admin-card border-danger mt-4">
+    <div class="admin-card-header bg-danger text-white">
+      <h3 class="admin-card-title mb-0">
+        <i data-lucide="alert-triangle" class="icon-sm"></i>
+        Danger Zone
+      </h3>
+    </div>
+    <div class="admin-card-body">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h5>Delete this agent plugin</h5>
+          <p class="text-muted mb-0">Once deleted, all execution history will be lost. This action cannot be undone.</p>
+        </div>
+        <div class="col-md-4 text-end">
+          <%= button_to admin_agent_plugin_path(@agent_plugin),
+            method: :delete,
+            data: { confirm: "Are you sure you want to delete #{@agent_plugin.name}? This cannot be undone!" },
+            class: "btn btn-danger" do %>
+            <i data-lucide="trash-2" class="icon-sm"></i>
+            Delete Agent
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>

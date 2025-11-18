@@ -1,0 +1,194 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="bot"></i>
+      </div>
+      <div class="header-text">
+        <h1>Agent Plugins</h1>
+        <p>Create and manage AI agents</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to new_admin_agent_plugin_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>Create Agent</span>
+      <% end %>
+      <%= link_to analytics_admin_agent_plugins_path, class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="bar-chart-3"></i>
+        <span>Analytics</span>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="admin-stat-grid admin-mb-lg">
+    <%= render 'admin/shared/stat_card',
+      icon: 'layers',
+      value: @stats[:total],
+      label: 'Total Agents',
+      color: 'primary' %>
+
+    <%= render 'admin/shared/stat_card',
+      icon: 'check-circle',
+      value: @stats[:active],
+      label: 'Active',
+      color: 'success' %>
+
+    <%= render 'admin/shared/stat_card',
+      icon: 'file-text',
+      value: @stats[:draft],
+      label: 'Draft',
+      color: 'warning' %>
+
+    <%= render 'admin/shared/stat_card',
+      icon: 'globe',
+      value: @stats[:system_wide],
+      label: 'System-Wide',
+      color: 'info' %>
+  </div>
+
+  <!-- Filters -->
+  <div class="admin-card admin-mb-lg">
+    <div class="admin-card-body">
+      <%= form_with url: admin_agent_plugins_path, method: :get, class: "admin-flex admin-flex-gap-md admin-flex-wrap" do |f| %>
+        <%= f.select :status,
+          options_for_select([
+            ['All Statuses', 'all'],
+            ['Active', 'active'],
+            ['Draft', 'draft'],
+            ['Deprecated', 'deprecated']
+          ], @filter_status),
+          {},
+          class: 'admin-form-select',
+          style: 'min-width: 150px;' %>
+
+        <%= f.select :role,
+          options_for_select([
+            ['All Roles', ''],
+            ['Executor', 'executor'],
+            ['Planner', 'planner'],
+            ['Analyst', 'analyst'],
+            ['Verifier', 'verifier'],
+            ['Fixer', 'fixer'],
+            ['Custom', 'custom']
+          ], @filter_role),
+          {},
+          class: 'admin-form-select',
+          style: 'min-width: 150px;' %>
+
+        <%= f.text_field :search,
+          value: @search,
+          placeholder: 'Search agents...',
+          class: 'admin-form-input',
+          style: 'flex: 1; min-width: 200px;' %>
+
+        <%= f.submit 'Filter', class: 'admin-btn admin-btn-primary' %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Agent List -->
+  <div class="admin-card">
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Capabilities</th>
+            <th>Scope</th>
+            <th>Last Active</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+      <tbody>
+        <% if @agent_plugins.any? %>
+          <% @agent_plugins.each do |agent| %>
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <i data-lucide="bot" class="icon-sm text-primary"></i>
+                  <div>
+                    <strong><%= link_to agent.name, admin_agent_plugin_path(agent) %></strong>
+                    <div class="text-muted small"><%= agent.slug %></div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge bg-secondary"><%= agent.role.titleize %></span>
+              </td>
+              <td>
+                <span class="badge bg-<%= agent.status == 'active' ? 'success' : agent.status == 'draft' ? 'warning' : 'secondary' %>">
+                  <%= agent.status.titleize %>
+                </span>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="progress flex-grow-1" style="height: 8px; width: 60px;">
+                    <div class="progress-bar" role="progressbar" style="width: <%= agent.priority %>%"></div>
+                  </div>
+                  <small><%= agent.priority %></small>
+                </div>
+              </td>
+              <td>
+                <span class="badge bg-info"><%= agent.agent_capabilities.count %> capabilities</span>
+              </td>
+              <td>
+                <% if agent.system_wide? %>
+                  <i data-lucide="globe" class="icon-sm text-info" title="System-wide"></i>
+                <% else %>
+                  <i data-lucide="building" class="icon-sm text-muted" title="Entity-specific"></i>
+                <% end %>
+              </td>
+              <td>
+                <small class="text-muted">
+                  <%= agent.last_activated_at ? time_ago_in_words(agent.last_activated_at) + ' ago' : 'Never' %>
+                </small>
+              </td>
+              <td>
+                <div class="btn-group btn-group-sm">
+                  <%= link_to admin_agent_plugin_path(agent), class: "btn btn-sm btn-outline-primary", title: "View" do %>
+                    <i data-lucide="eye" class="icon-sm"></i>
+                  <% end %>
+                  <%= link_to edit_admin_agent_plugin_path(agent), class: "btn btn-sm btn-outline-secondary", title: "Edit" do %>
+                    <i data-lucide="edit" class="icon-sm"></i>
+                  <% end %>
+                  <%= link_to test_admin_agent_plugin_path(agent), class: "btn btn-sm btn-outline-info", title: "Test" do %>
+                    <i data-lucide="play" class="icon-sm"></i>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        <% else %>
+          <tr>
+            <td colspan="8" class="admin-text-center admin-text-muted admin-p-xl">
+              <i data-lucide="inbox" class="admin-icon-xl admin-mb-md" style="width: 48px; height: 48px; display: block; margin: 0 auto;"></i>
+              <p>No agent plugins found</p>
+              <%= link_to "Create your first agent", new_admin_agent_plugin_path, class: "admin-btn admin-btn-primary admin-mt-sm" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <% if @agent_plugins.any? %>
+    <div class="admin-pagination">
+      <%= paginate @agent_plugins %>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>
