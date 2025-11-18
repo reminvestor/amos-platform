@@ -1,314 +1,264 @@
-<div class="admin-header">
-  <h1>
-    <i data-lucide="layers" style="color: #A78BFA;"></i>
-    Parallel Task Monitor
-  </h1>
-  <div class="header-actions">
-    <select id="timeRangeFilter" onchange="updateFilters()" class="admin-select">
-      <option value="1h" <%= 'selected' if @time_range == '1h' %>>Last Hour</option>
-      <option value="24h" <%= 'selected' if @time_range == '24h' %>>Last 24 Hours</option>
-      <option value="7d" <%= 'selected' if @time_range == '7d' %>>Last 7 Days</option>
-      <option value="all" <%= 'selected' if @time_range == 'all' %>>All Time</option>
-    </select>
-    <select id="statusFilter" onchange="updateFilters()" class="admin-select">
-      <option value="all" <%= 'selected' if @filter == 'all' %>>All Tasks</option>
-      <option value="active" <%= 'selected' if @filter == 'active' %>>Active</option>
-      <option value="completed" <%= 'selected' if @filter == 'completed' %>>Completed</option>
-      <option value="failed" <%= 'selected' if @filter == 'failed' %>>Failed</option>
-      <option value="voice" <%= 'selected' if @filter == 'voice' %>>Voice Tasks</option>
-    </select>
-  </div>
-</div>
+<div style="padding: 2rem;">
+  <!-- Page Header -->
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+        <i data-lucide="layers"></i>
+      </div>
+      <div class="header-text">
+        <h1>Parallel Task Monitor</h1>
+        <p>Real-time monitoring of concurrent task execution</p>
+      </div>
+    </div>
 
-<!-- Statistics Cards -->
-<div class="stats-grid">
-  <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(59, 130, 246, 0.2);">
-      <i data-lucide="activity" style="color: #3B82F6;"></i>
-    </div>
-    <div class="stat-content">
-      <div class="stat-value"><%= @stats[:total] %></div>
-      <div class="stat-label">Total Tasks</div>
-    </div>
-  </div>
-  
-  <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(251, 191, 36, 0.2);">
-      <i data-lucide="loader" style="color: #FCD34D;"></i>
-    </div>
-    <div class="stat-content">
-      <div class="stat-value"><%= @stats[:active] %></div>
-      <div class="stat-label">Active</div>
-    </div>
-  </div>
-  
-  <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(74, 222, 128, 0.2);">
-      <i data-lucide="check-circle" style="color: #4ADE80;"></i>
-    </div>
-    <div class="stat-content">
-      <div class="stat-value"><%= @stats[:success_rate] %>%</div>
-      <div class="stat-label">Success Rate</div>
-    </div>
-  </div>
-  
-  <div class="stat-card">
-    <div class="stat-icon" style="background: rgba(167, 139, 250, 0.2);">
-      <i data-lucide="clock" style="color: #A78BFA;"></i>
-    </div>
-    <div class="stat-content">
-      <div class="stat-value"><%= @stats[:avg_duration] %>s</div>
-      <div class="stat-label">Avg Duration</div>
-    </div>
-  </div>
-</div>
-
-<!-- Tasks Table -->
-<div class="admin-card">
-  <div class="table-responsive">
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Type</th>
-          <th>User</th>
-          <th>Description</th>
-          <th>Status</th>
-          <th>Progress</th>
-          <th>Dependencies</th>
-          <th>Duration</th>
-          <th>Created</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @tasks.each do |task| %>
-          <tr>
-            <td>
-              <%= link_to "##{task.id}", admin_parallel_task_path(task), 
-                  class: "text-link" %>
-            </td>
-            <td>
-              <span class="badge badge-<%= task_type_color(task.task_type) %>">
-                <%= task.task_type&.humanize || 'Unknown' %>
-              </span>
-            </td>
-            <td><%= task.user.email %></td>
-            <td class="truncate" style="max-width: 300px;">
-              <%= task.metadata['description'] || '-' %>
-            </td>
-            <td>
-              <span class="status-badge status-<%= task.status %>">
-                <%= task.status.capitalize %>
-              </span>
-            </td>
-            <td>
-              <div class="progress-cell">
-                <div class="mini-progress-bar">
-                  <div class="mini-progress-fill" style="width: <%= task.progress || 0 %>%"></div>
-                </div>
-                <span class="progress-text"><%= task.progress || 0 %>%</span>
-              </div>
-            </td>
-            <td>
-              <% if task.depends_on_tasks.any? %>
-                <span class="dependency-count">
-                  <%= task.depends_on_tasks.count %> deps
-                </span>
-              <% else %>
-                <span class="text-muted">None</span>
-              <% end %>
-            </td>
-            <td>
-              <% if task.started_at && task.status == 'completed' %>
-                <%= format_duration(task.updated_at - task.started_at) %>
-              <% elsif task.started_at %>
-                <%= format_duration(Time.current - task.started_at) %>
-              <% else %>
-                -
-              <% end %>
-            </td>
-            <td><%= task.created_at.strftime('%m/%d %H:%M') %></td>
-            <td>
-              <div class="action-buttons">
-                <%= link_to admin_parallel_task_path(task), 
-                    class: "btn-icon", title: "View details" do %>
-                  <i data-lucide="eye"></i>
-                <% end %>
-                
-                <% if task.status == 'active' %>
-                  <%= button_to cancel_admin_parallel_task_path(task),
-                      method: :post,
-                      class: "btn-icon text-warning",
-                      title: "Cancel task",
-                      data: { confirm: "Cancel this task?" } do %>
-                    <i data-lucide="x-circle"></i>
-                  <% end %>
-                <% elsif task.status.in?(['failed', 'cancelled']) %>
-                  <%= button_to retry_admin_parallel_task_path(task),
-                      method: :post,
-                      class: "btn-icon text-primary",
-                      title: "Retry task" do %>
-                    <i data-lucide="refresh-cw"></i>
-                  <% end %>
-                <% end %>
-              </div>
-            </td>
-          </tr>
+    <div class="header-actions">
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <%= link_to admin_parallel_tasks_path(time_range: '1h', filter: @filter), class: "admin-btn admin-btn-sm #{@time_range == '1h' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>1 Hour</span>
         <% end %>
-      </tbody>
-    </table>
+        <%= link_to admin_parallel_tasks_path(time_range: '24h', filter: @filter), class: "admin-btn admin-btn-sm #{@time_range == '24h' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>24 Hours</span>
+        <% end %>
+        <%= link_to admin_parallel_tasks_path(time_range: '7d', filter: @filter), class: "admin-btn admin-btn-sm #{@time_range == '7d' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>7 Days</span>
+        <% end %>
+        <%= link_to admin_parallel_tasks_path(time_range: 'all', filter: @filter), class: "admin-btn admin-btn-sm #{@time_range == 'all' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>All Time</span>
+        <% end %>
+      </div>
+    </div>
   </div>
-  
-  <% if @tasks.empty? %>
-    <div class="empty-state">
-      <i data-lucide="inbox" style="width: 3rem; height: 3rem; color: #64748B;"></i>
-      <p>No parallel tasks found</p>
+
+  <!-- Statistics Cards -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="activity" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Tasks</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@stats[:total]) %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="loader" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Active</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@stats[:active]) %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Success Rate</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:success_rate] %>%</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="clock" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Avg Duration</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:avg_duration] %>s</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tasks Table -->
+  <div class="admin-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h3 class="card-title" style="margin: 0;">
+        <i data-lucide="list" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Task Execution Queue
+      </h3>
+
+      <div class="admin-tabs">
+        <%= link_to "All", admin_parallel_tasks_path(time_range: @time_range),
+                    class: "admin-tab #{@filter == 'all' || @filter.nil? ? 'admin-tab-active' : ''}" %>
+        <%= link_to "Active", admin_parallel_tasks_path(time_range: @time_range, filter: 'active'),
+                    class: "admin-tab #{@filter == 'active' ? 'admin-tab-active' : ''}" %>
+        <%= link_to "Completed", admin_parallel_tasks_path(time_range: @time_range, filter: 'completed'),
+                    class: "admin-tab #{@filter == 'completed' ? 'admin-tab-active' : ''}" %>
+        <%= link_to "Failed", admin_parallel_tasks_path(time_range: @time_range, filter: 'failed'),
+                    class: "admin-tab #{@filter == 'failed' ? 'admin-tab-active' : ''}" %>
+        <%= link_to "Voice", admin_parallel_tasks_path(time_range: @time_range, filter: 'voice'),
+                    class: "admin-tab #{@filter == 'voice' ? 'admin-tab-active' : ''}" %>
+      </div>
+    </div>
+
+    <% if @tasks.any? %>
+      <div style="overflow-x: auto;">
+        <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Type</th>
+            <th>User</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Progress</th>
+            <th>Dependencies</th>
+            <th>Duration</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @tasks.each do |task| %>
+            <tr>
+              <td>
+                <code style="color: #22D3EE;"><%= link_to "##{task.id}", admin_parallel_task_path(task), style: "color: #22D3EE; text-decoration: none;" %></code>
+              </td>
+              <td>
+                <% type_badge = case task.task_type
+                     when 'voice_immediate' then 'admin-badge-offline'
+                     when 'voice_followup' then 'admin-badge-warning'
+                     when 'analysis' then 'admin-badge-cyan'
+                     else 'admin-badge-default'
+                   end %>
+                <span class="admin-badge <%= type_badge %>">
+                  <%= task.task_type&.humanize || 'Unknown' %>
+                </span>
+              </td>
+              <td style="color: #94A3B8;"><%= task.user.email %></td>
+              <td style="color: white; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <%= task.metadata['description'] || '-' %>
+              </td>
+              <td>
+                <% status_badge = case task.status
+                     when 'active' then 'admin-badge-warning'
+                     when 'completed' then 'admin-badge-online'
+                     when 'failed' then 'admin-badge-offline'
+                     when 'cancelled' then 'admin-badge-default'
+                     else 'admin-badge-default'
+                   end %>
+                <span class="admin-badge <%= status_badge %>">
+                  <%= task.status.upcase %>
+                </span>
+              </td>
+              <td>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <div style="width: 60px; height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden;">
+                    <div style="height: 100%; background: linear-gradient(90deg, #7C3AED 0%, #A78BFA 100%); width: <%= task.progress || 0 %>%; transition: width 0.3s ease;"></div>
+                  </div>
+                  <span style="font-size: 0.75rem; color: #94A3B8;"><%= task.progress || 0 %>%</span>
+                </div>
+              </td>
+              <td>
+                <% if task.depends_on_tasks.any? %>
+                  <span style="font-size: 0.75rem; padding: 0.25rem 0.5rem; background: rgba(167, 139, 250, 0.2); color: #A78BFA; border-radius: 0.25rem;">
+                    <%= task.depends_on_tasks.count %> deps
+                  </span>
+                <% else %>
+                  <span style="color: #64748B;">None</span>
+                <% end %>
+              </td>
+              <td style="color: #94A3B8;">
+                <% if task.started_at && task.status == 'completed' %>
+                  <%= format_duration(task.updated_at - task.started_at) %>
+                <% elsif task.started_at %>
+                  <%= format_duration(Time.current - task.started_at) %>
+                <% else %>
+                  -
+                <% end %>
+              </td>
+              <td style="color: #94A3B8; white-space: nowrap;"><%= task.created_at.strftime('%m/%d %H:%M') %></td>
+              <td>
+                <div style="display: flex; gap: 0.5rem;">
+                  <%= link_to admin_parallel_task_path(task),
+                      class: "admin-btn admin-btn-sm admin-btn-outline",
+                      title: "View details",
+                      style: "padding: 0.25rem 0.5rem;" do %>
+                    <i data-lucide="eye" style="width: 1rem; height: 1rem;"></i>
+                  <% end %>
+
+                  <% if task.status == 'active' %>
+                    <%= button_to cancel_admin_parallel_task_path(task),
+                        method: :post,
+                        class: "admin-btn admin-btn-sm",
+                        style: "background: rgba(234, 179, 8, 0.2); border-color: rgba(234, 179, 8, 0.3); color: rgb(250, 204, 21); padding: 0.25rem 0.5rem;",
+                        title: "Cancel task",
+                        data: { confirm: "Cancel this task?" } do %>
+                      <i data-lucide="x-circle" style="width: 1rem; height: 1rem;"></i>
+                    <% end %>
+                  <% elsif task.status.in?(['failed', 'cancelled']) %>
+                    <%= button_to retry_admin_parallel_task_path(task),
+                        method: :post,
+                        class: "admin-btn admin-btn-sm admin-btn-primary",
+                        style: "padding: 0.25rem 0.5rem;",
+                        title: "Retry task" do %>
+                      <i data-lucide="refresh-cw" style="width: 1rem; height: 1rem;"></i>
+                    <% end %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @tasks.count >= 100 %>
+      <p style="color: #64748B; text-align: center; margin-top: 1.5rem; margin-bottom: 0; font-size: 0.875rem;">
+        Showing first 100 tasks. Use filters to narrow results.
+      </p>
+    <% end %>
+  <% else %>
+    <div class="admin-empty-state">
+      <div class="empty-icon">
+        <i data-lucide="inbox"></i>
+      </div>
+      <h3>No tasks found</h3>
+      <p>No parallel tasks match the selected filters</p>
+    </div>
+  <% end %>
+  </div>
+
+  <!-- Pagination -->
+  <% if @tasks.any? && @tasks.total_pages > 1 %>
+    <div style="margin-top: 2rem;">
+      <%= paginate @tasks %>
     </div>
   <% end %>
 </div>
 
-<!-- Pagination -->
-<div class="pagination-container">
-  <%= paginate @tasks %>
-</div>
-
-<style>
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.stat-card {
-  background: #1A1F35;
-  border: 1px solid #2D3748;
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.stat-icon {
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stat-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #FFFFFF;
-}
-
-.stat-label {
-  color: #94A3B8;
-  font-size: 0.875rem;
-}
-
-.progress-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.mini-progress-bar {
-  width: 60px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.mini-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #7C3AED 0%, #A78BFA 100%);
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  font-size: 0.75rem;
-  color: #94A3B8;
-}
-
-.dependency-count {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  background: rgba(167, 139, 250, 0.2);
-  color: #A78BFA;
-  border-radius: 0.25rem;
-}
-
-.status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-active {
-  background: rgba(251, 191, 36, 0.2);
-  color: #FCD34D;
-}
-
-.status-completed {
-  background: rgba(74, 222, 128, 0.2);
-  color: #4ADE80;
-}
-
-.status-failed {
-  background: rgba(239, 68, 68, 0.2);
-  color: #EF4444;
-}
-
-.status-cancelled {
-  background: rgba(100, 116, 139, 0.2);
-  color: #94A3B8;
-}
-
-.badge-voice_immediate {
-  background: rgba(239, 68, 68, 0.2);
-  color: #EF4444;
-}
-
-.badge-voice_followup {
-  background: rgba(251, 191, 36, 0.2);
-  color: #FCD34D;
-}
-
-.badge-analysis {
-  background: rgba(59, 130, 246, 0.2);
-  color: #3B82F6;
-}
-
-.badge-background {
-  background: rgba(100, 116, 139, 0.2);
-  color: #94A3B8;
-}
-</style>
-
+<!-- Initialize Lucide Icons and Auto-refresh -->
 <script>
-function updateFilters() {
-  const timeRange = document.getElementById('timeRangeFilter').value;
-  const status = document.getElementById('statusFilter').value;
-  
-  const params = new URLSearchParams({
-    time_range: timeRange,
-    filter: status
-  });
-  
-  window.location.href = `<%= admin_parallel_tasks_path %>?${params.toString()}`;
-}
+  function initializeParallelTasksPage() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
 
-// Auto-refresh for active tasks
-<% if @stats[:active] > 0 %>
-setTimeout(() => {
-  window.location.reload();
-}, 10000); // Refresh every 10 seconds when there are active tasks
-<% end %>
+  // Run on both DOMContentLoaded and turbo:load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeParallelTasksPage);
+  } else {
+    initializeParallelTasksPage();
+  }
+
+  document.addEventListener('turbo:load', initializeParallelTasksPage);
+
+  // Auto-refresh for active tasks
+  <% if @stats[:active] > 0 %>
+  setTimeout(() => {
+    window.location.reload();
+  }, 10000); // Refresh every 10 seconds when there are active tasks
+  <% end %>
 </script>
