@@ -116,7 +116,7 @@ end
 
       # Last training job details
       @last_training_job = all_training_jobs.where(status: 'completed').order(completed_at: :desc).first
-      @recommendations = @last_training_job&.recommendations || []
+      @recommendations = @last_training_job&.training_results&.dig('recommendations') || []
 
       # Training history
       @training_history = all_training_jobs.where(status: 'completed').order(completed_at: :desc).limit(10)
