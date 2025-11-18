@@ -106,6 +106,78 @@ last_job = all_training_jobs.order(created_at: :desc).first
   traces.where(status: ['completed', 'failed'], included_in_training: false)
         .where.not(reward_signal: nil).count
 end
+
+      # Additional trace statistics
+      @recent_traces = all_traces
+      @completed_traces = AgentLightningTrace.where(status: 'completed').count
+      @failed_traces = AgentLightningTrace.where(status: 'failed').count
+      @traces_with_rewards = AgentLightningTrace.where.not(reward_signal: nil).count
+      @avg_duration = all_traces.average(:duration_ms)&.round(0) || 0
+
+      # Last training job details
+      @last_training_job = all_training_jobs.where(status: 'completed').order(completed_at: :desc).first
+      @recommendations = @last_training_job&.recommendations || []
+
+      # Training history
+      @training_history = all_training_jobs.where(status: 'completed').order(completed_at: :desc).limit(10)
+
+      # LLM call analysis (platform-wide)
+      @llm_calls = AgentLightningTrace.where("created_at > ?", 30.days.ago).limit(500)
+
+      # Group by agent role (extract from context if available)
+      @llm_by_role = []
+      role_stats = {}
+
+      @llm_calls.each do |trace|
+        role = trace.agent_role || 'unknown'
+        role_stats[role] ||= { count: 0, successful: 0, total_tokens: 0, total_cost: 0 }
+        role_stats[role][:count] += 1
+        role_stats[role][:successful] += 1 if trace.status == 'completed'
+        role_stats[role][:total_tokens] += trace.token_count || 0
+        role_stats[role][:total_cost] += trace.cost_estimate || 0
+      end
+
+      @llm_by_role = role_stats.map do |role, stats|
+        {
+          role: role,
+          count: stats[:count],
+          success_rate: ((stats[:successful].to_f / stats[:count]) * 100).round(1),
+          avg_tokens: (stats[:total_tokens].to_f / stats[:count]).round(0),
+          total_cost: stats[:total_cost].round(4)
+        }
+      end.sort_by { |r| r[:count] }.reverse
+
+      # Tool execution analysis (extract from intermediate_steps)
+      tool_data = {}
+      @llm_calls.each do |trace|
+        next unless trace.intermediate_steps.is_a?(Array)
+
+        trace.intermediate_steps.each do |step|
+          tool_name = step['tool'] || step[:tool]
+          next unless tool_name
+
+          tool_data[tool_name] ||= { count: 0, successes: 0 }
+          tool_data[tool_name][:count] += 1
+          tool_data[tool_name][:successes] += 1 if step['status'] == 'success' || step[:status] == 'success'
+        end
+      end
+
+      if tool_data.any?
+        @top_tools = tool_data.map do |name, data|
+          {
+            name: name,
+            count: data[:count],
+            success_rate: ((data[:successes].to_f / data[:count]) * 100).round(1)
+          }
+        end.sort_by { |t| t[:count] }.reverse.first(10)
+
+        total_tool_calls = tool_data.values.sum { |d| d[:count] }
+        total_successes = tool_data.values.sum { |d| d[:successes] }
+        @tool_success_rate = ((total_successes.to_f / total_tool_calls) * 100).round(1)
+      else
+        @top_tools = []
+        @tool_success_rate = 0
+      end
     end
 
     def train_now
