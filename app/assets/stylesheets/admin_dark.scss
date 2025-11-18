@@ -1235,17 +1235,17 @@ select.form-control {
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  
+
   &:hover {
     border-color: $admin-accent-end;
   }
-  
+
   &:focus {
     outline: none;
     border-color: $admin-accent-end;
     box-shadow: 0 0 0 3px rgba($admin-accent-end, 0.1);
   }
-  
+
   &::file-selector-button {
     padding: 0.375rem 0.75rem;
     margin-right: 0.75rem;
@@ -1256,9 +1256,145 @@ select.form-control {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
-    
+
     &:hover {
       background: $admin-accent-end;
     }
   }
+}
+
+// Additional Utility Classes for UX improvements
+.admin-badge-cyan {
+  background-color: rgba(34, 211, 238, 0.1);
+  color: #22D3EE;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+// Icon size utilities
+.admin-icon-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.admin-icon-md {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.admin-icon-lg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.admin-icon-xl {
+  width: 2rem;
+  height: 2rem;
+}
+
+// Stat card icon backgrounds
+.admin-stat-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.purple-gradient {
+    background: linear-gradient(135deg, $admin-accent-start 0%, $admin-accent-end 100%);
+
+    i, svg {
+      color: white;
+    }
+  }
+
+  &.success {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+
+    i, svg {
+      color: rgb(74, 222, 128);
+    }
+  }
+
+  &.error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+
+    i, svg {
+      color: rgb(248, 113, 113);
+    }
+  }
+
+  &.warning {
+    background: rgba(234, 179, 8, 0.1);
+    border: 1px solid rgba(234, 179, 8, 0.2);
+
+    i, svg {
+      color: rgb(250, 204, 21);
+    }
+  }
+
+  &.info {
+    background: rgba(34, 211, 238, 0.1);
+    border: 1px solid rgba(34, 211, 238, 0.2);
+
+    i, svg {
+      color: #22D3EE;
+    }
+  }
+
+  i, svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+// Stat card text
+.admin-stat-label {
+  color: $admin-text-secondary;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.admin-stat-value {
+  color: white;
+  font-size: 1.875rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+// Grid layouts for stats
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.admin-content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+// Padding utilities
+.admin-p-xl { padding: 2rem; }
+.admin-p-lg { padding: 1.5rem; }
+.admin-mb-xl { margin-bottom: 2rem; }
+.admin-mb-lg { margin-bottom: 1.5rem; }
+.admin-mt-xl { margin-top: 2rem; }
+
+// Accessibility - screen reader only
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }

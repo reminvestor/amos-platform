@@ -1,0 +1,171 @@
+// Admin Utility Classes
+@import 'variables';
+
+// Layout
+.admin-p-xl { padding: $admin-spacing-xl; }
+.admin-p-lg { padding: $admin-spacing-lg; }
+.admin-p-md { padding: $admin-spacing-md; }
+.admin-p-sm { padding: $admin-spacing-sm; }
+
+.admin-mb-xl { margin-bottom: $admin-spacing-xl; }
+.admin-mb-lg { margin-bottom: $admin-spacing-lg; }
+.admin-mb-md { margin-bottom: $admin-spacing-md; }
+.admin-mb-sm { margin-bottom: $admin-spacing-sm; }
+
+.admin-mt-xl { margin-top: $admin-spacing-xl; }
+.admin-mt-lg { margin-top: $admin-spacing-lg; }
+
+// Flexbox
+.admin-flex-gap-sm {
+  display: flex;
+  gap: $admin-spacing-sm;
+}
+
+.admin-flex-gap-md {
+  display: flex;
+  gap: $admin-spacing-md;
+}
+
+.admin-flex-gap-lg {
+  display: flex;
+  gap: $admin-spacing-lg;
+}
+
+.admin-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+// Grid Layouts
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $admin-spacing-lg;
+  margin-bottom: $admin-spacing-xl;
+}
+
+.admin-content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: $admin-spacing-lg;
+  margin-bottom: $admin-spacing-xl;
+}
+
+// Text Colors
+.admin-text-primary { color: $admin-text-primary; }
+.admin-text-secondary { color: $admin-text-secondary; }
+.admin-text-muted { color: $admin-text-muted; }
+.admin-text-success { color: $admin-green-success; }
+.admin-text-error { color: $admin-red-error; }
+.admin-text-warning { color: $admin-yellow-warning; }
+.admin-text-info { color: $admin-cyan-info; }
+
+// Font Sizes
+.admin-text-xs { font-size: $admin-text-xs; }
+.admin-text-sm { font-size: $admin-text-sm; }
+.admin-text-lg { font-size: $admin-text-lg; }
+.admin-text-xl { font-size: $admin-text-xl; }
+.admin-text-2xl { font-size: $admin-text-2xl; }
+.admin-text-3xl { font-size: $admin-text-3xl; }
+
+// Icon Sizes
+.admin-icon-sm {
+  width: $admin-icon-sm;
+  height: $admin-icon-sm;
+}
+
+.admin-icon-md {
+  width: $admin-icon-md;
+  height: $admin-icon-md;
+}
+
+.admin-icon-lg {
+  width: $admin-icon-lg;
+  height: $admin-icon-lg;
+}
+
+.admin-icon-xl {
+  width: $admin-icon-xl;
+  height: $admin-icon-xl;
+}
+
+// Stat Card Icon Backgrounds
+.admin-stat-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: $admin-radius-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.purple-gradient {
+    background: $admin-purple-gradient;
+  }
+
+  &.success {
+    background: $admin-green-bg;
+    border: 1px solid $admin-green-border;
+  }
+
+  &.error {
+    background: $admin-red-bg;
+    border: 1px solid $admin-red-border;
+  }
+
+  &.warning {
+    background: $admin-yellow-bg;
+    border: 1px solid $admin-yellow-border;
+  }
+
+  &.info {
+    background: $admin-cyan-bg;
+    border: 1px solid $admin-cyan-border;
+  }
+}
+
+// Stat Card Text
+.admin-stat-label {
+  color: $admin-text-secondary;
+  font-size: $admin-text-sm;
+  margin: 0;
+}
+
+.admin-stat-value {
+  color: $admin-text-primary;
+  font-size: $admin-text-3xl;
+  font-weight: 600;
+  margin: 0;
+}
+
+// Overflow
+.admin-overflow-auto {
+  overflow-x: auto;
+}
+
+// Text Truncation
+.admin-text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Center Text
+.admin-text-center {
+  text-align: center;
+}
+
+.admin-text-right {
+  text-align: right;
+}
+
+// No Wrap
+.admin-nowrap {
+  white-space: nowrap;
+}
