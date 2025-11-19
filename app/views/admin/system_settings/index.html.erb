@@ -1,21 +1,21 @@
 <div class="admin-content">
-  <div style="padding: 2rem;">
+  <div class="admin-p-xl">
     <div class="container-fluid py-3">
   <div class="row mb-3">
     <div class="col-12">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h4 mb-0">
-          <i data-lucide="settings" class="me-2"></i>
+          <%= admin_icon('settings', size: :md, class: 'me-2') %>
           System Settings
         </h1>
         <%= button_to "Reset to ENV Defaults", reset_defaults_admin_system_settings_path, method: :post, class: "btn btn-sm btn-warning", data: { confirm: "Reset all settings to environment variable values?" } %>
       </div>
-      <p class="text-muted mb-0" style="font-size: 0.9rem;">Manage system-level API keys and configuration</p>
+      <p class="text-muted mb-0 admin-text-sm">Manage system-level API keys and configuration</p>
     </div>
   </div>
 
-  <div class="alert alert-warning mb-3 py-2" style="font-size: 0.85rem;">
-    <i data-lucide="alert-triangle" class="me-2"></i>
+  <div class="alert alert-warning mb-3 py-2 admin-text-sm">
+    <%= admin_icon('alert-triangle', size: :sm, class: 'me-2') %>
     <strong>Warning:</strong> These settings control critical system functionality. Changes take effect immediately. Incorrect values may break the application.
   </div>
 
@@ -28,7 +28,7 @@
       <!-- <%= category_name %> Settings -->
       <div class="card mb-3">
         <div class="card-header <%= category_color(category_key) %> text-white p-2">
-          <h5 class="mb-0" style="font-size: 0.95rem;">
+          <h5 class="mb-0 admin-text-base">
             <%= category_icon(category_key) %>
             <%= category_name %>
           </h5>
@@ -38,10 +38,10 @@
             <% settings.each do |setting| %>
               <div class="col-sm-6 col-md-4 col-lg-3">
                 <div class="mb-2">
-                  <label class="form-label mb-1" style="font-size: 0.85rem;">
+                  <label class="form-label mb-1 admin-text-sm">
                     <strong><%= setting.key %></strong>
                     <% if setting.description.present? %>
-                      <br><small class="text-muted" style="font-size: 0.75rem;"><%= setting.description %></small>
+                      <br><small class="text-muted admin-text-xs"><%= setting.description %></small>
                     <% end %>
                   </label>
 
@@ -49,45 +49,42 @@
                     <div class="input-group input-group-sm">
                       <%= password_field_tag "settings[#{setting.id}]",
                           setting.effective_value,
-                          class: "form-control font-monospace password-field",
+                          class: "form-control font-monospace password-field admin-text-sm",
                           placeholder: "Enter #{setting.key}",
                           autocomplete: "off",
-                          style: "font-size: 0.8rem;",
                           id: "setting_#{setting.id}" %>
-                      <button class="btn btn-outline-secondary toggle-password" type="button"
-                              data-target="setting_<%= setting.id %>" style="padding: 0.25rem 0.5rem;">
-                        <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                      <button class="btn btn-outline-secondary toggle-password py-1 px-2" type="button"
+                              data-target="setting_<%= setting.id %>">
+                        <%= admin_icon('eye', size: :sm) %>
                       </button>
                     </div>
                     <% if setting.effective_value.present? %>
-                      <small class="text-muted" style="font-size: 0.7rem;">Current: <%= setting.masked_value %></small>
+                      <small class="text-muted admin-text-xs">Current: <%= setting.masked_value %></small>
                     <% end %>
                   <% else %>
                     <%= text_field_tag "settings[#{setting.id}]",
                         setting.effective_value,
-                        class: "form-control form-control-sm font-monospace",
-                        placeholder: "Enter #{setting.key}",
-                        style: "font-size: 0.8rem;" %>
+                        class: "form-control form-control-sm font-monospace admin-text-sm",
+                        placeholder: "Enter #{setting.key}" %>
                   <% end %>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center mt-1">
                   <div>
                     <% if setting.using_env_fallback? %>
-                      <span class="badge bg-info" title="Using environment variable" style="font-size: 0.65rem;">ENV</span>
+                      <span class="badge bg-info admin-text-xs" title="Using environment variable">ENV</span>
                     <% elsif setting.effective_value.present? %>
-                      <span class="badge bg-success" title="Set in database" style="font-size: 0.65rem;">DB</span>
+                      <span class="badge bg-success admin-text-xs" title="Set in database">DB</span>
                     <% else %>
-                      <span class="badge bg-warning" title="Not configured" style="font-size: 0.65rem;">Empty</span>
+                      <span class="badge bg-warning admin-text-xs" title="Not configured">Empty</span>
                     <% end %>
                   </div>
                   <div>
                     <% if %w[OPENAI_API_KEY DEEPGRAM_API_KEY GITHUB_TOKEN].include?(setting.key) %>
                       <button type="button"
-                              class="btn btn-sm btn-outline-primary py-0 px-2 test-key-btn"
-                              data-setting-id="<%= setting.id %>"
-                              style="font-size: 0.7rem;">
-                        <i data-lucide="check-circle" style="width: 12px; height: 12px;"></i>
+                              class="btn btn-sm btn-outline-primary py-0 px-2 test-key-btn admin-text-xs"
+                              data-setting-id="<%= setting.id %>">
+                        <%= admin_icon('check-circle', size: :sm) %>
                         <span class="ms-1">Test</span>
                       </button>
                     <% end %>

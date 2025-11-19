@@ -27,19 +27,19 @@
   <% end %>
 
   <%# Main Content %>
-  <div style="padding: 2rem;">
+  <div class="admin-p-xl">
     <%# Page Header %>
     <div class="admin-page-header">
       <div class="header-left">
         <div class="header-icon">
           <% if @pipeline_connection.system_type == 'github' %>
-            <i data-lucide="github"></i>
+            <%= admin_icon('github', size: :lg) %>
           <% elsif @pipeline_connection.system_type == 'jira' %>
-            <i data-lucide="ticket"></i>
+            <%= admin_icon('ticket', size: :lg) %>
           <% elsif @pipeline_connection.system_type == 'azure_devops' || @pipeline_connection.system_type == 'azure_repos' %>
-            <i data-lucide="cloud"></i>
+            <%= admin_icon('cloud', size: :lg) %>
           <% else %>
-            <i data-lucide="link"></i>
+            <%= admin_icon('link', size: :lg) %>
           <% end %>
         </div>
         <div class="header-text">
@@ -50,22 +50,22 @@
 
       <div class="header-actions">
         <%= link_to edit_admin_pipeline_connection_path(@pipeline_connection), class: 'admin-btn admin-btn-outline' do %>
-          <i data-lucide="pencil"></i>
+          <%= admin_icon('pencil', size: :sm) %>
           <span>Edit</span>
         <% end %>
         <%= button_to test_admin_pipeline_connection_path(@pipeline_connection), method: :post, class: 'admin-btn admin-btn-primary' do %>
-          <i data-lucide="test-tube-2"></i>
+          <%= admin_icon('test-tube-2', size: :sm) %>
           <span>Test Connection</span>
         <% end %>
         <%= button_to admin_pipeline_connection_path(@pipeline_connection), method: :delete, data: { turbo_confirm: 'Are you sure?' }, class: 'admin-btn admin-btn-danger' do %>
-          <i data-lucide="trash-2"></i>
+          <%= admin_icon('trash-2', size: :sm) %>
           <span>Delete</span>
         <% end %>
       </div>
     </div>
 
     <%# Cards Grid %>
-    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-grid-2 admin-mb-xl">
       <%# Connection Details Card %>
       <div class="admin-card">
         <h3 class="card-title">Connection Details</h3>
@@ -88,7 +88,7 @@
 
           <div class="detail-item">
             <div class="detail-label">
-              <i data-lucide="calendar"></i>
+              <%= admin_icon('calendar', size: :sm) %>
               <span>Created</span>
             </div>
             <span class="detail-value"><%= l @pipeline_connection.created_at, format: :long %></span>
@@ -96,7 +96,7 @@
 
           <div class="detail-item">
             <div class="detail-label">
-              <i data-lucide="refresh-cw"></i>
+              <%= admin_icon('refresh-cw', size: :sm) %>
               <span>Last Sync</span>
             </div>
             <span class="detail-value">
@@ -110,7 +110,7 @@
 
           <div class="detail-item">
             <div class="detail-label">
-              <i data-lucide="clock"></i>
+              <%= admin_icon('clock', size: :sm) %>
               <span>Last Health Check</span>
             </div>
             <span class="detail-value">
@@ -124,7 +124,7 @@
 
           <div class="detail-item">
             <div class="detail-label">
-              <i data-lucide="activity"></i>
+              <%= admin_icon('activity', size: :sm) %>
               <span>Executions</span>
             </div>
             <span class="detail-value"><%= @pipeline_connection.pipeline_executions.count %></span>
@@ -146,9 +146,9 @@
             <pre><%= JSON.pretty_generate(@pipeline_connection.metadata) %></pre>
           </div>
         <% else %>
-          <div class="admin-empty-state" style="padding: 2rem;">
+          <div class="admin-empty-state admin-p-xl">
             <div class="empty-icon">
-              <i data-lucide="code"></i>
+              <%= admin_icon('code', size: :xl) %>
             </div>
             <p class="empty-title">No metadata available</p>
           </div>
@@ -158,51 +158,51 @@
 
     <%# Recent Pipeline Executions %>
     <div class="admin-card">
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
-        <h3 class="card-title" style="margin-bottom: 0;">Recent Pipeline Executions</h3>
+      <div class="admin-flex admin-items-center admin-justify-between admin-mb-lg">
+        <h3 class="card-title admin-mb-0">Recent Pipeline Executions</h3>
         <%= link_to admin_pipeline_executions_path(connection_id: @pipeline_connection.id), class: 'admin-btn admin-btn-outline admin-btn-sm' do %>
           <span>View All</span>
         <% end %>
       </div>
 
       <% if @recent_executions.any? %>
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
+        <div class="admin-overflow-x-auto">
+          <table class="admin-table">
             <thead>
-              <tr style="border-bottom: 1px solid #1E293B;">
-                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Ticket ID</th>
-                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Title</th>
-                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Status</th>
-                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Priority</th>
-                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Started</th>
-                <th style="padding: 0.75rem; text-align: left; color: #94A3B8; font-weight: 500; font-size: 0.875rem;">Duration</th>
+              <tr>
+                <th>Ticket ID</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Started</th>
+                <th>Duration</th>
               </tr>
             </thead>
             <tbody>
               <% @recent_executions.each do |execution| %>
-                <tr style="border-bottom: 1px solid #1E293B;">
-                  <td style="padding: 0.75rem;">
-                    <%= link_to execution.ticket_id, admin_pipeline_execution_path(execution), style: 'color: #22D3EE; text-decoration: none;' %>
+                <tr>
+                  <td>
+                    <%= link_to execution.ticket_id, admin_pipeline_execution_path(execution), class: 'admin-link' %>
                   </td>
-                  <td style="padding: 0.75rem; color: white;"><%= execution.ticket_title %></td>
-                  <td style="padding: 0.75rem;">
+                  <td class="admin-text-primary"><%= execution.ticket_title %></td>
+                  <td>
                     <span class="admin-badge admin-badge-<%= execution.status_done? ? 'online' : execution.status_failed? ? 'offline' : 'warning' %>">
                       <%= execution.status.titleize %>
                     </span>
                   </td>
-                  <td style="padding: 0.75rem;">
+                  <td>
                     <span class="admin-badge admin-badge-<%= execution.priority_critical? ? 'offline' : execution.priority_high? ? 'warning' : 'default' %>">
                       <%= execution.priority.titleize %>
                     </span>
                   </td>
-                  <td style="padding: 0.75rem; color: #94A3B8; font-size: 0.875rem;">
+                  <td class="admin-text-muted admin-text-sm">
                     <% if execution.started_at %>
                       <%= time_ago_in_words(execution.started_at) %> ago
                     <% else %>
                       Not started
                     <% end %>
                   </td>
-                  <td style="padding: 0.75rem; color: #94A3B8; font-size: 0.875rem;"><%= execution.duration_human %></td>
+                  <td class="admin-text-muted admin-text-sm"><%= execution.duration_human %></td>
                 </tr>
               <% end %>
             </tbody>
@@ -211,7 +211,7 @@
       <% else %>
         <div class="admin-empty-state">
           <div class="empty-icon">
-            <i data-lucide="activity"></i>
+            <%= admin_icon('activity', size: :xl) %>
           </div>
           <p class="empty-title">No executions yet</p>
           <p class="empty-description">Pipeline executions will appear here once you start using this connection</p>
