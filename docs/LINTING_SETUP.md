@@ -2,6 +2,15 @@
 
 This project uses automated linting and formatting to maintain code quality and consistency.
 
+## Quick Start
+
+**First-time setup:**
+```bash
+bin/setup-hooks
+```
+
+This installs git hooks that automatically format your code before every commit.
+
 ## Installed Linters
 
 ### 1. RuboCop (Ruby)
@@ -16,8 +25,12 @@ This project uses automated linting and formatting to maintain code quality and 
 
 ## Git Hooks (Automatic)
 
+**Install hooks:** Run `bin/setup-hooks` to install pre-commit and post-commit hooks.
+
+**Hook files:** Stored in `hooks/` directory (tracked by git) and copied to `.git/hooks/` by setup script.
+
 ### Pre-Commit Hook
-**Location**: `.git/hooks/pre-commit`
+**Location**: `.git/hooks/pre-commit` (installed from `hooks/pre-commit`)
 
 **What it does:**
 1. Runs RuboCop on staged Ruby files with auto-correct (`-A`)
@@ -32,7 +45,7 @@ Stage files → Pre-commit hook runs → Auto-corrections applied → Files re-s
 ```
 
 ### Post-Commit Hook
-**Location**: `.git/hooks/post-commit`
+**Location**: `.git/hooks/post-commit` (installed from `hooks/post-commit`)
 
 **What it does:**
 - Detects if linters made changes AFTER commit
@@ -137,8 +150,11 @@ Already configured! Edit to customize ERB linting rules.
 
 ### Pre-commit hook not running
 ```bash
-# Make sure it's executable
-chmod +x .git/hooks/pre-commit
+# Re-run the setup script
+bin/setup-hooks
+
+# Or manually install
+chmod +x .git/hooks/pre-commit .git/hooks/post-commit
 ```
 
 ### Linter conflicts with my code style

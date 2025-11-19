@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Install git hooks from the hooks/ directory
+
+set -e
+
+echo "🔧 Installing git hooks..."
+
+# Copy hooks to .git/hooks/ and make them executable
+cp hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+echo "✓ Installed pre-commit hook"
+
+cp hooks/post-commit .git/hooks/post-commit
+chmod +x .git/hooks/post-commit
+echo "✓ Installed post-commit hook"
+
+echo ""
+echo "✅ Git hooks installed successfully!"
+echo ""
+echo "📋 What happens now:"
+echo "  • Every commit will auto-format code with RuboCop and ERB Lint"
+echo "  • Changes are re-staged automatically"
+echo "  • Commit is blocked if unfixable issues are found"
+echo ""
+echo "To skip hooks in emergencies: git commit --no-verify"
+echo ""

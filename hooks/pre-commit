@@ -1,0 +1,54 @@
+#!/bin/bash
+# Pre-commit hook: Auto-format code with RuboCop and ERB Lint
+# This file is tracked in git. Install with: bin/setup-hooks
+
+set -e
+
+echo "🔍 Running linters on staged files..."
+
+# Get list of staged Ruby and ERB files
+RUBY_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(rb|rake)$' || true)
+ERB_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.erb$' || true)
+
+# Exit early if no Ruby/ERB files staged
+if [ -z "$RUBY_FILES" ] && [ -z "$ERB_FILES" ]; then
+  echo "✓ No Ruby/ERB files to lint"
+  exit 0
+fi
+
+# Run RuboCop on staged Ruby files
+if [ -n "$RUBY_FILES" ]; then
+  echo "🔧 Running RuboCop with auto-correct..."
+  echo "$RUBY_FILES" | xargs bundle exec rubocop -A
+
+  # Re-stage the auto-corrected files
+  echo "$RUBY_FILES" | xargs git add
+fi
+
+# Run ERB Lint on staged ERB files
+if [ -n "$ERB_FILES" ]; then
+  echo "🔧 Running ERB Lint with auto-correct..."
+  echo "$ERB_FILES" | xargs bundle exec erblint --autocorrect
+
+  # Re-stage the auto-corrected files
+  echo "$ERB_FILES" | xargs git add
+fi
+
+# Check for remaining unfixable issues
+echo "🔍 Checking for unfixable issues..."
+if [ -n "$RUBY_FILES" ]; then
+  if ! echo "$RUBY_FILES" | xargs bundle exec rubocop; then
+    echo "❌ RuboCop found unfixable issues. Please fix manually and commit again."
+    exit 1
+  fi
+fi
+
+if [ -n "$ERB_FILES" ]; then
+  if ! echo "$ERB_FILES" | xargs bundle exec erblint; then
+    echo "❌ ERB Lint found unfixable issues. Please fix manually and commit again."
+    exit 1
+  fi
+fi
+
+echo "✅ All linters passed!"
+exit 0
