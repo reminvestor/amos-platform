@@ -4,7 +4,7 @@
     <%# Page Header %>
     <div class="admin-page-header admin-mb-xl">
       <div class="header-left">
-        <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
+        <div class="header-icon admin-icon-gradient-purple">
           <%= admin_icon('user-pen', size: :lg) %>
         </div>
         <div class="header-text">
@@ -65,9 +65,9 @@
             <%# Onboarded Checkbox %>
             <div class="form-group">
               <div class="form-check">
-                <%= f.check_box :onboarded, checked: @user.onboarded?, style: "margin-right: 0.5rem;" %>
+                <%= f.check_box :onboarded, checked: @user.onboarded?, class: "admin-mr-sm" %>
                 <%= f.label :onboarded, "Mark as Onboarded", class: "admin-text-primary" %>
-                <small class="form-helper-text" style="margin-left: 1.5rem;">
+                <small class="form-helper-text admin-ml-xl">
                   User has completed onboarding process
                 </small>
               </div>
