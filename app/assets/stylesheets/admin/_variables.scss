@@ -2,6 +2,7 @@
 
 // Colors
 $admin-bg-primary: #0A0E1A;
+$admin-bg-secondary: #151B2D;
 $admin-bg-card: #1A1F35;
 $admin-bg-elevated: #1F2937;
 
@@ -9,10 +10,16 @@ $admin-text-primary: #FFFFFF;
 $admin-text-secondary: #94A3B8;
 $admin-text-muted: #64748B;
 
+$admin-border: #1E293B;
+
 // Brand Colors
 $admin-purple-start: #7C3AED;
 $admin-purple-end: #A78BFA;
 $admin-purple-gradient: linear-gradient(135deg, $admin-purple-start 0%, $admin-purple-end 100%);
+
+// Accent colors (aliases for purple)
+$admin-accent-start: $admin-purple-start;
+$admin-accent-end: $admin-purple-end;
 
 $admin-green-success: rgb(74, 222, 128);
 $admin-green-bg: rgba(34, 197, 94, 0.1);

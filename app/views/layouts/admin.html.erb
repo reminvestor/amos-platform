@@ -118,27 +118,27 @@
         </div>
       </aside>
 
-      <%# Flash Messages %>
-      <% if notice.present? || alert.present? %>
-        <div style="position: fixed; top: 5rem; right: 1rem; z-index: 9999; max-width: 500px;">
-          <% if notice %>
-            <div class="admin-alert admin-alert-success" style="margin-bottom: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);">
-              <div class="alert-content">
-                <i data-lucide="check-circle"></i>
-                <span><%= notice %></span>
-              </div>
-              <button class="alert-close" onclick="this.parentElement.remove(); lucide.createIcons();">×</button>
+      <%# Flash Messages / Toast Notifications %>
+      <% if notice.present? %>
+        <div class="admin-toast-container" data-auto-dismiss="true">
+          <div class="admin-alert admin-alert-success" style="margin-bottom: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);">
+            <div class="alert-content">
+              <i data-lucide="check-circle"></i>
+              <span><%= notice %></span>
             </div>
-          <% end %>
-          <% if alert %>
-            <div class="admin-alert admin-alert-error" style="margin-bottom: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);">
-              <div class="alert-content">
-                <i data-lucide="alert-circle"></i>
-                <span><%= alert %></span>
-              </div>
-              <button class="alert-close" onclick="this.parentElement.remove(); lucide.createIcons();">×</button>
+            <button class="alert-close" data-dismiss-alert>×</button>
+          </div>
+        </div>
+      <% end %>
+      <% if alert.present? %>
+        <div class="admin-toast-container" data-auto-dismiss="true">
+          <div class="admin-alert admin-alert-error" style="margin-bottom: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);">
+            <div class="alert-content">
+              <i data-lucide="alert-circle"></i>
+              <span><%= alert %></span>
             </div>
-          <% end %>
+            <button class="alert-close" data-dismiss-alert>×</button>
+          </div>
         </div>
       <% end %>
 
@@ -158,13 +158,41 @@
         lucide.createIcons();
         initSidebarToggle();
         initNavGroups();
+        initToastNotifications();
       });
 
       document.addEventListener('turbo:load', () => {
         lucide.createIcons();
         initSidebarToggle();
         initNavGroups();
+        initToastNotifications();
       });
+
+      function initToastNotifications() {
+        // Auto-dismiss toasts after 5 seconds
+        const toastContainers = document.querySelectorAll('.admin-toast-container[data-auto-dismiss="true"]');
+        toastContainers.forEach(container => {
+          setTimeout(() => {
+            container.style.animation = 'slideOutRight 0.3s ease-in forwards';
+            setTimeout(() => {
+              container.remove();
+            }, 300);
+          }, 5000);
+        });
+
+        // Manual dismiss buttons
+        document.querySelectorAll('[data-dismiss-alert]').forEach(button => {
+          button.addEventListener('click', (e) => {
+            const container = e.target.closest('.admin-toast-container');
+            if (container) {
+              container.style.animation = 'slideOutRight 0.3s ease-in forwards';
+              setTimeout(() => {
+                container.remove();
+              }, 300);
+            }
+          });
+        });
+      }
 
       function initSidebarToggle() {
         const sidebar = document.getElementById('adminSidebar');

@@ -105,7 +105,7 @@ class BedrockService
     'claude-opus-4-1'      # Most robust - last resort
   ].freeze
 
-  def initialize(custom_model_id: nil, user: nil, entity: nil)
+  def initialize(custom_model_id: nil, user: nil, entity: nil, context: {})
     @client = Aws::BedrockRuntime::Client.new(
       region: ENV["AWS_REGION"] || "us-east-1",
       # Let AWS SDK use the default credential chain
@@ -125,6 +125,7 @@ class BedrockService
     @custom_model_id = custom_model_id
     @user = user
     @entity = entity
+    @context = context || {}
     @resource_manager = ResourceManager.new(entity) if entity
   end
 
@@ -612,56 +613,117 @@ class BedrockService
     Rails.logger.info "Sending non-streaming request to Bedrock Claude (#{model_id}) using converse"
 
     begin
-      response = @client.converse(payload)
+      # Tool use loop - continue conversation until we get final text response
+      max_turns = 10
+      turn_count = 0
+      conversation_messages = converse_messages.dup
 
-      # Extract the text from the response
-      content = response.output.message.content.map do |content_block|
-        content_block.text if content_block.respond_to?(:text)
-      end.compact.join("")
-
-      # Track token usage if available
-      if response.respond_to?(:usage) && response.usage
-        tokens = {
-          input: response.usage.input_tokens || 0,
-          output: response.usage.output_tokens || 0
-        }
-
-        if @user && @entity
-          if @resource_manager
-            @resource_manager.track_tokens(@user, model_id, tokens, {
-              stream: false,
-              method: "converse",
-              timestamp: Time.current
-            })
-          end
-
-          # Extract short model name from full ID for cleaner logging
-          short_model_name = model_id.to_s.match(/claude[^:]+/)&.to_s || model_id
-
-          # Log AI usage for observability
-          AiUsageLog.log_usage(
-            entity: @entity,
-            user: @user,
-            model: short_model_name,
-            input_tokens: tokens[:input],
-            output_tokens: tokens[:output],
-            duration_ms: nil,
-            request_type: 'chat',
-            scout_message: nil,
-            metadata: {
-              method: 'converse',
-              stream: false,
-              full_model_id: model_id
-            }
-          )
+      loop do
+        turn_count += 1
+        if turn_count > max_turns
+          Rails.logger.warn "Tool use loop exceeded max turns (#{max_turns})"
+          break
         end
 
-        Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
+        # Update payload with current messages
+        payload[:messages] = conversation_messages
+
+        response = @client.converse(payload)
+
+        # Check if response contains tool use
+        tool_uses = response.output.message.content.select { |block| block.respond_to?(:tool_use) && block.tool_use }
+
+        if tool_uses.any?
+          Rails.logger.info "Agent requested #{tool_uses.length} tool(s)"
+
+          # Add assistant's tool use request to conversation
+          conversation_messages << {
+            role: "assistant",
+            content: response.output.message.content.map do |block|
+              if block.respond_to?(:tool_use) && block.tool_use
+                { tool_use: { tool_use_id: block.tool_use.tool_use_id, name: block.tool_use.name, input: block.tool_use.input } }
+              elsif block.respond_to?(:text) && block.text
+                { text: block.text }
+              end
+            end.compact
+          }
+
+          # Execute tools and collect results
+          tool_results = tool_uses.map do |tool_use_block|
+            tool_use = tool_use_block.tool_use
+            tool_name = tool_use.name
+            tool_input = tool_use.input.to_h
+
+            Rails.logger.info "Executing tool: #{tool_name} with input: #{tool_input.inspect}"
+
+            # Build tool context (similar to Scout's pattern)
+            tool_context = {
+              canvas_suggestion: nil,
+              canvas_data: {},
+              **@context  # Include agent_plugin, task_session, session_id, etc.
+            }
+
+            # Execute the tool with full context
+            catalog = Tools::ToolCatalog.instance
+            result = catalog.execute_tool(
+              tool_name,
+              tool_input,
+              user: @user,
+              entity: @entity,
+              context: tool_context,
+              progress_callback: nil  # Agent plugins don't support progress callbacks yet
+            )
+
+            Rails.logger.info "Tool #{tool_name} result: #{result.inspect}"
+
+            # Format result for Bedrock
+            {
+              tool_result: {
+                tool_use_id: tool_use.tool_use_id,
+                content: [{ text: result.to_json }]
+              }
+            }
+          end
+
+          # Add tool results to conversation
+          conversation_messages << {
+            role: "user",
+            content: tool_results
+          }
+
+          # Continue loop to get next response
+        else
+          # No tool use - extract final text response
+          content = response.output.message.content.map do |content_block|
+            content_block.text if content_block.respond_to?(:text)
+          end.compact.join("")
+
+          # Track token usage if available
+          if response.respond_to?(:usage) && response.usage
+            tokens = {
+              input: response.usage.input_tokens || 0,
+              output: response.usage.output_tokens || 0
+            }
+
+            if @user && @entity && @resource_manager
+              @resource_manager.track_tokens(@user, model_id, tokens, {
+                stream: false,
+                method: "converse",
+                timestamp: Time.current
+              })
+            end
+
+            Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
+          end
+
+          Rails.logger.info "Bedrock converse response received: #{content.length} characters"
+
+          return content
+        end
       end
 
-      Rails.logger.info "Bedrock converse response received: #{content.length} characters"
-
-      content
+      # If we exit loop without returning, return what we have
+      ""
     rescue Aws::BedrockRuntime::Errors::ThrottlingException => e
       Rails.logger.error "Bedrock throttling: #{e.message}"
       raise AmosErrors::BedrockThrottlingError.new(context: { request_id: e.context&.request_id })

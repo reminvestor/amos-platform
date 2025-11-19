@@ -32,11 +32,8 @@ class Agents::StandardPluginExecutor
 
     Rails.logger.info "StandardPluginExecutor running with prompt: #{prompt.truncate(100)}"
 
-    # Build the full prompt with configuration
-    full_prompt = build_full_prompt(prompt, merged_context)
-
-    # Execute via Bedrock
-    result = execute_with_bedrock(full_prompt, merged_context)
+    # Execute via Bedrock (which will handle system prompt and user prompt separately)
+    result = execute_with_bedrock(prompt, merged_context)
 
     # Track token usage if we have an execution record
     if execution && result[:usage]
@@ -92,7 +89,29 @@ class Agents::StandardPluginExecutor
     end
   end
 
+  def build_system_prompt
+    parts = []
+
+    # Add base system prompt
+    parts << normalize_system_prompt(system_prompt) if system_prompt.present?
+
+    # Add configuration context
+    if config.present? && config.any?
+      parts << "\nConfiguration:"
+      parts << JSON.pretty_generate(config)
+    end
+
+    # Add capabilities
+    if capabilities.present?
+      parts << "\nYour capabilities:"
+      capabilities.each { |cap| parts << "- #{cap}" }
+    end
+
+    parts.join("\n")
+  end
+
   def build_full_prompt(user_prompt, context_data)
+    # Legacy method - keeping for backward compatibility
     parts = []
 
     # Add system prompt
@@ -120,35 +139,44 @@ class Agents::StandardPluginExecutor
     # Determine which model to use
     model_name = get_model_name
 
+    # Pass full context to BedrockService so tools can access it
+    # This includes agent_plugin, task_session, session_id, etc.
     bedrock_service = BedrockService.new(
       entity: context[:entity],
       user: context[:user],
-      model: model_name
+      custom_model_id: model_name,
+      context: context  # Pass full context for tool execution
     )
 
     # Get available tools for this agent
     tools = get_available_tools
 
-    # Build bedrock call options
-    call_options = {
-      prompt: prompt,
+    # Build enhanced system prompt with configuration and capabilities
+    system_prompt_text = build_system_prompt
+
+    # Format the user prompt as messages array
+    messages = [
+      {
+        role: 'user',
+        content: prompt
+      }
+    ]
+
+    # Call BedrockService with the correct method
+    content = bedrock_service.send_message_converse(
+      system_prompt_text,
+      messages,
+      model: model_name,
       max_tokens: config[:max_tokens] || 4096,
-      temperature: config[:temperature] || 0.7
-    }.merge(get_model_config)
+      temperature: config[:temperature] || 0.7,
+      tools: tools
+    )
 
-    # Execute with tool calling if tools are available
-    if tools.present?
-      result = bedrock_service.call_with_tools(
-        **call_options,
-        tools: tools,
-        context: context_data
-      )
-    else
-      # Simple text generation without tools
-      result = bedrock_service.call(**call_options)
-    end
-
-    result
+    # Return in consistent format
+    {
+      content: content,
+      usage: nil # BedrockService handles usage tracking internally
+    }
   rescue => e
     Rails.logger.error "StandardPluginExecutor failed: #{e.message}"
     Rails.logger.error e.backtrace.first(5).join("\n")
@@ -181,8 +209,9 @@ class Agents::StandardPluginExecutor
   def get_model_name
     return nil unless context[:agent_plugin]
 
-    # Agent's model preference, or fall back to config
-    context[:agent_plugin].model_name || config[:model] || 'claude-sonnet-4'
+    # For testing: allow config to override agent's default model
+    # Otherwise use agent's model preference, or fall back to config, then default
+    config[:model] || context[:agent_plugin].ai_model || 'claude-sonnet-4-5'
   end
 
   def get_model_config

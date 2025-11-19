@@ -67,9 +67,9 @@ class AgentPluginService
 
   # Instantiation Methods
 
-  def instantiate_agent(agent_plugin, context = {})
-    # Validate agent is available
-    unless agent_plugin.status == 'active'
+  def instantiate_agent(agent_plugin, context = {}, skip_status_check: false)
+    # Validate agent is available (skip for testing)
+    unless skip_status_check || agent_plugin.status == 'active'
       raise ArgumentError, "Agent #{agent_plugin.name} is not active (status: #{agent_plugin.status})"
     end
 

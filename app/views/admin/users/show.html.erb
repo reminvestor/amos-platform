@@ -1,11 +1,11 @@
 
-<div class="admin-content" style="padding: 2rem;">
+<div class="admin-content admin-p-xl">
   <div class="container-fluid">
     <%# Page Header %>
-    <div class="admin-page-header" style="margin-bottom: 2rem;">
+    <div class="admin-page-header admin-mb-xl">
       <div class="header-left">
-        <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
-          <i data-lucide="user"></i>
+        <div class="header-icon">
+          <%= admin_icon('user', size: :lg) %>
         </div>
         <div class="header-text">
           <h1><%= @user.full_name %></h1>
@@ -15,7 +15,7 @@
 
       <div class="header-actions">
         <%= link_to admin_users_path, class: "admin-btn admin-btn-outline" do %>
-          <i data-lucide="arrow-left"></i>
+          <%= admin_icon('arrow-left', size: :sm) %>
           <span>Back to Users</span>
         <% end %>
       </div>
@@ -25,93 +25,93 @@
       <%# Main Content Column %>
       <div class="col-lg-8">
         <%# User Information Card %>
-        <div class="admin-card" style="margin-bottom: 1.5rem;">
-          <h5 style="color: white; font-weight: 600; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-primary);">
-            <i data-lucide="info" class="icon-lg icon-with-spacing"></i>
+        <div class="admin-card admin-mb-lg">
+          <h5 class="admin-section-heading">
+            <%= admin_icon('info', size: :md) %>
             User Information
           </h5>
 
-          <dl class="row" style="margin-bottom: 0;">
-            <dt class="col-sm-3" style="color: var(--text-secondary); font-weight: 600;">User ID</dt>
-            <dd class="col-sm-9" style="color: white; margin-bottom: 1rem;"><%= @user.id %></dd>
+          <dl class="row admin-dl">
+            <dt class="col-sm-3">User ID</dt>
+            <dd class="col-sm-9"><%= @user.id %></dd>
 
-            <dt class="col-sm-3" style="color: var(--text-secondary); font-weight: 600;">Name</dt>
-            <dd class="col-sm-9" style="color: white; margin-bottom: 1rem;"><%= @user.full_name %></dd>
+            <dt class="col-sm-3">Name</dt>
+            <dd class="col-sm-9"><%= @user.full_name %></dd>
 
-            <dt class="col-sm-3" style="color: var(--text-secondary); font-weight: 600;">Email</dt>
-            <dd class="col-sm-9" style="color: white; margin-bottom: 1rem;"><%= @user.email %></dd>
+            <dt class="col-sm-3">Email</dt>
+            <dd class="col-sm-9"><%= @user.email %></dd>
 
-            <dt class="col-sm-3" style="color: var(--text-secondary); font-weight: 600;">Role</dt>
-            <dd class="col-sm-9" style="margin-bottom: 1rem;">
+            <dt class="col-sm-3">Role</dt>
+            <dd class="col-sm-9">
               <span class="admin-badge <%= @user.role == 'admin' ? 'admin-badge-error' : 'admin-badge-secondary' %>">
                 <%= @user.role.titleize %>
               </span>
             </dd>
 
-            <dt class="col-sm-3" style="color: var(--text-secondary); font-weight: 600;">Entity</dt>
-            <dd class="col-sm-9" style="color: white; margin-bottom: 1rem;">
+            <dt class="col-sm-3">Entity</dt>
+            <dd class="col-sm-9">
               <% if @user.entity %>
-                <%= link_to @user.entity.name, admin_integrations_path, style: "color: #22D3EE; text-decoration: none;" %>
-                <span style="color: var(--text-muted);">(ID: <%= @user.entity.id %>)</span>
+                <%= link_to @user.entity.name, admin_integrations_path, class: "admin-link" %>
+                <span class="admin-text-muted">(ID: <%= @user.entity.id %>)</span>
               <% else %>
-                <span style="color: var(--text-muted);">No entity assigned</span>
+                <span class="admin-text-muted">No entity assigned</span>
               <% end %>
             </dd>
 
-            <dt class="col-sm-3" style="color: var(--text-secondary); font-weight: 600;">Onboarded</dt>
-            <dd class="col-sm-9" style="margin-bottom: 1rem;">
+            <dt class="col-sm-3">Onboarded</dt>
+            <dd class="col-sm-9">
               <% if @user.onboarded? %>
-                <i data-lucide="check-circle" style="width: 1rem; height: 1rem; color: rgb(74, 222, 128); display: inline; vertical-align: middle;"></i>
-                <span style="color: rgb(74, 222, 128);">Yes</span>
+                <%= admin_icon('check-circle', size: :sm, class: 'admin-inline admin-text-success') %>
+                <span class="admin-text-success">Yes</span>
               <% else %>
-                <i data-lucide="x-circle" style="width: 1rem; height: 1rem; color: rgb(248, 113, 113); display: inline; vertical-align: middle;"></i>
-                <span style="color: rgb(248, 113, 113);">No</span>
+                <%= admin_icon('x-circle', size: :sm, class: 'admin-inline admin-text-error') %>
+                <span class="admin-text-error">No</span>
               <% end %>
             </dd>
 
-            <dt class="col-sm-3" style="color: var(--text-secondary); font-weight: 600;">Created</dt>
-            <dd class="col-sm-9" style="color: white; margin-bottom: 1rem;"><%= @user.created_at.strftime("%B %d, %Y") %></dd>
+            <dt class="col-sm-3">Created</dt>
+            <dd class="col-sm-9"><%= @user.created_at.strftime("%B %d, %Y") %></dd>
 
-            <dt class="col-sm-3" style="color: var(--text-secondary); font-weight: 600;">Last Sign In</dt>
-            <dd class="col-sm-9" style="color: white; margin-bottom: 1rem;">
+            <dt class="col-sm-3">Last Sign In</dt>
+            <dd class="col-sm-9">
               <%= @user.current_sign_in_at ? @user.current_sign_in_at.strftime("%B %d, %Y at %I:%M %p") : 'Never' %>
             </dd>
 
-            <dt class="col-sm-3" style="color: var(--text-secondary); font-weight: 600;">Sign In Count</dt>
-            <dd class="col-sm-9" style="color: white; margin-bottom: 0;"><%= @user.sign_in_count || 0 %></dd>
+            <dt class="col-sm-3">Sign In Count</dt>
+            <dd class="col-sm-9"><%= @user.sign_in_count || 0 %></dd>
           </dl>
         </div>
 
         <%# Activity Stats Card %>
         <div class="admin-card">
-          <h5 style="color: white; font-weight: 600; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-primary);">
-            <i data-lucide="activity" class="icon-lg icon-with-spacing"></i>
+          <h5 class="admin-section-heading">
+            <%= admin_icon('activity', size: :md) %>
             Activity Stats
           </h5>
 
           <div class="row text-center">
             <div class="col-md-3">
-              <div style="padding: 1.5rem; background: rgba(124, 58, 237, 0.05); border-radius: 0.5rem; border: 1px solid rgba(124, 58, 237, 0.1);">
-                <div style="font-size: 2rem; font-weight: 600; color: white; margin-bottom: 0.5rem;"><%= @user.campaigns.count %></div>
-                <div style="color: var(--text-muted); font-size: 0.875rem;">Campaigns</div>
+              <div class="admin-stat-box admin-stat-box-purple">
+                <div class="admin-stat-box-value"><%= @user.campaigns.count %></div>
+                <div class="admin-stat-box-label">Campaigns</div>
               </div>
             </div>
             <div class="col-md-3">
-              <div style="padding: 1.5rem; background: rgba(34, 211, 238, 0.05); border-radius: 0.5rem; border: 1px solid rgba(34, 211, 238, 0.1);">
-                <div style="font-size: 2rem; font-weight: 600; color: white; margin-bottom: 0.5rem;"><%= @user.contacts.count %></div>
-                <div style="color: var(--text-muted); font-size: 0.875rem;">Contacts</div>
+              <div class="admin-stat-box admin-stat-box-cyan">
+                <div class="admin-stat-box-value"><%= @user.contacts.count %></div>
+                <div class="admin-stat-box-label">Contacts</div>
               </div>
             </div>
             <div class="col-md-3">
-              <div style="padding: 1.5rem; background: rgba(34, 197, 94, 0.05); border-radius: 0.5rem; border: 1px solid rgba(34, 197, 94, 0.1);">
-                <div style="font-size: 2rem; font-weight: 600; color: white; margin-bottom: 0.5rem;"><%= @user.landing_pages.count %></div>
-                <div style="color: var(--text-muted); font-size: 0.875rem;">Landing Pages</div>
+              <div class="admin-stat-box admin-stat-box-green">
+                <div class="admin-stat-box-value"><%= @user.landing_pages.count %></div>
+                <div class="admin-stat-box-label">Landing Pages</div>
               </div>
             </div>
             <div class="col-md-3">
-              <div style="padding: 1.5rem; background: rgba(234, 179, 8, 0.05); border-radius: 0.5rem; border: 1px solid rgba(234, 179, 8, 0.1);">
-                <div style="font-size: 2rem; font-weight: 600; color: white; margin-bottom: 0.5rem;"><%= @user.email_templates.count %></div>
-                <div style="color: var(--text-muted); font-size: 0.875rem;">Email Templates</div>
+              <div class="admin-stat-box admin-stat-box-yellow">
+                <div class="admin-stat-box-value"><%= @user.email_templates.count %></div>
+                <div class="admin-stat-box-label">Email Templates</div>
               </div>
             </div>
           </div>
@@ -121,54 +121,49 @@
       <%# Sidebar Actions Column %>
       <div class="col-lg-4">
         <div class="admin-card">
-          <h5 style="color: white; font-weight: 600; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-primary);">
-            <i data-lucide="settings" class="icon-lg icon-with-spacing"></i>
+          <h5 class="admin-section-heading">
+            <%= admin_icon('settings', size: :md) %>
             Admin Actions
           </h5>
 
           <%# Warning Alert %>
-          <div style="margin-bottom: 1.5rem; padding: 0.75rem; background-color: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); border-radius: 0.5rem;">
-            <div style="display: flex; align-items-start; gap: 0.5rem;">
-              <i data-lucide="alert-triangle" style="width: 1rem; height: 1rem; color: rgb(250, 204, 21); flex-shrink: 0; margin-top: 0.125rem;"></i>
-              <small style="color: var(--text-secondary); line-height: 1.5;">
-                <strong style="color: white;">Note:</strong> Changes to user accounts should be made carefully and only when necessary for platform administration.
-              </small>
-            </div>
+          <div class="admin-alert-warning">
+            <%= admin_icon('alert-triangle', size: :sm, class: 'admin-flex-none admin-mt-xs admin-text-warning') %>
+            <small class="admin-text-secondary admin-leading-relaxed">
+              <strong class="admin-text-primary">Note:</strong> Changes to user accounts should be made carefully and only when necessary for platform administration.
+            </small>
           </div>
 
           <%# Action Buttons %>
-          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div class="admin-btn-group">
             <%= link_to edit_admin_user_path(@user), class: "admin-btn admin-btn-outline w-100" do %>
-              <i data-lucide="pencil"></i>
+              <%= admin_icon('pencil', size: :sm) %>
               <span>Edit User Details</span>
             <% end %>
 
             <% unless @user.role == 'admin' %>
               <%= button_to make_admin_admin_user_path(@user),
                   method: :post,
-                  class: "admin-btn admin-btn-outline w-100",
-                  style: "border-color: rgb(234, 179, 8); color: rgb(250, 204, 21);",
+                  class: "admin-btn admin-btn-outline admin-btn-warning-outline w-100",
                   form: { data: { turbo_confirm: "Make #{@user.full_name} an admin?" } } do %>
-                <i data-lucide="shield-check"></i>
+                <%= admin_icon('shield-check', size: :sm) %>
                 <span>Make Admin</span>
               <% end %>
             <% end %>
 
             <%= button_to reset_password_admin_user_path(@user),
                 method: :post,
-                class: "admin-btn admin-btn-outline w-100",
-                style: "border-color: #3b82f6; color: #60a5fa;",
+                class: "admin-btn admin-btn-outline admin-btn-info-outline w-100",
                 form: { data: { turbo_confirm: "Reset password for #{@user.full_name}? A temporary password will be generated and emailed to the user." } } do %>
-              <i data-lucide="key"></i>
+              <%= admin_icon('key', size: :sm) %>
               <span>Reset Password</span>
             <% end %>
 
             <%= button_to admin_user_path(@user),
                 method: :delete,
-                class: "admin-btn admin-btn-outline w-100",
-                style: "border-color: #ef4444; color: #f87171;",
+                class: "admin-btn admin-btn-outline admin-btn-danger-outline w-100",
                 form: { data: { turbo_confirm: "Delete #{@user.full_name}? This cannot be undone." } } do %>
-              <i data-lucide="trash-2"></i>
+              <%= admin_icon('trash-2', size: :sm) %>
               <span>Delete User</span>
             <% end %>
           </div>
