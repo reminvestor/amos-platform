@@ -10,8 +10,8 @@
 # - Import/export agents
 #
 class Admin::AgentPluginsController < Admin::BaseController
-  before_action :set_agent_plugin, only: [:show, :edit, :update, :destroy, :activate, :deactivate, :test, :clone]
-  before_action :set_agent_service, only: [:index, :show, :test, :analytics]
+  before_action :set_agent_plugin, only: [:show, :edit, :update, :destroy, :activate, :deactivate, :test, :run_test, :clone]
+  before_action :set_agent_service, only: [:index, :show, :test, :run_test, :analytics]
 
   # GET /admin/agent_plugins
   def index
@@ -63,9 +63,7 @@ class Admin::AgentPluginsController < Admin::BaseController
       version: '1.0.0'
     )
 
-    # Pre-build associations for form
-    3.times { @agent_plugin.agent_capabilities.build }
-    3.times { @agent_plugin.agent_tools.build }
+    # Don't pre-build capabilities/tools - users can add them via UI if needed
   end
 
   # POST /admin/agent_plugins
@@ -82,9 +80,7 @@ class Admin::AgentPluginsController < Admin::BaseController
 
   # GET /admin/agent_plugins/:id/edit
   def edit
-    # Ensure we have at least one capability and tool for the form
-    @agent_plugin.agent_capabilities.build if @agent_plugin.agent_capabilities.empty?
-    @agent_plugin.agent_tools.build if @agent_plugin.agent_tools.empty?
+    # Don't pre-build capabilities/tools - users can add them via UI if needed
   end
 
   # PATCH /admin/agent_plugins/:id
@@ -135,9 +131,15 @@ class Admin::AgentPluginsController < Admin::BaseController
     # Parse test input
     test_context = JSON.parse(params[:test_context] || '{}')
 
-    # Run the test
+    # Override model if specified in test
+    if params[:test_model].present?
+      test_context[:config] ||= {}
+      test_context[:config][:model] = params[:test_model]
+    end
+
+    # Run the test (allow testing draft agents)
     begin
-      agent_instance = @agent_service.instantiate_agent(@agent_plugin, test_context)
+      agent_instance = @agent_service.instantiate_agent(@agent_plugin, test_context, skip_status_check: true)
 
       result = if params[:test_method] == 'execute_goal'
                  agent_instance.achieve_goal(params[:test_goal], test_context)
@@ -185,7 +187,7 @@ class Admin::AgentPluginsController < Admin::BaseController
                         .select(
                           'agent_plugin_id',
                           'COUNT(*) as total_executions',
-                          'AVG(duration_ms) as avg_duration',
+                          'AVG(NULLIF(duration_ms, 0)) as avg_duration',
                           'SUM(tokens_used) as total_tokens',
                           'COUNT(CASE WHEN status = \'completed\' THEN 1 END) as successful',
                           'COUNT(CASE WHEN status = \'failed\' THEN 1 END) as failed'
@@ -196,7 +198,7 @@ class Admin::AgentPluginsController < Admin::BaseController
     @execution_stats = @execution_stats.map do |stat|
       {
         agent_name: agent_map[stat.agent_plugin_id],
-        total: stat.total_executions,
+        total: stat.total_executions.to_i,
         avg_duration: stat.avg_duration&.to_i || 0,
         total_tokens: stat.total_tokens || 0,
         success_rate: calculate_success_rate(stat.successful, stat.total_executions)
@@ -231,7 +233,7 @@ class Admin::AgentPluginsController < Admin::BaseController
       :agent_class,
       :priority,
       :entity_id,
-      :model_name,
+      :ai_model,
       :model_config,
       :configuration,
       :system_prompt,
@@ -247,10 +249,14 @@ class Admin::AgentPluginsController < Admin::BaseController
   end
 
   def generate_execution_timeline(since)
-    # Group executions by day
-    AgentPluginExecution
+    # Group executions by day and sort chronologically
+    executions = AgentPluginExecution
       .where('created_at >= ?', since)
       .group("DATE(created_at)")
       .count
+
+    # Sort by date (keys are Date objects)
+    executions.sort_by { |date, _| date }
+      .to_h
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_18_221956) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_18_225000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -447,6 +447,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_221956) do
     t.datetime "last_activated_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "ai_model", default: "claude-sonnet-4"
+    t.jsonb "model_config", default: {}
+    t.index ["ai_model"], name: "index_agent_plugins_on_ai_model"
     t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_agent_plugins_on_entity_id"
     t.index ["priority"], name: "index_agent_plugins_on_priority"

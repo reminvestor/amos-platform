@@ -111,7 +111,7 @@
             <dt class="col-sm-4">Priority</dt>
             <dd class="col-sm-8">
               <div class="d-flex align-items-center gap-2">
-                <div class="progress flex-grow-1" style="height: 10px;">
+                <div class="progress flex-grow-1 admin-priority-bar-tall">
                   <div class="progress-bar" role="progressbar" style="width: <%= @agent_plugin.priority %>%"></div>
                 </div>
                 <span><%= @agent_plugin.priority %>/100</span>
@@ -162,7 +162,7 @@
                   <% if capability.contract_schema.present? && capability.contract_schema['inputs'] %>
                     <div class="mt-2">
                       <small class="text-muted d-block mb-1">Contract:</small>
-                      <pre class="bg-light p-2 rounded small mb-0"><%= JSON.pretty_generate(capability.contract_schema) %></pre>
+                      <pre class="admin-code-block admin-code-block-sm"><%= JSON.pretty_generate(capability.contract_schema) %></pre>
                     </div>
                   <% end %>
                 </div>
@@ -184,17 +184,23 @@
         </div>
         <div class="admin-card-body">
           <% if @tools.any? %>
-            <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex flex-wrap gap-2 mb-3">
               <% @tools.each do |tool| %>
-                <span class="badge bg-<%= tool.required? ? 'danger' : 'secondary' %> fs-6">
-                  <i data-lucide="<%= tool.required? ? 'alert-circle' : 'tool' %>" class="icon-sm"></i>
+                <span class="badge <%= tool.required? ? 'bg-danger' : 'bg-secondary' %> d-inline-flex align-items-center gap-1 admin-badge-md">
+                  <i data-lucide="<%= tool.required? ? 'alert-circle' : 'wrench' %>" class="admin-icon-xs"></i>
                   <%= tool.tool_name %>
                 </span>
               <% end %>
             </div>
-            <small class="text-muted d-block mt-2">
-              <i data-lucide="alert-circle" class="icon-sm"></i> = Required
-            </small>
+            <div class="small text-muted">
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-danger d-inline-flex align-items-center gap-1 admin-badge-xs">
+                  <i data-lucide="alert-circle" class="admin-icon-xxs"></i>
+                  Required
+                </span>
+                <span>Tools that must be available for agent to function</span>
+              </div>
+            </div>
           <% else %>
             <p class="text-muted mb-0">No tools configured</p>
           <% end %>
@@ -212,11 +218,11 @@
             Recent Executions
           </h3>
         </div>
-        <div class="admin-card-body">
+        <div class="admin-card-body p-0">
           <% if @executions.any? %>
-            <div class="table-responsive">
-              <table class="table table-sm">
-                <thead>
+            <div class="table-responsive admin-table-scrollable">
+              <table class="table table-sm mb-0">
+                <thead class="admin-table-sticky-header">
                   <tr>
                     <th>Time</th>
                     <th>Status</th>
@@ -287,7 +293,7 @@
             </h3>
           </div>
           <div class="admin-card-body">
-            <pre class="bg-light p-3 rounded mb-0"><%= JSON.pretty_generate(@agent_plugin.configuration) %></pre>
+            <pre class="admin-code-block"><%= JSON.pretty_generate(@agent_plugin.configuration) %></pre>
           </div>
         </div>
       <% end %>
@@ -302,7 +308,7 @@
             </h3>
           </div>
           <div class="admin-card-body">
-            <pre class="bg-light p-3 rounded mb-0"><%= @agent_plugin.system_prompt['prompt'] || JSON.pretty_generate(@agent_plugin.system_prompt) %></pre>
+            <pre class="admin-code-block"><%= @agent_plugin.system_prompt['prompt'] || JSON.pretty_generate(@agent_plugin.system_prompt) %></pre>
           </div>
         </div>
       <% end %>

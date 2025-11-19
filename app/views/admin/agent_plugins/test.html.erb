@@ -27,6 +27,18 @@
         <div class="admin-card-body">
           <form id="test-form">
             <div class="mb-3">
+              <label class="form-label">AI Model</label>
+              <select id="test-model" class="form-select">
+                <option value="claude-sonnet-4-5">Claude Sonnet 4.5 (balanced)</option>
+                <option value="claude-haiku-4-5">Claude Haiku 4.5 (fast & cheap)</option>
+                <option value="claude-opus-4-1">Claude Opus 4.1 (best quality)</option>
+                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                <option value="claude-3-haiku">Claude 3 Haiku</option>
+              </select>
+              <small class="form-text text-muted">Override the agent's default model for this test</small>
+            </div>
+
+            <div class="mb-3">
               <label class="form-label">Test Method</label>
               <select id="test-method" class="form-select">
                 <option value="run">Run with Prompt</option>
@@ -36,7 +48,7 @@
 
             <div class="mb-3" id="prompt-input">
               <label class="form-label">Prompt</label>
-              <textarea id="test-prompt" class="form-control font-monospace" rows="4" placeholder="Generate a sales email for...">Generate a sales email for John Smith at Acme Corp about improving their marketing automation</textarea>
+              <textarea id="test-prompt" class="form-control font-monospace" rows="4" placeholder="Enter your search query...">Search for information about Google Antigravity. Find posts and discussions about this topic on X (Twitter).</textarea>
             </div>
 
             <div class="mb-3" id="goal-input" style="display: none;">
@@ -47,9 +59,9 @@
             <div class="mb-3">
               <label class="form-label">Context (JSON)</label>
               <textarea id="test-context" class="form-control font-monospace" rows="8">{
-  "lead_name": "John Smith",
-  "company_name": "Acme Corp",
-  "pain_points": ["manual processes", "low conversion rates"]
+  "search_focus": "social media discussions",
+  "platforms": ["X/Twitter", "Reddit", "forums"],
+  "max_results": 10
 }</textarea>
               <small class="form-text text-muted">Additional context for the agent</small>
             </div>
@@ -90,7 +102,7 @@
               </div>
               <div class="mb-3">
                 <label class="form-label small text-muted">Result:</label>
-                <pre id="result-output" class="bg-light p-3 rounded font-monospace small"></pre>
+                <pre id="result-output" class="p-3 rounded font-monospace small" style="min-height: 400px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; background-color: #1A1F35; color: #94A3B8; border: 1px solid #1E293B;"></pre>
               </div>
             </div>
 
@@ -101,7 +113,7 @@
               </div>
               <div class="mb-3">
                 <label class="form-label small text-muted">Error:</label>
-                <pre id="error-output" class="bg-danger text-white p-3 rounded font-monospace small"></pre>
+                <pre id="error-output" class="p-3 rounded font-monospace small" style="min-height: 400px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; background-color: #1A1F35; color: #F87171; border: 1px solid #DC2626;"></pre>
               </div>
             </div>
           </div>
@@ -190,6 +202,7 @@
       successState.classList.add('d-none');
       errorState.classList.add('d-none');
 
+      const testModel = document.getElementById('test-model').value;
       const testMethod = document.getElementById('test-method').value;
       const testPrompt = document.getElementById('test-prompt').value;
       const testGoal = document.getElementById('test-goal').value;
@@ -197,16 +210,19 @@
 
       try {
         const formData = new FormData();
+        formData.append('test_model', testModel);
         formData.append('test_method', testMethod);
         formData.append('test_prompt', testPrompt);
         formData.append('test_goal', testGoal);
         formData.append('test_context', testContext);
 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
         const response = await fetch('<%= run_test_admin_agent_plugin_path(@agent_plugin) %>', {
           method: 'POST',
           body: formData,
           headers: {
-            'X-CSRF-Token': document.querySelector('[name="csrf-token"]').content
+            'X-CSRF-Token': csrfToken
           }
         });
 
@@ -216,7 +232,14 @@
 
         if (result.success) {
           successState.classList.remove('d-none');
-          document.getElementById('result-output').textContent = JSON.stringify(result.result, null, 2);
+          // Display the result as plain text if it's a string, or formatted JSON if it's an object
+          let displayText = '';
+          if (typeof result.result === 'string') {
+            displayText = result.result;
+          } else {
+            displayText = JSON.stringify(result.result, null, 2);
+          }
+          document.getElementById('result-output').textContent = displayText;
         } else {
           errorState.classList.remove('d-none');
           document.getElementById('error-output').textContent = result.error + '\n\nBacktrace:\n' + (result.backtrace || []).join('\n');

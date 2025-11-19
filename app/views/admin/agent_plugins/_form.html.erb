@@ -88,13 +88,15 @@
               </div>
 
               <div class="mb-3">
-                <%= f.label :model_name, "AI Model", class: "form-label small" %>
-                <%= f.select :model_name,
+                <%= f.label :ai_model, "AI Model", class: "form-label small" %>
+                <%= f.select :ai_model,
                   options_for_select([
-                    ['Claude Sonnet 4 (default - balanced)', 'claude-sonnet-4'],
-                    ['Claude Haiku 4 (fast, cheap)', 'claude-haiku-4'],
-                    ['Claude Opus 4 (best quality)', 'claude-opus-4']
-                  ], agent_plugin.model_name || 'claude-sonnet-4'),
+                    ['Claude Sonnet 4.5 (balanced - recommended)', 'claude-sonnet-4-5'],
+                    ['Claude Haiku 4.5 (fast & cheap)', 'claude-haiku-4-5'],
+                    ['Claude Opus 4.1 (best quality)', 'claude-opus-4-1'],
+                    ['Claude 3.5 Sonnet', 'claude-3-5-sonnet'],
+                    ['Claude 3 Haiku', 'claude-3-haiku']
+                  ], agent_plugin.ai_model || 'claude-sonnet-4-5'),
                   {},
                   class: 'form-select' %>
                 <small class="form-text text-muted">
@@ -146,17 +148,49 @@
         <div class="admin-card-header">
           <h3 class="admin-card-title">
             <i data-lucide="settings" class="icon-sm"></i>
-            Configuration (JSON)
+            Configuration
           </h3>
         </div>
         <div class="admin-card-body">
-          <div class="mb-3">
-            <%= f.text_area :configuration,
-              value: agent_plugin.configuration.present? ? JSON.pretty_generate(agent_plugin.configuration) : '{}',
-              class: "form-control font-monospace",
-              rows: 6,
-              placeholder: '{ "max_length": 150, "tone": "professional" }' %>
-            <small class="form-text text-muted">Custom configuration as JSON</small>
+          <div class="alert alert-info mb-3">
+            <strong>What is configuration?</strong> Add settings like max_length, tone, temperature, etc. that control how your agent behaves.
+          </div>
+
+          <div id="config-container">
+            <% config_hash = agent_plugin.configuration.presence || {} %>
+            <% if config_hash.any? %>
+              <% config_hash.each_with_index do |(key, value), index| %>
+                <div class="config-pair mb-2">
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-4">
+                      <input type="text" class="form-control form-control-sm config-key" placeholder="Key (e.g., max_length)" value="<%= key %>">
+                    </div>
+                    <div class="col-md-6">
+                      <input type="text" class="form-control form-control-sm config-value" placeholder="Value (e.g., 150)" value="<%= value %>">
+                    </div>
+                    <div class="col-md-2">
+                      <%= link_to "#", class: "btn btn-sm btn-outline-danger remove-config-pair w-100" do %>
+                        <i data-lucide="x" class="icon-sm"></i>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+
+          <!-- Hidden field to store final JSON -->
+          <%= f.hidden_field :configuration, id: 'configuration-json' %>
+
+          <button type="button" class="btn btn-sm btn-outline-primary" id="add-config-pair">
+            <i data-lucide="plus" class="icon-sm"></i>
+            Add Configuration
+          </button>
+
+          <div class="mt-3">
+            <small class="text-muted">
+              Examples: <code>max_length: 150</code>, <code>tone: professional</code>, <code>temperature: 0.7</code>
+            </small>
           </div>
         </div>
       </div>
@@ -282,16 +316,16 @@
             <input type="text" id="tool-search" class="form-control" placeholder="Search tools...">
           </div>
           <div id="tools-list" class="list-group">
-            <% Tools::ToolCatalog.instance.all_tools.each do |tool_name, tool_class| %>
-              <% definition = tool_class.definition %>
+            <% Tools::ToolCatalog.instance.all_tools.each do |tool_name, tool_data| %>
+              <% definition = tool_data[:metadata] %>
               <div class="list-group-item list-group-item-action tool-item" data-tool-name="<%= tool_name %>" style="cursor: pointer;">
                 <div class="d-flex justify-content-between align-items-start">
                   <div>
                     <h6 class="mb-1"><code><%= tool_name %></code></h6>
                     <p class="mb-1 small"><%= definition[:description] %></p>
-                    <% if definition[:parameters][:properties] %>
+                    <% if definition[:input_schema] && definition[:input_schema][:properties] %>
                       <small class="text-muted">
-                        Parameters: <%= definition[:parameters][:properties].keys.join(', ') %>
+                        Parameters: <%= definition[:input_schema][:properties].keys.join(', ') %>
                       </small>
                     <% end %>
                   </div>
@@ -311,16 +345,21 @@
   </div>
 
   <!-- Form Actions -->
-  <div class="admin-card-footer sticky-bottom bg-white border-top py-3">
-    <div class="d-flex justify-content-between align-items-center">
-      <div>
-        <%= link_to "Cancel", agent_plugin.persisted? ? admin_agent_plugin_path(agent_plugin) : admin_agent_plugins_path, class: "btn btn-secondary" %>
-      </div>
-      <div class="d-flex gap-2">
-        <% if agent_plugin.persisted? %>
-          <%= f.submit "Save as Draft", name: "draft", class: "btn btn-outline-primary", formnovalidate: true %>
-        <% end %>
-        <%= f.submit agent_plugin.persisted? ? "Update Agent" : "Create Agent", class: "btn btn-primary" %>
+  <div class="admin-card" style="position: sticky; bottom: 0; z-index: 10; margin-top: 2rem;">
+    <div class="admin-card-body">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <%= link_to admin_agent_plugins_path, class: "admin-btn admin-btn-outline" do %>
+            <i data-lucide="x" class="icon-sm"></i>
+            <span>Cancel</span>
+          <% end %>
+        </div>
+        <div class="d-flex admin-flex-gap-sm">
+          <% if agent_plugin.persisted? %>
+            <%= f.submit "Save as Draft", name: "draft", class: "admin-btn admin-btn-secondary", formnovalidate: true %>
+          <% end %>
+          <%= f.submit agent_plugin.persisted? ? "Update Agent" : "Create Agent", class: "admin-btn admin-btn-primary" %>
+        </div>
       </div>
     </div>
   </div>
@@ -477,6 +516,99 @@
     // Refresh lucide icons when modal opens
     document.getElementById('availableToolsModal')?.addEventListener('shown.bs.modal', function() {
       lucide.createIcons();
+    });
+
+    // Auto-generate slug from name
+    const nameField = document.querySelector('input[name="agent_plugin[name]"]');
+    const slugField = document.querySelector('input[name="agent_plugin[slug]"]');
+
+    if (nameField && slugField) {
+      nameField.addEventListener('input', function(e) {
+        // Only auto-generate if slug is empty or was auto-generated
+        if (!slugField.dataset.manuallyEdited) {
+          const slug = e.target.value
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')  // Replace non-alphanumeric with underscore
+            .replace(/^_+|_+$/g, '');      // Trim underscores from start/end
+          slugField.value = slug;
+        }
+      });
+
+      // Mark slug as manually edited if user types in it
+      slugField.addEventListener('input', function() {
+        slugField.dataset.manuallyEdited = 'true';
+      });
+    }
+
+    // Configuration key-value pairs
+    function updateConfigJSON() {
+      const configPairs = document.querySelectorAll('.config-pair');
+      const config = {};
+
+      configPairs.forEach(pair => {
+        const key = pair.querySelector('.config-key').value.trim();
+        let value = pair.querySelector('.config-value').value.trim();
+
+        if (key) {
+          // Try to parse value as number or boolean
+          if (value === 'true') value = true;
+          else if (value === 'false') value = false;
+          else if (!isNaN(value) && value !== '') value = Number(value);
+
+          config[key] = value;
+        }
+      });
+
+      document.getElementById('configuration-json').value = JSON.stringify(config);
+    }
+
+    // Add config pair
+    document.getElementById('add-config-pair')?.addEventListener('click', function() {
+      const container = document.getElementById('config-container');
+      const template = `
+        <div class="config-pair mb-2">
+          <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+              <input type="text" class="form-control form-control-sm config-key" placeholder="Key (e.g., max_length)">
+            </div>
+            <div class="col-md-6">
+              <input type="text" class="form-control form-control-sm config-value" placeholder="Value (e.g., 150)">
+            </div>
+            <div class="col-md-2">
+              <a href="#" class="btn btn-sm btn-outline-danger remove-config-pair w-100">
+                <i data-lucide="x" class="icon-sm"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+      container.insertAdjacentHTML('beforeend', template);
+      lucide.createIcons();
+    });
+
+    // Remove config pair
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('.remove-config-pair')) {
+        e.preventDefault();
+        const pair = e.target.closest('.config-pair');
+        pair.remove();
+        updateConfigJSON();
+      }
+    });
+
+    // Update JSON when config values change
+    document.addEventListener('input', function(e) {
+      if (e.target.classList.contains('config-key') || e.target.classList.contains('config-value')) {
+        updateConfigJSON();
+      }
+    });
+
+    // Initialize JSON on page load
+    updateConfigJSON();
+
+    // Update JSON before form submission
+    document.querySelector('.admin-form')?.addEventListener('submit', function() {
+      updateConfigJSON();
     });
   });
 </script>

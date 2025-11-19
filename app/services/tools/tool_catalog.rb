@@ -129,6 +129,24 @@ module Tools
       tool.execute(args)
     end
 
+    # Check if a tool exists
+    def tool_exists?(name)
+      @tools.key?(name.to_s) || @tools.key?(name.to_sym)
+    end
+
+    # Get tool definition in Bedrock format
+    def get_tool_definition(name)
+      tool_info = @tools[name]
+      return nil unless tool_info
+
+      metadata = tool_info[:metadata]
+      {
+        name: metadata[:name],
+        description: metadata[:description],
+        parameters: metadata[:input_schema] || metadata[:parameters]
+      }
+    end
+
     # Get tool metadata
     def get_metadata(name)
       @tools[name]&.dig(:metadata)

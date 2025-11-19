@@ -4,7 +4,7 @@
   top: 70px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 9999;
+  z-index: 999999; // Ensure toasts appear above everything including admin sidebar (z-index: 1000)
   min-width: 300px;
   max-width: 600px;
   width: auto;

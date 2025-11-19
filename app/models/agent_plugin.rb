@@ -29,6 +29,10 @@ class AgentPlugin < ApplicationRecord
   has_many :workflow_templates, through: :agent_template_bindings
   has_many :agent_plugin_executions, dependent: :destroy
 
+  # Nested attributes
+  accepts_nested_attributes_for :agent_capabilities, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :agent_tools, allow_destroy: true, reject_if: :all_blank
+
   # Validations
   validates :name, presence: true, length: { minimum: 3, maximum: 100 }
   validates :slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }
@@ -48,6 +52,7 @@ class AgentPlugin < ApplicationRecord
   # Callbacks
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
   before_save :normalize_configuration
+  before_save :parse_json_fields
 
   # Class methods
   def self.discover_by_capabilities(capability_names, entity: nil)
@@ -173,9 +178,50 @@ class AgentPlugin < ApplicationRecord
   end
 
   def normalize_configuration
+    # Set empty agent_class to nil for cleaner data
+    self.agent_class = nil if agent_class.blank?
+
+    # Ensure JSONB fields are hashes
     self.configuration ||= {}
     self.system_prompt ||= {}
     self.capabilities_definition ||= {}
+  end
+
+  def parse_json_fields
+    # Parse JSON strings into hashes for JSONB columns
+    # This handles form submissions where JSON is sent as a string
+
+    # Configuration
+    if configuration.is_a?(String) && configuration.present?
+      begin
+        self.configuration = JSON.parse(configuration)
+      rescue JSON::ParserError => e
+        Rails.logger.warn "Failed to parse configuration JSON: #{e.message}"
+        self.configuration = {}
+      end
+    end
+
+    # System Prompt - can be string or hash
+    if system_prompt.is_a?(String) && system_prompt.present?
+      begin
+        parsed = JSON.parse(system_prompt)
+        # If it parses to a hash, use it; otherwise keep as string
+        self.system_prompt = parsed.is_a?(Hash) ? parsed : { 'prompt' => system_prompt }
+      rescue JSON::ParserError
+        # Not JSON, treat as plain string and wrap in hash
+        self.system_prompt = { 'prompt' => system_prompt }
+      end
+    end
+
+    # Capabilities Definition
+    if capabilities_definition.is_a?(String) && capabilities_definition.present?
+      begin
+        self.capabilities_definition = JSON.parse(capabilities_definition)
+      rescue JSON::ParserError => e
+        Rails.logger.warn "Failed to parse capabilities_definition JSON: #{e.message}"
+        self.capabilities_definition = {}
+      end
+    end
   end
 
   def calculate_success_rate(executions)

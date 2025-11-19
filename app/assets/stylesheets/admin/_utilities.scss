@@ -16,6 +16,11 @@
 .admin-mt-lg { margin-top: $admin-spacing-lg; }
 
 // Flexbox
+.admin-flex-gap-xs {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .admin-flex-gap-sm {
   display: flex;
   gap: $admin-spacing-sm;
@@ -24,6 +29,11 @@
 .admin-flex-gap-md {
   display: flex;
   gap: $admin-spacing-md;
+}
+
+.admin-flex-gap-0\.75 {
+  display: flex;
+  gap: 0.75rem;
 }
 
 .admin-flex-gap-lg {
@@ -77,6 +87,16 @@
 .admin-text-3xl { font-size: $admin-text-3xl; }
 
 // Icon Sizes
+.admin-icon-xxs {
+  width: 12px;
+  height: 12px;
+}
+
+.admin-icon-xs {
+  width: 14px;
+  height: 14px;
+}
+
 .admin-icon-sm {
   width: $admin-icon-sm;
   height: $admin-icon-sm;
@@ -828,6 +848,15 @@
 }
 
 // Badge Variants
+.admin-badge-xs {
+  font-size: 0.75rem;
+}
+
+.admin-badge-md {
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+}
+
 .admin-badge-lg {
   padding: 0.625rem 1.25rem;
 }
@@ -907,4 +936,24 @@
 .admin-priority-bar {
   height: 8px;
   width: 60px;
+}
+
+.admin-priority-bar-tall {
+  height: 10px;
+}
+
+// Button Outline Variants
+.admin-btn-warning-outline {
+  border-color: rgb(234, 179, 8);
+  color: rgb(250, 204, 21);
+}
+
+.admin-btn-info-outline {
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+.admin-btn-danger-outline {
+  border-color: #ef4444;
+  color: #f87171;
 }

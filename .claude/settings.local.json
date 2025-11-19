@@ -36,7 +36,11 @@
       "Bash(timeout 10 docker compose exec:*)",
       "SlashCommand(/ux)",
       "Bash(rails generate migration:*)",
-      "Bash(bin/rails generate:*)"
+      "Bash(bin/rails generate:*)",
+      "Bash(rails db:migrate:status:*)",
+      "Bash(bin/rails db:migrate:status:*)",
+      "Bash(rails runner:*)",
+      "Skill(rails-ux-expert)"
     ],
     "deny": [],
     "ask": [
