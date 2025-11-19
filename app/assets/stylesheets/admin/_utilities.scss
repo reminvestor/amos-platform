@@ -957,3 +957,53 @@
   border-color: #ef4444;
   color: #f87171;
 }
+
+// Code Output Containers
+.admin-code-output {
+  min-height: 400px;
+  max-height: 600px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background-color: #1A1F35;
+  color: #94A3B8;
+  border: 1px solid #1E293B;
+}
+
+.admin-code-output-error {
+  min-height: 400px;
+  max-height: 600px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background-color: #1A1F35;
+  color: #F87171;
+  border: 1px solid #DC2626;
+}
+
+// Scrollable Containers
+.admin-scrollable-md {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+// Cursor Utilities
+.admin-cursor-pointer {
+  cursor: pointer;
+}
+
+// Icon 3x/4x sizes
+.admin-icon-3x {
+  width: 48px;
+  height: 48px;
+}
+
+.admin-icon-4x {
+  width: 64px;
+  height: 64px;
+}
+
+// Badge Text Size
+.admin-badge-xl {
+  font-size: 1.5rem;
+}

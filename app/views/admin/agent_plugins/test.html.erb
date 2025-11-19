@@ -1,7 +1,7 @@
 <div class="admin-p-xl">
   <div class="admin-page-header">
     <div class="header-left">
-      <%= link_to admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-sm admin-btn-outline", style: "margin-right: 1rem;" do %>
+      <%= link_to admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-sm admin-btn-outline admin-mr-lg" do %>
         <i data-lucide="arrow-left"></i>
       <% end %>
       <div class="header-icon">
@@ -51,7 +51,7 @@
               <textarea id="test-prompt" class="form-control font-monospace" rows="4" placeholder="Enter your search query...">Search for information about Google Antigravity. Find posts and discussions about this topic on X (Twitter).</textarea>
             </div>
 
-            <div class="mb-3" id="goal-input" style="display: none;">
+            <div class="mb-3 d-none" id="goal-input">
               <label class="form-label">Goal</label>
               <input type="text" id="test-goal" class="form-control" placeholder="Generate a sales email">
             </div>
@@ -102,7 +102,7 @@
               </div>
               <div class="mb-3">
                 <label class="form-label small text-muted">Result:</label>
-                <pre id="result-output" class="p-3 rounded font-monospace small" style="min-height: 400px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; background-color: #1A1F35; color: #94A3B8; border: 1px solid #1E293B;"></pre>
+                <pre id="result-output" class="p-3 rounded font-monospace small admin-code-output"></pre>
               </div>
             </div>
 
@@ -113,14 +113,14 @@
               </div>
               <div class="mb-3">
                 <label class="form-label small text-muted">Error:</label>
-                <pre id="error-output" class="p-3 rounded font-monospace small" style="min-height: 400px; max-height: 600px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; background-color: #1A1F35; color: #F87171; border: 1px solid #DC2626;"></pre>
+                <pre id="error-output" class="p-3 rounded font-monospace small admin-code-output-error"></pre>
               </div>
             </div>
           </div>
 
           <div id="initial-state">
             <div class="text-center text-muted py-5">
-              <i data-lucide="flask" class="icon-xl mb-3 d-block mx-auto" style="width: 64px; height: 64px;"></i>
+              <i data-lucide="flask" class="admin-icon-4x mb-3 d-block mx-auto"></i>
               <p>Configure your test and click "Run Test" to see results</p>
             </div>
           </div>

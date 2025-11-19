@@ -79,8 +79,7 @@
             <% subcategories.each do |(cat, subcat), count| %>
               <% next if subcat.blank? %>
               <%= link_to admin_system_documents_path(category: category, subcategory: subcat),
-                  class: "list-group-item list-group-item-action ps-4 #{'active' if params[:subcategory] == subcat}",
-                  style: "font-size: 0.9em;" do %>
+                  class: "list-group-item list-group-item-action ps-4 admin-text-sm #{'active' if params[:subcategory] == subcat}" do %>
                 <i data-lucide="folder"></i> <%= subcat.titleize %>
                 <span class="badge bg-secondary float-end"><%= count %></span>
               <% end %>
@@ -103,7 +102,7 @@
                     <%= doc.original_filename %>
                   </h5>
 
-                  <p class="text-muted mb-2" style="font-size: 0.9em;">
+                  <p class="text-muted mb-2 admin-text-sm">
                     <i data-lucide="folder"></i> <%= doc.category.titleize %>
                     <% if doc.subcategory.present? %>
                       → <%= doc.subcategory.titleize %>
@@ -117,7 +116,7 @@
                   </p>
 
                   <% if doc.description.present? %>
-                    <p class="mb-2" style="font-size: 0.9em;"><%= doc.description %></p>
+                    <p class="mb-2 admin-text-sm"><%= doc.description %></p>
                   <% end %>
 
                   <div class="mb-2">
