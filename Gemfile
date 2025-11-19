@@ -144,6 +144,9 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+
+  # ERB template linting
+  gem "erb_lint", require: false
 end
 
 group :development do

@@ -40,7 +40,13 @@
       "Bash(rails db:migrate:status:*)",
       "Bash(bin/rails db:migrate:status:*)",
       "Bash(rails runner:*)",
-      "Skill(rails-ux-expert)"
+      "Skill(rails-ux-expert)",
+      "Bash(if [ -f Gemfile ])",
+      "Bash(then)",
+      "Bash(else)",
+      "Bash(fi)",
+      "Bash(chmod:*)",
+      "Bash(bundle install:*)"
     ],
     "deny": [],
     "ask": [
