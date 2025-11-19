@@ -19,12 +19,12 @@
   <% end %>
 
   <%# Main Content %>
-  <div style="padding: 2rem;">
+  <div class="admin-p-xl">
     <%# Page Header %>
     <div class="admin-page-header">
       <div class="header-left">
         <div class="header-icon">
-          <i data-lucide="link"></i>
+          <%= admin_icon('link', size: :lg) %>
         </div>
         <div class="header-text">
           <h1>Pipeline Connections</h1>
@@ -34,14 +34,14 @@
 
       <div class="header-actions">
         <%= link_to new_admin_pipeline_connection_path, class: 'admin-btn admin-btn-primary' do %>
-          <i data-lucide="plus"></i>
+          <%= admin_icon('plus', size: :sm) %>
           <span>New Connection</span>
         <% end %>
       </div>
     </div>
 
     <%# Filter Tabs %>
-    <div class="admin-tabs" style="margin-bottom: 2rem;">
+    <div class="admin-tabs admin-mb-xl">
       <%= link_to 'All', admin_pipeline_connections_path, class: "admin-tab #{params[:system_type].blank? ? 'admin-tab-active' : ''}" %>
       <%= link_to 'JIRA', admin_pipeline_connections_path(system_type: 'jira'), class: "admin-tab #{params[:system_type] == 'jira' ? 'admin-tab-active' : ''}" %>
       <%= link_to 'GitHub', admin_pipeline_connections_path(system_type: 'github'), class: "admin-tab #{params[:system_type] == 'github' ? 'admin-tab-active' : ''}" %>
@@ -52,7 +52,7 @@
     <% if @pipeline_connections.any? %>
       <%# Connections Table Card %>
       <div class="admin-card">
-        <div style="overflow-x: auto;">
+        <div class="admin-overflow-x-auto">
           <table class="admin-table">
             <thead>
               <tr>
@@ -61,14 +61,14 @@
                 <th>Status</th>
                 <th>Last Sync</th>
                 <th>Executions</th>
-                <th style="text-align: right;">Actions</th>
+                <th class="admin-text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               <% @pipeline_connections.each do |connection| %>
                 <tr>
                   <td>
-                    <%= link_to connection.name, admin_pipeline_connection_path(connection), style: 'color: #22D3EE; text-decoration: none; font-weight: 600;' %>
+                    <%= link_to connection.name, admin_pipeline_connection_path(connection), class: 'admin-link admin-font-semibold' %>
                   </td>
                   <td>
                     <span class="admin-badge admin-badge-default">
@@ -84,26 +84,26 @@
                       <span class="admin-badge admin-badge-offline">ERROR</span>
                     <% end %>
                   </td>
-                  <td style="color: #94A3B8; font-size: 0.875rem;">
+                  <td class="admin-text-secondary admin-text-sm">
                     <% if connection.last_sync_at %>
                       <%= time_ago_in_words(connection.last_sync_at) %> ago
                     <% else %>
                       Never
                     <% end %>
                   </td>
-                  <td style="color: white;">
+                  <td class="admin-text-primary">
                     <%= connection.pipeline_executions.count %>
                   </td>
-                  <td style="text-align: right;">
-                    <div style="display: inline-flex; gap: 0.5rem;">
+                  <td class="admin-text-right">
+                    <div class="admin-inline-flex admin-flex-gap-sm">
                       <%= link_to admin_pipeline_connection_path(connection), class: 'admin-btn admin-btn-sm admin-btn-outline', aria: { label: 'View connection' } do %>
-                        <i data-lucide="eye"></i>
+                        <%= admin_icon('eye', size: :sm) %>
                       <% end %>
                       <%= link_to edit_admin_pipeline_connection_path(connection), class: 'admin-btn admin-btn-sm admin-btn-outline', aria: { label: 'Edit connection' } do %>
-                        <i data-lucide="pencil"></i>
+                        <%= admin_icon('pencil', size: :sm) %>
                       <% end %>
                       <%= button_to test_admin_pipeline_connection_path(connection), method: :post, class: 'admin-btn admin-btn-sm admin-btn-outline', aria: { label: 'Test connection' } do %>
-                        <i data-lucide="zap"></i>
+                        <%= admin_icon('zap', size: :sm) %>
                       <% end %>
                     </div>
                   </td>
@@ -115,7 +115,7 @@
       </div>
 
       <% if @pipeline_connections.respond_to?(:total_pages) && @pipeline_connections.total_pages > 1 %>
-        <div style="margin-top: 1.5rem;">
+        <div class="admin-mt-lg">
           <%= paginate @pipeline_connections %>
         </div>
       <% end %>
@@ -123,14 +123,14 @@
       <%# Empty State %>
       <div class="admin-empty-state">
         <div class="empty-icon">
-          <i data-lucide="link"></i>
+          <%= admin_icon('link', size: :xl) %>
         </div>
         <p class="empty-title">No pipeline connections yet</p>
         <p class="empty-description">
           Create your first connection to integrate with JIRA, GitHub, Azure DevOps, or other systems
         </p>
-        <%= link_to new_admin_pipeline_connection_path, class: 'admin-btn admin-btn-primary', style: 'margin-top: 1rem;' do %>
-          <i data-lucide="plus"></i>
+        <%= link_to new_admin_pipeline_connection_path, class: 'admin-btn admin-btn-primary admin-mt-md' do %>
+          <%= admin_icon('plus', size: :sm) %>
           <span>Create Connection</span>
         <% end %>
       </div>

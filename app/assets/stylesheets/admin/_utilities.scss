@@ -66,6 +66,7 @@
 .admin-text-error { color: $admin-red-error; }
 .admin-text-warning { color: $admin-yellow-warning; }
 .admin-text-info { color: $admin-cyan-info; }
+.admin-text-purple { color: #A855F7; }
 
 // Font Sizes
 .admin-text-xs { font-size: $admin-text-xs; }
@@ -130,6 +131,11 @@
   }
 }
 
+// Icon Gradient Variants (for header icons)
+.admin-icon-gradient-cyan {
+  background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%);
+}
+
 // Stat Card Text
 .admin-stat-label {
   color: $admin-text-secondary;
@@ -184,6 +190,7 @@
 
 // Flexbox Display
 .admin-flex { display: flex; }
+.admin-inline-flex { display: inline-flex; }
 .admin-flex-col { display: flex; flex-direction: column; }
 .admin-flex-row { display: flex; flex-direction: row; }
 
@@ -407,6 +414,55 @@
   font-weight: 600;
 }
 
+.admin-progress-success {
+  background: linear-gradient(90deg, rgb(74, 222, 128), rgb(34, 197, 94));
+}
+
+.admin-progress-error {
+  background: linear-gradient(90deg, rgb(248, 113, 113), rgb(239, 68, 68));
+}
+
+// Performance Progress Variants
+.admin-progress-fast {
+  background: rgb(74, 222, 128);
+}
+
+.admin-progress-medium {
+  background: #22D3EE;
+}
+
+.admin-progress-slow {
+  background: rgb(250, 204, 21);
+  color: #0A0E1A;
+}
+
+.admin-progress-very-slow {
+  background: rgb(248, 113, 113);
+}
+
+// Legend Squares
+.admin-legend-square {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 0.125rem;
+}
+
+.admin-legend-fast {
+  background: rgb(74, 222, 128);
+}
+
+.admin-legend-medium {
+  background: #22D3EE;
+}
+
+.admin-legend-slow {
+  background: rgb(250, 204, 21);
+}
+
+.admin-legend-very-slow {
+  background: rgb(248, 113, 113);
+}
+
 // Empty State
 .admin-empty-state {
   text-align: center;
@@ -456,6 +512,12 @@
   border: none;
   border-top: 1px solid $admin-border;
   margin: $admin-spacing-lg 0;
+}
+
+// Section Divider (for form sections with top border and padding)
+.admin-section-divider {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-primary);
 }
 
 // List Utilities
@@ -514,6 +576,24 @@
   height: 300px;
 }
 
+// Chart Bar Styles
+.admin-chart-bar-purple {
+  background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
+  border-radius: 0.25rem 0.25rem 0 0;
+}
+
+// Chart Label Vertical
+.admin-chart-label-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+// Mini Progress Bar
+.admin-progress-mini {
+  height: 8px;
+  min-width: 80px;
+}
+
 // Text Alignment
 .admin-text-left {
   text-align: left;
@@ -568,6 +648,14 @@
   display: flex;
   align-items: start;
   gap: 0.5rem;
+}
+
+// Info Box (cyan-themed informational boxes)
+.admin-info-box {
+  padding: $admin-spacing-md;
+  background-color: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: $admin-radius-md;
 }
 
 // Links
@@ -681,6 +769,21 @@
   font-size: $admin-text-sm;
   display: block;
   margin-top: 0.25rem;
+}
+
+// Password Toggle Group
+.admin-password-toggle-group {
+  display: flex;
+  gap: 0;
+}
+
+.admin-password-input-left {
+  border-radius: 0.5rem 0 0 0.5rem;
+  border-right: none;
+}
+
+.admin-toggle-btn-right {
+  border-radius: 0 0.5rem 0.5rem 0;
 }
 
 // Alert Boxes

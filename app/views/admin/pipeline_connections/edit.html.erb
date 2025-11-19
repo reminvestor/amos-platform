@@ -1,16 +1,16 @@
 
-<div class="admin-content" style="padding: 2rem;">
+<div class="admin-content admin-p-xl">
   <div class="container-fluid">
     <%# Page Header %>
-    <div class="admin-page-header" style="margin-bottom: 2rem;">
+    <div class="admin-page-header admin-mb-xl">
       <div class="header-left">
-        <div class="header-icon" style="background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%);">
-          <i data-lucide="<%= case @pipeline_connection.system_type
+        <div class="header-icon admin-icon-gradient-cyan">
+          <%= admin_icon(case @pipeline_connection.system_type
                 when 'jira' then 'file-text'
                 when 'github' then 'github'
                 when 'azure_devops', 'azure_repos' then 'cloud'
                 else 'plug'
-                end %>"></i>
+                end, size: :lg) %>
         </div>
         <div class="header-text">
           <h1>Edit Pipeline Connection</h1>
@@ -20,7 +20,7 @@
 
       <div class="header-actions">
         <%= link_to admin_pipeline_connection_path(@pipeline_connection), class: "admin-btn admin-btn-outline" do %>
-          <i data-lucide="arrow-left"></i>
+          <%= admin_icon('arrow-left', size: :sm) %>
           <span>Back to Connection</span>
         <% end %>
       </div>
@@ -33,12 +33,12 @@
           <%= form_with model: @pipeline_connection, url: admin_pipeline_connection_path(@pipeline_connection), method: :patch, local: true do |f| %>
             <%# Error Messages %>
             <% if @pipeline_connection.errors.any? %>
-              <div class="alert alert-danger" style="background-color: var(--status-error-bg); border-color: var(--status-error-border); color: var(--status-error-text); margin-bottom: 1.5rem;">
-                <h5 style="margin-bottom: 0.5rem;">
-                  <i data-lucide="alert-circle" class="icon-md"></i>
+              <div class="admin-alert admin-alert-error">
+                <h5>
+                  <%= admin_icon('alert-circle', size: :md) %>
                   <%= pluralize(@pipeline_connection.errors.count, "error") %> prohibited this connection from being saved:
                 </h5>
-                <ul style="margin-bottom: 0;">
+                <ul>
                   <% @pipeline_connection.errors.full_messages.each do |message| %>
                     <li><%= message %></li>
                   <% end %>
@@ -47,8 +47,8 @@
             <% end %>
 
             <%# System Type Field (Disabled) %>
-            <div style="margin-bottom: 1.5rem;">
-              <%= f.label :system_type, "System Type", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+            <div class="form-group">
+              <%= f.label :system_type, "System Type", class: "form-label" %>
               <%= f.select :system_type,
                   options_for_select([
                     ['JIRA', 'jira'],
@@ -57,27 +57,27 @@
                     ['Azure Repos', 'azure_repos']
                   ], @pipeline_connection.system_type),
                   {},
-                  class: 'form-select',
+                  class: 'form-select admin-form-disabled',
                   disabled: true,
                   style: "background-color: var(--bg-secondary); border: 1px solid var(--border-primary); color: var(--text-muted); padding: 0.75rem; border-radius: 0.5rem; opacity: 0.6;" %>
-              <small style="color: rgb(250, 204, 21); font-size: 0.875rem; display: block; margin-top: 0.25rem;">
+              <small class="form-helper-warning">
                 System type cannot be changed after creation
               </small>
             </div>
 
             <%# Connection Name Field %>
-            <div style="margin-bottom: 1.5rem;">
-              <%= f.label :name, "Connection Name", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+            <div class="form-group">
+              <%= f.label :name, "Connection Name", class: "form-label" %>
               <%= f.text_field :name, class: 'form-control', placeholder: 'e.g., GitHub - Production',
                   style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
-              <small style="color: var(--text-muted); font-size: 0.875rem; display: block; margin-top: 0.25rem;">
+              <small class="form-helper-text">
                 A friendly name to identify this connection
               </small>
             </div>
 
             <%# Status Field %>
-            <div style="margin-bottom: 1.5rem;">
-              <%= f.label :status, "Status", style: "display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;" %>
+            <div class="form-group">
+              <%= f.label :status, "Status", class: "form-label" %>
               <%= f.select :status,
                   options_for_select([
                     ['Active', 'active'],
@@ -88,41 +88,40 @@
                   style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
             </div>
 
-            <hr style="border-color: var(--border-primary); margin: 2rem 0;">
+            <hr class="admin-divider">
 
-            <h5 style="color: white; font-weight: 600; margin-bottom: 0.5rem;">Configuration</h5>
-            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Update the credentials and settings for this connection.</p>
+            <h5 class="admin-text-primary admin-font-semibold admin-mb-sm">Configuration</h5>
+            <p class="admin-text-secondary admin-mb-lg">Update the credentials and settings for this connection.</p>
 
             <% config = @pipeline_connection.config %>
 
             <!-- JIRA Config -->
             <% if @pipeline_connection.system_type == 'jira' %>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">JIRA API URL</label>
+              <div class="form-group">
+                <label class="form-label">JIRA API URL</label>
                 <input type="text" name="mcp_connection[config][api_url]" class="form-control" value="<%= config[:api_url] %>" placeholder="https://your-domain.atlassian.net"
                     style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;">
               </div>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">JIRA API Token</label>
-                <div style="display: flex; gap: 0;">
-                  <input type="password" name="mcp_connection[config][api_token]" class="form-control password-field" value="<%= config[:api_token] %>" placeholder="Your JIRA API token" id="jira_token_edit"
-                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem 0 0 0.5rem; border-right: none;">
-                  <button class="toggle-password" type="button" data-target="jira_token_edit"
-                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-secondary); padding: 0.75rem; border-radius: 0 0.5rem 0.5rem 0; cursor: pointer;">
-                    <i data-lucide="eye" class="icon-md"></i>
+              <div class="form-group">
+                <label class="form-label">JIRA API Token</label>
+                <div class="admin-password-toggle-group">
+                  <input type="password" name="mcp_connection[config][api_token]" class="form-control password-field admin-password-input-left" value="<%= config[:api_token] %>" placeholder="Your JIRA API token" id="jira_token_edit"
+                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem;">
+                  <button class="toggle-password admin-btn admin-toggle-btn-right" type="button" data-target="jira_token_edit">
+                    <%= admin_icon('eye', size: :md) %>
                   </button>
                 </div>
-                <small style="color: var(--text-muted); font-size: 0.875rem; display: block; margin-top: 0.25rem;">
-                  Generate at: <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" style="color: #22D3EE;">id.atlassian.com/manage-profile/security/api-tokens</a>
+                <small class="form-helper-text">
+                  Generate at: <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" class="admin-link">id.atlassian.com/manage-profile/security/api-tokens</a>
                 </small>
               </div>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">Email</label>
+              <div class="form-group">
+                <label class="form-label">Email</label>
                 <input type="email" name="mcp_connection[config][email]" class="form-control" value="<%= config[:email] %>" placeholder="your@email.com"
                     style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;">
               </div>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">Project Key (Optional)</label>
+              <div class="form-group">
+                <label class="form-label">Project Key (Optional)</label>
                 <input type="text" name="mcp_connection[config][project_key]" class="form-control" value="<%= config[:project_key] %>" placeholder="e.g., PROJ"
                     style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;">
               </div>
@@ -130,30 +129,29 @@
 
             <!-- GitHub Config -->
             <% if @pipeline_connection.system_type == 'github' %>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">GitHub API Token</label>
-                <div style="display: flex; gap: 0;">
-                  <input type="password" name="mcp_connection[config][token]" class="form-control password-field" value="<%= config[:token] %>" placeholder="ghp_..." id="github_token_edit"
-                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem 0 0 0.5rem; border-right: none;">
-                  <button class="toggle-password" type="button" data-target="github_token_edit"
-                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-secondary); padding: 0.75rem; border-radius: 0 0.5rem 0.5rem 0; cursor: pointer;">
-                    <i data-lucide="eye" class="icon-md"></i>
+              <div class="form-group">
+                <label class="form-label">GitHub API Token</label>
+                <div class="admin-password-toggle-group">
+                  <input type="password" name="mcp_connection[config][token]" class="form-control password-field admin-password-input-left" value="<%= config[:token] %>" placeholder="ghp_..." id="github_token_edit"
+                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem;">
+                  <button class="toggle-password admin-btn admin-toggle-btn-right" type="button" data-target="github_token_edit">
+                    <%= admin_icon('eye', size: :md) %>
                   </button>
                 </div>
-                <small style="color: var(--text-muted); font-size: 0.875rem; display: block; margin-top: 0.25rem;">
-                  Generate at: <a href="https://github.com/settings/tokens" target="_blank" style="color: #22D3EE;">github.com/settings/tokens</a>
+                <small class="form-helper-text">
+                  Generate at: <a href="https://github.com/settings/tokens" target="_blank" class="admin-link">github.com/settings/tokens</a>
                 </small>
               </div>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">Organization</label>
+              <div class="form-group">
+                <label class="form-label">Organization</label>
                 <input type="text" name="mcp_connection[config][organization]" class="form-control" value="<%= config[:organization] %>" placeholder="e.g., NuvolaNetworks"
                     style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;">
               </div>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">Repository (Optional)</label>
+              <div class="form-group">
+                <label class="form-label">Repository (Optional)</label>
                 <input type="text" name="mcp_connection[config][repository]" class="form-control" value="<%= config[:repository] %>" placeholder="e.g., agent_marketing"
                     style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;">
-                <small style="color: var(--text-muted); font-size: 0.875rem; display: block; margin-top: 0.25rem;">
+                <small class="form-helper-text">
                   Leave blank to access all repositories in the organization
                 </small>
               </div>
@@ -161,24 +159,23 @@
 
             <!-- Azure DevOps Config -->
             <% if @pipeline_connection.system_type == 'azure_devops' %>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">Azure DevOps Organization</label>
+              <div class="form-group">
+                <label class="form-label">Azure DevOps Organization</label>
                 <input type="text" name="mcp_connection[config][organization]" class="form-control" value="<%= config[:organization] %>" placeholder="Your organization name"
                     style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;">
               </div>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">Personal Access Token (PAT)</label>
-                <div style="display: flex; gap: 0;">
-                  <input type="password" name="mcp_connection[config][pat]" class="form-control password-field" value="<%= config[:pat] %>" placeholder="Your Azure DevOps PAT" id="azure_devops_pat_edit"
-                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem 0 0 0.5rem; border-right: none;">
-                  <button class="toggle-password" type="button" data-target="azure_devops_pat_edit"
-                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-secondary); padding: 0.75rem; border-radius: 0 0.5rem 0.5rem 0; cursor: pointer;">
-                    <i data-lucide="eye" class="icon-md"></i>
+              <div class="form-group">
+                <label class="form-label">Personal Access Token (PAT)</label>
+                <div class="admin-password-toggle-group">
+                  <input type="password" name="mcp_connection[config][pat]" class="form-control password-field admin-password-input-left" value="<%= config[:pat] %>" placeholder="Your Azure DevOps PAT" id="azure_devops_pat_edit"
+                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem;">
+                  <button class="toggle-password admin-btn admin-toggle-btn-right" type="button" data-target="azure_devops_pat_edit">
+                    <%= admin_icon('eye', size: :md) %>
                   </button>
                 </div>
               </div>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">Project (Optional)</label>
+              <div class="form-group">
+                <label class="form-label">Project (Optional)</label>
                 <input type="text" name="mcp_connection[config][project]" class="form-control" value="<%= config[:project] %>" placeholder="Project name"
                     style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;">
               </div>
@@ -186,29 +183,28 @@
 
             <!-- Azure Repos Config -->
             <% if @pipeline_connection.system_type == 'azure_repos' %>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">Azure Repos Organization</label>
+              <div class="form-group">
+                <label class="form-label">Azure Repos Organization</label>
                 <input type="text" name="mcp_connection[config][organization]" class="form-control" value="<%= config[:organization] %>" placeholder="Your organization name"
                     style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;">
               </div>
-              <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; color: white; font-weight: 600; margin-bottom: 0.5rem;">Personal Access Token (PAT)</label>
-                <div style="display: flex; gap: 0;">
-                  <input type="password" name="mcp_connection[config][pat]" class="form-control password-field" value="<%= config[:pat] %>" placeholder="Your Azure Repos PAT" id="azure_repos_pat_edit"
-                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem 0 0 0.5rem; border-right: none;">
-                  <button class="toggle-password" type="button" data-target="azure_repos_pat_edit"
-                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-secondary); padding: 0.75rem; border-radius: 0 0.5rem 0.5rem 0; cursor: pointer;">
-                    <i data-lucide="eye" class="icon-md"></i>
+              <div class="form-group">
+                <label class="form-label">Personal Access Token (PAT)</label>
+                <div class="admin-password-toggle-group">
+                  <input type="password" name="mcp_connection[config][pat]" class="form-control password-field admin-password-input-left" value="<%= config[:pat] %>" placeholder="Your Azure Repos PAT" id="azure_repos_pat_edit"
+                      style="background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem;">
+                  <button class="toggle-password admin-btn admin-toggle-btn-right" type="button" data-target="azure_repos_pat_edit">
+                    <%= admin_icon('eye', size: :md) %>
                   </button>
                 </div>
               </div>
             <% end %>
 
             <%# Action Buttons %>
-            <div style="display: flex; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border-primary); margin-top: 2rem;">
+            <div class="admin-flex admin-flex-gap-md admin-mt-xl admin-section-divider">
               <%= f.submit "Update Connection", class: "admin-btn admin-btn-primary" %>
               <%= link_to admin_pipeline_connection_path(@pipeline_connection), class: "admin-btn admin-btn-outline" do %>
-                <i data-lucide="x"></i>
+                <%= admin_icon('x', size: :sm) %>
                 <span>Cancel</span>
               <% end %>
             </div>
@@ -219,21 +215,21 @@
       <%# Sidebar Column %>
       <div class="col-lg-4">
         <%# Connection Info Card %>
-        <div class="admin-card" style="margin-bottom: 1.5rem;">
-          <h5 style="color: white; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-            <i data-lucide="info" class="icon-lg text-info"></i>
+        <div class="admin-card form-group">
+          <h5 class="admin-section-heading admin-mb-lg">
+            <%= admin_icon('info', size: :lg, class: 'admin-text-info') %>
             <span>Connection Info</span>
           </h5>
 
-          <dl style="margin-bottom: 0; font-size: 0.875rem;">
-            <dt style="color: var(--text-secondary); font-weight: 600; margin-bottom: 0.25rem;">Created:</dt>
-            <dd style="color: white; margin-bottom: 1rem;"><%= @pipeline_connection.created_at.strftime('%b %d, %Y') %></dd>
+          <dl class="admin-dl admin-text-sm">
+            <dt>Created:</dt>
+            <dd><%= @pipeline_connection.created_at.strftime('%b %d, %Y') %></dd>
 
-            <dt style="color: var(--text-secondary); font-weight: 600; margin-bottom: 0.25rem;">Last Updated:</dt>
-            <dd style="color: white; margin-bottom: 1rem;"><%= @pipeline_connection.updated_at.strftime('%b %d, %Y') %></dd>
+            <dt>Last Updated:</dt>
+            <dd><%= @pipeline_connection.updated_at.strftime('%b %d, %Y') %></dd>
 
-            <dt style="color: var(--text-secondary); font-weight: 600; margin-bottom: 0.25rem;">Last Sync:</dt>
-            <dd style="color: white; margin-bottom: 1rem;">
+            <dt>Last Sync:</dt>
+            <dd>
               <% if @pipeline_connection.last_sync_at %>
                 <%= time_ago_in_words(@pipeline_connection.last_sync_at) %> ago
               <% else %>
@@ -241,19 +237,19 @@
               <% end %>
             </dd>
 
-            <dt style="color: var(--text-secondary); font-weight: 600; margin-bottom: 0.25rem;">Executions:</dt>
-            <dd style="color: white; margin-bottom: 0;"><%= @pipeline_connection.pipeline_executions.count %></dd>
+            <dt>Executions:</dt>
+            <dd><%= @pipeline_connection.pipeline_executions.count %></dd>
           </dl>
         </div>
 
         <%# Security Note Card %>
         <div class="admin-card">
-          <div style="padding: 0.75rem; background-color: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); border-radius: 0.5rem;">
-            <div style="display: flex; align-items-start; gap: 0.75rem;">
-              <i data-lucide="alert-triangle" style="width: 1.25rem; height: 1.25rem; color: rgb(250, 204, 21); flex-shrink: 0; margin-top: 0.125rem;"></i>
+          <div class="admin-alert-warning">
+            <div class="admin-flex admin-items-start admin-flex-gap-md">
+              <%= admin_icon('alert-triangle', size: :md, class: 'admin-text-warning admin-flex-none admin-mt-xs') %>
               <div>
-                <strong style="color: white; display: block; margin-bottom: 0.5rem;">Security Note</strong>
-                <p style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6; margin: 0;">
+                <strong class="admin-text-primary admin-block admin-mb-sm">Security Note</strong>
+                <p class="admin-text-secondary admin-text-sm admin-leading-relaxed admin-m-0">
                   Credentials are encrypted in the database. Only update tokens if you need to rotate credentials or if the connection is experiencing authentication issues.
                 </p>
               </div>
