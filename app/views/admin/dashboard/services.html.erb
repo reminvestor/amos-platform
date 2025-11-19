@@ -1,10 +1,10 @@
 <div class="admin-content">
-  <div style="padding: 2rem;">
+  <div class="admin-p-xl">
     <%# Page Header %>
     <div class="admin-page-header">
       <div class="header-left">
         <div class="header-icon">
-          <i data-lucide="activity"></i>
+          <%= admin_icon('activity', size: :lg) %>
         </div>
         <div class="header-text">
           <h1>Services Health</h1>
@@ -14,50 +14,50 @@
 
       <div class="header-actions">
         <% if @overall_status == :healthy %>
-          <span class="admin-badge admin-badge-online" style="padding: 0.625rem 1.25rem; font-size: 0.875rem;">
-            <i data-lucide="check-circle" class="icon-md icon-with-spacing"></i> All Systems Operational
+          <span class="admin-badge admin-badge-online admin-badge-lg admin-text-sm">
+            <%= admin_icon('check-circle', size: :md, class: 'icon-with-spacing') %> All Systems Operational
           </span>
         <% elsif @overall_status == :warning %>
-          <span class="admin-badge admin-badge-warning" style="padding: 0.625rem 1.25rem; font-size: 0.875rem;">
-            <i data-lucide="alert-triangle" class="icon-md icon-with-spacing"></i> Some Issues
+          <span class="admin-badge admin-badge-warning admin-badge-lg admin-text-sm">
+            <%= admin_icon('alert-triangle', size: :md, class: 'icon-with-spacing') %> Some Issues
           </span>
         <% else %>
-          <span class="admin-badge admin-badge-offline" style="padding: 0.625rem 1.25rem; font-size: 0.875rem;">
-            <i data-lucide="x-circle" class="icon-md icon-with-spacing"></i> Systems Down
+          <span class="admin-badge admin-badge-offline admin-badge-lg admin-text-sm">
+            <%= admin_icon('x-circle', size: :md, class: 'icon-with-spacing') %> Systems Down
           </span>
         <% end %>
       </div>
     </div>
 
     <%# Service Cards Grid %>
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-service-grid admin-mb-xl">
       <% @services.each do |service_key, service| %>
-        <div class="admin-card" style="position: relative;">
+        <div class="admin-card admin-relative">
           <%# Service Header %>
-          <div style="display: flex; align-items: start; justify-content: space-between; margin-bottom: 1rem;">
+          <div class="admin-flex admin-items-start admin-justify-between admin-mb-md">
             <div>
-              <h3 style="color: white; font-size: 1rem; font-weight: 600; margin: 0 0 0.25rem 0;">
+              <h3 class="admin-text-primary admin-font-semibold admin-m-0 admin-mb-xs">
                 <%= service[:name] %>
               </h3>
-              <p style="color: #64748B; font-size: 0.75rem; margin: 0;">
+              <p class="admin-text-muted admin-text-xs admin-m-0">
                 Last checked: <%= Time.current.strftime("%l:%M%p").strip %>
               </p>
             </div>
-            <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; <%= service[:status] == :healthy ? 'background: rgba(34, 211, 238, 0.1);' : service[:status] == :warning ? 'background: rgba(251, 191, 36, 0.1);' : 'background: rgba(239, 68, 68, 0.1);' %>">
+            <div class="admin-service-icon-box" style="<%= service[:status] == :healthy ? 'background: rgba(34, 211, 238, 0.1);' : service[:status] == :warning ? 'background: rgba(251, 191, 36, 0.1);' : 'background: rgba(239, 68, 68, 0.1);' %>">
               <% if service[:status] == :healthy %>
-                <i data-lucide="check-circle" class="icon-lg text-info"></i>
+                <%= admin_icon('check-circle', size: :md, class: 'text-info') %>
               <% elsif service[:status] == :warning %>
-                <i data-lucide="alert-triangle" style="width: 1.25rem; height: 1.25rem; color: #FBBf24;"></i>
+                <%= admin_icon('alert-triangle', size: :md, class: 'admin-text-warning') %>
               <% elsif service[:status] == :unhealthy %>
-                <i data-lucide="x-circle" style="width: 1.25rem; height: 1.25rem; color: #EF4444;"></i>
+                <%= admin_icon('x-circle', size: :md, class: 'admin-text-error') %>
               <% else %>
-                <i data-lucide="help-circle" style="width: 1.25rem; height: 1.25rem; color: #64748B;"></i>
+                <%= admin_icon('help-circle', size: :md, class: 'admin-text-muted') %>
               <% end %>
             </div>
           </div>
 
           <%# Status Badge %>
-          <div style="margin-bottom: 1rem;">
+          <div class="admin-mb-md">
             <% if service[:status] == :healthy %>
               <span class="admin-badge admin-badge-online">HEALTHY</span>
             <% elsif service[:status] == :warning %>
@@ -71,8 +71,8 @@
 
           <%# Error Message %>
           <% if service[:error].present? %>
-            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 0.5rem; padding: 0.75rem; margin-top: 1rem;">
-              <p style="color: #EF4444; font-size: 0.813rem; line-height: 1.5; margin: 0;">
+            <div class="admin-error-box admin-mt-md">
+              <p class="admin-text-error admin-text-sm admin-leading-relaxed admin-m-0">
                 <%= service[:error] %>
               </p>
             </div>
@@ -80,11 +80,11 @@
 
           <%# Service Details %>
           <% if service[:details].present? && service[:details].any? && service[:error].blank? %>
-            <div style="border-top: 1px solid #1E293B; padding-top: 1rem; margin-top: 1rem;">
+            <div class="admin-border-t admin-pt-md admin-mt-md">
               <% service[:details].first(3).each do |key, value| %>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                  <span style="color: #94A3B8; font-size: 0.813rem;"><%= key.to_s.titleize %></span>
-                  <span style="color: white; font-size: 0.813rem; font-weight: 500;"><%= value %></span>
+                <div class="admin-flex admin-justify-between admin-items-center admin-mb-sm">
+                  <span class="admin-text-muted admin-text-sm"><%= key.to_s.titleize %></span>
+                  <span class="admin-text-primary admin-text-sm admin-font-medium"><%= value %></span>
                 </div>
               <% end %>
             </div>
@@ -95,25 +95,25 @@
 
     <%# System Information Card %>
     <div class="admin-card">
-      <div style="margin-bottom: 1.5rem;">
-        <h3 style="color: white; font-size: 1.125rem; font-weight: 600; margin: 0;">System Information</h3>
+      <div class="admin-mb-lg">
+        <h3 class="admin-text-primary admin-text-lg admin-font-semibold admin-m-0">System Information</h3>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+      <div class="admin-grid-4">
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.25rem 0;">Rails Version</p>
-          <p style="color: white; font-size: 1rem; font-weight: 600; margin: 0;"><%= Rails.version %></p>
+          <p class="admin-text-muted admin-text-sm admin-m-0 admin-mb-xs">Rails Version</p>
+          <p class="admin-text-primary admin-font-semibold admin-m-0"><%= Rails.version %></p>
         </div>
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.25rem 0;">Ruby Version</p>
-          <p style="color: white; font-size: 1rem; font-weight: 600; margin: 0;"><%= RUBY_VERSION %></p>
+          <p class="admin-text-muted admin-text-sm admin-m-0 admin-mb-xs">Ruby Version</p>
+          <p class="admin-text-primary admin-font-semibold admin-m-0"><%= RUBY_VERSION %></p>
         </div>
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.25rem 0;">Environment</p>
-          <p style="color: white; font-size: 1rem; font-weight: 600; margin: 0;"><%= Rails.env.titleize %></p>
+          <p class="admin-text-muted admin-text-sm admin-m-0 admin-mb-xs">Environment</p>
+          <p class="admin-text-primary admin-font-semibold admin-m-0"><%= Rails.env.titleize %></p>
         </div>
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.25rem 0;">Server Time</p>
-          <p style="color: white; font-size: 1rem; font-weight: 600; margin: 0;"><%= Time.current.strftime("%Y-%m-%d %H:%M:%S %Z") %></p>
+          <p class="admin-text-muted admin-text-sm admin-m-0 admin-mb-xs">Server Time</p>
+          <p class="admin-text-primary admin-font-semibold admin-m-0"><%= Time.current.strftime("%Y-%m-%d %H:%M:%S %Z") %></p>
         </div>
       </div>
     </div>
