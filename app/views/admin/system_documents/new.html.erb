@@ -45,7 +45,7 @@
             </div>
 
             <!-- Subcategory -->
-            <div class="mb-4" id="subcategory-container" style="display: none;">
+            <div class="mb-4 d-none" id="subcategory-container">
               <label class="form-label">Subcategory</label>
               <%= f.text_field :subcategory, class: 'form-control', placeholder: 'e.g., Stripe, HubSpot, Architecture' %>
               <div class="form-text">
@@ -79,7 +79,7 @@
       <div class="card mt-4 bg-light">
         <div class="card-body">
           <h6><i data-lucide="info"></i> What happens after upload?</h6>
-          <ol class="mb-0" style="font-size: 0.9em;">
+          <ol class="mb-0 admin-text-sm">
             <li>Document is uploaded to S3 storage</li>
             <li>Background job processes the document (Docling extraction)</li>
             <li>Text is chunked into semantic segments</li>
