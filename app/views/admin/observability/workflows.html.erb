@@ -243,3 +243,6 @@
 
   document.addEventListener('turbo:load', initializeWorkflowCharts);
 </script>
+
+<!-- Lazy-load Chart.js for workflow charts -->
+<%= javascript_include_tag "chart_loader", type: "module", defer: true %>

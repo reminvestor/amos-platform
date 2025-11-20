@@ -13,11 +13,8 @@ document.addEventListener('turbo:load', function() {
     return
   }
 
-  // Don't create subscription if we're in a parallel tasks canvas (it will create its own)
-  if (document.getElementById('parallel-tasks-panel')) {
-    console.log("ScoutChannel: Parallel tasks panel detected, skipping main channel subscription")
-    return
-  }
+  // Allow both Scout and parallel tasks canvas to have subscriptions
+  // They handle different message types and won't interfere with each other
 
   // Clean up any existing subscription
   if (window.scoutChannelSubscription) {

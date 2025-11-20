@@ -1389,13 +1389,21 @@ export default class extends Controller {
     this.loadScoutCanvas("user_profile", {})
   }
   
-  openVoiceSettings() {
-    console.log("🎤 Opening voice settings")
-    // Load user profile canvas and scroll to voice settings
-    this.loadScoutCanvas("user_profile", {})
-    
-    // Mark that we should scroll to voice settings after load
-    this.scrollToVoiceSettingsOnLoad = true
+  openVoiceSettings(event) {
+    try {
+      console.log("🎤 Opening voice settings")
+
+      // Load user profile canvas and scroll to voice settings
+      this.loadScoutCanvas("user_profile", {})
+
+      // Mark that we should scroll to voice settings after load
+      this.scrollToVoiceSettingsOnLoad = true
+
+      console.log("✅ Voice settings load initiated successfully")
+    } catch (error) {
+      console.error("❌ Error opening voice settings:", error)
+      alert("Error opening voice settings: " + error.message)
+    }
   }
 
   logout() {
@@ -1978,9 +1986,18 @@ export default class extends Controller {
 
     // Handle input requests from Amos agents
     window.handleAmosInputRequest = (data) => {
-      console.log("❓ Amos agent requesting input - now handled conversationally")
-      // Input requests are now handled through normal conversation flow
-      // The backend sends the question as a regular assistant message
+      console.log("❓ Amos agent requesting input:", data)
+
+      // Display the question in Scout's chat as an AI message
+      if (data.prompt && window.scoutController) {
+        // Strip out agent communication tags if present (format: [AGENT: name][JOB_ID: id][STATUS: status][REQUEST_TYPE: type] content)
+        const cleanPrompt = data.prompt.replace(/\[AGENT:.*?\]\[JOB_ID:.*?\]\[STATUS:.*?\]\[REQUEST_TYPE:.*?\]\s*/, '')
+
+        window.scoutController.addMessage(cleanPrompt, "ai")
+        console.log("✅ Displayed agent question in Scout chat")
+      } else {
+        console.warn("⚠️ No prompt or scoutController available for input request")
+      }
     }
     
     // Handle parallel task updates

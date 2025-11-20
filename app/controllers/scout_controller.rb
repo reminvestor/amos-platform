@@ -418,7 +418,7 @@ class ScoutController < ApplicationController
     end
 
     # Set streaming headers
-    response.headers["Content-Type"] = "text/event-stream"
+    response.headers["Content-Type"] = "text/event-stream; charset=utf-8"
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Connection"] = "keep-alive"
     response.headers["X-Accel-Buffering"] = "no" # Prevent nginx buffering

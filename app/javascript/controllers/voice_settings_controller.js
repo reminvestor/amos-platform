@@ -2,10 +2,23 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["settings", "speedLabel", "volumeLabel", "successMessage"]
-  
+
   connect() {
     console.log('🎛️ Voice settings controller connected')
     this.updateUI()
+    this.previewTimeout = null
+    this.currentAudio = null
+  }
+
+  disconnect() {
+    // Clean up audio when controller disconnects
+    if (this.currentAudio) {
+      this.currentAudio.pause()
+      this.currentAudio = null
+    }
+    if (this.previewTimeout) {
+      clearTimeout(this.previewTimeout)
+    }
   }
   
   togglePreview(event) {
@@ -28,7 +41,138 @@ export default class extends Controller {
     const value = Math.round(parseFloat(event.target.value) * 100)
     this.volumeLabelTarget.textContent = `${value}%`
   }
-  
+
+  // Auto-play voice sample when dropdown changes (debounced)
+  updatePreview(event) {
+    console.log('🎤 Voice changed, scheduling preview...')
+
+    // Stop any currently playing audio
+    if (this.currentAudio) {
+      this.currentAudio.pause()
+      this.currentAudio = null
+    }
+
+    // Clear any pending preview
+    if (this.previewTimeout) {
+      clearTimeout(this.previewTimeout)
+    }
+
+    // Debounce: wait 300ms after user stops changing voices
+    this.previewTimeout = setTimeout(() => {
+      this.playVoicePreview(event.target.value)
+    }, 300)
+  }
+
+  // Play a short voice preview sample
+  async playVoicePreview(voiceId) {
+    console.log('🎤 Playing preview for voice:', voiceId)
+
+    const speed = parseFloat(document.getElementById('speed')?.value || 1.0)
+    const volume = parseFloat(document.getElementById('volume')?.value || 1.0)
+    const engine = document.getElementById('engine')?.value || 'neural'
+
+    // Short preview texts for quick sampling
+    const previewTexts = {
+      // US English
+      'Aria': "Hello! I'm Aria.",
+      'Matthew': "Hello! I'm Matthew.",
+      'Joanna': "Hi there! I'm Joanna.",
+      'Ivy': "Hi! I'm Ivy.",
+      'Kendra': "Hello! I'm Kendra.",
+      'Kimberly': "Hi there! I'm Kimberly.",
+      'Salli': "Hello! I'm Salli.",
+      'Joey': "Hey there! I'm Joey.",
+      'Justin': "Hello! I'm Justin.",
+      'Kevin': "Hi! I'm Kevin.",
+      'Ruth': "Hello! I'm Ruth.",
+      'Stephen': "Good day! I'm Stephen.",
+      // UK English
+      'Amy': "Hello! I'm Amy.",
+      'Emma': "Hello! I'm Emma.",
+      'Brian': "Hello! I'm Brian.",
+      'Arthur': "Hello! I'm Arthur.",
+      // Australian
+      'Olivia': "Hi there! I'm Olivia.",
+      // Spanish
+      'Lucia': "¡Hola! Soy Lucía.",
+      'Sergio': "¡Hola! Soy Sergio.",
+      'Lupe': "¡Hola! Soy Lupe.",
+      'Pedro': "¡Hola! Soy Pedro.",
+      'Mia': "¡Hola! Soy Mía.",
+      'Andres': "¡Hola! Soy Andrés.",
+      'Conchita': "¡Hola! Soy Conchita.",
+      // French
+      'Lea': "Bonjour! Je suis Léa.",
+      'Mathieu': "Bonjour! Je suis Mathieu.",
+      'Celine': "Bonjour! Je suis Céline.",
+      // German
+      'Vicki': "Hallo! Ich bin Vicki.",
+      'Hans': "Hallo! Ich bin Hans.",
+      // Italian
+      'Bianca': "Ciao! Sono Bianca.",
+      'Adriano': "Ciao! Sono Adriano.",
+      // Portuguese
+      'Camila': "Olá! Eu sou Camila.",
+      'Vitoria': "Olá! Eu sou Vitória.",
+      'Thiago': "Olá! Eu sou Thiago.",
+      'Ricardo': "Olá! Eu sou Ricardo."
+    }
+
+    const text = previewTexts[voiceId] || previewTexts['Matthew'] || "Hello! This is a voice preview."
+
+    try {
+      const params = new URLSearchParams({
+        text: text,
+        voice_id: voiceId,
+        engine: engine,
+        speech_marks: 'false'
+      })
+
+      const response = await fetch(`/api/tts/synthesize?${params}`, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        }
+      })
+
+      if (!response.ok) {
+        console.error('🔴 TTS preview API error:', response.status)
+        return // Silently fail for preview
+      }
+
+      // Play audio
+      const audioBlob = await response.blob()
+      const audioUrl = URL.createObjectURL(audioBlob)
+      const audio = new Audio(audioUrl)
+      audio.playbackRate = speed
+      audio.volume = volume
+
+      // Store reference to current audio
+      this.currentAudio = audio
+
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl)
+        if (this.currentAudio === audio) {
+          this.currentAudio = null
+        }
+      }
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(audioUrl)
+        if (this.currentAudio === audio) {
+          this.currentAudio = null
+        }
+      }
+
+      await audio.play()
+      console.log('✅ Voice preview playing')
+
+    } catch (error) {
+      console.error('Preview error (silently handled):', error)
+      // Don't show alert for preview errors - just log them
+    }
+  }
+
   async testVoice(event) {
     event.preventDefault()
     

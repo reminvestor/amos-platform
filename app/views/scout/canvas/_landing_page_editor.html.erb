@@ -1,4 +1,4 @@
-<div class="landing-page-editor" data-page-id="<%= landing_page.id %>" style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem;">
+<div class="landing-page-editor" data-page-id="<%= landing_page.id %>" data-page-slug="<%= landing_page.slug %>" style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem;">
   <!-- Header with page info and actions -->
   <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1.5rem;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -125,6 +125,7 @@
     selectedImageUrl: null,
     imageLibraryPage: 1,
     pageId: '<%= landing_page.id %>',
+    pageSlug: '<%= landing_page.slug %>',
     iframeDoc: null
   };
   
@@ -195,9 +196,9 @@
   // Reload the editor content from the server
   function reloadEditorContent() {
     const editor = window.scoutInlineEditor;
-    
+
     // Fetch updated landing page content
-    fetch(`/landing_pages/${editor.pageId}.json`)
+    fetch(`/landing_pages/${editor.pageSlug}.json`)
       .then(response => response.json())
       .then(data => {
         if (data.html_content) {
@@ -294,9 +295,14 @@
     };
     
     // Also set up editing after a short delay as fallback
+    // Only run if makeContentEditable hasn't been called yet
     setTimeout(() => {
       if (editor.iframeDoc && editor.iframeDoc.body) {
-        makeContentEditable(editor.iframeDoc);
+        // Check if content is already editable before re-initializing
+        const hasEditableElements = editor.iframeDoc.querySelector('.editable-text');
+        if (!hasEditableElements) {
+          makeContentEditable(editor.iframeDoc);
+        }
         iframe.style.height = editor.iframeDoc.body.scrollHeight + 'px';
       }
     }, 500);
@@ -356,6 +362,8 @@
   }
   
   function makeContentEditable(doc) {
+    console.log('🔧 makeContentEditable called');
+
     // Inject editing styles
     const style = doc.createElement('style');
     style.textContent = `
@@ -422,23 +430,38 @@
     
     // Make text elements editable
     const textElements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, button, li, td, th, label');
+    console.log('📝 Found text elements:', textElements.length);
+
+    let editableCount = 0;
     textElements.forEach(el => {
       // Skip elements with nested block-level children or form inputs
-      if (el.querySelector('div, p, h1, h2, h3, h4, h5, h6, input, select, textarea')) return;
+      if (el.querySelector('div, p, h1, h2, h3, h4, h5, h6, input, select, textarea')) {
+        console.log('⏭️ Skipping element (has nested blocks):', el.tagName, el.textContent?.substring(0, 30));
+        return;
+      }
       
       el.classList.add('editable-text');
       el.contentEditable = true;
       el.spellcheck = false;
-      
-      // Track original content
-      el.dataset.originalContent = el.innerHTML;
-      
-      // Add event listeners
-      el.addEventListener('focus', handleTextFocus);
-      el.addEventListener('blur', handleTextBlur);
-      el.addEventListener('input', handleTextInput);
-      el.addEventListener('keydown', handleTextKeydown);
+
+      // Track original content (only if not already tracked)
+      if (!el.dataset.originalContent) {
+        el.dataset.originalContent = el.innerHTML;
+      }
+
+      // Add event listeners (only if not already added)
+      if (!el.dataset.editableInitialized) {
+        el.addEventListener('focus', handleTextFocus);
+        el.addEventListener('blur', handleTextBlur);
+        el.addEventListener('input', handleTextInput);
+        el.addEventListener('keydown', handleTextKeydown);
+        el.dataset.editableInitialized = 'true';
+        editableCount++;
+        console.log('✅ Made editable:', el.tagName, el.textContent?.substring(0, 30));
+      }
     });
+
+    console.log('📊 Total editable elements created:', editableCount);
     
     // Make images replaceable
     const images = doc.querySelectorAll('img');
@@ -492,10 +515,18 @@
   function handleTextInput(e) {
     const el = e.target;
     const editor = window.scoutInlineEditor;
-    
-    if (el.innerHTML !== el.dataset.originalContent) {
+
+    const hasChanged = el.innerHTML !== el.dataset.originalContent;
+    console.log('✏️ Text input detected:', {
+      hasChanged,
+      currentHTML: (el.innerHTML || '').substring(0, 50),
+      originalHTML: (el.dataset.originalContent || '').substring(0, 50),
+      element: el.tagName
+    });
+
+    if (hasChanged) {
       el.classList.add('changed');
-      
+
       // Track the change
       if (!editor.changes.text) editor.changes.text = [];
       const existingChange = editor.changes.text.find(c => c.element === el);
@@ -509,7 +540,7 @@
           newContent: el.innerHTML
         });
       }
-      
+
       updateSaveButton();
     } else {
       el.classList.remove('changed');
@@ -724,8 +755,19 @@
   
   function saveInlineChanges() {
     const editor = window.scoutInlineEditor;
-    
-    if ((!editor.changes.text || editor.changes.text.length === 0) && 
+
+    // Log changes without DOM elements to avoid serialization errors
+    console.log('💾 Save button clicked. Changes:', {
+      textChanges: editor.changes.text?.length || 0,
+      imageChanges: editor.changes.images?.length || 0,
+      textDetails: editor.changes.text?.map(c => ({
+        selector: c.selector,
+        originalLength: c.originalContent?.length,
+        newLength: c.newContent?.length
+      }))
+    });
+
+    if ((!editor.changes.text || editor.changes.text.length === 0) &&
         (!editor.changes.images || editor.changes.images.length === 0)) {
       window.scoutShowNotification?.('No changes to save', 'info');
       return;
@@ -735,7 +777,8 @@
     const updatedHtml = editor.iframeDoc.documentElement.outerHTML;
     
     // Send to server
-    fetch(`/landing_pages/${editor.pageId}`, {
+    console.log('📤 Sending save request to server...');
+    fetch(`/landing_pages/${editor.pageSlug}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -748,18 +791,25 @@
         }
       })
     })
-    .then(response => response.json())
+    .then(response => {
+      console.log('📥 Server response:', response.status, response.statusText);
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
     .then(data => {
+      console.log('✅ Save response data:', data);
       if (data.success) {
         // Clear changes
         editor.changes = {};
-        
+
         // Update all elements
         editor.iframeDoc.querySelectorAll('.changed').forEach(el => {
           el.classList.remove('changed');
           el.dataset.originalContent = el.innerHTML;
         });
-        
+
         updateSaveButton();
         window.scoutShowNotification?.('Changes saved successfully!', 'success');
       } else {
@@ -767,6 +817,7 @@
       }
     })
     .catch(error => {
+      console.error('❌ Save error:', error);
       window.scoutShowNotification?.('Error saving: ' + error.message, 'error');
     });
   }

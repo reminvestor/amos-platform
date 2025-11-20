@@ -51,7 +51,14 @@ Rails.application.routes.draw do
       patch :preferences, action: :update_preferences
       get :test
     end
-    
+
+    # MCP Approval Client API (for development/testing)
+    # Support both underscore and hyphen versions for compatibility
+    post :request_approval, to: "approvals#request_approval"
+    post "request-approval", to: "approvals#request_approval"
+    post :get_instructions, to: "approvals#get_instructions"
+    post "get-instructions", to: "approvals#get_instructions"
+
     namespace :v1 do
       # Health check endpoint
       get "health", to: "health#index"
@@ -653,6 +660,7 @@ Rails.application.routes.draw do
       end
       collection do
         get :analytics
+        post :purge_executions
       end
     end
   end

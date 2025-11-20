@@ -57,7 +57,7 @@ sales_agent.agent_capabilities.create!([
 # Add required tools
 sales_agent.agent_tools.create!([
   { tool_name: "get_data", required: true },
-  { tool_name: "web_search_tool", required: false },
+  { tool_name: "web_search", required: false },
   { tool_name: "create_object", required: true }
 ])
 
@@ -239,6 +239,174 @@ journey_agent.agent_tools.create!([
 ])
 
 puts "  ✓ Created Customer Journey Mapper agent (draft)"
+
+# 6. Email Sequence Architect Agent
+sequence_agent = AgentPlugin.create!(
+  name: "Email Sequence Architect",
+  slug: "email_sequence_architect",
+  role: "executor",
+  description: "Designs strategic multi-touch email sequences (welcome series, nurture campaigns, onboarding flows, re-engagement campaigns). Optimizes timing, messaging progression, and conversion goals across 5-10 emails.",
+  version: "1.0.0",
+  status: "active",
+  priority: 82,
+  agent_class: "Agents::Specialized::ExecutorAgent",
+  entity_id: nil,
+  system_prompt: {
+    prompt: <<~PROMPT.strip
+      You are an email sequence strategist specializing in multi-touch campaigns. Your expertise includes:
+
+      **Sequence Design Principles:**
+      - Welcome sequences: Build trust and set expectations (3-5 emails over 7-14 days)
+      - Nurture campaigns: Educate and build relationship (5-7 emails over 30-60 days)
+      - Onboarding flows: Drive activation and first value (4-6 emails over 14-21 days)
+      - Re-engagement: Win back inactive users (3-4 emails over 14-30 days)
+      - Product launch: Build anticipation and drive conversions (5-7 emails over 10-14 days)
+
+      **Timing Optimization:**
+      - Day 0: Immediate welcome/confirmation
+      - Day 1-3: Educational content, set expectations
+      - Day 4-7: Value demonstration, social proof
+      - Week 2-4: Deeper engagement, specific use cases
+      - Beyond: Relationship building, advanced features
+
+      **Messaging Progression:**
+      - Email 1: Welcome, set tone, quick win
+      - Email 2-3: Education, address common questions
+      - Email 4-5: Social proof, case studies, testimonials
+      - Email 6-7: Advanced tips, exclusive content
+      - Final: Strong CTA, urgency if appropriate
+
+      **Best Practices:**
+      - Each email should have ONE clear goal
+      - Progressive value: each email should build on previous ones
+      - Personalization: use contact data, behavior, preferences
+      - A/B test subjects for first 2-3 emails (highest impact)
+      - Include exit points: don't over-email engaged users
+      - Monitor engagement: adjust timing based on open rates
+
+      **Output Format:**
+      When designing sequences, provide:
+      1. Sequence overview (goal, duration, email count)
+      2. Each email with: day/timing, subject line, key message, CTA, notes
+      3. Success metrics to track
+      4. A/B test suggestions
+      5. Personalization opportunities
+
+      Always ask about:
+      - Sequence goal (welcome, nurture, onboard, re-engage, launch)
+      - Target audience characteristics
+      - Desired outcome/conversion goal
+      - Any existing brand voice or content guidelines
+      - Available contact data for personalization
+    PROMPT
+  },
+  configuration: {
+    max_sequence_length: 10,
+    min_sequence_length: 3,
+    default_sequence_types: [
+      "welcome_series",
+      "nurture_campaign",
+      "onboarding_flow",
+      "re_engagement",
+      "product_launch",
+      "abandoned_cart",
+      "trial_conversion",
+      "post_purchase"
+    ],
+    timing_presets: {
+      aggressive: "emails every 1-2 days",
+      moderate: "emails every 3-5 days",
+      relaxed: "emails every 7-10 days"
+    },
+    include_ab_test_suggestions: true,
+    include_personalization_tokens: true
+  }
+)
+
+# Add capabilities
+sequence_agent.agent_capabilities.create!([
+  {
+    capability_name: "sequence_design",
+    contract_schema: {
+      inputs: [
+        { name: "sequence_type", type: "string", required: true, description: "welcome_series, nurture_campaign, onboarding_flow, etc." },
+        { name: "target_audience", type: "string", required: true },
+        { name: "conversion_goal", type: "string", required: true },
+        { name: "email_count", type: "number", required: false, description: "Desired number of emails (3-10)" },
+        { name: "duration_days", type: "number", required: false, description: "Total sequence duration" },
+        { name: "brand_voice", type: "string", required: false },
+        { name: "available_data", type: "array", required: false, description: "Contact fields for personalization" }
+      ],
+      outputs: [
+        { name: "sequence_overview", type: "object" },
+        { name: "emails", type: "array", description: "Array of email definitions" },
+        { name: "success_metrics", type: "array" },
+        { name: "ab_test_suggestions", type: "array" },
+        { name: "personalization_map", type: "object" }
+      ]
+    },
+    implementation_notes: "Designs complete email sequences with timing, messaging, and optimization strategy"
+  },
+  {
+    capability_name: "drip_campaign_creation",
+    contract_schema: {
+      inputs: [
+        { name: "campaign_goal", type: "string", required: true },
+        { name: "sequence_design", type: "object", required: true },
+        { name: "contact_group_id", type: "number", required: false }
+      ],
+      outputs: [
+        { name: "created_campaigns", type: "array" },
+        { name: "schedule", type: "object" },
+        { name: "next_steps", type: "string" }
+      ]
+    },
+    implementation_notes: "Actually creates the campaign objects based on sequence design"
+  },
+  {
+    capability_name: "timing_optimization",
+    contract_schema: {
+      inputs: [
+        { name: "sequence_type", type: "string", required: true },
+        { name: "historical_data", type: "object", required: false },
+        { name: "audience_timezone", type: "string", required: false }
+      ],
+      outputs: [
+        { name: "optimal_send_times", type: "array" },
+        { name: "day_spacing", type: "array" },
+        { name: "rationale", type: "string" }
+      ]
+    },
+    implementation_notes: "Recommends optimal timing based on sequence type and data"
+  },
+  {
+    capability_name: "sequence_analysis",
+    contract_schema: {
+      inputs: [
+        { name: "existing_campaigns", type: "array", required: true },
+        { name: "analyze_as_sequence", type: "boolean", required: false }
+      ],
+      outputs: [
+        { name: "sequence_health", type: "object" },
+        { name: "drop_off_points", type: "array" },
+        { name: "optimization_suggestions", type: "array" }
+      ]
+    },
+    implementation_notes: "Analyzes existing campaigns as a sequence and suggests improvements"
+  }
+])
+
+# Add required tools
+sequence_agent.agent_tools.create!([
+  { tool_name: "create_object", required: true },
+  { tool_name: "get_data", required: true },
+  { tool_name: "update_object", required: false },
+  { tool_name: "web_search", required: false },
+  { tool_name: "query_metric", required: false },
+  { tool_name: "get_workflow_context", required: false }
+])
+
+puts "  ✓ Created Email Sequence Architect agent"
 
 puts "✅ Agent Plugin seeding complete!"
 puts "   - #{AgentPlugin.active.count} active agents"

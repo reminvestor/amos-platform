@@ -37,7 +37,8 @@ class AgentLoadout
         'search_history',             # Search conversation history
       #  'manage_pipeline',            # AI Development Pipeline management
         'list_available_agents',      # Discover available specialized agents
-        'delegate_to_agent'           # Delegate tasks to specialized agents
+        'delegate_to_agent',          # Delegate tasks to specialized agents
+        'invoke_agent_plugin'         # Invoke custom agent plugins
       ],
       canvas_allowlist: [ "*" ],
       data_scopes: { read: [ "*" ], write: [ "*" ] },

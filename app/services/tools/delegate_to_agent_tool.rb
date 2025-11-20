@@ -76,6 +76,14 @@ module Tools
         end
 
         if job_class
+          # Determine the correct host for callback URL
+          # In Docker, workers need to use 'web' container name, not 'localhost'
+          callback_host = if ENV['DOCKER_ENV'] == 'true' || File.exist?('/.dockerenv')
+                           'web:3000'
+                         else
+                           "#{Rails.application.config.action_mailer.default_url_options[:host]}:#{Rails.application.config.action_mailer.default_url_options[:port]}"
+                         end
+
           # Pass the correct parameters to the job
           job_class.perform_later(
             job_id: job_id,
@@ -88,8 +96,8 @@ module Tools
               additional_context: additional_context
             },
             callback_url: Rails.application.routes.url_helpers.amos_callback_url(
-              session_id: context[:session_id] || job_id, 
-              host: Rails.application.config.action_mailer.default_url_options[:host] || 'localhost'
+              session_id: context[:session_id] || job_id,
+              host: callback_host
             )
           )
           

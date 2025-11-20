@@ -1,21 +1,47 @@
 module Agents
   module Specialized
     class ExecutorAgent < Agents::Base::BaseAgent
-      def initialize(task_session: nil, initial_context: {})
-        super(
-          role: :executor,
-          capabilities: [
-            "tool_execution",
-            "data_manipulation",
-            "api_integration",
-            "task_completion",
-            "error_handling",
-            "retry_logic",
-            "result_validation"
-          ],
-          context: initial_context,
-          task_session: initial_context[:task_session]
-        )
+      # Support both initialization patterns:
+      # 1. Legacy: task_session, initial_context (for WorkflowEngine)
+      # 2. Plugin: role, capabilities, system_prompt, config, context (for AgentPlugin)
+      def initialize(task_session: nil, initial_context: {}, role: nil, capabilities: nil, system_prompt: nil, config: {}, context: {})
+        # Determine which initialization pattern is being used
+        if role || capabilities || system_prompt
+          # Plugin-style initialization
+          super(
+            role: role || :executor,
+            capabilities: capabilities || [
+              "tool_execution",
+              "data_manipulation",
+              "api_integration",
+              "task_completion",
+              "error_handling",
+              "retry_logic",
+              "result_validation"
+            ],
+            context: context,
+            task_session: context[:task_session] || task_session
+          )
+          @custom_system_prompt = system_prompt
+          @config = config
+        else
+          # Legacy initialization for WorkflowEngine
+          super(
+            role: :executor,
+            capabilities: [
+              "tool_execution",
+              "data_manipulation",
+              "api_integration",
+              "task_completion",
+              "error_handling",
+              "retry_logic",
+              "result_validation"
+            ],
+            context: initial_context,
+            task_session: initial_context[:task_session] || task_session
+          )
+          @config = {}
+        end
 
         @tool_catalog = ::Tools::ToolCatalog.instance rescue nil
         @plugin_manager = Agents::Platform::PluginManager.instance rescue nil
@@ -25,6 +51,10 @@ module Agents
 
       # Override system prompt for execution expertise
       def system_prompt
+        # Use custom prompt if provided (from AgentPlugin)
+        return @custom_system_prompt if @custom_system_prompt.present?
+
+        # Otherwise use default prompt
         <<~PROMPT
           You are an expert AI Execution Agent responsible for carrying out tasks efficiently and reliably.
 

@@ -43,7 +43,7 @@ Rails.application.configure do
   # Set Active Storage URL host in development
   config.active_storage.service_urls_expire_in = 1.hour
   Rails.application.routes.default_url_options[:host] = "localhost"
-  Rails.application.routes.default_url_options[:port] = 5001
+  Rails.application.routes.default_url_options[:port] = 3000
 
   # Don't care if the mailer can't send.
   config.action_mailer.raise_delivery_errors = true
@@ -133,6 +133,9 @@ Rails.application.configure do
   # Docker hosts
   config.hosts << "host.docker.internal"
   config.hosts << /.*\.docker\.internal/
+
+  # Allow Docker container-to-container communication
+  config.hosts << "web"
 
   # Disable CSRF protection in development to match production behavior
   # This prevents CSRF token authenticity errors with complex subdomain setups

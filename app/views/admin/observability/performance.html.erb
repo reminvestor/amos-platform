@@ -239,3 +239,6 @@
 
   document.addEventListener('turbo:load', initializePerformanceCharts);
 </script>
+
+<!-- Lazy-load Chart.js for performance charts -->
+<%= javascript_include_tag "chart_loader", type: "module", defer: true %>

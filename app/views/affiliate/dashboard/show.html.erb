@@ -337,3 +337,9 @@
   </div>
 </div>
 
+
+<!-- Lazy-load Chart.js for affiliate dashboard charts -->
+<%= javascript_include_tag "chart_loader", type: "module", defer: true %>
+
+<!-- Lazy-load QRCode for referral link QR codes -->
+<%= javascript_include_tag "qrcode_loader", type: "module", defer: true %>

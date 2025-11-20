@@ -1,5 +1,5 @@
 // Admin Utility Classes
-@import 'variables';
+@use 'variables' as *;
 
 // Layout
 .admin-p-xl { padding: $admin-spacing-xl; }
@@ -286,6 +286,9 @@
   font-family: 'SF Mono', Monaco, monospace;
   font-size: $admin-text-sm;
   color: $admin-text-secondary;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .admin-pre {
@@ -895,7 +898,7 @@
 .admin-relative { position: relative; }
 
 // Border
-.admin-border-t { border-top: 1px solid $admin-border-color; }
+.admin-border-t { border-top: 1px solid $admin-border; }
 
 // Grid Variants
 .admin-grid-4 {
@@ -924,7 +927,7 @@
 }
 
 .admin-integration-icon-placeholder {
-  background: linear-gradient(135deg, $admin-accent-start 0%, $admin-accent-middle 100%);
+  background: linear-gradient(135deg, $admin-accent-start 0%, $admin-accent-end 100%);
   display: flex;
   align-items: center;
   justify-content: center;

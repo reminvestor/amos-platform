@@ -422,8 +422,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_225000) do
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "model_id"
+    t.integer "model_input_tokens", default: 0
+    t.integer "model_output_tokens", default: 0
     t.index ["agent_plugin_id", "status"], name: "index_agent_plugin_executions_on_agent_plugin_id_and_status"
     t.index ["agent_plugin_id"], name: "index_agent_plugin_executions_on_agent_plugin_id"
+    t.index ["model_id"], name: "index_agent_plugin_executions_on_model_id"
     t.index ["started_at"], name: "index_agent_plugin_executions_on_started_at"
     t.index ["status"], name: "index_agent_plugin_executions_on_status"
     t.index ["user_id", "created_at"], name: "index_agent_plugin_executions_on_user_id_and_created_at"

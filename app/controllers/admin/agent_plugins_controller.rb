@@ -209,6 +209,44 @@ class Admin::AgentPluginsController < Admin::BaseController
     @execution_timeline = generate_execution_timeline(@time_range)
   end
 
+  # POST /admin/agent_plugins/purge_executions
+  def purge_executions
+    older_than = params[:older_than]&.to_i || 24 # hours
+    statuses = params[:statuses] || ['completed', 'failed']
+
+    cutoff_time = older_than.hours.ago
+
+    # Find and delete AgentPluginExecution records
+    plugin_scope = AgentPluginExecution.where(status: statuses)
+                                       .where('created_at < ?', cutoff_time)
+    plugin_count = plugin_scope.count
+    plugin_scope.delete_all
+
+    # Also delete Amos::JobRecord entries (these are shown in Task Monitor)
+    amos_scope = Amos::JobRecord.where(status: statuses)
+                                 .where('created_at < ?', cutoff_time)
+    amos_count = amos_scope.count
+    amos_scope.delete_all
+
+    total_count = plugin_count + amos_count
+
+    respond_to do |format|
+      format.json { render json: { success: true, deleted_count: total_count, message: "Purged #{total_count} old tasks (#{plugin_count} plugins, #{amos_count} jobs)" } }
+      format.html do
+        flash[:notice] = "Successfully purged #{total_count} old tasks"
+        redirect_back(fallback_location: admin_agent_plugins_path)
+      end
+    end
+  rescue => e
+    respond_to do |format|
+      format.json { render json: { success: false, error: e.message }, status: :unprocessable_entity }
+      format.html do
+        flash[:alert] = "Failed to purge tasks: #{e.message}"
+        redirect_back(fallback_location: admin_agent_plugins_path)
+      end
+    end
+  end
+
   private
 
   def set_agent_plugin

@@ -1,2 +1,3 @@
-<!-- Chart.js (consolidated from 6 admin pages) -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Chart.js (lazy-loaded local version, ~68KB gzipped) -->
+<!-- Replaced CDN with optimized local bundle for better performance and offline support -->
+<%= javascript_include_tag "chart_loader", type: "module", defer: true %>

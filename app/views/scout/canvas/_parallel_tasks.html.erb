@@ -1,24 +1,26 @@
-<div style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem;">
-  <!-- Page Header -->
-  <div style="margin-bottom: 2rem;">
-    <h1 style="color: #FFFFFF; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
-      <i data-lucide="layers" class="icon-2x" style="color: #A78BFA;"></i>
-      Task Monitor
-    </h1>
-    <p style="color: #94A3B8; margin-bottom: 0;">Monitor active background tasks and agent workflows</p>
-  </div>
-
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+<div style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 1rem;">
+  <!-- Compact Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0.75rem; background: #1A1F35; border: 1px solid #1E293B; border-radius: 8px;">
     <div style="display: flex; align-items: center; gap: 0.75rem;">
-      <span style="background: #7C3AED; color: white; padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600;">
+      <i data-lucide="layers" class="icon-md" style="color: #A78BFA;"></i>
+      <div>
+        <h1 style="color: #FFFFFF; font-size: 1.125rem; font-weight: 600; margin: 0; line-height: 1;">Task Monitor</h1>
+        <p style="color: #64748B; margin: 0; font-size: 0.75rem; margin-top: 0.125rem;">Active background tasks</p>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <span style="background: #7C3AED; color: white; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
         <span id="task-count">0</span> Active
       </span>
+      <button onclick="purgeOldTasks()" title="Clear completed and failed tasks"
+              style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
+        <i data-lucide="trash-2" class="icon-sm"></i>
+      </button>
+      <button onclick="refreshTasks()" title="Refresh"
+              style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
+        <i data-lucide="refresh-cw" class="icon-sm"></i>
+      </button>
     </div>
-    <button onclick="refreshTasks()" title="Refresh" 
-            style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500;">
-      <i data-lucide="refresh-cw" class="icon-md"></i>
-      Refresh
-    </button>
   </div>
 
   <div id="parallel-tasks-panel" class="parallel-tasks-panel" data-conversation-id="<%= raw (@session_id || @canvas_data&.dig('session_id')) %>" data-canvas-loaded="<%= Time.now.to_i %>" data-canvas-type="parallel_tasks">
@@ -31,448 +33,28 @@
       </div>
     </div>
   </div>
+
+  <!-- Custom Modal -->
+  <div id="task-modal" class="task-modal" style="display: none;">
+    <div class="task-modal-overlay"></div>
+    <div class="task-modal-content">
+      <div class="task-modal-header">
+        <h3 id="modal-title">Confirm</h3>
+        <button class="task-modal-close" onclick="closeTaskModal()">
+          <i data-lucide="x" class="icon-sm"></i>
+        </button>
+      </div>
+      <div class="task-modal-body">
+        <p id="modal-message">Are you sure?</p>
+      </div>
+      <div class="task-modal-footer" id="modal-footer">
+        <button class="task-modal-btn task-modal-btn-secondary" onclick="closeTaskModal()">Cancel</button>
+        <button class="task-modal-btn task-modal-btn-primary" id="modal-confirm-btn">Confirm</button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<style>
-.parallel-tasks-panel {
-  display: flex;
-  flex-direction: column;
-  background: #1A1F35;
-  border: 1px solid #1E293B;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  min-height: calc(100vh - 12rem);
-}
-
-.refresh-btn {
-  background: transparent;
-  border: 1px solid #1E293B;
-  color: #94A3B8;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-/* Hover effect removed for simplicity */
-
-/* Icon sizing is handled by icon classes */
-
-.tasks-container {
-  flex: 1;
-  padding: 1.5rem;
-  overflow-y: auto;
-  background: transparent;
-}
-
-.tasks-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.tasks-container::-webkit-scrollbar-track {
-  background: #0F1522;
-  border-radius: 4px;
-}
-
-.tasks-container::-webkit-scrollbar-thumb {
-  background: #1E293B;
-  border-radius: 4px;
-}
-
-.tasks-container::-webkit-scrollbar-thumb:hover {
-  background: #7C3AED;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: #94A3B8;
-}
-
-.empty-icon {
-  display: block;
-  margin: 0 auto 1rem;
-  opacity: 0.3;
-  color: #94A3B8;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 500;
-  color: #FFFFFF;
-}
-
-.empty-state span {
-  display: block;
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
-  color: #94A3B8;
-}
-
-.task-item {
-  background: #1A1F35;
-  color: #FFFFFF;
-  border: 1px solid #1E293B;
-  border-radius: 8px;
-  padding: 1.25rem;
-  margin-bottom: 0.75rem;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-
-.task-item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: #64748B;
-  transition: background 0.3s ease;
-}
-
-.task-item.running::before,
-.task-item.active::before,
-.task-item.processing::before {
-  background: #7C3AED;
-}
-
-.task-item.completed::before {
-  background: #10b981;
-}
-
-.task-item.failed::before {
-  background: #ef4444;
-}
-
-.task-item.waiting_for_input::before {
-  background: #f59e0b;
-}
-
-/* Hover effect removed for simplicity */
-
-.task-item.new {
-  animation: slideIn 0.4s ease;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.task-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-}
-
-.task-info {
-  flex: 1;
-  margin-right: 1rem;
-}
-
-.task-type {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: #94A3B8;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.25rem;
-}
-
-.task-title {
-  font-size: 0.875rem;
-  color: #FFFFFF;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.task-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  white-space: nowrap;
-  border: 1px solid transparent;
-}
-
-.status-icon {
-  /* Icon sizing handled by icon classes */
-}
-
-.task-status.queued,
-.task-status.pending {
-  background: rgba(100, 116, 139, 0.1);
-  border-color: #64748B;
-  color: #94A3B8;
-}
-
-.task-status.running,
-.task-status.active,
-.task-status.processing {
-  background: rgba(124, 58, 237, 0.1);
-  border-color: #7C3AED;
-  color: #A78BFA;
-}
-
-.task-status.running .status-icon,
-.task-status.processing .status-icon {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.task-status.completed {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: #10b981;
-  color: #10b981;
-}
-
-.task-status.failed {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: #ef4444;
-  color: #ef4444;
-}
-
-.task-status.waiting_for_input {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: #f59e0b;
-  color: #f59e0b;
-}
-
-.task-status.canceling,
-.task-status.canceled {
-  background: rgba(100, 116, 139, 0.1);
-  border-color: #64748B;
-  color: #94A3B8;
-}
-
-.task-status.canceling .status-icon {
-  animation: spin 1s linear infinite;
-}
-
-.progress-section {
-  margin-bottom: 0.75rem;
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.375rem;
-}
-
-.progress-label {
-  font-size: 0.75rem;
-  color: #94A3B8;
-}
-
-.progress-value {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #FFFFFF;
-}
-
-.progress-bar-container {
-  width: 100%;
-  height: 6px;
-  background: #0F1522;
-  border-radius: 3px;
-  overflow: hidden;
-  position: relative;
-}
-
-.progress-bar {
-  height: 100%;
-  background: #7C3AED;
-  border-radius: 3px;
-  transition: width 0.4s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.task-item.running .progress-bar::after,
-.task-item.processing .progress-bar::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.task-message {
-  font-size: 0.8125rem;
-  color: #94A3B8;
-  line-height: 1.4;
-  margin-top: 0.5rem;
-}
-
-.task-item.failed .task-message {
-  color: #ef4444;
-}
-
-.task-details {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #1E293B;
-  display: none;
-  animation: fadeIn 0.3s ease;
-}
-
-.task-item.expanded .task-details {
-  display: block;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.detail-label {
-  font-size: 0.75rem;
-  color: #94A3B8;
-  font-weight: 500;
-}
-
-.detail-value {
-  font-size: 0.8125rem;
-  color: #FFFFFF;
-}
-
-.expand-indicator {
-  margin-left: 0.5rem;
-  transition: transform 0.3s ease;
-  display: inline-block;
-  opacity: 0.8;
-  color: #94A3B8;
-}
-
-.task-item.expanded .expand-indicator {
-  transform: rotate(180deg);
-}
-
-.task-actions {
-  margin-top: 0.75rem;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.task-action-btn {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  border-radius: 6px;
-  border: 1px solid #1E293B;
-  background: #0F1522;
-  color: #FFFFFF;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-/* Hover effect removed for simplicity */
-
-.cancel-btn {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: #ef4444;
-  color: #ef4444;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.cancel-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-}
-
-/* Agent-specific styling */
-.task-item[data-agent-type="landing_page_agent"] .task-type {
-  color: #A78BFA;
-}
-
-.task-item[data-agent-type="landing_page_agent"]::before {
-  background: #7C3AED;
-}
-
-.task-item[data-agent-type="email_campaign_agent"] .task-type {
-  color: #3b82f6;
-}
-
-.task-item[data-agent-type="email_campaign_agent"]::before {
-  background: #3b82f6;
-}
-
-.task-item[data-agent-type="contact_enrichment_agent"] .task-type {
-  color: #10b981;
-}
-
-.task-item[data-agent-type="contact_enrichment_agent"]::before {
-  background: #10b981;
-}
-
-/* Pulse animation for active tasks */
-.task-item.running::before,
-.task-item.processing::before {
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-/* Refresh animation */
-.refresh-btn.spinning i {
-  animation: spin 0.5s ease;
-}
-</style>
 
 <script>
 // Initialize immediately since this is a canvas
@@ -493,13 +75,15 @@ function updateTaskCount() {
 }
 
 // Refresh tasks (placeholder for future functionality)
-function refreshTasks() {
-  const btn = event.currentTarget;
-  btn.classList.add('spinning');
-  setTimeout(() => {
-    btn.classList.remove('spinning');
-  }, 500);
-  
+function refreshTasks(event) {
+  if (event) {
+    const btn = event.currentTarget;
+    btn.classList.add('spinning');
+    setTimeout(() => {
+      btn.classList.remove('spinning');
+    }, 500);
+  }
+
   console.log('🔄 Refreshing tasks...');
   // Could trigger a refresh from the server here
 }
@@ -523,11 +107,37 @@ function getStatusIcon(status) {
 
 // Format agent type for display
 function formatAgentType(type) {
-  if (!type) return 'Task';
+  if (!type) return '';  // Don't show 'Task' label to avoid duplication
   return type.replace(/_agent$/, '')
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+}
+
+// Format collapsible message for long task descriptions
+function formatCollapsibleMessage(message, taskId) {
+  const maxLength = 150; // Characters to show when collapsed
+  const messageId = `message-${taskId}`;
+  const isLong = message.length > maxLength;
+
+  if (!isLong) {
+    return `<div class="task-message">${message}</div>`;
+  }
+
+  const preview = message.substring(0, maxLength);
+  return `
+    <div class="task-message collapsible-message" id="${messageId}">
+      <div class="message-preview">
+        ${preview}...
+      </div>
+      <div class="message-full" style="display: none;">
+        ${message}
+      </div>
+      <button class="toggle-message-btn" onclick="toggleMessage('${messageId}')" style="background: none; border: none; color: #A78BFA; cursor: pointer; font-size: 0.6875rem; padding: 0.25rem 0; margin-top: 0.25rem; font-weight: 600;">
+        Show more ▼
+      </button>
+    </div>
+  `;
 }
 
 // Add or update task
@@ -575,7 +185,22 @@ window.addOrUpdateTask = function addOrUpdateTask(taskData, isInitialLoad = fals
   if (taskData.description) {
     taskElement.dataset.description = taskData.description;
   }
-  const description = taskData.description || taskElement.dataset.description || 'Task ' + taskData.task_id;
+  // Prioritize message (agent questions/updates) over original description for better visibility
+  let description = taskData.message || taskData.description || taskElement.dataset.description || (taskData.agent_name || formatAgentType(taskData.task_type || taskData.agent_type) || 'Background Task');
+
+  // Strip markdown formatting for cleaner compact view (bold, italic, bullets)
+  description = description.replace(/\*\*([^*]+)\*\*/g, '$1')  // **bold**
+                           .replace(/\*([^*]+)\*/g, '$1')      // *italic*
+                           .replace(/_([^_]+)_/g, '$1')        // _italic_
+                           .replace(/^[•\-\*]\s+/gm, '')       // • bullets
+                           .replace(/📋\s*/g, '')              // 📋 emoji
+                           .replace(/💡\s*/g, '')              // 💡 emoji
+                           .replace(/💭\s*/g, '')              // 💭 emoji
+                           .replace(/Question \d+ of \d+\s*/i, '')  // "Question 1 of 4"
+                           .replace(/Why this matters:.*?(?=\s*$|💡|$)/i, '')  // "Why this matters:..."
+                           .replace(/Some examples:.*$/i, '')  // "Some examples:..."
+                           .replace(/\n/g, ' ')                // newlines to spaces
+                           .trim();
   
   // Store task data on element
   taskElement.taskData = taskData;
@@ -590,42 +215,59 @@ window.addOrUpdateTask = function addOrUpdateTask(taskData, isInitialLoad = fals
   const progress = taskData.progress || 0;
   const showProgress = status === 'running' || status === 'processing' || status === 'active';
   
-  // Create HTML
+  // Set progress CSS variable for background
+  taskElement.style.setProperty('--progress', `${progress}%`);
+
+  // Create compact table-style HTML
+  const taskIdShort = String(taskData.task_id).substring(0, 8);
+  const agentType = formatAgentType(taskData.task_type || taskData.agent_type);
+
   taskElement.innerHTML = `
-    <div class="task-header">
-      <div class="task-info">
-        <div class="task-type">${formatAgentType(taskData.task_type || taskData.agent_type)}</div>
-        <div class="task-title" onclick="window.toggleTaskExpand('${taskData.task_id}')">
-          ${description}
-          <span class="expand-indicator">▼</span>
-        </div>
-      </div>
-      <span class="task-status ${status}">
-        <i data-lucide="${getStatusIcon(status)}" class="icon-sm status-icon"></i>
-        ${status.replace(/_/g, ' ')}
-      </span>
+    <div class="task-id-col" title="Task ID: ${taskData.task_id}">
+      #${taskIdShort}
     </div>
-    ${showProgress ? `
-      <div class="progress-section">
-        <div class="progress-info">
-          <span class="progress-label">Progress</span>
-          <span class="progress-value">${progress}%</span>
-        </div>
-        <div class="progress-bar-container">
-          <div class="progress-bar" style="width: ${progress}%"></div>
-        </div>
-      </div>
-    ` : ''}
-    ${taskData.message ? `<div class="task-message">${taskData.message}</div>` : ''}
+
+    <div class="task-status-col">
+      <span class="status-dot ${status}"></span>
+      <span class="status-text ${status}">${status.replace(/_/g, ' ')}</span>
+    </div>
+
+    <div class="task-description-col" onclick="window.toggleTaskExpand('${taskData.task_id}')" title="${description}">
+      ${agentType ? `<span class="task-type-label">${agentType}</span>` : ''}
+      <span class="task-description-text">${description}</span>
+      <span class="expand-indicator">▼</span>
+    </div>
+
+    <div class="task-progress-col" data-progress="${progress}">
+      ${progress > 0 ? `${progress}%` : ''}
+    </div>
+
+    <div class="task-duration-col" data-start-time="${startTime}">
+      ${calculateDuration(startTime)}
+    </div>
+
+    <div class="task-actions-col">
+      ${(status === 'running' || status === 'processing' || status === 'waiting_for_input' || status === 'queued' || status === 'pending') ? `
+        <button class="icon-btn cancel-btn" onclick="cancelTask('${taskData.task_id}')" title="Cancel task">
+          <i data-lucide="x-circle" class="icon-sm"></i>
+        </button>
+      ` : ''}
+      <button class="icon-btn" onclick="window.toggleTaskExpand('${taskData.task_id}')" title="View details">
+        <i data-lucide="eye" class="icon-sm"></i>
+      </button>
+    </div>
+
     <div class="task-details">
+      ${taskData.message ? `
+        <div style="margin-bottom: 0.75rem; color: #FFFFFF;">
+          ${taskData.message}
+        </div>
+      ` : ''}
+
       <div class="detail-grid">
         <div class="detail-item">
           <span class="detail-label">Task ID</span>
-          <span class="detail-value">${String(taskData.task_id).substring(0, 8)}...</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Started</span>
-          <span class="detail-value">${new Date(startTime).toLocaleTimeString()}</span>
+          <span class="detail-value">${taskData.task_id}</span>
         </div>
         ${taskData.agent_name ? `
           <div class="detail-item">
@@ -634,21 +276,26 @@ window.addOrUpdateTask = function addOrUpdateTask(taskData, isInitialLoad = fals
           </div>
         ` : ''}
         <div class="detail-item">
-          <span class="detail-label">Duration</span>
-          <span class="detail-value" data-start-time="${startTime}">${calculateDuration(startTime)}</span>
+          <span class="detail-label">Started</span>
+          <span class="detail-value">${new Date(startTime).toLocaleString()}</span>
         </div>
+        ${(status === 'completed' || status === 'failed') && taskData.completed_at ? `
+          <div class="detail-item">
+            <span class="detail-label">Completed</span>
+            <span class="detail-value">${new Date(taskData.completed_at).toLocaleString()}</span>
+          </div>
+        ` : ''}
+        ${showProgress ? `
+          <div class="detail-item">
+            <span class="detail-label">Progress</span>
+            <span class="detail-value">${progress}%</span>
+          </div>
+        ` : ''}
       </div>
+
       ${taskData.error ? `
-        <div class="task-message" style="color: #ef4444; margin-top: 0.75rem;">
+        <div style="margin-top: 0.75rem; padding: 0.75rem; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 4px; color: #ef4444;">
           <strong>Error:</strong> ${taskData.error}
-        </div>
-      ` : ''}
-      ${(status === 'running' || status === 'processing' || status === 'waiting_for_input' || status === 'queued' || status === 'pending') ? `
-        <div class="task-actions">
-          <button class="task-action-btn cancel-btn" onclick="cancelTask('${taskData.task_id}')">
-            <i data-lucide="x-circle" class="icon-sm"></i>
-            Cancel Task
-          </button>
         </div>
       ` : ''}
     </div>
@@ -694,6 +341,26 @@ window.toggleTaskExpand = function(taskId) {
   }
 };
 
+// Toggle message expand/collapse
+window.toggleMessage = function(messageId) {
+  const messageElement = document.getElementById(messageId);
+  if (!messageElement) return;
+
+  const preview = messageElement.querySelector('.message-preview');
+  const full = messageElement.querySelector('.message-full');
+  const btn = messageElement.querySelector('.toggle-message-btn');
+
+  if (full.style.display === 'none') {
+    preview.style.display = 'none';
+    full.style.display = 'block';
+    btn.innerHTML = 'Show less ▲';
+  } else {
+    preview.style.display = 'block';
+    full.style.display = 'none';
+    btn.innerHTML = 'Show more ▼';
+  }
+};
+
 // Handle canvas updates
 window.handleCanvasUpdate = function(data) {
   console.log("📨 CANVAS: Processing update:", data);
@@ -701,40 +368,42 @@ window.handleCanvasUpdate = function(data) {
   // Handle different message types
   switch(data.type) {
     case 'task_progress':
-      console.log(`📊 CANVAS: Task ${data.task_id} progress: ${data.progress}% - ${data.message}`);
+      console.log(`📊 CANVAS: Task ${data.task_id || data.job_id || data.id} progress: ${data.progress}% - ${data.message}`);
       console.log('📊 CANVAS: Full task data:', data);
       addOrUpdateTask({
-        task_id: data.task_id,
+        task_id: data.task_id || data.job_id || data.id,
         task_type: data.task_type || data.agent_type,
         agent_type: data.agent_type || data.task_type,
-        description: data.description || 'Processing task...',
+        description: data.description || data.task || 'Processing task...',
         status: data.status || 'running',
         progress: data.progress || 0,
-        message: data.message || 'Working...',
-        started_at: data.started_at || new Date().toISOString()
+        message: data.message || data.status_message || 'Working...',
+        started_at: data.started_at || data.created_at || new Date().toISOString()
       });
       break;
-      
+
     case 'task_completed':
-      console.log(`✅ CANVAS: Task ${data.task_id} completed`);
+      console.log(`✅ CANVAS: Task ${data.task_id || data.job_id || data.id} completed`);
       addOrUpdateTask({
-        task_id: data.task_id,
-        description: data.description,
+        task_id: data.task_id || data.job_id || data.id,
+        description: data.description || data.task,
         status: 'completed',
         progress: 100,
-        message: data.message || 'Task completed successfully'
+        message: data.message || data.status_message || 'Task completed successfully',
+        completed_at: data.completed_at || new Date().toISOString()
       });
       break;
-      
+
     case 'task_failed':
-      console.log(`❌ CANVAS: Task ${data.task_id} failed: ${data.error}`);
+      console.log(`❌ CANVAS: Task ${data.task_id || data.job_id || data.id} failed: ${data.error}`);
       addOrUpdateTask({
-        task_id: data.task_id,
-        description: data.description,
+        task_id: data.task_id || data.job_id || data.id,
+        description: data.description || data.task,
         status: 'failed',
         progress: data.progress || 0,
-        message: data.error || 'Task failed',
-        error: data.error
+        message: data.error || data.status_message || 'Task failed',
+        error: data.error,
+        completed_at: data.completed_at || new Date().toISOString()
       });
       break;
       
@@ -743,27 +412,170 @@ window.handleCanvasUpdate = function(data) {
   }
 };
 
-// Update durations every second
+// Update durations every second (only for active tasks)
 setInterval(() => {
   document.querySelectorAll('[data-start-time]').forEach(el => {
-    const startTime = el.getAttribute('data-start-time');
-    if (startTime) {
-      el.textContent = calculateDuration(startTime);
+    // Only update duration for running tasks
+    const taskElement = el.closest('.task-item');
+    if (taskElement && (taskElement.classList.contains('running') ||
+                       taskElement.classList.contains('processing') ||
+                       taskElement.classList.contains('queued'))) {
+      const startTime = el.getAttribute('data-start-time');
+      if (startTime) {
+        el.textContent = calculateDuration(startTime);
+      }
     }
   });
 }, 1000);
 
+// Custom modal functions
+window.showTaskModal = function(title, message, confirmText, confirmCallback, type = 'confirm') {
+  const modal = document.getElementById('task-modal');
+  const modalTitle = document.getElementById('modal-title');
+  const modalMessage = document.getElementById('modal-message');
+  const modalFooter = document.getElementById('modal-footer');
+  const confirmBtn = document.getElementById('modal-confirm-btn');
+
+  modalTitle.textContent = title;
+  modalMessage.innerHTML = message;
+
+  if (type === 'alert') {
+    // For alerts, hide footer and just show OK
+    modalFooter.innerHTML = `
+      <button class="task-modal-btn task-modal-btn-primary" onclick="closeTaskModal()">OK</button>
+    `;
+  } else {
+    // For confirms, show cancel and confirm buttons
+    modalFooter.innerHTML = `
+      <button class="task-modal-btn task-modal-btn-secondary" onclick="closeTaskModal()">Cancel</button>
+      <button class="task-modal-btn task-modal-btn-danger" id="modal-confirm-btn">${confirmText}</button>
+    `;
+
+    // Re-get the button after innerHTML update
+    setTimeout(() => {
+      const newConfirmBtn = document.getElementById('modal-confirm-btn');
+      newConfirmBtn.onclick = () => {
+        closeTaskModal();
+        confirmCallback();
+      };
+    }, 0);
+  }
+
+  modal.style.display = 'flex';
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+};
+
+window.closeTaskModal = function() {
+  const modal = document.getElementById('task-modal');
+  modal.style.display = 'none';
+};
+
+window.showSuccessModal = function(message) {
+  showTaskModal('Success', `<div class="modal-icon success"><i data-lucide="check-circle" class="icon-lg"></i></div><p style="text-align: center;">${message}</p>`, 'OK', null, 'alert');
+};
+
+window.showErrorModal = function(message) {
+  showTaskModal('Error', `<div class="modal-icon error"><i data-lucide="x-circle" class="icon-lg"></i></div><p style="text-align: center;">${message}</p>`, 'OK', null, 'alert');
+};
+
+// Purge old tasks function
+window.purgeOldTasks = function() {
+  // First modal: Choose between all tasks or old tasks
+  showTaskModal(
+    'Clear Tasks',
+    '<p style="margin-bottom: 1rem;">Choose which tasks to delete:</p><p style="font-size: 0.875rem; color: #94A3B8;">• <strong>Delete All</strong>: Remove all tasks regardless of age<br>• <strong>Delete Old</strong>: Only remove tasks older than 24 hours</p>',
+    'Delete All',
+    () => {
+      // Delete ALL tasks
+      confirmAndPurge(0);
+    }
+  );
+
+  // Add a "Delete Old" button
+  setTimeout(() => {
+    const footer = document.getElementById('modal-footer');
+    const deleteAllBtn = document.getElementById('modal-confirm-btn');
+    const deleteOldBtn = document.createElement('button');
+    deleteOldBtn.className = 'task-modal-btn task-modal-btn-primary';
+    deleteOldBtn.textContent = 'Delete Old (24h+)';
+    deleteOldBtn.onclick = () => {
+      closeTaskModal();
+      confirmAndPurge(24);
+    };
+    footer.insertBefore(deleteOldBtn, deleteAllBtn);
+  }, 0);
+};
+
+function confirmAndPurge(olderThan) {
+  const message = olderThan === 0 ?
+    '<div class="modal-icon warning"><i data-lucide="alert-triangle" class="icon-lg"></i></div><p style="text-align: center;">This will permanently delete <strong>ALL tasks</strong> regardless of age. This action cannot be undone.</p>' :
+    '<div class="modal-icon warning"><i data-lucide="alert-triangle" class="icon-lg"></i></div><p style="text-align: center;">This will permanently delete all tasks older than <strong>24 hours</strong>. This action cannot be undone.</p>';
+
+  showTaskModal(
+    'Confirm Deletion',
+    message,
+    'Delete Tasks',
+    () => {
+      executePurge(olderThan);
+    }
+  );
+}
+
+function executePurge(olderThan) {
+  console.log(`Purging tasks older than ${olderThan} hours...`);
+
+  fetch('/admin/agent_plugins/purge_executions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+    },
+    body: JSON.stringify({
+      older_than: olderThan,
+      statuses: ['completed', 'failed', 'running', 'processing', 'active', 'queued', 'pending', 'waiting_for_input', 'canceling', 'canceled']
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      console.log(`✅ Purged ${data.deleted_count} old tasks`);
+      showSuccessModal(`Successfully deleted ${data.deleted_count} tasks`);
+      setTimeout(() => {
+        closeTaskModal();
+        location.reload();
+      }, 2000);
+    } else {
+      console.error('❌ Failed to purge tasks:', data.error);
+      showErrorModal('Failed to purge tasks: ' + data.error);
+    }
+  })
+  .catch(error => {
+    console.error('❌ Error purging tasks:', error);
+    showErrorModal('Error purging tasks: ' + error.message);
+  });
+}
+
 // Cancel task function
 window.cancelTask = function(taskId) {
-  if (!confirm('Are you sure you want to cancel this task?')) {
-    return;
-  }
-  
+  showTaskModal(
+    'Cancel Task',
+    '<div class="modal-icon warning"><i data-lucide="alert-triangle" class="icon-lg"></i></div><p style="text-align: center;">Are you sure you want to cancel this task?<br><span style="font-size: 0.875rem; color: #94A3B8;">This action cannot be undone.</span></p>',
+    'Cancel Task',
+    () => {
+      executeCancelTask(taskId);
+    },
+    'confirm'
+  );
+};
+
+function executeCancelTask(taskId) {
   console.log(`🚫 Canceling task: ${taskId}`);
-  
+
   // Extract the actual job ID (remove 'amos-' prefix if present)
   const jobId = taskId.startsWith('amos-') ? taskId.substring(5) : taskId;
-  
+
   // Update UI immediately to show canceling status
   const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
   if (taskElement) {
@@ -775,7 +587,7 @@ window.cancelTask = function(taskId) {
       lucide.createIcons();
     }
   }
-  
+
   // Send cancel request to server
   fetch('/scout/cancel_job', {
     method: 'POST',
@@ -789,6 +601,7 @@ window.cancelTask = function(taskId) {
   .then(data => {
     if (data.success) {
       console.log(`✅ Task ${taskId} canceled successfully`);
+      showSuccessModal('Task canceled successfully');
       // Update task status to canceled
       addOrUpdateTask({
         task_id: taskId,
@@ -798,7 +611,7 @@ window.cancelTask = function(taskId) {
       });
     } else {
       console.error(`❌ Failed to cancel task: ${data.error}`);
-      alert(`Failed to cancel task: ${data.error || 'Unknown error'}`);
+      showErrorModal(`Failed to cancel task: ${data.error || 'Unknown error'}`);
       // Restore previous status if cancellation failed
       if (taskElement && taskElement.taskData) {
         addOrUpdateTask(taskElement.taskData);
@@ -807,7 +620,7 @@ window.cancelTask = function(taskId) {
   })
   .catch(error => {
     console.error('❌ Error canceling task:', error);
-    alert('Failed to cancel task. Please try again.');
+    showErrorModal('Failed to cancel task. Please try again.');
     // Restore previous status
     if (taskElement && taskElement.taskData) {
       addOrUpdateTask(taskElement.taskData);
@@ -817,10 +630,12 @@ window.cancelTask = function(taskId) {
 
 // Make functions globally available
 window.toggleTaskExpand = toggleTaskExpand;
+window.toggleMessage = toggleMessage;
 window.refreshTasks = refreshTasks;
 window.addOrUpdateTask = addOrUpdateTask;
 window.handleCanvasUpdate = handleCanvasUpdate;
 window.cancelTask = cancelTask;
+window.purgeOldTasks = purgeOldTasks;
 
 // Keep track of all subscriptions for different sessions
 window.parallelTaskSubscriptions = window.parallelTaskSubscriptions || new Map();
