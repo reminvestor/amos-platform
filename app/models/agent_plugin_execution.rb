@@ -11,6 +11,9 @@
 #  output_result         :jsonb            default({})
 #  duration_ms           :integer
 #  tokens_used           :integer          default(0)
+#  model_id              :string
+#  model_input_tokens    :integer          default(0)
+#  model_output_tokens   :integer          default(0)
 #  started_at            :datetime
 #  completed_at          :datetime
 #  created_at            :datetime         not null
@@ -39,10 +42,13 @@ class AgentPluginExecution < ApplicationRecord
 
   # Instance methods
   def mark_completed!(output = {})
+    # Set completed_at first so we can calculate duration
+    self.completed_at = Time.current
+
     update!(
       status: 'completed',
       output_result: output,
-      completed_at: Time.current,
+      completed_at: completed_at,
       duration_ms: calculate_duration
     )
   end
@@ -51,16 +57,27 @@ class AgentPluginExecution < ApplicationRecord
     output = output_result.deep_dup || {}
     output['error'] = error_message if error_message.present?
 
+    # Set completed_at first so we can calculate duration
+    self.completed_at = Time.current
+
     update!(
       status: 'failed',
       output_result: output,
-      completed_at: Time.current,
+      completed_at: completed_at,
       duration_ms: calculate_duration
     )
   end
 
   def add_tokens(count)
     increment!(:tokens_used, count)
+  end
+
+  def track_model_usage(model_id, input_tokens, output_tokens)
+    update_columns(
+      model_id: model_id,
+      model_input_tokens: input_tokens,
+      model_output_tokens: output_tokens
+    )
   end
 
   def execution_time
@@ -74,6 +91,37 @@ class AgentPluginExecution < ApplicationRecord
 
   def error_message
     output_result.dig('error')
+  end
+
+  def model_display_name
+    return nil unless model_id.present?
+
+    # Extract short model name from full ARN
+    # e.g., "us.anthropic.claude-sonnet-4-5-v2:0" -> "sonnet-4-5"
+    model_id.split('.').last.gsub('anthropic.claude-', '').gsub('-v2:', '').gsub(':0', '')
+  end
+
+  def calculate_cost
+    return 0 unless model_id.present? && model_input_tokens.to_i > 0
+
+    # Model pricing (per 1M tokens)
+    pricing = case model_id
+    when /sonnet-4-5/
+      { input: 3.00, output: 15.00 }
+    when /sonnet-3-5/
+      { input: 3.00, output: 15.00 }
+    when /haiku-3-5/
+      { input: 0.80, output: 4.00 }
+    when /opus-3/
+      { input: 15.00, output: 75.00 }
+    else
+      { input: 3.00, output: 15.00 } # Default to Sonnet pricing
+    end
+
+    input_cost = (model_input_tokens / 1_000_000.0) * pricing[:input]
+    output_cost = (model_output_tokens / 1_000_000.0) * pricing[:output]
+
+    input_cost + output_cost
   end
 
   # Class methods

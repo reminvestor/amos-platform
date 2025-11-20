@@ -48,22 +48,19 @@
 
             <div class="mb-3" id="prompt-input">
               <label class="form-label">Prompt</label>
-              <textarea id="test-prompt" class="form-control font-monospace" rows="4" placeholder="Enter your search query...">Search for information about Google Antigravity. Find posts and discussions about this topic on X (Twitter).</textarea>
+              <textarea id="test-prompt" class="form-control font-monospace" rows="4" placeholder="Enter your test prompt..."><%= test_prompt_for_agent(@agent_plugin) %></textarea>
+              <small class="form-text text-muted">A sample prompt for testing this agent</small>
             </div>
 
             <div class="mb-3 d-none" id="goal-input">
               <label class="form-label">Goal</label>
-              <input type="text" id="test-goal" class="form-control" placeholder="Generate a sales email">
+              <input type="text" id="test-goal" class="form-control" placeholder="<%= test_prompt_for_agent(@agent_plugin) %>">
             </div>
 
             <div class="mb-3">
               <label class="form-label">Context (JSON)</label>
-              <textarea id="test-context" class="form-control font-monospace" rows="8">{
-  "search_focus": "social media discussions",
-  "platforms": ["X/Twitter", "Reddit", "forums"],
-  "max_results": 10
-}</textarea>
-              <small class="form-text text-muted">Additional context for the agent</small>
+              <textarea id="test-context" class="form-control font-monospace" rows="8"><%= JSON.pretty_generate(test_context_for_agent(@agent_plugin)) %></textarea>
+              <small class="form-text text-muted">Additional context for the agent (customize as needed)</small>
             </div>
 
             <div class="d-grid">

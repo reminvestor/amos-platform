@@ -145,7 +145,8 @@ class Agents::StandardPluginExecutor
       entity: context[:entity],
       user: context[:user],
       custom_model_id: model_name,
-      context: context  # Pass full context for tool execution
+      context: context,  # Pass full context for tool execution
+      execution: execution  # Pass execution record for token tracking
     )
 
     # Get available tools for this agent

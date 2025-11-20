@@ -1,5 +1,7 @@
 # Docker Compose configuration for AMOS development
 
+name: amos
+
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -130,7 +132,7 @@ services:
     stdin_open: true
     tty: true
 
-  worker:
+  solidqueue-worker:
     build:
       context: .
       dockerfile: Dockerfile.dev

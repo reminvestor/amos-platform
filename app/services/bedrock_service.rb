@@ -105,7 +105,7 @@ class BedrockService
     'claude-opus-4-1'      # Most robust - last resort
   ].freeze
 
-  def initialize(custom_model_id: nil, user: nil, entity: nil, context: {})
+  def initialize(custom_model_id: nil, user: nil, entity: nil, context: {}, execution: nil)
     @client = Aws::BedrockRuntime::Client.new(
       region: ENV["AWS_REGION"] || "us-east-1",
       # Let AWS SDK use the default credential chain
@@ -126,6 +126,7 @@ class BedrockService
     @user = user
     @entity = entity
     @context = context || {}
+    @execution = execution
     @resource_manager = ResourceManager.new(entity) if entity
   end
 
@@ -704,6 +705,7 @@ class BedrockService
               input: response.usage.input_tokens || 0,
               output: response.usage.output_tokens || 0
             }
+            total_tokens = tokens[:input] + tokens[:output]
 
             if @user && @entity && @resource_manager
               @resource_manager.track_tokens(@user, model_id, tokens, {
@@ -713,7 +715,19 @@ class BedrockService
               })
             end
 
-            Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
+            # Track tokens and model on the agent execution if provided
+            if @execution
+              if @execution.respond_to?(:add_tokens)
+                @execution.add_tokens(total_tokens)
+              end
+
+              # Track which model was used and token breakdown
+              if @execution.respond_to?(:track_model_usage)
+                @execution.track_model_usage(model_id, tokens[:input], tokens[:output])
+              end
+            end
+
+            Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]} (Model: #{model_id})"
           end
 
           Rails.logger.info "Bedrock converse response received: #{content.length} characters"

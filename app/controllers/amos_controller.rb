@@ -1,8 +1,8 @@
 # Web interface for Amos orchestrator
 class AmosController < ApplicationController
   include ActionController::Live
-  
-  before_action :authenticate_user!, except: [:callback]
+
+  skip_before_action :authenticate_user!, only: [:callback]
   before_action :initialize_orchestrator, except: [:callback]
   skip_before_action :verify_authenticity_token, only: [:callback]
   skip_before_action :check_subscription_status, only: [:callback]
@@ -41,10 +41,13 @@ class AmosController < ApplicationController
   
   # Callback endpoint for agents to report back
   def callback
+    Rails.logger.info "[Amos] ===== CALLBACK ACTION STARTED ====="
+    Rails.logger.info "[Amos] Params: #{params.inspect}"
+
     @session_id = params[:session_id]
     job_id = params[:job_id]
     data = params[:data] || {}
-    
+
     Rails.logger.info "[Amos] Received callback for job #{job_id}: #{data[:type]}"
     
     # For input requests and content streams that need processing, respond immediately

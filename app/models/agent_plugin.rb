@@ -161,12 +161,16 @@ class AgentPlugin < ApplicationRecord
   def execution_stats(since: 30.days.ago)
     execs = agent_plugin_executions.where('created_at >= ?', since)
 
+    # Calculate total cost from executions with model tracking
+    total_cost = execs.select { |e| e.model_id.present? }.sum(&:calculate_cost)
+
     {
       total_executions: execs.count,
       successful: execs.where(status: 'completed').count,
       failed: execs.where(status: 'failed').count,
       avg_duration_ms: execs.where(status: 'completed').average(:duration_ms)&.to_i || 0,
       total_tokens: execs.sum(:tokens_used),
+      total_cost: total_cost.round(4),
       success_rate: calculate_success_rate(execs)
     }
   end

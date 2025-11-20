@@ -3,19 +3,19 @@
     - icon: Lucide icon name (e.g., 'activity', 'users')
     - label: Stat label text
     - value: Stat value to display
-    - style: Icon style - 'purple-gradient', 'success', 'error', 'warning', 'info' (default: 'purple-gradient')
+    - variant: Icon style - 'purple-gradient', 'success', 'error', 'warning', 'info' (default: 'purple-gradient')
     - aria_label: Optional ARIA label for accessibility (default: label)
 %>
 
 <%
   icon ||= 'activity'
-  style ||= 'purple-gradient'
+  variant ||= 'purple-gradient'
   aria_label ||= label
 %>
 
 <div class="admin-card" role="region" aria-label="<%= aria_label %> statistic">
-  <div class="d-flex align-items-center" style="gap: 1rem;">
-    <div class="admin-stat-icon <%= style %>">
+  <div class="d-flex align-items-center gap-3">
+    <div class="admin-stat-icon <%= variant %>">
       <i data-lucide="<%= icon %>" aria-hidden="true"></i>
     </div>
     <div>

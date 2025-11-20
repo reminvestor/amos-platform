@@ -1,39 +1,39 @@
-<div class="admin-page">
-  <div class="admin-header">
-    <div class="admin-header-content">
-      <div class="d-flex align-items-center gap-2 mb-2">
-        <%= link_to admin_agent_plugins_path, class: "text-muted" do %>
-          <i data-lucide="arrow-left" class="icon-sm"></i>
+<div class="admin-p-xl">
+  <div class="admin-page-header mb-4">
+      <div class="header-left">
+        <%= link_to admin_agent_plugins_path, class: "text-muted me-3", aria: { label: "Back to agent plugins list" } do %>
+          <i data-lucide="arrow-left" class="admin-icon-md"></i>
         <% end %>
-        <h1 class="admin-title mb-0">
-          <i data-lucide="bot" class="icon-lg"></i>
-          <%= @agent_plugin.name %>
-        </h1>
+        <div class="header-icon">
+          <i data-lucide="bot" class="admin-icon-lg"></i>
+        </div>
+        <div class="header-text">
+          <h1><%= @agent_plugin.name %></h1>
+          <p><%= @agent_plugin.description %></p>
+        </div>
       </div>
-      <p class="admin-subtitle"><%= @agent_plugin.description %></p>
-    </div>
-    <div class="admin-header-actions">
-      <%= link_to test_admin_agent_plugin_path(@agent_plugin), class: "btn btn-info" do %>
-        <i data-lucide="play" class="icon-sm"></i>
-        Test Agent
-      <% end %>
-      <%= link_to edit_admin_agent_plugin_path(@agent_plugin), class: "btn btn-secondary" do %>
-        <i data-lucide="edit" class="icon-sm"></i>
-        Edit
-      <% end %>
-      <% if @agent_plugin.status == 'active' %>
-        <%= button_to deactivate_admin_agent_plugin_path(@agent_plugin), class: "btn btn-warning" do %>
-          <i data-lucide="pause" class="icon-sm"></i>
-          Deactivate
+      <div class="header-actions">
+        <%= link_to test_admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="play" class="admin-icon-sm"></i>
+          <span>Test Agent</span>
         <% end %>
-      <% else %>
-        <%= button_to activate_admin_agent_plugin_path(@agent_plugin), class: "btn btn-success" do %>
-          <i data-lucide="check" class="icon-sm"></i>
-          Activate
+        <%= link_to edit_admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="edit" class="admin-icon-sm"></i>
+          <span>Edit</span>
         <% end %>
-      <% end %>
+        <% if @agent_plugin.status == 'active' %>
+          <%= button_to deactivate_admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-warning", form: { class: "d-inline-block" } do %>
+            <i data-lucide="pause" class="admin-icon-sm"></i>
+            <span>Deactivate</span>
+          <% end %>
+        <% else %>
+          <%= button_to activate_admin_agent_plugin_path(@agent_plugin), class: "btn btn-success d-inline-flex align-items-center gap-2", form: { class: "d-inline-block" } do %>
+            <i data-lucide="check" class="admin-icon-sm"></i>
+            <span>Activate</span>
+          <% end %>
+        <% end %>
+      </div>
     </div>
-  </div>
 
   <!-- Status Banner -->
   <div class="alert alert-<%= @agent_plugin.status == 'active' ? 'success' : @agent_plugin.status == 'draft' ? 'warning' : 'secondary' %> mb-4">
@@ -54,37 +54,34 @@
     </div>
   </div>
 
-  <!-- Performance Stats -->
-  <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    <!-- Performance Stats -->
+    <div class="admin-stats-grid">
       <%= render 'admin/shared/stat_card',
         icon: 'zap',
         value: @stats[:total_executions],
         label: 'Total Executions',
-        color: 'primary' %>
-    </div>
-    <div class="col-md-3">
+        variant: 'purple-gradient' %>
       <%= render 'admin/shared/stat_card',
         icon: 'trending-up',
         value: "#{@stats[:success_rate]}%",
         label: 'Success Rate',
-        color: @stats[:success_rate] > 90 ? 'success' : @stats[:success_rate] > 70 ? 'warning' : 'danger' %>
-    </div>
-    <div class="col-md-3">
+        variant: @stats[:success_rate] > 90 ? 'success' : @stats[:success_rate] > 70 ? 'warning' : 'error' %>
       <%= render 'admin/shared/stat_card',
         icon: 'clock',
         value: "#{@stats[:avg_duration_ms]}ms",
         label: 'Avg Duration',
-        color: 'info' %>
-    </div>
-    <div class="col-md-3">
+        variant: 'info' %>
       <%= render 'admin/shared/stat_card',
         icon: 'cpu',
         value: number_to_human(@stats[:total_tokens]),
         label: 'Total Tokens',
-        color: 'secondary' %>
+        variant: 'info' %>
+      <%= render 'admin/shared/stat_card',
+        icon: 'dollar-sign',
+        value: "$#{sprintf('%.4f', @stats[:total_cost])}",
+        label: 'Total Cost',
+        variant: 'warning' %>
     </div>
-  </div>
 
   <div class="row">
     <!-- Left Column: Details -->
@@ -111,10 +108,10 @@
             <dt class="col-sm-4">Priority</dt>
             <dd class="col-sm-8">
               <div class="d-flex align-items-center gap-2">
-                <div class="progress flex-grow-1 admin-priority-bar-tall">
-                  <div class="progress-bar" role="progressbar" style="width: <%= @agent_plugin.priority %>%"></div>
+                <div class="progress flex-grow-1" style="height: 8px;">
+                  <div class="progress-bar bg-gradient" role="progressbar" style="width: <%= @agent_plugin.priority %>%;" aria-valuenow="<%= @agent_plugin.priority %>" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
-                <span><%= @agent_plugin.priority %>/100</span>
+                <span class="text-muted small"><%= @agent_plugin.priority %>/100</span>
               </div>
             </dd>
 
@@ -152,7 +149,7 @@
               <% @capabilities.each do |capability| %>
                 <div class="list-group-item px-0">
                   <div class="d-flex justify-content-between align-items-start">
-                    <div>
+                    <div class="flex-grow-1">
                       <h6 class="mb-1"><code><%= capability.capability_name %></code></h6>
                       <% if capability.implementation_notes.present? %>
                         <small class="text-muted"><%= capability.implementation_notes %></small>
@@ -169,7 +166,12 @@
               <% end %>
             </div>
           <% else %>
-            <p class="text-muted mb-0">No capabilities defined</p>
+            <div class="admin-empty-state py-4">
+              <div class="empty-icon">
+                <i data-lucide="zap"></i>
+              </div>
+              <p class="empty-title mb-0">No capabilities defined</p>
+            </div>
           <% end %>
         </div>
       </div>
@@ -184,25 +186,51 @@
         </div>
         <div class="admin-card-body">
           <% if @tools.any? %>
-            <div class="d-flex flex-wrap gap-2 mb-3">
-              <% @tools.each do |tool| %>
-                <span class="badge <%= tool.required? ? 'bg-danger' : 'bg-secondary' %> d-inline-flex align-items-center gap-1 admin-badge-md">
-                  <i data-lucide="<%= tool.required? ? 'alert-circle' : 'wrench' %>" class="admin-icon-xs"></i>
-                  <%= tool.tool_name %>
-                </span>
-              <% end %>
-            </div>
-            <div class="small text-muted">
-              <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-danger d-inline-flex align-items-center gap-1 admin-badge-xs">
-                  <i data-lucide="alert-circle" class="admin-icon-xxs"></i>
-                  Required
-                </span>
-                <span>Tools that must be available for agent to function</span>
+            <% required_tools = @tools.select(&:required?) %>
+            <% optional_tools = @tools.reject(&:required?) %>
+
+            <% if required_tools.any? %>
+              <div class="mb-4">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <i data-lucide="alert-circle" class="admin-icon-sm text-danger"></i>
+                  <span class="text-danger fw-semibold small">Required Tools</span>
+                  <span class="badge bg-danger"><%= required_tools.count %></span>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <% required_tools.each do |tool| %>
+                    <span class="badge bg-danger d-inline-flex align-items-center gap-1 py-2 px-3">
+                      <i data-lucide="wrench" class="admin-icon-sm"></i>
+                      <%= tool.tool_name %>
+                    </span>
+                  <% end %>
+                </div>
               </div>
-            </div>
+            <% end %>
+
+            <% if optional_tools.any? %>
+              <div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <i data-lucide="wrench" class="admin-icon-sm text-secondary"></i>
+                  <span class="text-secondary fw-semibold small">Optional Tools</span>
+                  <span class="badge bg-secondary"><%= optional_tools.count %></span>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <% optional_tools.each do |tool| %>
+                    <span class="badge bg-secondary d-inline-flex align-items-center gap-1 py-2 px-3">
+                      <i data-lucide="wrench" class="admin-icon-sm"></i>
+                      <%= tool.tool_name %>
+                    </span>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
           <% else %>
-            <p class="text-muted mb-0">No tools configured</p>
+            <div class="admin-empty-state py-4">
+              <div class="empty-icon">
+                <i data-lucide="wrench"></i>
+              </div>
+              <p class="empty-title mb-0">No tools configured</p>
+            </div>
           <% end %>
         </div>
       </div>
@@ -222,10 +250,12 @@
           <% if @executions.any? %>
             <div class="table-responsive admin-table-scrollable">
               <table class="table table-sm mb-0">
+                <caption class="visually-hidden">Recent execution history for <%= @agent_plugin.name %></caption>
                 <thead class="admin-table-sticky-header">
                   <tr>
                     <th>Time</th>
                     <th>Status</th>
+                    <th>Model</th>
                     <th>Duration</th>
                     <th>Tokens</th>
                   </tr>
@@ -239,15 +269,35 @@
                           <%= execution.status %>
                         </span>
                       </td>
-                      <td><small><%= execution.duration_ms || '-' %>ms</small></td>
-                      <td><small><%= number_to_human(execution.tokens_used) %></small></td>
+                      <td>
+                        <% if execution.model_display_name.present? %>
+                          <small><code><%= execution.model_display_name %></code></small>
+                        <% else %>
+                          <small class="text-muted">-</small>
+                        <% end %>
+                      </td>
+                      <td><small><%= execution.duration_ms.to_i > 0 ? "#{execution.duration_ms}ms" : '-' %></small></td>
+                      <td>
+                        <% if execution.model_input_tokens.to_i > 0 %>
+                          <small title="<%= execution.model_input_tokens %> in / <%= execution.model_output_tokens %> out"><%= number_to_human(execution.tokens_used) %></small>
+                        <% elsif execution.tokens_used.to_i > 0 %>
+                          <small><%= number_to_human(execution.tokens_used) %></small>
+                        <% else %>
+                          <small>-</small>
+                        <% end %>
+                      </td>
                     </tr>
                   <% end %>
                 </tbody>
               </table>
             </div>
           <% else %>
-            <p class="text-muted mb-0">No executions yet</p>
+            <div class="admin-empty-state py-4">
+              <div class="empty-icon">
+                <i data-lucide="activity"></i>
+              </div>
+              <p class="empty-title mb-0">No executions yet</p>
+            </div>
           <% end %>
         </div>
       </div>
@@ -266,7 +316,7 @@
               <% @template_bindings.each do |binding| %>
                 <div class="list-group-item px-0">
                   <div class="d-flex justify-content-between align-items-center">
-                    <div>
+                    <div class="flex-grow-1">
                       <strong><%= binding.workflow_template.name %></strong>
                       <div class="small text-muted">Phase: <%= binding.phase %></div>
                     </div>
@@ -278,7 +328,12 @@
               <% end %>
             </div>
           <% else %>
-            <p class="text-muted mb-0">Not bound to any workflows</p>
+            <div class="admin-empty-state py-4">
+              <div class="empty-icon">
+                <i data-lucide="git-branch"></i>
+              </div>
+              <p class="empty-title mb-0">Not bound to any workflows</p>
+            </div>
           <% end %>
         </div>
       </div>
@@ -315,28 +370,94 @@
     </div>
   </div>
 
-  <!-- Danger Zone -->
-  <div class="admin-card border-danger mt-4">
-    <div class="admin-card-header bg-danger text-white">
-      <h3 class="admin-card-title mb-0">
-        <i data-lucide="alert-triangle" class="icon-sm"></i>
-        Danger Zone
-      </h3>
-    </div>
-    <div class="admin-card-body">
-      <div class="row align-items-center">
-        <div class="col-md-8">
-          <h5>Delete this agent plugin</h5>
-          <p class="text-muted mb-0">Once deleted, all execution history will be lost. This action cannot be undone.</p>
-        </div>
-        <div class="col-md-4 text-end">
-          <%= button_to admin_agent_plugin_path(@agent_plugin),
-            method: :delete,
-            data: { confirm: "Are you sure you want to delete #{@agent_plugin.name}? This cannot be undone!" },
-            class: "btn btn-danger" do %>
-            <i data-lucide="trash-2" class="icon-sm"></i>
-            Delete Agent
-          <% end %>
+    <!-- Danger Zone -->
+    <div class="admin-card admin-mt-xl" style="border: 2px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.02);">
+      <div class="admin-card-body p-4">
+        <div class="d-flex align-items-start gap-4">
+          <div class="flex-shrink-0">
+            <div class="d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(239, 68, 68, 0.1); border-radius: 12px;">
+              <i data-lucide="<%= @agent_plugin.status == 'active' ? 'alert-triangle' : 'info' %>" class="<%= @agent_plugin.status == 'active' ? 'text-danger' : 'text-info' %>" style="width: 28px; height: 28px;"></i>
+            </div>
+          </div>
+          <div class="flex-grow-1">
+            <h4 class="<%= @agent_plugin.status == 'active' ? 'text-danger' : 'text-info' %> mb-2 fw-bold">
+              <%= @agent_plugin.status == 'active' ? 'Danger Zone' : 'Status Management' %>
+            </h4>
+            <p class="text-muted mb-3">
+              <%= @agent_plugin.status == 'active' ? 'Sensitive actions that will affect agent availability.' : 'Restore or modify agent status.' %> Changes can be reversed.
+            </p>
+
+            <!-- Activate Agent (for non-active agents) -->
+            <% if @agent_plugin.status != 'active' %>
+              <div class="p-3 rounded mb-3" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <h6 class="mb-1 fw-semibold text-success">Activate this agent</h6>
+                    <p class="text-muted small mb-0">
+                      <i data-lucide="check-circle" class="admin-icon-sm me-1"></i>
+                      Make agent available for use in workflows (<%= @stats[:total_executions] %> executions will remain)
+                    </p>
+                  </div>
+                  <div class="ms-4">
+                    <%= button_to activate_admin_agent_plugin_path(@agent_plugin),
+                      data: { confirm: "Activate '#{@agent_plugin.name}'?\n\nThis agent will be available for use in workflows." },
+                      class: "admin-btn admin-btn-success d-inline-flex align-items-center gap-2" do %>
+                      <i data-lucide="check" class="admin-icon-sm"></i>
+                      <span>Activate</span>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+            <!-- Deactivate Agent (for active agents) -->
+            <% if @agent_plugin.status == 'active' %>
+              <div class="p-3 rounded mb-3" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2);">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <h6 class="mb-1 fw-semibold">Deactivate this agent</h6>
+                    <p class="text-muted small mb-0">
+                      <i data-lucide="pause-circle" class="admin-icon-sm me-1"></i>
+                      Agent will stop being used in workflows but execution history is preserved
+                    </p>
+                  </div>
+                  <div class="ms-4">
+                    <%= button_to deactivate_admin_agent_plugin_path(@agent_plugin),
+                      data: { confirm: "Deactivate '#{@agent_plugin.name}'?\n\nThis agent will no longer be used in workflows, but all data will be preserved and you can reactivate it later." },
+                      class: "admin-btn admin-btn-warning d-inline-flex align-items-center gap-2" do %>
+                      <i data-lucide="pause" class="admin-icon-sm"></i>
+                      <span>Deactivate</span>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+
+            <!-- Deprecate Agent (for all except deprecated) -->
+            <% if @agent_plugin.status != 'deprecated' %>
+              <div class="p-3 rounded" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2);">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <h6 class="mb-1 fw-semibold">Mark as deprecated</h6>
+                    <p class="text-muted small mb-0">
+                      <i data-lucide="archive" class="admin-icon-sm me-1"></i>
+                      Archive this agent (<%= @stats[:total_executions] %> executions preserved)
+                    </p>
+                  </div>
+                  <div class="ms-4">
+                    <%= button_to admin_agent_plugin_path(@agent_plugin),
+                      method: :patch,
+                      params: { agent_plugin: { status: 'deprecated' } },
+                      data: { confirm: "Mark '#{@agent_plugin.name}' as deprecated?\n\nThis will archive the agent. It won't be used in workflows but all execution history will be preserved and you can reactivate it later." },
+                      class: "admin-btn admin-btn-danger d-inline-flex align-items-center gap-2" do %>
+                      <i data-lucide="archive" class="admin-icon-sm"></i>
+                      <span>Deprecate</span>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
         </div>
       </div>
     </div>
@@ -345,6 +466,10 @@
 
 <script>
   document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
   });
 </script>

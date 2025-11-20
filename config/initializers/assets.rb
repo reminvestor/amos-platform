@@ -13,5 +13,6 @@ Rails.application.config.assets.paths << Rails.root.join("app", "assets", "image
 Rails.application.config.assets.precompile += %w[
   *.png *.jpg *.jpeg *.gif *.svg
   icons/*.png
-  admin_dark.css
+  chart_loader.js
+  qrcode_loader.js
 ]

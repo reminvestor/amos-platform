@@ -10,6 +10,123 @@
     </div>
   <% end %>
 
+  <!-- Preset Agent Templates -->
+  <% if agent_plugin.new_record? %>
+    <div class="admin-card mb-4" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);">
+      <div class="admin-card-body">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <i data-lucide="sparkles" class="icon-sm text-primary"></i>
+          <h5 class="mb-0 fw-bold">Quick Start with Templates</h5>
+        </div>
+        <p class="text-muted small mb-3">Start with a pre-configured agent template or build from scratch</p>
+
+        <div class="row g-3">
+          <div class="col-md-6 col-lg-3">
+            <button type="button" class="btn btn-outline-primary w-100 text-start preset-template"
+              data-template="email_marketing"
+              data-name="Email Marketing Agent"
+              data-description="Generates personalized marketing emails and manages campaigns"
+              data-capabilities='["email_generation", "content_analysis"]'
+              data-tools='["get_data", "create_object", "list_connections"]'>
+              <i data-lucide="mail" class="icon-sm mb-2"></i>
+              <div class="fw-semibold">Email Marketing</div>
+              <small class="text-muted">Campaigns & outreach</small>
+            </button>
+          </div>
+
+          <div class="col-md-6 col-lg-3">
+            <button type="button" class="btn btn-outline-primary w-100 text-start preset-template"
+              data-template="content_creator"
+              data-name="Content Creator Agent"
+              data-description="Creates landing pages, analyzes content, and manages web presence"
+              data-capabilities='["content_analysis", "report_generation"]'
+              data-tools='["web_search_tool", "generate_landing_page", "get_data"]'>
+              <i data-lucide="file-text" class="icon-sm mb-2"></i>
+              <div class="fw-semibold">Content Creator</div>
+              <small class="text-muted">Pages & content</small>
+            </button>
+          </div>
+
+          <div class="col-md-6 col-lg-3">
+            <button type="button" class="btn btn-outline-primary w-100 text-start preset-template"
+              data-template="data_analyst"
+              data-name="Data Analyst Agent"
+              data-description="Analyzes data, generates reports, and creates visualizations"
+              data-capabilities='["data_extraction", "report_generation"]'
+              data-tools='["get_data", "query_metric", "create_dynamic_visualization"]'>
+              <i data-lucide="bar-chart" class="icon-sm mb-2"></i>
+              <div class="fw-semibold">Data Analyst</div>
+              <small class="text-muted">Reports & insights</small>
+            </button>
+          </div>
+
+          <div class="col-md-6 col-lg-3">
+            <button type="button" class="btn btn-outline-primary w-100 text-start preset-template"
+              data-template="integration_specialist"
+              data-name="Integration Specialist Agent"
+              data-description="Manages integrations and orchestrates cross-platform workflows"
+              data-capabilities='["data_extraction", "customer_outreach"]'
+              data-tools='["list_connections", "list_operations", "invoke_operation", "get_data"]'>
+              <i data-lucide="plug" class="icon-sm mb-2"></i>
+              <div class="fw-semibold">Integration Specialist</div>
+              <small class="text-muted">APIs & workflows</small>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Status Toggle -->
+  <div class="admin-card mb-4">
+    <div class="admin-card-body">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <h5 class="mb-1 fw-bold">Agent Status</h5>
+          <p class="text-muted small mb-0">
+            <span id="status-description">
+              <% case agent_plugin.status %>
+              <% when 'active' %>
+                <i data-lucide="check-circle" class="admin-icon-sm text-success"></i>
+                Agent is active and available for workflows
+              <% when 'draft' %>
+                <i data-lucide="edit" class="admin-icon-sm text-warning"></i>
+                Agent is in draft mode for testing only
+              <% when 'deprecated' %>
+                <i data-lucide="archive" class="admin-icon-sm text-secondary"></i>
+                Agent is deprecated and archived
+              <% end %>
+            </span>
+          </p>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <%= f.hidden_field :status, id: 'status-hidden-field', value: agent_plugin.status || 'draft' %>
+
+          <!-- Status Toggle Buttons -->
+          <div class="btn-group" role="group" aria-label="Agent status toggle">
+            <input type="radio" class="btn-check" name="status_toggle" id="status-draft" value="draft" <%= 'checked' if agent_plugin.status == 'draft' %> autocomplete="off">
+            <label class="btn btn-outline-warning" for="status-draft">
+              <i data-lucide="edit" class="admin-icon-sm"></i>
+              Draft
+            </label>
+
+            <input type="radio" class="btn-check" name="status_toggle" id="status-active" value="active" <%= 'checked' if agent_plugin.status == 'active' %> autocomplete="off">
+            <label class="btn btn-outline-success" for="status-active">
+              <i data-lucide="check-circle" class="admin-icon-sm"></i>
+              Active
+            </label>
+
+            <input type="radio" class="btn-check" name="status_toggle" id="status-deprecated" value="deprecated" <%= 'checked' if agent_plugin.status == 'deprecated' %> autocomplete="off">
+            <label class="btn btn-outline-secondary" for="status-deprecated">
+              <i data-lucide="archive" class="admin-icon-sm"></i>
+              Deprecated
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="row">
     <!-- Left Column: Basic Info -->
     <div class="col-md-6">
@@ -21,51 +138,37 @@
           </h3>
         </div>
         <div class="admin-card-body">
-          <div class="mb-3">
-            <%= f.label :name, class: "form-label" %>
-            <%= f.text_field :name, class: "form-control", placeholder: "Sales Email Generator", required: true %>
-            <small class="form-text text-muted">Human-readable name for the agent</small>
+          <div class="row">
+            <div class="col-md-8 mb-3">
+              <%= f.label :name, class: "form-label small fw-semibold" %>
+              <%= f.text_field :name, class: "form-control", placeholder: "Sales Email Generator", required: true %>
+            </div>
+
+            <div class="col-md-4 mb-3">
+              <%= f.label :slug, class: "form-label small fw-semibold" %>
+              <%= f.text_field :slug, class: "form-control", placeholder: "sales_email_generator" %>
+            </div>
           </div>
 
           <div class="mb-3">
-            <%= f.label :slug, class: "form-label" %>
-            <%= f.text_field :slug, class: "form-control", placeholder: "sales_email_generator" %>
-            <small class="form-text text-muted">Unique identifier (auto-generated if blank)</small>
-          </div>
-
-          <div class="mb-3">
-            <%= f.label :description, class: "form-label" %>
-            <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Describe what this agent does..." %>
-          </div>
-
-          <div class="mb-3">
-            <%= f.label :status, class: "form-label" %>
-            <%= f.select :status,
-              options_for_select([
-                ['Draft', 'draft'],
-                ['Active', 'active'],
-                ['Deprecated', 'deprecated']
-              ], agent_plugin.status),
-              {},
-              class: 'form-select' %>
-            <small class="form-text text-muted">Draft = testing only, Active = available for workflows, Deprecated = archived</small>
-          </div>
-
-          <div class="alert alert-info mb-3">
-            <i data-lucide="sparkles" class="icon-sm"></i>
-            <strong>Smart Agent Selection:</strong> Scout and Agent Lightning RL will automatically learn which agents work best for different tasks over time. You just need to define what the agent does!
+            <%= f.label :description, class: "form-label small fw-semibold" %>
+            <%= f.text_area :description, class: "form-control", rows: 2, placeholder: "Describe what this agent does..." %>
+            <small class="form-text text-muted d-flex align-items-center gap-1 mt-1">
+              <i data-lucide="sparkles" class="icon-sm"></i>
+              <span>Scout and Agent Lightning RL will automatically learn which agents work best for different tasks</span>
+            </small>
           </div>
 
           <!-- Advanced Settings -->
-          <details class="mb-3">
-            <summary class="form-label" style="cursor: pointer; user-select: none;">
+          <details class="mb-0">
+            <summary class="form-label small text-muted" style="cursor: pointer; user-select: none;">
               <i data-lucide="settings" class="icon-sm"></i>
               Advanced Settings (Optional)
             </summary>
-            <div class="mt-2 p-3 border rounded bg-light">
-              <div class="row">
-                <div class="col-md-6 mb-3">
-                  <%= f.label :role, class: "form-label small" %>
+            <div class="mt-2 p-3 border rounded" style="background: rgba(0,0,0,0.02);">
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <%= f.label :role, class: "form-label small fw-semibold" %>
                   <%= f.select :role,
                     options_for_select([
                       ['Executor (default)', 'executor'],
@@ -76,19 +179,22 @@
                       ['Custom', 'custom']
                     ], agent_plugin.role || 'executor'),
                     {},
-                    class: 'form-select' %>
-                  <small class="form-text text-muted">Agent Lightning will learn the optimal role</small>
+                    class: 'form-select form-select-sm' %>
                 </div>
 
-                <div class="col-md-6 mb-3">
-                  <%= f.label :priority, class: "form-label small" %>
-                  <%= f.number_field :priority, class: "form-control", min: 0, max: 100, value: agent_plugin.priority || 50 %>
-                  <small class="form-text text-muted">Initial hint (0-100), RL will optimize</small>
+                <div class="col-md-4">
+                  <%= f.label :priority, class: "form-label small fw-semibold" %>
+                  <%= f.number_field :priority, class: "form-control form-control-sm", min: 0, max: 100, value: agent_plugin.priority || 50, placeholder: "50" %>
+                </div>
+
+                <div class="col-md-4">
+                  <%= f.label :version, class: "form-label small fw-semibold" %>
+                  <%= f.text_field :version, class: "form-control form-control-sm", placeholder: "1.0.0" %>
                 </div>
               </div>
 
-              <div class="mb-3">
-                <%= f.label :ai_model, "AI Model", class: "form-label small" %>
+              <div class="mt-2">
+                <%= f.label :ai_model, "AI Model", class: "form-label small fw-semibold" %>
                 <%= f.select :ai_model,
                   options_for_select([
                     ['Claude Sonnet 4.5 (balanced - recommended)', 'claude-sonnet-4-5'],
@@ -98,25 +204,12 @@
                     ['Claude 3 Haiku', 'claude-3-haiku']
                   ], agent_plugin.ai_model || 'claude-sonnet-4-5'),
                   {},
-                  class: 'form-select' %>
-                <small class="form-text text-muted">
-                  Choose model based on task complexity: Haiku for simple/fast, Sonnet for balanced, Opus for highest quality
-                </small>
+                  class: 'form-select form-select-sm' %>
               </div>
 
-              <div class="mb-3">
-                <%= f.label :version, class: "form-label small" %>
-                <%= f.text_field :version, class: "form-control", placeholder: "1.0.0" %>
-                <small class="form-text text-muted">Semantic versioning (X.Y.Z)</small>
-              </div>
-
-              <div class="mb-0">
-                <%= f.label :agent_class, "Custom Ruby Class", class: "form-label small" %>
-                <%= f.text_field :agent_class, class: "form-control", placeholder: "Leave blank for standard execution" %>
-                <small class="form-text text-muted">
-                  For developers only: Full Ruby class path (e.g., Agents::Specialized::ExecutorAgent).
-                  <strong>Leave blank to use standard executor.</strong>
-                </small>
+              <div class="mt-2 mb-0">
+                <%= f.label :agent_class, "Custom Ruby Class (Developers Only)", class: "form-label small fw-semibold" %>
+                <%= f.text_field :agent_class, class: "form-control form-control-sm", placeholder: "Leave blank for standard execution" %>
               </div>
             </div>
           </details>
@@ -207,45 +300,73 @@
           </h3>
         </div>
         <div class="admin-card-body">
-          <div class="alert alert-info mb-3">
-            <strong>What are capabilities?</strong> Capabilities define what this agent can do (e.g., "email_generation", "content_analysis"). Scout uses capabilities to find the right agent for each task.
+          <p class="text-muted small mb-2">
+            <i data-lucide="info" class="icon-sm"></i>
+            Capabilities define what this agent can do. Scout uses these to find the right agent for each task.
+          </p>
+
+          <div class="mb-2">
+            <strong class="small text-muted">Quick add common capabilities:</strong>
+            <div class="d-flex flex-wrap gap-1 mt-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary quick-add-capability" data-capability="email_generation">
+                  <i data-lucide="mail" class="icon-sm"></i> Email Generation
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary quick-add-capability" data-capability="content_analysis">
+                  <i data-lucide="search" class="icon-sm"></i> Content Analysis
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary quick-add-capability" data-capability="data_extraction">
+                  <i data-lucide="file-text" class="icon-sm"></i> Data Extraction
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary quick-add-capability" data-capability="report_generation">
+                  <i data-lucide="file-bar-chart" class="icon-sm"></i> Report Generation
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary quick-add-capability" data-capability="customer_outreach">
+                  <i data-lucide="users" class="icon-sm"></i> Customer Outreach
+                </button>
+            </div>
           </div>
+
           <div id="capabilities-container">
             <%= f.fields_for :agent_capabilities do |capability_form| %>
-              <div class="capability-field mb-4 p-3 border rounded">
+              <div class="capability-field mb-2 p-2 border rounded" style="background: rgba(0,0,0,0.02);">
                 <%= capability_form.hidden_field :_destroy %>
 
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="mb-0">Capability</h6>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="flex-grow-1">
+                    <%= capability_form.text_field :capability_name,
+                      class: "form-control form-control-sm",
+                      placeholder: "e.g., email_generation, content_analysis",
+                      required: true %>
+                  </div>
                   <%= link_to "#", class: "btn btn-sm btn-outline-danger remove-capability" do %>
-                    <i data-lucide="trash-2" class="icon-sm"></i>
+                    <i data-lucide="x" class="icon-sm"></i>
                   <% end %>
                 </div>
 
-                <div class="mb-2">
-                  <%= capability_form.label :capability_name, "Name", class: "form-label small" %>
-                  <%= capability_form.text_field :capability_name, class: "form-control form-control-sm", placeholder: "email_generation" %>
-                </div>
-
-                <div class="mb-2">
-                  <%= capability_form.label :contract_schema, "Contract Schema (JSON)", class: "form-label small" %>
-                  <%= capability_form.text_area :contract_schema,
-                    value: (capability_form.object&.contract_schema.present? ? JSON.pretty_generate(capability_form.object.contract_schema) : '{"inputs": [], "outputs": []}'),
-                    class: "form-control form-control-sm font-monospace",
-                    rows: 4 %>
-                </div>
-
-                <div class="mb-0">
-                  <%= capability_form.label :implementation_notes, "Notes", class: "form-label small" %>
-                  <%= capability_form.text_area :implementation_notes, class: "form-control form-control-sm", rows: 2 %>
-                </div>
+                <!-- Advanced Settings (Collapsed by default) -->
+                <details class="mt-2">
+                  <summary class="text-muted small" style="cursor: pointer; user-select: none;">
+                    <i data-lucide="settings" class="icon-sm"></i> Advanced
+                  </summary>
+                  <div class="mt-1">
+                    <%= capability_form.text_area :implementation_notes,
+                      class: "form-control form-control-sm mb-1",
+                      rows: 1,
+                      placeholder: "Notes (optional)" %>
+                    <%= capability_form.text_area :contract_schema,
+                      value: (capability_form.object&.contract_schema.present? ? JSON.pretty_generate(capability_form.object.contract_schema) : '{"inputs": [], "outputs": []}'),
+                      class: "form-control form-control-sm font-monospace",
+                      rows: 2,
+                      placeholder: 'Schema (optional)' %>
+                  </div>
+                </details>
               </div>
             <% end %>
           </div>
 
           <button type="button" class="btn btn-sm btn-outline-primary" id="add-capability">
             <i data-lucide="plus" class="icon-sm"></i>
-            Add Capability
+            Add Custom Capability
           </button>
         </div>
       </div>
@@ -259,33 +380,57 @@
           </h3>
         </div>
         <div class="admin-card-body">
-          <div class="alert alert-info mb-3">
-            <strong>What are tools?</strong> Tools are actions your agent can take (e.g., send emails, fetch data, create campaigns). Select which tools this agent needs.
-            <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#availableToolsModal">
-              <i data-lucide="help-circle" class="icon-sm"></i> Browse all available tools
+          <p class="text-muted small mb-2">
+            <i data-lucide="info" class="icon-sm"></i>
+            Tools are actions your agent can take. Select which tools this agent needs.
+            <a href="#" class="text-decoration-none ms-1" data-bs-toggle="modal" data-bs-target="#availableToolsModal">
+              <i data-lucide="help-circle" class="icon-sm"></i> Browse all <%= Tools::ToolCatalog.instance.all_tools.count %> available tools
             </a>
+          </p>
+
+          <div class="mb-2">
+            <strong class="small text-muted">Quick add common tools:</strong>
+            <div class="d-flex flex-wrap gap-1 mt-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary quick-add-tool" data-tool="get_data">
+                <i data-lucide="database" class="icon-sm"></i> Get Data
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary quick-add-tool" data-tool="create_object">
+                <i data-lucide="plus-circle" class="icon-sm"></i> Create Object
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary quick-add-tool" data-tool="update_object">
+                <i data-lucide="edit" class="icon-sm"></i> Update Object
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary quick-add-tool" data-tool="web_search_tool">
+                <i data-lucide="search" class="icon-sm"></i> Web Search
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary quick-add-tool" data-tool="generate_landing_page">
+                <i data-lucide="layout" class="icon-sm"></i> Generate Page
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary quick-add-tool" data-tool="list_connections">
+                <i data-lucide="link" class="icon-sm"></i> List Connections
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary quick-add-tool" data-tool="invoke_operation">
+                <i data-lucide="zap" class="icon-sm"></i> Invoke Operation
+              </button>
+            </div>
           </div>
 
           <div id="tools-container">
             <%= f.fields_for :agent_tools do |tool_form| %>
-              <div class="tool-field mb-3 p-2 border rounded">
+              <div class="tool-field mb-2 p-2 border rounded" style="background: rgba(0,0,0,0.02);">
                 <%= tool_form.hidden_field :_destroy %>
 
-                <div class="row align-items-center">
-                  <div class="col-md-7">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="flex-grow-1">
                     <%= tool_form.text_field :tool_name, class: "form-control form-control-sm", placeholder: "get_data" %>
                   </div>
-                  <div class="col-md-3">
-                    <div class="form-check">
-                      <%= tool_form.check_box :required, class: "form-check-input" %>
-                      <%= tool_form.label :required, "Required", class: "form-check-label small" %>
-                    </div>
+                  <div class="form-check">
+                    <%= tool_form.check_box :required, class: "form-check-input" %>
+                    <%= tool_form.label :required, "Required", class: "form-check-label small text-nowrap" %>
                   </div>
-                  <div class="col-md-2 text-end">
-                    <%= link_to "#", class: "btn btn-sm btn-outline-danger remove-tool" do %>
-                      <i data-lucide="x" class="icon-sm"></i>
-                    <% end %>
-                  </div>
+                  <%= link_to "#", class: "btn btn-sm btn-outline-danger remove-tool" do %>
+                    <i data-lucide="x" class="icon-sm"></i>
+                  <% end %>
                 </div>
               </div>
             <% end %>
@@ -293,7 +438,7 @@
 
           <button type="button" class="btn btn-sm btn-outline-primary" id="add-tool">
             <i data-lucide="plus" class="icon-sm"></i>
-            Add Tool
+            Add Custom Tool
           </button>
         </div>
       </div>
@@ -369,69 +514,156 @@
   document.addEventListener('turbo:load', () => {
     lucide.createIcons();
 
-    // Add capability
-    document.getElementById('add-capability')?.addEventListener('click', function() {
+    // Preset Template functionality
+    document.querySelectorAll('.preset-template').forEach(button => {
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const name = this.dataset.name;
+        const description = this.dataset.description;
+        const capabilities = JSON.parse(this.dataset.capabilities || '[]');
+        const tools = JSON.parse(this.dataset.tools || '[]');
+
+        // Fill in basic info
+        const nameField = document.querySelector('input[name="agent_plugin[name]"]');
+        const descField = document.querySelector('textarea[name="agent_plugin[description]"]');
+
+        if (nameField) nameField.value = name;
+        if (descField) descField.value = description;
+
+        // Add capabilities
+        capabilities.forEach(capability => {
+          addCapability(capability);
+        });
+
+        // Add tools
+        tools.forEach(tool => {
+          addTool(tool, false); // false = not required by default
+        });
+
+        // Scroll to basic info
+        nameField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        nameField.focus();
+
+        lucide.createIcons();
+      });
+    });
+
+    // Quick add tool
+    document.querySelectorAll('.quick-add-tool').forEach(button => {
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
+        const tool = this.dataset.tool;
+        addTool(tool, false);
+      });
+    });
+
+    // Status toggle functionality
+    document.querySelectorAll('input[name="status_toggle"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        const statusValue = this.value;
+        const hiddenField = document.getElementById('status-hidden-field');
+        const descriptionSpan = document.getElementById('status-description');
+
+        // Update hidden field
+        if (hiddenField) {
+          hiddenField.value = statusValue;
+        }
+
+        // Update description
+        const descriptions = {
+          'draft': '<i data-lucide="edit" class="admin-icon-sm text-warning"></i> Agent is in draft mode for testing only',
+          'active': '<i data-lucide="check-circle" class="admin-icon-sm text-success"></i> Agent is active and available for workflows',
+          'deprecated': '<i data-lucide="archive" class="admin-icon-sm text-secondary"></i> Agent is deprecated and archived'
+        };
+
+        if (descriptionSpan && descriptions[statusValue]) {
+          descriptionSpan.innerHTML = descriptions[statusValue];
+          lucide.createIcons(); // Reinitialize icons
+        }
+      });
+    });
+
+    // Quick add capability
+    document.querySelectorAll('.quick-add-capability').forEach(button => {
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
+        const capability = this.dataset.capability;
+        addCapability(capability);
+      });
+    });
+
+    // Add capability function
+    function addCapability(capabilityName = '') {
       const container = document.getElementById('capabilities-container');
       const time = new Date().getTime();
       const template = `
-        <div class="capability-field mb-4 p-3 border rounded">
+        <div class="capability-field mb-2 p-2 border rounded" style="background: rgba(0,0,0,0.02);">
           <input type="hidden" name="agent_plugin[agent_capabilities_attributes][${time}][_destroy]" value="false">
 
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="mb-0">Capability</h6>
+          <div class="d-flex align-items-center gap-2">
+            <div class="flex-grow-1">
+              <input type="text"
+                name="agent_plugin[agent_capabilities_attributes][${time}][capability_name]"
+                class="form-control form-control-sm"
+                placeholder="e.g., email_generation, content_analysis"
+                value="${capabilityName}"
+                required>
+            </div>
             <a href="#" class="btn btn-sm btn-outline-danger remove-capability">
-              <i data-lucide="trash-2" class="icon-sm"></i>
+              <i data-lucide="x" class="icon-sm"></i>
             </a>
           </div>
 
-          <div class="mb-2">
-            <label class="form-label small">Name</label>
-            <input type="text" name="agent_plugin[agent_capabilities_attributes][${time}][capability_name]" class="form-control form-control-sm" placeholder="email_generation">
-          </div>
-
-          <div class="mb-2">
-            <label class="form-label small">Contract Schema (JSON)</label>
-            <textarea name="agent_plugin[agent_capabilities_attributes][${time}][contract_schema]" class="form-control form-control-sm font-monospace" rows="4">{"inputs": [], "outputs": []}</textarea>
-          </div>
-
-          <div class="mb-0">
-            <label class="form-label small">Notes</label>
-            <textarea name="agent_plugin[agent_capabilities_attributes][${time}][implementation_notes]" class="form-control form-control-sm" rows="2"></textarea>
-          </div>
+          <details class="mt-2">
+            <summary class="text-muted small" style="cursor: pointer; user-select: none;">
+              <i data-lucide="settings" class="icon-sm"></i> Advanced
+            </summary>
+            <div class="mt-1">
+              <textarea name="agent_plugin[agent_capabilities_attributes][${time}][implementation_notes]" class="form-control form-control-sm mb-1" rows="1" placeholder="Notes (optional)"></textarea>
+              <textarea name="agent_plugin[agent_capabilities_attributes][${time}][contract_schema]" class="form-control form-control-sm font-monospace" rows="2" placeholder="Schema (optional)">{"inputs": [], "outputs": []}</textarea>
+            </div>
+          </details>
         </div>
       `;
       container.insertAdjacentHTML('beforeend', template);
       lucide.createIcons();
+    }
+
+    // Add capability button
+    document.getElementById('add-capability')?.addEventListener('click', function() {
+      addCapability();
     });
 
-    // Add tool
-    document.getElementById('add-tool')?.addEventListener('click', function() {
+    // Add tool function
+    function addTool(toolName = '', isRequired = false) {
       const container = document.getElementById('tools-container');
       const time = new Date().getTime();
       const template = `
-        <div class="tool-field mb-3 p-2 border rounded">
+        <div class="tool-field mb-2 p-2 border rounded" style="background: rgba(0,0,0,0.02);">
           <input type="hidden" name="agent_plugin[agent_tools_attributes][${time}][_destroy]" value="false">
 
-          <div class="row align-items-center">
-            <div class="col-md-7">
-              <input type="text" name="agent_plugin[agent_tools_attributes][${time}][tool_name]" class="form-control form-control-sm" placeholder="get_data">
+          <div class="d-flex align-items-center gap-2">
+            <div class="flex-grow-1">
+              <input type="text" name="agent_plugin[agent_tools_attributes][${time}][tool_name]" class="form-control form-control-sm" placeholder="get_data" value="${toolName}">
             </div>
-            <div class="col-md-3">
-              <div class="form-check">
-                <input type="checkbox" name="agent_plugin[agent_tools_attributes][${time}][required]" class="form-check-input" value="1">
-                <label class="form-check-label small">Required</label>
-              </div>
+            <div class="form-check">
+              <input type="checkbox" name="agent_plugin[agent_tools_attributes][${time}][required]" class="form-check-input" value="1" ${isRequired ? 'checked' : ''}>
+              <label class="form-check-label small text-nowrap">Required</label>
             </div>
-            <div class="col-md-2 text-end">
-              <a href="#" class="btn btn-sm btn-outline-danger remove-tool">
-                <i data-lucide="x" class="icon-sm"></i>
-              </a>
-            </div>
+            <a href="#" class="btn btn-sm btn-outline-danger remove-tool">
+              <i data-lucide="x" class="icon-sm"></i>
+            </a>
           </div>
         </div>
       `;
       container.insertAdjacentHTML('beforeend', template);
       lucide.createIcons();
+    }
+
+    // Add tool button
+    document.getElementById('add-tool')?.addEventListener('click', function() {
+      addTool();
     });
 
     // Remove capability/tool
@@ -466,33 +698,8 @@
         const toolItem = e.target.closest('.tool-item');
         const toolName = toolItem.dataset.toolName;
 
-        // Add tool to form
-        const container = document.getElementById('tools-container');
-        const time = new Date().getTime();
-        const template = `
-          <div class="tool-field mb-3 p-2 border rounded">
-            <input type="hidden" name="agent_plugin[agent_tools_attributes][${time}][_destroy]" value="false">
-
-            <div class="row align-items-center">
-              <div class="col-md-7">
-                <input type="text" name="agent_plugin[agent_tools_attributes][${time}][tool_name]" class="form-control form-control-sm" value="${toolName}" readonly>
-              </div>
-              <div class="col-md-3">
-                <div class="form-check">
-                  <input type="checkbox" name="agent_plugin[agent_tools_attributes][${time}][required]" class="form-check-input" value="1" checked>
-                  <label class="form-check-label small">Required</label>
-                </div>
-              </div>
-              <div class="col-md-2 text-end">
-                <a href="#" class="btn btn-sm btn-outline-danger remove-tool">
-                  <i data-lucide="x" class="icon-sm"></i>
-                </a>
-              </div>
-            </div>
-          </div>
-        `;
-        container.insertAdjacentHTML('beforeend', template);
-        lucide.createIcons();
+        // Add tool using the shared function
+        addTool(toolName, true); // true = required by default from modal
 
         // Close modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('availableToolsModal'));

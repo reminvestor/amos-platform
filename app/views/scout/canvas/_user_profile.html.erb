@@ -10,9 +10,9 @@
   </div>
 </div>
 
-<div class="row">
+<div class="row g-4">
   <div class="col-lg-8">
-    <div class="card">
+    <div class="card h-100">
       <div class="card-header">
         <h5 class="mb-0"><i data-lucide="user-pen" aria-hidden="true"></i> Personal Information</h5>
       </div>
@@ -73,9 +73,9 @@
       </div>
     </div>
   </div>
-  
+
   <div class="col-lg-4">
-    <div class="card">
+    <div class="card mb-4">
       <div class="card-header">
         <h5 class="mb-0"><i data-lucide="info" aria-hidden="true"></i> Account Info</h5>
       </div>
@@ -89,11 +89,16 @@
           <label class="form-label text-muted">Last Updated</label>
           <div><%= user.updated_at.strftime("%B %d, %Y") %></div>
         </div>
-        
+
+        <% if user.entity.present? %>
         <div class="mb-3">
-          <label class="form-label text-muted">User ID</label>
-          <div><code>#<%= user.id %></code></div>
+          <label class="form-label text-muted">Company</label>
+          <div class="d-flex align-items-center gap-2">
+            <i data-lucide="building-2" aria-hidden="true" style="width: 1rem; height: 1rem;"></i>
+            <strong><%= user.entity.name %></strong>
+          </div>
         </div>
+        <% end %>
 
         <% if user.respond_to?(:onboarded?) %>
         <div class="mb-3">
@@ -123,12 +128,8 @@
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<%# Voice Settings Section %>
-<div class="row mt-4">
-  <div class="col-12">
+    <%# Voice Settings Card (in same column) %>
     <div class="card">
       <div class="card-header">
         <h5 class="mb-0"><i data-lucide="mic" aria-hidden="true" style="color: #A78BFA;"></i> Voice Settings</h5>
@@ -137,138 +138,115 @@
         <div data-controller="voice-settings">
           <%= form_with url: api_tts_preferences_path, method: :patch, local: false, data: { action: "submit->voice-settings#saveSettings" } do |f| %>
             
-            <div class="form-check mb-4">
-              <%= check_box_tag :enabled, "true", current_user.tts_preferences&.dig('enabled') != false, 
-                  class: "form-check-input", 
+            <div class="form-check mb-3">
+              <%= check_box_tag :enabled, "true", current_user.tts_preferences&.dig('enabled') != false,
+                  class: "form-check-input",
                   id: "tts_enabled",
                   data: { action: "change->voice-settings#togglePreview" } %>
               <label class="form-check-label" for="tts_enabled">
-                Enable text-to-speech for AI responses
+                <strong>Enable text-to-speech</strong> for AI responses
               </label>
             </div>
 
-            <div class="row" data-voice-settings-target="settings">
-              <div class="col-md-6 mb-4">
+            <div class="row g-3" data-voice-settings-target="settings">
+              <div class="col-12 mb-3">
                 <label for="voice_id" class="form-label">Voice</label>
-                <%= select_tag :voice_id, 
-                    options_for_select([
-                      ['US English Voices', [
-                        ['Aria (Female - Conversational)', 'Aria'],
-                        ['Joanna (Female - Expressive)', 'Joanna'],
-                        ['Kendra (Female - Professional)', 'Kendra'],
-                        ['Kimberly (Female - Soothing)', 'Kimberly'],
-                        ['Salli (Female - Youthful)', 'Salli'],
-                        ['Ivy (Female - Clear)', 'Ivy'],
-                        ['Ruth (Female - Pleasant)', 'Ruth'],
-                        ['Joey (Male - Natural)', 'Joey'],
-                        ['Justin (Male - Friendly)', 'Justin'],
-                        ['Kevin (Male - Youthful)', 'Kevin'],
-                        ['Matthew (Male - Professional)', 'Matthew']
-                      ]],
-                      ['UK English Voices', [
-                        ['Amy (British Female - Neural)', 'Amy'],
-                        ['Emma (British Female - Classic)', 'Emma'],
-                        ['Brian (British Male - Neural)', 'Brian'],
-                        ['Arthur (British Male - Distinguished)', 'Arthur']
-                      ]],
-                      ['Australian English Voice', [
-                        ['Olivia (Australian Female - Neural)', 'Olivia']
-                      ]],
-                      ['Other Languages', [
-                        ['Léa (French Female - Neural)', 'Lea'],
-                        ['Mathieu (French Male - Neural)', 'Mathieu'],
-                        ['Celine (French Female)', 'Celine'],
-                        ['Vicki (German Female - Neural)', 'Vicki'],
-                        ['Hans (German Male - Neural)', 'Hans'],
-                        ['Bianca (Italian Female - Neural)', 'Bianca'],
-                        ['Adriano (Italian Male - Neural)', 'Adriano'],
-                        ['Lucia (Spanish Female - Neural)', 'Lucia'],
-                        ['Sergio (Spanish Male - Neural)', 'Sergio'],
-                        ['Conchita (Spanish Female)', 'Conchita'],
-                        ['Lupe (US Spanish Female - Neural)', 'Lupe'],
-                        ['Mia (Mexican Spanish Female - Neural)', 'Mia'],
-                        ['Andrés (Mexican Spanish Male - Neural)', 'Andres'],
-                        ['Camila (Portuguese Female - Neural)', 'Camila'],
-                        ['Ricardo (Portuguese Male - Neural)', 'Ricardo'],
-                        ['Vitória (Brazilian Portuguese Female - Neural)', 'Vitoria'],
-                        ['Thiago (Brazilian Portuguese Male - Neural)', 'Thiago']
-                      ]], current_user.tts_preferences&.dig('voice_id') || 'Matthew'),
+                <% voice_groups = {
+                  'US English Voices' => [
+                    ['Aria (Female - Conversational)', 'Aria'],
+                    ['Joanna (Female - Expressive)', 'Joanna'],
+                    ['Kendra (Female - Professional)', 'Kendra'],
+                    ['Kimberly (Female - Soothing)', 'Kimberly'],
+                    ['Salli (Female - Youthful)', 'Salli'],
+                    ['Ivy (Female - Clear)', 'Ivy'],
+                    ['Ruth (Female - Pleasant)', 'Ruth'],
+                    ['Joey (Male - Natural)', 'Joey'],
+                    ['Justin (Male - Friendly)', 'Justin'],
+                    ['Kevin (Male - Youthful)', 'Kevin'],
+                    ['Matthew (Male - Professional)', 'Matthew']
+                  ],
+                  'UK English Voices' => [
+                    ['Amy (British Female - Neural)', 'Amy'],
+                    ['Emma (British Female - Classic)', 'Emma'],
+                    ['Brian (British Male - Neural)', 'Brian'],
+                    ['Arthur (British Male - Distinguished)', 'Arthur']
+                  ],
+                  'Australian English Voice' => [
+                    ['Olivia (Australian Female - Neural)', 'Olivia']
+                  ],
+                  'Other Languages' => [
+                    ['Léa (French Female - Neural)', 'Lea'],
+                    ['Mathieu (French Male - Neural)', 'Mathieu'],
+                    ['Celine (French Female)', 'Celine'],
+                    ['Vicki (German Female - Neural)', 'Vicki'],
+                    ['Hans (German Male - Neural)', 'Hans'],
+                    ['Bianca (Italian Female - Neural)', 'Bianca'],
+                    ['Adriano (Italian Male - Neural)', 'Adriano'],
+                    ['Lucia (Spanish Female - Neural)', 'Lucia'],
+                    ['Sergio (Spanish Male - Neural)', 'Sergio'],
+                    ['Conchita (Spanish Female)', 'Conchita'],
+                    ['Lupe (US Spanish Female - Neural)', 'Lupe'],
+                    ['Mia (Mexican Spanish Female - Neural)', 'Mia'],
+                    ['Andrés (Mexican Spanish Male - Neural)', 'Andres'],
+                    ['Camila (Portuguese Female - Neural)', 'Camila'],
+                    ['Ricardo (Portuguese Male - Neural)', 'Ricardo'],
+                    ['Vitória (Brazilian Portuguese Female - Neural)', 'Vitoria'],
+                    ['Thiago (Brazilian Portuguese Male - Neural)', 'Thiago']
+                  ]
+                } %>
+                <%= select_tag :voice_id,
+                    grouped_options_for_select(voice_groups, current_user.tts_preferences&.dig('voice_id') || 'Matthew'),
                     class: "form-select",
                     id: "voice_id",
                     data: { action: "change->voice-settings#updatePreview" } %>
-                <small class="form-text text-muted">Choose your preferred AI voice</small>
+                <small class="form-text text-muted">Select a voice to hear a preview</small>
               </div>
 
-              <div class="col-md-6 mb-4">
-                <label for="speed" class="form-label">Speaking Speed</label>
-                <div class="d-flex align-items-center gap-3">
-                  <%= range_field_tag :speed, 
-                      current_user.tts_preferences&.dig('speed') || 1.0,
-                      min: 0.5, max: 2.0, step: 0.1,
-                      class: "form-range",
-                      style: "flex: 1;",
-                      id: "speed",
-                      data: { action: "input->voice-settings#updateSpeedLabel" } %>
-                  <span class="badge bg-secondary" data-voice-settings-target="speedLabel" style="min-width: 3rem; text-align: center;">
+              <div class="col-12 mb-3">
+                <label for="speed" class="form-label d-flex justify-content-between align-items-center">
+                  <span>Speaking Speed</span>
+                  <span class="badge bg-secondary" data-voice-settings-target="speedLabel" style="min-width: 3rem;">
                     <%= current_user.tts_preferences&.dig('speed') || '1.0' %>x
                   </span>
-                </div>
-                <small class="form-text text-muted">Adjust how fast the AI speaks</small>
+                </label>
+                <%= range_field_tag :speed,
+                    current_user.tts_preferences&.dig('speed') || 1.0,
+                    min: 0.5, max: 2.0, step: 0.1,
+                    class: "form-range",
+                    id: "speed",
+                    data: { action: "input->voice-settings#updateSpeedLabel" } %>
               </div>
 
-              <div class="col-md-6 mb-4">
-                <label for="volume" class="form-label">Volume</label>
-                <div class="d-flex align-items-center gap-3">
-                  <%= range_field_tag :volume,
-                      current_user.tts_preferences&.dig('volume') || 1.0,
-                      min: 0, max: 1, step: 0.1,
-                      class: "form-range",
-                      style: "flex: 1;",
-                      id: "volume",
-                      data: { action: "input->voice-settings#updateVolumeLabel" } %>
-                  <span class="badge bg-secondary" data-voice-settings-target="volumeLabel" style="min-width: 3rem; text-align: center;">
+              <div class="col-12 mb-3">
+                <label for="volume" class="form-label d-flex justify-content-between align-items-center">
+                  <span>Volume</span>
+                  <span class="badge bg-secondary" data-voice-settings-target="volumeLabel" style="min-width: 3rem;">
                     <%= ((current_user.tts_preferences&.dig('volume') || 1.0) * 100).to_i %>%
                   </span>
-                </div>
-                <small class="form-text text-muted">Set the playback volume</small>
+                </label>
+                <%= range_field_tag :volume,
+                    current_user.tts_preferences&.dig('volume') || 1.0,
+                    min: 0, max: 1, step: 0.1,
+                    class: "form-range",
+                    id: "volume",
+                    data: { action: "input->voice-settings#updateVolumeLabel" } %>
               </div>
             </div>
 
-            <div class="d-flex justify-content-between align-items-center mt-4">
-              <button type="button" class="btn btn-outline-primary" data-action="click->voice-settings#testVoice">
+            <div class="d-grid gap-2 mt-3">
+              <button type="button" class="btn btn-outline-primary btn-sm" data-action="click->voice-settings#testVoice">
                 <i data-lucide="play" aria-hidden="true"></i> Test Voice
               </button>
-              <%= f.submit "Save Voice Settings", class: "btn btn-primary" %>
+              <%= f.submit "Save Settings", class: "btn btn-primary" %>
             </div>
           <% end %>
 
           <div class="alert alert-success mt-3 d-none" data-voice-settings-target="successMessage">
-            <i data-lucide="check-circle" aria-hidden="true" style="width: 1.25rem; height: 1.25rem; display: inline-block; margin-right: 0.5rem;"></i>
-            Voice settings saved successfully!
+            <i data-lucide="check-circle" aria-hidden="true"></i>
+            Settings saved!
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
-
-<style>
-  /* Voice Settings Styles */
-  .settings-disabled {
-    opacity: 0.5;
-    pointer-events: none;
-  }
-  
-  .form-range {
-    height: 6px;
-  }
-  
-  .icon-spin {
-    animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-</style> 
+</div><!-- End row --> 

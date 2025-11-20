@@ -26,7 +26,7 @@ class Admin::SessionsController < ApplicationController
 
   def destroy
     session.delete(:admin_user_id)
-    redirect_to new_admin_session_path, notice: "You have been logged out."
+    redirect_to admin_new_session_path, notice: "You have been logged out."
   end
 
   private

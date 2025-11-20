@@ -106,22 +106,24 @@ module Tools
         }
       ]
       
-      # Add custom agents if any exist
-      # TODO: Re-enable when CustomAgentDefinition.active scope is fixed
-      # if defined?(CustomAgentDefinition)
-      #   custom_agents = CustomAgentDefinition.active.where(entity: @entity).map do |agent_def|
-      #     {
-      #       name: "custom_#{agent_def.id}",
-      #       display_name: agent_def.name,
-      #       description: agent_def.definition['description'],
-      #       capabilities: agent_def.definition['capabilities'] || [],
-      #       trigger_phrases: agent_def.definition['trigger_phrases'] || [],
-      #       complexity: 'custom',
-      #       custom: true
-      #     }
-      #   end
-      #   agents.concat(custom_agents)
-      # end
+      # Add custom agent plugins from database
+      if defined?(AgentPlugin) && entity
+        custom_agents = AgentPlugin.active.for_entity(entity).map do |plugin|
+          {
+            name: plugin.slug,
+            display_name: plugin.name,
+            description: plugin.description || "Custom agent plugin",
+            capabilities: plugin.capability_names,
+            trigger_phrases: [plugin.slug, plugin.name],
+            complexity: 'custom',
+            custom: true,
+            agent_plugin_id: plugin.id
+          }
+        end
+        agents.concat(custom_agents)
+
+        Rails.logger.info "🔌 Added #{custom_agents.size} custom agent plugins to available agents"
+      end
       
       # Rank agents by relevance to the task
       # In production, this will be replaced by vector similarity search
