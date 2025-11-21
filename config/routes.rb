@@ -489,6 +489,7 @@ Rails.application.routes.draw do
 
     # Observability
     get "/observability/ai_usage", to: "observability#ai_usage", as: :observability_ai_usage
+    get "/observability/ai_usage/entity/:entity_id", to: "observability#ai_usage_by_entity", as: :observability_ai_usage_entity
     get "/observability/workflows", to: "observability#workflows", as: :observability_workflows
     get "/observability/performance", to: "observability#performance", as: :observability_performance
     get "/observability/errors", to: "observability#errors", as: :observability_errors

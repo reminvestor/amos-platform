@@ -183,10 +183,16 @@ class Admin::ObservabilityController < Admin::BaseController
                SUM(ai_usage_logs.cost_cents) / 100.0 as cost")
       .order("cost DESC")
 
-    # Usage by model
+    # Usage by model with full breakdown
     @usage_by_model = logs
       .group(:model)
-      .count
+      .select("model,
+               COUNT(*) as request_count,
+               SUM(input_tokens) as input_tokens,
+               SUM(output_tokens) as output_tokens,
+               SUM(total_tokens) as total_tokens,
+               SUM(cost_cents) / 100.0 as cost")
+      .order("cost DESC")
 
     # Top entities
     cutoff_time = @time_range.ago.utc.strftime("%Y-%m-%d %H:%M:%S")
@@ -211,6 +217,58 @@ class Admin::ObservabilityController < Admin::BaseController
       )}
 
     # Charts
+    @token_usage_chart = generate_token_chart(logs)
+    @cost_chart = generate_cost_chart(logs)
+  end
+
+  def ai_usage_by_entity
+    @entity = Entity.find(params[:entity_id])
+    @time_range = (params[:time_range]&.to_i || 7).days
+
+    # Get usage logs for this entity
+    logs = AiUsageLog.where(entity: @entity, created_at: @time_range.ago..)
+
+    # Main stats for this entity
+    @total_requests = logs.count
+    @total_tokens = logs.sum(:total_tokens)
+    @total_cost = logs.sum(:cost_cents) / 100.0
+    @average_latency = (logs.where.not(duration_ms: nil).average(:duration_ms)&.to_f || 0) / 1000.0
+
+    # Token breakdown
+    @input_tokens = logs.sum(:input_tokens)
+    @output_tokens = logs.sum(:output_tokens)
+
+    # Usage by model for this entity
+    @usage_by_model = logs
+      .group(:model)
+      .select("model,
+               COUNT(*) as request_count,
+               SUM(input_tokens) as input_tokens,
+               SUM(output_tokens) as output_tokens,
+               SUM(total_tokens) as total_tokens,
+               SUM(cost_cents) / 100.0 as cost")
+      .order("cost DESC")
+
+    # Usage by user within this entity
+    @usage_by_user = logs
+      .joins(:user)
+      .group("users.id", "users.email")
+      .select("users.id as user_id,
+               users.email as user_email,
+               COUNT(*) as request_count,
+               SUM(ai_usage_logs.input_tokens) as input_tokens,
+               SUM(ai_usage_logs.output_tokens) as output_tokens,
+               SUM(ai_usage_logs.total_tokens) as total_tokens,
+               SUM(ai_usage_logs.cost_cents) / 100.0 as cost")
+      .order("cost DESC")
+
+    # Recent requests for this entity
+    @recent_requests = logs
+      .includes(:user)
+      .order(created_at: :desc)
+      .limit(25)
+
+    # Charts for this entity
     @token_usage_chart = generate_token_chart(logs)
     @cost_chart = generate_cost_chart(logs)
   end
