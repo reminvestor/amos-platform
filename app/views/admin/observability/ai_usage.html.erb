@@ -91,7 +91,9 @@
           <i data-lucide="bar-chart-3" class="icon-lg icon-with-spacing"></i>
           Token Usage Over Time
         </h3>
-        <canvas id="tokenUsageChart" style="height: 300px;"></canvas>
+        <div style="position: relative; height: 300px; width: 100%;">
+          <canvas id="tokenUsageChart"></canvas>
+        </div>
       </div>
 
       <%# Cost Chart %>
@@ -100,7 +102,9 @@
           <i data-lucide="trending-up" class="icon-lg icon-with-spacing"></i>
           Cost Over Time
         </h3>
-        <canvas id="costChart" style="height: 300px;"></canvas>
+        <div style="position: relative; height: 300px; width: 100%;">
+          <canvas id="costChart"></canvas>
+        </div>
       </div>
     </div>
 
@@ -246,8 +250,11 @@
 <!-- Consolidated Chart.js -->
 <%= render 'admin/chart_js' %>
 <script>
-  // Initialize charts and icons only once
-  function initializeAIUsagePage() {
+  (function() {
+    // Prevent duplicate initialization
+    if (window.aiUsagePageInitialized) return;
+    window.aiUsagePageInitialized = true;
+
     // Dark theme colors
     Chart.defaults.color = '#94A3B8';
     Chart.defaults.borderColor = '#1E293B';
@@ -327,14 +334,5 @@
     if (typeof lucide !== 'undefined') {
       lucide.createIcons();
     }
-  }
-
-  // Run on both DOMContentLoaded and turbo:load
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeAIUsagePage);
-  } else {
-    initializeAIUsagePage();
-  }
-
-  document.addEventListener('turbo:load', initializeAIUsagePage);
+  })();
 </script>

@@ -1,68 +1,214 @@
 <div class="admin-content">
   <div style="padding: 2rem;">
     <div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i data-lucide="bot" class="text-primary"></i> AI Usage Metrics</h1>
-      <p class="text-muted">Monitor AI model usage, costs, and performance</p>
-    </div>
-    <div class="col-auto">
-      <div class="btn-group">
-        <%= link_to "1 Hour", admin_observability_ai_usage_path(timeframe: '1h'), class: "btn btn-sm #{'btn-primary' if @timeframe == '1h'} #{'btn-outline-primary' if @timeframe != '1h'}" %>
-        <%= link_to "24 Hours", admin_observability_ai_usage_path(timeframe: '24h'), class: "btn btn-sm #{'btn-primary' if @timeframe == '24h'} #{'btn-outline-primary' if @timeframe != '24h'}" %>
-        <%= link_to "7 Days", admin_observability_ai_usage_path(timeframe: '7d'), class: "btn btn-sm #{'btn-primary' if @timeframe == '7d'} #{'btn-outline-primary' if @timeframe != '7d'}" %>
+      <div class="row mb-4">
+        <div class="col">
+          <h1><i data-lucide="bot" class="text-primary"></i> AI Usage Metrics</h1>
+          <p class="text-muted">Monitor AI model usage, costs, and performance</p>
+        </div>
+        <div class="col-auto">
+          <div class="btn-group">
+            <%= link_to "1 Hour", admin_observability_ai_usage_path(timeframe: '1h'), class: "btn btn-sm #{'btn-primary' if @timeframe == '1h'} #{'btn-outline-primary' if @timeframe != '1h'}" %>
+            <%= link_to "24 Hours", admin_observability_ai_usage_path(timeframe: '24h'), class: "btn btn-sm #{'btn-primary' if @timeframe == '24h'} #{'btn-outline-primary' if @timeframe != '24h'}" %>
+            <%= link_to "7 Days", admin_observability_ai_usage_path(timeframe: '7d'), class: "btn btn-sm #{'btn-primary' if @timeframe == '7d'} #{'btn-outline-primary' if @timeframe != '7d'}" %>
+            <%= link_to "30 Days", admin_observability_ai_usage_path(timeframe: '30d'), class: "btn btn-sm #{'btn-primary' if @timeframe == '30d'} #{'btn-outline-primary' if @timeframe != '30d'}" %>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Stats -->
-  <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Total AI Calls</div>
-          <div class="h3 mb-0"><%= number_with_delimiter(@stats[:total_ai_calls]) %></div>
+      <!-- Main Stats -->
+      <div class="row mb-4">
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div class="small text-muted mb-1">Total AI Calls</div>
+              <div class="h3 mb-0"><%= number_with_delimiter(@stats[:total_ai_calls]) %></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div class="small text-muted mb-1">Total Tokens</div>
+              <div class="h3 mb-0"><%= number_with_delimiter(@stats[:total_tokens][:total]) %></div>
+              <div class="small text-muted">
+                <span class="text-info"><%= number_with_delimiter(@stats[:total_tokens][:input]) %> in</span> /
+                <span class="text-warning"><%= number_with_delimiter(@stats[:total_tokens][:output]) %> out</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div class="small text-muted mb-1">Estimated Cost</div>
+              <div class="h3 mb-0 text-success">$<%= number_with_precision(@stats[:estimated_cost], precision: 4) %></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div class="small text-muted mb-1">Avg Response Time</div>
+              <div class="h3 mb-0"><%= number_with_delimiter(@stats[:avg_response_time]) %>ms</div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Total Tokens</div>
-          <div class="h3 mb-0"><%= number_with_delimiter(@stats[:total_tokens]) %></div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Estimated Cost</div>
-          <div class="h3 mb-0 text-success">$<%= @stats[:estimated_cost] %></div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Avg Response Time</div>
-          <div class="h3 mb-0"><%= @stats[:avg_response_time] %>ms</div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="row">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body text-center py-5">
-          <i data-lucide="trending-up" class="icon-4x text-muted mb-3"></i>
-          <h4>AI Usage Analytics Coming Soon</h4>
-          <p class="text-muted">Detailed breakdowns by user, model, and time will be available here</p>
+      <!-- Cache Stats -->
+      <% if @stats[:total_tokens][:cache_read].to_i > 0 || @stats[:total_tokens][:cache_write].to_i > 0 %>
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm bg-light">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <i data-lucide="database" class="me-3 text-primary" style="width: 24px; height: 24px;"></i>
+                  <div>
+                    <div class="small text-muted mb-1">Prompt Cache Performance</div>
+                    <div class="d-flex gap-4">
+                      <div>
+                        <span class="h5 mb-0 text-success"><%= number_with_delimiter(@stats[:total_tokens][:cache_read]) %></span>
+                        <span class="small text-muted">tokens read from cache</span>
+                      </div>
+                      <div>
+                        <span class="h5 mb-0 text-info"><%= number_with_delimiter(@stats[:total_tokens][:cache_write]) %></span>
+                        <span class="small text-muted">tokens written to cache</span>
+                      </div>
+                    </div>
+                    <% cache_savings = (@stats[:total_tokens][:cache_read].to_f * 0.9 * 0.003 / 1000).round(4) %>
+                    <% if cache_savings > 0 %>
+                      <div class="small text-success mt-1">
+                        <i data-lucide="trending-down" style="width: 14px; height: 14px;"></i>
+                        ~$<%= number_with_precision(cache_savings, precision: 4) %> saved via caching (90% discount)
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="row">
+        <!-- Usage by Model -->
+        <div class="col-md-6 mb-4">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0">
+              <h5 class="mb-0"><i data-lucide="cpu" class="me-2" style="width: 18px; height: 18px;"></i>Usage by Model</h5>
+            </div>
+            <div class="card-body">
+              <% if @usage_by_model.any? %>
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Model</th>
+                      <th class="text-end">Calls</th>
+                      <th class="text-end">Input</th>
+                      <th class="text-end">Output</th>
+                      <th class="text-end">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @usage_by_model.each do |record| %>
+                      <tr>
+                        <td>
+                          <code class="small"><%= record.model.to_s.split('/').last %></code>
+                        </td>
+                        <td class="text-end"><%= number_with_delimiter(record.call_count) %></td>
+                        <td class="text-end text-info"><%= number_with_delimiter(record.input_tokens) %></td>
+                        <td class="text-end text-warning"><%= number_with_delimiter(record.output_tokens) %></td>
+                        <td class="text-end text-success">$<%= number_with_precision(record.cost, precision: 4) %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              <% else %>
+                <div class="text-center py-4 text-muted">
+                  <i data-lucide="inbox" class="mb-2" style="width: 32px; height: 32px;"></i>
+                  <p class="mb-0">No AI usage data in this timeframe</p>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Usage by User -->
+        <div class="col-md-6 mb-4">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0">
+              <h5 class="mb-0"><i data-lucide="users" class="me-2" style="width: 18px; height: 18px;"></i>Top Users by Token Usage</h5>
+            </div>
+            <div class="card-body">
+              <% if @usage_by_user.any? %>
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th class="text-end">Calls</th>
+                      <th class="text-end">Tokens</th>
+                      <th class="text-end">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @usage_by_user.each do |record| %>
+                      <tr>
+                        <td><%= record.email %></td>
+                        <td class="text-end"><%= number_with_delimiter(record.call_count) %></td>
+                        <td class="text-end"><%= number_with_delimiter(record.total_tokens) %></td>
+                        <td class="text-end text-success">$<%= number_with_precision(record.cost, precision: 4) %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              <% else %>
+                <div class="text-center py-4 text-muted">
+                  <i data-lucide="inbox" class="mb-2" style="width: 32px; height: 32px;"></i>
+                  <p class="mb-0">No user usage data in this timeframe</p>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pricing Reference -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent border-0">
+              <h5 class="mb-0"><i data-lucide="dollar-sign" class="me-2" style="width: 18px; height: 18px;"></i>Pricing Reference (AWS Bedrock)</h5>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="small">
+                    <strong>Claude Sonnet 4.5</strong><br>
+                    <span class="text-muted">$3.00/M input • $15.00/M output</span>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="small">
+                    <strong>Claude 3.5 Haiku</strong><br>
+                    <span class="text-muted">$0.80/M input • $4.00/M output</span>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="small">
+                    <strong>Claude 3 Opus</strong><br>
+                    <span class="text-muted">$15.00/M input • $75.00/M output</span>
+                  </div>
+                </div>
+              </div>
+              <div class="small text-muted mt-3">
+                <i data-lucide="info" style="width: 14px; height: 14px;"></i>
+                Costs are calculated automatically based on model and token counts. Cache reads receive 90% discount.
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
-  </div>
-</div>
-

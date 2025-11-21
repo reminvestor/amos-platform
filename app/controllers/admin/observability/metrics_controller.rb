@@ -60,28 +60,54 @@ class Admin::Observability::MetricsController < Admin::BaseController
   end
 
   def calculate_ai_calls(timeframe)
-    # Placeholder - would query ObservabilityEvent or similar
-    rand(100..1000)
+    AiUsageLog.where(created_at: timeframe_start(timeframe)..).count
   end
 
   def calculate_tokens(timeframe)
-    rand(10_000..100_000)
+    logs = AiUsageLog.where(created_at: timeframe_start(timeframe)..)
+    {
+      input: logs.sum(:input_tokens),
+      output: logs.sum(:output_tokens),
+      total: logs.sum(:total_tokens),
+      cache_read: logs.sum("COALESCE((metadata->>'cache_read')::int, 0)"),
+      cache_write: logs.sum("COALESCE((metadata->>'cache_creation')::int, 0)")
+    }
   end
 
   def calculate_cost(timeframe)
-    (calculate_tokens(timeframe) * 0.00002).round(2)
+    # Cost is stored in cents with 4 decimal precision
+    cost_cents = AiUsageLog.where(created_at: timeframe_start(timeframe)..).sum(:cost_cents)
+    (cost_cents / 100.0).round(4)
   end
 
   def calculate_avg_response_time(timeframe)
-    rand(500..2000)
+    AiUsageLog.where(created_at: timeframe_start(timeframe)..)
+              .where.not(duration_ms: nil)
+              .average(:duration_ms)&.round(0) || 0
   end
 
   def calculate_usage_by_user(timeframe)
-    []
+    AiUsageLog.where(created_at: timeframe_start(timeframe)..)
+              .joins(:user)
+              .group("users.email")
+              .select("users.email as email,
+                       SUM(ai_usage_logs.total_tokens) as total_tokens,
+                       SUM(ai_usage_logs.cost_cents) / 100.0 as cost,
+                       COUNT(*) as call_count")
+              .order("total_tokens DESC")
+              .limit(10)
   end
 
   def calculate_usage_by_model(timeframe)
-    []
+    AiUsageLog.where(created_at: timeframe_start(timeframe)..)
+              .group(:model)
+              .select("model,
+                       SUM(input_tokens) as input_tokens,
+                       SUM(output_tokens) as output_tokens,
+                       SUM(total_tokens) as total_tokens,
+                       SUM(cost_cents) / 100.0 as cost,
+                       COUNT(*) as call_count")
+              .order("total_tokens DESC")
   end
 
   def calculate_error_rate(timeframe)
