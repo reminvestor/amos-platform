@@ -170,11 +170,18 @@ class Admin::ObservabilityController < Admin::BaseController
     @cache_read_tokens = logs.sum("COALESCE((metadata->>'cache_read')::int, 0)")
     @cache_write_tokens = logs.sum("COALESCE((metadata->>'cache_creation')::int, 0)")
 
-    # Usage by entity
+    # Usage by entity with cost breakdown
     @usage_by_entity = logs
       .joins(:entity)
-      .group("entities.name")
-      .count
+      .group("entities.id", "entities.name")
+      .select("entities.id as entity_id,
+               entities.name as entity_name,
+               COUNT(*) as request_count,
+               SUM(ai_usage_logs.input_tokens) as input_tokens,
+               SUM(ai_usage_logs.output_tokens) as output_tokens,
+               SUM(ai_usage_logs.total_tokens) as total_tokens,
+               SUM(ai_usage_logs.cost_cents) / 100.0 as cost")
+      .order("cost DESC")
 
     # Usage by model
     @usage_by_model = logs

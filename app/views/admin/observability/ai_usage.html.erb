@@ -108,37 +108,60 @@
       </div>
     </div>
 
+    <%# Entity Cost Breakdown - Full Width %>
+    <div class="admin-card" style="margin-bottom: 2rem;">
+      <h3 class="card-title">
+        <i data-lucide="building" class="icon-lg icon-with-spacing"></i>
+        Cost by Entity
+      </h3>
+      <% if @usage_by_entity.any? %>
+        <div style="overflow-x: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Entity</th>
+                <th style="text-align: right;">Requests</th>
+                <th style="text-align: right;">Input Tokens</th>
+                <th style="text-align: right;">Output Tokens</th>
+                <th style="text-align: right;">Total Tokens</th>
+                <th style="text-align: right;">Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @usage_by_entity.first(15).each do |record| %>
+                <tr>
+                  <td style="color: white; font-weight: 500;"><%= record.entity_name %></td>
+                  <td style="color: #94A3B8; text-align: right;"><%= number_with_delimiter(record.request_count) %></td>
+                  <td style="color: #60A5FA; text-align: right;"><%= number_with_delimiter(record.input_tokens) %></td>
+                  <td style="color: #34D399; text-align: right;"><%= number_with_delimiter(record.output_tokens) %></td>
+                  <td style="color: #94A3B8; text-align: right;"><%= number_with_delimiter(record.total_tokens) %></td>
+                  <td style="text-align: right;">
+                    <span style="color: #F87171; font-weight: 600;">$<%= number_with_precision(record.cost || 0, precision: 4) %></span>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot style="border-top: 2px solid #334155;">
+              <tr>
+                <td style="color: white; font-weight: 600;">Total</td>
+                <td style="color: white; text-align: right; font-weight: 600;"><%= number_with_delimiter(@total_requests) %></td>
+                <td style="color: #60A5FA; text-align: right; font-weight: 600;"><%= number_with_delimiter(@input_tokens) %></td>
+                <td style="color: #34D399; text-align: right; font-weight: 600;"><%= number_with_delimiter(@output_tokens) %></td>
+                <td style="color: white; text-align: right; font-weight: 600;"><%= number_with_delimiter(@total_tokens) %></td>
+                <td style="text-align: right;">
+                  <span style="color: #F87171; font-weight: 700; font-size: 1.1em;">$<%= number_with_precision(@total_cost, precision: 4) %></span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      <% else %>
+        <p style="color: #94A3B8; margin: 0;">No entity usage data available</p>
+      <% end %>
+    </div>
+
     <%# Usage Breakdown Row %>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-      <%# Usage by Entity %>
-      <div class="admin-card">
-        <h3 class="card-title">
-          <i data-lucide="building" class="icon-lg icon-with-spacing"></i>
-          Usage by Entity
-        </h3>
-        <% if @usage_by_entity.any? %>
-          <div style="overflow-x: auto;">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Entity</th>
-                  <th style="text-align: right;">Requests</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% @usage_by_entity.sort_by { |_, count| -count }.first(10).each do |entity_name, count| %>
-                  <tr>
-                    <td style="color: white;"><%= entity_name %></td>
-                    <td style="color: #94A3B8; text-align: right;"><%= number_with_delimiter(count) %></td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
-        <% else %>
-          <p style="color: #94A3B8; margin: 0;">No usage data available</p>
-        <% end %>
-      </div>
 
       <%# Usage by Model %>
       <div class="admin-card">
