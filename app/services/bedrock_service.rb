@@ -283,29 +283,35 @@ class BedrockService
           output: response_body["usage"]["output_tokens"] || 0
         }
 
-        if @user && @entity && @resource_manager
-          # Track tokens in resource manager (updates entity total)
-          @resource_manager.track_tokens(@user, model_id, tokens, {
-            stream: false,
-            method: "invoke_model",
-            timestamp: Time.current
-          })
-          
+        if @user && @entity
+          # Track tokens in resource manager (updates entity total) if available
+          if @resource_manager
+            @resource_manager.track_tokens(@user, model_id, tokens, {
+              stream: false,
+              method: "invoke_model",
+              timestamp: Time.current
+            })
+          end
+
+          # Extract short model name from full ID for cleaner logging
+          short_model_name = model_id.to_s.match(/claude[^:]+/)&.to_s || model_id
+
           # Log AI usage for observability and billing
           AiUsageLog.log_usage(
             entity: @entity,
             user: @user,
-            model: model_id,
+            model: short_model_name,
             input_tokens: tokens[:input],
             output_tokens: tokens[:output],
-            duration_ms: nil, # Will add timing in next iteration
+            duration_ms: nil,
             request_type: 'chat',
-            scout_message: nil, # Will link to scout_message if available
+            scout_message: nil,
             metadata: {
               method: 'invoke_model',
               stream: false,
               cache_creation: response_body["usage"]["cache_write_input_tokens"] || 0,
-              cache_read: response_body["usage"]["cache_read_input_tokens"] || 0
+              cache_read: response_body["usage"]["cache_read_input_tokens"] || 0,
+              full_model_id: model_id
             }
           )
         end
@@ -620,12 +626,34 @@ class BedrockService
           output: response.usage.output_tokens || 0
         }
 
-        if @user && @entity && @resource_manager
-          @resource_manager.track_tokens(@user, model_id, tokens, {
-            stream: false,
-            method: "converse",
-            timestamp: Time.current
-          })
+        if @user && @entity
+          if @resource_manager
+            @resource_manager.track_tokens(@user, model_id, tokens, {
+              stream: false,
+              method: "converse",
+              timestamp: Time.current
+            })
+          end
+
+          # Extract short model name from full ID for cleaner logging
+          short_model_name = model_id.to_s.match(/claude[^:]+/)&.to_s || model_id
+
+          # Log AI usage for observability
+          AiUsageLog.log_usage(
+            entity: @entity,
+            user: @user,
+            model: short_model_name,
+            input_tokens: tokens[:input],
+            output_tokens: tokens[:output],
+            duration_ms: nil,
+            request_type: 'chat',
+            scout_message: nil,
+            metadata: {
+              method: 'converse',
+              stream: false,
+              full_model_id: model_id
+            }
+          )
         end
 
         Rails.logger.info "Token usage - Input: #{tokens[:input]}, Output: #{tokens[:output]}"
@@ -876,24 +904,29 @@ class BedrockService
               cache_read = usage.respond_to?(:cache_read_input_tokens_count) ? usage.cache_read_input_tokens_count : 0
 
               # Track tokens if we have user and entity
-              if @user && @entity && @resource_manager
-                # Track tokens in resource manager (updates entity total)
-                @resource_manager.track_tokens(@user, model_id, tokens, {
-                  stream: true,
-                  timestamp: Time.current,
-                  cache_write: cache_write,
-                  cache_read: cache_read
-                })
-                
+              if @user && @entity
+                # Track tokens in resource manager (updates entity total) if available
+                if @resource_manager
+                  @resource_manager.track_tokens(@user, model_id, tokens, {
+                    stream: true,
+                    timestamp: Time.current,
+                    cache_write: cache_write,
+                    cache_read: cache_read
+                  })
+                end
+
                 # Log AI usage for observability and billing
                 duration_ms = ((Time.now - start_time) * 1000).round
                 cache_creation = usage.respond_to?(:cache_write_input_tokens) ? (usage.cache_write_input_tokens || 0) : 0
                 cache_read = usage.respond_to?(:cache_read_input_tokens) ? (usage.cache_read_input_tokens || 0) : 0
-                
+
+                # Extract short model name from full ID for cleaner logging
+                short_model_name = model_id.to_s.match(/claude[^:]+/)&.to_s || model_id
+
                 AiUsageLog.log_usage(
                   entity: @entity,
                   user: @user,
-                  model: model_id,
+                  model: short_model_name,
                   input_tokens: tokens[:input],
                   output_tokens: tokens[:output],
                   duration_ms: duration_ms,
@@ -904,7 +937,8 @@ class BedrockService
                     stream: true,
                     chunks: chunk_count,
                     cache_creation: cache_creation,
-                    cache_read: cache_read
+                    cache_read: cache_read,
+                    full_model_id: model_id
                   }
                 )
               end
