@@ -1,38 +1,48 @@
 <div class="admin-p-xl" data-turbo-cache="false">
-  <%# Page Header %>
-    <div class="admin-page-header">
-      <div class="header-left">
-        <div class="header-icon">
-          <i data-lucide="brain"></i>
-        </div>
-        <div class="header-text">
-          <h1>AI Usage Metrics</h1>
-          <p>Monitor AI model usage, costs, and performance</p>
-        </div>
-      </div>
+  <%# Breadcrumb %>
+  <nav class="admin-mb-lg">
+    <%= link_to admin_observability_ai_usage_path, class: "admin-btn admin-btn-sm admin-btn-outline d-inline-flex align-items-center gap-2" do %>
+      <i data-lucide="arrow-left" class="admin-icon-sm"></i>
+      Back to All Entities
+    <% end %>
+  </nav>
 
-      <div class="header-actions" style="display: flex; gap: 0.5rem;">
-        <%= link_to admin_observability_ai_usage_path(time_range: 1, group_by: "hour"),
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="building-2"></i>
+      </div>
+      <div class="header-text">
+        <h1><%= @entity.name %></h1>
+        <p>AI usage breakdown for this entity</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="d-flex flex-wrap admin-flex-gap-sm">
+        <%= link_to admin_observability_ai_usage_entity_path(@entity, time_range: 1),
                     class: "admin-btn admin-btn-sm #{params[:time_range] == '1' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
           Last 24 Hours
         <% end %>
-        <%= link_to admin_observability_ai_usage_path(time_range: 7, group_by: "day"),
+        <%= link_to admin_observability_ai_usage_entity_path(@entity, time_range: 7),
                     class: "admin-btn admin-btn-sm #{params[:time_range] == '7' || params[:time_range].nil? ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
           Last 7 Days
         <% end %>
-        <%= link_to admin_observability_ai_usage_path(time_range: 30, group_by: "day"),
+        <%= link_to admin_observability_ai_usage_entity_path(@entity, time_range: 30),
                     class: "admin-btn admin-btn-sm #{params[:time_range] == '30' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
           Last 30 Days
         <% end %>
       </div>
     </div>
+  </div>
 
   <%# Stats Cards %>
   <div class="admin-stats-grid">
     <%= render 'admin/shared/stat_card', icon: 'cpu', label: 'Total Requests', value: number_with_delimiter(@total_requests), style: 'purple-gradient' %>
     <%= render 'admin/shared/stat_card', icon: 'coins', label: 'Total Tokens', value: number_with_delimiter(@total_tokens), style: 'success' %>
-    <%= render 'admin/shared/stat_card', icon: 'dollar-sign', label: 'Total Cost', value: "$#{number_with_precision(@total_cost, precision: 2)}", style: 'danger' %>
-    <%= render 'admin/shared/stat_card', icon: 'clock', label: 'Avg Latency', value: "#{@average_latency}s", style: 'info' %>
+    <%= render 'admin/shared/stat_card', icon: 'dollar-sign', label: 'Total Cost', value: "$#{number_with_precision(@total_cost, precision: 4)}", style: 'danger' %>
+    <%= render 'admin/shared/stat_card', icon: 'clock', label: 'Avg Latency', value: "#{number_with_precision(@average_latency, precision: 2)}s", style: 'info' %>
   </div>
 
   <%# Charts Row %>
@@ -43,8 +53,8 @@
         <i data-lucide="bar-chart-3" class="admin-icon-md d-inline-block align-middle me-2"></i>
         Token Usage Over Time
       </h3>
-      <div style="position: relative; height: 300px; width: 100%;">
-        <canvas id="tokenUsageChart"></canvas>
+      <div style="position: relative; height: 250px; width: 100%;">
+        <canvas id="entityTokenChart"></canvas>
       </div>
     </div>
 
@@ -54,68 +64,10 @@
         <i data-lucide="trending-up" class="admin-icon-md d-inline-block align-middle me-2"></i>
         Cost Over Time
       </h3>
-      <div style="position: relative; height: 300px; width: 100%;">
-        <canvas id="costChart"></canvas>
+      <div style="position: relative; height: 250px; width: 100%;">
+        <canvas id="entityCostChart"></canvas>
       </div>
     </div>
-  </div>
-
-  <%# Entity Cost Breakdown - Full Width %>
-  <div class="admin-card admin-mb-lg">
-    <h3 class="card-title">
-      <i data-lucide="building" class="admin-icon-md d-inline-block align-middle me-2"></i>
-      Cost by Entity
-    </h3>
-    <% if @usage_by_entity.any? %>
-      <div class="admin-table-container">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Entity</th>
-              <th class="text-end">Requests</th>
-              <th class="text-end">Input Tokens</th>
-              <th class="text-end">Output Tokens</th>
-              <th class="text-end">Total Tokens</th>
-              <th class="text-end">Cost</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @usage_by_entity.first(15).each do |record| %>
-              <tr>
-                <td>
-                  <%= link_to admin_observability_ai_usage_entity_path(record.entity_id, time_range: params[:time_range] || 7),
-                      class: "admin-link d-flex align-items-center gap-2" do %>
-                    <%= record.entity_name %>
-                    <i data-lucide="chevron-right" style="width: 14px; height: 14px; opacity: 0.6;"></i>
-                  <% end %>
-                </td>
-                <td class="text-end text-muted"><%= number_with_delimiter(record.request_count) %></td>
-                <td class="text-end text-info"><%= number_with_delimiter(record.input_tokens) %></td>
-                <td class="text-end text-success"><%= number_with_delimiter(record.output_tokens) %></td>
-                <td class="text-end text-muted"><%= number_with_delimiter(record.total_tokens) %></td>
-                <td class="text-end">
-                  <span class="text-danger fw-semibold">$<%= number_with_precision(record.cost || 0, precision: 4) %></span>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-          <tfoot class="admin-table-footer">
-            <tr>
-              <td class="fw-bold">Total</td>
-              <td class="text-end fw-bold"><%= number_with_delimiter(@total_requests) %></td>
-              <td class="text-end text-info fw-bold"><%= number_with_delimiter(@input_tokens) %></td>
-              <td class="text-end text-success fw-bold"><%= number_with_delimiter(@output_tokens) %></td>
-              <td class="text-end fw-bold"><%= number_with_delimiter(@total_tokens) %></td>
-              <td class="text-end">
-                <span class="text-danger fw-bold" style="font-size: 1.1em;">$<%= number_with_precision(@total_cost, precision: 4) %></span>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    <% else %>
-      <p class="text-muted m-0">No entity usage data available</p>
-    <% end %>
   </div>
 
   <%# Usage by Model %>
@@ -168,39 +120,47 @@
         </table>
       </div>
     <% else %>
-      <p class="text-muted m-0">No model data available</p>
+      <p class="text-muted m-0">No model usage data available</p>
     <% end %>
   </div>
 
-  <%# Top Entities %>
+  <%# Usage by User %>
   <div class="admin-card admin-mb-lg">
     <h3 class="card-title">
-      <i data-lucide="trophy" class="admin-icon-md d-inline-block align-middle me-2"></i>
-      Top Entities by Usage
+      <i data-lucide="users" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Usage by User
     </h3>
-    <% if @top_entities.any? %>
+    <% if @usage_by_user.any? %>
       <div class="admin-table-container">
         <table class="admin-table">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Entity Name</th>
-              <th class="text-end">Request Count</th>
+              <th>User</th>
+              <th class="text-end">Requests</th>
+              <th class="text-end">Input Tokens</th>
+              <th class="text-end">Output Tokens</th>
+              <th class="text-end">Total Tokens</th>
+              <th class="text-end">Cost</th>
             </tr>
           </thead>
           <tbody>
-            <% @top_entities.each_with_index do |entity, index| %>
+            <% @usage_by_user.each do |record| %>
               <tr>
-                <td class="text-muted"><%= index + 1 %></td>
-                <td class="fw-semibold"><%= entity.name %></td>
-                <td class="text-end text-muted"><%= number_with_delimiter(entity.request_count) %></td>
+                <td><%= record.user_email %></td>
+                <td class="text-end text-muted"><%= number_with_delimiter(record.request_count) %></td>
+                <td class="text-end text-info"><%= number_with_delimiter(record.input_tokens) %></td>
+                <td class="text-end text-success"><%= number_with_delimiter(record.output_tokens) %></td>
+                <td class="text-end text-muted"><%= number_with_delimiter(record.total_tokens) %></td>
+                <td class="text-end">
+                  <span class="text-danger fw-semibold">$<%= number_with_precision(record.cost || 0, precision: 4) %></span>
+                </td>
               </tr>
             <% end %>
           </tbody>
         </table>
       </div>
     <% else %>
-      <p class="text-muted m-0">No entity data available</p>
+      <p class="text-muted m-0">No user usage data available</p>
     <% end %>
   </div>
 
@@ -216,23 +176,27 @@
           <thead>
             <tr>
               <th>Time</th>
-              <th>Entity</th>
               <th>User</th>
-              <th>Event</th>
-              <th>Details</th>
+              <th>Model</th>
+              <th>Type</th>
+              <th class="text-end">Input</th>
+              <th class="text-end">Output</th>
+              <th class="text-end">Cost</th>
             </tr>
           </thead>
           <tbody>
-            <% @recent_requests.each do |event| %>
+            <% @recent_requests.each do |log| %>
               <tr>
-                <td class="text-muted small"><%= time_ago_in_words(event.created_at) %> ago</td>
-                <td><%= event.entity&.name || "N/A" %></td>
-                <td class="text-muted"><%= event.user&.email || "System" %></td>
-                <td><span class="admin-badge admin-badge-default"><%= event.event_type.upcase %></span></td>
-                <td class="text-muted small">
-                  <% if event.metadata.present? %>
-                    <%= event.metadata["model"] || "N/A" %>
-                  <% end %>
+                <td class="text-muted small"><%= time_ago_in_words(log.created_at) %> ago</td>
+                <td><%= log.user&.email || "System" %></td>
+                <td>
+                  <code class="admin-code small"><%= log.model %></code>
+                </td>
+                <td><span class="admin-badge admin-badge-default"><%= log.request_type.upcase %></span></td>
+                <td class="text-end text-info small"><%= number_with_delimiter(log.input_tokens) %></td>
+                <td class="text-end text-success small"><%= number_with_delimiter(log.output_tokens) %></td>
+                <td class="text-end">
+                  <span class="text-danger small">$<%= number_with_precision(log.cost_cents / 100.0, precision: 4) %></span>
                 </td>
               </tr>
             <% end %>
@@ -245,21 +209,21 @@
   </div>
 </div>
 
-<!-- Consolidated Chart.js -->
+<!-- Chart.js -->
 <%= render 'admin/chart_js' %>
 <script>
   (function() {
     // Prevent duplicate initialization
-    if (window.aiUsagePageInitialized) return;
-    window.aiUsagePageInitialized = true;
+    if (window.entityUsagePageInitialized) return;
+    window.entityUsagePageInitialized = true;
 
     // Dark theme colors
     Chart.defaults.color = '#94A3B8';
     Chart.defaults.borderColor = '#1E293B';
 
     // Get canvas elements
-    const tokenCanvas = document.getElementById('tokenUsageChart');
-    const costCanvas = document.getElementById('costChart');
+    const tokenCanvas = document.getElementById('entityTokenChart');
+    const costCanvas = document.getElementById('entityCostChart');
 
     // Destroy existing charts if they exist
     if (tokenCanvas && Chart.getChart(tokenCanvas)) {
@@ -313,7 +277,7 @@
               grid: { color: '#1E293B' },
               ticks: {
                 callback: function(value) {
-                  return '$' + value.toFixed(2);
+                  return '$' + value.toFixed(4);
                 }
               }
             }
