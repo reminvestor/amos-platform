@@ -145,13 +145,19 @@ module AgentJobs
       # For other types or if ActionCable fails, use HTTP callback
       if @callback_url && data[:type] != 'status_update'
         begin
-          HTTParty.post(@callback_url, 
+          Rails.logger.info "[#{self.class.name}] Posting to Amos callback URL: #{@callback_url}"
+          Rails.logger.info "[#{self.class.name}] Payload: #{payload.to_json}"
+          
+          response = HTTParty.post(@callback_url, 
             body: payload.to_json,
             headers: { 'Content-Type' => 'application/json' },
             timeout: 5  # 5 second timeout
           )
+          
+          Rails.logger.info "[#{self.class.name}] Amos callback response: #{response.code} - #{response.body}"
         rescue => e
           Rails.logger.error "[#{self.class.name}] Failed to stream to Amos: #{e.message}"
+          Rails.logger.error "[#{self.class.name}] Callback URL was: #{@callback_url}"
         end
       end
     end

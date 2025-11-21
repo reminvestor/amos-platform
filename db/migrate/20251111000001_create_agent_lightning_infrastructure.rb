@@ -216,7 +216,7 @@ class CreateAgentLightningInfrastructure < ActiveRecord::Migration[8.0]
 
     # Agent Lightning configuration per entity
     create_table :agent_lightning_configs do |t|
-      t.references :entity, null: false, foreign_key: true
+      t.references :entity, null: false, foreign_key: true, index: { unique: true }
 
       t.boolean :enabled, default: true
       t.string :mode, null: false, default: "observing"  # "observing", "optimizing", "training"
@@ -235,7 +235,6 @@ class CreateAgentLightningInfrastructure < ActiveRecord::Migration[8.0]
       t.jsonb :learning_parameters, null: false, default: {}  # RL hyperparameters
 
       t.timestamps
-      t.index :entity_id, unique: true
     end
   end
 end

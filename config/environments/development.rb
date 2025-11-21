@@ -129,6 +129,10 @@ Rails.application.configure do
   config.hosts << ".nuvola.default.localhost"
   config.hosts << "default.localhost"
   config.hosts << ".default.localhost"
+  
+  # Docker hosts
+  config.hosts << "host.docker.internal"
+  config.hosts << /.*\.docker\.internal/
 
   # Disable CSRF protection in development to match production behavior
   # This prevents CSRF token authenticity errors with complex subdomain setups
