@@ -1,78 +1,74 @@
-<div style="padding: 2rem;">
-  <!-- Page Header -->
-  <div class="admin-page-header">
-    <div class="header-left">
-      <div class="header-icon" style="background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);">
-        <i data-lucide="zap"></i>
-      </div>
-      <div class="header-text">
-        <h1>Agent Lightning Dashboard</h1>
-        <p>Platform-wide RL training and optimization monitoring</p>
-      </div>
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h1>🔬 Agent Lightning Dashboard</h1>
+      <p class="text-muted">Platform-wide Training Statistics</p>
     </div>
-
-    <div class="header-actions">
-      <%= link_to metrics_admin_agent_lightning_index_path, class: "admin-btn admin-btn-outline" do %>
-        <i data-lucide="bar-chart-3"></i>
-        <span>Metrics</span>
+    <div class="col-md-4 text-end">
+      <% if @can_train_now %>
+        <%= button_to "🚀 Train Now", train_now_admin_agent_lightning_index_path, method: :post, class: "btn btn-success" %>
+      <% else %>
+        <button class="btn btn-secondary" disabled>Train Not Ready</button>
       <% end %>
-      <%= link_to export_data_admin_agent_lightning_index_path, class: "admin-btn admin-btn-outline" do %>
-        <i data-lucide="download"></i>
-        <span>Export</span>
-      <% end %>
+      <%= link_to "📊 Metrics", metrics_admin_agent_lightning_index_path, class: "btn btn-info" %>
+      <%= link_to "📤 Export", export_data_admin_agent_lightning_index_path, class: "btn btn-outline-secondary" %>
     </div>
   </div>
 
-  <!-- Platform Statistics -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="building" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+  <!-- Platform Configuration Status -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">📋 Platform Configuration Overview</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <p><strong>Total Entities:</strong> <%= @total_entities %></p>
+          <p><strong>Entities with Agent Lightning:</strong> <%= @entities_with_lightning %></p>
+          <p><strong>Entities with Active Training:</strong> <%= @entity_stats&.count { |s| s[:config]&.enabled? } || 0 %></p>
         </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Entities with Lightning</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @entities_with_lightning %></h3>
+        <div class="col-md-6">
+          <p><strong>Entities Ready for Training:</strong> <%= @entity_stats&.count { |s| s[:ready_for_training] } || 0 %></p>
+          <p><strong>Total Training Jobs:</strong> <%= @total_training_jobs %></p>
+          <p><strong>Last Platform Training:</strong> <%= @last_training_at&.strftime('%Y-%m-%d %H:%M:%S') || 'Never' %></p>
         </div>
       </div>
     </div>
 
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="database" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Traces</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_traces) %></h3>
-        </div>
-      </div>
+  <!-- Platform Training Health -->
+  <div class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">✅ Platform Training Health</h5>
     </div>
-
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          <div class="alert alert-info" role="alert">
+            <strong>Total Jobs:</strong> <%= @total_training_jobs %>
+          </div>
         </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Available for Training</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_available_traces) %></h3>
+        <div class="col-md-4">
+          <div class="alert <%= @successful_training_jobs.to_i > 0 ? 'alert-success' : 'alert-warning' %>" role="alert">
+            <strong>Successful:</strong> <%= @successful_training_jobs || 0 %>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="alert <%= @failed_training_jobs.to_i > 0 ? 'alert-danger' : 'alert-success' %>" role="alert">
+            <strong>Failed:</strong> <%= @failed_training_jobs || 0 %>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Key Metrics -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-    <div class="admin-card">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center;">
-          <i data-lucide="trending-up" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
-        </div>
-        <div style="flex: 1;">
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Success Rate</p>
-          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @success_rate %>%</h3>
-          <small style="color: #64748B; font-size: 0.75rem;"><%= @recent_traces.count %> recent traces</small>
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h6 class="card-title text-muted">Success Rate</h6>
+          <h3 class="card-text text-success"><%= @success_rate %>%</h3>
+          <small class="text-muted">Last 30 days</small>
         </div>
       </div>
     </div>
@@ -263,33 +259,23 @@
   </div>
 
   <!-- Last Training Job -->
-  <% if @last_training_job %>
-    <div class="admin-card" style="margin-bottom: 2rem;">
-      <h3 class="card-title">
-        <i data-lucide="rocket" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
-        Last Training Job
-      </h3>
-
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.25rem 0;">Date</p>
-          <p style="color: white; margin: 0;"><%= @last_training_job.completed_at.strftime('%Y-%m-%d %H:%M:%S') %></p>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.25rem 0;">Type</p>
-          <code style="color: #22D3EE; background: rgba(34, 211, 238, 0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem;"><%= @last_training_job.job_type %></code>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.25rem 0;">Traces Used</p>
-          <p style="color: white; margin: 0;"><%= @last_training_job.traces_used %></p>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.25rem 0;">Status</p>
-          <span class="admin-badge admin-badge-online"><%= @last_training_job.status.upcase %></span>
-        </div>
-        <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.25rem 0;">Improvement</p>
-          <p style="color: rgb(74, 222, 128); font-size: 1.25rem; font-weight: 600; margin: 0;">+<%= @last_training_job.improvement_score %>%</p>
+  <% if last_training_job = @recent_training_jobs&.first %>
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">🚀 Last Training Job</h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            <p><strong>Date:</strong> <%= last_training_job.completed_at.strftime('%Y-%m-%d %H:%M:%S') %></p>
+            <p><strong>Entity:</strong> <%= last_training_job.entity&.name || 'N/A' %></p>
+            <p><strong>Type:</strong> <code><%= last_training_job.job_type %></code></p>
+            <p><strong>Traces Used:</strong> <%= last_training_job.traces_used %></p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Status:</strong> <span class="badge bg-success"><%= last_training_job.status %></span></p>
+            <p><strong>Improvement:</strong> <strong class="text-success">+<%= last_training_job.improvement_score_change || 0 %>%</strong></p>
+          </div>
         </div>
       </div>
 
@@ -314,13 +300,20 @@
   <% end %>
 
   <!-- LLM Call Analysis -->
-  <% if @llm_calls && @llm_calls.any? %>
-    <div class="admin-card" style="margin-bottom: 2rem;">
-      <h3 class="card-title">
-        <i data-lucide="cpu" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
-        LLM Call Analysis
-        <span style="color: #64748B; font-size: 0.875rem; font-weight: normal;">(Last 500 calls)</span>
-      </h3>
+  <% if false # TODO: Enable when LLM call data is available %>
+    <div class="card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="mb-0">🤖 LLM Call Analysis (Last 500 calls)</h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <p><strong>Success Rate:</strong> <span class="badge bg-success"><%= @llm_success_rate %>%</span></p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Avg Latency:</strong> <code><%= @avg_latency %>ms</code></p>
+          </div>
+        </div>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
         <div>
@@ -346,7 +339,7 @@
             </tr>
           </thead>
           <tbody>
-            <% @llm_by_role.each do |role_data| %>
+            <% (@llm_by_role || []).each do |role_data| %>
               <tr>
                 <td><code style="color: #22D3EE;"><%= role_data[:role] %></code></td>
                 <td style="color: white;"><%= role_data[:count] %></td>
@@ -403,45 +396,40 @@
   <% end %>
 
   <!-- Training History -->
-  <div class="admin-card">
-    <h3 class="card-title">
-      <i data-lucide="history" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
-      Training History
-      <span style="color: #64748B; font-size: 0.875rem; font-weight: normal;">(Last 10)</span>
-    </h3>
-
-    <% if @training_history.any? %>
-      <div style="overflow-x: auto;">
-        <table class="admin-table">
+  <div class="card mt-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">📜 Training History (Last 10)</h5>
+    </div>
+    <div class="card-body">
+      <% if @recent_training_jobs&.any? %>
+        <table class="table table-sm">
           <thead>
             <tr>
               <th>Date</th>
+              <th>Entity</th>
               <th>Strategy</th>
               <th>Traces Used</th>
               <th>Improvement</th>
             </tr>
           </thead>
           <tbody>
-            <% @training_history.each do |job| %>
+            <% @recent_training_jobs.each do |job| %>
               <tr>
-                <td style="color: white;"><%= job.completed_at.strftime('%Y-%m-%d %H:%M') %></td>
-                <td><code style="color: #22D3EE;"><%= job.job_type %></code></td>
-                <td style="color: #94A3B8;"><%= job.traces_used %></td>
-                <td style="color: rgb(74, 222, 128); font-weight: 600;">+<%= job.improvement_score %>%</td>
+                <td><%= job.completed_at.strftime('%Y-%m-%d %H:%M') %></td>
+                <td><%= job.entity&.name || 'N/A' %></td>
+                <td><code><%= job.job_type %></code></td>
+                <td><%= job.traces_used %></td>
+                <td><strong class="text-success">+<%= job.improvement_score_change || 0 %>%</strong></td>
               </tr>
             <% end %>
           </tbody>
         </table>
-      </div>
-    <% else %>
-      <div class="admin-empty-state">
-        <div class="empty-icon">
-          <i data-lucide="inbox"></i>
+      <% else %>
+        <div class="alert alert-info">
+          <p class="mb-0">No training jobs yet. Training history will appear here once jobs are completed.</p>
         </div>
-        <h3>No training jobs yet</h3>
-        <p>Training history will appear here once jobs are completed</p>
-      </div>
-    <% end %>
+      <% end %>
+    </div>
   </div>
 </div>
 
@@ -459,3 +447,5 @@
     }
   });
 </script>
+
+

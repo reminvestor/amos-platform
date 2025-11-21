@@ -33,6 +33,9 @@
 # Ignore master key for decrypting credentials and more.
 /config/master.key
 
+# Docker local overrides
+docker-compose.override.yml
+
 # Ignore environment variables
 .env
 .env.*

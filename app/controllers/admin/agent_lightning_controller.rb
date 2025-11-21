@@ -579,6 +579,17 @@ end
       end
     end
 
-  end
+    def calculate_improvement_trend(recent_successful_jobs)
+      return nil if recent_successful_jobs.count < 2
 
+      jobs_array = recent_successful_jobs.to_a
+      latest = jobs_array[0]&.improvement_score_change || 0
+      previous = jobs_array[1]&.improvement_score_change || 0
+
+      return :improving if latest > previous
+      return :declining if latest < previous
+      :stable
+    end
+
+  end
 end

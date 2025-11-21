@@ -685,21 +685,34 @@ module Amos
       host = if @request_host
                # In development, strip subdomains from localhost to avoid DNS issues
                if Rails.env.development? && @request_host.include?('.localhost:')
-                 # Extract just localhost:port from something like app.localhost:5001
-                 port = @request_host.split(':').last
-                 "localhost:#{port}"
+                 # In Docker, use the web service name instead of localhost
+                 if ENV['DOCKER_ENV'] || File.exist?('/.dockerenv')
+                   'web:3000'
+                 else
+                   # Extract just localhost:port from something like app.localhost:5001
+                   port = @request_host.split(':').last
+                   "localhost:#{port}"
+                 end
                else
                  @request_host
                end
              elsif defined?(Rails.application.routes.default_url_options)
                options = Rails.application.routes.default_url_options
-               if options[:host] && options[:port]
+               # In Docker, use web service name for worker-to-web communication
+               if Rails.env.development? && (ENV['DOCKER_ENV'] || File.exist?('/.dockerenv'))
+                 'web:3000'
+               elsif options[:host] && options[:port]
                  "#{options[:host]}:#{options[:port]}"
                else
                  options[:host] || 'localhost:3000'
                end
              else
-               'localhost:3000'
+               # Default to web:3000 in Docker, localhost:3000 otherwise
+               if Rails.env.development? && (ENV['DOCKER_ENV'] || File.exist?('/.dockerenv'))
+                 'web:3000'
+               else
+                 'localhost:3000'
+               end
              end
              
       Rails.application.routes.url_helpers.amos_callback_url(

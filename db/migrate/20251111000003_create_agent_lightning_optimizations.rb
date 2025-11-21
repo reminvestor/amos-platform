@@ -4,7 +4,7 @@ class CreateAgentLightningOptimizations < ActiveRecord::Migration[8.0]
       # Basic association and identification
       t.references :entity, null: false, foreign_key: true
       t.references :agent_training_job, null: true, foreign_key: true
-      t.string :optimization_id, null: false, unique: true, index: true
+      t.string :optimization_id, null: false, index: { unique: true }
 
       # Optimization context and results
       t.string :status, default: "pending", null: false # pending, applied, rolled_back, failed
