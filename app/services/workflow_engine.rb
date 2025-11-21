@@ -1288,7 +1288,7 @@ class WorkflowEngine
       ctx[:value].is_a?(Hash) && ctx[:value]["operation_message"]
     }.map { |ctx| ctx[:value]["operation_message"] }
 
-    ai_service = BedrockService.new
+    ai_service = BedrockService.new(user: @task_session.user, entity: @task_session.entity)
 
     prompt = <<~PROMPT
       Summarize what was accomplished in this workflow.

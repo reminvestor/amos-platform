@@ -448,7 +448,7 @@ class InteractiveTaskService
     
     # Get AI summary
     begin
-      ai_service = BedrockService.new
+      ai_service = BedrockService.new(user: @user, entity: @entity)
       response = ai_service.complete(
         messages: [
           { role: 'user', content: summary_prompt }
