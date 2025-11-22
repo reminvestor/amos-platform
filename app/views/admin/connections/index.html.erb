@@ -1,126 +1,146 @@
+<div style="padding: 2rem;">
+  <!-- Page Header -->
+  <div class="admin-page-header" style="margin-bottom: 2rem;">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);">
+        <i data-lucide="plug" style="color: white;"></i>
+      </div>
+      <div class="header-text">
+        <h1>Connections Management</h1>
+        <p>Monitor and manage all integration connections across the platform</p>
+      </div>
+    </div>
+  </div>
 
-<div class="admin-content">
-  <div class="admin-p-xl">
-    <%# Page Header %>
-    <div class="admin-page-header">
-      <div class="header-left">
-        <div class="header-icon">
-          <%= admin_icon('plug', size: :lg) %>
+  <!-- Stats Cards -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
         </div>
-        <div class="header-text">
-          <h1>Connections Management</h1>
-          <p>Monitor and manage all integration connections across the platform</p>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Active Connections</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= Connection.where(status: 'connected').count %></h3>
         </div>
       </div>
     </div>
 
-    <%# Stats Cards %>
-    <div class="admin-stats-grid admin-mb-xl">
-      <%= render 'admin/shared/stat_card',
-          icon: 'check-circle',
-          label: 'Active Connections',
-          value: Connection.where(status: 'connected').count,
-          variant: 'success' %>
-
-      <%= render 'admin/shared/stat_card',
-          icon: 'alert-triangle',
-          label: 'Failed/Inactive',
-          value: Connection.where.not(status: 'connected').count,
-          variant: 'danger' %>
-
-      <%= render 'admin/shared/stat_card',
-          icon: 'users',
-          label: 'Users with Connections',
-          value: User.joins(:connections).distinct.count,
-          variant: 'info' %>
-
-      <%= render 'admin/shared/stat_card',
-          icon: 'puzzle',
-          label: 'Available Integrations',
-          value: Integration.where(is_active: true).count,
-          variant: 'purple-gradient' %>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="alert-triangle" style="width: 1.5rem; height: 1.5rem; color: rgb(248, 113, 113);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Failed/Inactive</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= Connection.where.not(status: 'connected').count %></h3>
+        </div>
+      </div>
     </div>
 
-    <%# Connections Table %>
     <div class="admin-card">
-      <h3 class="card-title">All Connections</h3>
-      <% if @connections.any? %>
-        <div class="admin-overflow-x-auto">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Integration</th>
-                <th>Name</th>
-                <th>Entity</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Last Used</th>
-                <th class="admin-text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @connections.each do |connection| %>
-                <tr>
-                  <td>
-                    <div class="admin-flex admin-items-center admin-flex-gap-sm">
-                      <% if connection.integration.icon_url.present? %>
-                        <img src="<%= connection.integration.icon_url %>"
-                             alt="<%= connection.integration.name %>"
-                             class="admin-connection-icon">
-                      <% else %>
-                        <%= admin_icon('box', size: :sm, class: 'admin-text-muted') %>
-                      <% end %>
-                      <span class="admin-text-primary"><%= connection.integration.name %></span>
-                    </div>
-                  </td>
-                  <td>
-                    <%= link_to connection.name, admin_connection_path(connection), class: 'admin-link admin-font-semibold' %>
-                  </td>
-                  <td class="admin-text-muted admin-text-sm">
-                    <%= connection.entity&.name || 'N/A' %>
-                  </td>
-                  <td>
-                    <span class="admin-badge admin-badge-<%= connection.status == 'connected' ? 'online' : 'offline' %>">
-                      <%= connection.status.to_s.upcase.gsub('_', ' ') %>
-                    </span>
-                  </td>
-                  <td class="admin-text-muted admin-text-sm">
-                    <%= connection.created_at.strftime("%b %d, %Y") %>
-                  </td>
-                  <td class="admin-text-muted admin-text-sm">
-                    <% last_log = connection.integration_logs.maximum(:created_at) %>
-                    <%= last_log ? "#{time_ago_in_words(last_log)} ago" : 'Never' %>
-                  </td>
-                  <td class="admin-text-right">
-                    <%= link_to admin_connection_path(connection), class: 'admin-btn admin-btn-sm admin-btn-outline', aria: { label: 'View details' } do %>
-                      <%= admin_icon('eye', size: :sm) %>
-                      <span>View</span>
-                    <% end %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="users" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
         </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Users with Connections</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= User.joins(:connections).distinct.count %></h3>
+        </div>
+      </div>
+    </div>
 
-        <% if @connections.respond_to?(:total_pages) && @connections.total_pages > 1 %>
-          <div class="admin-mt-lg">
-            <%= paginate @connections %>
-          </div>
-        <% end %>
-      <% else %>
-        <%# Empty State %>
-        <div class="admin-empty-state">
-          <div class="empty-icon">
-            <%= admin_icon('plug', size: :xl) %>
-          </div>
-          <p class="empty-title">No connections yet</p>
-          <p class="empty-description">
-            Connections will appear here as users connect their integrations
-          </p>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="puzzle" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Available Integrations</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= Integration.where(is_active: true).count %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connections Table -->
+  <div class="admin-card">
+    <h3 class="card-title" style="margin-bottom: 1.5rem;">All Connections</h3>
+    <% if @connections.any? %>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Integration</th>
+              <th>Name</th>
+              <th>Entity</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Last Used</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @connections.each do |connection| %>
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <% if connection.integration.icon_url.present? %>
+                      <img src="<%= connection.integration.icon_url %>"
+                           alt="<%= connection.integration.name %>"
+                           style="width: 1.5rem; height: 1.5rem; border-radius: 0.25rem; object-fit: contain;">
+                    <% else %>
+                      <i data-lucide="box" style="width: 1.5rem; height: 1.5rem; color: #64748B;"></i>
+                    <% end %>
+                    <span style="color: white; font-weight: 500;"><%= connection.integration.name %></span>
+                  </div>
+                </td>
+                <td>
+                  <%= link_to connection.name, admin_connection_path(connection), style: "color: #22D3EE; font-weight: 600; text-decoration: none;" %>
+                </td>
+                <td style="color: #94A3B8; font-size: 0.875rem;">
+                  <%= connection.entity&.name || 'N/A' %>
+                </td>
+                <td>
+                  <span class="admin-badge admin-badge-<%= connection.status == 'connected' ? 'online' : 'offline' %>">
+                    <%= connection.status.to_s.upcase.gsub('_', ' ') %>
+                  </span>
+                </td>
+                <td style="color: #94A3B8; font-size: 0.875rem;">
+                  <%= connection.created_at.strftime("%b %d, %Y") %>
+                </td>
+                <td style="color: #94A3B8; font-size: 0.875rem;">
+                  <% last_log = connection.integration_logs.maximum(:created_at) %>
+                  <%= last_log ? "#{time_ago_in_words(last_log)} ago" : 'Never' %>
+                </td>
+                <td style="text-align: right;">
+                  <%= link_to admin_connection_path(connection), class: 'admin-btn admin-btn-sm admin-btn-outline icon-btn', style: "border-color: #1E293B; color: #3B82F6;", aria: { label: 'View details' } do %>
+                    <i data-lucide="eye" style="width: 1rem; height: 1rem;"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if @connections.respond_to?(:total_pages) && @connections.total_pages > 1 %>
+        <div class="admin-pagination">
+          <%= paginate @connections %>
         </div>
       <% end %>
-    </div>
+    <% else %>
+      <%# Empty State %>
+      <div class="admin-empty-state" style="text-align: center; padding: 3rem 0;">
+        <div class="empty-icon" style="margin-bottom: 1rem; color: #475569;">
+          <i data-lucide="plug" style="width: 3rem; height: 3rem;"></i>
+        </div>
+        <p style="font-size: 1.125rem; font-weight: 600; color: white; margin-bottom: 0.5rem;">No connections yet</p>
+        <p style="color: #94A3B8;">
+          Connections will appear here as users connect their integrations
+        </p>
+      </div>
+    <% end %>
   </div>
 </div>
 
