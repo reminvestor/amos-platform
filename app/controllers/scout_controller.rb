@@ -1974,7 +1974,27 @@ class ScoutController < ApplicationController
   end
 
   def render_landing_page_editor(data = {})
-    landing_page = current_entity.landing_pages.find(data["landing_page_id"])
+    if data["landing_page_id"]
+      landing_page = current_entity.landing_pages.find_by(id: data["landing_page_id"])
+    end
+    
+    # Fallback: try to find the most recently created landing page for this user/entity if execution_id is present
+    if landing_page.nil? && data["execution_id"]
+      # Assuming the execution just finished and created a page
+      landing_page = current_entity.landing_pages.order(created_at: :desc).first
+    end
+    
+    # If still not found (e.g. first ever page), raise or handle gracefully
+    if landing_page.nil?
+      # Return an error view or a placeholder
+      return render_to_string(
+        partial: "scout/canvas/default",
+        locals: {
+          title: "Landing Page Not Found",
+          message: "Could not locate the generated landing page. Please check the Tasks view."
+        }
+      )
+    end
 
     render_to_string(
       partial: "scout/canvas/landing_page_editor",
