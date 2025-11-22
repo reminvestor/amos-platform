@@ -1,221 +1,243 @@
-<div class="admin-content">
-  <div class="admin-p-xl">
-    <div class="admin-page-header">
-      <div class="header-left">
-        <div class="header-icon">
-          <%= admin_icon('cpu', size: :lg) %>
-        </div>
-        <div class="header-text">
-          <h1>AI Model Performance</h1>
-          <p>Performance metrics by model across <%= @selected_entity_id ? 'selected entity' : 'all entities' %></p>
-        </div>
+<div style="padding: 2rem;">
+  <div class="admin-page-header" style="margin-bottom: 2rem;">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);">
+        <i data-lucide="cpu" style="color: white;"></i>
       </div>
-
-      <div class="header-actions">
-        <%= link_to dashboard_admin_agent_lightning_index_path, class: 'admin-btn admin-btn-outline' do %>
-          <%= admin_icon('arrow-left', size: :sm) %>
-          <span>Back to Dashboard</span>
-        <% end %>
+      <div class="header-text">
+        <h1>AI Model Performance</h1>
+        <p>Performance metrics by model across <%= @selected_entity_id ? 'selected entity' : 'all entities' %></p>
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="admin-card admin-mb-xl">
-      <h3 class="card-title">
-        <%= admin_icon('filter', size: :md, class: 'admin-inline-block admin-mr-sm') %>
-        Filters
-      </h3>
-
-      <%= form_with url: models_performance_admin_agent_lightning_index_path, method: :get, class: 'admin-form' do |f| %>
-        <div class="admin-grid-3">
-          <div class="admin-form-field">
-            <%= f.label :entity_id, "Entity", class: "admin-label" %>
-            <%= f.select :entity_id,
-              options_for_select([['All Entities', '']] + @entities.map { |e| [e.name, e.id] }, @selected_entity_id),
-              {},
-              { class: "admin-select" }
-            %>
-          </div>
-
-          <div class="admin-form-field">
-            <%= f.label :time_range, "Time Range", class: "admin-label" %>
-            <%= f.select :time_range,
-              options_for_select([
-                ['Last 24 Hours', 1],
-                ['Last 7 Days', 7],
-                ['Last 30 Days', 30],
-                ['Last 90 Days', 90],
-                ['All Time', 365]
-              ], @time_range_days),
-              {},
-              { class: "admin-select" }
-            %>
-          </div>
-
-          <div class="admin-form-field admin-flex admin-items-end">
-            <%= f.submit "Apply Filters", class: "admin-btn admin-btn-primary admin-w-full" %>
-          </div>
-        </div>
+    <div class="header-actions">
+      <%= link_to dashboard_admin_agent_lightning_index_path, class: 'admin-btn admin-btn-outline' do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back to Dashboard</span>
       <% end %>
     </div>
+  </div>
 
-    <!-- Overall Platform Stats -->
-    <div class="admin-stats-grid admin-mb-xl">
-      <%= render 'admin/shared/stat_card',
-          icon: 'cpu',
-          label: 'Total LLM Calls',
-          value: number_with_delimiter(@total_llm_calls),
-          subtitle: "Last #{@time_range_days} days",
-          variant: 'purple-gradient' %>
+  <!-- Filters -->
+  <div class="admin-card" style="margin-bottom: 2rem;">
+    <h3 class="card-title" style="margin-bottom: 1.5rem;">
+      <i data-lucide="filter" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+      Filters
+    </h3>
 
-      <%= render 'admin/shared/stat_card',
-          icon: 'check-circle',
-          label: 'Overall Success Rate',
-          value: "#{@overall_success_rate}%",
-          subtitle: 'Across all models',
-          variant: 'success' %>
+    <%= form_with url: models_performance_admin_agent_lightning_index_path, method: :get, class: 'admin-form' do |f| %>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+        <div class="admin-form-field">
+          <%= f.label :entity_id, "Entity", class: "admin-label" %>
+          <%= f.select :entity_id,
+            options_for_select([['All Entities', '']] + @entities.map { |e| [e.name, e.id] }, @selected_entity_id),
+            {},
+            { class: "admin-select" }
+          %>
+        </div>
 
-      <%= render 'admin/shared/stat_card',
-          icon: 'dollar-sign',
-          label: 'Total Cost',
-          value: "$#{@total_platform_cost}",
-          subtitle: "Last #{@time_range_days} days",
-          variant: 'danger' %>
+        <div class="admin-form-field">
+          <%= f.label :time_range, "Time Range", class: "admin-label" %>
+          <%= f.select :time_range,
+            options_for_select([
+              ['Last 24 Hours', 1],
+              ['Last 7 Days', 7],
+              ['Last 30 Days', 30],
+              ['Last 90 Days', 90],
+              ['All Time', 365]
+            ], @time_range_days),
+            {},
+            { class: "admin-select" }
+          %>
+        </div>
 
-      <%= render 'admin/shared/stat_card',
-          icon: 'layers',
-          label: 'Models in Use',
-          value: @model_stats.count,
-          subtitle: 'Active models',
-          variant: 'info' %>
-    </div>
-
-    <!-- Charts Row -->
-    <div class="admin-grid-2 admin-mb-xl">
-      <!-- Token Usage Chart -->
-      <div class="admin-card">
-        <h3 class="card-title">
-          <%= admin_icon('bar-chart-3', size: :md, class: 'admin-inline-block admin-mr-sm') %>
-          Token Usage Over Time
-        </h3>
-        <div class="admin-chart-container">
-          <canvas id="tokenUsageChart"></canvas>
+        <div class="admin-form-field" style="display: flex; align-items: flex-end;">
+          <%= f.submit "Apply Filters", class: "admin-btn admin-btn-primary", style: "width: 100%;" %>
         </div>
       </div>
-
-      <!-- Cost Chart -->
-      <div class="admin-card">
-        <h3 class="card-title">
-          <%= admin_icon('trending-up', size: :md, class: 'admin-inline-block admin-mr-sm') %>
-          Cost Over Time
-        </h3>
-        <div class="admin-chart-container">
-          <canvas id="costChart"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- Model Performance Table -->
-    <div class="admin-card admin-mb-xl">
-      <h3 class="card-title">
-        <%= admin_icon('bar-chart-3', size: :md, class: 'admin-inline-block admin-mr-sm') %>
-        Model Performance Comparison
-      </h3>
-      <div class="admin-overflow-x-auto">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th scope="col">Model</th>
-              <th scope="col">Total Calls</th>
-              <th scope="col">Success Rate</th>
-              <th scope="col">Avg Latency</th>
-              <th scope="col">Avg Tokens</th>
-              <th scope="col">Avg Cost/Call</th>
-              <th scope="col">Total Cost</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if @model_stats.any? %>
-              <% @model_stats.each do |stat| %>
-                <tr>
-                  <td>
-                    <strong class="admin-text-primary"><%= stat[:display_name] %></strong>
-                    <br><small class="admin-text-muted admin-text-xs"><%= stat[:model] %></small>
-                  </td>
-                  <td class="admin-text-secondary"><%= number_with_delimiter(stat[:total_calls]) %></td>
-                  <td>
-                    <% if stat[:success_rate] >= 90 %>
-                      <span class="admin-badge admin-badge-online"><%= stat[:success_rate] %>%</span>
-                    <% elsif stat[:success_rate] >= 70 %>
-                      <span class="admin-badge admin-badge-cyan"><%= stat[:success_rate] %>%</span>
-                    <% elsif stat[:success_rate] >= 50 %>
-                      <span class="admin-badge admin-badge-warning"><%= stat[:success_rate] %>%</span>
-                    <% else %>
-                      <span class="admin-badge admin-badge-offline"><%= stat[:success_rate] %>%</span>
-                    <% end %>
-                  </td>
-                  <td><code class="admin-code-muted"><%= stat[:avg_latency] %>ms</code></td>
-                  <td class="admin-text-secondary"><%= number_with_delimiter(stat[:avg_tokens]) %></td>
-                  <td style="color: rgb(248, 113, 113);">$<%= stat[:avg_cost] %></td>
-                  <td class="admin-font-semibold" style="color: rgb(248, 113, 113);">$<%= stat[:total_cost] %></td>
-                </tr>
-              <% end %>
-            <% else %>
-              <tr>
-                <td colspan="7" class="admin-text-center admin-p-xl">
-                  <div class="admin-empty-state">
-                    <div class="empty-icon">
-                      <%= admin_icon('inbox', size: :xl) %>
-                    </div>
-                    <h3>No LLM call data</h3>
-                    <p>LLM call data will appear once traces are collected</p>
-                  </div>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Per-Entity Breakdown (only if viewing all entities) -->
-    <% if @selected_entity_id.blank? && @entity_breakdown.any? %>
-      <% @entity_breakdown.each do |model, entities| %>
-        <% model_name = @model_stats.find { |s| s[:model] == model }&.dig(:display_name) || model %>
-        <div class="admin-card admin-mb-xl">
-          <h3 class="card-title">
-            <%= admin_icon('building', size: :md, class: 'admin-inline-block admin-mr-sm') %>
-            <%= model_name %> - Top Entities
-          </h3>
-          <div class="admin-overflow-x-auto">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th scope="col">Entity</th>
-                  <th scope="col">Calls</th>
-                  <th scope="col">Avg Latency</th>
-                  <th scope="col">Total Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% entities.each do |entity_stat| %>
-                  <tr>
-                    <td>
-                      <strong class="admin-text-primary"><%= entity_stat[:entity_name] %></strong>
-                      <br><small class="admin-text-muted">ID: <%= entity_stat[:entity_id] %></small>
-                    </td>
-                    <td class="admin-text-secondary"><%= number_with_delimiter(entity_stat[:calls]) %></td>
-                    <td><code class="admin-code-muted"><%= entity_stat[:avg_latency] %>ms</code></td>
-                    <td style="color: rgb(248, 113, 113);">$<%= entity_stat[:total_cost] %></td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      <% end %>
     <% end %>
   </div>
+
+  <!-- Overall Platform Stats -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="cpu" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total LLM Calls</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_llm_calls) %></h3>
+          <small style="color: #64748B; font-size: 0.75rem;">Last <%= @time_range_days %> days</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Overall Success Rate</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @overall_success_rate %>%</h3>
+          <small style="color: #64748B; font-size: 0.75rem;">Across all models</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="dollar-sign" style="width: 1.5rem; height: 1.5rem; color: rgb(248, 113, 113);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Cost</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;">$<%= @total_platform_cost %></h3>
+          <small style="color: #64748B; font-size: 0.75rem;">Last <%= @time_range_days %> days</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="layers" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Models in Use</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @model_stats.count %></h3>
+          <small style="color: #64748B; font-size: 0.75rem;">Active models</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- Token Usage Chart -->
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="bar-chart-3" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Token Usage Over Time
+      </h3>
+      <div class="admin-chart-container">
+        <canvas id="tokenUsageChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Cost Chart -->
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="trending-up" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+        Cost Over Time
+      </h3>
+      <div class="admin-chart-container">
+        <canvas id="costChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Performance Table -->
+  <div class="admin-card" style="margin-bottom: 2rem;">
+    <h3 class="card-title">
+      <i data-lucide="bar-chart-3" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+      Model Performance Comparison
+    </h3>
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th scope="col">Model</th>
+            <th scope="col">Total Calls</th>
+            <th scope="col">Success Rate</th>
+            <th scope="col">Avg Latency</th>
+            <th scope="col">Avg Tokens</th>
+            <th scope="col">Avg Cost/Call</th>
+            <th scope="col">Total Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @model_stats.any? %>
+            <% @model_stats.each do |stat| %>
+              <tr>
+                <td>
+                  <strong style="color: white;"><%= stat[:display_name] %></strong>
+                  <br><small style="color: #64748B; font-size: 0.75rem;"><%= stat[:model] %></small>
+                </td>
+                <td style="color: #94A3B8;"><%= number_with_delimiter(stat[:total_calls]) %></td>
+                <td>
+                  <% if stat[:success_rate] >= 90 %>
+                    <span class="admin-badge admin-badge-online"><%= stat[:success_rate] %>%</span>
+                  <% elsif stat[:success_rate] >= 70 %>
+                    <span class="admin-badge admin-badge-cyan"><%= stat[:success_rate] %>%</span>
+                  <% elsif stat[:success_rate] >= 50 %>
+                    <span class="admin-badge admin-badge-warning"><%= stat[:success_rate] %>%</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-offline"><%= stat[:success_rate] %>%</span>
+                  <% end %>
+                </td>
+                <td><code style="color: #64748B; font-family: monospace;"><%= stat[:avg_latency] %>ms</code></td>
+                <td style="color: #94A3B8;"><%= number_with_delimiter(stat[:avg_tokens]) %></td>
+                <td style="color: rgb(248, 113, 113);">$<%= stat[:avg_cost] %></td>
+                <td style="color: rgb(248, 113, 113); font-weight: 600;">$<%= stat[:total_cost] %></td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 3rem;">
+                <div class="admin-empty-state">
+                  <div class="empty-icon" style="margin-bottom: 1rem;">
+                    <i data-lucide="inbox" style="width: 3rem; height: 3rem; color: #64748B;"></i>
+                  </div>
+                  <h3 style="color: white;">No LLM call data</h3>
+                  <p style="color: #94A3B8;">LLM call data will appear once traces are collected</p>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Per-Entity Breakdown (only if viewing all entities) -->
+  <% if @selected_entity_id.blank? && @entity_breakdown.any? %>
+    <% @entity_breakdown.each do |model, entities| %>
+      <% model_name = @model_stats.find { |s| s[:model] == model }&.dig(:display_name) || model %>
+      <div class="admin-card" style="margin-bottom: 2rem;">
+        <h3 class="card-title">
+          <i data-lucide="building" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
+          <%= model_name %> - Top Entities
+        </h3>
+        <div class="admin-table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th scope="col">Entity</th>
+                <th scope="col">Calls</th>
+                <th scope="col">Avg Latency</th>
+                <th scope="col">Total Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% entities.each do |entity_stat| %>
+                <tr>
+                  <td>
+                    <strong style="color: white;"><%= entity_stat[:entity_name] %></strong>
+                    <br><small style="color: #64748B;">ID: <%= entity_stat[:entity_id] %></small>
+                  </td>
+                  <td style="color: #94A3B8;"><%= number_with_delimiter(entity_stat[:calls]) %></td>
+                  <td><code style="color: #64748B; font-family: monospace;"><%= entity_stat[:avg_latency] %>ms</code></td>
+                  <td style="color: rgb(248, 113, 113);">$<%= entity_stat[:total_cost] %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
 </div>
 
 <%= render 'admin/chart_js' %>
