@@ -1,9 +1,9 @@
-<div class="admin-p-xl">
+<div style="padding: 2rem;">
   <!-- Page Header -->
-  <div class="admin-page-header">
+  <div class="admin-page-header" style="margin-bottom: 2rem;">
     <div class="header-left">
-      <div class="header-icon">
-        <%= admin_icon('bar-chart-3', size: :lg) %>
+      <div class="header-icon" style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);">
+        <i data-lucide="bar-chart-3" style="color: white;"></i>
       </div>
       <div class="header-text">
         <h1>Agent Lightning Metrics</h1>
@@ -12,16 +12,16 @@
     </div>
 
     <div class="header-actions">
-      <div class="admin-flex admin-flex-gap-sm">
+      <div style="display: flex; gap: 0.5rem;">
         <% [7, 30, 60, 90].each do |days| %>
           <% if days == @days %>
-            <span class="admin-badge admin-badge-cyan admin-btn-sm"><%= days %> days</span>
+            <span class="admin-badge admin-badge-cyan" style="display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 1rem; font-size: 0.875rem;"><%= days %> days</span>
           <% else %>
             <%= link_to days.to_s + " days", metrics_admin_agent_lightning_index_path(days: days), class: "admin-btn admin-btn-sm admin-btn-outline" %>
           <% end %>
         <% end %>
         <%= link_to dashboard_admin_agent_lightning_index_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
-          <%= admin_icon('arrow-left', size: :sm) %>
+          <i data-lucide="arrow-left"></i>
           <span>Back</span>
         <% end %>
       </div>
@@ -29,120 +29,163 @@
   </div>
 
   <!-- Overall Statistics -->
-  <div class="admin-stats-grid">
-    <%= render 'admin/shared/stat_card', icon: 'activity', label: 'Total Traces', value: number_with_delimiter(@total_traces), variant: 'purple-gradient', aria_label: 'Total traces count' %>
-    <%= render 'admin/shared/stat_card', icon: 'trending-up', label: 'Success Rate', value: "#{@success_rate}%", variant: 'success', aria_label: 'Success rate percentage' %>
-    <%= render 'admin/shared/stat_card', icon: 'award', label: 'Avg Reward', value: @avg_reward, variant: 'warning', aria_label: 'Average reward score' %>
-    <%= render 'admin/shared/stat_card', icon: 'check-circle', label: 'Completed', value: number_with_delimiter(@completed_traces_count), variant: 'info', aria_label: 'Completed traces count' %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="activity" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Traces</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@total_traces) %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="trending-up" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Success Rate</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @success_rate %>%</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="award" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Avg Reward</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @avg_reward %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Completed</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@completed_traces_count) %></h3>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Token & Cost Analysis -->
-  <div class="admin-content-grid admin-mb-xl">
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
     <div class="admin-card">
       <h3 class="card-title">
-        <%= admin_icon('cpu', size: :md, class: 'icon-with-spacing') %>
+        <i data-lucide="cpu" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
         Token Usage
       </h3>
-      <div class="admin-detail-list">
-        <div class="detail-item">
-          <span class="detail-label">Total Tokens</span>
-          <span class="detail-value"><%= number_with_delimiter(@total_tokens) %></span>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid #1E293B;">
+          <span style="color: #94A3B8; font-size: 0.875rem;">Total Tokens</span>
+          <span style="color: white; font-weight: 600;"><%= number_with_delimiter(@total_tokens) %></span>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Average per Trace</span>
-          <span class="detail-value"><%= number_with_delimiter(@avg_tokens) %></span>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="color: #94A3B8; font-size: 0.875rem;">Average per Trace</span>
+          <span style="color: white; font-weight: 600;"><%= number_with_delimiter(@avg_tokens) %></span>
         </div>
       </div>
     </div>
 
     <div class="admin-card">
       <h3 class="card-title">
-        <%= admin_icon('dollar-sign', size: :md, class: 'icon-with-spacing') %>
+        <i data-lucide="dollar-sign" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
         Cost Analysis
       </h3>
-      <div class="admin-detail-list">
-        <div class="detail-item">
-          <span class="detail-label">Total Cost</span>
-          <span class="detail-value admin-text-error">$<%= @total_cost %></span>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid #1E293B;">
+          <span style="color: #94A3B8; font-size: 0.875rem;">Total Cost</span>
+          <span style="color: rgb(248, 113, 113); font-weight: 600;">$<%= @total_cost %></span>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Average per Trace</span>
-          <span class="detail-value admin-text-error">$<%= @avg_cost %></span>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="color: #94A3B8; font-size: 0.875rem;">Average per Trace</span>
+          <span style="color: rgb(248, 113, 113); font-weight: 600;">$<%= @avg_cost %></span>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Performance Analysis -->
-  <div class="admin-card admin-mb-xl">
+  <div class="admin-card" style="margin-bottom: 2rem;">
     <h3 class="card-title">
-      <%= admin_icon('zap', size: :md, class: 'icon-with-spacing') %>
+      <i data-lucide="zap" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
       Performance Analysis
     </h3>
 
-    <div class="admin-grid-2">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
       <div>
-        <h6 class="admin-status-label">Duration Metrics</h6>
-        <div class="admin-detail-list">
-          <div class="detail-item">
-            <span class="detail-label">Total Duration</span>
-            <span class="detail-value"><%= @total_duration_minutes %> min</span>
+        <h6 style="color: #64748B; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">Duration Metrics</h6>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #0F172A; border-radius: 0.5rem;">
+            <span style="color: #94A3B8; font-size: 0.875rem;">Total Duration</span>
+            <span style="color: white; font-weight: 500;"><%= @total_duration_minutes %> min</span>
           </div>
-          <div class="detail-item">
-            <span class="detail-label">Average Duration</span>
-            <span class="detail-value"><%= @avg_duration %>ms</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #0F172A; border-radius: 0.5rem;">
+            <span style="color: #94A3B8; font-size: 0.875rem;">Average Duration</span>
+            <span style="color: white; font-weight: 500;"><%= @avg_duration %>ms</span>
           </div>
-          <div class="detail-item">
-            <span class="detail-label">Minimum Duration</span>
-            <span class="detail-value"><%= @min_duration %>ms</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #0F172A; border-radius: 0.5rem;">
+            <span style="color: #94A3B8; font-size: 0.875rem;">Minimum Duration</span>
+            <span style="color: white; font-weight: 500;"><%= @min_duration %>ms</span>
           </div>
-          <div class="detail-item">
-            <span class="detail-label">Maximum Duration</span>
-            <span class="detail-value"><%= @max_duration %>ms</span>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #0F172A; border-radius: 0.5rem;">
+            <span style="color: #94A3B8; font-size: 0.875rem;">Maximum Duration</span>
+            <span style="color: white; font-weight: 500;"><%= @max_duration %>ms</span>
           </div>
         </div>
       </div>
 
       <div>
-        <h6 class="admin-status-label">Performance Distribution</h6>
-        <div class="admin-progress-bar">
-          <div class="admin-progress-segment admin-progress-fast" style="width: <%= (@traces.where('duration_ms < 1000').count.to_f / @total_traces * 100).round %>%;">
+        <h6 style="color: #64748B; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">Performance Distribution</h6>
+        <div style="width: 100%; height: 2rem; background: #0F172A; border-radius: 0.5rem; overflow: hidden; display: flex; margin-bottom: 1.5rem;">
+          <div style="background: rgb(74, 222, 128); width: <%= (@traces.where('duration_ms < 1000').count.to_f / @total_traces * 100).round %>%; display: flex; align-items: center; justify-content: center; color: #0F172A; font-size: 0.75rem; font-weight: 600;">
             <% if (@traces.where('duration_ms < 1000').count.to_f / @total_traces * 100).round > 10 %>
               &lt;1s
             <% end %>
           </div>
-          <div class="admin-progress-segment admin-progress-medium" style="width: <%= (@traces.where('duration_ms >= 1000 AND duration_ms < 5000').count.to_f / @total_traces * 100).round %>%;">
+          <div style="background: rgb(34, 211, 238); width: <%= (@traces.where('duration_ms >= 1000 AND duration_ms < 5000').count.to_f / @total_traces * 100).round %>%; display: flex; align-items: center; justify-content: center; color: #0F172A; font-size: 0.75rem; font-weight: 600;">
             <% if (@traces.where('duration_ms >= 1000 AND duration_ms < 5000').count.to_f / @total_traces * 100).round > 10 %>
               1-5s
             <% end %>
           </div>
-          <div class="admin-progress-segment admin-progress-slow" style="width: <%= (@traces.where('duration_ms >= 5000 AND duration_ms < 10000').count.to_f / @total_traces * 100).round %>%;">
+          <div style="background: rgb(250, 204, 21); width: <%= (@traces.where('duration_ms >= 5000 AND duration_ms < 10000').count.to_f / @total_traces * 100).round %>%; display: flex; align-items: center; justify-content: center; color: #0F172A; font-size: 0.75rem; font-weight: 600;">
             <% if (@traces.where('duration_ms >= 5000 AND duration_ms < 10000').count.to_f / @total_traces * 100).round > 10 %>
               5-10s
             <% end %>
           </div>
-          <div class="admin-progress-segment admin-progress-very-slow" style="width: <%= (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round %>%;">
+          <div style="background: rgb(248, 113, 113); width: <%= (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round %>%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem; font-weight: 600;">
             <% if (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round > 10 %>
               &gt;10s
             <% end %>
           </div>
         </div>
-        <div class="admin-grid-4 admin-mt-lg">
-          <div class="admin-text-center">
-            <div class="admin-legend-square admin-legend-fast admin-mx-auto admin-mb-xs"></div>
-            <span class="admin-text-muted admin-text-xs">&lt;1s (<%= (@traces.where('duration_ms < 1000').count.to_f / @total_traces * 100).round %>%)</span>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+          <div style="text-align: center;">
+            <div style="width: 12px; height: 12px; border-radius: 2px; background: rgb(74, 222, 128); margin: 0 auto 0.5rem;"></div>
+            <span style="color: #64748B; font-size: 0.75rem;">&lt;1s (<%= (@traces.where('duration_ms < 1000').count.to_f / @total_traces * 100).round %>%)</span>
           </div>
-          <div class="admin-text-center">
-            <div class="admin-legend-square admin-legend-medium admin-mx-auto admin-mb-xs"></div>
-            <span class="admin-text-muted admin-text-xs">1-5s (<%= (@traces.where('duration_ms >= 1000 AND duration_ms < 5000').count.to_f / @total_traces * 100).round %>%)</span>
+          <div style="text-align: center;">
+            <div style="width: 12px; height: 12px; border-radius: 2px; background: rgb(34, 211, 238); margin: 0 auto 0.5rem;"></div>
+            <span style="color: #64748B; font-size: 0.75rem;">1-5s (<%= (@traces.where('duration_ms >= 1000 AND duration_ms < 5000').count.to_f / @total_traces * 100).round %>%)</span>
           </div>
-          <div class="admin-text-center">
-            <div class="admin-legend-square admin-legend-slow admin-mx-auto admin-mb-xs"></div>
-            <span class="admin-text-muted admin-text-xs">5-10s (<%= (@traces.where('duration_ms >= 5000 AND duration_ms < 10000').count.to_f / @total_traces * 100).round %>%)</span>
+          <div style="text-align: center;">
+            <div style="width: 12px; height: 12px; border-radius: 2px; background: rgb(250, 204, 21); margin: 0 auto 0.5rem;"></div>
+            <span style="color: #64748B; font-size: 0.75rem;">5-10s (<%= (@traces.where('duration_ms >= 5000 AND duration_ms < 10000').count.to_f / @total_traces * 100).round %>%)</span>
           </div>
-          <div class="admin-text-center">
-            <div class="admin-legend-square admin-legend-very-slow admin-mx-auto admin-mb-xs"></div>
-            <span class="admin-text-muted admin-text-xs">&gt;10s (<%= (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round %>%)</span>
+          <div style="text-align: center;">
+            <div style="width: 12px; height: 12px; border-radius: 2px; background: rgb(248, 113, 113); margin: 0 auto 0.5rem;"></div>
+            <span style="color: #64748B; font-size: 0.75rem;">&gt;10s (<%= (@traces.where('duration_ms >= 10000').count.to_f / @total_traces * 100).round %>%)</span>
           </div>
         </div>
       </div>
@@ -151,64 +194,64 @@
 
   <!-- LLM Call Analysis -->
   <% if @llm_calls && @llm_calls.any? %>
-    <div class="admin-card admin-mb-xl">
+    <div class="admin-card" style="margin-bottom: 2rem;">
       <h3 class="card-title">
-        <%= admin_icon('cpu', size: :md, class: 'icon-with-spacing') %>
+        <i data-lucide="cpu" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
         LLM Call Analysis
       </h3>
 
-      <div class="admin-stats-grid admin-mb-xl">
-        <div class="admin-stat-box admin-stat-box-green">
-          <div class="admin-flex admin-items-center admin-flex-gap-md">
-            <%= admin_icon('check-circle', size: :md, class: 'admin-text-success') %>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div style="padding: 1rem; background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(34, 197, 94);"></i>
             <div>
-              <p class="admin-stat-box-label">Success Rate</p>
-              <h4 class="admin-stat-box-value"><%= @llm_success_rate %>%</h4>
+              <p style="color: #64748B; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin: 0 0 0.25rem 0;">Success Rate</p>
+              <h4 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= @llm_success_rate %>%</h4>
             </div>
           </div>
         </div>
 
-        <div class="admin-stat-box admin-stat-box-cyan">
-          <div class="admin-flex admin-items-center admin-flex-gap-md">
-            <%= admin_icon('activity', size: :md, class: 'admin-text-info') %>
+        <div style="padding: 1rem; background: rgba(34, 211, 238, 0.05); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <i data-lucide="activity" style="width: 1.5rem; height: 1.5rem; color: rgb(34, 211, 238);"></i>
             <div>
-              <p class="admin-stat-box-label">Total Calls</p>
-              <h4 class="admin-stat-box-value"><%= number_with_delimiter(@llm_calls.count) %></h4>
+              <p style="color: #64748B; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin: 0 0 0.25rem 0;">Total Calls</p>
+              <h4 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@llm_calls.count) %></h4>
             </div>
           </div>
         </div>
 
-        <div class="admin-stat-box admin-stat-box-yellow">
-          <div class="admin-flex admin-items-center admin-flex-gap-md">
-            <%= admin_icon('clock', size: :md, class: 'admin-text-warning') %>
+        <div style="padding: 1rem; background: rgba(250, 204, 21, 0.05); border: 1px solid rgba(250, 204, 21, 0.2); border-radius: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <i data-lucide="clock" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21);"></i>
             <div>
-              <p class="admin-stat-box-label">Avg Latency</p>
-              <h4 class="admin-stat-box-value"><%= @avg_latency %>ms</h4>
+              <p style="color: #64748B; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin: 0 0 0.25rem 0;">Avg Latency</p>
+              <h4 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= @avg_latency %>ms</h4>
             </div>
           </div>
         </div>
       </div>
 
-      <h6 class="admin-status-label">By Agent Role</h6>
-      <div class="admin-overflow-x-auto">
+      <h6 style="color: #64748B; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">By Agent Role</h6>
+      <div class="admin-table-container">
         <table class="admin-table">
           <thead>
             <tr>
               <th>Role</th>
-              <th class="admin-text-right">Count</th>
-              <th class="admin-text-right">Success Rate</th>
-              <th class="admin-text-right">Avg Tokens</th>
-              <th class="admin-text-right">Total Cost</th>
+              <th style="text-align: right;">Count</th>
+              <th style="text-align: right;">Success Rate</th>
+              <th style="text-align: right;">Avg Tokens</th>
+              <th style="text-align: right;">Total Cost</th>
             </tr>
           </thead>
           <tbody>
             <% @llm_by_role.each do |role_data| %>
               <tr>
                 <td>
-                  <span class="admin-badge admin-badge-default"><%= role_data[:role] %></span>
+                  <span class="admin-badge admin-badge-secondary"><%= role_data[:role] %></span>
                 </td>
-                <td class="admin-text-right admin-text-primary"><%= number_with_delimiter(role_data[:count]) %></td>
-                <td class="admin-text-right">
+                <td style="text-align: right; color: white;"><%= number_with_delimiter(role_data[:count]) %></td>
+                <td style="text-align: right;">
                   <% if role_data[:success_rate] > 85 %>
                     <span class="admin-badge admin-badge-online"><%= role_data[:success_rate] %>%</span>
                   <% elsif role_data[:success_rate] > 70 %>
@@ -217,8 +260,8 @@
                     <span class="admin-badge admin-badge-offline"><%= role_data[:success_rate] %>%</span>
                   <% end %>
                 </td>
-                <td class="admin-text-right"><code class="admin-code-inline"><%= number_with_delimiter(role_data[:avg_tokens]) %></code></td>
-                <td class="admin-text-right admin-text-warning admin-font-semibold">$<%= role_data[:total_cost] %></td>
+                <td style="text-align: right;"><code style="color: #22D3EE; background: rgba(34, 211, 238, 0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem;"><%= number_with_delimiter(role_data[:avg_tokens]) %></code></td>
+                <td style="text-align: right; color: rgb(250, 204, 21); font-weight: 600;">$<%= role_data[:total_cost] %></td>
               </tr>
             <% end %>
           </tbody>
@@ -231,59 +274,59 @@
   <% if @top_tools && @top_tools.any? %>
     <div class="admin-card">
       <h3 class="card-title">
-        <%= admin_icon('tool', size: :md, class: 'icon-with-spacing') %>
+        <i data-lucide="wrench" style="width: 1.25rem; height: 1.25rem; display: inline-block; vertical-align: middle; margin-right: 0.5rem;"></i>
         Tool Execution Analysis
       </h3>
 
-      <div class="admin-stats-grid admin-mb-xl">
-        <div class="admin-stat-box admin-stat-box-green">
-          <div class="admin-flex admin-items-center admin-flex-gap-md">
-            <%= admin_icon('check-circle', size: :md, class: 'admin-text-success') %>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div style="padding: 1rem; background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(34, 197, 94);"></i>
             <div>
-              <p class="admin-stat-box-label">Success Rate</p>
-              <h4 class="admin-stat-box-value"><%= @tool_success_rate %>%</h4>
+              <p style="color: #64748B; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin: 0 0 0.25rem 0;">Success Rate</p>
+              <h4 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= @tool_success_rate %></h4>
             </div>
           </div>
         </div>
 
-        <div class="admin-stat-box admin-stat-box-cyan">
-          <div class="admin-flex admin-items-center admin-flex-gap-md">
-            <%= admin_icon('layers', size: :md, class: 'admin-text-info') %>
+        <div style="padding: 1rem; background: rgba(34, 211, 238, 0.05); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <i data-lucide="layers" style="width: 1.5rem; height: 1.5rem; color: rgb(34, 211, 238);"></i>
             <div>
-              <p class="admin-stat-box-label">Total Executions</p>
-              <h4 class="admin-stat-box-value"><%= number_with_delimiter(@top_tools.sum { |t| t[:count] }) %></h4>
+              <p style="color: #64748B; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin: 0 0 0.25rem 0;">Total Executions</p>
+              <h4 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@top_tools.sum { |t| t[:count] }) %></h4>
             </div>
           </div>
         </div>
 
-        <div class="admin-stat-box admin-stat-box-red">
-          <div class="admin-flex admin-items-center admin-flex-gap-md">
-            <%= admin_icon('x-circle', size: :md, class: 'admin-text-error') %>
+        <div style="padding: 1rem; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <i data-lucide="x-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(239, 68, 68);"></i>
             <div>
-              <p class="admin-stat-box-label">Failed</p>
-              <h4 class="admin-stat-box-value"><%= number_with_delimiter(@failed_tool_executions) %></h4>
+              <p style="color: #64748B; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin: 0 0 0.25rem 0;">Failed</p>
+              <h4 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@failed_tool_executions) %></h4>
             </div>
           </div>
         </div>
       </div>
 
-      <h6 class="admin-status-label">Top 10 Tools</h6>
-      <div class="admin-overflow-x-auto">
+      <h6 style="color: #64748B; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">Top 10 Tools</h6>
+      <div class="admin-table-container">
         <table class="admin-table">
           <thead>
             <tr>
               <th>Tool</th>
-              <th class="admin-text-right">Executions</th>
-              <th class="admin-text-right">Success Rate</th>
-              <th class="admin-text-right">Avg Time</th>
+              <th style="text-align: right;">Executions</th>
+              <th style="text-align: right;">Success Rate</th>
+              <th style="text-align: right;">Avg Time</th>
             </tr>
           </thead>
           <tbody>
             <% @top_tools.each do |tool| %>
               <tr>
-                <td><code class="admin-code-inline"><%= tool[:name] %></code></td>
-                <td class="admin-text-right admin-text-primary"><%= number_with_delimiter(tool[:count]) %></td>
-                <td class="admin-text-right">
+                <td><code style="color: #22D3EE;"><%= tool[:name] %></code></td>
+                <td style="text-align: right; color: white;"><%= number_with_delimiter(tool[:count]) %></td>
+                <td style="text-align: right;">
                   <% if tool[:success_rate] > 85 %>
                     <span class="admin-badge admin-badge-online"><%= tool[:success_rate] %>%</span>
                   <% elsif tool[:success_rate] > 70 %>
@@ -292,7 +335,7 @@
                     <span class="admin-badge admin-badge-offline"><%= tool[:success_rate] %>%</span>
                   <% end %>
                 </td>
-                <td class="admin-text-right"><code class="admin-code-muted"><%= tool[:avg_time] %>ms</code></td>
+                <td style="text-align: right;"><code style="color: #64748B;"><%= tool[:avg_time] %>ms</code></td>
               </tr>
             <% end %>
           </tbody>
