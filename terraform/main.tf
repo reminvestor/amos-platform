@@ -180,9 +180,42 @@ resource "aws_secretsmanager_secret" "api_keys" {
   }
 }
 
-# ECR Repository for Docker Images
+# ECR Repository for Docker Images (Main App)
 resource "aws_ecr_repository" "app" {
   name                 = "${var.project_name}-${var.environment}"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  encryption_configuration {
+    encryption_type = "KMS"
+    kms_key        = aws_kms_key.main.arn
+  }
+
+  lifecycle_policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 10 images"
+        selection = {
+          tagStatus     = "tagged"
+          tagPrefixList = ["v"]
+          countType     = "imageCountMoreThan"
+          countNumber   = 10
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
+# ECR Repository for Agent Lightning (Python Service)
+resource "aws_ecr_repository" "agent_lightning" {
+  name                 = "${var.project_name}-${var.environment}-agent-lightning"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -231,6 +264,58 @@ resource "aws_sns_topic_subscription" "alert_emails" {
   endpoint  = each.value
 }
 
+# ElastiCache Redis Subnet Group
+resource "aws_elasticache_subnet_group" "main" {
+  name       = "${var.project_name}-${var.environment}-redis-subnet"
+  subnet_ids = module.vpc.private_subnet_ids
+}
+
+# Security Group for Redis
+resource "aws_security_group" "redis" {
+  name        = "${var.project_name}-${var.environment}-redis-sg"
+  description = "Security group for Redis"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port   = 6379
+    to_port     = 6379
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr] # Allow access from within VPC
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-redis-sg"
+  }
+}
+
+# ElastiCache Redis Cluster (Replication Group)
+resource "aws_elasticache_replication_group" "main" {
+  replication_group_id          = "${var.project_name}-${var.environment}-redis"
+  replication_group_description = "Redis cluster for ${var.project_name} ${var.environment}"
+  node_type                     = "cache.t3.micro" # Free tier eligible-ish
+  port                          = 6379
+  parameter_group_name          = "default.redis7"
+  automatic_failover_enabled    = true
+  num_node_groups               = 1
+  replicas_per_node_group       = 1
+  subnet_group_name             = aws_elasticache_subnet_group.main.name
+  security_group_ids            = [aws_security_group.redis.id]
+  at_rest_encryption_enabled    = true
+  transit_encryption_enabled    = true
+  kms_key_id                    = aws_kms_key.main.arn
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-redis"
+  }
+}
+
 # Outputs
 output "vpc_id" {
   value = module.vpc.vpc_id
@@ -250,4 +335,12 @@ output "opensearch_endpoint" {
 
 output "sns_alert_topic_arn" {
   value = aws_sns_topic.alerts.arn
+}
+
+output "redis_endpoint" {
+  value = aws_elasticache_replication_group.main.primary_endpoint_address
+}
+
+output "agent_lightning_ecr_repository_url" {
+  value = aws_ecr_repository.agent_lightning.repository_url
 }
