@@ -36,7 +36,7 @@ class AgentPlugin < ApplicationRecord
   # Validations
   validates :name, presence: true, length: { minimum: 3, maximum: 100 }
   validates :slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }
-  validates :role, inclusion: { in: %w[executor planner analyst verifier fixer custom] }, allow_nil: true
+  validates :role, inclusion: { in: %w[executor planner analyst verifier fixer architect engineer custom] }, allow_nil: true
   validates :status, presence: true, inclusion: { in: %w[draft active deprecated] }
   validates :priority, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 100 }
   validates :version, format: { with: /\A\d+\.\d+\.\d+\z/, message: "must be in format X.Y.Z" }, allow_blank: true
