@@ -1,422 +1,416 @@
 # Agent Plugin Seeds
 # Creates example agent plugins to demonstrate the system
 
-# Skip if agent plugins already exist
-if AgentPlugin.where(slug: ["sales_email_generator", "content_quality_analyzer", "campaign_optimizer", "ai_landing_page_creator", "customer_journey_mapper", "email_sequence_architect"]).exists?
-  puts "🤖 Agent Plugins already exist, skipping seed..."
-  return
-end
-
 puts "🤖 Seeding Agent Plugins..."
 
+def seed_agent(slug, attributes, capabilities, tools)
+  agent = AgentPlugin.where(slug: slug).first_or_initialize
+  agent.update!(attributes)
+  
+  # Update capabilities
+  agent.agent_capabilities.destroy_all
+  agent.agent_capabilities.create!(capabilities)
+  
+  # Update tools
+  agent.agent_tools.destroy_all
+  agent.agent_tools.create!(tools)
+  
+  puts "  ✓ Created/Updated #{attributes[:name]}"
+  agent
+end
+
 # 1. Sales Email Generator Agent
-sales_agent = AgentPlugin.create!(
-  name: "Sales Email Generator",
-  slug: "sales_email_generator",
-  role: "executor",
-  description: "Generates personalized sales emails based on lead data, company information, and pain points. Uses web research to customize messaging.",
-  version: "1.0.0",
-  status: "active",
-  priority: 80,
-  agent_class: nil,
-  entity_id: nil,  # System-wide agent
-  system_prompt: {
-    prompt: "You are a sales email specialist. Generate compelling, personalized emails that address specific pain points. Keep it concise (under 150 words) and always include a clear call-to-action."
+seed_agent(
+  "sales_email_generator",
+  {
+    name: "Sales Email Generator",
+    role: "executor",
+    description: "Generates personalized sales emails based on lead data, company information, and pain points. Uses web research to customize messaging.",
+    version: "1.0.0",
+    status: "active",
+    priority: 80,
+    agent_class: nil,
+    entity_id: nil,
+    system_prompt: {
+      prompt: "You are a sales email specialist. Generate compelling, personalized emails that address specific pain points. Keep it concise (under 150 words) and always include a clear call-to-action."
+    },
+    configuration: {
+      max_email_length: 150,
+      tone: "professional_friendly",
+      include_ps: true
+    }
   },
-  configuration: {
-    max_email_length: 150,
-    tone: "professional_friendly",
-    include_ps: true
-  }
+  [
+    {
+      capability_name: "email_generation",
+      contract_schema: {
+        inputs: [
+          { name: "lead_name", type: "string", required: true },
+          { name: "company_name", type: "string", required: true },
+          { name: "pain_points", type: "array", required: false }
+        ],
+        outputs: [
+          { name: "email_subject", type: "string" },
+          { name: "email_body", type: "string" },
+          { name: "follow_up_recommended", type: "boolean" }
+        ]
+      }
+    },
+    {
+      capability_name: "personalization",
+      contract_schema: {
+        inputs: [
+          { name: "lead_profile", type: "object", required: true }
+        ],
+        outputs: [
+          { name: "personalized_content", type: "string" }
+        ]
+      }
+    }
+  ],
+  [
+    { tool_name: "get_data", required: true },
+    { tool_name: "web_search", required: false },
+    { tool_name: "create_object", required: true }
+  ]
 )
-
-# Add capabilities
-sales_agent.agent_capabilities.create!([
-  {
-    capability_name: "email_generation",
-    contract_schema: {
-      inputs: [
-        { name: "lead_name", type: "string", required: true },
-        { name: "company_name", type: "string", required: true },
-        { name: "pain_points", type: "array", required: false }
-      ],
-      outputs: [
-        { name: "email_subject", type: "string" },
-        { name: "email_body", type: "string" },
-        { name: "follow_up_recommended", type: "boolean" }
-      ]
-    }
-  },
-  {
-    capability_name: "personalization",
-    contract_schema: {
-      inputs: [
-        { name: "lead_profile", type: "object", required: true }
-      ],
-      outputs: [
-        { name: "personalized_content", type: "string" }
-      ]
-    }
-  }
-])
-
-# Add required tools
-sales_agent.agent_tools.create!([
-  { tool_name: "get_data", required: true },
-  { tool_name: "web_search", required: false },
-  { tool_name: "create_object", required: true }
-])
-
-puts "  ✓ Created Sales Email Generator agent"
 
 # 2. Content Analyzer Agent
-analyzer_agent = AgentPlugin.create!(
-  name: "Content Quality Analyzer",
-  slug: "content_quality_analyzer",
-  role: "verifier",
-  description: "Analyzes content quality, readability, SEO optimization, and brand alignment. Provides actionable recommendations for improvement.",
-  version: "1.0.0",
-  status: "active",
-  priority: 70,
-  agent_class: nil,
-  entity_id: nil,
-  system_prompt: {
-    prompt: "You are a content quality expert. Analyze content for readability, SEO, brand alignment, and engagement. Provide specific, actionable recommendations."
-  },
-  configuration: {
-    min_readability_score: 60,
-    check_seo: true,
-    check_brand_voice: true
-  }
-)
-
-analyzer_agent.agent_capabilities.create!([
+seed_agent(
+  "content_quality_analyzer",
   {
-    capability_name: "content_analysis",
-    contract_schema: {
-      inputs: [
-        { name: "content", type: "string", required: true },
-        { name: "content_type", type: "string", required: false }
-      ],
-      outputs: [
-        { name: "readability_score", type: "number" },
-        { name: "seo_score", type: "number" },
-        { name: "recommendations", type: "array" }
-      ]
+    name: "Content Quality Analyzer",
+    role: "verifier",
+    description: "Analyzes content quality, readability, SEO optimization, and brand alignment. Provides actionable recommendations for improvement.",
+    version: "1.0.0",
+    status: "active",
+    priority: 70,
+    agent_class: nil,
+    entity_id: nil,
+    system_prompt: {
+      prompt: "You are a content quality expert. Analyze content for readability, SEO, brand alignment, and engagement. Provide specific, actionable recommendations."
+    },
+    configuration: {
+      min_readability_score: 60,
+      check_seo: true,
+      check_brand_voice: true
     }
-  }
-])
-
-analyzer_agent.agent_tools.create!([
-  { tool_name: "get_data", required: true }
-])
-
-puts "  ✓ Created Content Quality Analyzer agent"
+  },
+  [
+    {
+      capability_name: "content_analysis",
+      contract_schema: {
+        inputs: [
+          { name: "content", type: "string", required: true },
+          { name: "content_type", type: "string", required: false }
+        ],
+        outputs: [
+          { name: "readability_score", type: "number" },
+          { name: "seo_score", type: "number" },
+          { name: "recommendations", type: "array" }
+        ]
+      }
+    }
+  ],
+  [
+    { tool_name: "get_data", required: true }
+  ]
+)
 
 # 3. Campaign Optimizer Agent
-optimizer_agent = AgentPlugin.create!(
-  name: "Campaign Optimizer",
-  slug: "campaign_optimizer",
-  role: "analyst",
-  description: "Analyzes campaign performance data and provides optimization recommendations. Identifies best-performing segments and suggests A/B test variations.",
-  version: "1.0.0",
-  status: "active",
-  priority: 75,
-  agent_class: nil,
-  entity_id: nil,
-  system_prompt: {
-    prompt: "You are a marketing analytics expert. Analyze campaign data to identify optimization opportunities. Focus on actionable insights that improve conversion rates and ROI."
+seed_agent(
+  "campaign_optimizer",
+  {
+    name: "Campaign Optimizer",
+    role: "analyst",
+    description: "Analyzes campaign performance data and provides optimization recommendations. Identifies best-performing segments and suggests A/B test variations.",
+    version: "1.0.0",
+    status: "active",
+    priority: 75,
+    agent_class: nil,
+    entity_id: nil,
+    system_prompt: {
+      prompt: "You are a marketing analytics expert. Analyze campaign data to identify optimization opportunities. Focus on actionable insights that improve conversion rates and ROI."
+    },
+    configuration: {
+      min_sample_size: 100,
+      confidence_level: 0.95
+    }
   },
-  configuration: {
-    min_sample_size: 100,
-    confidence_level: 0.95
-  }
+  [
+    {
+      capability_name: "performance_analysis",
+      contract_schema: {
+        inputs: [
+          { name: "campaign_data", type: "object", required: true },
+          { name: "time_range", type: "string", required: false }
+        ],
+        outputs: [
+          { name: "key_metrics", type: "object" },
+          { name: "recommendations", type: "array" },
+          { name: "ab_test_suggestions", type: "array" }
+        ]
+      }
+    }
+  ],
+  [
+    { tool_name: "get_data", required: true },
+    { tool_name: "list_operations", required: false }
+  ]
 )
 
-optimizer_agent.agent_capabilities.create!([
+# 4. Landing Page Creator Agent
+seed_agent(
+  "ai_landing_page_creator",
   {
-    capability_name: "performance_analysis",
-    contract_schema: {
-      inputs: [
-        { name: "campaign_data", type: "object", required: true },
-        { name: "time_range", type: "string", required: false }
-      ],
-      outputs: [
-        { name: "key_metrics", type: "object" },
-        { name: "recommendations", type: "array" },
-        { name: "ab_test_suggestions", type: "array" }
-      ]
+    name: "AI Landing Page Creator",
+    role: "executor",
+    description: "Creates complete landing pages with AI-generated content, images, and CTAs. Adapts design based on industry best practices and brand guidelines.",
+    version: "1.0.0",
+    status: "active",
+    priority: 85,
+    agent_class: nil,
+    entity_id: nil,
+    system_prompt: {
+      prompt: "You are a landing page specialist. Create high-converting landing pages that combine compelling copy with effective design. Follow conversion optimization best practices."
+    },
+    configuration: {
+      include_hero_image: true,
+      include_testimonials: false,
+      include_faq: true,
+      include_business_data: true,
+      canvas_on_completion: "landing_page_editor"
     }
-  }
-])
-
-optimizer_agent.agent_tools.create!([
-  { tool_name: "get_data", required: true },
-  { tool_name: "list_operations", required: false }
-])
-
-puts "  ✓ Created Campaign Optimizer agent"
-
-# 4. Landing Page Creator Agent (Example of adaptive execution)
-landing_page_agent = AgentPlugin.create!(
-  name: "AI Landing Page Creator",
-  slug: "ai_landing_page_creator",
-  role: "executor",
-  description: "Creates complete landing pages with AI-generated content, images, and CTAs. Adapts design based on industry best practices and brand guidelines.",
-  version: "1.0.0",
-  status: "active",
-  priority: 85,
-  agent_class: nil,
-  entity_id: nil,
-  system_prompt: {
-    prompt: "You are a landing page specialist. Create high-converting landing pages that combine compelling copy with effective design. Follow conversion optimization best practices."
   },
-  configuration: {
-    include_hero_image: true,
-    include_testimonials: false,
-    include_faq: true,
-    include_business_data: true,
-    canvas_on_completion: "landing_page_editor"
-  }
+  [
+    {
+      capability_name: "landing_page_generation",
+      contract_schema: {
+        inputs: [
+          { name: "product_description", type: "string", required: true },
+          { name: "target_audience", type: "string", required: true },
+          { name: "key_benefits", type: "array", required: true },
+          { name: "images_to_use", type: "array", required: false, description: "List of image URLs or asset IDs to include" },
+          { name: "design_template", type: "string", required: false, description: "Description or URL of a design reference" }
+        ],
+        outputs: [
+          { name: "headline", type: "string" },
+          { name: "subheadline", type: "string" },
+          { name: "body_content", type: "string" },
+          { name: "cta_text", type: "string" }
+        ]
+      }
+    }
+  ],
+  [
+    { tool_name: "generate_ai_landing_page", required: true },
+    { tool_name: "create_object", required: true }
+  ]
 )
 
-landing_page_agent.agent_capabilities.create!([
+# 5. Customer Journey Mapper Agent
+seed_agent(
+  "customer_journey_mapper",
   {
-    capability_name: "landing_page_generation",
-    contract_schema: {
-      inputs: [
-        { name: "product_description", type: "string", required: true },
-        { name: "target_audience", type: "string", required: true },
-        { name: "key_benefits", type: "array", required: true },
-        { name: "images_to_use", type: "array", required: false, description: "List of image URLs or asset IDs to include" },
-        { name: "design_template", type: "string", required: false, description: "Description or URL of a design reference" }
-      ],
-      outputs: [
-        { name: "headline", type: "string" },
-        { name: "subheadline", type: "string" },
-        { name: "body_content", type: "string" },
-        { name: "cta_text", type: "string" }
-      ]
+    name: "Customer Journey Mapper",
+    role: "analyst",
+    description: "Maps customer touchpoints and identifies friction points in the buyer journey. Suggests improvements to increase conversion rates.",
+    version: "1.0.0",
+    status: "draft",
+    priority: 60,
+    agent_class: nil,
+    entity_id: nil,
+    system_prompt: {
+      prompt: "You are a customer experience analyst. Map the complete customer journey and identify opportunities to reduce friction and improve conversion rates."
+    },
+    configuration: {
+      analyze_touchpoints: true,
+      identify_dropoff_points: true
     }
-  }
-])
-
-landing_page_agent.agent_tools.create!([
-  { tool_name: "generate_ai_landing_page", required: true },
-  { tool_name: "create_object", required: true }
-])
-
-puts "  ✓ Created AI Landing Page Creator agent"
-
-# 5. Customer Journey Mapper Agent (Draft - for testing the workflow)
-journey_agent = AgentPlugin.create!(
-  name: "Customer Journey Mapper",
-  slug: "customer_journey_mapper",
-  role: "analyst",
-  description: "Maps customer touchpoints and identifies friction points in the buyer journey. Suggests improvements to increase conversion rates.",
-  version: "1.0.0",
-  status: "draft",  # Not active yet
-  priority: 60,
-  agent_class: nil,
-  entity_id: nil,
-  system_prompt: {
-    prompt: "You are a customer experience analyst. Map the complete customer journey and identify opportunities to reduce friction and improve conversion rates."
   },
-  configuration: {
-    analyze_touchpoints: true,
-    identify_dropoff_points: true
-  }
-)
-
-journey_agent.agent_capabilities.create!([
-  {
-    capability_name: "journey_mapping",
-    contract_schema: {
-      inputs: [
-        { name: "customer_data", type: "object", required: true }
-      ],
-      outputs: [
-        { name: "touchpoint_map", type: "array" },
-        { name: "friction_points", type: "array" },
-        { name: "recommendations", type: "array" }
-      ]
+  [
+    {
+      capability_name: "journey_mapping",
+      contract_schema: {
+        inputs: [
+          { name: "customer_data", type: "object", required: true }
+        ],
+        outputs: [
+          { name: "touchpoint_map", type: "array" },
+          { name: "friction_points", type: "array" },
+          { name: "recommendations", type: "array" }
+        ]
+      }
     }
-  }
-])
-
-journey_agent.agent_tools.create!([
-  { tool_name: "get_data", required: true }
-])
-
-puts "  ✓ Created Customer Journey Mapper agent (draft)"
+  ],
+  [
+    { tool_name: "get_data", required: true }
+  ]
+)
 
 # 6. Email Sequence Architect Agent
-sequence_agent = AgentPlugin.create!(
-  name: "Email Sequence Architect",
-  slug: "email_sequence_architect",
-  role: "executor",
-  description: "Designs strategic multi-touch email sequences (welcome series, nurture campaigns, onboarding flows, re-engagement campaigns). Optimizes timing, messaging progression, and conversion goals across 5-10 emails.",
-  version: "1.0.0",
-  status: "active",
-  priority: 82,
-  agent_class: nil,
-  entity_id: nil,
-  system_prompt: {
-    prompt: <<~PROMPT.strip
-      You are an email sequence strategist specializing in multi-touch campaigns. Your expertise includes:
+seed_agent(
+  "email_sequence_architect",
+  {
+    name: "Email Sequence Architect",
+    role: "executor",
+    description: "Designs strategic multi-touch email sequences (welcome series, nurture campaigns, onboarding flows, re-engagement campaigns). Optimizes timing, messaging progression, and conversion goals across 5-10 emails.",
+    version: "1.0.0",
+    status: "active",
+    priority: 82,
+    agent_class: nil,
+    entity_id: nil,
+    system_prompt: {
+      prompt: <<~PROMPT.strip
+        You are an email sequence strategist specializing in multi-touch campaigns. Your expertise includes:
 
-      **Sequence Design Principles:**
-      - Welcome sequences: Build trust and set expectations (3-5 emails over 7-14 days)
-      - Nurture campaigns: Educate and build relationship (5-7 emails over 30-60 days)
-      - Onboarding flows: Drive activation and first value (4-6 emails over 14-21 days)
-      - Re-engagement: Win back inactive users (3-4 emails over 14-30 days)
-      - Product launch: Build anticipation and drive conversions (5-7 emails over 10-14 days)
+        **Sequence Design Principles:**
+        - Welcome sequences: Build trust and set expectations (3-5 emails over 7-14 days)
+        - Nurture campaigns: Educate and build relationship (5-7 emails over 30-60 days)
+        - Onboarding flows: Drive activation and first value (4-6 emails over 14-21 days)
+        - Re-engagement: Win back inactive users (3-4 emails over 14-30 days)
+        - Product launch: Build anticipation and drive conversions (5-7 emails over 10-14 days)
 
-      **Timing Optimization:**
-      - Day 0: Immediate welcome/confirmation
-      - Day 1-3: Educational content, set expectations
-      - Day 4-7: Value demonstration, social proof
-      - Week 2-4: Deeper engagement, specific use cases
-      - Beyond: Relationship building, advanced features
+        **Timing Optimization:**
+        - Day 0: Immediate welcome/confirmation
+        - Day 1-3: Educational content, set expectations
+        - Day 4-7: Value demonstration, social proof
+        - Week 2-4: Deeper engagement, specific use cases
+        - Beyond: Relationship building, advanced features
 
-      **Messaging Progression:**
-      - Email 1: Welcome, set tone, quick win
-      - Email 2-3: Education, address common questions
-      - Email 4-5: Social proof, case studies, testimonials
-      - Email 6-7: Advanced tips, exclusive content
-      - Final: Strong CTA, urgency if appropriate
+        **Messaging Progression:**
+        - Email 1: Welcome, set tone, quick win
+        - Email 2-3: Education, address common questions
+        - Email 4-5: Social proof, case studies, testimonials
+        - Email 6-7: Advanced tips, exclusive content
+        - Final: Strong CTA, urgency if appropriate
 
-      **Best Practices:**
-      - Each email should have ONE clear goal
-      - Progressive value: each email should build on previous ones
-      - Personalization: use contact data, behavior, preferences
-      - A/B test subjects for first 2-3 emails (highest impact)
-      - Include exit points: don't over-email engaged users
-      - Monitor engagement: adjust timing based on open rates
+        **Best Practices:**
+        - Each email should have ONE clear goal
+        - Progressive value: each email should build on previous ones
+        - Personalization: use contact data, behavior, preferences
+        - A/B test subjects for first 2-3 emails (highest impact)
+        - Include exit points: don't over-email engaged users
+        - Monitor engagement: adjust timing based on open rates
 
-      **Output Format:**
-      When designing sequences, provide:
-      1. Sequence overview (goal, duration, email count)
-      2. Each email with: day/timing, subject line, key message, CTA, notes
-      3. Success metrics to track
-      4. A/B test suggestions
-      5. Personalization opportunities
+        **Output Format:**
+        When designing sequences, provide:
+        1. Sequence overview (goal, duration, email count)
+        2. Each email with: day/timing, subject line, key message, CTA, notes
+        3. Success metrics to track
+        4. A/B test suggestions
+        5. Personalization opportunities
 
-      Always ask about:
-      - Sequence goal (welcome, nurture, onboard, re-engage, launch)
-      - Target audience characteristics
-      - Desired outcome/conversion goal
-      - Any existing brand voice or content guidelines
-      - Available contact data for personalization
-    PROMPT
-  },
-  configuration: {
-    max_sequence_length: 10,
-    min_sequence_length: 3,
-    default_sequence_types: [
-      "welcome_series",
-      "nurture_campaign",
-      "onboarding_flow",
-      "re_engagement",
-      "product_launch",
-      "abandoned_cart",
-      "trial_conversion",
-      "post_purchase"
-    ],
-    timing_presets: {
-      aggressive: "emails every 1-2 days",
-      moderate: "emails every 3-5 days",
-      relaxed: "emails every 7-10 days"
+        Always ask about:
+        - Sequence goal (welcome, nurture, onboard, re-engage, launch)
+        - Target audience characteristics
+        - Desired outcome/conversion goal
+        - Any existing brand voice or content guidelines
+        - Available contact data for personalization
+      PROMPT
     },
-    include_ab_test_suggestions: true,
-    include_personalization_tokens: true
-  }
+    configuration: {
+      max_sequence_length: 10,
+      min_sequence_length: 3,
+      default_sequence_types: [
+        "welcome_series",
+        "nurture_campaign",
+        "onboarding_flow",
+        "re_engagement",
+        "product_launch",
+        "abandoned_cart",
+        "trial_conversion",
+        "post_purchase"
+      ],
+      timing_presets: {
+        aggressive: "emails every 1-2 days",
+        moderate: "emails every 3-5 days",
+        relaxed: "emails every 7-10 days"
+      },
+      include_ab_test_suggestions: true,
+      include_personalization_tokens: true
+    }
+  },
+  [
+    {
+      capability_name: "sequence_design",
+      contract_schema: {
+        inputs: [
+          { name: "sequence_type", type: "string", required: true, description: "welcome_series, nurture_campaign, onboarding_flow, etc." },
+          { name: "target_audience", type: "string", required: true },
+          { name: "conversion_goal", type: "string", required: true },
+          { name: "email_count", type: "number", required: false, description: "Desired number of emails (3-10)" },
+          { name: "duration_days", type: "number", required: false, description: "Total sequence duration" },
+          { name: "brand_voice", type: "string", required: false },
+          { name: "available_data", type: "array", required: false, description: "Contact fields for personalization" }
+        ],
+        outputs: [
+          { name: "sequence_overview", type: "object" },
+          { name: "emails", type: "array", description: "Array of email definitions" },
+          { name: "success_metrics", type: "array" },
+          { name: "ab_test_suggestions", type: "array" },
+          { name: "personalization_map", type: "object" }
+        ]
+      },
+      implementation_notes: "Designs complete email sequences with timing, messaging, and optimization strategy"
+    },
+    {
+      capability_name: "drip_campaign_creation",
+      contract_schema: {
+        inputs: [
+          { name: "campaign_goal", type: "string", required: true },
+          { name: "sequence_design", type: "object", required: true },
+          { name: "contact_group_id", type: "number", required: false }
+        ],
+        outputs: [
+          { name: "created_campaigns", type: "array" },
+          { name: "schedule", type: "object" },
+          { name: "next_steps", type: "string" }
+        ]
+      },
+      implementation_notes: "Actually creates the campaign objects based on sequence design"
+    },
+    {
+      capability_name: "timing_optimization",
+      contract_schema: {
+        inputs: [
+          { name: "sequence_type", type: "string", required: true },
+          { name: "historical_data", type: "object", required: false },
+          { name: "audience_timezone", type: "string", required: false }
+        ],
+        outputs: [
+          { name: "optimal_send_times", type: "array" },
+          { name: "day_spacing", type: "array" },
+          { name: "rationale", type: "string" }
+        ]
+      },
+      implementation_notes: "Recommends optimal timing based on sequence type and data"
+    },
+    {
+      capability_name: "sequence_analysis",
+      contract_schema: {
+        inputs: [
+          { name: "existing_campaigns", type: "array", required: true },
+          { name: "analyze_as_sequence", type: "boolean", required: false }
+        ],
+        outputs: [
+          { name: "sequence_health", type: "object" },
+          { name: "drop_off_points", type: "array" },
+          { name: "optimization_suggestions", type: "array" }
+        ]
+      },
+      implementation_notes: "Analyzes existing campaigns as a sequence and suggests improvements"
+    }
+  ],
+  [
+    { tool_name: "create_object", required: true },
+    { tool_name: "get_data", required: true },
+    { tool_name: "update_object", required: false },
+    { tool_name: "web_search", required: false },
+    { tool_name: "query_metric", required: false },
+    { tool_name: "get_workflow_context", required: false }
+  ]
 )
-
-# Add capabilities
-sequence_agent.agent_capabilities.create!([
-  {
-    capability_name: "sequence_design",
-    contract_schema: {
-      inputs: [
-        { name: "sequence_type", type: "string", required: true, description: "welcome_series, nurture_campaign, onboarding_flow, etc." },
-        { name: "target_audience", type: "string", required: true },
-        { name: "conversion_goal", type: "string", required: true },
-        { name: "email_count", type: "number", required: false, description: "Desired number of emails (3-10)" },
-        { name: "duration_days", type: "number", required: false, description: "Total sequence duration" },
-        { name: "brand_voice", type: "string", required: false },
-        { name: "available_data", type: "array", required: false, description: "Contact fields for personalization" }
-      ],
-      outputs: [
-        { name: "sequence_overview", type: "object" },
-        { name: "emails", type: "array", description: "Array of email definitions" },
-        { name: "success_metrics", type: "array" },
-        { name: "ab_test_suggestions", type: "array" },
-        { name: "personalization_map", type: "object" }
-      ]
-    },
-    implementation_notes: "Designs complete email sequences with timing, messaging, and optimization strategy"
-  },
-  {
-    capability_name: "drip_campaign_creation",
-    contract_schema: {
-      inputs: [
-        { name: "campaign_goal", type: "string", required: true },
-        { name: "sequence_design", type: "object", required: true },
-        { name: "contact_group_id", type: "number", required: false }
-      ],
-      outputs: [
-        { name: "created_campaigns", type: "array" },
-        { name: "schedule", type: "object" },
-        { name: "next_steps", type: "string" }
-      ]
-    },
-    implementation_notes: "Actually creates the campaign objects based on sequence design"
-  },
-  {
-    capability_name: "timing_optimization",
-    contract_schema: {
-      inputs: [
-        { name: "sequence_type", type: "string", required: true },
-        { name: "historical_data", type: "object", required: false },
-        { name: "audience_timezone", type: "string", required: false }
-      ],
-      outputs: [
-        { name: "optimal_send_times", type: "array" },
-        { name: "day_spacing", type: "array" },
-        { name: "rationale", type: "string" }
-      ]
-    },
-    implementation_notes: "Recommends optimal timing based on sequence type and data"
-  },
-  {
-    capability_name: "sequence_analysis",
-    contract_schema: {
-      inputs: [
-        { name: "existing_campaigns", type: "array", required: true },
-        { name: "analyze_as_sequence", type: "boolean", required: false }
-      ],
-      outputs: [
-        { name: "sequence_health", type: "object" },
-        { name: "drop_off_points", type: "array" },
-        { name: "optimization_suggestions", type: "array" }
-      ]
-    },
-    implementation_notes: "Analyzes existing campaigns as a sequence and suggests improvements"
-  }
-])
-
-# Add required tools
-sequence_agent.agent_tools.create!([
-  { tool_name: "create_object", required: true },
-  { tool_name: "get_data", required: true },
-  { tool_name: "update_object", required: false },
-  { tool_name: "web_search", required: false },
-  { tool_name: "query_metric", required: false },
-  { tool_name: "get_workflow_context", required: false }
-])
-
-puts "  ✓ Created Email Sequence Architect agent"
 
 puts "✅ Agent Plugin seeding complete!"
 puts "   - #{AgentPlugin.active.count} active agents"
