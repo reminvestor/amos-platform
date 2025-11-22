@@ -1,9 +1,9 @@
-<div class="admin-p-xl">
+<div style="padding: 2rem;">
   <!-- Page Header -->
-  <div class="admin-page-header">
+  <div class="admin-page-header" style="margin-bottom: 2rem;">
     <div class="header-left">
-      <div class="header-icon">
-        <%= admin_icon('bot', size: :lg) %>
+      <div class="header-icon" style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);">
+        <i data-lucide="bot" style="color: white;"></i>
       </div>
       <div class="header-text">
         <h1>Agent Plugins</h1>
@@ -12,13 +12,13 @@
     </div>
 
     <div class="header-actions">
-      <div class="d-flex flex-wrap admin-flex-gap-sm">
+      <div style="display: flex; gap: 0.5rem;">
         <%= link_to new_admin_agent_plugin_path, class: "admin-btn admin-btn-primary" do %>
-          <%= admin_icon('plus', size: :sm) %>
+          <i data-lucide="plus"></i>
           <span>Create Agent</span>
         <% end %>
         <%= link_to analytics_admin_agent_plugins_path, class: "admin-btn admin-btn-secondary" do %>
-          <%= admin_icon('bar-chart-3', size: :sm) %>
+          <i data-lucide="bar-chart-3"></i>
           <span>Analytics</span>
         <% end %>
       </div>
@@ -26,34 +26,58 @@
   </div>
 
   <!-- Stats Cards -->
-  <div class="admin-stats-grid">
-    <%= render 'admin/shared/stat_card',
-      icon: 'layers',
-      value: @stats[:total],
-      label: 'Total Agents',
-      style: 'purple-gradient' %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="layers" style="width: 1.5rem; height: 1.5rem; color: white;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Agents</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:total] %></h3>
+        </div>
+      </div>
+    </div>
 
-    <%= render 'admin/shared/stat_card',
-      icon: 'check-circle',
-      value: @stats[:active],
-      label: 'Active',
-      style: 'success' %>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="check-circle" style="width: 1.5rem; height: 1.5rem; color: rgb(74, 222, 128);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Active</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:active] %></h3>
+        </div>
+      </div>
+    </div>
 
-    <%= render 'admin/shared/stat_card',
-      icon: 'file-text',
-      value: @stats[:draft],
-      label: 'Draft',
-      style: 'warning' %>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="file-text" style="width: 1.5rem; height: 1.5rem; color: rgb(250, 204, 21);"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Draft</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:draft] %></h3>
+        </div>
+      </div>
+    </div>
 
-    <%= render 'admin/shared/stat_card',
-      icon: 'globe',
-      value: @stats[:system_wide],
-      label: 'System-Wide',
-      style: 'info' %>
+    <div class="admin-card">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.2); display: flex; align-items: center; justify-content: center;">
+          <i data-lucide="globe" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
+        </div>
+        <div>
+          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">System-Wide</p>
+          <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:system_wide] %></h3>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Filters -->
-  <div class="admin-card admin-mb-xl">
+  <div class="admin-card" style="margin-bottom: 2rem;">
     <%= form_with url: admin_agent_plugins_path, method: :get, class: 'admin-filter-grid' do |f| %>
       <div>
         <label class="form-label admin-text-sm">Status</label>
@@ -118,54 +142,54 @@
             <tr>
               <td>
                 <div class="d-flex align-items-center gap-2">
-                  <%= admin_icon('bot', size: :sm, class: 'text-primary') %>
+                  <i data-lucide="bot" style="width: 1rem; height: 1rem; color: #3B82F6;"></i>
                   <div>
-                    <strong><%= link_to agent.name, admin_agent_plugin_path(agent) %></strong>
-                    <div class="text-muted small"><%= agent.slug %></div>
+                    <strong><%= link_to agent.name, admin_agent_plugin_path(agent), style: "color: #22D3EE; text-decoration: none;" %></strong>
+                    <div style="color: #64748B; font-size: 0.75rem;"><%= agent.slug %></div>
                   </div>
                 </div>
               </td>
               <td>
-                <span class="badge bg-secondary"><%= agent.role.titleize %></span>
+                <span class="admin-badge admin-badge-secondary"><%= agent.role.titleize %></span>
               </td>
               <td>
-                <span class="badge bg-<%= agent.status == 'active' ? 'success' : agent.status == 'draft' ? 'warning' : 'secondary' %>">
+                <span class="admin-badge <%= agent.status == 'active' ? 'admin-badge-online' : agent.status == 'draft' ? 'admin-badge-warning' : 'admin-badge-secondary' %>">
                   <%= agent.status.titleize %>
                 </span>
               </td>
               <td>
-                <div class="d-flex align-items-center gap-2">
-                  <div class="progress flex-grow-1 admin-priority-bar">
-                    <div class="progress-bar" role="progressbar" style="width: <%= agent.priority %>%"></div>
+                <div class="d-flex align-items-center gap-2" style="width: 100px;">
+                  <div class="progress flex-grow-1" style="height: 6px; background: #1E293B; border-radius: 3px;">
+                    <div class="progress-bar" role="progressbar" style="width: <%= agent.priority %>%; background: #3B82F6; border-radius: 3px;"></div>
                   </div>
-                  <small><%= agent.priority %></small>
+                  <small style="color: #94A3B8;"><%= agent.priority %></small>
                 </div>
               </td>
               <td>
-                <span class="badge bg-info"><%= agent.agent_capabilities.count %> capabilities</span>
+                <span class="admin-badge admin-badge-info"><%= agent.agent_capabilities.count %> capabilities</span>
               </td>
               <td>
                 <% if agent.system_wide? %>
-                  <%= admin_icon('globe', size: :sm, class: 'text-info', title: 'System-wide') %>
+                  <i data-lucide="globe" style="width: 1rem; height: 1rem; color: #22D3EE;" title="System-wide"></i>
                 <% else %>
-                  <%= admin_icon('building', size: :sm, class: 'text-muted', title: 'Entity-specific') %>
+                  <i data-lucide="building" style="width: 1rem; height: 1rem; color: #94A3B8;" title="Entity-specific"></i>
                 <% end %>
               </td>
               <td>
-                <small class="text-muted">
+                <small style="color: #94A3B8;">
                   <%= agent.last_activated_at ? time_ago_in_words(agent.last_activated_at) + ' ago' : 'Never' %>
                 </small>
               </td>
               <td>
                 <div class="btn-group btn-group-sm">
-                  <%= link_to admin_agent_plugin_path(agent), class: "btn btn-sm btn-outline-primary", title: "View" do %>
-                    <%= admin_icon('eye', size: :sm) %>
+                  <%= link_to admin_agent_plugin_path(agent), class: "btn btn-sm btn-outline-primary icon-btn", title: "View", style: "border-color: #1E293B; color: #3B82F6;" do %>
+                    <i data-lucide="eye" style="width: 1rem; height: 1rem;"></i>
                   <% end %>
-                  <%= link_to edit_admin_agent_plugin_path(agent), class: "btn btn-sm btn-outline-secondary", title: "Edit" do %>
-                    <%= admin_icon('edit', size: :sm) %>
+                  <%= link_to edit_admin_agent_plugin_path(agent), class: "btn btn-sm btn-outline-secondary icon-btn", title: "Edit", style: "border-color: #1E293B; color: #94A3B8;" do %>
+                    <i data-lucide="edit" style="width: 1rem; height: 1rem;"></i>
                   <% end %>
-                  <%= link_to test_admin_agent_plugin_path(agent), class: "btn btn-sm btn-outline-info", title: "Test" do %>
-                    <%= admin_icon('play', size: :sm) %>
+                  <%= link_to test_admin_agent_plugin_path(agent), class: "btn btn-sm btn-outline-info icon-btn", title: "Test", style: "border-color: #1E293B; color: #22D3EE;" do %>
+                    <i data-lucide="play" style="width: 1rem; height: 1rem;"></i>
                   <% end %>
                 </div>
               </td>
@@ -173,12 +197,12 @@
           <% end %>
         <% else %>
           <tr>
-            <td colspan="8" class="admin-text-center admin-text-muted admin-p-xl">
-              <div class="admin-mx-auto admin-mb-md" style="width: 48px; height: 48px;">
-                <%= admin_icon('inbox', size: :xl) %>
+            <td colspan="8" style="text-align: center; padding: 3rem; color: #64748B;">
+              <div style="width: 48px; height: 48px; margin: 0 auto 1rem; color: #475569;">
+                <i data-lucide="inbox" style="width: 48px; height: 48px;"></i>
               </div>
               <p>No agent plugins found</p>
-              <%= link_to "Create your first agent", new_admin_agent_plugin_path, class: "admin-btn admin-btn-primary admin-mt-sm" %>
+              <%= link_to "Create your first agent", new_admin_agent_plugin_path, class: "admin-btn admin-btn-primary", style: "margin-top: 1rem; display: inline-flex;" %>
             </td>
           </tr>
         <% end %>
