@@ -503,6 +503,34 @@
   function makeContentEditable(doc) {
     console.log('🔧 makeContentEditable called');
 
+    // CLEANUP PHASE: Remove any existing editor artifacts from previous saves
+    // This ensures we start fresh even if the DB has "corrupted" HTML
+    const existingStyles = doc.querySelectorAll('style[id="scout-editor-styles"]');
+    existingStyles.forEach(el => el.remove());
+    
+    doc.querySelectorAll('.image-edit-btn, .resize-handle').forEach(el => el.remove());
+    
+    // Unwrap existing containers to re-initialize them properly
+    doc.querySelectorAll('.editable-image-container').forEach(container => {
+      const img = container.querySelector('img');
+      if (img) {
+        // Restore style if needed (width/height might be on container)
+        if (container.style.width && !img.style.width) img.style.width = container.style.width;
+        container.parentNode.replaceChild(img, container);
+      } else {
+        container.remove();
+      }
+    });
+
+    // Remove editor classes from text
+    doc.querySelectorAll('.editable-text').forEach(el => {
+      el.classList.remove('editable-text', 'editing', 'changed');
+      el.removeAttribute('contenteditable');
+      el.removeAttribute('data-original-content');
+      el.removeAttribute('data-editable-initialized');
+    });
+
+    // INITIALIZATION PHASE
     // Inject editing styles
     const style = doc.createElement('style');
     style.id = 'scout-editor-styles';
