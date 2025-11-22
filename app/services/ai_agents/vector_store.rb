@@ -82,26 +82,6 @@ module AiAgents
       Rails.logger.info("VECTOR_STORE: Cleared database (removed #{old_size} items)")
     end
 
-    private
-
-    def get_embedding(text)
-      # Return cached embedding if available
-      if @embedding_cache.key?(text)
-        Rails.logger.info("VECTOR_STORE: Using cached embedding for text: #{text.truncate(50)}")
-        return @embedding_cache[text]
-      end
-
-      # Otherwise, generate new embedding
-      Rails.logger.info("VECTOR_STORE: Generating new embedding for text: #{text.truncate(50)}")
-      start_time = Time.current
-      embedding = generate_embedding(text)
-      duration = Time.current - start_time
-
-      Rails.logger.info("VECTOR_STORE: Embedding generated in #{duration.round(2)}s (dimension: #{embedding.size})")
-      @embedding_cache[text] = embedding
-      embedding
-    end
-
     def generate_embedding(text)
       # Call OpenAI API to get embedding
       require "net/http"
@@ -147,6 +127,26 @@ module AiAgents
       Rails.logger.warn("VECTOR_STORE: Using random embedding as fallback")
       # Return a random embedding as fallback
       Array.new(1536) { rand }
+    end
+
+    private
+
+    def get_embedding(text)
+      # Return cached embedding if available
+      if @embedding_cache.key?(text)
+        Rails.logger.info("VECTOR_STORE: Using cached embedding for text: #{text.truncate(50)}")
+        return @embedding_cache[text]
+      end
+
+      # Otherwise, generate new embedding
+      Rails.logger.info("VECTOR_STORE: Generating new embedding for text: #{text.truncate(50)}")
+      start_time = Time.current
+      embedding = generate_embedding(text)
+      duration = Time.current - start_time
+
+      Rails.logger.info("VECTOR_STORE: Embedding generated in #{duration.round(2)}s (dimension: #{embedding.size})")
+      @embedding_cache[text] = embedding
+      embedding
     end
 
     def cosine_similarity(vec1, vec2)

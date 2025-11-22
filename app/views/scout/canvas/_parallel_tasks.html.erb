@@ -1,72 +1,121 @@
-<div style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 1rem;">
-  <!-- Compact Header -->
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0.75rem; background: #1A1F35; border: 1px solid #1E293B; border-radius: 8px;">
-    <div style="display: flex; align-items: center; gap: 0.75rem;">
-      <i data-lucide="layers" class="icon-md" style="color: #A78BFA;"></i>
+<div class="container-fluid p-0" style="min-height: 100vh;">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-dark border-bottom border-secondary rounded-top">
+    <div class="d-flex align-items-center gap-2">
+      <i data-lucide="layers" class="text-primary icon-md"></i>
       <div>
-        <h1 style="color: #FFFFFF; font-size: 1.125rem; font-weight: 600; margin: 0; line-height: 1;">Task Monitor</h1>
-        <p style="color: #64748B; margin: 0; font-size: 0.75rem; margin-top: 0.125rem;">Active background tasks</p>
+        <h5 class="mb-0 text-white fw-bold">Task Monitor</h5>
+        <small class="text-muted">Active background tasks</small>
       </div>
     </div>
-    <div style="display: flex; align-items: center; gap: 0.75rem;">
-      <span style="background: #7C3AED; color: white; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge bg-primary rounded-pill">
         <span id="task-count">0</span> Active
       </span>
-      <button onclick="purgeOldTasks()" title="Clear completed and failed tasks"
-              style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
+      <button onclick="purgeOldTasks()" title="Clear completed and failed tasks" class="btn btn-outline-secondary btn-sm icon-btn">
         <i data-lucide="trash-2" class="icon-sm"></i>
       </button>
-      <button onclick="refreshTasks()" title="Refresh"
-              style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem; border-radius: 0.375rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px;">
+      <button onclick="refreshTasks()" title="Refresh" class="btn btn-outline-secondary btn-sm icon-btn">
         <i data-lucide="refresh-cw" class="icon-sm"></i>
       </button>
     </div>
   </div>
 
   <div id="parallel-tasks-panel" class="parallel-tasks-panel" data-conversation-id="<%= raw (@session_id || @canvas_data&.dig('session_id')) %>" data-canvas-loaded="<%= Time.now.to_i %>" data-canvas-type="parallel_tasks">
-    <div class="tasks-container" id="parallel-tasks-list">
+    <div class="list-group list-group-flush" id="parallel-tasks-list">
       <!-- Tasks will be dynamically added here -->
-      <div class="empty-state" id="empty-state">
-        <i data-lucide="inbox" class="icon-3x empty-icon"></i>
-        <p>No active tasks</p>
-        <span>Tasks will appear here when agents start working</span>
+      <div class="empty-state text-center p-5" id="empty-state">
+        <i data-lucide="inbox" class="icon-3x text-muted mb-3"></i>
+        <p class="text-muted mb-1">No active tasks</p>
+        <small class="text-secondary">Tasks will appear here when agents start working</small>
       </div>
     </div>
   </div>
 
   <!-- Custom Modal -->
-  <div id="task-modal" class="task-modal" style="display: none;">
-    <div class="task-modal-overlay"></div>
-    <div class="task-modal-content">
-      <div class="task-modal-header">
-        <h3 id="modal-title">Confirm</h3>
-        <button class="task-modal-close" onclick="closeTaskModal()">
-          <i data-lucide="x" class="icon-sm"></i>
-        </button>
+  <div class="modal fade" id="task-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" id="modal-title">Confirm</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="task-modal-body">
+        <div class="modal-body">
         <p id="modal-message">Are you sure?</p>
       </div>
-      <div class="task-modal-footer" id="modal-footer">
-        <button class="task-modal-btn task-modal-btn-secondary" onclick="closeTaskModal()">Cancel</button>
-        <button class="task-modal-btn task-modal-btn-primary" id="modal-confirm-btn">Confirm</button>
+        <div class="modal-footer border-secondary" id="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="modal-confirm-btn">Confirm</button>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
+<style>
+  /* Custom styling adjustments on top of Bootstrap */
+  .task-item {
+    background-color: #1A1F35 !important;
+    border-bottom: 1px solid #2D3748 !important;
+    transition: background-color 0.2s;
+  }
+  
+  .task-item:hover {
+    background-color: #2D3748 !important;
+  }
+  
+  .task-item.new {
+    animation: slideDown 0.4s ease-out forwards;
+  }
+  
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 0.5rem;
+  }
+  
+  .status-indicator.running, .status-indicator.active, .status-indicator.processing { background-color: #3B82F6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); animation: pulse 2s infinite; }
+  .status-indicator.completed { background-color: #10B981; }
+  .status-indicator.failed { background-color: #EF4444; }
+  .status-indicator.queued, .status-indicator.pending { background-color: #F59E0B; }
+  .status-indicator.waiting_for_input { background-color: #8B5CF6; animation: pulse 1s infinite; }
+  .status-indicator.canceled { background-color: #6B7280; }
+
+  @keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .task-detail-row {
+    font-size: 0.85rem;
+    color: #94A3B8;
+    margin-top: 0.5rem;
+  }
+  
+  .progress-slim {
+    height: 4px;
+    margin-top: 0.5rem;
+  }
+</style>
 
 <script>
 // Initialize immediately since this is a canvas
-console.log('🚀 Initializing improved parallel tasks canvas');
+console.log('🚀 Initializing improved parallel tasks canvas (Bootstrap Version)');
 
 // Track active tasks count
 let activeTasksCount = 0;
 
 // Update task count in header
 function updateTaskCount() {
-  const tasks = document.querySelectorAll('.task-item');
-  const activeTasks = document.querySelectorAll('.task-item.running, .task-item.processing, .task-item.waiting_for_input');
+  const activeTasks = document.querySelectorAll('.task-item[data-status="running"], .task-item[data-status="processing"], .task-item[data-status="waiting_for_input"]');
   const countElement = document.getElementById('task-count');
   if (countElement) {
     countElement.textContent = activeTasks.length;
@@ -78,252 +127,30 @@ function updateTaskCount() {
 function refreshTasks(event) {
   if (event) {
     const btn = event.currentTarget;
-    btn.classList.add('spinning');
+    const icon = btn.querySelector('i');
+    if (icon) icon.classList.add('spin');
     setTimeout(() => {
-      btn.classList.remove('spinning');
+      if (icon) icon.classList.remove('spin');
     }, 500);
   }
 
   console.log('🔄 Refreshing tasks...');
   // Could trigger a refresh from the server here
-}
-
-// Get status icon based on status
-function getStatusIcon(status) {
-  const icons = {
-    queued: 'clock',
-    pending: 'clock',
-    running: 'loader-2',
-    active: 'loader-2',
-    processing: 'loader-2',
-    completed: 'check-circle',
-    failed: 'x-circle',
-    waiting_for_input: 'message-circle',
-    canceling: 'loader-2',
-    canceled: 'ban'
-  };
-  return icons[status] || 'circle';
+  // Ideally re-fetch via AJAX, but for now just log
 }
 
 // Format agent type for display
 function formatAgentType(type) {
-  if (!type) return '';  // Don't show 'Task' label to avoid duplication
+  if (!type) return 'System';
   return type.replace(/_agent$/, '')
     .split('_')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
 
-// Format collapsible message for long task descriptions
-function formatCollapsibleMessage(message, taskId) {
-  const maxLength = 150; // Characters to show when collapsed
-  const messageId = `message-${taskId}`;
-  const isLong = message.length > maxLength;
-
-  if (!isLong) {
-    return `<div class="task-message">${message}</div>`;
-  }
-
-  const preview = message.substring(0, maxLength);
-  return `
-    <div class="task-message collapsible-message" id="${messageId}">
-      <div class="message-preview">
-        ${preview}...
-      </div>
-      <div class="message-full" style="display: none;">
-        ${message}
-      </div>
-      <button class="toggle-message-btn" onclick="toggleMessage('${messageId}')" style="background: none; border: none; color: #A78BFA; cursor: pointer; font-size: 0.6875rem; padding: 0.25rem 0; margin-top: 0.25rem; font-weight: 600;">
-        Show more ▼
-      </button>
-    </div>
-  `;
-}
-
-// Add or update task
-window.addOrUpdateTask = function addOrUpdateTask(taskData, isInitialLoad = false) {
-  console.log('🔧 addOrUpdateTask called with:', taskData, 'Initial load:', isInitialLoad);
-  const container = document.getElementById('parallel-tasks-list');
-  if (!container) {
-    console.error('❌ Container #parallel-tasks-list not found!');
-    return;
-  }
-  
-  // Remove empty state if it exists
-  const emptyState = document.getElementById('empty-state');
-  if (emptyState) {
-    emptyState.remove();
-  }
-  
-  let taskElement = container.querySelector(`[data-task-id="${taskData.task_id}"]`);
-  const isNew = !taskElement;
-  console.log(`Task ${taskData.task_id} is ${isNew ? 'new' : 'existing'}`);
-  
-  if (isNew) {
-    taskElement = document.createElement('div');
-    taskElement.className = 'task-item new';
-    taskElement.setAttribute('data-task-id', taskData.task_id);
-    if (taskData.task_type || taskData.agent_type) {
-      taskElement.setAttribute('data-agent-type', taskData.task_type || taskData.agent_type);
-    }
-    
-    // For initial load, append to preserve order. For real-time updates, prepend to show at top
-    if (isInitialLoad) {
-      container.appendChild(taskElement);
-      console.log('✅ New task element appended to container (initial load)');
-    } else {
-      container.insertBefore(taskElement, container.firstChild);
-      console.log('✅ New task element prepended to container (real-time update)');
-    }
-  }
-  
-  // Update status
-  const status = (taskData.status || 'queued').toLowerCase();
-  taskElement.className = `task-item ${isNew ? 'new' : ''} ${status}`;
-  
-  // Store or update description
-  if (taskData.description) {
-    taskElement.dataset.description = taskData.description;
-  }
-  // Prioritize message (agent questions/updates) over original description for better visibility
-  let description = taskData.message || taskData.description || taskElement.dataset.description || (taskData.agent_name || formatAgentType(taskData.task_type || taskData.agent_type) || 'Background Task');
-
-  // Strip markdown formatting for cleaner compact view (bold, italic, bullets)
-  description = description.replace(/\*\*([^*]+)\*\*/g, '$1')  // **bold**
-                           .replace(/\*([^*]+)\*/g, '$1')      // *italic*
-                           .replace(/_([^_]+)_/g, '$1')        // _italic_
-                           .replace(/^[•\-\*]\s+/gm, '')       // • bullets
-                           .replace(/📋\s*/g, '')              // 📋 emoji
-                           .replace(/💡\s*/g, '')              // 💡 emoji
-                           .replace(/💭\s*/g, '')              // 💭 emoji
-                           .replace(/Question \d+ of \d+\s*/i, '')  // "Question 1 of 4"
-                           .replace(/Why this matters:.*?(?=\s*$|💡|$)/i, '')  // "Why this matters:..."
-                           .replace(/Some examples:.*$/i, '')  // "Some examples:..."
-                           .replace(/\n/g, ' ')                // newlines to spaces
-                           .trim();
-  
-  // Store task data on element
-  taskElement.taskData = taskData;
-  
-  // Calculate elapsed time
-  const startTime = taskData.started_at || taskElement.dataset.startedAt || new Date().toISOString();
-  if (!taskElement.dataset.startedAt) {
-    taskElement.dataset.startedAt = startTime;
-  }
-  
-  // Format progress
-  const progress = taskData.progress || 0;
-  const showProgress = status === 'running' || status === 'processing' || status === 'active';
-  
-  // Set progress CSS variable for background
-  taskElement.style.setProperty('--progress', `${progress}%`);
-
-  // Create compact table-style HTML
-  const taskIdShort = String(taskData.task_id).substring(0, 8);
-  const agentType = formatAgentType(taskData.task_type || taskData.agent_type);
-
-  taskElement.innerHTML = `
-    <div class="task-id-col" title="Task ID: ${taskData.task_id}">
-      #${taskIdShort}
-    </div>
-
-    <div class="task-status-col">
-      <span class="status-dot ${status}"></span>
-      <span class="status-text ${status}">${status.replace(/_/g, ' ')}</span>
-    </div>
-
-    <div class="task-description-col" onclick="window.toggleTaskExpand('${taskData.task_id}')" title="${description}">
-      ${agentType ? `<span class="task-type-label">${agentType}</span>` : ''}
-      <span class="task-description-text">${description}</span>
-      <span class="expand-indicator">▼</span>
-    </div>
-
-    <div class="task-progress-col" data-progress="${progress}">
-      ${progress > 0 ? `${progress}%` : ''}
-    </div>
-
-    <div class="task-duration-col" data-start-time="${startTime}">
-      ${calculateDuration(startTime)}
-    </div>
-
-    <div class="task-actions-col">
-      ${(status === 'running' || status === 'processing' || status === 'waiting_for_input' || status === 'queued' || status === 'pending') ? `
-        <button class="icon-btn cancel-btn" onclick="cancelTask('${taskData.task_id}')" title="Cancel task">
-          <i data-lucide="x-circle" class="icon-sm"></i>
-        </button>
-      ` : ''}
-      <button class="icon-btn" onclick="window.toggleTaskExpand('${taskData.task_id}')" title="View details">
-        <i data-lucide="eye" class="icon-sm"></i>
-      </button>
-    </div>
-
-    <div class="task-details">
-      ${taskData.message ? `
-        <div style="margin-bottom: 0.75rem; color: #FFFFFF;">
-          ${taskData.message}
-        </div>
-      ` : ''}
-
-      <div class="detail-grid">
-        <div class="detail-item">
-          <span class="detail-label">Task ID</span>
-          <span class="detail-value">${taskData.task_id}</span>
-        </div>
-        ${taskData.agent_name ? `
-          <div class="detail-item">
-            <span class="detail-label">Agent</span>
-            <span class="detail-value">${taskData.agent_name}</span>
-          </div>
-        ` : ''}
-        <div class="detail-item">
-          <span class="detail-label">Started</span>
-          <span class="detail-value">${new Date(startTime).toLocaleString()}</span>
-        </div>
-        ${(status === 'completed' || status === 'failed') && taskData.completed_at ? `
-          <div class="detail-item">
-            <span class="detail-label">Completed</span>
-            <span class="detail-value">${new Date(taskData.completed_at).toLocaleString()}</span>
-          </div>
-        ` : ''}
-        ${showProgress ? `
-          <div class="detail-item">
-            <span class="detail-label">Progress</span>
-            <span class="detail-value">${progress}%</span>
-          </div>
-        ` : ''}
-      </div>
-
-      ${taskData.error ? `
-        <div style="margin-top: 0.75rem; padding: 0.75rem; background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; border-radius: 4px; color: #ef4444;">
-          <strong>Error:</strong> ${taskData.error}
-        </div>
-      ` : ''}
-    </div>
-  `;
-  
-  // Reinitialize lucide icons
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
-  
-  // Update task count
-  updateTaskCount();
-  
-  // Remove 'new' class after animation
-  if (isNew) {
-    setTimeout(() => {
-      taskElement.classList.remove('new');
-    }, 400);
-  }
-  
-  // Auto-expand failed tasks
-  if (status === 'failed' && !taskElement.classList.contains('expanded')) {
-    taskElement.classList.add('expanded');
-  }
-};
-
 // Calculate duration from start time
 function calculateDuration(startTime) {
+  if (!startTime) return '--';
   const start = new Date(startTime);
   const now = new Date();
   const diff = Math.floor((now - start) / 1000);
@@ -333,390 +160,270 @@ function calculateDuration(startTime) {
   return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
 }
 
-// Toggle task expand/collapse
-window.toggleTaskExpand = function(taskId) {
-  const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
-  if (taskElement) {
-    taskElement.classList.toggle('expanded');
-  }
-};
-
-// Toggle message expand/collapse
-window.toggleMessage = function(messageId) {
-  const messageElement = document.getElementById(messageId);
-  if (!messageElement) return;
-
-  const preview = messageElement.querySelector('.message-preview');
-  const full = messageElement.querySelector('.message-full');
-  const btn = messageElement.querySelector('.toggle-message-btn');
-
-  if (full.style.display === 'none') {
-    preview.style.display = 'none';
-    full.style.display = 'block';
-    btn.innerHTML = 'Show less ▲';
-  } else {
-    preview.style.display = 'block';
-    full.style.display = 'none';
-    btn.innerHTML = 'Show more ▼';
-  }
-};
-
-// Handle canvas updates
-window.handleCanvasUpdate = function(data) {
-  console.log("📨 CANVAS: Processing update:", data);
+// Add or update task
+window.addOrUpdateTask = function addOrUpdateTask(taskData, isInitialLoad = false) {
+  console.log('🔧 addOrUpdateTask called with:', taskData);
+  const container = document.getElementById('parallel-tasks-list');
+  if (!container) return;
   
-  // Handle different message types
-  switch(data.type) {
-    case 'task_progress':
-      console.log(`📊 CANVAS: Task ${data.task_id || data.job_id || data.id} progress: ${data.progress}% - ${data.message}`);
-      console.log('📊 CANVAS: Full task data:', data);
-      addOrUpdateTask({
-        task_id: data.task_id || data.job_id || data.id,
-        task_type: data.task_type || data.agent_type,
-        agent_type: data.agent_type || data.task_type,
-        description: data.description || data.task || 'Processing task...',
-        status: data.status || 'running',
-        progress: data.progress || 0,
-        message: data.message || data.status_message || 'Working...',
-        started_at: data.started_at || data.created_at || new Date().toISOString()
-      });
-      break;
+  // Remove empty state if it exists
+  const emptyState = document.getElementById('empty-state');
+  if (emptyState) emptyState.remove();
+  
+  // Normalize ID (handle number vs string)
+  const taskId = String(taskData.task_id || taskData.id);
+  
+  let taskElement = container.querySelector(`[data-task-id="${taskId}"]`);
+  const isNew = !taskElement;
+  
+  const status = (taskData.status || 'queued').toLowerCase();
+  const agentType = formatAgentType(taskData.task_type || taskData.agent_type || taskData.type);
+  const description = taskData.message || taskData.description || taskData.task || 'Processing...';
+  const progress = taskData.progress || 0;
+  const startTime = taskData.started_at || (taskElement ? taskElement.dataset.startedAt : new Date().toISOString());
+  const completedAt = taskData.completed_at;
+  const error = taskData.error || (status === 'failed' ? (taskData.message || 'Unknown error') : null);
+  
+  const statusLabels = {
+    queued: 'Queued',
+    pending: 'Pending',
+    running: 'Running',
+    processing: 'Processing',
+    completed: 'Completed',
+    failed: 'Failed',
+    waiting_for_input: 'Waiting for Input',
+    canceling: 'Canceling',
+    canceled: 'Canceled'
+  };
 
-    case 'task_completed':
-      console.log(`✅ CANVAS: Task ${data.task_id || data.job_id || data.id} completed`);
-      addOrUpdateTask({
-        task_id: data.task_id || data.job_id || data.id,
-        description: data.description || data.task,
-        status: 'completed',
-        progress: 100,
-        message: data.message || data.status_message || 'Task completed successfully',
-        completed_at: data.completed_at || new Date().toISOString()
-      });
-      break;
+  const statusColors = {
+    queued: 'warning',
+    pending: 'warning',
+    running: 'primary',
+    processing: 'primary',
+    completed: 'success',
+    failed: 'danger',
+    waiting_for_input: 'info',
+    canceling: 'secondary',
+    canceled: 'secondary'
+  };
+  
+  const statusColor = statusColors[status] || 'secondary';
+  const statusLabel = statusLabels[status] || status;
 
-    case 'task_failed':
-      console.log(`❌ CANVAS: Task ${data.task_id || data.job_id || data.id} failed: ${data.error}`);
-      addOrUpdateTask({
-        task_id: data.task_id || data.job_id || data.id,
-        description: data.description || data.task,
-        status: 'failed',
-        progress: data.progress || 0,
-        message: data.error || data.status_message || 'Task failed',
-        error: data.error,
-        completed_at: data.completed_at || new Date().toISOString()
-      });
-      break;
-      
-    default:
-      console.log("Unknown message type:", data.type);
+  // Build HTML content
+  const htmlContent = `
+    <div class="d-flex justify-content-between align-items-start mb-2">
+      <div class="d-flex align-items-center gap-2">
+        <span class="status-indicator ${status}"></span>
+        <h6 class="mb-0 text-white fw-semibold">#${taskId.substring(0, 8)}</h6>
+        <span class="badge bg-dark border border-secondary text-secondary">${agentType}</span>
+      </div>
+      <span class="badge bg-${statusColor} bg-opacity-25 text-${statusColor}">${statusLabel}</span>
+    </div>
+
+    <p class="mb-2 text-light text-opacity-75 text-break">${description}</p>
+    
+    ${error ? `<div class="alert alert-danger py-1 px-2 mb-2 small"><i data-lucide="alert-triangle" class="icon-xs me-1"></i> ${error}</div>` : ''}
+    
+    <div class="d-flex justify-content-between align-items-center small text-muted mb-1">
+      <span>Progress</span>
+      <span>${progress}%</span>
+    </div>
+    <div class="progress progress-slim bg-dark border border-secondary mb-2">
+      <div class="progress-bar bg-${statusColor}" role="progressbar" style="width: ${progress}%" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center task-detail-row">
+      <div>
+        <i data-lucide="clock" class="icon-xs me-1"></i>
+        <span class="duration-timer" data-start-time="${startTime}">${calculateDuration(startTime)}</span>
+    </div>
+
+      <div>
+        ${(status === 'running' || status === 'processing' || status === 'waiting_for_input' || status === 'queued') ? `
+          <button class="btn btn-link btn-sm text-danger p-0 text-decoration-none" onclick="cancelTask('${taskId}')">
+            <i data-lucide="x-circle" class="icon-xs"></i> Cancel
+      </button>
+        ` : ''}
+      </div>
+    </div>
+  `;
+  
+  if (isNew) {
+    taskElement = document.createElement('div');
+    taskElement.className = `list-group-item task-item p-3 mb-2 rounded border-0`;
+    taskElement.setAttribute('data-task-id', taskId);
+    taskElement.setAttribute('data-status', status);
+    taskElement.dataset.startedAt = startTime;
+    
+    if (isInitialLoad) {
+      container.appendChild(taskElement);
+    } else {
+      taskElement.classList.add('new');
+      container.insertBefore(taskElement, container.firstChild);
+      setTimeout(() => taskElement.classList.remove('new'), 500);
+    }
+  } else {
+    taskElement.setAttribute('data-status', status);
+    if (!taskElement.dataset.startedAt) taskElement.dataset.startedAt = startTime;
   }
+  
+  taskElement.innerHTML = htmlContent;
+  
+  // Store data
+  taskElement.taskData = taskData;
+
+  // Re-init icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  
+  updateTaskCount();
 };
 
-// Update durations every second (only for active tasks)
+// Update durations periodically
 setInterval(() => {
-  document.querySelectorAll('[data-start-time]').forEach(el => {
-    // Only update duration for running tasks
-    const taskElement = el.closest('.task-item');
-    if (taskElement && (taskElement.classList.contains('running') ||
-                       taskElement.classList.contains('processing') ||
-                       taskElement.classList.contains('queued'))) {
-      const startTime = el.getAttribute('data-start-time');
-      if (startTime) {
-        el.textContent = calculateDuration(startTime);
-      }
+  document.querySelectorAll('.duration-timer').forEach(el => {
+    const startTime = el.dataset.startTime;
+    // Only update if task is active
+    const taskItem = el.closest('.task-item');
+    const status = taskItem?.getAttribute('data-status');
+    if (['running', 'processing', 'waiting_for_input', 'queued'].includes(status)) {
+       el.textContent = calculateDuration(startTime);
     }
   });
 }, 1000);
 
-// Custom modal functions
-window.showTaskModal = function(title, message, confirmText, confirmCallback, type = 'confirm') {
-  const modal = document.getElementById('task-modal');
+// Handle canvas updates (from ActionCable)
+window.handleCanvasUpdate = function(data) {
+  console.log("📨 CANVAS: Processing update:", data);
+  
+  // Extract ID
+  const taskId = data.task_id || data.job_id || data.id;
+  if (!taskId) return;
+
+  // Map event types to data structure
+  let updateData = {
+    task_id: taskId,
+    status: data.status,
+    message: data.message || data.status_message,
+    progress: data.progress
+  };
+
+  switch(data.type) {
+    case 'task_progress':
+      // Basic update
+      break;
+    case 'task_completed':
+      updateData.status = 'completed';
+      updateData.progress = 100;
+      updateData.completed_at = data.completed_at || new Date().toISOString();
+      break;
+    case 'task_failed':
+      updateData.status = 'failed';
+      updateData.error = data.error;
+      updateData.completed_at = data.completed_at || new Date().toISOString();
+      break;
+    case 'user_input_required':
+        updateData.status = 'waiting_for_input';
+        updateData.message = data.question || "Waiting for user input...";
+        break;
+  }
+  
+  addOrUpdateTask(updateData);
+};
+
+// Initialize with server data
+function initializeParallelTasksCanvas() {
+  const tasks = <%= raw (@canvas_data && @canvas_data['tasks'] ? @canvas_data['tasks'].to_json : '[]') %>;
+  console.log('📦 Initializing tasks:', tasks.length);
+  
+  if (tasks.length > 0) {
+    tasks.forEach(task => {
+      // Adapter for server-side format to client format
+      addOrUpdateTask({
+        task_id: task.id,
+        task_type: task.type,
+        agent_type: task.type,
+        description: task.description,
+        status: task.status,
+        progress: task.progress,
+        message: task.message || task.description,
+        started_at: task.created_at,
+        completed_at: task.metadata?.completed_at,
+        error: task.metadata?.error
+      }, true);
+    });
+  }
+  
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  updateTaskCount();
+}
+
+// Start
+initializeParallelTasksCanvas();
+
+// Modal helpers (Bootstrap 5)
+window.showTaskModal = function(title, message, confirmText, confirmCallback) {
+  const modalEl = document.getElementById('task-modal');
   const modalTitle = document.getElementById('modal-title');
-  const modalMessage = document.getElementById('modal-message');
-  const modalFooter = document.getElementById('modal-footer');
+  const modalBody = document.getElementById('modal-message');
   const confirmBtn = document.getElementById('modal-confirm-btn');
 
   modalTitle.textContent = title;
-  modalMessage.innerHTML = message;
-
-  if (type === 'alert') {
-    // For alerts, hide footer and just show OK
-    modalFooter.innerHTML = `
-      <button class="task-modal-btn task-modal-btn-primary" onclick="closeTaskModal()">OK</button>
-    `;
-  } else {
-    // For confirms, show cancel and confirm buttons
-    modalFooter.innerHTML = `
-      <button class="task-modal-btn task-modal-btn-secondary" onclick="closeTaskModal()">Cancel</button>
-      <button class="task-modal-btn task-modal-btn-danger" id="modal-confirm-btn">${confirmText}</button>
-    `;
-
-    // Re-get the button after innerHTML update
-    setTimeout(() => {
-      const newConfirmBtn = document.getElementById('modal-confirm-btn');
-      newConfirmBtn.onclick = () => {
-        closeTaskModal();
-        confirmCallback();
-      };
-    }, 0);
-  }
-
-  modal.style.display = 'flex';
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
+  modalBody.innerHTML = message;
+  confirmBtn.textContent = confirmText || 'Confirm';
+  confirmBtn.onclick = () => {
+    if (confirmCallback) confirmCallback();
+    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+    modalInstance.hide();
+  };
+  
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
 };
 
-window.closeTaskModal = function() {
-  const modal = document.getElementById('task-modal');
-  modal.style.display = 'none';
-};
-
-window.showSuccessModal = function(message) {
-  showTaskModal('Success', `<div class="modal-icon success"><i data-lucide="check-circle" class="icon-lg"></i></div><p style="text-align: center;">${message}</p>`, 'OK', null, 'alert');
-};
-
-window.showErrorModal = function(message) {
-  showTaskModal('Error', `<div class="modal-icon error"><i data-lucide="x-circle" class="icon-lg"></i></div><p style="text-align: center;">${message}</p>`, 'OK', null, 'alert');
-};
-
-// Purge old tasks function
-window.purgeOldTasks = function() {
-  // First modal: Choose between all tasks or old tasks
-  showTaskModal(
-    'Clear Tasks',
-    '<p style="margin-bottom: 1rem;">Choose which tasks to delete:</p><p style="font-size: 0.875rem; color: #94A3B8;">• <strong>Delete All</strong>: Remove all tasks regardless of age<br>• <strong>Delete Old</strong>: Only remove tasks older than 24 hours</p>',
-    'Delete All',
-    () => {
-      // Delete ALL tasks
-      confirmAndPurge(0);
-    }
-  );
-
-  // Add a "Delete Old" button
-  setTimeout(() => {
-    const footer = document.getElementById('modal-footer');
-    const deleteAllBtn = document.getElementById('modal-confirm-btn');
-    const deleteOldBtn = document.createElement('button');
-    deleteOldBtn.className = 'task-modal-btn task-modal-btn-primary';
-    deleteOldBtn.textContent = 'Delete Old (24h+)';
-    deleteOldBtn.onclick = () => {
-      closeTaskModal();
-      confirmAndPurge(24);
-    };
-    footer.insertBefore(deleteOldBtn, deleteAllBtn);
-  }, 0);
-};
-
-function confirmAndPurge(olderThan) {
-  const message = olderThan === 0 ?
-    '<div class="modal-icon warning"><i data-lucide="alert-triangle" class="icon-lg"></i></div><p style="text-align: center;">This will permanently delete <strong>ALL tasks</strong> regardless of age. This action cannot be undone.</p>' :
-    '<div class="modal-icon warning"><i data-lucide="alert-triangle" class="icon-lg"></i></div><p style="text-align: center;">This will permanently delete all tasks older than <strong>24 hours</strong>. This action cannot be undone.</p>';
-
-  showTaskModal(
-    'Confirm Deletion',
-    message,
-    'Delete Tasks',
-    () => {
-      executePurge(olderThan);
-    }
-  );
-}
-
-function executePurge(olderThan) {
-  console.log(`Purging tasks older than ${olderThan} hours...`);
-
-  fetch('/admin/agent_plugins/purge_executions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
-    },
-    body: JSON.stringify({
-      older_than: olderThan,
-      statuses: ['completed', 'failed', 'running', 'processing', 'active', 'queued', 'pending', 'waiting_for_input', 'canceling', 'canceled']
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      console.log(`✅ Purged ${data.deleted_count} old tasks`);
-      showSuccessModal(`Successfully deleted ${data.deleted_count} tasks`);
-      setTimeout(() => {
-        closeTaskModal();
-        location.reload();
-      }, 2000);
-    } else {
-      console.error('❌ Failed to purge tasks:', data.error);
-      showErrorModal('Failed to purge tasks: ' + data.error);
-    }
-  })
-  .catch(error => {
-    console.error('❌ Error purging tasks:', error);
-    showErrorModal('Error purging tasks: ' + error.message);
-  });
-}
-
-// Cancel task function
 window.cancelTask = function(taskId) {
   showTaskModal(
     'Cancel Task',
-    '<div class="modal-icon warning"><i data-lucide="alert-triangle" class="icon-lg"></i></div><p style="text-align: center;">Are you sure you want to cancel this task?<br><span style="font-size: 0.875rem; color: #94A3B8;">This action cannot be undone.</span></p>',
-    'Cancel Task',
+    'Are you sure you want to cancel this task? This cannot be undone.',
+    'Yes, Cancel',
     () => {
-      executeCancelTask(taskId);
-    },
-    'confirm'
-  );
-};
-
-function executeCancelTask(taskId) {
-  console.log(`🚫 Canceling task: ${taskId}`);
-
-  // Extract the actual job ID (remove 'amos-' prefix if present)
-  const jobId = taskId.startsWith('amos-') ? taskId.substring(5) : taskId;
-
-  // Update UI immediately to show canceling status
-  const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
-  if (taskElement) {
-    taskElement.className = 'task-item canceling';
-    const statusElement = taskElement.querySelector('.task-status');
-    if (statusElement) {
-      statusElement.className = 'task-status canceling';
-      statusElement.innerHTML = '<i data-lucide="loader-2" class="icon-sm status-icon"></i> Canceling...';
-      lucide.createIcons();
-    }
-  }
-
-  // Send cancel request to server
+      console.log('Canceling task', taskId);
+      // Extract ID (handle amos- prefix)
+      const cleanId = String(taskId).replace('amos-', '').replace('plugin-', '');
+      
   fetch('/scout/cancel_job', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
     },
-    body: JSON.stringify({ job_id: jobId })
+        body: JSON.stringify({ job_id: cleanId })
   })
-  .then(response => response.json())
+      .then(r => r.json())
   .then(data => {
-    if (data.success) {
-      console.log(`✅ Task ${taskId} canceled successfully`);
-      showSuccessModal('Task canceled successfully');
-      // Update task status to canceled
-      addOrUpdateTask({
-        task_id: taskId,
-        status: 'canceled',
-        message: 'Task was canceled',
-        progress: 0
+        if(data.success) {
+          addOrUpdateTask({ task_id: taskId, status: 'canceled', message: 'Task canceled by user' });
+        } else {
+          alert('Failed to cancel: ' + data.error);
+        }
       });
-    } else {
-      console.error(`❌ Failed to cancel task: ${data.error}`);
-      showErrorModal(`Failed to cancel task: ${data.error || 'Unknown error'}`);
-      // Restore previous status if cancellation failed
-      if (taskElement && taskElement.taskData) {
-        addOrUpdateTask(taskElement.taskData);
-      }
     }
-  })
-  .catch(error => {
-    console.error('❌ Error canceling task:', error);
-    showErrorModal('Failed to cancel task. Please try again.');
-    // Restore previous status
-    if (taskElement && taskElement.taskData) {
-      addOrUpdateTask(taskElement.taskData);
-    }
-  });
+  );
 };
 
-// Make functions globally available
-window.toggleTaskExpand = toggleTaskExpand;
-window.toggleMessage = toggleMessage;
-window.refreshTasks = refreshTasks;
-window.addOrUpdateTask = addOrUpdateTask;
-window.handleCanvasUpdate = handleCanvasUpdate;
-window.cancelTask = cancelTask;
-window.purgeOldTasks = purgeOldTasks;
-
-// Keep track of all subscriptions for different sessions
-window.parallelTaskSubscriptions = window.parallelTaskSubscriptions || new Map();
-
-// Subscribe to current session for updates
-const currentSessionId = '<%= raw (@session_id || @canvas_data&.dig('session_id')) %>';
-if (currentSessionId) {
-  console.log('🔌 Session ID for subscription:', currentSessionId);
-  
-  // The parent Scout controller should already have the subscription
-  // We just need to ensure our handler is called
-  if (window.handleParallelTaskUpdate) {
-    console.log('✅ Found parent handleParallelTaskUpdate function');
-  }
-}
-
-// Initialize canvas
-function initializeParallelTasksCanvas() {
-  console.log('🎯 Improved Parallel Tasks Canvas initialized');
-  console.log('📊 Canvas data:', <%= raw @canvas_data.to_json %>);
-
-  // Initialize tasks from canvas data if available
-  <% if @canvas_data && @canvas_data['tasks'] %>
-    console.log('📦 Initializing tasks from canvas data - found', <%= raw @canvas_data['tasks'].length.to_json %>, 'tasks');
-    
-    <% @canvas_data['tasks'].each do |task| %>
-      console.log('➕ Adding task', <%= raw task.to_json %>);
-      addOrUpdateTask({
-        task_id: <%= raw (task['id'] || task['job_id']).to_json %>,
-        task_type: <%= raw (task['type'] || task['agent_type']).to_json %>,
-        agent_type: <%= raw (task['agent_type'] || task['type']).to_json %>,
-        description: <%= raw (task['description'] || task['task']).to_json %>,
-        status: <%= raw task['status'].to_json %>,
-        progress: <%= raw (task['progress'] || 0).to_json %>,
-        message: <%= raw task['status_message'].to_json %>,
-        started_at: <%= raw task['created_at'].to_json %>
-      }, true);  // Pass true for initial load
-    <% end %>
-  <% else %>
-    console.log('📦 No initial tasks to display');
-  <% end %>
-  
-  // Also load Amos jobs from server data
-  <% if @amos_jobs.present? %>
-    console.log('📦 Loading <%= @amos_jobs.count %> Amos jobs...');
-    // Iterate through jobs in order (already sorted desc by created_at)
-    <% @amos_jobs.each do |job| %>
-      addOrUpdateTask({
-        task_id: 'amos-<%= job.job_id %>',
-        task_type: '<%= job.agent_type %>',
-        agent_type: '<%= job.agent_type %>',
-        description: <%= raw (job.input_data&.dig('task') || job.agent_type.humanize).to_json %>,
-        status: '<%= job.status %>',
-        progress: <%= job.progress || 0 %>,
-        message: <%= raw (job.status_message || '').to_json %>,
-        started_at: '<%= job.created_at.iso8601 %>'
-      }, true);  // Pass true for initial load
-    <% end %>
-  <% end %>
-  
-  // Initialize lucide icons
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
-  
-  // Update initial count
-  updateTaskCount();
-}
-
-// Initialize immediately
-initializeParallelTasksCanvas();
-
-// Debug function
-window.debugParallelTasks = function() {
-  const panel = document.getElementById('parallel-tasks-panel');
-  const container = document.getElementById('parallel-tasks-list');
-  const tasks = container ? container.querySelectorAll('.task-item') : [];
-  console.log('Panel exists:', !!panel);
-  console.log('Container exists:', !!container);
-  console.log('Tasks count:', tasks.length);
-  console.log('Active tasks:', activeTasksCount);
-  return { panel, container, tasks };
+window.purgeOldTasks = function() {
+  showTaskModal(
+    'Purge History',
+    'Clear completed and failed tasks older than 24 hours?',
+    'Clear History',
+    () => {
+      fetch('/admin/agent_plugins/purge_executions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content },
+        body: JSON.stringify({ older_than: 24 })
+      }).then(() => location.reload());
+    }
+  );
 };
 </script>

@@ -70,13 +70,10 @@ class LightningStoreService
       cost_estimate: (@trace.cost_estimate || 0) + (call.cost || 0)
     )
 
-<<<<<<< HEAD
-=======
     # Phase 3: Emit span to Agent Lightning in real-time
     emit_llm_call_span(call)
 
     Rails.logger.info "⚡ LLM call recorded successfully - call_id: #{call.call_id}, tokens: #{call.total_tokens}, cost: $#{call.cost}"
->>>>>>> e4709206 (Implement Agent Lightning Phases 2-4: Store Adapter, Real-time Span Emission, and VERL Training)
     call
   end
 

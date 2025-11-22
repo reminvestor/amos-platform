@@ -74,6 +74,19 @@ class AgentPluginExecutionJob < ApplicationJob
       message: "✅ #{agent_plugin.name} completed",
       result: result.is_a?(String) ? result.truncate(200) : result.to_s.truncate(200)
     })
+
+    # Check for auto-load canvas on completion
+    if agent_plugin.canvas_on_completion.present?
+      Rails.logger.info "🎨 Auto-loading canvas: #{agent_plugin.canvas_on_completion}"
+      ScoutChannel.broadcast_to(session_id, {
+        type: 'load_canvas',
+        canvas_name: agent_plugin.canvas_on_completion,
+        canvas_data: { 
+          execution_id: execution.id,
+          result: result
+        }
+      })
+    end
   end
 
   def broadcast_failure(session_id, agent_plugin, execution, error)

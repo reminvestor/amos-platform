@@ -8,6 +8,7 @@ module Tools
       @tools = {}
       @categories = {}
       load_all_tools
+      load_dynamic_tools
     end
 
     # Register a tool class
@@ -17,6 +18,7 @@ module Tools
       category = metadata[:category] || "general"
 
       @tools[name] = {
+        type: :class,
         class: tool_class,
         metadata: metadata,
         read_only: tool_class.read_only?
@@ -26,6 +28,32 @@ module Tools
       @categories[category] << name
 
       Rails.logger.info "📚 Registered tool: #{name} in category: #{category}"
+    end
+
+    # Register a dynamic tool definition
+    def register_definition(definition)
+      name = definition.name
+      # Dynamic tools are considered "custom" category for now
+      category = "custom" 
+      
+      @tools[name] = {
+        type: :definition,
+        definition: definition,
+        metadata: {
+          name: name,
+          description: definition.description,
+          parameters: definition.parameters,
+          category: category
+        },
+        read_only: false # Assume dynamic tools perform actions
+      }
+      
+      @categories[category] ||= []
+      unless @categories[category].include?(name)
+        @categories[category] << name
+      end
+      
+      Rails.logger.info "📚 Registered dynamic tool: #{name}"
     end
 
     # Get all tools (optionally filtered)
@@ -80,6 +108,18 @@ module Tools
         }
       }
 
+      # Add ask_user tool (always available to agents)
+      if allowlist.nil? || allowlist.include?('ask_user') || agent_loadout&.tool_allowlist&.include?('ask_user')
+        if tool_info = @tools['ask_user']
+          metadata = tool_info[:metadata]
+          tools << {
+            name: metadata[:name],
+            description: metadata[:description],
+            parameters: metadata[:input_schema] || metadata[:parameters]
+          }
+        end
+      end
+
       # Filter tools based on agent loadout or allowlist
       tool_names = if agent_loadout&.tool_allowlist.present?
         agent_loadout.tool_allowlist
@@ -92,6 +132,7 @@ module Tools
       # Convert to Bedrock format
       tool_names.each do |tool_name|
         next if tool_name == "*" # Skip wildcard
+        next if tool_name == "ask_user" # Already added
 
         if tool_info = @tools[tool_name]
           metadata = tool_info[:metadata]
@@ -123,10 +164,28 @@ module Tools
 
     # Execute a tool
     def execute_tool(name, args, user: nil, entity: nil, context: {}, progress_callback: nil)
-      tool = get_tool(name, user: user, entity: entity, context: context, progress_callback: progress_callback)
-      return { success: false, error: "Unknown tool: #{name}" } unless tool
+      tool_info = @tools[name]
+      return { success: false, error: "Unknown tool: #{name}" } unless tool_info
 
-      tool.execute(args)
+      if tool_info[:type] == :definition
+        # Dynamic tool execution
+        definition = tool_info[:definition]
+        # Pass rich context to the dynamic tool
+        execution_context = context.merge({
+          user: user,
+          entity: entity,
+          progress_callback: progress_callback
+        })
+        definition.execute(args, execution_context)
+      else
+        # Class-based tool execution
+        tool = get_tool(name, user: user, entity: entity, context: context, progress_callback: progress_callback)
+        return { success: false, error: "Could not instantiate tool: #{name}" } unless tool
+        tool.execute(args)
+      end
+    rescue => e
+      Rails.logger.error "Tool execution failed (#{name}): #{e.message}"
+      { success: false, error: e.message, backtrace: e.backtrace.first(5) }
     end
 
     # Check if a tool exists
@@ -140,10 +199,14 @@ module Tools
       return nil unless tool_info
 
       metadata = tool_info[:metadata]
+      
+      # Ensure parameters schema is valid for Bedrock
+      params = metadata[:input_schema] || metadata[:parameters]
+      
       {
         name: metadata[:name],
         description: metadata[:description],
-        parameters: metadata[:input_schema] || metadata[:parameters]
+        parameters: params
       }
     end
 
@@ -222,6 +285,16 @@ module Tools
     end
 
     private
+
+    def load_dynamic_tools
+      return unless ActiveRecord::Base.connection.table_exists?('tool_definitions')
+      
+      ToolDefinition.find_each do |tool_def|
+        register_definition(tool_def)
+      end
+    rescue => e
+      Rails.logger.warn "Failed to load dynamic tools: #{e.message}"
+    end
 
     def load_all_tools
       # Auto-discover and register all tool classes

@@ -1,6 +1,12 @@
 # Agent Plugin Seeds
 # Creates example agent plugins to demonstrate the system
 
+# Skip if agent plugins already exist
+if AgentPlugin.where(slug: ["sales_email_generator", "content_quality_analyzer", "campaign_optimizer", "ai_landing_page_creator", "customer_journey_mapper", "email_sequence_architect"]).exists?
+  puts "🤖 Agent Plugins already exist, skipping seed..."
+  return
+end
+
 puts "🤖 Seeding Agent Plugins..."
 
 # 1. Sales Email Generator Agent
@@ -12,7 +18,7 @@ sales_agent = AgentPlugin.create!(
   version: "1.0.0",
   status: "active",
   priority: 80,
-  agent_class: "Agents::Specialized::ExecutorAgent",
+  agent_class: nil,
   entity_id: nil,  # System-wide agent
   system_prompt: {
     prompt: "You are a sales email specialist. Generate compelling, personalized emails that address specific pain points. Keep it concise (under 150 words) and always include a clear call-to-action."
@@ -72,7 +78,7 @@ analyzer_agent = AgentPlugin.create!(
   version: "1.0.0",
   status: "active",
   priority: 70,
-  agent_class: "Agents::Specialized::ExecutorAgent",
+  agent_class: nil,
   entity_id: nil,
   system_prompt: {
     prompt: "You are a content quality expert. Analyze content for readability, SEO, brand alignment, and engagement. Provide specific, actionable recommendations."
@@ -116,7 +122,7 @@ optimizer_agent = AgentPlugin.create!(
   version: "1.0.0",
   status: "active",
   priority: 75,
-  agent_class: "Agents::Specialized::ExecutorAgent",
+  agent_class: nil,
   entity_id: nil,
   system_prompt: {
     prompt: "You are a marketing analytics expert. Analyze campaign data to identify optimization opportunities. Focus on actionable insights that improve conversion rates and ROI."
@@ -160,7 +166,7 @@ landing_page_agent = AgentPlugin.create!(
   version: "1.0.0",
   status: "active",
   priority: 85,
-  agent_class: "Agents::Specialized::ExecutorAgent",
+  agent_class: nil,
   entity_id: nil,
   system_prompt: {
     prompt: "You are a landing page specialist. Create high-converting landing pages that combine compelling copy with effective design. Follow conversion optimization best practices."
@@ -168,7 +174,9 @@ landing_page_agent = AgentPlugin.create!(
   configuration: {
     include_hero_image: true,
     include_testimonials: false,
-    include_faq: true
+    include_faq: true,
+    include_business_data: true,
+    canvas_on_completion: "landing_page_preview"
   }
 )
 
@@ -207,7 +215,7 @@ journey_agent = AgentPlugin.create!(
   version: "1.0.0",
   status: "draft",  # Not active yet
   priority: 60,
-  agent_class: "Agents::Specialized::ExecutorAgent",
+  agent_class: nil,
   entity_id: nil,
   system_prompt: {
     prompt: "You are a customer experience analyst. Map the complete customer journey and identify opportunities to reduce friction and improve conversion rates."
@@ -249,7 +257,7 @@ sequence_agent = AgentPlugin.create!(
   version: "1.0.0",
   status: "active",
   priority: 82,
-  agent_class: "Agents::Specialized::ExecutorAgent",
+  agent_class: nil,
   entity_id: nil,
   system_prompt: {
     prompt: <<~PROMPT.strip

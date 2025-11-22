@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_18_225000) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_22_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -219,6 +219,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_225000) do
     t.index ["status"], name: "index_agent_executions_on_status"
   end
 
+  create_table "agent_input_requests", force: :cascade do |t|
+    t.bigint "agent_plugin_execution_id", null: false
+    t.text "question", null: false
+    t.jsonb "context_data", default: {}
+    t.string "variable_name"
+    t.string "status", default: "pending", null: false
+    t.text "response_content"
+    t.datetime "responded_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_agent_input_requests_on_agent_plugin_execution_id"
+    t.index ["status"], name: "index_agent_input_requests_on_status"
+  end
+
   create_table "agent_lightning_configs", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.boolean "enabled", default: true
@@ -425,6 +439,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_225000) do
     t.string "model_id"
     t.integer "model_input_tokens", default: 0
     t.integer "model_output_tokens", default: 0
+    t.jsonb "conversation_context", default: []
     t.index ["agent_plugin_id", "status"], name: "index_agent_plugin_executions_on_agent_plugin_id_and_status"
     t.index ["agent_plugin_id"], name: "index_agent_plugin_executions_on_agent_plugin_id"
     t.index ["model_id"], name: "index_agent_plugin_executions_on_model_id"
@@ -453,9 +468,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_225000) do
     t.datetime "updated_at", null: false
     t.string "ai_model", default: "claude-sonnet-4"
     t.jsonb "model_config", default: {}
+    t.string "execution_strategy", default: "standard"
+    t.jsonb "remote_config", default: {}
+    t.vector "embedding", limit: 1536
     t.index ["ai_model"], name: "index_agent_plugins_on_ai_model"
+    t.index ["embedding"], name: "index_agent_plugins_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
     t.index ["entity_id"], name: "index_agent_plugins_on_entity_id"
+    t.index ["execution_strategy"], name: "index_agent_plugins_on_execution_strategy"
     t.index ["priority"], name: "index_agent_plugins_on_priority"
     t.index ["role"], name: "index_agent_plugins_on_role"
     t.index ["slug"], name: "index_agent_plugins_on_slug", unique: true
@@ -2450,6 +2470,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_225000) do
     t.index ["entity_id"], name: "index_tenant_quotas_on_entity_id"
   end
 
+  create_table "tool_definitions", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "description"
+    t.jsonb "parameters", default: {}
+    t.string "execution_type", default: "ruby_code"
+    t.text "code"
+    t.jsonb "api_config", default: {}
+    t.boolean "admin_only", default: false
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_tool_definitions_on_created_by_id"
+    t.index ["name"], name: "index_tool_definitions_on_name", unique: true
+  end
+
   create_table "tts_usage_logs", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
@@ -2654,6 +2689,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_225000) do
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
   add_foreign_key "agent_capabilities", "agent_plugins"
   add_foreign_key "agent_executions", "pipeline_executions"
+  add_foreign_key "agent_input_requests", "agent_plugin_executions"
   add_foreign_key "agent_lightning_configs", "entities"
   add_foreign_key "agent_lightning_optimizations", "agent_training_jobs"
   add_foreign_key "agent_lightning_optimizations", "entities"
@@ -2855,6 +2891,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_18_225000) do
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
   add_foreign_key "tenant_quotas", "entities"
+  add_foreign_key "tool_definitions", "users", column: "created_by_id"
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"
   add_foreign_key "users", "entities"

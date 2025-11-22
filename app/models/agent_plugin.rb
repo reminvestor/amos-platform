@@ -40,6 +40,7 @@ class AgentPlugin < ApplicationRecord
   validates :status, presence: true, inclusion: { in: %w[draft active deprecated] }
   validates :priority, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 100 }
   validates :version, format: { with: /\A\d+\.\d+\.\d+\z/, message: "must be in format X.Y.Z" }, allow_blank: true
+  validates :execution_strategy, inclusion: { in: %w[standard workflow remote_http], message: "%{value} is not a valid strategy" }
 
   # Scopes
   scope :active, -> { where(status: 'active') }
@@ -53,8 +54,27 @@ class AgentPlugin < ApplicationRecord
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
   before_save :normalize_configuration
   before_save :parse_json_fields
+  
+  # Vector search configuration
+  has_neighbors :embedding
+  
+  # Update embedding when relevant fields change
+  after_save :update_embedding, if: -> { saved_change_to_name? || saved_change_to_description? || saved_change_to_role? || saved_change_to_capabilities_definition? }
 
   # Class methods
+  def self.search_by_similarity(query, limit: 5)
+    # Generate embedding for the query
+    query_embedding = AiAgents::VectorStore.instance.generate_embedding(query)
+    
+    # Use pgvector nearest_neighbors search
+    # We filter for active agents only
+    active.nearest_neighbors(:embedding, query_embedding, distance: "cosine").first(limit)
+  rescue => e
+    Rails.logger.error "Vector search failed: #{e.message}"
+    # Fallback to keyword search if vector search fails
+    active.where("description ILIKE ? OR name ILIKE ?", "%#{query}%", "%#{query}%").limit(limit)
+  end
+
   def self.discover_by_capabilities(capability_names, entity: nil)
     # Find agents that have ALL the required capabilities
     joins(:agent_capabilities)
@@ -112,6 +132,15 @@ class AgentPlugin < ApplicationRecord
 
   def capability_names
     agent_capabilities.pluck(:capability_name)
+  end
+
+  # Configuration helpers
+  def canvas_on_completion
+    configuration['canvas_on_completion']
+  end
+
+  def include_business_data?
+    configuration['include_business_data'] == true || configuration['include_business_data'] == 'true'
   end
 
   def instantiate(context = {})
@@ -234,5 +263,28 @@ class AgentPlugin < ApplicationRecord
 
     successful = executions.where(status: 'completed').count
     ((successful.to_f / total) * 100).round(2)
+  end
+
+  def update_embedding
+    # Construct a rich text representation of the agent
+    # This includes name, role, description, and capabilities
+    
+    caps = capability_names.join(", ")
+    
+    embedding_text = <<~TEXT
+      Agent: #{name}
+      Role: #{role}
+      Description: #{description}
+      Capabilities: #{caps}
+      Tools: #{required_tools.join(", ")}
+    TEXT
+    
+    # Generate embedding using VectorStore service
+    vector = AiAgents::VectorStore.instance.generate_embedding(embedding_text)
+    
+    # Update the column directly to avoid triggering callbacks again
+    update_column(:embedding, vector)
+  rescue => e
+    Rails.logger.error "Failed to update embedding for agent #{id}: #{e.message}"
   end
 end

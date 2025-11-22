@@ -3,7 +3,7 @@ class AgentLoadout
   include ActiveModel::Model
 
   attr_accessor :step_id, :agent_role, :tool_allowlist, :canvas_allowlist,
-                :data_scopes, :budgets, :confirmations, :prompts
+                :data_scopes, :budgets, :confirmations, :prompts, :agent_plugin
 
   AGENT_ROLES = %w[planner executor analyst verifier].freeze
 
@@ -28,7 +28,6 @@ class AgentLoadout
         'query_document_content',     # Search uploaded documents (session + RAG)
         'query_rag_store',            # Query RAG knowledge base
         'load_canvas',                # UI interactions
-       # 'aggregate_artifact_data',    # Simple aggregations
         'create_dynamic_visualization', # Quick visualizations
         'get_workflow_context',       # Access uploaded files
       #  'get_my_ai_usage',           # Usage tracking
@@ -76,7 +75,21 @@ class AgentLoadout
 
   def initialize(attributes = {})
     super
-    apply_role_defaults if agent_role.present?
+    
+    if agent_plugin
+      apply_plugin_configuration
+    elsif agent_role.present?
+      apply_role_defaults
+    end
+  end
+
+  # Factory method to create loadout from plugin
+  def self.from_plugin(plugin, overrides = {})
+    new(
+      agent_plugin: plugin,
+      agent_role: plugin.role,
+      **overrides
+    )
   end
 
   # Check if a tool is allowed for this loadout
@@ -116,7 +129,12 @@ class AgentLoadout
 
   # Generate a minimal prompt for this loadout
   def generate_prompt(context = {})
-    base_prompt = (prompts && prompts["base"]) || default_prompt_for_role
+    if agent_plugin
+      # Use plugin's system prompt
+      base_prompt = agent_plugin.system_prompt['prompt'] || default_prompt_for_role
+    else
+      base_prompt = (prompts && prompts["base"]) || default_prompt_for_role
+    end
 
     # Add tool-specific instructions
     if tool_allowlist.present? && tool_allowlist != [ "*" ]
@@ -132,6 +150,34 @@ class AgentLoadout
   end
 
   private
+
+  def apply_plugin_configuration
+    # Set defaults from plugin
+    self.tool_allowlist ||= agent_plugin.required_tools
+    
+    # If plugin has no specific tools, fall back to role default or allow all
+    if self.tool_allowlist.empty?
+      defaults = ROLE_DEFAULTS[agent_role] || {}
+      self.tool_allowlist = defaults[:tool_allowlist] || ["*"]
+    end
+    
+    defaults = ROLE_DEFAULTS[agent_role] || {}
+    
+    self.canvas_allowlist ||= defaults[:canvas_allowlist] || ["*"]
+    self.data_scopes ||= defaults[:data_scopes] || { "read" => ["*"], "write" => ["*"] }
+    
+    # Merge config budgets with role defaults
+    plugin_config = agent_plugin.configuration || {}
+    role_budgets = defaults[:budgets] || {}
+    
+    self.budgets ||= {
+      "max_tokens" => plugin_config["max_tokens"] || role_budgets[:max_tokens] || 8000,
+      "max_tool_calls" => plugin_config["max_tool_calls"] || role_budgets[:max_tool_calls] || 15,
+      "timeout_seconds" => plugin_config["timeout_seconds"] || role_budgets[:timeout_seconds] || 60
+    }
+    
+    self.prompts ||= {}
+  end
 
   def apply_role_defaults
     defaults = ROLE_DEFAULTS[agent_role] || {}

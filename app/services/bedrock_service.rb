@@ -650,7 +650,9 @@ class BedrockService
           }
 
           # Execute tools and collect results
-          tool_results = tool_uses.map do |tool_use_block|
+          tool_results = []
+          
+          tool_uses.each do |tool_use_block|
             tool_use = tool_use_block.tool_use
             tool_name = tool_use.name
             tool_input = tool_use.input.to_h
@@ -664,26 +666,53 @@ class BedrockService
               **@context  # Include agent_plugin, task_session, session_id, etc.
             }
 
-            # Execute the tool with full context
-            catalog = Tools::ToolCatalog.instance
-            result = catalog.execute_tool(
-              tool_name,
-              tool_input,
-              user: @user,
-              entity: @entity,
-              context: tool_context,
-              progress_callback: nil  # Agent plugins don't support progress callbacks yet
-            )
+            begin
+              # Execute the tool with full context
+              catalog = Tools::ToolCatalog.instance
+              result = catalog.execute_tool(
+                tool_name,
+                tool_input,
+                user: @user,
+                entity: @entity,
+                context: tool_context,
+                progress_callback: nil  # Agent plugins don't support progress callbacks yet
+              )
 
-            Rails.logger.info "Tool #{tool_name} result: #{result.inspect}"
+              Rails.logger.info "Tool #{tool_name} result: #{result.inspect}"
 
-            # Format result for Bedrock
-            {
-              tool_result: {
-                tool_use_id: tool_use.tool_use_id,
-                content: [{ text: result.to_json }]
+              # Format result for Bedrock
+              tool_results << {
+                tool_result: {
+                  tool_use_id: tool_use.tool_use_id,
+                  content: [{ text: result.to_json }]
+                }
               }
-            }
+            rescue Tools::AskUserTool::ExecutionSuspended => e
+              # If any tool suspends execution, we must stop the loop
+              # and propagate the suspension.
+              
+              # First, we need to make sure we return the conversation state up to this point
+              # so it can be saved.
+              
+              # Add the pending tool results we've collected so far
+              if tool_results.any?
+                conversation_messages << {
+                  role: "user",
+                  content: tool_results
+                }
+              end
+              
+              # Re-raise with the messages payload attached to the exception object if possible,
+              # or let the caller access the state via other means.
+              # For simplicity, we rely on the caller handling the exception.
+              # BUT, the caller (StandardPluginExecutor) doesn't have access to `conversation_messages` variable here.
+              
+              # We attach the messages to the exception
+              e.instance_variable_set(:@conversation_context, conversation_messages)
+              def e.conversation_context; @conversation_context; end
+              
+              raise e
+            end
           end
 
           # Add tool results to conversation
