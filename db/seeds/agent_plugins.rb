@@ -465,7 +465,7 @@ seed_agent(
   ],
   [
     { tool_name: "create_agent_plugin", required: true },
-    { tool_name: "list_available_tools", required: true },
+    { tool_name: "list_tools", required: true },
     { tool_name: "get_data", required: false }
   ]
 )
