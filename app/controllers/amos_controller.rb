@@ -131,7 +131,8 @@ class AmosController < ApplicationController
           type: 'upload',
           asset_id: asset.id,
           filename: file.original_filename,
-          content_type: file.content_type
+          content_type: file.content_type,
+          url: asset.respond_to?(:url) ? asset.url : nil
         }
       else
         # Handle existing asset reference

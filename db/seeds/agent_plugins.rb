@@ -176,7 +176,7 @@ landing_page_agent = AgentPlugin.create!(
     include_testimonials: false,
     include_faq: true,
     include_business_data: true,
-    canvas_on_completion: "landing_page_preview"
+    canvas_on_completion: "landing_page_editor"
   }
 )
 
@@ -187,7 +187,9 @@ landing_page_agent.agent_capabilities.create!([
       inputs: [
         { name: "product_description", type: "string", required: true },
         { name: "target_audience", type: "string", required: true },
-        { name: "key_benefits", type: "array", required: true }
+        { name: "key_benefits", type: "array", required: true },
+        { name: "images_to_use", type: "array", required: false, description: "List of image URLs or asset IDs to include" },
+        { name: "design_template", type: "string", required: false, description: "Description or URL of a design reference" }
       ],
       outputs: [
         { name: "headline", type: "string" },
