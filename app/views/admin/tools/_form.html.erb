@@ -1,0 +1,164 @@
+<div style="padding: 2rem;">
+  <div class="admin-page-header" style="margin-bottom: 2rem;">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);">
+        <i data-lucide="wrench" style="color: white;"></i>
+      </div>
+      <div class="header-text">
+        <h1><%= @tool.persisted? ? 'Edit Tool' : 'Create Tool' %></h1>
+        <p><%= @tool.persisted? ? "Update #{@tool.name}" : 'Define a new custom tool' %></p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <%= link_to admin_tools_path, class: "admin-btn admin-btn-secondary" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back to Tools</span>
+      <% end %>
+    </div>
+  </div>
+
+  <%= form_with(model: [:admin, @tool], local: true, class: "admin-form") do |f| %>
+    <% if @tool.errors.any? %>
+      <div class="admin-alert admin-alert-error mb-4">
+        <div class="alert-content">
+          <i data-lucide="alert-circle"></i>
+          <span><%= pluralize(@tool.errors.count, "error") %> prohibited this tool from being saved:</span>
+        </div>
+        <ul>
+          <% @tool.errors.full_messages.each do |msg| %>
+            <li><%= msg %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="row g-4">
+      <!-- Main Config -->
+      <div class="col-lg-8">
+        <div class="admin-card mb-4">
+          <div class="admin-card-header">
+            <h3 class="admin-card-title">Basic Information</h3>
+          </div>
+          <div class="admin-card-body">
+            <div class="mb-3">
+              <%= f.label :name, "Tool Name (snake_case)", class: "form-label" %>
+              <%= f.text_field :name, class: "form-control", placeholder: "search_github_issues" %>
+              <div class="form-text text-muted">This is how agents will refer to the tool. Use snake_case.</div>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :description, class: "form-label" %>
+              <%= f.text_area :description, class: "form-control", rows: 2, placeholder: "Searches GitHub issues for a specific repository..." %>
+              <div class="form-text text-muted">Briefly explain what this tool does.</div>
+            </div>
+
+            <div class="mb-3">
+              <div class="form-check form-switch">
+                <%= f.check_box :admin_only, class: "form-check-input" %>
+                <%= f.label :admin_only, "Admin Only (Restricted)", class: "form-check-label" %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-card mb-4">
+          <div class="admin-card-header">
+            <h3 class="admin-card-title">Implementation</h3>
+          </div>
+          <div class="admin-card-body">
+            <div class="mb-3">
+              <%= f.label :execution_type, "Execution Type", class: "form-label" %>
+              <%= f.select :execution_type, options_for_select([['HTTP API Request', 'http_request'], ['Ruby Code (Sandboxed)', 'ruby_code']], @tool.execution_type), {}, class: "form-select", id: "executionTypeSelect" %>
+            </div>
+
+            <!-- HTTP Config -->
+            <div id="httpConfigSection" class="<%= 'd-none' if @tool.execution_type == 'ruby_code' %>">
+              <h5 class="mb-3">API Configuration</h5>
+              <div class="alert alert-info">
+                Use <code>{{variable_name}}</code> to inject parameters into the URL.
+              </div>
+              
+              <%= f.fields_for :api_config, OpenStruct.new(@tool.api_config || {}) do |api| %>
+                <div class="mb-3">
+                  <%= api.label :url, "URL Endpoint", class: "form-label" %>
+                  <%= api.text_field :url, class: "form-control", placeholder: "https://api.github.com/repos/{{owner}}/{{repo}}/issues" %>
+                </div>
+                
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="mb-3">
+                      <%= api.label :method, "HTTP Method", class: "form-label" %>
+                      <%= api.select :method, options_for_select(['GET', 'POST', 'PUT', 'DELETE'], (@tool.api_config&.dig('method') || 'GET')), {}, class: "form-select" %>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+
+            <!-- Ruby Config -->
+            <div id="rubyConfigSection" class="<%= 'd-none' if @tool.execution_type != 'ruby_code' %>">
+              <h5 class="mb-3">Ruby Implementation</h5>
+              <div class="alert alert-warning">
+                <i data-lucide="alert-triangle" style="width: 1em; vertical-align: text-top;"></i>
+                <strong>Security Warning:</strong> Code runs with application privileges. Ensure proper error handling.
+                Available variables: <code>_args</code> (hash), <code>_context</code> (hash).
+              </div>
+              
+              <div class="mb-3">
+                <%= f.label :code, class: "form-label" %>
+                <%= f.text_area :code, class: "form-control font-monospace", rows: 10, placeholder: "result = _args['x'] + _args['y']\n{ sum: result }" %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="col-lg-4">
+        <div class="admin-card mb-4">
+          <div class="admin-card-header">
+            <h3 class="admin-card-title">Input Schema</h3>
+          </div>
+          <div class="admin-card-body">
+            <p class="text-muted small mb-3">Define the arguments this tool accepts as a JSON Schema.</p>
+            
+            <div class="mb-3">
+              <%= f.label :parameters, "JSON Schema", class: "form-label" %>
+              <%= f.text_area :parameters, 
+                  value: @tool.parameters.present? ? JSON.pretty_generate(@tool.parameters) : '{"type": "object", "properties": {}, "required": []}',
+                  class: "form-control font-monospace", 
+                  rows: 15 %>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-grid gap-2">
+          <%= f.submit @tool.persisted? ? "Update Tool" : "Create Tool", class: "btn btn-primary btn-lg" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+    
+    const select = document.getElementById('executionTypeSelect');
+    const httpSection = document.getElementById('httpConfigSection');
+    const rubySection = document.getElementById('rubyConfigSection');
+    
+    if (select) {
+      select.addEventListener('change', function() {
+        if (this.value === 'ruby_code') {
+          httpSection.classList.add('d-none');
+          rubySection.classList.remove('d-none');
+        } else {
+          httpSection.classList.remove('d-none');
+          rubySection.classList.add('d-none');
+        }
+      });
+    }
+  });
+</script>
+

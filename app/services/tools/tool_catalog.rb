@@ -284,6 +284,21 @@ module Tools
       end
     end
 
+    def refresh_dynamic_tools!
+      Rails.logger.info "🔄 Refreshing dynamic tools..."
+      
+      # Clear existing dynamic tools from memory
+      @tools.delete_if { |_, info| info[:type] == :definition }
+      
+      # Remove dynamic tools from categories
+      @categories.each do |cat, tools|
+        tools.delete_if { |name| @tools[name].nil? }
+      end
+      
+      # Reload
+      load_dynamic_tools
+    end
+
     private
 
     def load_dynamic_tools

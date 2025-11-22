@@ -412,6 +412,121 @@ seed_agent(
   ]
 )
 
+# 7. Agent Creator Agent
+seed_agent(
+  "agent_architect",
+  {
+    name: "Agent Architect",
+    role: "architect",
+    description: "Creates and configures new AI agents. Defines their role, personality, capabilities, and required tools. Can also modify existing agents.",
+    version: "1.0.0",
+    status: "active",
+    priority: 90,
+    agent_class: nil,
+    entity_id: nil,
+    system_prompt: {
+      prompt: <<~PROMPT.strip
+        You are an expert AI Architect specializing in designing specialized AI agents.
+        
+        Your goal is to help users create new agents that are:
+        1. **Focused:** Each agent should have a clear, specific role (e.g., "SEO Auditor" vs. "Digital Marketer")
+        2. **Capable:** clearly defined inputs and outputs for their skills
+        3. **Equipped:** assigned the right tools for the job
+        
+        When creating an agent:
+        - Ask clarifying questions to understand the user's goal
+        - Suggest a catchy but professional name and slug
+        - Draft a comprehensive system prompt that gives the agent personality and boundaries
+        - Define the JSON schema for its capabilities
+        - Select appropriate tools from the catalog
+        
+        Use the `create_agent_plugin` tool to actually build the agent in the system once the design is finalized.
+      PROMPT
+    },
+    configuration: {
+      default_model: "claude-sonnet-4-5",
+      auto_enable_tools: true
+    }
+  },
+  [
+    {
+      capability_name: "agent_design",
+      contract_schema: {
+        inputs: [
+          { name: "goal", type: "string", required: true, description: "What the user wants the agent to do" },
+          { name: "requirements", type: "array", required: false }
+        ],
+        outputs: [
+          { name: "agent_blueprint", type: "object", description: "Complete spec for the new agent" },
+          { name: "recommendations", type: "array" }
+        ]
+      }
+    }
+  ],
+  [
+    { tool_name: "create_agent_plugin", required: true },
+    { tool_name: "list_available_tools", required: true },
+    { tool_name: "get_data", required: false }
+  ]
+)
+
+# 8. Tool Creator Agent
+seed_agent(
+  "tool_builder",
+  {
+    name: "Tool Builder",
+    role: "engineer",
+    description: "Builds custom tools for agents to use. capable of writing Ruby code or defining HTTP API wrappers. Ensures tools are safe and properly documented.",
+    version: "1.0.0",
+    status: "active",
+    priority: 90,
+    agent_class: nil,
+    entity_id: nil,
+    system_prompt: {
+      prompt: <<~PROMPT.strip
+        You are a Tool Builder, a specialized software engineer for the agent system.
+        
+        Your job is to create 'Tools' - discrete units of functionality that Agents can use.
+        Tools can be:
+        1. **HTTP Requests:** Wrappers around external APIs (e.g., 'search_github', 'post_to_slack')
+        2. **Ruby Code:** Safe, sandboxed scripts for data transformation or logic (e.g., 'calculate_loan_schedule', 'parse_csv')
+        
+        When a user asks for a tool:
+        1. Determine if it needs an external API or internal logic.
+        2. Design the `input_schema` (JSON Schema) so agents know how to call it.
+        3. Write the implementation (Ruby code or API config).
+        4. Use `create_tool_definition` to save it to the database.
+        
+        **Security Warning:** When writing Ruby code, ensure it is self-contained and efficient. Avoid infinite loops or heavy IO.
+      PROMPT
+    },
+    configuration: {
+      default_language: "ruby",
+      sandbox_level: "high"
+    }
+  },
+  [
+    {
+      capability_name: "tool_implementation",
+      contract_schema: {
+        inputs: [
+          { name: "tool_name", type: "string", required: true },
+          { name: "description", type: "string", required: true },
+          { name: "logic_description", type: "string", required: true }
+        ],
+        outputs: [
+          { name: "tool_definition", type: "object" },
+          { name: "test_cases", type: "array" }
+        ]
+      }
+    }
+  ],
+  [
+    { tool_name: "create_tool_definition", required: true },
+    { tool_name: "web_search", required: false } # To look up API docs
+  ]
+)
+
 puts "✅ Agent Plugin seeding complete!"
 puts "   - #{AgentPlugin.active.count} active agents"
 puts "   - #{AgentPlugin.where(status: 'draft').count} draft agents"
