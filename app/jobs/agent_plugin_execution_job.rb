@@ -22,6 +22,25 @@ class AgentPluginExecutionJob < ApplicationJob
       # Execute the agent with the task
       result = agent.run(task_description, context_data)
 
+      # Check if execution was suspended (waiting for input)
+      if result.is_a?(Hash) && result[:status] == 'suspended'
+        Rails.logger.info "⏸️ AgentPlugin #{agent_plugin.name} suspended: #{result[:content]}"
+        
+        # Broadcast suspension to Scout if we have a session
+        if context_data[:session_id]
+          ScoutChannel.broadcast_to(context_data[:session_id], {
+            type: 'task_progress',
+            job_id: execution.id,
+            status: 'waiting_for_input',
+            agent_type: agent_plugin.slug,
+            message: "❓ #{agent_plugin.name} is asking a question...",
+            progress: execution.progress || 50
+          })
+        end
+        
+        return # Exit without marking completed
+      end
+
       # Mark execution as completed with the result
       execution.mark_completed!(
         output: result,

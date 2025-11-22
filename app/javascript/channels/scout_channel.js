@@ -82,15 +82,31 @@ document.addEventListener('turbo:load', function() {
           break
           
         case 'input_request':
+        case 'agent_question':
           // Handle input requests from Amos agents
           console.log("ScoutChannel: Input request from agent:", data)
+          
+          // If it's an agent question, display it in the chat
+          if (data.type === 'agent_question' && window.streamTaskContent) {
+            window.streamTaskContent({
+              content: data.question,
+              type: 'assistant',
+              metadata: {
+                from_agent: true,
+                agent_name: data.agent_name,
+                execution_id: data.execution_id,
+                awaiting_response: true
+              }
+            })
+          }
+
           if (window.handleAmosInputRequest) {
             window.handleAmosInputRequest(data)
           } else if (window.handleTaskNeedsInput) {
             // Map to existing input handler
             window.handleTaskNeedsInput({
-              task_id: data.job_id,
-              prompt: data.prompt,
+              task_id: data.job_id || data.execution_id,
+              prompt: data.prompt || data.question,
               options: data.options
             })
           }
@@ -125,8 +141,16 @@ document.addEventListener('turbo:load', function() {
         case 'task_progress':
         case 'task_completed':
         case 'task_failed':
+        case 'agent_plugin_completed':
+        case 'agent_plugin_failed':
           // Route to parallel task handler if available
           if (window.handleParallelTaskUpdate) {
+            // Normalize agent plugin events to task events
+            if (data.type.startsWith('agent_plugin_')) {
+              data.type = data.type.replace('agent_plugin_', 'task_');
+              data.task_id = data.execution_id;
+              data.status = data.type === 'task_completed' ? 'completed' : 'failed';
+            }
             window.handleParallelTaskUpdate(data)
           }
           break
