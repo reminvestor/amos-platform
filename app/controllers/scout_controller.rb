@@ -1189,8 +1189,22 @@ class ScoutController < ApplicationController
         )
         canvas_title = "Task Monitor"
       else
-        canvas_content = render_default_canvas
-        canvas_title = ""
+        # Dynamic fallback: Check if a partial exists for this canvas type
+        # This allows adding new agent views without modifying the controller
+        if lookup_context.template_exists?("scout/canvas/_#{canvas_type}")
+          canvas_content = render_to_string(
+            partial: "scout/canvas/#{canvas_type}", 
+            locals: { 
+              canvas_data: canvas_data,
+              user: current_user,
+              entity: current_entity
+            }
+          )
+          canvas_title = canvas_type.titleize
+        else
+          canvas_content = render_default_canvas
+          canvas_title = ""
+        end
       end
 
       render json: {
