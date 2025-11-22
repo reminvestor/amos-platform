@@ -59,7 +59,7 @@ class AgentPlugin < ApplicationRecord
   has_neighbors :embedding
   
   # Update embedding when relevant fields change
-  after_save :update_embedding, if: -> { saved_change_to_name? || saved_change_to_description? || saved_change_to_role? || saved_change_to_capabilities_definition? }
+  after_save :update_embedding, if: -> { saved_change_to_name? || saved_change_to_description? || saved_change_to_role? || saved_change_to_capabilities_definition? || saved_change_to_status? }
 
   # Class methods
   def self.search_by_similarity(query, limit: 5)
