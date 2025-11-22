@@ -97,13 +97,37 @@ class AgentPluginExecutionJob < ApplicationJob
     # Check for auto-load canvas on completion
     if agent_plugin.canvas_on_completion.present?
       Rails.logger.info "🎨 Auto-loading canvas: #{agent_plugin.canvas_on_completion}"
+      
+      # Parse result if it's JSON to extract useful IDs
+      canvas_data = { 
+        execution_id: execution.id,
+        result: result
+      }
+      
+      if result.is_a?(String) && result.strip.start_with?('{')
+        begin
+          parsed = JSON.parse(result)
+          # If result contains an ID (common pattern), pass it explicitly
+          if parsed['id'] || parsed['landing_page_id']
+             canvas_data[:landing_page_id] = parsed['id'] || parsed['landing_page_id']
+          end
+          
+          # If result contains campaign_id
+          if parsed['campaign_id']
+             canvas_data[:campaign_id] = parsed['campaign_id']
+          end
+        rescue JSON::ParserError
+          # Ignore if not valid JSON
+        end
+      elsif result.is_a?(Hash)
+        canvas_data[:landing_page_id] = result[:landing_page_id] || result['landing_page_id']
+        canvas_data[:campaign_id] = result[:campaign_id] || result['campaign_id']
+      end
+      
       ScoutChannel.broadcast_to(session_id, {
         type: 'load_canvas',
         canvas_name: agent_plugin.canvas_on_completion,
-        canvas_data: { 
-          execution_id: execution.id,
-          result: result
-        }
+        canvas_data: canvas_data
       })
     end
   end
