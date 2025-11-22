@@ -542,10 +542,21 @@ module Amos
     end
     
     def delegate_to_agent(intent)
+      # Enrich task description with attachment info if available
+      task_content = intent[:raw_content]
+      last_msg = @context.messages.last
+      
+      if last_msg && last_msg[:metadata][:attached_files].present?
+        files_info = last_msg[:metadata][:attached_files].map { |f| 
+          "- #{f[:filename]} (URL: #{f[:url]})" 
+        }.join("\n")
+        task_content += "\n\n[Attached Files]\n#{files_info}\n"
+      end
+
       # Create a job for the specialized agent
       job_spec = {
         agent: intent[:suggested_agent],
-        task: intent[:raw_content],
+        task: task_content,
         context: @context.snapshot,
         session_id: @session_id,
         callback_url: amos_callback_url
