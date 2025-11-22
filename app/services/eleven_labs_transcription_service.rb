@@ -129,8 +129,14 @@ class ElevenLabsTranscriptionService
   private
 
   def eleven_labs_api_key
-    ENV["ELEVEN_LABS_API_KEY"] ||
-      Rails.application.credentials.dig(:eleven_labs, :api_key) ||
+    api_key = ENV["ELEVEN_LABS_API_KEY"]
+    api_key ||= Rails.application.credentials.dig(:eleven_labs, :api_key)
+    
+    if api_key.blank?
+      Rails.logger.error "[ElevenLabs] API key missing! Checked ENV['ELEVEN_LABS_API_KEY'] and credentials[:eleven_labs][:api_key]"
       raise("Eleven Labs API key not configured. Set ELEVEN_LABS_API_KEY environment variable or configure via Rails credentials.")
+    end
+    
+    api_key
   end
 end
