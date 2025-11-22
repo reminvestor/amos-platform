@@ -38,108 +38,82 @@ module Tools
     end
     
     def execute(args = {})
+      args = args.with_indifferent_access
       task_description = args[:task_description]
       max_results = args[:max_results] || 5
       include_capabilities = args[:include_capabilities] != false
       
       Rails.logger.info "🤖 [ListAvailableAgentsTool] Searching for agents to help with: #{task_description}"
       
-      # TODO: In production, this will query a RAG system with vector embeddings
-      # For now, we'll use keyword matching and predefined agents
+      # 1. Search for agents using Vector RAG (Similarity Search)
+      found_agents = []
       
-      # Define available agents and their capabilities
-      # In the future, these will be stored in a vector database
-      agents = [
-        {
-          name: 'landing_page_agent',
-          display_name: 'Landing Page Creator',
-          description: 'Creates beautiful, conversion-optimized landing pages with AI-generated content',
-          capabilities: ['Creates landing pages', 'Generates persuasive copy', 'Applies brand styling', 'SEO optimization'],
-          trigger_phrases: ['landing page', 'sales page', 'marketing page', 'website'],
-          complexity: 'moderate',
-          ready_indicators: ['I want to create', 'Build me a', 'I need a landing page']
-        },
-        {
-          name: 'email_agent',
-          display_name: 'Email Campaign Manager',
-          description: 'Designs and sends email campaigns, manages templates, and handles email automation',
-          capabilities: ['Creates email campaigns', 'Designs templates', 'Manages subscribers', 'Schedules sends', 'A/B testing'],
-          trigger_phrases: ['email campaign', 'newsletter', 'email blast', 'marketing email'],
-          complexity: 'moderate',
-          ready_indicators: ['Send an email', 'Create a campaign', 'Email my customers']
-        },
-        {
-          name: 'integration_agent',
-          display_name: 'Integration Specialist',
-          description: 'Connects external services like Stripe, Zapier, and other APIs to automate workflows',
-          capabilities: ['Connects Stripe', 'Sets up Zapier', 'Configures webhooks', 'Syncs data between services'],
-          trigger_phrases: ['connect', 'integrate', 'sync', 'automation', 'webhook'],
-          complexity: 'complex',
-          ready_indicators: ['Connect my Stripe', 'Set up integration', 'Sync data from']
-        },
-        {
-          name: 'data_agent',
-          display_name: 'Data Manager',
-          description: 'Imports, exports, cleans, and manages customer data and contacts',
-          capabilities: ['Imports contacts', 'Exports data', 'Deduplicates records', 'Data cleaning', 'Bulk operations'],
-          trigger_phrases: ['import contacts', 'clean data', 'deduplicate', 'export', 'bulk update'],
-          complexity: 'moderate',
-          ready_indicators: ['Import my contacts', 'Clean up duplicates', 'Export data']
-        },
-        {
-          name: 'analytics_agent',
-          display_name: 'Analytics Expert',
-          description: 'Generates comprehensive reports, analyzes performance, and provides business insights',
-          capabilities: ['Performance reports', 'Revenue analysis', 'Funnel analysis', 'Cohort analysis', 'Custom dashboards'],
-          trigger_phrases: ['analytics', 'report', 'performance', 'metrics', 'insights'],
-          complexity: 'complex',
-          ready_indicators: ['Generate a report', 'Analyze my revenue', 'Show me insights']
-        },
-        {
-          name: 'workflow_agent',
-          display_name: 'Workflow Automation Builder',
-          description: 'Creates automated workflows and multi-step processes',
-          capabilities: ['Workflow design', 'Process automation', 'Trigger setup', 'Multi-step sequences'],
-          trigger_phrases: ['workflow', 'automation', 'process', 'sequence'],
-          complexity: 'complex',
-          ready_indicators: ['Automate my process', 'Create a workflow', 'Set up automation']
-        }
-      ]
-      
-      # Add custom agent plugins from database
-      if defined?(AgentPlugin) && entity
-        custom_agents = AgentPlugin.active.for_entity(entity).map do |plugin|
-          {
+      if defined?(AgentPlugin) && AgentPlugin.table_exists?
+        # Vector search for relevant agents
+        rag_results = AgentPlugin.search_by_similarity(task_description, limit: max_results)
+        
+        rag_results.each do |plugin|
+          # Extract required inputs from capabilities
+          required_inputs = []
+          plugin.agent_capabilities.each do |cap|
+            next unless cap.contract_schema && cap.contract_schema['inputs']
+            
+            cap.contract_schema['inputs'].each do |input|
+              if input['required']
+                required_inputs << "#{input['name']} (#{input['description'] || input['type']})"
+              end
+            end
+          end
+
+          # Append requirements to description to ensure LLM sees them
+          desc = plugin.description
+          if required_inputs.any?
+            desc += " [REQUIRES INPUTS: #{required_inputs.uniq.join(', ')}]"
+          end
+
+          found_agents << {
             name: plugin.slug,
             display_name: plugin.name,
-            description: plugin.description || "Custom agent plugin",
+            description: desc,
             capabilities: plugin.capability_names,
-            trigger_phrases: [plugin.slug, plugin.name],
+            required_inputs: required_inputs.uniq,
+            role: plugin.role,
             complexity: 'custom',
             custom: true,
-            agent_plugin_id: plugin.id
+            agent_plugin_id: plugin.id,
+            source: 'rag_match'
           }
         end
-        agents.concat(custom_agents)
-
-        Rails.logger.info "🔌 Added #{custom_agents.size} custom agent plugins to available agents"
+        
+        Rails.logger.info "🔍 RAG Search found #{found_agents.size} agents"
       end
       
-      # Rank agents by relevance to the task
-      # In production, this will be replaced by vector similarity search
-      ranked_agents = rank_agents_by_relevance(agents, task_description)
+      # 2. Fallback/Supplement with hardcoded system agents if RAG returns few results
+      # (This ensures basic functionality if DB agents aren't fully populated yet)
+      if found_agents.size < max_results
+        system_agents = get_system_agents
+        
+        # Simple keyword matching for system agents
+        ranked_system = rank_agents_by_relevance(system_agents, task_description)
+        
+        # Add non-duplicate system agents
+        ranked_system.each do |sys_agent|
+          next if found_agents.any? { |a| a[:name] == sys_agent[:name] }
+          found_agents << sys_agent.merge(source: 'system_fallback')
+        end
+      end
       
-      # Take only the top N most relevant agents
-      relevant_agents = ranked_agents.take(max_results)
+      # Take top N
+      relevant_agents = found_agents.take(max_results)
       
       # Format based on include_capabilities parameter
       if !include_capabilities
-        relevant_agents = relevant_agents.map { |a| a.slice(:name, :display_name, :relevance_score) }
+        relevant_agents = relevant_agents.map { |a| a.slice(:name, :display_name, :role, :description) }
       end
       
       success_response(
         agents: relevant_agents,
-        total_found: ranked_agents.size,
+        total_found: found_agents.size,
         returned: relevant_agents.size,
         task_context: task_description,
         message: "Found #{relevant_agents.size} relevant agents for your task"
@@ -149,6 +123,59 @@ module Tools
     end
     
     private
+    
+    def get_system_agents
+      [
+        {
+          name: 'landing_page_agent',
+          display_name: 'Landing Page Creator',
+          description: 'Creates beautiful, conversion-optimized landing pages with AI-generated content',
+          capabilities: ['Creates landing pages', 'Generates persuasive copy', 'Applies brand styling', 'SEO optimization'],
+          trigger_phrases: ['landing page', 'sales page', 'marketing page', 'website'],
+          complexity: 'moderate'
+        },
+        {
+          name: 'email_agent',
+          display_name: 'Email Campaign Manager',
+          description: 'Designs and sends email campaigns, manages templates, and handles email automation',
+          capabilities: ['Creates email campaigns', 'Designs templates', 'Manages subscribers', 'Schedules sends', 'A/B testing'],
+          trigger_phrases: ['email campaign', 'newsletter', 'email blast', 'marketing email'],
+          complexity: 'moderate'
+        },
+        {
+          name: 'integration_agent',
+          display_name: 'Integration Specialist',
+          description: 'Connects external services like Stripe, Zapier, and other APIs to automate workflows',
+          capabilities: ['Connects Stripe', 'Sets up Zapier', 'Configures webhooks', 'Syncs data between services'],
+          trigger_phrases: ['connect', 'integrate', 'sync', 'automation', 'webhook'],
+          complexity: 'complex'
+        },
+        {
+          name: 'data_agent',
+          display_name: 'Data Manager',
+          description: 'Imports, exports, cleans, and manages customer data and contacts',
+          capabilities: ['Imports contacts', 'Exports data', 'Deduplicates records', 'Data cleaning', 'Bulk operations'],
+          trigger_phrases: ['import contacts', 'clean data', 'deduplicate', 'export', 'bulk update'],
+          complexity: 'moderate'
+        },
+        {
+          name: 'analytics_agent',
+          display_name: 'Analytics Expert',
+          description: 'Generates comprehensive reports, analyzes performance, and provides business insights',
+          capabilities: ['Performance reports', 'Revenue analysis', 'Funnel analysis', 'Cohort analysis', 'Custom dashboards'],
+          trigger_phrases: ['analytics', 'report', 'performance', 'metrics', 'insights'],
+          complexity: 'complex'
+        },
+        {
+          name: 'workflow_agent',
+          display_name: 'Workflow Automation Builder',
+          description: 'Creates automated workflows and multi-step processes',
+          capabilities: ['Workflow design', 'Process automation', 'Trigger setup', 'Multi-step sequences'],
+          trigger_phrases: ['workflow', 'automation', 'process', 'sequence'],
+          complexity: 'complex'
+        }
+      ]
+    end
     
     def rank_agents_by_relevance(agents, task_description)
       return agents if task_description.blank?

@@ -29,11 +29,21 @@ class Agents::StandardPluginExecutor
   # Main execution method - runs the agent with a prompt
   def run(prompt, additional_context = {})
     merged_context = context.merge(additional_context)
+    
+    # Check execution strategy
+    strategy = context[:agent_plugin]&.execution_strategy || 'standard'
+    
+    Rails.logger.info "StandardPluginExecutor running with strategy: #{strategy}, prompt: #{prompt.truncate(100)}"
 
-    Rails.logger.info "StandardPluginExecutor running with prompt: #{prompt.truncate(100)}"
-
-    # Execute via Bedrock (which will handle system prompt and user prompt separately)
-    result = execute_with_bedrock(prompt, merged_context)
+    result = case strategy
+    when 'remote_http'
+      execute_remote_http(prompt, merged_context)
+    when 'workflow'
+      execute_workflow(prompt, merged_context)
+    else
+      # Standard execution via Bedrock
+      execute_with_bedrock(prompt, merged_context)
+    end
 
     # Track token usage if we have an execution record
     if execution && result[:usage]
@@ -41,20 +51,6 @@ class Agents::StandardPluginExecutor
     end
 
     result[:content]
-  end
-
-  # Goal-based execution (for workflow phases)
-  def achieve_goal(goal, context_data = {})
-    goal_prompt = <<~PROMPT
-      Goal: #{goal}
-
-      Context:
-      #{JSON.pretty_generate(context_data)}
-
-      Please achieve this goal based on your capabilities and the provided context.
-    PROMPT
-
-    run(goal_prompt, context_data)
   end
 
   # Execute a specific capability
@@ -76,6 +72,65 @@ class Agents::StandardPluginExecutor
   end
 
   private
+
+  def execute_remote_http(prompt, context_data)
+    plugin = context[:agent_plugin]
+    return { content: "Error: No agent plugin context", error: true } unless plugin
+    
+    config = plugin.remote_config || {}
+    endpoint = config['url'] || config[:url]
+    auth_token = config['auth_token'] || config[:auth_token]
+    
+    raise "Remote agent endpoint not configured" if endpoint.blank?
+    
+    require 'net/http'
+    require 'uri'
+    
+    uri = URI(endpoint)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = uri.scheme == 'https'
+    
+    request = Net::HTTP::Post.new(uri)
+    request['Content-Type'] = 'application/json'
+    request['Authorization'] = "Bearer #{auth_token}" if auth_token.present?
+    
+    payload = {
+      prompt: prompt,
+      context: context_data.except(:agent_plugin, :execution), # Avoid circular refs/heavy objects
+      config: config
+    }
+    
+    request.body = payload.to_json
+    
+    response = http.request(request)
+    
+    if response.code.to_i >= 400
+      raise "Remote agent failed: #{response.code} - #{response.body}"
+    end
+    
+    body = JSON.parse(response.body)
+    
+    {
+      content: body['content'] || body['response'] || body.to_s,
+      usage: body['usage']
+    }
+  rescue => e
+    Rails.logger.error "Remote execution failed: #{e.message}"
+    {
+      content: "Error executing remote agent: #{e.message}",
+      error: true,
+      error_message: e.message
+    }
+  end
+
+  def execute_workflow(prompt, context_data)
+    # Placeholder for workflow execution logic
+    # This would typically invoke the WorkflowEngine
+    {
+      content: "Workflow execution not yet implemented in this executor. Please use WorkflowEngine directly.",
+      error: true
+    }
+  end
 
   def normalize_system_prompt(prompt)
     # Handle both string and hash formats
@@ -101,36 +156,34 @@ class Agents::StandardPluginExecutor
       parts << JSON.pretty_generate(config)
     end
 
-    # Add capabilities
-    if capabilities.present?
-      parts << "\nYour capabilities:"
-      capabilities.each { |cap| parts << "- #{cap}" }
-    end
-
-    parts.join("\n")
-  end
-
-  def build_full_prompt(user_prompt, context_data)
-    # Legacy method - keeping for backward compatibility
-    parts = []
-
-    # Add system prompt
-    parts << system_prompt if system_prompt.present?
-
-    # Add configuration context
-    if config.present?
-      parts << "\nConfiguration:"
-      parts << JSON.pretty_generate(config)
+    # Add business/entity context if configured
+    if context[:agent_plugin]&.include_business_data? && context[:entity]
+      parts << "\nBusiness Context:"
+      parts << "Company Name: #{context[:entity].name}"
+      parts << "Industry: #{context[:entity].industry}" if context[:entity].respond_to?(:industry)
+      parts << "Description: #{context[:entity].description}" if context[:entity].respond_to?(:description)
+      # Add more entity fields as available/needed
     end
 
     # Add capabilities
     if capabilities.present?
-      parts << "\nYour capabilities:"
-      capabilities.each { |cap| parts << "- #{cap}" }
+      parts << "\nYour capabilities and required inputs:"
+      
+      # Load capability definitions to get schemas
+      if context[:agent_plugin]
+        context[:agent_plugin].agent_capabilities.each do |cap|
+          parts << "- #{cap.capability_name}"
+          if cap.contract_schema.present? && cap.contract_schema['inputs'].present?
+            required = cap.contract_schema['inputs'].select { |i| i['required'] }.map { |i| i['name'] }
+            parts << "  - Required Inputs: #{required.join(', ')}" if required.any?
+          end
+        end
+      else
+        capabilities.each { |cap| parts << "- #{cap}" }
+      end
+      
+      parts << "\nIMPORTANT: Do NOT guess or hallucinate values for Required Inputs. If they are missing from the context, ask the user for them using the 'ask_user' tool."
     end
-
-    # Add user prompt
-    parts << "\n#{user_prompt}"
 
     parts.join("\n")
   end
@@ -150,34 +203,90 @@ class Agents::StandardPluginExecutor
     )
 
     # Get available tools for this agent
+    # NOTE: 'ask_user' is added by get_available_tools if available
     tools = get_available_tools
 
     # Build enhanced system prompt with configuration and capabilities
     system_prompt_text = build_system_prompt
 
-    # Format the user prompt as messages array
-    messages = [
+    # Initialize messages (conversation history)
+    # If we are resuming, load the context; otherwise start fresh
+    messages = if execution && execution.conversation_context.present?
+                 execution.conversation_context.map(&:deep_symbolize_keys)
+               else
+                 [{ role: 'user', content: prompt }]
+               end
+
+    # If resuming from a tool call (e.g., ask_user answer), append the result
+    if execution && execution.status == 'running' && execution.conversation_context.present?
+      # Check if we have a pending input request that was just answered
+      input_request = execution.agent_plugin.agent_input_requests.where(agent_plugin_execution_id: execution.id).answered.order(responded_at: :desc).first
+      
+      if input_request
+        # Create the tool result message
+        # We assume the last message in history was the tool_use for ask_user
+        tool_use_id = find_last_tool_use_id(messages, 'ask_user')
+        
+        if tool_use_id
+          tool_result_message = {
+            role: 'user',
+            content: [
+              {
+                toolResult: {
+                  toolUseId: tool_use_id,
+                  content: [
+                    { text: input_request.response_content }
+                  ],
+                  status: "success"
+                }
+              }
+            ]
+          }
+          messages << tool_result_message
+          Rails.logger.info "📝 Resuming execution with user answer: #{input_request.response_content.truncate(50)}"
+        end
+      end
+    end
+
+    begin
+      # Call BedrockService with the correct method
+      # This handles the turn loop internally for simple tools,
+      # but we need to catch the suspension for ask_user
+      content = bedrock_service.send_message_converse(
+        system_prompt_text,
+        messages,
+        model: model_name,
+        max_tokens: config[:max_tokens] || 4096,
+        temperature: config[:temperature] || 0.7,
+        tools: tools
+      )
+
+      # Return in consistent format
       {
-        role: 'user',
-        content: prompt
+        content: content,
+        usage: nil # BedrockService handles usage tracking internally
       }
-    ]
+    rescue Tools::AskUserTool::ExecutionSuspended => e
+      # Capture the current conversation state before suspending
+      if execution
+        Rails.logger.info "⏸️ Execution suspended for user input: #{e.message}"
+        
+        # Save the conversation history so we can resume later
+        if e.respond_to?(:conversation_context) && e.conversation_context
+          execution.update!(conversation_context: e.conversation_context)
+        end
+        
+        # Return a special "suspended" result
+        return {
+          content: "Waiting for user input...",
+          usage: nil,
+          status: 'suspended'
+        }
+      end
+      
+      raise e
+    end
 
-    # Call BedrockService with the correct method
-    content = bedrock_service.send_message_converse(
-      system_prompt_text,
-      messages,
-      model: model_name,
-      max_tokens: config[:max_tokens] || 4096,
-      temperature: config[:temperature] || 0.7,
-      tools: tools
-    )
-
-    # Return in consistent format
-    {
-      content: content,
-      usage: nil # BedrockService handles usage tracking internally
-    }
   rescue => e
     Rails.logger.error "StandardPluginExecutor failed: #{e.message}"
     Rails.logger.error e.backtrace.first(5).join("\n")
@@ -197,6 +306,10 @@ class Agents::StandardPluginExecutor
 
     # Get tool names from agent configuration
     tool_names = agent_plugin.agent_tools.pluck(:tool_name)
+    
+    # Always add 'ask_user' for interactive agents
+    tool_names << 'ask_user' unless tool_names.include?('ask_user')
+    
     return [] if tool_names.empty?
 
     # Load tool definitions from ToolCatalog
@@ -220,5 +333,21 @@ class Agents::StandardPluginExecutor
 
     # Additional model-specific configuration
     context[:agent_plugin].model_config || {}
+  end
+  
+  def find_last_tool_use_id(messages, tool_name)
+    messages.reverse_each do |msg|
+      next unless msg[:role] == 'assistant'
+      
+      content = msg[:content]
+      if content.is_a?(Array)
+        content.each do |block|
+          if block[:toolUse] && block[:toolUse][:name] == tool_name
+            return block[:toolUse][:toolUseId]
+          end
+        end
+      end
+    end
+    nil
   end
 end

@@ -34,126 +34,111 @@ module Tools
       task_description = args["task_description"]
       additional_context = args["context"] || {}
 
-      begin
-        # Generate a unique job ID
-        job_id = SecureRandom.uuid
-        
-        # Create job record for the agent
-        job = Amos::JobRecord.create!(
-          job_id: job_id,
-          agent_type: agent_type,
+      # Create execution record for the agent plugin
+      execution = AgentPluginExecution.create!(
+        agent_plugin: find_agent_plugin(agent_type),
+        user: user,
+        status: 'running',
+        started_at: Time.current,
+        model_id: context[:model_preference] || 'claude-3-5-sonnet',
+        input_context: {
+          task: task_description,
           session_id: context[:session_id] || SecureRandom.uuid,
-          status: 'queued',
-          input_data: {
-            task: task_description,
-            user_id: user.id,
-            entity_id: entity.id,
-            context: additional_context.merge({
-              model_preference: context[:model_preference],
-              from_scout: true
-            })
-          },
-          result_data: {},
-          started_at: Time.current
-        )
-
-        # Queue the appropriate job based on agent type
-        job_class = case agent_type.to_s
-        when 'landing_page_agent'
-          AgentJobs::LandingPageAgentJob
-        when 'email_agent'
-          AgentJobs::EmailAgentJob
-        when 'integration_agent'
-          AgentJobs::IntegrationAgentJob
-        when 'data_agent'
-          AgentJobs::DataAgentJob
-        when 'analytics_agent'
-          AgentJobs::AnalyticsAgentJob
-        else
-          # Try to find a custom agent
-          agent_class = "AgentJobs::#{agent_type.to_s.camelize}Job"
-          agent_class.constantize rescue nil
-        end
-
-        if job_class
-          # Determine the correct host for callback URL
-          # In Docker, workers need to use 'web' container name, not 'localhost'
-          callback_host = if ENV['DOCKER_ENV'] == 'true' || File.exist?('/.dockerenv')
-                           'web:3000'
-                         else
-                           "#{Rails.application.config.action_mailer.default_url_options[:host]}:#{Rails.application.config.action_mailer.default_url_options[:port]}"
-                         end
-
-          # Pass the correct parameters to the job
-          job_class.perform_later(
-            job_id: job_id,
-            task: task_description,
-            context: {
-              user_id: user.id,
-              entity_id: entity.id,
-              session_id: context[:session_id],
-              model_preference: context[:model_preference],
-              additional_context: additional_context
-            },
-            callback_url: Rails.application.routes.url_helpers.amos_callback_url(
-              session_id: context[:session_id] || job_id,
-              host: callback_host
-            )
-          )
-          
-          # Notify about the delegation
-          @progress_callback&.call({
-            type: "agent_delegated",
-            agent: agent_type,
-            job_id: job.id,
-            message: "Task delegated to #{agent_type.to_s.humanize}"
-          })
-          
-          # Automatically load the task monitor canvas if we have a session_id
-          if context[:session_id]
-            # Check if task monitor is already loaded
-            unless current_canvas_is_task_monitor?
-              Rails.logger.info "[DelegateToAgentTool] Auto-loading task monitor"
-              ScoutChannel.broadcast_to(context[:session_id], {
-                type: 'load_canvas',
-                canvas_name: 'parallel_tasks',
-                canvas_data: { session_id: context[:session_id] }
-              })
-            end
-            
-            # Broadcast job creation to task monitor
-            ScoutChannel.broadcast_to(context[:session_id], {
-              type: 'task_progress',
-              job_id: job.id,
-              status: 'created',
-              agent_type: agent_type,
-              message: "Starting #{agent_type.to_s.humanize.downcase}..."
-            })
-          end
-
-          {
-            success: true,
-            job_id: job.id,
-            agent_type: agent_type
-          }
-        else
-          job.update!(status: 'failed', status_message: 'Unknown agent type')
-          {
-            success: false,
-            error: "I don't recognize the agent type '#{agent_type}'"
-          }
-        end
-      rescue => e
-        Rails.logger.error "DelegateToAgentTool error: #{e.message}"
-        Rails.logger.error e.backtrace.join("\n")
-        {
-          success: false,
-          error: "Failed to delegate to agent: #{e.message}"
+          additional_context: additional_context
         }
+      )
+      
+      job_id = execution.id # Use execution ID as job ID for compatibility
+
+      # Queue the generic AgentPluginExecutionJob
+      AgentPluginExecutionJob.perform_later(
+        execution.id,
+        task_description,
+        {
+          entity: entity,
+          user_id: user.id,
+          session_id: context[:session_id],
+          model_preference: context[:model_preference],
+          additional_context: additional_context
+        }
+      )
+        
+      # Notify about the delegation
+      @progress_callback&.call({
+        type: "agent_delegated",
+        agent: agent_type,
+        job_id: execution.id,
+        message: "Task delegated to #{find_agent_plugin(agent_type).name}"
+      })
+      
+      # Automatically load the task monitor canvas if we have a session_id
+      if context[:session_id]
+        # Check if task monitor is already loaded
+        unless current_canvas_is_task_monitor?
+          Rails.logger.info "[DelegateToAgentTool] Auto-loading task monitor"
+          ScoutChannel.broadcast_to(context[:session_id], {
+            type: 'load_canvas',
+            canvas_name: 'parallel_tasks',
+            canvas_data: { session_id: context[:session_id] }
+          })
+        end
+        
+        # Broadcast job creation to task monitor
+        ScoutChannel.broadcast_to(context[:session_id], {
+          type: 'task_progress',
+          job_id: execution.id,
+          status: 'created',
+          agent_type: find_agent_plugin(agent_type).slug,
+          message: "Starting #{find_agent_plugin(agent_type).name}..."
+        })
       end
+
+      {
+        success: true,
+        job_id: execution.id,
+        agent_type: agent_type
+      }
+    rescue => e
+      Rails.logger.error "DelegateToAgentTool error: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      {
+        success: false,
+        error: "Failed to delegate to agent: #{e.message}"
+      }
     end
     
     private
+    
+    def find_agent_plugin(slug_or_name)
+      # Normalize input
+      key = slug_or_name.to_s.strip.downcase
+      
+      # Try exact slug match first
+      plugin = AgentPlugin.active.find_by(slug: key)
+      return plugin if plugin
+      
+      # Try mapping old system names to new slugs
+      # Mapping table: old_name => new_slug
+      mapping = {
+        'landing_page_agent' => 'ai_landing_page_creator',
+        'email_agent' => 'email_sequence_architect', # or sales_email_generator
+        'integration_agent' => 'integration_specialist', # Assumption
+        'data_agent' => 'data_manager', # Assumption
+        'analytics_agent' => 'campaign_optimizer'
+      }
+      
+      if mapped_slug = mapping[key]
+        plugin = AgentPlugin.active.find_by(slug: mapped_slug)
+        return plugin if plugin
+      end
+      
+      # Try fuzzy match on name
+      plugin = AgentPlugin.active.where("LOWER(name) LIKE ?", "%#{key.gsub('_', ' ')}%").first
+      return plugin if plugin
+      
+      # Fallback: Raise error so we don't fail silently
+      raise "Could not find active agent plugin for '#{slug_or_name}'"
+    end
     
     def current_canvas_is_task_monitor?
       # Check if the current canvas context shows task monitor is loaded

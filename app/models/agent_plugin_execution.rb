@@ -26,12 +26,14 @@ class AgentPluginExecution < ApplicationRecord
   belongs_to :user
 
   # Validations
-  validates :status, presence: true, inclusion: { in: %w[running completed failed] }
+  validates :status, presence: true, inclusion: { in: %w[running completed failed waiting_for_input cancelled] }
 
   # Scopes
   scope :running, -> { where(status: 'running') }
   scope :completed, -> { where(status: 'completed') }
   scope :failed, -> { where(status: 'failed') }
+  scope :cancelled, -> { where(status: 'cancelled') }
+  scope :waiting_for_input, -> { where(status: 'waiting_for_input') }
   scope :recent, -> { order(created_at: :desc) }
   scope :for_agent, ->(agent_plugin) { where(agent_plugin: agent_plugin) }
   scope :for_user, ->(user) { where(user: user) }
@@ -141,6 +143,10 @@ class AgentPluginExecution < ApplicationRecord
     sum(:tokens_used)
   end
 
+  def result_data
+    output_result
+  end
+  
   private
 
   def set_started_at

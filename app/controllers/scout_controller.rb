@@ -1098,6 +1098,13 @@ class ScoutController < ApplicationController
                                     .order(created_at: :desc)
                                     .limit(20)
         
+        # Load Agent Plugin Executions (New System)
+        agent_executions = AgentPluginExecution.where(user: current_user)
+                                             .where("created_at > ?", 24.hours.ago)
+                                             .includes(:agent_plugin)
+                                             .order(created_at: :desc)
+                                             .limit(20)
+
         # Combine and sort all tasks in descending order (newest first)
         all_tasks = (active_tasks + recent_completed).sort_by { |task| task.created_at }.reverse
         
@@ -1143,8 +1150,31 @@ class ScoutController < ApplicationController
             dependencies: []
           }
         end
+
+        # Add Agent Plugin Executions to the task list
+        plugin_tasks = agent_executions.map do |exec|
+          {
+            id: "#{exec.id}", # Use raw ID to match job_id
+            type: exec.agent_plugin.slug,
+            description: exec.input_context['task'] || exec.agent_plugin.name,
+            status: exec.status,
+            progress: exec.status == 'completed' ? 100 : (exec.status == 'running' || exec.status == 'waiting_for_input' ? 50 : 0),
+            message: exec.result_data&.dig('message') || exec.status,
+            metadata: {
+              job_id: exec.id,
+              agent_type: exec.agent_plugin.slug,
+              agent_name: exec.agent_plugin.name,
+              started_at: exec.started_at,
+              completed_at: exec.completed_at,
+              error: exec.error_message
+            },
+            created_at: exec.created_at,
+            parent_conversation_id: exec.input_context['session_id'],
+            dependencies: []
+          }
+        end
         
-        tasks_data += amos_tasks
+        tasks_data += amos_tasks + plugin_tasks
         tasks_data = tasks_data.sort_by { |t| t[:created_at] }.reverse
         
         @canvas_data = canvas_data.merge('tasks' => tasks_data)
@@ -1256,49 +1286,93 @@ class ScoutController < ApplicationController
     Rails.logger.info "[Scout] Attempting to cancel job: #{job_id}"
     
     begin
-      # Find the Amos job record
-      amos_job = Amos::JobRecord.find_by(job_id: job_id)
+      canceled = false
       
-      if amos_job
-        # Update Amos job status
-        amos_job.update!(
-          status: 'canceled',
-          status_message: 'Task was canceled by user',
-          completed_at: Time.current,
-          error_data: { canceled: true, canceled_at: Time.current }
-        )
-        
-        # Find and cancel the SolidQueue job
-        # Look for jobs with this job_id in the arguments
-        solid_queue_jobs = SolidQueue::Job
-          .where(queue_name: 'agents', finished_at: nil)
-          .where("arguments::text LIKE ?", "%#{job_id}%")
-        
-        solid_queue_jobs.each do |job|
-          Rails.logger.info "[Scout] Canceling SolidQueue job #{job.id}"
-          # Mark as finished with the current time
-          job.update!(finished_at: Time.current)
+      # 1. Try AgentPluginExecution (New System)
+      # Handle potential string IDs "plugin-123"
+      clean_id = job_id.to_s.sub(/^plugin-/, '').sub(/^amos-/, '')
+      
+      if job_id.to_s.start_with?('plugin-') || AgentPluginExecution.exists?(clean_id)
+        execution = AgentPluginExecution.find_by(id: clean_id)
+        if execution
+          # Update status
+          execution.update!(
+            status: 'cancelled', 
+            completed_at: Time.current
+          )
+          # Manually fail/add error message since mark_failed! sets status to failed
+          output = execution.output_result || {}
+          output['error'] = 'Task was canceled by user'
+          execution.update!(output_result: output)
           
-          # Remove from ready executions if present
-          SolidQueue::ReadyExecution.where(job_id: job.id).destroy_all
+          canceled = true
           
-          # Remove from claimed executions if present
-          SolidQueue::ClaimedExecution.where(job_id: job.id).destroy_all
+          # Attempt to find and cancel the SolidQueue job
+          # The job argument is the execution ID integer
+          SolidQueue::Job.where(queue_name: 'agents', finished_at: nil).each do |job|
+             if job.arguments.is_a?(Array) && job.arguments.first == execution.id
+               Rails.logger.info "[Scout] Canceling SolidQueue job #{job.id} for execution #{execution.id}"
+               job.update!(finished_at: Time.current)
+               SolidQueue::ReadyExecution.where(job_id: job.id).destroy_all
+               SolidQueue::ClaimedExecution.where(job_id: job.id).destroy_all
+             end
+          end
+
+          # Broadcast status update
+          ScoutChannel.broadcast_to(session[:scout_session_id], {
+            type: 'task_progress',
+            job_id: job_id,
+            task_id: job_id,
+            status: 'canceled',
+            message: 'Task was canceled by user'
+          })
         end
-        
-        # Broadcast status update
-        ScoutChannel.broadcast_to(session[:scout_session_id], {
-          type: 'task_progress',
-          job_id: "amos-#{job_id}",
-          task_id: "amos-#{job_id}",
-          status: 'canceled',
-          message: 'Task was canceled by user'
-        })
-        
-        render json: { success: true, message: 'Job canceled successfully' }
-      else
-        render json: { success: false, error: 'Job not found' }, status: 404
       end
+      
+      # 2. Try Amos::JobRecord (Old System)
+      # Only if not already canceled
+      unless canceled
+        amos_job = Amos::JobRecord.find_by(job_id: clean_id)
+        
+        if amos_job
+          # Update Amos job status
+          amos_job.update!(
+            status: 'canceled',
+            status_message: 'Task was canceled by user',
+            completed_at: Time.current,
+            error_data: { canceled: true, canceled_at: Time.current }
+          )
+          canceled = true
+          
+          # Find and cancel the SolidQueue job
+          solid_queue_jobs = SolidQueue::Job
+            .where(queue_name: 'agents', finished_at: nil)
+            .where("arguments::text LIKE ?", "%#{clean_id}%")
+          
+          solid_queue_jobs.each do |job|
+            Rails.logger.info "[Scout] Canceling SolidQueue job #{job.id}"
+            job.update!(finished_at: Time.current)
+            SolidQueue::ReadyExecution.where(job_id: job.id).destroy_all
+            SolidQueue::ClaimedExecution.where(job_id: job.id).destroy_all
+          end
+
+          # Broadcast status update
+          ScoutChannel.broadcast_to(session[:scout_session_id], {
+            type: 'task_progress',
+            job_id: "amos-#{clean_id}",
+            task_id: "amos-#{clean_id}",
+            status: 'canceled',
+            message: 'Task was canceled by user'
+          })
+        end
+      end
+
+      if canceled
+        render json: { success: true, job_id: job_id, status: 'canceled' }
+      else
+        render json: { success: false, error: "Job not found: #{job_id}" }, status: 404
+      end
+      
     rescue => e
       Rails.logger.error "[Scout] Error canceling job: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
