@@ -8,7 +8,8 @@
 # It provides a consistent interface that the WorkflowEngine can use
 # regardless of whether an agent is built-in or custom.
 #
-class AgentPluginExecutor
+module Agents
+  class AgentPluginExecutor
   attr_reader :agent_plugin, :agent_service, :phase_config, :context, :execution_record
 
   def initialize(agent_plugin, agent_service, phase_config, context)
@@ -314,4 +315,5 @@ class AgentPluginExecutor
       settings: entity.settings || {}
     }
   end
+end
 end
