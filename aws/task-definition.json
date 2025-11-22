@@ -99,6 +99,10 @@
         {
           "name": "DEEPGRAM_WEBHOOK_SECRET",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-deepgram-webhook-secret-r8dFAM"
+        },
+        {
+          "name": "ELEVEN_LABS_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-eleven-labs-api-key"
         }
       ],
       "logConfiguration": {
@@ -192,6 +196,10 @@
         {
           "name": "DEEPGRAM_WEBHOOK_SECRET",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-deepgram-webhook-secret-r8dFAM"
+        },
+        {
+          "name": "ELEVEN_LABS_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-eleven-labs-api-key"
         }
       ],
       "logConfiguration": {

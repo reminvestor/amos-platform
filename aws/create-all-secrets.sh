@@ -102,6 +102,19 @@ if [ ! -z "$ANTHROPIC_API_KEY" ]; then
         --region $REGION
 fi
 
+# Eleven Labs secret
+if [ ! -z "$ELEVEN_LABS_API_KEY" ]; then
+    echo "Creating/updating Eleven Labs API key..."
+    aws secretsmanager put-secret-value \
+        --secret-id "agent-marketing-eleven-labs-api-key" \
+        --secret-string "$ELEVEN_LABS_API_KEY" \
+        --region $REGION 2>/dev/null || \
+    aws secretsmanager create-secret \
+        --name "agent-marketing-eleven-labs-api-key" \
+        --secret-string "$ELEVEN_LABS_API_KEY" \
+        --region $REGION
+fi
+
 echo ""
 echo "✅ Secrets created/updated successfully!"
 echo ""
