@@ -505,6 +505,7 @@
 
     // Inject editing styles
     const style = doc.createElement('style');
+    style.id = 'scout-editor-styles';
     style.textContent = `
       /* Editor-specific overrides for better editing experience */
       .hero-section {
@@ -885,6 +886,55 @@
     });
   }
   
+  // Get clean HTML for saving or code view
+  function getCleanHtml() {
+    const editor = window.scoutInlineEditor;
+    if (!editor.iframeDoc) return '';
+    
+    // Clone the document to manipulate without affecting the editor
+    const clone = editor.iframeDoc.documentElement.cloneNode(true);
+    
+    // Remove injected styles
+    const style = clone.querySelector('#scout-editor-styles');
+    if (style) style.remove();
+    
+    // Remove editor-specific UI elements
+    clone.querySelectorAll('.image-edit-btn, .resize-handle').forEach(el => el.remove());
+    
+    // Unwrap image containers (restore images to original DOM position)
+    clone.querySelectorAll('.editable-image-container').forEach(container => {
+      const img = container.querySelector('img');
+      if (img) {
+        // Move styles from container back to image if they were applied there (e.g. width)
+        if (container.style.width) {
+          img.style.width = container.style.width;
+        }
+        // Replace container with image
+        container.parentNode.replaceChild(img, container);
+      } else {
+        container.remove();
+      }
+    });
+    
+    // Cleanup attributes and classes
+    clone.querySelectorAll('*').forEach(el => {
+      el.removeAttribute('contenteditable');
+      el.removeAttribute('spellcheck');
+      el.removeAttribute('data-original-content');
+      el.removeAttribute('data-editable-initialized');
+      el.removeAttribute('data-changed');
+      
+      // Remove editor classes
+      el.classList.remove('editable-text', 'editing', 'changed');
+      if (el.classList.length === 0) el.removeAttribute('class');
+      
+      // Remove empty style attributes
+      if (el.getAttribute('style') === '') el.removeAttribute('style');
+    });
+    
+    return clone.outerHTML;
+  }
+
   function toggleHtmlView() {
     const editor = window.scoutInlineEditor;
     const iframe = document.getElementById('editorFrame');
@@ -895,9 +945,9 @@
     
     if (editor.isCodeView) {
       // Switch to Code View
-      // Get current HTML from iframe
-      const currentHtml = editor.iframeDoc.documentElement.outerHTML;
-      // Format it nicely (basic indentation)
+      // Get clean HTML (without editor artifacts)
+      const currentHtml = getCleanHtml();
+      // Format it nicely
       const formattedHtml = formatHtml(currentHtml);
       
       textarea.value = formattedHtml;
@@ -921,7 +971,8 @@
         makeContentEditable(editor.iframeDoc);
         iframe.style.height = editor.iframeDoc.body.scrollHeight + 'px';
       };
-      // Fallback if onload doesn't fire (e.g. no external resources)
+      
+      // Fallback if onload doesn't fire
       setTimeout(() => {
         if (!editor.iframeDoc.body.classList.contains('editable-initialized')) {
            makeContentEditable(editor.iframeDoc);
@@ -943,15 +994,30 @@
   }
 
   function formatHtml(html) {
-    // Simple formatter
+    // Safer formatter that respects text nodes and scripts
     let formatted = '';
-    let indent = '';
+    const pad = '  ';
+    let indentLevel = 0;
+    
+    // Helper to check if tag is self-closing or void
+    const voidTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
+    
     html.split(/>\s*</).forEach(function(node) {
-        if (node.match( /^\/\w/ )) indent = indent.substring(2); // decrease indent
-        formatted += indent + '<' + node + '>\r\n';
-        if (node.match( /^<?\w[^>]*[^\/]$/ )) indent += '  '; // increase indent
+      if (!node) return;
+      
+      // Decrement indent for closing tags
+      if (node.match(/^\/\w/)) indentLevel = Math.max(0, indentLevel - 1);
+      
+      // Add indentation
+      formatted += pad.repeat(indentLevel) + '<' + node + '>\n';
+      
+      // Increment indent for opening tags (unless void or self-closing)
+      if (node.match(/^<?\w[^>]*[^\/]$/) && !voidTags.some(vt => node.startsWith(vt))) {
+        indentLevel++;
+      }
     });
-    return formatted.substring(1, formatted.length-3);
+    
+    return formatted.trim();
   }
 
   function updateSaveButton(forceChanged = false) {
@@ -979,7 +1045,8 @@
     if (editor.isCodeView) {
        updatedHtml = document.getElementById('htmlCodeEditor').value;
     } else {
-       updatedHtml = editor.iframeDoc.documentElement.outerHTML;
+       // Use getCleanHtml to avoid saving editor artifacts
+       updatedHtml = getCleanHtml();
     }
 
     // Log changes without DOM elements to avoid serialization errors
