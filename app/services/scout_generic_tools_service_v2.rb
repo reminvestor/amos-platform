@@ -237,6 +237,17 @@ class ScoutGenericToolsServiceV2
     # Get tools filtered by agent loadout with prompt caching enabled
     tools = @tool_catalog.get_bedrock_tools(agent_loadout: @agent_loadout, enable_caching: true)
 
+    # Exclude dynamic tools for the main Scout agent (main_chat)
+    # Scout uses only the trusted, class-based toolset
+    if @agent_loadout && @agent_loadout.agent_role == "main_chat"
+      tools.reject! do |tool| 
+        tool_name = tool[:name] || tool["name"]
+        # Check if this tool is a dynamic definition (not a class)
+        tool_entry = @tool_catalog.tools[tool_name]
+        tool_entry && tool_entry[:type] == :definition
+      end
+    end
+
     # Exclude tools that should only be used within workflows (not by main chat agent)
     # These are powerful tools that need the context and validation of a workflow
     workflow_only_tools = [

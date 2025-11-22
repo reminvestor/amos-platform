@@ -663,6 +663,9 @@ Rails.application.routes.draw do
         post :purge_executions
       end
     end
+
+    # Tools Management
+    resources :tools
   end
 
   # Common routes (regardless of subdomain)

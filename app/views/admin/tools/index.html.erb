@@ -1,0 +1,101 @@
+
+<div style="padding: 2rem;">
+  <!-- Page Header -->
+  <div class="admin-page-header" style="margin-bottom: 2rem;">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);">
+        <i data-lucide="wrench" style="color: white;"></i>
+      </div>
+      <div class="header-text">
+        <h1>Tools</h1>
+        <p>Manage custom tools for AI agents</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to new_admin_tool_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>Create Tool</span>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Tool List -->
+  <div class="admin-card">
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Type</th>
+            <th>Scope</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if @tools.any? %>
+            <% @tools.each do |tool| %>
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <i data-lucide="wrench" style="width: 1rem; height: 1rem; color: #F59E0B;"></i>
+                    <strong><%= tool.name %></strong>
+                  </div>
+                </td>
+                <td style="color: #94A3B8;"><%= tool.description.truncate(60) %></td>
+                <td>
+                  <% if tool.execution_type == 'ruby_code' %>
+                    <span class="admin-badge admin-badge-error">Ruby Code</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-info">HTTP API</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if tool.admin_only? %>
+                    <span class="admin-badge admin-badge-secondary">Admin Only</span>
+                  <% else %>
+                    <span class="admin-badge admin-badge-success">Public</span>
+                  <% end %>
+                </td>
+                <td>
+                  <small style="color: #94A3B8;">
+                    <%= time_ago_in_words(tool.created_at) + ' ago' %>
+                  </small>
+                </td>
+                <td>
+                  <div class="btn-group btn-group-sm">
+                    <%= link_to edit_admin_tool_path(tool), class: "btn btn-sm btn-outline-secondary icon-btn", title: "Edit", style: "border-color: #1E293B; color: #94A3B8;" do %>
+                      <i data-lucide="edit" style="width: 1rem; height: 1rem;"></i>
+                    <% end %>
+                    <%= button_to admin_tool_path(tool), method: :delete, class: "btn btn-sm btn-outline-danger icon-btn", form: { style: "display: inline-block;" }, style: "border-color: #1E293B; color: #EF4444;", onclick: "return confirm('Are you sure?')" do %>
+                      <i data-lucide="trash-2" style="width: 1rem; height: 1rem;"></i>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 3rem; color: #64748B;">
+                <div style="width: 48px; height: 48px; margin: 0 auto 1rem; color: #475569;">
+                  <i data-lucide="inbox" style="width: 48px; height: 48px;"></i>
+                </div>
+                <p>No custom tools found</p>
+                <%= link_to "Create your first tool", new_admin_tool_path, class: "admin-btn admin-btn-primary", style: "margin-top: 1rem; display: inline-flex;" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>
+

@@ -25,6 +25,43 @@
     </div>
   </div>
 
+  <!-- Help Section -->
+  <div class="admin-card mb-4">
+    <details>
+      <summary style="cursor: pointer; padding: 1rem; display: flex; align-items: center; gap: 0.5rem; color: #94A3B8;">
+        <i data-lucide="info" style="width: 1.25rem; height: 1.25rem;"></i>
+        <span style="font-weight: 500;">How to create new Agents and Tools</span>
+      </summary>
+      <div style="padding: 0 1.5rem 1.5rem 1.5rem; border-top: 1px solid #1E293B; margin-top: 0.5rem; padding-top: 1rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+          <div>
+            <h4 style="color: #FFFFFF; margin-bottom: 0.5rem;">Create via Chat (Recommended)</h4>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 1rem;">
+              You can ask Scout to create new agents and tools for you. This is the easiest way to get started.
+            </p>
+            <div style="background: #0F172A; padding: 1rem; border-radius: 0.5rem; font-family: monospace; color: #A78BFA; font-size: 0.875rem;">
+              "Create a new SEO Audit agent that can check my website for common issues."
+            </div>
+            <div style="background: #0F172A; padding: 1rem; border-radius: 0.5rem; font-family: monospace; color: #A78BFA; font-size: 0.875rem; margin-top: 0.5rem;">
+              "Create a tool called 'check_ssl' that verifies if a website has a valid certificate."
+            </div>
+          </div>
+          <div>
+            <h4 style="color: #FFFFFF; margin-bottom: 0.5rem;">Advanced Configuration</h4>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin-bottom: 1rem;">
+              Use the admin forms for full control over system prompts, capabilities, and tool assignments.
+            </p>
+            <ul style="color: #94A3B8; font-size: 0.875rem; padding-left: 1.5rem;">
+              <li>Define custom <strong>Capabilities</strong> (inputs/outputs JSON schema)</li>
+              <li>Assign specialized <strong>Tools</strong> (ruby code or API calls)</li>
+              <li>Set specific <strong>AI Models</strong> (Claude 3.5 Sonnet, Opus, etc.)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </details>
+  </div>
+
   <!-- Stats Cards -->
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
     <div class="admin-card">
