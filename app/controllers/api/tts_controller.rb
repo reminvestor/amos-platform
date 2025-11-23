@@ -21,6 +21,17 @@ class Api::TtsController < ApplicationController
                        ['Matthew', 'Joanna', 'Ivy', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Justin', 'Kevin', 'Ruth', 'Stephen', 'Olivia'].include?(requested_voice_id)
       
       provider = is_polly_voice ? 'polly' : 'eleven_labs'
+    else
+      # EVEN IF provider is set (e.g. to 'eleven_labs' by default), check for mismatch
+      # This handles legacy clients/settings where provider=eleven_labs but voice_id=Joanna
+      requested_voice_id = params[:voice_id] || prefs['voice_id']
+      is_polly_voice = PollyTtsService::VOICES.key?(requested_voice_id) || 
+                       ['Matthew', 'Joanna', 'Ivy', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Justin', 'Kevin', 'Ruth', 'Stephen', 'Olivia'].include?(requested_voice_id)
+      
+      if is_polly_voice && provider == 'eleven_labs'
+        Rails.logger.info "⚠️ Provider mismatch detected: #{provider} requested but voice is #{requested_voice_id} (Polly). Forcing Polly."
+        provider = 'polly'
+      end
     end
     
     if provider == 'eleven_labs'
