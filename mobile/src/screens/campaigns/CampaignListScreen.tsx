@@ -18,6 +18,8 @@ import { useAppDispatch, useAppSelector } from '@store';
 import { fetchCampaigns, pauseCampaign, resumeCampaign } from '@store/slices/campaignsSlice';
 import { Campaign } from '@types';
 import { formatShortDate, formatPercentage, formatContactCount, formatCampaignStatus } from '@utils/formatters';
+import { FavoriteButton } from '@components/FavoriteButton';
+import { getColors } from '@theme/colors';
 
 interface CampaignListScreenProps {
   navigation: any;
@@ -26,6 +28,8 @@ interface CampaignListScreenProps {
 export default function CampaignListScreen({ navigation }: CampaignListScreenProps) {
   const dispatch = useAppDispatch();
   const { list, isLoading, error, pagination } = useAppSelector((state) => state.campaigns);
+  const { theme } = useAppSelector((state) => state.ui);
+  const colors = getColors(theme);
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
@@ -149,6 +153,8 @@ export default function CampaignListScreen({ navigation }: CampaignListScreenPro
 
           {/* Action Menu */}
           <View style={styles.actionMenu}>
+            <FavoriteButton id={item.id} type="campaign" size={20} />
+
             {item.status === 'in_progress' && (
               <TouchableOpacity
                 onPress={() => handlePauseCampaign(item)}
