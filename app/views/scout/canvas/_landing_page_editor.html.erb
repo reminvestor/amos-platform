@@ -802,13 +802,21 @@
     
     // Unwrap existing containers to re-initialize them properly
     doc.querySelectorAll('.editable-image-container').forEach(container => {
-      const img = container.querySelector('img');
-      if (img) {
-        // Restore style if needed (width/height might be on container)
-        if (container.style.width && !img.style.width) img.style.width = container.style.width;
-        container.parentNode.replaceChild(img, container);
+      // Check if this is a wrapper we created (vs an existing div we decorated)
+      if (container.dataset.scoutWrapper === 'true') {
+        const img = container.querySelector('img');
+        if (img) {
+          // Restore style if needed (width/height might be on container)
+          if (container.style.width && !img.style.width) img.style.width = container.style.width;
+          container.parentNode.replaceChild(img, container);
+        } else {
+          // Wrapper without image? Should not happen, but safe to remove if it was just a wrapper
+          container.remove();
+        }
       } else {
-        container.remove();
+        // It's an existing element (placeholder div). Just strip the class.
+        container.classList.remove('editable-image-container');
+        // Remove artifacts if they exist (edit btn, handle are removed globally above, but just in case)
       }
     });
 
@@ -950,6 +958,7 @@
       if (!container.classList.contains('editable-image-container')) {
         container = doc.createElement('div');
         container.className = 'editable-image-container';
+        container.dataset.scoutWrapper = 'true'; // Mark as our wrapper
         container.style.display = 'inline-block';
         img.parentNode.insertBefore(container, img);
         container.appendChild(img);
@@ -1291,16 +1300,26 @@
     
     // Unwrap image containers (restore images to original DOM position)
     clone.querySelectorAll('.editable-image-container').forEach(container => {
-      const img = container.querySelector('img');
-      if (img) {
-        // Move styles from container back to image if they were applied there (e.g. width)
-        if (container.style.width) {
-          img.style.width = container.style.width;
+      // Check if this is a wrapper we created (vs an existing div we decorated)
+      // We look for the data attribute we add in makeContentEditable
+      if (container.dataset.scoutWrapper === 'true') {
+        const img = container.querySelector('img');
+        if (img) {
+          // Move styles from container back to image if they were applied there (e.g. width)
+          if (container.style.width) {
+            img.style.width = container.style.width;
+          }
+          // Replace container with image
+          container.parentNode.replaceChild(img, container);
+        } else {
+          // Wrapper without image? Remove it.
+          container.remove();
         }
-        // Replace container with image
-        container.parentNode.replaceChild(img, container);
       } else {
-        container.remove();
+        // It's an existing element (placeholder div) that we decorated.
+        // DO NOT REMOVE IT. Just strip the class.
+        container.classList.remove('editable-image-container');
+        container.removeAttribute('data-scout-wrapper'); // Should not be there for non-wrappers, but safe to ensure
       }
     });
     
@@ -1311,6 +1330,7 @@
       el.removeAttribute('data-original-content');
       el.removeAttribute('data-editable-initialized');
       el.removeAttribute('data-changed');
+      el.removeAttribute('data-scout-wrapper');
       
       // Remove editor classes
       el.classList.remove('editable-text', 'editing', 'changed');
