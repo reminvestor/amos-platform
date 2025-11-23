@@ -209,8 +209,31 @@
       
       // Populate modal fields
       document.getElementById('linkText').value = linkEl.innerText;
-      document.getElementById('linkUrl').value = linkEl.getAttribute('href') || '';
-      document.getElementById('linkType').value = linkEl.getAttribute('target') || '_self';
+      
+      // Handle href for links vs custom handling for buttons
+      if (linkEl.tagName === 'BUTTON') {
+         // For buttons, we might use 'onclick' or 'formaction' as the "URL" equivalent if present
+         // But usually buttons in landing pages are forms.
+         // Let's check if it has an onclick that looks like navigation
+         const onclick = linkEl.getAttribute('onclick') || '';
+         const formaction = linkEl.getAttribute('formaction') || '';
+         
+         if (onclick.includes('location.href') || onclick.includes('window.location')) {
+            // Try to extract the URL
+            const match = onclick.match(/['"]([^'"]+)['"]/);
+            document.getElementById('linkUrl').value = match ? match[1] : '';
+         } else if (formaction) {
+            document.getElementById('linkUrl').value = formaction;
+         } else {
+            document.getElementById('linkUrl').value = '';
+         }
+         // Set type to something indicating it's a button
+         document.getElementById('linkType').value = linkEl.getAttribute('type') || 'button';
+      } else {
+         document.getElementById('linkUrl').value = linkEl.getAttribute('href') || '';
+         document.getElementById('linkType').value = linkEl.getAttribute('target') || '_self';
+      }
+      
       document.getElementById('linkStyle').value = linkEl.className || '';
       
       // Show modal
@@ -443,7 +466,7 @@
       });
     }
 
-    // Save Link Changes
+          // Save Link Changes
     const saveLinkBtn = document.getElementById('saveLinkBtn');
     if (saveLinkBtn) {
       saveLinkBtn.addEventListener('click', function() {
@@ -457,8 +480,27 @@
           const newStyle = document.getElementById('linkStyle').value;
           
           linkEl.innerText = newText;
-          linkEl.setAttribute('href', newUrl);
-          linkEl.setAttribute('target', newType);
+          
+          if (linkEl.tagName === 'BUTTON') {
+             // If it's a button, setting href doesn't work.
+             // If the user provided a URL, we might need to convert it to an onclick or formaction
+             if (newUrl) {
+                // If it's a submit button, assume formaction
+                if (linkEl.type === 'submit') {
+                   linkEl.setAttribute('formaction', newUrl);
+                } else {
+                   // Otherwise assume standard navigation
+                   linkEl.setAttribute('onclick', `window.location.href='${newUrl}'`);
+                }
+             }
+             if (newType && newType !== '_self' && newType !== '_blank') {
+                 linkEl.setAttribute('type', newType);
+             }
+          } else {
+             linkEl.setAttribute('href', newUrl);
+             linkEl.setAttribute('target', newType);
+          }
+          
           if (newStyle) linkEl.className = newStyle;
           
           // Track change
@@ -602,20 +644,21 @@
 
     let editableCount = 0;
     textElements.forEach(el => {
-      // Special handling for links - they open modal instead of direct edit
-      if (el.tagName === 'A') {
+      // Special handling for links and buttons - they open modal instead of direct edit
+      if (el.tagName === 'A' || el.tagName === 'BUTTON') {
         if (!el.dataset.editableInitialized) {
           el.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopPropagation(); // Prevent form submission or other handlers
             // Open modal in parent window context
             window.parent.window.scoutInlineEditor.openLinkEditor(this);
           });
           el.dataset.editableInitialized = 'true';
           // Add visual cue
           el.style.cursor = 'pointer';
-          el.title = 'Click to edit link';
+          el.title = 'Click to edit ' + (el.tagName === 'BUTTON' ? 'button' : 'link');
         }
-        return; // Skip standard contentEditable logic for links
+        return; // Skip standard contentEditable logic
       }
 
       // Skip elements with nested block-level children or form inputs
