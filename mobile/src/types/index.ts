@@ -220,6 +220,45 @@ export interface TaskAttachment {
   created_at: string;
 }
 
+// Agent Management
+export interface AgentField {
+  name: string;
+  question: string;
+  required: boolean;
+  type?: 'text' | 'select' | 'textarea';
+  examples?: string[];
+  options?: { label: string; value: string }[];
+}
+
+export interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  agent_type: 'content_generator' | 'data_processor' | 'api_integration' | 'workflow_automation' | 'custom';
+  interactive: boolean;
+  icon: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface AgentDetail extends Agent {
+  fields: AgentField[];
+  required_context?: string[];
+  capabilities?: string[];
+}
+
+export interface AgentExecution {
+  job_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  result?: Record<string, any>;
+  error?: string;
+}
+
+export interface AgentExecutionRequest {
+  task: string;
+  context?: Record<string, any>;
+}
+
 // API Response
 export interface ApiResponse<T = any> {
   data: T;
@@ -300,6 +339,13 @@ export interface AppState {
       priority?: string;
       search?: string;
     };
+  };
+  agents: {
+    list: Agent[];
+    current: AgentDetail | null;
+    isLoading: boolean;
+    error: string | null;
+    execution: AgentExecution | null;
   };
   ui: {
     theme: 'light' | 'dark';
