@@ -125,16 +125,50 @@
           <label class="form-label">Image Source</label>
           <div class="nav nav-tabs mb-3" role="tablist">
             <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#libTab" type="button">Library</button>
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#uploadTab" type="button">Upload</button>
             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#urlTab" type="button">Custom URL</button>
           </div>
           
           <div class="tab-content">
             <div class="tab-pane fade show active" id="libTab">
               <div id="scoutImageLibraryGrid" class="row g-3" style="max-height: 400px; overflow-y: auto;">
-          <!-- Images will be loaded here -->
-        </div>
-        <div class="text-center mt-3">
-          <button class="btn btn-sm btn-outline-secondary" id="loadMoreImages">Load More</button>
+                <!-- Images will be loaded here -->
+              </div>
+              <div class="text-center mt-3">
+                <button class="btn btn-sm btn-outline-secondary" id="loadMoreImages">Load More</button>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="uploadTab">
+              <div class="text-center p-4 border border-dashed rounded mb-3" id="dropZone" style="border-style: dashed; border-color: #ccc; background-color: #f8f9fa;">
+                <i data-lucide="upload-cloud" style="width: 3rem; height: 3rem; color: #6c757d; margin-bottom: 1rem;"></i>
+                <h5>Drag & Drop or Click to Upload</h5>
+                <p class="text-muted small">Supports JPG, PNG, WebP</p>
+                <input type="file" id="fileInput" class="d-none" accept="image/*">
+                <button class="btn btn-primary mt-2" onclick="document.getElementById('fileInput').click()">Choose File</button>
+              </div>
+              <div id="uploadPreviewContainer" class="d-none">
+                <div class="d-flex align-items-center gap-3 p-3 border rounded mb-3">
+                  <img id="uploadPreview" src="" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
+                  <div class="flex-grow-1">
+                    <strong id="uploadFileName" class="d-block">filename.jpg</strong>
+                    <small id="uploadFileSize" class="text-muted">0 KB</small>
+                  </div>
+                  <button class="btn btn-sm btn-outline-danger" id="cancelUploadBtn">
+                    <i data-lucide="x"></i>
+                  </button>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Image Title (Optional)</label>
+                  <input type="text" class="form-control" id="uploadTitle" placeholder="My Image">
+                </div>
+                <div class="d-grid">
+                  <button class="btn btn-success" id="confirmUploadBtn">
+                    <i data-lucide="check"></i> Upload & Select
+                  </button>
+                </div>
+              </div>
+              <div id="uploadProgress" class="progress mt-3 d-none">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
               </div>
             </div>
             <div class="tab-pane fade" id="urlTab">
@@ -510,7 +544,162 @@
       });
     }
 
-          // Save Link Changes
+    // File Upload Handling
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropZone');
+    const uploadPreviewContainer = document.getElementById('uploadPreviewContainer');
+    const confirmUploadBtn = document.getElementById('confirmUploadBtn');
+    const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+    
+    if (fileInput) {
+      // Handle file selection
+      fileInput.addEventListener('change', function(e) {
+        handleFiles(e.target.files);
+      });
+      
+      // Drag and drop
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#0d6efd';
+        dropZone.style.backgroundColor = '#e9ecef';
+      });
+      
+      dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#ccc';
+        dropZone.style.backgroundColor = '#f8f9fa';
+      });
+      
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#ccc';
+        dropZone.style.backgroundColor = '#f8f9fa';
+        handleFiles(e.dataTransfer.files);
+      });
+      
+      function handleFiles(files) {
+        if (files.length > 0) {
+          const file = files[0];
+          if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+          }
+          
+          // Show preview
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            document.getElementById('uploadPreview').src = e.target.result;
+            document.getElementById('uploadFileName').textContent = file.name;
+            document.getElementById('uploadFileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+            document.getElementById('uploadTitle').value = file.name.split('.')[0].replace(/[-_]/g, ' '); // default title
+            
+            dropZone.classList.add('d-none');
+            uploadPreviewContainer.classList.remove('d-none');
+          };
+          reader.readAsDataURL(file);
+          
+          // Store file for upload
+          window.scoutInlineEditor.pendingUploadFile = file;
+        }
+      }
+      
+      // Cancel upload
+      cancelUploadBtn.addEventListener('click', function() {
+        window.scoutInlineEditor.pendingUploadFile = null;
+        fileInput.value = '';
+        dropZone.classList.remove('d-none');
+        uploadPreviewContainer.classList.add('d-none');
+      });
+      
+      // Confirm upload
+      confirmUploadBtn.addEventListener('click', function() {
+        const file = window.scoutInlineEditor.pendingUploadFile;
+        if (!file) return;
+        
+        const title = document.getElementById('uploadTitle').value || file.name;
+        const progressBar = document.querySelector('#uploadProgress .progress-bar');
+        const progressContainer = document.getElementById('uploadProgress');
+        
+        progressContainer.classList.remove('d-none');
+        confirmUploadBtn.disabled = true;
+        
+        const formData = new FormData();
+        formData.append('image_asset[file]', file);
+        formData.append('image_asset[title]', title);
+        formData.append('image_asset[source]', 'upload');
+        
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/image_assets.json', true);
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                          window.parent.document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+          xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+        }
+        
+        xhr.upload.onprogress = function(e) {
+          if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            progressBar.style.width = percentComplete + '%';
+          }
+        };
+        
+        xhr.onload = function() {
+          if (xhr.status === 200 || xhr.status === 201) {
+            const response = JSON.parse(xhr.responseText);
+            if (response.success && response.image) {
+              // Upload successful!
+              // Switch to library tab and select the new image
+              document.querySelector('button[data-bs-target="#libTab"]').click();
+              
+              // Force reload of library (first page)
+              const editor = window.scoutInlineEditor;
+              editor.imageLibraryPage = 1;
+              
+              // We want to prepend the new image or reload. Reloading is safer.
+              editorLoadImageLibrary(1).then(() => {
+                 // Try to find and auto-select the new image
+                 setTimeout(() => {
+                    const newImageEl = document.querySelector(`.image-picker-item[data-id="${response.image.id}"]`);
+                    if (newImageEl) {
+                       newImageEl.click(); // Auto-select
+                       // Auto-confirm? Maybe let user confirm.
+                       // Or better: just apply it immediately since they clicked "Upload & Select"
+                       document.getElementById('selectImageBtn').click();
+                    }
+                 }, 500);
+              });
+              
+              // Reset upload form
+              cancelUploadBtn.click();
+              progressBar.style.width = '0%';
+              progressContainer.classList.add('d-none');
+              confirmUploadBtn.disabled = false;
+              
+            } else {
+              alert('Upload failed: ' + (response.error || 'Unknown error'));
+              confirmUploadBtn.disabled = false;
+              progressContainer.classList.add('d-none');
+            }
+          } else {
+            alert('Upload failed with status: ' + xhr.status);
+            confirmUploadBtn.disabled = false;
+            progressContainer.classList.add('d-none');
+          }
+        };
+        
+        xhr.onerror = function() {
+          alert('Network error during upload.');
+          confirmUploadBtn.disabled = false;
+          progressContainer.classList.add('d-none');
+        };
+        
+        xhr.send(formData);
+      });
+    }
+
+    // Save Link Changes
     const saveLinkBtn = document.getElementById('saveLinkBtn');
     if (saveLinkBtn) {
       saveLinkBtn.addEventListener('click', function() {
@@ -947,7 +1136,7 @@
   }
   
   function editorLoadImageLibrary(page = 1, append = false) {
-    fetch(`/image_assets.json?page=${page}`)
+    return fetch(`/image_assets.json?page=${page}`)
       .then(response => response.json())
       .then(data => {
         const grid = document.getElementById('scoutImageLibraryGrid');
