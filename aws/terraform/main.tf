@@ -525,6 +525,10 @@ resource "aws_ecs_task_definition" "app" {
         {
           name      = "ANTHROPIC_API_KEY"
           valueFrom = data.aws_secretsmanager_secret.anthropic_api_key.arn
+        },
+        {
+          name      = "ELEVEN_LABS_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.eleven_labs_api_key.arn
         }
       ]
       
@@ -544,6 +548,99 @@ resource "aws_ecs_task_definition" "app" {
         timeout     = 5
         retries     = 3
         startPeriod = 60
+      }
+    },
+    {
+      name  = "solid-queue-worker"
+      image = "${aws_ecr_repository.app.repository_url}:latest"
+      command = ["bundle", "exec", "rake", "solid_queue:start"]
+      
+      environment = [
+        {
+          name  = "RAILS_ENV"
+          value = "production"
+        },
+        {
+          name  = "RAILS_LOG_TO_STDOUT"
+          value = "true"
+        },
+        {
+          name  = "AWS_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "AWS_S3_BUCKET"
+          value = aws_s3_bucket.storage.id
+        },
+        {
+          name  = "RAG_BUCKET"
+          value = aws_s3_bucket.rag_storage.id
+        },
+        {
+          name  = "AI_PROVIDER"
+          value = "bedrock"
+        },
+        {
+          name  = "MAILER_SENDER"
+          value = "noreply@nuvola-networks.com"
+        }
+      ]
+      
+      secrets = [
+        {
+          name      = "DATABASE_URL"
+          valueFrom = aws_secretsmanager_secret.database_url.arn
+        },
+        {
+          name      = "RAILS_MASTER_KEY"
+          valueFrom = aws_secretsmanager_secret.rails_master_key.arn
+        },
+        {
+          name      = "REDIS_URL"
+          valueFrom = aws_secretsmanager_secret.redis_url.arn
+        },
+        {
+          name      = "MAILGUN_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.mailgun_api_key.arn
+        },
+        {
+          name      = "MAILGUN_DOMAIN"
+          valueFrom = data.aws_secretsmanager_secret.mailgun_domain.arn
+        },
+        {
+          name      = "PINECONE_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.pinecone_api_key.arn
+        },
+        {
+          name      = "PINECONE_ENVIRONMENT"
+          valueFrom = data.aws_secretsmanager_secret.pinecone_environment.arn
+        },
+        {
+          name      = "PINECONE_INDEX_NAME"
+          valueFrom = data.aws_secretsmanager_secret.pinecone_index_name.arn
+        },
+        {
+          name      = "OPENAI_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.openai_api_key.arn
+        },
+        {
+          name      = "ANTHROPIC_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.anthropic_api_key.arn
+        },
+        {
+          name      = "ELEVEN_LABS_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.eleven_labs_api_key.arn
+        }
+      ]
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-create-group"  = "true"
+          "awslogs-group"         = "/ecs/${var.app_name}-worker"
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
       }
     }
   ])
@@ -644,7 +741,8 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
           data.aws_secretsmanager_secret.pinecone_environment.arn,
           data.aws_secretsmanager_secret.pinecone_index_name.arn,
           data.aws_secretsmanager_secret.openai_api_key.arn,
-          data.aws_secretsmanager_secret.anthropic_api_key.arn
+          data.aws_secretsmanager_secret.anthropic_api_key.arn,
+          data.aws_secretsmanager_secret.eleven_labs_api_key.arn
         ]
       }
     ]
@@ -869,6 +967,10 @@ data "aws_secretsmanager_secret" "openai_api_key" {
 
 data "aws_secretsmanager_secret" "anthropic_api_key" {
   name = "${var.app_name}-anthropic-api-key"
+}
+
+data "aws_secretsmanager_secret" "eleven_labs_api_key" {
+  name = "${var.app_name}-eleven-labs-api-key"
 }
 
 # VPC Endpoints for private subnet access to AWS services
