@@ -92,7 +92,21 @@ export default class extends Controller {
     const speed = parseFloat(document.getElementById('speed')?.value || 1.0)
     const volume = parseFloat(document.getElementById('volume')?.value || 1.0)
     const engine = document.getElementById('engine')?.value || 'neural'
-    const provider = document.getElementById('provider')?.value || 'eleven_labs'
+    // Correctly identify the provider based on the voice ID if needed, or use the dropdown
+    // If the user is switching providers, the dropdown might be updated but we need to be sure
+    const providerDropdown = document.getElementById('provider')
+    const provider = providerDropdown ? providerDropdown.value : 'eleven_labs'
+    
+    // If the voiceId passed doesn't match the provider, try to fix it
+    // This happens when switching provider and the event is fired before we updated voiceId
+    let actualVoiceId = voiceId;
+    if (provider === 'eleven_labs') {
+        actualVoiceId = document.getElementById('eleven_labs_voice_id')?.value || voiceId;
+    } else {
+        actualVoiceId = document.getElementById('voice_id')?.value || voiceId;
+    }
+    
+    console.log('🎤 Resolved preview params:', { provider, actualVoiceId, engine, speed })
 
     // Short preview texts for quick sampling
     const previewTexts = {
@@ -151,12 +165,12 @@ export default class extends Controller {
       'Charlie': "G'day! I'm Charlie."
     }
 
-    const text = previewTexts[voiceId] || previewTexts['Matthew'] || "Hello! This is a voice preview."
+    const text = previewTexts[actualVoiceId] || previewTexts['Matthew'] || "Hello! This is a voice preview."
 
     try {
       const params = new URLSearchParams({
         text: text,
-        voice_id: voiceId,
+        voice_id: actualVoiceId,
         provider: provider,
         engine: engine,
         speech_marks: 'false'
@@ -280,6 +294,7 @@ export default class extends Controller {
     
     try {
       // Call TTS API - use query params for GET-style parameters
+      // Ensure we force the provider if it's Eleven Labs but voiceId might be ambiguous or stale
       const params = new URLSearchParams({
         text: text,
         voice_id: voiceId,
