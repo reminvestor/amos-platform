@@ -34,7 +34,7 @@ module Api
           execution = AgentPluginExecution.find_by(id: execution_id)
           if execution
             response_data[:status] = execution.status
-            response_data[:task] = execution.input_params # or equivalent
+            response_data[:task] = execution.input_context # or equivalent
           end
         end
         
