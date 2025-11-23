@@ -57,9 +57,20 @@ export default class TTSAudioManager {
         // Or if provider says polly but voice_id is missing.
         
         if (this.provider === 'eleven_labs') {
-          // If eleven_labs_voice_id is set, use it. 
-          // If not, check if voice_id is set and looks like it might be one (fallback) or default to George.
-          this.voiceId = prefs.eleven_labs_voice_id || prefs.voice_id || 'George'
+          // Only use eleven_labs_voice_id if present.
+          // If falling back to voice_id, ensure it's NOT a known Polly voice.
+          const pollyVoices = ['Matthew', 'Joanna', 'Ivy', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Justin', 'Kevin', 'Ruth', 'Stephen', 'Olivia', 'Aria', 'Ayanda', 'Bianca', 'Brian', 'Camila', 'Carla', 'Celine', 'Chantal', 'Conchita', 'Cristiano', 'Dora', 'Emma', 'Enrique', 'Ewa', 'Filiz', 'Gabrielle', 'Geraint', 'Giorgio', 'Gwyneth', 'Hans', 'Ines', 'Isabelle', 'Jacek', 'Jan', 'Karl', 'Lea', 'Liv', 'Lotte', 'Lucia', 'Lupe', 'Mads', 'Maja', 'Marlene', 'Mathieu', 'Maxim', 'Mia', 'Miguel', 'Mizuki', 'Naja', 'Nicole', 'Penelope', 'Raveena', 'Ricardo', 'Ruben', 'Russell', 'Seoyeon', 'Takumi', 'Tatyana', 'Vicki', 'Vitoria', 'Zeina', 'Zhiyu'];
+          
+          const preferredVoice = prefs.eleven_labs_voice_id;
+          const legacyVoice = prefs.voice_id;
+          
+          if (preferredVoice && !pollyVoices.includes(preferredVoice)) {
+             this.voiceId = preferredVoice;
+          } else if (legacyVoice && !pollyVoices.includes(legacyVoice)) {
+             this.voiceId = legacyVoice;
+          } else {
+             this.voiceId = 'George'; // Default Eleven Labs voice
+          }
         } else {
           this.voiceId = prefs.voice_id || 'Matthew'
         }

@@ -233,13 +233,27 @@ export default class extends Controller {
     // Re-initialize Lucide icons for the new icon
     if (typeof lucide !== 'undefined') lucide.createIcons()
     
-    const provider = document.getElementById('provider').value
+    const providerEl = document.getElementById('provider')
+    const provider = providerEl ? providerEl.value : 'unknown'
+    
     let voiceId
+    const elevenLabsEl = document.getElementById('eleven_labs_voice_id')
+    const pollyEl = document.getElementById('voice_id')
     
     if (provider === 'eleven_labs') {
-      voiceId = document.getElementById('eleven_labs_voice_id').value
+      voiceId = elevenLabsEl ? elevenLabsEl.value : null
+      console.log('🎤 Selected Eleven Labs voice:', voiceId, 'from element:', elevenLabsEl)
     } else {
-      voiceId = document.getElementById('voice_id').value
+      voiceId = pollyEl ? pollyEl.value : null
+      console.log('🎤 Selected Polly voice:', voiceId, 'from element:', pollyEl)
+    }
+    
+    if (!voiceId) {
+       console.error('❌ No voice ID found for provider:', provider)
+       button.disabled = false
+       button.innerHTML = originalText
+       alert('Please select a voice first.')
+       return
     }
     
     const engine = document.getElementById('engine')?.value || 'neural'
