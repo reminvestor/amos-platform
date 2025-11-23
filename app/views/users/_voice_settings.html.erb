@@ -36,7 +36,7 @@
         </div>
 
         <%# Eleven Labs Voices %>
-        <div class="col-12 mb-4" id="eleven_labs_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'eleven_labs' ? '' : 'display: none;' %>">
+        <div class="col-12 mb-4" id="eleven_labs_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'eleven_labs' ? 'display: block;' : 'display: none;' %>">
           <div class="admin-form-group">
             <label for="eleven_labs_voice_id" class="admin-label">AI Voice (Eleven Labs)</label>
             <% eleven_labs_voice_groups = {
@@ -68,7 +68,7 @@
         </div>
 
         <%# Polly Voices %>
-        <div class="col-12 mb-4" id="polly_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'polly' ? '' : 'display: none;' %>">
+        <div class="col-12 mb-4" id="polly_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'polly' ? 'display: block;' : 'display: none;' %>">
           <div class="admin-form-group">
             <label for="voice_id" class="admin-label">AI Voice (Polly)</label>
             <% voice_groups = {
@@ -105,13 +105,13 @@
                 ['Lucia (Spanish Female - Neural)', 'Lucia'],
                 ['Sergio (Spanish Male - Neural)', 'Sergio'],
                 ['Conchita (Spanish Female)', 'Conchita'],
-                ['Lupe (US Spanish Female - Neural)', 'Lupe'],
-                ['Mia (Mexican Spanish Female - Neural)', 'Mia'],
-                ['Andrés (Mexican Spanish Male - Neural)', 'Andres'],
+                  ['Lupe (US Spanish Female - Neural)', 'Lupe'],
+                  ['Mia (Mexican Spanish Female - Neural)', 'Mia'],
+                  ['Andrés (Mexican Spanish Male - Neural)', 'Andres'],
                 ['Camila (Portuguese Female - Neural)', 'Camila'],
                 ['Ricardo (Portuguese Male - Neural)', 'Ricardo'],
-                ['Vitória (Brazilian Portuguese Female - Neural)', 'Vitoria'],
-                ['Thiago (Brazilian Portuguese Male - Neural)', 'Thiago']
+                  ['Vitória (Brazilian Portuguese Female - Neural)', 'Vitoria'],
+                  ['Thiago (Brazilian Portuguese Male - Neural)', 'Thiago']
               ]
             } %>
             <%= select_tag :voice_id,
