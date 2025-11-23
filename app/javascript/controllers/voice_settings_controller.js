@@ -34,23 +34,25 @@ export default class extends Controller {
   
   toggleProvider(event) {
     const provider = event.target.value
+    console.log('🎛️ Toggling provider to:', provider)
+    
     const elevenLabsContainer = document.getElementById('eleven_labs_voices_container')
     const pollyContainer = document.getElementById('polly_voices_container')
 
     if (provider === 'eleven_labs') {
-      elevenLabsContainer.style.display = 'block'
-      pollyContainer.style.display = 'none'
+      if (elevenLabsContainer) elevenLabsContainer.style.display = 'block'
+      if (pollyContainer) pollyContainer.style.display = 'none'
       
       // Trigger preview for the newly visible voice
-      const voiceId = document.getElementById('eleven_labs_voice_id').value
-      this.playVoicePreview(voiceId)
+      const voiceEl = document.getElementById('eleven_labs_voice_id')
+      if (voiceEl) this.playVoicePreview(voiceEl.value)
     } else {
-      elevenLabsContainer.style.display = 'none'
-      pollyContainer.style.display = 'block'
+      if (elevenLabsContainer) elevenLabsContainer.style.display = 'none'
+      if (pollyContainer) pollyContainer.style.display = 'block'
       
       // Trigger preview for the newly visible voice
-      const voiceId = document.getElementById('voice_id').value
-      this.playVoicePreview(voiceId)
+      const voiceEl = document.getElementById('voice_id')
+      if (voiceEl) this.playVoicePreview(voiceEl.value)
     }
   }
 
