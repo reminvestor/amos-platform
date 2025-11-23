@@ -664,8 +664,7 @@
                     const newImageEl = document.querySelector(`.image-picker-item[data-id="${response.image.id}"]`);
                     if (newImageEl) {
                        newImageEl.click(); // Auto-select
-                       // Auto-confirm? Maybe let user confirm.
-                       // Or better: just apply it immediately since they clicked "Upload & Select"
+                       // Auto-confirm immediately since they clicked "Upload & Select"
                        document.getElementById('selectImageBtn').click();
                     }
                  }, 500);
