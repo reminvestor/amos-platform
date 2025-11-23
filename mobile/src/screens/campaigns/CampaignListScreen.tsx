@@ -20,6 +20,7 @@ import { Campaign } from '@types';
 import { formatShortDate, formatPercentage, formatContactCount, formatCampaignStatus } from '@utils/formatters';
 import { FavoriteButton } from '@components/FavoriteButton';
 import { getColors } from '@theme/colors';
+import { addSearchHistory } from '@utils/searchHistory';
 
 interface CampaignListScreenProps {
   navigation: any;
@@ -42,6 +43,9 @@ export default function CampaignListScreen({ navigation }: CampaignListScreenPro
   );
 
   const loadCampaigns = async () => {
+    if (searchText.trim()) {
+      await addSearchHistory(searchText, 'campaigns');
+    }
     await dispatch(
       fetchCampaigns({
         page: 1,
