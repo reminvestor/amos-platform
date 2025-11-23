@@ -19,6 +19,7 @@ SECRETS=(
   "anthropic-api-key"
   "deepgram-api-key"
   "deepgram-webhook-secret"
+  "eleven-labs-api-key"
 )
 
 for secret in "${SECRETS[@]}"; do
@@ -57,7 +58,4 @@ echo ""
 echo "✅ Secrets copied to dev environment!"
 echo ""
 echo "Note: database-url and redis-url will be created by Terraform"
-
-
-
 
