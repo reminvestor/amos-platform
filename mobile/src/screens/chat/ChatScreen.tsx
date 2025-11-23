@@ -126,9 +126,13 @@ export default function ChatScreen() {
   };
 
   const handleVoiceInput = async () => {
-    // TODO: Implement voice input with @react-native-voice/voice
-    // For now, show a placeholder
-    Alert.alert('Voice Input', 'Voice input feature coming soon!');
+    // TODO: Implement STT with Eleven Labs Scribe v3 (matching web app implementation)
+    // This will require WebSocket connection to Eleven Labs for real-time transcription
+    // See: app/javascript/controllers/voice_assistant_controller.js for web implementation
+    Alert.alert(
+      'Voice Input Coming Soon',
+      'STT (Speech-to-Text) using Eleven Labs Scribe v3 is planned to match the web app.'
+    );
   };
 
   const handleClearChat = () => {
