@@ -8,8 +8,20 @@ class Api::TtsController < ApplicationController
     
     # Get user's voice preferences
     prefs = current_user.tts_preferences || {}
+    
     # Default to Eleven Labs 'George' if not set
-    provider = params[:provider] || prefs['provider'] || 'eleven_labs'
+    provider = params[:provider] || prefs['provider']
+    
+    # If provider is not explicitly set, try to infer from voice_id
+    if provider.blank?
+      requested_voice_id = params[:voice_id] || prefs['voice_id']
+      
+      # Check if it's a known Polly voice
+      is_polly_voice = PollyTtsService::VOICES.key?(requested_voice_id) || 
+                       ['Matthew', 'Joanna', 'Ivy', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Justin', 'Kevin', 'Ruth', 'Stephen', 'Olivia'].include?(requested_voice_id)
+      
+      provider = is_polly_voice ? 'polly' : 'eleven_labs'
+    end
     
     if provider == 'eleven_labs'
       voice_id = params[:voice_id] || prefs['eleven_labs_voice_id'] || 'George'
