@@ -4,10 +4,19 @@ export default class extends Controller {
   static targets = ["settings", "speedLabel", "volumeLabel", "successMessage"]
 
   connect() {
-    console.log('🎛️ Voice settings controller connected')
+    console.log('🎛️ Voice settings controller connected (v1.3 - switchProvider fix)')
     this.updateUI()
     this.previewTimeout = null
     this.currentAudio = null
+    
+    // Force sync UI with current provider selection - wrapped in timeout to ensure DOM is ready
+    setTimeout(() => {
+      const providerEl = document.getElementById('provider')
+      if (providerEl) {
+        console.log('🎛️ Initializing provider UI state...')
+        this.switchProvider({ target: providerEl })
+      }
+    }, 100)
   }
 
   disconnect() {
@@ -32,9 +41,9 @@ export default class extends Controller {
     }
   }
   
-  toggleProvider(event) {
+  switchProvider(event) {
     const provider = event.target.value
-    console.log('🎛️ Toggling provider to:', provider)
+    console.log('🎛️ Switching provider to:', provider)
     
     const elevenLabsContainer = document.getElementById('eleven_labs_voices_container')
     const pollyContainer = document.getElementById('polly_voices_container')
