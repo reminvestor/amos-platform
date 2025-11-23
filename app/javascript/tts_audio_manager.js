@@ -47,15 +47,25 @@ export default class TTSAudioManager {
       if (response.ok) {
         const data = await response.json()
         const prefs = data.preferences || {}
+        console.log('🎧 TTS Preferences Loaded:', prefs)
         
         // Default to disabled if not explicitly set
         this.isEnabled = prefs.enabled === true
         this.provider = prefs.provider || 'eleven_labs'
+        
+        // Robustness: If provider says eleven_labs but we have no eleven_labs_voice_id, check if we have a voice_id that looks like an Eleven Labs ID?
+        // Or if provider says polly but voice_id is missing.
+        
         if (this.provider === 'eleven_labs') {
-          this.voiceId = prefs.eleven_labs_voice_id || 'George'
+          // If eleven_labs_voice_id is set, use it. 
+          // If not, check if voice_id is set and looks like it might be one (fallback) or default to George.
+          this.voiceId = prefs.eleven_labs_voice_id || prefs.voice_id || 'George'
         } else {
           this.voiceId = prefs.voice_id || 'Matthew'
         }
+        
+        console.log(`🎧 TTS Configured: Provider=${this.provider}, Voice=${this.voiceId}`)
+
         this.playbackRate = prefs.speed || 1.0
         this.volume = prefs.volume || 1.0
       }
