@@ -62,6 +62,12 @@ end
 puts "Affiliate tiers seeded successfully!"
 puts ""
 
+# Seed Voice Assistant settings
+puts "Seeding Voice Assistant settings..."
+VoiceAssistantSetting.seed_defaults!
+puts "Voice Assistant settings seeded!"
+puts ""
+
 # Load additional seeds
 load Rails.root.join('db', 'seeds', 'agent_plugins.rb')
 
