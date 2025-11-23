@@ -1029,29 +1029,48 @@
   }
 
   function formatHtml(html) {
-    // Safer formatter that respects text nodes and scripts
     let formatted = '';
-    const pad = '  ';
-    let indentLevel = 0;
+    let indent = '';
+    const tab = '  ';
     
-    // Unescape common entities to prevent double encoding issues in the textarea
+    // Normalize whitespace between tags to prevent weird gaps, but preserve text content
+    html = html.replace(/>\s+</g, '><').trim();
+    
+    // Unescape common entities to prevent double encoding issues
     html = html.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
     
-    // Helper to check if tag is self-closing or void
+    // Void tags that don't need closing
     const voidTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
     
-    html.split(/>\s*</).forEach(function(node) {
-      if (!node) return;
-      
-      // Decrement indent for closing tags
-      if (node.match(/^\/\w/)) indentLevel = Math.max(0, indentLevel - 1);
-      
-      // Add indentation
-      formatted += pad.repeat(indentLevel) + '<' + node + '>\n';
-      
-      // Increment indent for opening tags (unless void or self-closing)
-      if (node.match(/^<?\w[^>]*[^\/]$/) && !voidTags.some(vt => node.startsWith(vt))) {
-        indentLevel++;
+    // Split into tags and text content using regex capture group
+    // This keeps the delimiters in the result
+    const tokens = html.split(/(<[^>]+>)/g).filter(s => s.trim().length > 0);
+    
+    tokens.forEach(token => {
+      // Check if it's a tag
+      if (token.match(/^<[^>]+>$/)) {
+        const isClosing = token.match(/^<\//);
+        const isSelfClosing = token.match(/\/>$/);
+        
+        // Extract tag name to check for void tags
+        const tagNameMatch = token.match(/^<([^\s>]+)/);
+        const tagName = tagNameMatch ? tagNameMatch[1].replace('/', '').toLowerCase() : '';
+        const isVoid = voidTags.includes(tagName);
+        
+        if (isClosing) {
+          // Closing tag - decrease indent first
+          indent = indent.substring(tab.length);
+        }
+        
+        formatted += indent + token + '\n';
+        
+        if (!isClosing && !isSelfClosing && !isVoid && !token.startsWith('<!')) {
+          // Opening tag - increase indent for next line
+          indent += tab;
+        }
+      } else {
+        // Text content
+        formatted += indent + token.trim() + '\n';
       }
     });
     
