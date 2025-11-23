@@ -96,6 +96,16 @@ Rails.application.routes.draw do
       # Crawler Job Logging
       post "crawler_jobs/:id/logs", to: "crawler_job_logs#create"
 
+      # Custom Agents API
+      resources :agents, only: [ :index, :show ] do
+        member do
+          post :execute
+        end
+        collection do
+          get :agent_types
+        end
+      end
+
       # Landing page form submissions
       resources :landing_page_submissions, only: [ :create, :index, :show ] do
         member do

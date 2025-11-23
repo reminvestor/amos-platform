@@ -7,6 +7,7 @@ import contactsReducer from './slices/contactsSlice';
 import uiReducer from './slices/uiSlice';
 import favoritesReducer from './slices/favoritesSlice';
 import tasksReducer from './slices/tasksSlice';
+import agentsReducer from './slices/agentsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     ui: uiReducer,
     favorites: favoritesReducer,
     tasks: tasksReducer,
+    agents: agentsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

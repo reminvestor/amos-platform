@@ -17,6 +17,8 @@ import LandingPageListScreen from '@screens/landing-pages/LandingPageListScreen'
 import TaskListScreen from '@screens/tasks/TaskListScreen';
 import TaskDetailScreen from '@screens/tasks/TaskDetailScreen';
 import TaskEditScreen from '@screens/tasks/TaskEditScreen';
+import AgentListScreen from '@screens/agents/AgentListScreen';
+import AgentDetailScreen from '@screens/agents/AgentDetailScreen';
 import SettingsScreen from '@screens/settings/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
@@ -161,6 +163,31 @@ function TaskNavigator() {
 }
 
 /**
+ * Agent Navigator Stack
+ */
+function AgentNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: true,
+        headerBackTitleVisible: false,
+      }}
+    >
+      <Stack.Screen
+        name="AgentList"
+        component={AgentListScreen}
+        options={{ title: 'Agents' }}
+      />
+      <Stack.Screen
+        name="AgentDetail"
+        component={AgentDetailScreen}
+        options={{ title: 'Agent Details' }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+/**
  * Settings Navigator Stack
  */
 function SettingsNavigator() {
@@ -207,6 +234,9 @@ export function RootNavigator() {
             case 'Tasks':
               iconName = 'checkbox-marked-circle-outline';
               break;
+            case 'Agents':
+              iconName = 'robot';
+              break;
             case 'Settings':
               iconName = 'cog';
               break;
@@ -247,6 +277,11 @@ export function RootNavigator() {
         name="Tasks"
         component={TaskNavigator}
         options={{ title: 'Tasks' }}
+      />
+      <Tab.Screen
+        name="Agents"
+        component={AgentNavigator}
+        options={{ title: 'Agents' }}
       />
       <Tab.Screen
         name="Settings"
