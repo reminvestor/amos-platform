@@ -950,7 +950,10 @@
     const images = doc.querySelectorAll('img');
     images.forEach(img => {
       // Skip icons and tiny images
-      if (img.width < 50 || img.height < 50) return;
+      // Check naturalWidth/Height if loaded, otherwise trust it unless it's clearly an icon class
+      const isIcon = img.classList.contains('icon') || img.classList.contains('logo') || (img.width > 0 && img.width < 50);
+      if (isIcon) return;
+      
       if (img.src.includes('data:image')) return; // Skip data URLs
       
       // Wrap in container if needed
@@ -967,8 +970,8 @@
       attachImageControls(doc, container, img);
     });
     
-    // Make placeholder divs replaceable (like the large purple area)
-    // Heuristic: divs that have specific classes OR contain only an SVG/Icon (common for placeholders)
+    // Make placeholder divs replaceable (like the large purple area or background-image divs)
+    // Heuristic: divs that have specific classes OR contain only an SVG/Icon OR have a background image
     const potentialPlaceholders = doc.querySelectorAll('div');
     potentialPlaceholders.forEach(div => {
        // Skip if already handled
@@ -978,6 +981,11 @@
        
        // Check for explicit role
        if (div.getAttribute('role') === 'img') isPlaceholder = true;
+
+       // Check for background image in inline style
+       if (!isPlaceholder && div.style.backgroundImage && div.style.backgroundImage !== 'none') {
+          isPlaceholder = true;
+       }
        
        // Check for placeholder-like structure (e.g. just an SVG or Icon inside a colored box)
        if (!isPlaceholder && div.children.length === 1) {
@@ -1022,6 +1030,12 @@
           // Ensure relative positioning so controls appear correctly
           if (getComputedStyle(div).position === 'static') {
              div.style.position = 'relative';
+          }
+
+          // Ensure it has height so it's visible/clickable
+          const computedHeight = getComputedStyle(div).height;
+          if (computedHeight === '0px' || computedHeight === 'auto') {
+             div.style.minHeight = '300px'; // Force visibility for empty background-image divs
           }
           
           attachImageControls(doc, div, div); // Pass div as both container and "img" target
