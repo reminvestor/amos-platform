@@ -494,9 +494,25 @@
         } else {
           // Handle DIV backgrounds
           const oldBg = el.style.backgroundImage;
+          
+          // PRESERVE DIMENSIONS: 
+          // If we remove the icon content, the div might collapse if it doesn't have explicit height.
+          // We lock in the current computed height before modification.
+          const computedStyle = window.getComputedStyle(el);
+          if (computedStyle.height && computedStyle.height !== 'auto' && computedStyle.height !== '0px') {
+             // If it's not already set inline, set it
+             if (!el.style.height && !el.style.minHeight) {
+                el.style.height = computedStyle.height;
+             }
+          } else {
+             // Fallback if we can't determine height (unlikely if it was visible)
+             if (!el.style.height) el.style.minHeight = '300px';
+          }
+          
           el.style.backgroundImage = `url('${newSrc}')`;
           el.style.backgroundSize = 'cover';
           el.style.backgroundPosition = 'center';
+          el.style.backgroundRepeat = 'no-repeat';
           el.dataset.changed = 'true';
           
           // Clear any placeholder SVG/Icon content
