@@ -62,6 +62,15 @@ Rails.application.routes.draw do
     namespace :v1 do
       # Health check endpoint
       get "health", to: "health#index"
+      
+      # Agent Auth / Heartbeat endpoints
+      resources :agent_auth, only: [] do
+        member do
+          post :heartbeat
+          get :current_task
+        end
+      end
+
       resources :contacts, only: [ :create ]
       resources :jobs, only: [ :show ]
       post "crawler_contacts", to: "crawler_contacts#create"
