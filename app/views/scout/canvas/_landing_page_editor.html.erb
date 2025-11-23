@@ -185,7 +185,7 @@
   }
   
   /* Ensure modal is above any canvas stacking contexts */
-  #scoutImagePickerModal { z-index: 1060; }
+  #scoutImagePickerModal, #scoutLinkEditorModal { z-index: 1060; }
   .modal-backdrop { z-index: 1050; }
 </style>
 
@@ -236,8 +236,18 @@
       
       document.getElementById('linkStyle').value = linkEl.className || '';
       
-      // Show modal
-      const modal = new bootstrap.Modal(document.getElementById('scoutLinkEditorModal'));
+      // Show modal (ensure backdrop and scroll not locked by previous overlays)
+      const modalEl = document.getElementById('scoutLinkEditorModal');
+      // Ensure modal is attached directly to <body> to avoid stacking-context issues
+      if (modalEl && modalEl.parentElement !== document.body) {
+        document.body.appendChild(modalEl);
+      }
+      document.body.classList.remove('modal-open');
+      // Remove any existing backdrops to prevent double-darkening or locking
+      document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+      
+      const bs = window.bootstrap || bootstrap;
+      const modal = bs.Modal.getOrCreateInstance(modalEl, { backdrop: true, focus: true, keyboard: true });
       modal.show();
     }
   };
@@ -351,6 +361,9 @@
     if (!html || typeof html !== 'string') return html;
     
     let cleaned = html.trim();
+    
+    // Remove potential git conflict markers that might have been saved
+    cleaned = cleaned.replace(/[<>=]{7,}\s?.*$/gm, '');
     
     // First, try to match complete markdown code blocks (```html ... ``` or ``` ... ```)
     // Only match if there's a newline after opening and before closing (markdown pattern)
