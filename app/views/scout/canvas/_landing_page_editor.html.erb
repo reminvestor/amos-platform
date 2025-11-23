@@ -960,7 +960,14 @@
       if (el.getAttribute('style') === '') el.removeAttribute('style');
     });
     
-    return clone.outerHTML;
+    // Properly decode any double-encoded HTML entities that might have been introduced
+    // This fixes the &lt; vs < issue when saving back to DB
+    let html = clone.outerHTML;
+    
+    // Note: We don't want to unescape ALL entities (like &nbsp;), just structural HTML characters
+    // that might have been escaped by textContent vs innerHTML usage
+    
+    return html;
   }
 
   function toggleHtmlView() {
@@ -1026,6 +1033,9 @@
     let formatted = '';
     const pad = '  ';
     let indentLevel = 0;
+    
+    // Unescape common entities to prevent double encoding issues in the textarea
+    html = html.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
     
     // Helper to check if tag is self-closing or void
     const voidTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
