@@ -21,6 +21,7 @@ import { formatShortDate, formatPercentage, formatContactCount, formatCampaignSt
 import { FavoriteButton } from '@components/FavoriteButton';
 import { getColors } from '@theme/colors';
 import { addSearchHistory } from '@utils/searchHistory';
+import { getDateRangePresets, formatDateRange, type DateRange } from '@utils/dateFilters';
 
 interface CampaignListScreenProps {
   navigation: any;
@@ -34,6 +35,8 @@ export default function CampaignListScreen({ navigation }: CampaignListScreenPro
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+  const [selectedDateRange, setSelectedDateRange] = useState<string | undefined>();
+  const dateRangePresets = getDateRangePresets();
 
   // Load campaigns when screen is focused
   useFocusEffect(
@@ -298,6 +301,8 @@ export default function CampaignListScreen({ navigation }: CampaignListScreenPro
               </TouchableOpacity>
             </View>
 
+            {/* Status Filters */}
+            <Text style={styles.filterSectionTitle}>Campaign Status</Text>
             <View style={styles.filterOptions}>
               {['draft', 'scheduled', 'in_progress', 'completed', 'paused', 'stopped'].map(
                 (status) => (
@@ -322,6 +327,32 @@ export default function CampaignListScreen({ navigation }: CampaignListScreenPro
                   </TouchableOpacity>
                 )
               )}
+            </View>
+
+            {/* Date Range Filters */}
+            <Text style={styles.filterSectionTitle}>Created Date</Text>
+            <View style={styles.filterOptions}>
+              {Object.entries(dateRangePresets).map(([key, range]) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.filterOption,
+                    selectedDateRange === key && styles.filterOptionSelected,
+                  ]}
+                  onPress={() => {
+                    setSelectedDateRange(selectedDateRange === key ? undefined : key);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.filterOptionText,
+                      selectedDateRange === key && styles.filterOptionTextSelected,
+                    ]}
+                  >
+                    {range.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
             <TouchableOpacity
@@ -492,9 +523,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
+  filterSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+  },
   filterOptions: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 8,
   },
   filterOption: {
     paddingVertical: 12,
