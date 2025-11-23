@@ -441,18 +441,49 @@
     
     document.getElementById('selectImageBtn').addEventListener('click', function() {
       if (editor.currentImageElement && editor.selectedImageUrl) {
-        // Store the change
-        const oldSrc = editor.currentImageElement.src;
-        editor.currentImageElement.src = editor.selectedImageUrl;
-        editor.currentImageElement.dataset.changed = 'true';
+        const el = editor.currentImageElement;
+        const newSrc = editor.selectedImageUrl;
         
-        // Track the change
-        if (!editor.changes.images) editor.changes.images = [];
-        editor.changes.images.push({
-          element: editor.currentImageElement,
-          oldSrc: oldSrc,
-          newSrc: editor.selectedImageUrl
-        });
+        // Handle IMG tags
+        if (el.tagName === 'IMG') {
+          const oldSrc = el.src;
+          el.src = newSrc;
+          el.dataset.changed = 'true';
+          
+          // Track the change
+          if (!editor.changes.images) editor.changes.images = [];
+          editor.changes.images.push({
+            element: el,
+            oldSrc: oldSrc,
+            newSrc: newSrc
+          });
+        } else {
+          // Handle DIV backgrounds
+          const oldBg = el.style.backgroundImage;
+          el.style.backgroundImage = `url('${newSrc}')`;
+          el.style.backgroundSize = 'cover';
+          el.style.backgroundPosition = 'center';
+          el.dataset.changed = 'true';
+          
+          // Clear any placeholder SVG content
+          if (el.classList.contains('editable-image-container') && el.querySelector('svg')) {
+             // Keep the edit button and resize handle!
+             // We only want to remove "content" children, not our UI tools
+             Array.from(el.children).forEach(child => {
+               if (!child.classList.contains('image-edit-btn') && !child.classList.contains('resize-handle')) {
+                 child.remove();
+               }
+             });
+          }
+          
+          // Track change
+          if (!editor.changes.images) editor.changes.images = [];
+          editor.changes.images.push({
+            element: el,
+            oldBg: oldBg,
+            newBg: `url('${newSrc}')`
+          });
+        }
         
         // Update save button
         updateSaveButton();
@@ -720,28 +751,69 @@
         container.appendChild(img);
       }
       
-      // Add edit button
-      const editBtn = doc.createElement('button');
-      editBtn.className = 'image-edit-btn';
-      editBtn.innerHTML = '<i data-lucide="image" aria-hidden="true"></i>';
-      editBtn.onclick = function(e) {
-        e.preventDefault();
-        openImagePicker(img);
-      };
-      container.appendChild(editBtn);
-
-      // Initialize Lucide icon for the button
-      if (typeof lucide !== 'undefined') {
-        lucide.createIcons({ nameAttr: 'data-lucide' });
+      attachImageControls(doc, container, img);
+    });
+    
+    // Make placeholder divs replaceable (like the large purple area)
+    // Heuristic: divs that have specific classes OR contain only an SVG (common for placeholders)
+    const potentialPlaceholders = doc.querySelectorAll('div');
+    potentialPlaceholders.forEach(div => {
+       // Skip if already handled
+       if (div.classList.contains('editable-image-container')) return;
+       
+       let isPlaceholder = false;
+       
+       // Check for explicit role
+       if (div.getAttribute('role') === 'img') isPlaceholder = true;
+       
+       // Check for placeholder-like structure (e.g. just an SVG inside a colored box)
+       if (!isPlaceholder && div.children.length === 1 && div.children[0].tagName === 'SVG') {
+          // Ensure it's not a tiny icon button (check size if possible, or just assume)
+          // Ideally we'd check computed style but that's expensive.
+          // Let's assume if it has a background color class, it might be a hero area
+          if (div.className && (div.className.includes('bg-') || div.style.backgroundColor)) {
+             isPlaceholder = true;
+          }
+       }
+       
+       if (isPlaceholder) {
+          div.classList.add('editable-image-container');
+          // Ensure relative positioning so controls appear correctly
+          if (getComputedStyle(div).position === 'static') {
+             div.style.position = 'relative';
+          }
+          
+          attachImageControls(doc, div, div); // Pass div as both container and "img" target
+       }
+    });
+  }
+  
+  function attachImageControls(doc, container, targetElement) {
+      // Add edit button if not present
+      if (!container.querySelector('.image-edit-btn')) {
+        const editBtn = doc.createElement('button');
+        editBtn.className = 'image-edit-btn';
+        editBtn.innerHTML = '<i data-lucide="image" aria-hidden="true"></i>';
+        editBtn.onclick = function(e) {
+          e.preventDefault();
+          e.stopPropagation(); // Prevent bubbling
+          openImagePicker(targetElement);
+        };
+        container.appendChild(editBtn);
+        
+        // Initialize Lucide icon
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons({ nameAttr: 'data-lucide', attrs: {class: "lucide lucide-image"} });
+        }
       }
 
-      // Add resize handle (bottom-right)
-      const handle = doc.createElement('div');
-      handle.className = 'resize-handle br';
-      container.appendChild(handle);
-
-      attachResizeBehavior(doc, container, img, handle);
-    });
+      // Add resize handle if not present
+      if (!container.querySelector('.resize-handle')) {
+        const handle = doc.createElement('div');
+        handle.className = 'resize-handle br';
+        container.appendChild(handle);
+        attachResizeBehavior(doc, container, targetElement, handle);
+      }
   }
   
   function handleTextFocus(e) {
