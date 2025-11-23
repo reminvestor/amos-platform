@@ -32,6 +32,28 @@ export default class extends Controller {
     }
   }
   
+  toggleProvider(event) {
+    const provider = event.target.value
+    const elevenLabsContainer = document.getElementById('eleven_labs_voices_container')
+    const pollyContainer = document.getElementById('polly_voices_container')
+
+    if (provider === 'eleven_labs') {
+      elevenLabsContainer.style.display = 'block'
+      pollyContainer.style.display = 'none'
+      
+      // Trigger preview for the newly visible voice
+      const voiceId = document.getElementById('eleven_labs_voice_id').value
+      this.playVoicePreview(voiceId)
+    } else {
+      elevenLabsContainer.style.display = 'none'
+      pollyContainer.style.display = 'block'
+      
+      // Trigger preview for the newly visible voice
+      const voiceId = document.getElementById('voice_id').value
+      this.playVoicePreview(voiceId)
+    }
+  }
+
   updateSpeedLabel(event) {
     const value = parseFloat(event.target.value).toFixed(1)
     this.speedLabelTarget.textContent = `${value}x`
@@ -70,6 +92,7 @@ export default class extends Controller {
     const speed = parseFloat(document.getElementById('speed')?.value || 1.0)
     const volume = parseFloat(document.getElementById('volume')?.value || 1.0)
     const engine = document.getElementById('engine')?.value || 'neural'
+    const provider = document.getElementById('provider')?.value || 'eleven_labs'
 
     // Short preview texts for quick sampling
     const previewTexts = {
@@ -115,7 +138,17 @@ export default class extends Controller {
       'Camila': "Olá! Eu sou Camila.",
       'Vitoria': "Olá! Eu sou Vitória.",
       'Thiago': "Olá! Eu sou Thiago.",
-      'Ricardo': "Olá! Eu sou Ricardo."
+      'Ricardo': "Olá! Eu sou Ricardo.",
+      // Eleven Labs
+      'Rachel': "Hi! I'm Rachel.",
+      'Drew': "Hello, I'm Drew.",
+      'Clyde': "Hello, I'm Clyde.",
+      'Mimi': "Hi! I'm Mimi.",
+      'Fin': "Hello! I'm Fin.",
+      'Nicole': "Hi, I'm Nicole.",
+      'George': "Hello! I'm George.",
+      'Emily': "Hi! I'm Emily.",
+      'Charlie': "G'day! I'm Charlie."
     }
 
     const text = previewTexts[voiceId] || previewTexts['Matthew'] || "Hello! This is a voice preview."
@@ -124,6 +157,7 @@ export default class extends Controller {
       const params = new URLSearchParams({
         text: text,
         voice_id: voiceId,
+        provider: provider,
         engine: engine,
         speech_marks: 'false'
       })
@@ -185,12 +219,20 @@ export default class extends Controller {
     // Re-initialize Lucide icons for the new icon
     if (typeof lucide !== 'undefined') lucide.createIcons()
     
-    const voiceId = document.getElementById('voice_id').value
+    const provider = document.getElementById('provider').value
+    let voiceId
+    
+    if (provider === 'eleven_labs') {
+      voiceId = document.getElementById('eleven_labs_voice_id').value
+    } else {
+      voiceId = document.getElementById('voice_id').value
+    }
+    
     const engine = document.getElementById('engine')?.value || 'neural'
     const speed = parseFloat(document.getElementById('speed').value)
     const volume = parseFloat(document.getElementById('volume').value)
     
-    console.log('🎤 Test settings:', { voiceId, engine, speed, volume })
+    console.log('🎤 Test settings:', { provider, voiceId, engine, speed, volume })
     
     // Test text in the selected language
     const testTexts = {
@@ -221,16 +263,27 @@ export default class extends Controller {
       // Portuguese - Brazil
       'Camila': "Olá! Eu sou Camila, sua assistente de IA. Como posso ajudar?",
       'Vitoria': "Olá! Eu sou Vitória, sua assistente virtual. Em que posso ajudar?",
-      'Thiago': "Olá! Eu sou Thiago, seu assistente de IA. Como posso ajudar você?"
+      'Thiago': "Olá! Eu sou Thiago, seu assistente de IA. Como posso ajudar você?",
+      // Eleven Labs
+      'Rachel': "Hi! I'm Rachel, your AI assistant. I'm here to help you with whatever you need.",
+      'Drew': "Hello, I'm Drew. I can read the latest news or help you with information.",
+      'Clyde': "Hello, I'm Clyde. I've got a deep voice for serious matters.",
+      'Mimi': "Hi! I'm Mimi. I'm young and full of energy!",
+      'Fin': "Hello! I'm Fin. I'm ready to get things done quickly!",
+      'Nicole': "Hi, I'm Nicole. I can speak softly if you prefer.",
+      'George': "Hello! I'm George. I can assist you with a proper British accent.",
+      'Emily': "Hi! I'm Emily. I'm calm and ready to listen.",
+      'Charlie': "G'day! I'm Charlie. Let's have a chat, mate!"
     }
     
-    const text = testTexts[voiceId] || testTexts['Matthew']
+    const text = testTexts[voiceId] || testTexts['Matthew'] || "Hello! This is a test of the voice synthesis system."
     
     try {
       // Call TTS API - use query params for GET-style parameters
       const params = new URLSearchParams({
         text: text,
         voice_id: voiceId,
+        provider: provider,
         engine: engine,
         speech_marks: 'false'
       })
@@ -300,6 +353,14 @@ export default class extends Controller {
     const form = event.target
     const formData = new FormData(form)
     
+    // Handle dynamic voice ID based on provider
+    const provider = formData.get('provider')
+    if (provider === 'eleven_labs') {
+      formData.set('voice_id', formData.get('eleven_labs_voice_id'))
+    } else {
+      formData.set('voice_id', formData.get('voice_id'))
+    }
+    
     // Log what we're sending
     console.log('💾 Form data:', Object.fromEntries(formData))
     
@@ -342,9 +403,15 @@ export default class extends Controller {
               console.log('💾 Updated TTS button state')
             }
           }
-          if (prefs.voice_id) {
-            window.ttsManager.setVoice(prefs.voice_id)
-            console.log('💾 Updated voice:', prefs.voice_id)
+          if (prefs.provider) {
+            // We don't track provider in TTS manager currently, but could
+            console.log('💾 Updated provider:', prefs.provider)
+          }
+          // Set voice ID regardless of provider - manager handles routing
+          const newVoiceId = prefs.eleven_labs_voice_id || prefs.voice_id
+          if (newVoiceId) {
+            window.ttsManager.setVoice(newVoiceId, prefs.provider || 'eleven_labs')
+            console.log('💾 Updated voice:', newVoiceId)
           }
           if (prefs.speed !== undefined) {
             window.ttsManager.setSpeed(prefs.speed)
