@@ -19,56 +19,107 @@
       </div>
 
       <div class="row" data-voice-settings-target="settings">
-        <div class="col-md-6 mb-4">
+        
+        <%# Provider Selection %>
+        <div class="col-12 mb-4">
           <div class="admin-form-group">
-            <label for="voice_id" class="admin-label">Voice</label>
-            <%= select_tag :voice_id, 
+            <label for="provider" class="admin-label">Voice Provider</label>
+            <%= select_tag :provider,
                 options_for_select([
-                  # US English - Neural
-                  ['Matthew (US Male - Neural)', 'Matthew'],
-                  ['Joanna (US Female - Neural)', 'Joanna'],
-                  ['Ivy (US Child Female - Neural)', 'Ivy'],
-                  ['Kendra (US Female - Neural)', 'Kendra'],
-                  ['Kimberly (US Female - Neural)', 'Kimberly'],
-                  ['Salli (US Female - Neural)', 'Salli'],
-                  ['Joey (US Male - Neural)', 'Joey'],
-                  ['Justin (US Male - Neural)', 'Justin'],
-                  ['Kevin (US Child Male - Neural)', 'Kevin'],
-                  ['Ruth (US Female - Neural)', 'Ruth'],
-                  ['Stephen (US Male - Neural)', 'Stephen'],
-                  # US English - Generative (Most Natural)
-                  ['Ruth (US Female - Generative) ⭐', 'Ruth'],
-                  ['Matthew (US Male - Generative) ⭐', 'Matthew'],
-                  ['Joanna (US Female - Generative) ⭐', 'Joanna'],
-                  ['Stephen (US Male - Generative) ⭐', 'Stephen'],
-                  ['Olivia (US Female - Generative) ⭐', 'Olivia'],
-                  ['Salli (US Female - Generative) ⭐', 'Salli'],
-                  # Spanish - US
-                  ['Lupe (US Spanish Female - Neural)', 'Lupe'],
-                  ['Pedro (US Spanish Male - Neural)', 'Pedro'],
-                  ['Lupe (US Spanish Female - Generative) ⭐', 'Lupe'],
-                  ['Pedro (US Spanish Male - Generative) ⭐', 'Pedro'],
-                  # Spanish - Spain
-                  ['Lucia (European Spanish Female - Neural)', 'Lucia'],
-                  ['Sergio (European Spanish Male - Neural)', 'Sergio'],
-                  ['Lucia (European Spanish Female - Generative) ⭐', 'Lucia'],
-                  ['Sergio (European Spanish Male - Generative) ⭐', 'Sergio'],
-                  # Spanish - Mexico
-                  ['Mia (Mexican Spanish Female - Neural)', 'Mia'],
-                  ['Andrés (Mexican Spanish Male - Neural)', 'Andres'],
-                  ['Mía (Mexican Spanish Female - Generative) ⭐', 'Mia'],
-                  ['Andrés (Mexican Spanish Male - Generative) ⭐', 'Andres'],
-                  # Portuguese - Portugal
-                  ['Inês (Portuguese Female - Neural)', 'Ines'],
-                  # Portuguese - Brazil
-                  ['Camila (Brazilian Portuguese Female - Neural)', 'Camila'],
-                  ['Vitória (Brazilian Portuguese Female - Neural)', 'Vitoria'],
-                  ['Thiago (Brazilian Portuguese Male - Neural)', 'Thiago']
-                ], current_user.tts_preferences&.dig('voice_id') || 'Matthew'),
+                  ['Eleven Labs (High Quality - Recommended)', 'eleven_labs'],
+                  ['Amazon Polly (Standard)', 'polly']
+                ], current_user.tts_preferences&.dig('provider') || 'eleven_labs'),
+                class: "admin-input",
+                id: "provider",
+                data: { action: "change->voice-settings#toggleProvider" } %>
+          </div>
+        </div>
+
+        <%# Eleven Labs Voices %>
+        <div class="col-12 mb-4" id="eleven_labs_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'eleven_labs' ? '' : 'display: none;' %>">
+          <div class="admin-form-group">
+            <label for="eleven_labs_voice_id" class="admin-label">AI Voice (Eleven Labs)</label>
+            <% eleven_labs_voice_groups = {
+              'American' => [
+                ['Rachel (Female - Calm)', 'Rachel'],
+                ['Drew (Male - News)', 'Drew'],
+                ['Clyde (Male - Deep)', 'Clyde'],
+                ['Nicole (Female - Whisper)', 'Nicole'],
+                ['Emily (Female - Calm)', 'Emily']
+              ],
+              'British' => [
+                ['George (Male - Warm)', 'George']
+              ],
+              'Australian' => [
+                ['Mimi (Female - Child)', 'Mimi'],
+                ['Charlie (Male - Casual)', 'Charlie']
+              ],
+              'Irish' => [
+                ['Fin (Male - Energetic)', 'Fin']
+              ]
+            } %>
+            <%= select_tag :eleven_labs_voice_id,
+                grouped_options_for_select(eleven_labs_voice_groups, current_user.tts_preferences&.dig('eleven_labs_voice_id') || 'George'),
+                class: "admin-input",
+                id: "eleven_labs_voice_id",
+                data: { action: "change->voice-settings#updatePreview" } %>
+            <small style="color: #64748B; display: block; margin-top: 0.25rem;">High-quality AI voices powered by Eleven Labs</small>
+          </div>
+        </div>
+
+        <%# Polly Voices %>
+        <div class="col-12 mb-4" id="polly_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'polly' ? '' : 'display: none;' %>">
+          <div class="admin-form-group">
+            <label for="voice_id" class="admin-label">AI Voice (Polly)</label>
+            <% voice_groups = {
+              'US English Voices' => [
+                ['Aria (Female - Conversational)', 'Aria'],
+                ['Joanna (Female - Expressive)', 'Joanna'],
+                ['Kendra (Female - Professional)', 'Kendra'],
+                ['Kimberly (Female - Soothing)', 'Kimberly'],
+                ['Salli (Female - Youthful)', 'Salli'],
+                ['Ivy (Female - Clear)', 'Ivy'],
+                ['Ruth (Female - Pleasant)', 'Ruth'],
+                ['Joey (Male - Natural)', 'Joey'],
+                ['Justin (Male - Friendly)', 'Justin'],
+                ['Kevin (Male - Youthful)', 'Kevin'],
+                ['Matthew (Male - Professional)', 'Matthew']
+              ],
+              'UK English Voices' => [
+                ['Amy (British Female - Neural)', 'Amy'],
+                ['Emma (British Female - Classic)', 'Emma'],
+                ['Brian (British Male - Neural)', 'Brian'],
+                ['Arthur (British Male - Distinguished)', 'Arthur']
+              ],
+              'Australian English Voice' => [
+                ['Olivia (Australian Female - Neural)', 'Olivia']
+              ],
+              'Other Languages' => [
+                ['Léa (French Female - Neural)', 'Lea'],
+                ['Mathieu (French Male - Neural)', 'Mathieu'],
+                ['Celine (French Female)', 'Celine'],
+                ['Vicki (German Female - Neural)', 'Vicki'],
+                ['Hans (German Male - Neural)', 'Hans'],
+                ['Bianca (Italian Female - Neural)', 'Bianca'],
+                ['Adriano (Italian Male - Neural)', 'Adriano'],
+                ['Lucia (Spanish Female - Neural)', 'Lucia'],
+                ['Sergio (Spanish Male - Neural)', 'Sergio'],
+                ['Conchita (Spanish Female)', 'Conchita'],
+                ['Lupe (US Spanish Female - Neural)', 'Lupe'],
+                ['Mia (Mexican Spanish Female - Neural)', 'Mia'],
+                ['Andrés (Mexican Spanish Male - Neural)', 'Andres'],
+                ['Camila (Portuguese Female - Neural)', 'Camila'],
+                ['Ricardo (Portuguese Male - Neural)', 'Ricardo'],
+                ['Vitória (Brazilian Portuguese Female - Neural)', 'Vitoria'],
+                ['Thiago (Brazilian Portuguese Male - Neural)', 'Thiago']
+              ]
+            } %>
+            <%= select_tag :voice_id,
+                grouped_options_for_select(voice_groups, current_user.tts_preferences&.dig('voice_id') || 'Matthew'),
                 class: "admin-input",
                 id: "voice_id",
                 data: { action: "change->voice-settings#updatePreview" } %>
-            <small style="color: #64748B; display: block; margin-top: 0.25rem;">Choose your preferred AI voice</small>
+            <small style="color: #64748B; display: block; margin-top: 0.25rem;">Standard AI voices powered by AWS Polly</small>
           </div>
         </div>
 
