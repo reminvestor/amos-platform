@@ -21,6 +21,7 @@ import { fetchContacts, fetchContactGroups } from '@store/slices/contactsSlice';
 import { Contact, ContactGroup } from '@types';
 import { formatShortDate, formatContactStatus } from '@utils/formatters';
 import * as contactService from '@services/contacts';
+import { FavoriteButton } from '@components/FavoriteButton';
 
 interface ContactListScreenProps {
   navigation: any;
@@ -197,8 +198,11 @@ export default function ContactListScreen({ navigation }: ContactListScreenProps
                 {item.email}
               </Text>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}>
-              <Text style={styles.statusText}>{statusInfo.label}</Text>
+            <View style={styles.cardActions}>
+              <FavoriteButton id={item.id} type="contact" size={20} />
+              <View style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}>
+                <Text style={styles.statusText}>{statusInfo.label}</Text>
+              </View>
             </View>
           </View>
 
@@ -673,6 +677,11 @@ const styles = StyleSheet.create({
   nameContainer: {
     flex: 1,
     marginRight: 8,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   contactName: {
     fontSize: 15,
