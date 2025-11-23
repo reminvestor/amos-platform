@@ -14,6 +14,9 @@ import CampaignListScreen from '@screens/campaigns/CampaignListScreen';
 import CampaignDetailScreen from '@screens/campaigns/CampaignDetailScreen';
 import ContactListScreen from '@screens/contacts/ContactListScreen';
 import LandingPageListScreen from '@screens/landing-pages/LandingPageListScreen';
+import TaskListScreen from '@screens/tasks/TaskListScreen';
+import TaskDetailScreen from '@screens/tasks/TaskDetailScreen';
+import TaskEditScreen from '@screens/tasks/TaskEditScreen';
 import SettingsScreen from '@screens/settings/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
@@ -128,6 +131,36 @@ function LandingPageNavigator() {
 }
 
 /**
+ * Task Navigator Stack
+ */
+function TaskNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: true,
+        headerBackTitleVisible: false,
+      }}
+    >
+      <Stack.Screen
+        name="TaskList"
+        component={TaskListScreen}
+        options={{ title: 'Tasks' }}
+      />
+      <Stack.Screen
+        name="TaskDetail"
+        component={TaskDetailScreen}
+        options={{ title: 'Task Details' }}
+      />
+      <Stack.Screen
+        name="TaskEdit"
+        component={TaskEditScreen}
+        options={{ title: 'Edit Task' }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+/**
  * Settings Navigator Stack
  */
 function SettingsNavigator() {
@@ -171,6 +204,9 @@ export function RootNavigator() {
             case 'LandingPages':
               iconName = 'file-document';
               break;
+            case 'Tasks':
+              iconName = 'checkbox-marked-circle-outline';
+              break;
             case 'Settings':
               iconName = 'cog';
               break;
@@ -206,6 +242,11 @@ export function RootNavigator() {
         name="LandingPages"
         component={LandingPageNavigator}
         options={{ title: 'Pages' }}
+      />
+      <Tab.Screen
+        name="Tasks"
+        component={TaskNavigator}
+        options={{ title: 'Tasks' }}
       />
       <Tab.Screen
         name="Settings"
