@@ -176,6 +176,50 @@ export interface PushNotification {
   created_at: string;
 }
 
+// Task Management
+export interface Task {
+  id: string;
+  entity_id: string;
+  user_id: string;
+  title: string;
+  description?: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high';
+  due_date?: string;
+  assigned_to?: string;
+  tags?: string[];
+  related_entity?: {
+    type: 'campaign' | 'contact' | 'landing_page' | 'general';
+    id?: string;
+  };
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+}
+
+export interface TaskDetail extends Task {
+  comments?: TaskComment[];
+  attachments?: TaskAttachment[];
+}
+
+export interface TaskComment {
+  id: string;
+  task_id: string;
+  user_id: string;
+  user_name?: string;
+  content: string;
+  created_at: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  task_id: string;
+  name: string;
+  url: string;
+  size: number;
+  created_at: string;
+}
+
 // API Response
 export interface ApiResponse<T = any> {
   data: T;
@@ -240,6 +284,22 @@ export interface AppState {
     messages: ChatMessage[];
     isLoading: boolean;
     error: string | null;
+  };
+  tasks: {
+    list: Task[];
+    current: TaskDetail | null;
+    isLoading: boolean;
+    error: string | null;
+    pagination: {
+      page: number;
+      per_page: number;
+      total: number;
+    };
+    filters: {
+      status?: string;
+      priority?: string;
+      search?: string;
+    };
   };
   ui: {
     theme: 'light' | 'dark';

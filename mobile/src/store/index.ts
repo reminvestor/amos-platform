@@ -6,6 +6,7 @@ import campaignsReducer from './slices/campaignsSlice';
 import contactsReducer from './slices/contactsSlice';
 import uiReducer from './slices/uiSlice';
 import favoritesReducer from './slices/favoritesSlice';
+import tasksReducer from './slices/tasksSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     contacts: contactsReducer,
     ui: uiReducer,
     favorites: favoritesReducer,
+    tasks: tasksReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
