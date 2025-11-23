@@ -6,7 +6,8 @@ export default class TTSAudioManager {
   constructor() {
     // Initialize with defaults, then load user preferences
     this.isEnabled = false  // Default to OFF
-    this.voiceId = 'Matthew'
+    this.voiceId = 'George' // Default Eleven Labs voice
+    this.provider = 'eleven_labs' // Default provider
     this.playbackRate = 1.0
     this.volume = 1.0
     
@@ -49,7 +50,12 @@ export default class TTSAudioManager {
         
         // Default to disabled if not explicitly set
         this.isEnabled = prefs.enabled === true
-        this.voiceId = prefs.voice_id || 'Matthew'
+        this.provider = prefs.provider || 'eleven_labs'
+        if (this.provider === 'eleven_labs') {
+          this.voiceId = prefs.eleven_labs_voice_id || 'George'
+        } else {
+          this.voiceId = prefs.voice_id || 'Matthew'
+        }
         this.playbackRate = prefs.speed || 1.0
         this.volume = prefs.volume || 1.0
       }
@@ -100,10 +106,11 @@ export default class TTSAudioManager {
     // Always use AWS Polly for consistent voice
     // (Removed Web Speech API fallback to prevent voice switching)
     
-    // For longer text, use AWS Polly
+    // For longer text, use AWS Polly or Eleven Labs
     const audioData = {
       text: cleanedText,
       voiceId: options.voiceId || this.voiceId,
+      provider: options.provider || this.provider,
       messageId: options.messageId,
       priority: options.priority || 'normal'
     }
@@ -185,7 +192,7 @@ export default class TTSAudioManager {
     }))
     
     try {
-      await this.speakWithPolly(audioData)
+      await this.speakWithProvider(audioData)
     } catch (error) {
       console.error('TTS playback error:', error)
       // Skip this item and continue with the queue
@@ -197,10 +204,10 @@ export default class TTSAudioManager {
   }
   
   /**
-   * Speak using AWS Polly
+   * Speak using selected provider (AWS Polly or Eleven Labs)
    */
-  async speakWithPolly(audioData) {
-    const { text, voiceId } = audioData
+  async speakWithProvider(audioData) {
+    const { text, voiceId, provider } = audioData
     
     // Rate limiting to prevent 503 errors
     const now = Date.now()
@@ -226,7 +233,8 @@ export default class TTSAudioManager {
           body: JSON.stringify({
             text: text,
             voice_id: voiceId,
-            speech_marks: true
+            provider: provider || 'eleven_labs',
+            speech_marks: true // Eleven Labs ignores this for now
           })
         })
         
@@ -266,7 +274,7 @@ export default class TTSAudioManager {
         lastError = error
         retries--
         if (retries === 0) {
-          console.error('Polly TTS error after all retries:', error)
+          console.error('TTS error after all retries:', error)
           throw error
         }
       }
@@ -405,9 +413,16 @@ export default class TTSAudioManager {
   /**
    * Update voice
    */
-  setVoice(voiceId) {
+  setVoice(voiceId, provider = 'eleven_labs') {
     this.voiceId = voiceId
-    this.updateServerPreference({ voice_id: voiceId })
+    this.provider = provider
+    
+    // Update based on provider
+    if (provider === 'eleven_labs') {
+      this.updateServerPreference({ provider: 'eleven_labs', voice_id: voiceId })
+    } else {
+      this.updateServerPreference({ provider: 'polly', voice_id: voiceId })
+    }
   }
   
   /**
@@ -486,9 +501,9 @@ export default class TTSAudioManager {
   /**
    * Get available voices
    */
-  async getVoices() {
+  async getVoices(provider = 'eleven_labs') {
     try {
-      const response = await fetch('/api/tts/voices', {
+      const response = await fetch(`/api/tts/voices?provider=${provider}`, {
         headers: {
           'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
         }
