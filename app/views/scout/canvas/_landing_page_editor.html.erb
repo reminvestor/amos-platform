@@ -131,10 +131,10 @@
           <div class="tab-content">
             <div class="tab-pane fade show active" id="libTab">
               <div id="scoutImageLibraryGrid" class="row g-3" style="max-height: 400px; overflow-y: auto;">
-                <!-- Images will be loaded here -->
-              </div>
-              <div class="text-center mt-3">
-                <button class="btn btn-sm btn-outline-secondary" id="loadMoreImages">Load More</button>
+          <!-- Images will be loaded here -->
+        </div>
+        <div class="text-center mt-3">
+          <button class="btn btn-sm btn-outline-secondary" id="loadMoreImages">Load More</button>
               </div>
             </div>
             <div class="tab-pane fade" id="urlTab">
@@ -449,12 +449,12 @@
           const oldSrc = el.src;
           el.src = newSrc;
           el.dataset.changed = 'true';
-          
-          // Track the change
-          if (!editor.changes.images) editor.changes.images = [];
-          editor.changes.images.push({
+        
+        // Track the change
+        if (!editor.changes.images) editor.changes.images = [];
+        editor.changes.images.push({
             element: el,
-            oldSrc: oldSrc,
+          oldSrc: oldSrc,
             newSrc: newSrc
           });
         } else {
@@ -465,8 +465,8 @@
           el.style.backgroundPosition = 'center';
           el.dataset.changed = 'true';
           
-          // Clear any placeholder SVG content
-          if (el.classList.contains('editable-image-container') && el.querySelector('svg')) {
+          // Clear any placeholder SVG/Icon content
+          if (el.classList.contains('editable-image-container') && (el.querySelector('svg') || el.querySelector('i'))) {
              // Keep the edit button and resize handle!
              // We only want to remove "content" children, not our UI tools
              Array.from(el.children).forEach(child => {
@@ -755,7 +755,7 @@
     });
     
     // Make placeholder divs replaceable (like the large purple area)
-    // Heuristic: divs that have specific classes OR contain only an SVG (common for placeholders)
+    // Heuristic: divs that have specific classes OR contain only an SVG/Icon (common for placeholders)
     const potentialPlaceholders = doc.querySelectorAll('div');
     potentialPlaceholders.forEach(div => {
        // Skip if already handled
@@ -766,13 +766,41 @@
        // Check for explicit role
        if (div.getAttribute('role') === 'img') isPlaceholder = true;
        
-       // Check for placeholder-like structure (e.g. just an SVG inside a colored box)
-       if (!isPlaceholder && div.children.length === 1 && div.children[0].tagName === 'SVG') {
-          // Ensure it's not a tiny icon button (check size if possible, or just assume)
-          // Ideally we'd check computed style but that's expensive.
-          // Let's assume if it has a background color class, it might be a hero area
-          if (div.className && (div.className.includes('bg-') || div.style.backgroundColor)) {
-             isPlaceholder = true;
+       // Check for placeholder-like structure (e.g. just an SVG or Icon inside a colored box)
+       if (!isPlaceholder && div.children.length === 1) {
+          const child = div.children[0];
+          
+          // SVG check
+          if (child.tagName === 'SVG') {
+             if (div.className && (div.className.includes('bg-') || div.style.backgroundColor)) {
+                isPlaceholder = true;
+             }
+          }
+          
+          // Icon font check (<i> with large font size)
+          if (child.tagName === 'I' && (child.className.includes('bi-') || child.className.includes('fa-'))) {
+             // It's an icon. Is it a "placeholder" icon? 
+             // Usually these are centered and large. 
+             // Or if the parent div has 'image' or 'img' in the class name.
+             if (div.className && (div.className.includes('image') || div.className.includes('img'))) {
+                isPlaceholder = true;
+             } else {
+                // Check size
+                const fontSize = child.style.fontSize;
+                if (fontSize && (fontSize.includes('rem') && parseFloat(fontSize) > 2) || (fontSize.includes('px') && parseFloat(fontSize) > 30)) {
+                   isPlaceholder = true;
+                }
+             }
+          }
+       }
+       
+       // Check by class name convention alone if it looks like a main image container
+       if (!isPlaceholder && div.className && typeof div.className === 'string') {
+          if (div.className.includes('benefits-image') || div.className.includes('hero-image') || div.className.includes('feature-image')) {
+             // Ensure it's not a wrapper for text
+             if (div.innerText.trim().length === 0) {
+                isPlaceholder = true;
+             }
           }
        }
        
@@ -791,27 +819,27 @@
   function attachImageControls(doc, container, targetElement) {
       // Add edit button if not present
       if (!container.querySelector('.image-edit-btn')) {
-        const editBtn = doc.createElement('button');
-        editBtn.className = 'image-edit-btn';
-        editBtn.innerHTML = '<i data-lucide="image" aria-hidden="true"></i>';
-        editBtn.onclick = function(e) {
-          e.preventDefault();
+      const editBtn = doc.createElement('button');
+      editBtn.className = 'image-edit-btn';
+      editBtn.innerHTML = '<i data-lucide="image" aria-hidden="true"></i>';
+      editBtn.onclick = function(e) {
+        e.preventDefault();
           e.stopPropagation(); // Prevent bubbling
           openImagePicker(targetElement);
-        };
-        container.appendChild(editBtn);
-        
+      };
+      container.appendChild(editBtn);
+
         // Initialize Lucide icon
-        if (typeof lucide !== 'undefined') {
+      if (typeof lucide !== 'undefined') {
           lucide.createIcons({ nameAttr: 'data-lucide', attrs: {class: "lucide lucide-image"} });
         }
       }
 
       // Add resize handle if not present
       if (!container.querySelector('.resize-handle')) {
-        const handle = doc.createElement('div');
-        handle.className = 'resize-handle br';
-        container.appendChild(handle);
+      const handle = doc.createElement('div');
+      handle.className = 'resize-handle br';
+      container.appendChild(handle);
         attachResizeBehavior(doc, container, targetElement, handle);
       }
   }
@@ -1218,7 +1246,7 @@
     } else {
       saveBtn.style.background = 'linear-gradient(135deg, rgba(74, 222, 128, 0.8) 0%, rgba(74, 222, 128, 0.6) 100%)';
       saveBtn.innerHTML = '<i data-lucide="save" style="width: 1rem; height: 1rem;"></i> Save Changes';
-    }
+      }
     if (typeof lucide !== 'undefined') lucide.createIcons();
   }
   
@@ -1282,10 +1310,10 @@
 
         // Update all elements if in visual mode
         if (!editor.isCodeView) {
-          editor.iframeDoc.querySelectorAll('.changed').forEach(el => {
-            el.classList.remove('changed');
-            el.dataset.originalContent = el.innerHTML;
-          });
+        editor.iframeDoc.querySelectorAll('.changed').forEach(el => {
+          el.classList.remove('changed');
+          el.dataset.originalContent = el.innerHTML;
+        });
         }
 
         updateSaveButton();
