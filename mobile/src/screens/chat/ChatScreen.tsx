@@ -11,18 +11,23 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import * as chatService from '@services/chat';
 import { ChatMessage } from '@types';
 import { formatRelativeTime } from '@utils/formatters';
 
 export default function ChatScreen() {
+  const navigation = useNavigation<any>();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showTaskMenu, setShowTaskMenu] = useState(false);
+  const [selectedMessageForTask, setSelectedMessageForTask] = useState<ChatMessage | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
@@ -149,6 +154,22 @@ export default function ChatScreen() {
     );
   };
 
+  const handleCreateTaskFromMessage = (message: ChatMessage) => {
+    setSelectedMessageForTask(message);
+    setShowTaskMenu(true);
+  };
+
+  const handleCreateQuickTask = () => {
+    setShowTaskMenu(false);
+    navigation.navigate('Tasks', {
+      screen: 'TaskEdit',
+      params: {
+        mode: 'create',
+        initialTitle: selectedMessageForTask?.content?.substring(0, 100) || '',
+      },
+    });
+  };
+
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isUser = item.role === 'user';
 
@@ -212,16 +233,30 @@ export default function ChatScreen() {
         {/* Header with actions */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Scout AI Assistant</Text>
-          <TouchableOpacity
-            onPress={handleClearChat}
-            disabled={messages.length === 0}
-          >
-            <MaterialCommunityIcons
-              name="delete-outline"
-              size={24}
-              color={messages.length > 0 ? '#666' : '#ccc'}
-            />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => handleCreateTaskFromMessage(messages[messages.length - 1] || { id: '', role: 'user', content: '', timestamp: new Date().toISOString() })}
+              disabled={messages.length === 0}
+              style={styles.headerButton}
+            >
+              <MaterialCommunityIcons
+                name="checkbox-marked-circle-plus-outline"
+                size={24}
+                color={messages.length > 0 ? '#666' : '#ccc'}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleClearChat}
+              disabled={messages.length === 0}
+              style={styles.headerButton}
+            >
+              <MaterialCommunityIcons
+                name="delete-outline"
+                size={24}
+                color={messages.length > 0 ? '#666' : '#ccc'}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Error message */}
@@ -300,6 +335,62 @@ export default function ChatScreen() {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* Task Creation Modal */}
+      <Modal
+        visible={showTaskMenu}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTaskMenu(false)}
+      >
+        <View
+          style={[
+            styles.modalOverlay,
+            { backgroundColor: 'rgba(0,0,0,0.5)' },
+          ]}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Create Task from Message</Text>
+              <TouchableOpacity onPress={() => setShowTaskMenu(false)}>
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color="#333"
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <View style={styles.messagePreview}>
+                <Text style={styles.messagePreviewLabel}>Message:</Text>
+                <View style={styles.messagePreviewBox}>
+                  <Text style={styles.messagePreviewText} numberOfLines={3}>
+                    {selectedMessageForTask?.content}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#f0f0f0' }]}
+                  onPress={() => setShowTaskMenu(false)}
+                >
+                  <Text style={[styles.modalButtonText, { color: '#333' }]}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#4A90E2' }]}
+                  onPress={handleCreateQuickTask}
+                >
+                  <MaterialCommunityIcons name="plus" size={18} color="#fff" />
+                  <Text style={[styles.modalButtonText, { color: '#fff', marginLeft: 6 }]}>Create Task</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -459,5 +550,77 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: '#ddd',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerButton: {
+    padding: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '70%',
+    paddingTop: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalBody: {
+    padding: 16,
+  },
+  messagePreview: {
+    marginBottom: 20,
+  },
+  messagePreviewLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+  },
+  messagePreviewBox: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  messagePreviewText: {
+    fontSize: 13,
+    color: '#333',
+    lineHeight: 18,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

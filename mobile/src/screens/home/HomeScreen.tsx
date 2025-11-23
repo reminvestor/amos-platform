@@ -12,6 +12,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppDispatch, useAppSelector } from '@store';
 import { fetchCampaigns } from '@store/slices/campaignsSlice';
 import { fetchContacts, fetchContactGroups } from '@store/slices/contactsSlice';
+import { fetchTasksDueToday, fetchOverdueTasks } from '@store/slices/tasksSlice';
 import { getColors } from '@theme/colors';
 import { StyledText } from '@components/StyledText';
 import * as landingPageService from '@services/landing-pages';
@@ -40,6 +41,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { list: contacts, pagination: contactPagination, isLoading: contactsLoading } = useAppSelector(
     (state) => state.contacts
   );
+  const { list: tasks, isLoading: tasksLoading } = useAppSelector(
+    (state) => state.tasks
+  );
 
   const colors = getColors(theme);
 
@@ -55,6 +59,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     try {
       await dispatch(fetchCampaigns({ page: 1, perPage: 1 }));
       await dispatch(fetchContacts({ page: 1, perPage: 1 }));
+      await dispatch(fetchTasksDueToday());
+      await dispatch(fetchOverdueTasks());
       loadLandingPages();
     } catch (error) {
       console.log('Error loading data:', error);
@@ -244,6 +250,170 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             <StyledText style={styles.actionButtonText}>Create Landing Page</StyledText>
             <MaterialCommunityIcons name="chevron-right" size={20} color="#fff" />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.warning }]}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Tasks', { screen: 'TaskEdit', params: { mode: 'create' } })}
+          >
+            <MaterialCommunityIcons name="checkbox-marked-circle-plus-outline" size={20} color="#fff" />
+            <StyledText style={styles.actionButtonText}>Create Task</StyledText>
+            <MaterialCommunityIcons name="chevron-right" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Task Widget */}
+        <View style={styles.section}>
+          <View style={styles.activityHeader}>
+            <StyledText style={[styles.sectionTitle, { color: colors.text }]}>Tasks</StyledText>
+            <TouchableOpacity onPress={() => navigation.navigate('Tasks')}>
+              <StyledText style={[styles.viewAll, { color: colors.primary }]}>View All</StyledText>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.taskWidgetContainer}>
+            <TouchableOpacity
+              style={[styles.taskWidgetCard, { backgroundColor: colors.primary, opacity: 0.1 }]}
+              onPress={() => navigation.navigate('Tasks')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.taskWidgetContent}>
+                <MaterialCommunityIcons
+                  name="calendar-today"
+                  size={24}
+                  color={colors.primary}
+                />
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <StyledText style={[styles.taskWidgetValue, { color: colors.text }]}>
+                    {tasks.filter((t) => t.status !== 'completed').length}
+                  </StyledText>
+                  <StyledText style={[styles.taskWidgetLabel, { color: colors.textSecondary }]}>
+                    Due Today
+                  </StyledText>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.taskWidgetCard, { backgroundColor: colors.error, opacity: 0.1 }]}
+              onPress={() => navigation.navigate('Tasks', { screen: 'TaskList', params: { filter: 'overdue' } })}
+              activeOpacity={0.7}
+            >
+              <View style={styles.taskWidgetContent}>
+                <MaterialCommunityIcons
+                  name="alert-circle"
+                  size={24}
+                  color={colors.error}
+                />
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <StyledText style={[styles.taskWidgetValue, { color: colors.text }]}>
+                    {tasks.filter(
+                      (t) =>
+                        t.due_date &&
+                        new Date(t.due_date) < new Date() &&
+                        t.status !== 'completed'
+                    ).length}
+                  </StyledText>
+                  <StyledText style={[styles.taskWidgetLabel, { color: colors.textSecondary }]}>
+                    Overdue
+                  </StyledText>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {tasks.length === 0 && (
+            <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
+              <MaterialCommunityIcons
+                name="checkbox-blank-circle-outline"
+                size={32}
+                color={colors.textSecondary}
+              />
+              <StyledText style={[styles.emptyStateText, { color: colors.textSecondary }]}>
+                No tasks yet. Create one to get started!
+              </StyledText>
+            </View>
+          )}
+
+          {tasks.length > 0 && (
+            <View>
+              {tasks.slice(0, 2).map((task, index) => (
+                <TouchableOpacity
+                  key={task.id}
+                  onPress={() =>
+                    navigation.navigate('Tasks', { screen: 'TaskDetail', params: { taskId: task.id } })
+                  }
+                  style={[
+                    styles.taskItem,
+                    {
+                      borderBottomColor: colors.border,
+                      borderBottomWidth: index < 1 ? 1 : 0,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.taskItemIcon,
+                      {
+                        backgroundColor:
+                          task.status === 'completed'
+                            ? `${colors.success}15`
+                            : `${colors.warning}15`,
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={task.status === 'completed' ? 'check-circle' : 'circle-outline'}
+                      size={16}
+                      color={
+                        task.status === 'completed' ? colors.success : colors.warning
+                      }
+                    />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <StyledText
+                      style={[
+                        styles.taskItemTitle,
+                        {
+                          color: colors.text,
+                          textDecorationLine:
+                            task.status === 'completed' ? 'line-through' : 'none',
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {task.title}
+                    </StyledText>
+                    <StyledText
+                      style={[styles.taskItemDue, { color: colors.textSecondary }]}
+                    >
+                      {task.due_date
+                        ? new Date(task.due_date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        : 'No due date'}
+                    </StyledText>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.taskPriorityBadge,
+                      {
+                        backgroundColor:
+                          task.priority === 'high'
+                            ? colors.error
+                            : task.priority === 'medium'
+                            ? colors.warning
+                            : colors.success,
+                      },
+                    ]}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Recent Activity */}
@@ -428,6 +598,66 @@ const styles = StyleSheet.create({
   },
   activityTime: {
     fontSize: 12,
+    marginLeft: 8,
+  },
+  taskWidgetContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  taskWidgetCard: {
+    flex: 1,
+    borderRadius: 10,
+    padding: 12,
+  },
+  taskWidgetContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  taskWidgetValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  taskWidgetLabel: {
+    fontSize: 12,
+  },
+  emptyState: {
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  taskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  taskItemIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  taskItemTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  taskItemDue: {
+    fontSize: 12,
+  },
+  taskPriorityBadge: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     marginLeft: 8,
   },
 });
