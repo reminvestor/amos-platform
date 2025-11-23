@@ -149,8 +149,53 @@
             </div>
 
             <div class="row g-3" data-voice-settings-target="settings">
+              
+              <%# Provider Selection %>
               <div class="col-12 mb-3">
-                <label for="voice_id" class="form-label">Voice</label>
+                <label for="provider" class="form-label">Voice Provider</label>
+                <%= select_tag :provider,
+                    options_for_select([
+                      ['Eleven Labs (High Quality - Recommended)', 'eleven_labs'],
+                      ['Amazon Polly (Standard)', 'polly']
+                    ], current_user.tts_preferences&.dig('provider') || 'eleven_labs'),
+                    class: "form-select",
+                    id: "provider",
+                    data: { action: "change->voice-settings#toggleProvider" } %>
+              </div>
+
+              <%# Eleven Labs Voices %>
+              <div class="col-12 mb-3" id="eleven_labs_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'eleven_labs' ? '' : 'display: none;' %>">
+                <label for="eleven_labs_voice_id" class="form-label">AI Voice (Eleven Labs)</label>
+                <% eleven_labs_voice_groups = {
+                  'American' => [
+                    ['Rachel (Female - Calm)', 'Rachel'],
+                    ['Drew (Male - News)', 'Drew'],
+                    ['Clyde (Male - Deep)', 'Clyde'],
+                    ['Nicole (Female - Whisper)', 'Nicole'],
+                    ['Emily (Female - Calm)', 'Emily']
+                  ],
+                  'British' => [
+                    ['George (Male - Warm)', 'George']
+                  ],
+                  'Australian' => [
+                    ['Mimi (Female - Child)', 'Mimi'],
+                    ['Charlie (Male - Casual)', 'Charlie']
+                  ],
+                  'Irish' => [
+                    ['Fin (Male - Energetic)', 'Fin']
+                  ]
+                } %>
+                <%= select_tag :eleven_labs_voice_id,
+                    grouped_options_for_select(eleven_labs_voice_groups, current_user.tts_preferences&.dig('eleven_labs_voice_id') || 'George'),
+                    class: "form-select",
+                    id: "eleven_labs_voice_id",
+                    data: { action: "change->voice-settings#updatePreview" } %>
+                <small class="form-text text-muted">High-quality AI voices powered by Eleven Labs</small>
+              </div>
+
+              <%# Polly Voices %>
+              <div class="col-12 mb-3" id="polly_voices_container" style="<%= (current_user.tts_preferences&.dig('provider') || 'eleven_labs') == 'polly' ? '' : 'display: none;' %>">
+                <label for="voice_id" class="form-label">AI Voice (Polly)</label>
                 <% voice_groups = {
                   'US English Voices' => [
                     ['Aria (Female - Conversational)', 'Aria'],
@@ -199,7 +244,7 @@
                     class: "form-select",
                     id: "voice_id",
                     data: { action: "change->voice-settings#updatePreview" } %>
-                <small class="form-text text-muted">Select a voice to hear a preview</small>
+                <small class="form-text text-muted">Standard AI voices powered by AWS Polly</small>
               </div>
 
               <div class="col-12 mb-3">
