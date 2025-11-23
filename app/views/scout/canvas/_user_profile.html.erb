@@ -160,7 +160,7 @@
                     ], current_user.tts_preferences&.dig('provider') || 'eleven_labs'),
                     class: "form-select",
                     id: "provider",
-                    data: { action: "change->voice-settings#toggleProvider" } %>
+                    data: { action: "change->voice-settings#switchProvider" } %>
               </div>
 
               <%# Eleven Labs Voices %>

@@ -1529,40 +1529,29 @@ export default class extends Controller {
   }
 
   /**
-   * Synthesize speech from text using Eleven Labs TTS
-   * Uses Eleven Labs for both STT (Scribe v3) and TTS for consistency
+   * Synthesize speech from text using backend API
+   * Respects user preferences for provider and voice (Eleven Labs or Polly)
    */
   async synthesizeSpeech(text) {
     try {
-      console.log("🔊 Synthesizing speech with Eleven Labs for:", text.substring(0, 50) + "...")
+      console.log("🔊 Requesting TTS from backend for:", text.substring(0, 50) + "...")
 
-      // Get Eleven Labs API key
-      const apiKey = await this.getElevenLabsApiKey()
-
-      // Use Eleven Labs TTS API - Adam voice (professional, clear)
-      const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB`, {
+      // Call unified backend endpoint which handles provider selection based on user settings
+      const response = await fetch('/api/tts/synthesize', {
         method: 'POST',
         headers: {
-          'Accept': 'audio/mpeg',
           'Content-Type': 'application/json',
-          'xi-api-key': apiKey
+          'X-CSRF-Token': this.csrfToken()
         },
         body: JSON.stringify({
           text: text,
-          model_id: "eleven_v3", // Latest v3 model - human-like and expressive
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.0,
-            use_speaker_boost: true
-          }
+          // We don't specify voice_id or provider here, so the backend uses user preferences
+          speech_marks: false
         })
       })
 
       if (!response.ok) {
-        console.error("❌ Eleven Labs TTS failed:", response.status, response.statusText)
-        // Fall back to AWS Polly
-        await this.synthesizeSpeechPolly(text)
+        console.error("❌ TTS failed:", response.status, response.statusText)
         return
       }
 
@@ -1574,7 +1563,7 @@ export default class extends Controller {
       const audio = new Audio(audioUrl)
       audio.play()
 
-      console.log("✅ Playing Eleven Labs TTS")
+      console.log("✅ Playing TTS audio")
 
       // Clean up blob URL after playing
       audio.onended = () => {
@@ -1583,50 +1572,7 @@ export default class extends Controller {
       }
 
     } catch (error) {
-      console.error("❌ Eleven Labs TTS error, falling back to Polly:", error)
-      await this.synthesizeSpeechPolly(text)
-    }
-  }
-
-  /**
-   * Fallback: AWS Polly TTS
-   */
-  async synthesizeSpeechPolly(text) {
-    try {
-      console.log("🔊 Using AWS Polly TTS fallback...")
-
-      const response = await fetch('/api/tts/synthesize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': this.csrfToken()
-        },
-        body: JSON.stringify({
-          text: text,
-          voice_id: 'Matthew',
-          speech_marks: false
-        })
-      })
-
-      if (!response.ok) {
-        console.error("❌ Polly TTS failed:", response.statusText)
-        return
-      }
-
-      const audioBlob = await response.blob()
-      const audioUrl = URL.createObjectURL(audioBlob)
-      const audio = new Audio(audioUrl)
-      audio.play()
-
-      console.log("✅ Playing Polly TTS")
-
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl)
-        console.log("🔇 Speech playback completed")
-      }
-
-    } catch (error) {
-      console.error("❌ Polly TTS error:", error)
+      console.error("❌ TTS error:", error)
     }
   }
 
