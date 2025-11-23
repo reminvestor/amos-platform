@@ -1,12 +1,12 @@
-# AMOS Mobile App
+# Amos Labs Mobile App
 
-React Native mobile application for the AMOS (AI Marketing Orchestration System) platform. Supports both iOS and Android devices.
+React Native mobile application for Amos Labs - the AI Marketing Orchestration System. Supports both iOS and Android devices.
 
 ## Overview
 
-This is a native iOS/Android app built with React Native and Expo that provides access to core AMOS features on mobile devices including:
+This is a native iOS/Android app built with React Native and Expo that provides access to core Amos Labs features on mobile devices including:
 
-- Scout AI Assistant (chat)
+- Amos AI Assistant (chat)
 - Campaign management and monitoring
 - Contact management and bulk import
 - Landing page creation and tracking
@@ -32,7 +32,7 @@ mobile/
 ├── src/
 │   ├── screens/            # Screen components
 │   │   ├── auth/           # Login, forgot password
-│   │   ├── chat/           # Chat/Scout AI
+│   │   ├── chat/           # Chat/Amos AI
 │   │   ├── campaigns/      # Campaign list/detail
 │   │   ├── contacts/       # Contact management
 │   │   ├── landing-pages/  # Landing page management
