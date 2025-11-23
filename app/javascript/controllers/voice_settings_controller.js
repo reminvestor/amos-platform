@@ -244,6 +244,10 @@ export default class extends Controller {
     
     if (provider === 'eleven_labs') {
       voiceId = elevenLabsEl ? elevenLabsEl.value : null
+      // Fallback if element exists but value is empty (e.g. not selected yet)
+      if (!voiceId && elevenLabsEl && elevenLabsEl.options.length > 0) {
+         voiceId = elevenLabsEl.options[0].value
+      }
       console.log('🎤 Selected Eleven Labs voice:', voiceId, 'from element:', elevenLabsEl)
     } else {
       voiceId = pollyEl ? pollyEl.value : null
