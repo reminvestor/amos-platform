@@ -22,6 +22,8 @@ import { Contact, ContactGroup } from '@types';
 import { formatShortDate, formatContactStatus } from '@utils/formatters';
 import * as contactService from '@services/contacts';
 import { FavoriteButton } from '@components/FavoriteButton';
+import { copyToClipboard } from '@utils/clipboard';
+import { addSearchHistory } from '@utils/searchHistory';
 
 interface ContactListScreenProps {
   navigation: any;
@@ -48,6 +50,9 @@ export default function ContactListScreen({ navigation }: ContactListScreenProps
   );
 
   const loadContacts = async () => {
+    if (searchText.trim()) {
+      await addSearchHistory(searchText, 'contacts');
+    }
     await dispatch(
       fetchContacts({
         page: 1,
@@ -194,9 +199,15 @@ export default function ContactListScreen({ navigation }: ContactListScreenProps
               <Text style={styles.contactName} numberOfLines={1}>
                 {item.name || item.email}
               </Text>
-              <Text style={styles.contactEmail} numberOfLines={1}>
-                {item.email}
-              </Text>
+              <TouchableOpacity
+                style={styles.emailContainer}
+                onPress={() => copyToClipboard(item.email, 'Email')}
+              >
+                <Text style={styles.contactEmail} numberOfLines={1}>
+                  {item.email}
+                </Text>
+                <MaterialCommunityIcons name="content-copy" size={14} color="#999" />
+              </TouchableOpacity>
             </View>
             <View style={styles.cardActions}>
               <FavoriteButton id={item.id} type="contact" size={20} />
@@ -692,6 +703,11 @@ const styles = StyleSheet.create({
   contactEmail: {
     fontSize: 13,
     color: '#666',
+  },
+  emailContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   statusBadge: {
     paddingHorizontal: 8,
