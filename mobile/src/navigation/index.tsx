@@ -59,7 +59,7 @@ function ChatNavigator() {
       <Stack.Screen
         name="ChatMain"
         component={ChatScreen}
-        options={{ title: 'Scout AI Assistant' }}
+        options={{ title: 'Amos AI' }}
       />
     </Stack.Navigator>
   );

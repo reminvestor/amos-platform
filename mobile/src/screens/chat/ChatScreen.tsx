@@ -236,7 +236,7 @@ export default function ChatScreen() {
       >
         {/* Header with actions */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Scout AI Assistant</Text>
+          <Text style={styles.headerTitle}>Amos AI</Text>
           <View style={styles.headerActions}>
             <TouchableOpacity
               onPress={() => handleCreateTaskFromMessage(messages[messages.length - 1] || { id: '', role: 'user', content: '', timestamp: new Date().toISOString() })}
