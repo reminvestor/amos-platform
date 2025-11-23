@@ -149,7 +149,8 @@ class Api::TtsController < ApplicationController
     
     # Handle provider-specific voice IDs
     if preferences['provider'] == 'eleven_labs'
-      preferences['eleven_labs_voice_id'] = params[:voice_id] if params[:voice_id].present?
+      val = params[:eleven_labs_voice_id].presence || params[:voice_id]
+      preferences['eleven_labs_voice_id'] = val if val.present?
     else
       preferences['voice_id'] = params[:voice_id] if params[:voice_id].present?
     end

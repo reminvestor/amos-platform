@@ -1,7 +1,8 @@
 module Api
   module V1
     class AgentAuthController < Api::BaseController
-      skip_before_action :authenticate_user!, only: [:heartbeat, :current_task]
+      # authenticate_user! is already skipped in Api::BaseController (via ApplicationController logic or skip_before_action)
+      # We don't need to skip it again, which causes errors if it's not in the chain.
       
       def heartbeat
         # Log heartbeat for agent execution ID
