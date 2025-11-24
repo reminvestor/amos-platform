@@ -91,6 +91,7 @@ cat > aws/task-definition-dev.json << 'EOF'
         {"name": "OPENAI_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-openai-api-key"},
         {"name": "ANTHROPIC_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-anthropic-api-key"},
         {"name": "DEEPGRAM_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-deepgram-api-key"},
+        {"name": "SERPER_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-serper-api-key"},
         {"name": "MAILER_SENDER", "value": "noreply@amoslabs.com"},
         {"name": "SES_CONFIGURATION_SET", "value": "agent-marketing"}
       ],
