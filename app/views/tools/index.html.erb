@@ -17,6 +17,7 @@
             <tr>
               <th>Name</th>
               <th>Type</th>
+              <th>Security</th>
               <th>Description</th>
               <th>Actions</th>
             </tr>
@@ -26,6 +27,18 @@
               <tr>
                 <td><%= tool.name %></td>
                 <td><span class="badge bg-info"><%= tool.execution_type %></span></td>
+                <td>
+                  <% case tool.security_rating %>
+                  <% when 'pass' %>
+                    <span class="badge bg-success" title="<%= tool.security_reason %>">Pass</span>
+                  <% when 'review' %>
+                    <span class="badge bg-warning text-dark" title="<%= tool.security_reason %>">Review</span>
+                  <% when 'fail' %>
+                    <span class="badge bg-danger" title="<%= tool.security_reason %>">Fail</span>
+                  <% else %>
+                    <span class="badge bg-secondary">Pending</span>
+                  <% end %>
+                </td>
                 <td><%= tool.description&.truncate(50) %></td>
                 <td>
                   <%= link_to "View", tool_path(tool), class: "btn btn-sm btn-outline-secondary" %>
