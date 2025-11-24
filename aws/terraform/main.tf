@@ -531,6 +531,10 @@ resource "aws_ecs_task_definition" "app" {
         {
           name      = "ELEVEN_LABS_API_KEY"
           valueFrom = data.aws_secretsmanager_secret.eleven_labs_api_key.arn
+        },
+        {
+          name      = "SERPER_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.serper_api_key.arn
         }
       ]
       
@@ -628,6 +632,10 @@ resource "aws_ecs_task_definition" "app" {
         {
           name      = "ELEVEN_LABS_API_KEY"
           valueFrom = data.aws_secretsmanager_secret.eleven_labs_api_key.arn
+        },
+        {
+          name      = "SERPER_API_KEY"
+          valueFrom = data.aws_secretsmanager_secret.serper_api_key.arn
         }
       ]
       
@@ -959,6 +967,10 @@ data "aws_secretsmanager_secret" "anthropic_api_key" {
 
 data "aws_secretsmanager_secret" "eleven_labs_api_key" {
   name = "${var.app_name}-eleven-labs-api-key"
+}
+
+data "aws_secretsmanager_secret" "serper_api_key" {
+  name = "${var.app_name}-serper-api-key"
 }
 
 # VPC Endpoints for private subnet access to AWS services
