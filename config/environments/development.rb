@@ -54,17 +54,15 @@ Rails.application.configure do
   # Devise mailer configuration
   config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
 
-  # Letter Opener - Preview emails in browser instead of sending them
-  # Access sent emails at http://localhost:3000/letter_opener
-  config.action_mailer.delivery_method = :letter_opener
-  config.action_mailer.perform_deliveries = true
-
-  # Mailgun configuration (for production use)
-  # config.action_mailer.delivery_method = :mailgun
-  # config.action_mailer.mailgun_settings = {
-  #   api_key: ENV["MAILGUN_API_KEY"],
-  #   domain: ENV["MAILGUN_DOMAIN"]
-  # }
+  # Use SES in development if explicitly requested via USE_SES_IN_DEV=true
+  if ENV["USE_SES_IN_DEV"] == "true"
+    config.action_mailer.delivery_method = :aws_sdk
+    config.action_mailer.perform_deliveries = true
+  else
+    # Otherwise default to Letter Opener for local development
+    config.action_mailer.delivery_method = :letter_opener
+    config.action_mailer.perform_deliveries = true
+  end
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
