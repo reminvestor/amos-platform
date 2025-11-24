@@ -499,14 +499,6 @@ resource "aws_ecs_task_definition" "app" {
           valueFrom = aws_secretsmanager_secret.redis_url.arn
         },
         {
-          name      = "MAILGUN_API_KEY"
-          valueFrom = data.aws_secretsmanager_secret.mailgun_api_key.arn
-        },
-        {
-          name      = "MAILGUN_DOMAIN"
-          valueFrom = data.aws_secretsmanager_secret.mailgun_domain.arn
-        },
-        {
           name      = "PINECONE_API_KEY"
           valueFrom = data.aws_secretsmanager_secret.pinecone_api_key.arn
         },
@@ -598,14 +590,6 @@ resource "aws_ecs_task_definition" "app" {
         {
           name      = "REDIS_URL"
           valueFrom = aws_secretsmanager_secret.redis_url.arn
-        },
-        {
-          name      = "MAILGUN_API_KEY"
-          valueFrom = data.aws_secretsmanager_secret.mailgun_api_key.arn
-        },
-        {
-          name      = "MAILGUN_DOMAIN"
-          valueFrom = data.aws_secretsmanager_secret.mailgun_domain.arn
         },
         {
           name      = "PINECONE_API_KEY"
@@ -735,8 +719,6 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
           aws_secretsmanager_secret.database_url.arn,
           aws_secretsmanager_secret.rails_master_key.arn,
           aws_secretsmanager_secret.redis_url.arn,
-          data.aws_secretsmanager_secret.mailgun_api_key.arn,
-          data.aws_secretsmanager_secret.mailgun_domain.arn,
           data.aws_secretsmanager_secret.pinecone_api_key.arn,
           data.aws_secretsmanager_secret.pinecone_environment.arn,
           data.aws_secretsmanager_secret.pinecone_index_name.arn,
@@ -941,14 +923,6 @@ resource "aws_secretsmanager_secret_version" "redis_url" {
 data "aws_caller_identity" "current" {}
 
 # Data sources for externally managed secrets
-data "aws_secretsmanager_secret" "mailgun_api_key" {
-  name = "${var.app_name}-mailgun-api-key"
-}
-
-data "aws_secretsmanager_secret" "mailgun_domain" {
-  name = "${var.app_name}-mailgun-domain"
-}
-
 data "aws_secretsmanager_secret" "pinecone_api_key" {
   name = "${var.app_name}-pinecone-api-key"
 }
