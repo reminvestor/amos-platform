@@ -7,10 +7,11 @@ class CampaignMailer < ApplicationMailer
     @email_template = email_delivery.email_template || @campaign.email_template
 
     # For tracking opens - ensure full URL with app subdomain
-    host_with_subdomain = "app.#{ENV['APPLICATION_HOST'] || 'everloom.ai'}"
+    # APPLICATION_HOST is already set to app.amoslabs.com in production
+    host = ENV['APPLICATION_HOST'] || 'app.amoslabs.com'
     @tracking_pixel_url = email_open_url(
       email_delivery.id,
-      host: host_with_subdomain,
+      host: host,
       protocol: "https"
     )
 
