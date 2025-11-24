@@ -705,6 +705,11 @@ Rails.application.routes.draw do
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   get "up" => "rails/health#show", as: :rails_health_check
 
+  # Mount LetterOpenerWeb in development
+  if Rails.env.development?
+    mount LetterOpenerWeb::Engine, at: "/letter_opener"
+  end
+
   # Default root path for tests and unauthenticated users (only applies when no other root is defined)
   # root to: redirect("/chat")
 end
