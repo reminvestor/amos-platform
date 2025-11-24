@@ -1077,11 +1077,12 @@ class ScoutController < ApplicationController
       when "parallel_tasks"
         @session_id = canvas_data['session_id'] || params[:session_id]
         
-        # Load all active tasks for the current user
+        # Load active tasks for the current user (only from last 24 hours to exclude stuck old tasks)
         active_tasks = TaskSession.where(
           user: current_user,
           status: ['active', 'pending', 'queued']
-        ).includes(:task_dependencies).order(created_at: :desc).limit(50)
+        ).where("created_at > ?", 24.hours.ago)
+         .includes(:task_dependencies).order(created_at: :desc).limit(50)
         
         # Also load recently completed tasks (last hour)
         recent_completed = TaskSession.where(
