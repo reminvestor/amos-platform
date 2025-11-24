@@ -1850,18 +1850,40 @@ select.form-control {
 .admin-mb-lg { margin-bottom: 1.5rem; }
 .admin-mt-xl { margin-top: 2rem; }
 
-// Accessibility - screen reader only
-.visually-hidden {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-}
+  // Accessibility - screen reader only
+  .visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  // FORCE OVERRIDE for inputs that might be fighting with Bootstrap or admin_dark.css
+  .admin-card, .tab-content, .admin-form-group {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="url"],
+    input[type="search"],
+    textarea,
+    select {
+      background-color: $admin-bg-primary !important;
+      border: 1px solid $admin-border !important;
+      color: $admin-text-primary !important;
+      
+      &:focus {
+        background-color: rgba($admin-bg-primary, 0.5) !important;
+        border-color: $admin-accent-end !important;
+        color: $admin-text-primary !important;
+      }
+    }
+  }
 
 // Close .admin-dark block
 }
