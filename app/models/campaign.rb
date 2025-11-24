@@ -289,12 +289,9 @@ class Campaign < ApplicationRecord
   end
 
   def sync_mailgun_stats
-    # Don't try to sync if we don't have a tag
-    return false unless mailgun_tag.present?
-
-    # Queue the sync job
-    SyncMailgunStatsJob.perform_later(id)
-    true
+    # No-op now, Mailgun is deprecated
+    # Keeping method signature for compatibility
+    false
   end
 
   def last_synced_at

@@ -212,7 +212,7 @@ Rails.application.routes.draw do
         post :stop
         post :reactivate
         post :force_resume
-        post :sync_mailgun
+
         get :analyze
         post :setup_drip
         post :trigger_drip
@@ -505,6 +505,9 @@ Rails.application.routes.draw do
     get 'checkout/cancel', to: 'stripe_checkout#cancel', as: :checkout_cancel
     post 'portal', to: 'stripe_checkout#create_portal_session', as: :portal
   end
+
+  # SES Webhooks
+  post "/webhooks/ses", to: "ses_webhooks#create"
 
   # Admin routes
   namespace :admin do
