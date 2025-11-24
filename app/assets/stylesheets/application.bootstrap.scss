@@ -1020,7 +1020,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
 // Nav Tabs
 .nav-tabs {
   border-bottom: 1px solid $admin-border;
-  margin-bottom: 2rem;
+  margin-bottom: 0;
   
   .nav-link {
     color: $admin-text-secondary;
@@ -1050,6 +1050,42 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
     i, svg {
       width: 1rem;
       height: 1rem;
+    }
+  }
+}
+
+// Tab content styling
+.tab-content {
+  padding: 2rem;
+  
+  .tab-pane {
+    // Ensure form inputs inside tabs get proper dark styling
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="url"],
+    input[type="search"],
+    textarea,
+    select {
+      background-color: $admin-bg-primary !important;
+      border: 1px solid $admin-border !important;
+      color: $admin-text-primary !important;
+      width: 100%;
+      padding: 0.625rem 0.875rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      
+      &:focus {
+        outline: none;
+        border-color: $admin-accent-end !important;
+        box-shadow: 0 0 0 3px rgba($admin-accent-end, 0.1) !important;
+        background-color: rgba($admin-bg-primary, 0.5) !important;
+      }
+      
+      &::placeholder {
+        color: $admin-text-muted !important;
+      }
     }
   }
 }
@@ -1277,6 +1313,87 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
       margin-top: 0.25rem;
     }
   }
+}
+
+// Admin section titles and subtitles
+.admin-section-title {
+  color: $admin-text-primary;
+  margin-bottom: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.admin-section-subtitle {
+  color: $admin-text-secondary;
+  font-size: 0.875rem;
+  margin-bottom: 2rem;
+}
+
+// Admin hint text
+.admin-hint {
+  color: $admin-text-muted;
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+}
+
+// Color preview container
+.color-preview-container {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.color-preview-swatch {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  border: 2px solid $admin-border;
+}
+
+// Admin alerts
+.admin-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1.5rem;
+  
+  i, svg {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  
+  span {
+    flex: 1;
+  }
+}
+
+.admin-alert-info {
+  background: rgba($admin-accent-end, 0.1);
+  border: 1px solid rgba($admin-accent-end, 0.3);
+  color: $admin-accent-end;
+}
+
+.admin-alert-success {
+  background: rgba(#22C55E, 0.1);
+  border: 1px solid rgba(#22C55E, 0.3);
+  color: #22C55E;
+}
+
+.admin-alert-warning {
+  background: rgba(#F59E0B, 0.1);
+  border: 1px solid rgba(#F59E0B, 0.3);
+  color: #F59E0B;
+}
+
+.admin-alert-danger {
+  background: rgba(#EF4444, 0.1);
+  border: 1px solid rgba(#EF4444, 0.3);
+  color: #EF4444;
 }
 
 // Empty States
