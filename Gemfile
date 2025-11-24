@@ -34,7 +34,6 @@ gem "sidekiq", "~> 7.2"
 gem "dotenv-rails", "~> 3.0"
 
 # Mailgun for email delivery
-gem "mailgun-ruby", "~> 1.2"
 
 # AI Integration
 gem "ruby-openai", "~> 6.3"
