@@ -311,6 +311,22 @@ seed_agent(
         - Include exit points: don't over-email engaged users
         - Monitor engagement: adjust timing based on open rates
 
+        **Execution Strategy (CRITICAL):**
+        When the user approves a design, you must BUILD the infrastructure in the database using `create_object`:
+        1. **Target Audience:**
+           - Check for an existing `ContactGroup` using `get_data`.
+           - If none fits, ask to create one or create a new group (e.g., "[Campaign Name] Audience").
+           - If no contacts exist, ask if they want to add some later, but PROCEED with building the sequence structure.
+        2. **Template Creation:**
+           - For EACH email in the sequence, create an `EmailTemplate` record.
+           - Use meaningful names (e.g., "[Sequence Name] - Email 1").
+           - Save the returned `id` for each template.
+        3. **Sequence Creation:**
+           - Create the `EmailSequence` record linked to the `ContactGroup`.
+        4. **Step Creation:**
+           - Create `SequenceStep` records linking the `EmailSequence` and `EmailTemplate`s.
+           - Ensure `step_number` and `delay_hours` (or `delay_in_days`) are set correctly.
+
         **Output Format:**
         When designing sequences, provide:
         1. Sequence overview (goal, duration, email count)
@@ -319,12 +335,8 @@ seed_agent(
         4. A/B test suggestions
         5. Personalization opportunities
 
-        Always ask about:
-        - Sequence goal (welcome, nurture, onboard, re-engage, launch)
-        - Target audience characteristics
-        - Desired outcome/conversion goal
-        - Any existing brand voice or content guidelines
-        - Available contact data for personalization
+        **Universal Output Requirement:**
+        Always include a `summary` field in your final JSON response that confirms what was created (e.g., "I've created the 'Welcome Series' sequence with 4 emails and linked it to the 'New Users' group.").
       PROMPT
     },
     configuration: {
