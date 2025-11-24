@@ -85,8 +85,6 @@ cat > aws/task-definition-dev.json << 'EOF'
         {"name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-database-url"},
         {"name": "RAILS_MASTER_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-rails-master-key"},
         {"name": "REDIS_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-redis-url"},
-        {"name": "MAILGUN_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-mailgun-api-key"},
-        {"name": "MAILGUN_DOMAIN", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-mailgun-domain"},
         {"name": "PINECONE_API_KEY", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-pinecone-api-key"},
         {"name": "PINECONE_ENVIRONMENT", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-pinecone-environment"},
         {"name": "PINECONE_INDEX_NAME", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-pinecone-index-name"},
@@ -196,6 +194,7 @@ echo -e "  http://agent-marketing-dev-alb-1572082392.us-east-1.elb.amazonaws.com
 echo -e "  http://dev.amoslabs.com (once DNS propagates)"
 echo -e "\n${YELLOW}View logs:${NC}"
 echo -e "  aws logs tail /ecs/agent-marketing-dev --follow"
+
 
 
 
