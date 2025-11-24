@@ -1,0 +1,69 @@
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header border-secondary">
+          <h5 class="mb-0 text-white">Create New Tool</h5>
+        </div>
+        <div class="card-body">
+          <%= form_with model: @tool, local: true do |f| %>
+            <div class="mb-3">
+              <%= f.label :name, class: "form-label text-white" %>
+              <%= f.text_field :name, class: "form-control bg-dark text-white border-secondary", placeholder: "e.g. search_github" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :execution_type, class: "form-label text-white" %>
+              <%= f.select :execution_type, ['ruby_code', 'http_request'], {}, class: "form-select bg-dark text-white border-secondary", id: "tool_execution_type" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :description, class: "form-label text-white" %>
+              <%= f.text_area :description, rows: 3, class: "form-control bg-dark text-white border-secondary", placeholder: "What does this tool do?" %>
+            </div>
+            
+            <div id="ruby_code_section">
+              <div class="mb-3">
+                <%= f.label :code, "Ruby Code", class: "form-label text-white" %>
+                <%= f.text_area :code, rows: 10, class: "form-control bg-dark text-white border-secondary font-monospace", placeholder: "def execute(args)\n  # Your code here\nend" %>
+              </div>
+            </div>
+            
+            <div id="http_request_section" style="display: none;">
+              <div class="alert alert-info">
+                <i data-lucide="info" class="icon-sm me-2"></i>
+                Configure API settings in the next step or use the JSON editor.
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <%= link_to "Cancel", tools_path, class: "btn btn-outline-secondary" %>
+              <%= f.submit "Create Tool", class: "btn btn-primary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', function() {
+    const typeSelect = document.getElementById('tool_execution_type');
+    const rubySection = document.getElementById('ruby_code_section');
+    const httpSection = document.getElementById('http_request_section');
+    
+    if(typeSelect) {
+      typeSelect.addEventListener('change', function() {
+        if(this.value === 'ruby_code') {
+          rubySection.style.display = 'block';
+          httpSection.style.display = 'none';
+        } else {
+          rubySection.style.display = 'none';
+          httpSection.style.display = 'block';
+        }
+      });
+    }
+  });
+</script>
+

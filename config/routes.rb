@@ -219,6 +219,19 @@ Rails.application.routes.draw do
       end
     end
 
+    resources :email_sequences do
+      resources :sequence_steps
+      member do
+        post :activate
+        post :pause
+        post :enroll_group
+      end
+    end
+
+    # Entity-level Agent & Tool Management
+    resources :agent_plugins
+    resources :tools
+
   # Landing pages
   # Agent system routes
   namespace :agents do

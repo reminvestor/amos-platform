@@ -1,0 +1,41 @@
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header border-secondary">
+          <h5 class="mb-0 text-white">Create New Agent</h5>
+        </div>
+        <div class="card-body">
+          <%= form_with model: @agent, local: true do |f| %>
+            <div class="mb-3">
+              <%= f.label :name, class: "form-label text-white" %>
+              <%= f.text_field :name, class: "form-control bg-dark text-white border-secondary", placeholder: "e.g. Social Media Manager" %>
+            </div>
+            
+            <div class="mb-3">
+              <%= f.label :role, class: "form-label text-white" %>
+              <%= f.select :role, ['executor', 'analyst', 'planner', 'verifier', 'custom'], {}, class: "form-select bg-dark text-white border-secondary" %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :description, class: "form-label text-white" %>
+              <%= f.text_area :description, rows: 3, class: "form-control bg-dark text-white border-secondary", placeholder: "What does this agent do?" %>
+            </div>
+            
+            <div class="mb-3">
+              <%= f.label :system_prompt, "System Prompt", class: "form-label text-white" %>
+              <%= f.text_area :system_prompt, rows: 6, class: "form-control bg-dark text-white border-secondary", value: @agent.system_prompt.is_a?(Hash) ? @agent.system_prompt['prompt'] : @agent.system_prompt, name: "agent_plugin[system_prompt]" %>
+              <div class="form-text text-muted">Define the agent's personality, constraints, and instructions.</div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <%= link_to "Cancel", agent_plugins_path, class: "btn btn-outline-secondary" %>
+              <%= f.submit "Create Agent", class: "btn btn-primary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

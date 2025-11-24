@@ -1,0 +1,49 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-0 text-white">Tools</h1>
+      <p class="text-muted">Manage your custom tools.</p>
+    </div>
+    <%= link_to new_tool_path, class: "btn btn-primary" do %>
+      <i data-lucide="plus"></i> Create Tool
+    <% end %>
+  </div>
+
+  <div class="card bg-dark border-secondary">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @my_tools.each do |tool| %>
+              <tr>
+                <td><%= tool.name %></td>
+                <td><span class="badge bg-info"><%= tool.execution_type %></span></td>
+                <td><%= tool.description&.truncate(50) %></td>
+                <td>
+                  <%= link_to "View", tool_path(tool), class: "btn btn-sm btn-outline-secondary" %>
+                  <%= link_to "Edit", edit_tool_path(tool), class: "btn btn-sm btn-outline-secondary" %>
+                </td>
+              </tr>
+            <% end %>
+            <% if @my_tools.empty? %>
+              <tr>
+                <td colspan="4" class="text-center py-5 text-muted">
+                  <p>No custom tools found.</p>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
