@@ -83,6 +83,7 @@ gem "aws-sdk-polly", "~> 1.0"
 gem "aws-sdk-textract", "~> 1.0"
 gem "aws-sdk-comprehend", "~> 1.0"
 gem "aws-sdk-opensearchservice", "~> 1.0"
+gem "aws-sdk-rails", "~> 3.10"
 
 # Vector storage and RAG
 gem "pinecone", "~> 1.2"

@@ -65,14 +65,6 @@
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-redis-url-9HkkES"
         },
         {
-          "name": "MAILGUN_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-api-key-8wkcDx"
-        },
-        {
-          "name": "MAILGUN_DOMAIN",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-domain-nBv15L"
-        },
-        {
           "name": "PINECONE_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-pinecone-api-key-XGOtSa"
         },
@@ -160,14 +152,6 @@
         {
           "name": "REDIS_URL",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-redis-url-9HkkES"
-        },
-        {
-          "name": "MAILGUN_API_KEY",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-api-key-8wkcDx"
-        },
-        {
-          "name": "MAILGUN_DOMAIN",
-          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-mailgun-domain-nBv15L"
         },
         {
           "name": "PINECONE_API_KEY",
