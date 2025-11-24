@@ -1042,6 +1042,21 @@ resource "aws_vpc_endpoint" "s3" {
   }
 }
 
+# SES VPC Endpoint - Required for sending emails from private subnets without NAT Gateway
+resource "aws_vpc_endpoint" "ses" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.email"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = module.vpc.private_subnets
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  
+  private_dns_enabled = true
+  
+  tags = {
+    Name = "${var.app_name}-ses-endpoint"
+  }
+}
+
 resource "aws_security_group" "vpc_endpoints" {
   name        = "${var.app_name}-vpc-endpoints"
   description = "Security group for VPC endpoints"
