@@ -1,0 +1,169 @@
+<div class="container-fluid">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <%= link_to email_sequences_path, class: "text-muted" do %>
+          <i data-lucide="arrow-left" class="icon-sm"></i>
+        <% end %>
+        <h1 class="h3 mb-0 text-white"><%= @sequence.name %></h1>
+        <% badge_class = case @sequence.status
+           when 'active' then 'bg-success'
+           when 'paused' then 'bg-warning text-dark'
+           when 'completed' then 'bg-info'
+           else 'bg-secondary'
+           end %>
+        <span class="badge <%= badge_class %>"><%= @sequence.status.humanize %></span>
+      </div>
+      <p class="text-muted mb-0"><%= @sequence.goal %></p>
+    </div>
+    <div class="d-flex gap-2">
+      <% if @sequence.status == 'active' %>
+        <%= button_to pause_email_sequence_path(@sequence), method: :post, class: "btn btn-warning" do %>
+          <i data-lucide="pause"></i> Pause
+        <% end %>
+      <% else %>
+        <%= button_to activate_email_sequence_path(@sequence), method: :post, class: "btn btn-success" do %>
+          <i data-lucide="play"></i> Activate
+        <% end %>
+      <% end %>
+      <%= link_to edit_email_sequence_path(@sequence), class: "btn btn-outline-secondary" do %>
+        <i data-lucide="edit-2"></i> Edit
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Stats Cards -->
+    <div class="col-md-3 mb-4">
+      <div class="card bg-dark border-secondary h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Enrolled</h6>
+          <div class="h2 mb-0 text-white"><%= @sequence.enrolled_count %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-4">
+      <div class="card bg-dark border-secondary h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Active</h6>
+          <div class="h2 mb-0 text-white"><%= @sequence.active_count %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-4">
+      <div class="card bg-dark border-secondary h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Completed</h6>
+          <div class="h2 mb-0 text-white"><%= @sequence.completed_count %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-4">
+      <div class="card bg-dark border-secondary h-100">
+        <div class="card-body">
+          <h6 class="text-muted mb-2">Target Audience</h6>
+          <% if @sequence.contact_group %>
+            <%= link_to @sequence.contact_group.name, contact_group_path(@sequence.contact_group), class: "text-info fw-bold text-decoration-none" %>
+            <div class="small text-muted mt-1"><%= @sequence.contact_group.contacts.count %> contacts</div>
+          <% else %>
+            <span class="text-muted">No group selected</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Sequence Steps -->
+    <div class="col-lg-8 mb-4">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 text-white">Sequence Steps</h5>
+          <%= link_to new_email_sequence_sequence_step_path(@sequence), class: "btn btn-sm btn-outline-primary" do %>
+            <i data-lucide="plus"></i> Add Step
+          <% end %>
+        </div>
+        <div class="card-body p-0">
+          <div class="list-group list-group-flush">
+            <% @steps.each do |step| %>
+              <div class="list-group-item bg-dark border-secondary text-white p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div class="d-flex gap-3">
+                    <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" style="width: 32px; height: 32px;">
+                      <%= step.step_number %>
+                    </div>
+                    <div>
+                      <h6 class="mb-1"><%= step.subject.presence || "No subject" %></h6>
+                      <div class="text-muted small mb-2">
+                        <i data-lucide="clock" class="icon-xs"></i> Wait <%= step.delay_hours %> hours
+                        <% if step.email_template %>
+                          &bull; <i data-lucide="file-text" class="icon-xs"></i> Template: <%= link_to step.email_template.name, email_template_path(step.email_template), class: "text-info" %>
+                        <% end %>
+                      </div>
+                      <div class="d-flex gap-3 text-secondary small">
+                        <span>Sent: <%= step.sent_count %></span>
+                        <span>Opened: <%= step.opened_count %></span>
+                        <span>Clicked: <%= step.clicked_count %></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="btn-group btn-group-sm">
+                    <%= link_to edit_email_sequence_sequence_step_path(@sequence, step), class: "btn btn-outline-secondary" do %>
+                      <i data-lucide="edit-2" class="icon-sm"></i>
+                    <% end %>
+                    <%= button_to email_sequence_sequence_step_path(@sequence, step), method: :delete, class: "btn btn-outline-danger", form: { data: { turbo_confirm: "Remove this step?" } } do %>
+                      <i data-lucide="trash-2" class="icon-sm"></i>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+            <% if @steps.empty? %>
+              <div class="text-center p-4 text-muted">
+                <p>No steps defined yet.</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity / Enrollments -->
+    <div class="col-lg-4">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header border-secondary">
+          <h5 class="mb-0 text-white">Recent Activity</h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="list-group list-group-flush">
+            <% @enrollments.limit(10).each do |enrollment| %>
+              <div class="list-group-item bg-dark border-secondary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <% contact = enrollment.contact %>
+                    <% if contact %>
+                      <div class="fw-bold"><%= contact.email %></div>
+                      <small class="text-muted">
+                        Step <%= enrollment.current_step_number %> &bull; <%= enrollment.status.humanize %>
+                      </small>
+                    <% else %>
+                      <span class="text-danger">Deleted Contact</span>
+                    <% end %>
+                  </div>
+                  <small class="text-muted"><%= time_ago_in_words(enrollment.updated_at) %> ago</small>
+                </div>
+              </div>
+            <% end %>
+            <% if @enrollments.empty? %>
+              <div class="text-center p-4 text-muted">
+                <p>No recent activity.</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

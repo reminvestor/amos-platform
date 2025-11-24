@@ -94,6 +94,56 @@
             color: white;
             border-radius: 0.375rem;
           }
+
+          /* Collapsible Menu Styling */
+          .nav-section-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            color: #94A3B8;
+            border: none;
+            background: transparent;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+          }
+
+          .nav-section-toggle:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+          }
+
+          .nav-section-toggle .collapse-icon {
+            width: 1rem;
+            height: 1rem;
+            transition: transform 0.2s;
+          }
+
+          .nav-section-toggle[aria-expanded="true"] .collapse-icon {
+            transform: rotate(180deg);
+          }
+
+          .nav-section-toggle[aria-expanded="true"] {
+            color: white;
+          }
+
+          .nav-section-content {
+            padding-left: 0;
+            margin-top: 0.25rem;
+            overflow: hidden;
+          }
+
+          .nav-section-content .nav-item {
+            padding-left: 2.75rem; /* Indent sub-items */
+            font-size: 0.9rem;
+          }
+          
+          /* Remove old headers */
+          .nav-section-header {
+            display: none;
+          }
         </style>
   </head>
 
@@ -123,79 +173,125 @@
           <% end %>
 
           <%# Marketing Section %>
-          <div class="nav-section-header">
-            <span>Marketing</span>
+          <div class="nav-section-collapsible">
+            <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#marketingCollapse" aria-expanded="<%= ['campaigns', 'email_templates', 'landing_pages', 'email_sequences'].include?(controller_name) %>">
+              <div class="d-flex align-items-center gap-3">
+                <i data-lucide="megaphone"></i>
+                <span>Marketing</span>
+              </div>
+              <i data-lucide="chevron-down" class="collapse-icon"></i>
+            </button>
+            <div class="collapse <%= 'show' if ['campaigns', 'email_templates', 'landing_pages', 'email_sequences'].include?(controller_name) %>" id="marketingCollapse">
+              <div class="nav-section-content">
+                <%= link_to campaigns_path, class: "nav-item #{'active' if controller_name == 'campaigns'}" do %>
+                  <span>Campaigns</span>
+                <% end %>
+                <%= link_to email_sequences_path, class: "nav-item #{'active' if controller_name == 'email_sequences'}" do %>
+                  <span>Email Sequences</span>
+                <% end %>
+                <%= link_to email_templates_path, class: "nav-item #{'active' if controller_name == 'email_templates'}" do %>
+                  <span>Email Templates</span>
+                <% end %>
+                <%= link_to landing_pages_path, class: "nav-item #{'active' if controller_name == 'landing_pages'}" do %>
+                  <span>Landing Pages</span>
+                <% end %>
+              </div>
+            </div>
           </div>
-          <%= link_to campaigns_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'campaigns'}" do %>
-            <i data-lucide="mail"></i>
-            <span>Campaigns</span>
-          <% end %>
-
-          <%= link_to email_templates_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'email_templates'}" do %>
-            <i data-lucide="file-text"></i>
-            <span>Email Templates</span>
-          <% end %>
-
-          <%= link_to landing_pages_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'landing_pages'}" do %>
-            <i data-lucide="layout"></i>
-            <span>Landing Pages</span>
-          <% end %>
 
           <%# Contacts Section %>
-          <div class="nav-section-header">
-            <span>Contacts</span>
+          <div class="nav-section-collapsible">
+            <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#contactsCollapse" aria-expanded="<%= ['contacts', 'contact_groups'].include?(controller_name) %>">
+              <div class="d-flex align-items-center gap-3">
+                <i data-lucide="users"></i>
+                <span>Contacts</span>
+              </div>
+              <i data-lucide="chevron-down" class="collapse-icon"></i>
+            </button>
+            <div class="collapse <%= 'show' if ['contacts', 'contact_groups'].include?(controller_name) %>" id="contactsCollapse">
+              <div class="nav-section-content">
+                <%= link_to contacts_path, class: "nav-item #{'active' if controller_name == 'contacts'}" do %>
+                  <span>All Contacts</span>
+                <% end %>
+                <%= link_to contact_groups_path, class: "nav-item #{'active' if controller_name == 'contact_groups'}" do %>
+                  <span>Contact Groups</span>
+                <% end %>
+              </div>
+            </div>
           </div>
-          <%= link_to contacts_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'contacts'}" do %>
-            <i data-lucide="users"></i>
-            <span>All Contacts</span>
-          <% end %>
-
-          <%= link_to contact_groups_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'contact_groups'}" do %>
-            <i data-lucide="users-2"></i>
-            <span>Contact Groups</span>
-          <% end %>
 
           <%# Media Assets Section %>
-          <div class="nav-section-header">
-            <span>Media Assets</span>
+          <div class="nav-section-collapsible">
+            <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#mediaCollapse" aria-expanded="<%= ['image_assets', 'documents'].include?(controller_name) %>">
+              <div class="d-flex align-items-center gap-3">
+                <i data-lucide="image"></i>
+                <span>Media Assets</span>
+              </div>
+              <i data-lucide="chevron-down" class="collapse-icon"></i>
+            </button>
+            <div class="collapse <%= 'show' if ['image_assets', 'documents'].include?(controller_name) %>" id="mediaCollapse">
+              <div class="nav-section-content">
+                <%= link_to image_assets_path, class: "nav-item #{'active' if controller_name == 'image_assets'}" do %>
+                  <span>Image Library</span>
+                <% end %>
+                <%= link_to documents_path, class: "nav-item #{'active' if controller_name == 'documents'}" do %>
+                  <span>Document Store</span>
+                <% end %>
+              </div>
+            </div>
           </div>
-          <%= link_to image_assets_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'image_assets'}" do %>
-            <i data-lucide="image"></i>
-            <span>Image Library</span>
-          <% end %>
-          <%= link_to documents_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'documents'}" do %>
-            <i data-lucide="file-text"></i>
-            <span>Document Store</span>
-          <% end %>
+
+          <%# Agents & Tools Section (NEW) %>
+          <div class="nav-section-collapsible">
+            <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#agentsCollapse" aria-expanded="<%= ['agent_plugins', 'tools'].include?(controller_name) %>">
+              <div class="d-flex align-items-center gap-3">
+                <i data-lucide="bot"></i>
+                <span>Agents & Tools</span>
+              </div>
+              <i data-lucide="chevron-down" class="collapse-icon"></i>
+            </button>
+            <div class="collapse <%= 'show' if ['agent_plugins', 'tools'].include?(controller_name) %>" id="agentsCollapse">
+              <div class="nav-section-content">
+                <%= link_to agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
+                  <span>My Agents</span>
+                <% end %>
+                <%= link_to tools_path, class: "nav-item #{'active' if controller_name == 'tools'}" do %>
+                  <span>My Tools</span>
+                <% end %>
+              </div>
+            </div>
+          </div>
 
           <%# Entity Settings - Only for Entity Admins %>
           <% if current_user.entity_admin? %>
-            <div class="nav-section-header">
-              <span>Settings</span>
+            <div class="nav-section-collapsible">
+              <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#settingsCollapse" aria-expanded="<%= ['social_media_accounts', 'users', 'policies', 'privacy', 'observability'].include?(controller_name) %>">
+                <div class="d-flex align-items-center gap-3">
+                  <i data-lucide="settings"></i>
+                  <span>Settings</span>
+                </div>
+                <i data-lucide="chevron-down" class="collapse-icon"></i>
+              </button>
+              <div class="collapse <%= 'show' if ['social_media_accounts', 'users', 'policies', 'privacy', 'observability'].include?(controller_name) || request.path.start_with?('/entity') %>" id="settingsCollapse">
+                <div class="nav-section-content">
+                  <%= link_to customer_integrations_path, class: "nav-item #{'active' if controller_name == 'social_media_accounts' || request.path == customer_integrations_path}" do %>
+                    <span>Integrations</span>
+                  <% end %>
+                  <%= link_to entity_users_path, class: "nav-item #{'active' if request.path.start_with?('/entity/users')}" do %>
+                    <span>Team Members</span>
+                  <% end %>
+                  <%= link_to entity_policies_path, class: "nav-item #{'active' if controller_name == 'policies'}" do %>
+                    <span>Policies</span>
+                  <% end %>
+                  <%= link_to entity_privacy_path, class: "nav-item #{'active' if controller_name == 'privacy'}" do %>
+                    <span>Privacy Settings</span>
+                  <% end %>
+                  <%= link_to entity_observability_path, class: "nav-item #{'active' if request.path == '/entity/observability'}" do %>
+                    <span>Usage & Billing</span>
+                  <% end %>
+                </div>
+              </div>
             </div>
-            <%= link_to customer_integrations_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'social_media_accounts' || request.path == customer_integrations_path}" do %>
-              <i data-lucide="plug"></i>
-              <span>Integrations</span>
-            <% end %>
-            <%= link_to entity_users_path, class: "nav-item nav-sub-item #{'active' if request.path.start_with?('/entity/users')}" do %>
-              <i data-lucide="user-cog"></i>
-              <span>Team Members</span>
-            <% end %>
-
-            <%= link_to entity_policies_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'policies'}" do %>
-              <i data-lucide="shield"></i>
-              <span>Policies</span>
-            <% end %>
-
-            <%= link_to entity_privacy_path, class: "nav-item nav-sub-item #{'active' if controller_name == 'privacy'}" do %>
-              <i data-lucide="lock"></i>
-              <span>Privacy Settings</span>
-            <% end %>
-
-            <%= link_to entity_observability_path, class: "nav-item nav-sub-item #{'active' if request.path == '/entity/observability'}" do %>
-              <i data-lucide="bar-chart-3"></i>
-              <span>Usage & Billing</span>
-            <% end %>
           <% end %>
         </nav>
 
