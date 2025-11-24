@@ -61,6 +61,12 @@ variable "github_token" {
   default     = ""
 }
 
+variable "mail_from_domain" {
+  description = "Domain to use for sending emails (SES identity must be verified)"
+  type        = string
+  default     = "amoslabs.com"
+}
+
 variable "create_certificate" {
   description = "Whether to create ACM certificate (requires DNS validation)"
   type        = bool
@@ -481,7 +487,11 @@ resource "aws_ecs_task_definition" "app" {
         },
         {
           name  = "MAILER_SENDER"
-          value = "noreply@${var.domain_name}"
+          value = "noreply@${var.mail_from_domain}"
+        },
+        {
+          name  = "SES_CONFIGURATION_SET"
+          value = var.app_name
         }
       ]
       
@@ -574,7 +584,11 @@ resource "aws_ecs_task_definition" "app" {
         },
         {
           name  = "MAILER_SENDER"
-          value = "noreply@${var.domain_name}"
+          value = "noreply@${var.mail_from_domain}"
+        },
+        {
+          name  = "SES_CONFIGURATION_SET"
+          value = var.app_name
         }
       ]
       
