@@ -95,6 +95,10 @@
         {
           "name": "ELEVEN_LABS_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-eleven-labs-api-key"
+        },
+        {
+          "name": "SERPER_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-serper-api-key-fQsdHi"
         }
       ],
       "logConfiguration": {
@@ -184,6 +188,10 @@
         {
           "name": "ELEVEN_LABS_API_KEY",
           "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-eleven-labs-api-key"
+        },
+        {
+          "name": "SERPER_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-serper-api-key-fQsdHi"
         }
       ],
       "logConfiguration": {
