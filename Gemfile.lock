@@ -672,6 +672,7 @@ DEPENDENCIES
   aws-sdk-polly (~> 1.0)
   aws-sdk-rails (~> 3.10)
   aws-sdk-s3 (~> 1.0)
+  aws-sdk-sesv2
   aws-sdk-textract (~> 1.0)
   bootsnap
   brakeman (~> 7.1.0)
