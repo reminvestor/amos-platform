@@ -40,6 +40,16 @@ module Tools
         return error_response("Tool '#{name}' already exists. Please choose a unique name.")
       end
 
+      # Check user limits
+      unless @user.admin?
+        current_count = ToolDefinition.where(created_by: @user).count
+        limit = @user.tools_limit || 5
+        
+        if current_count >= limit
+          return error_response("You have reached the limit of #{limit} custom tools. Please contact support to increase your limit.")
+        end
+      end
+
       tool = ToolDefinition.create!(
         name: name,
         description: args["description"],

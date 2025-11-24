@@ -663,6 +663,8 @@ Rails.application.routes.draw do
       member do
         post :activate
         post :deactivate
+        post :publish
+        post :unpublish
         get :test
         post :run_test
         post :clone
@@ -674,7 +676,13 @@ Rails.application.routes.draw do
     end
 
     # Tools Management
-    resources :tools
+    resources :tools do
+      member do
+        post :publish
+        post :unpublish
+        post :clone
+      end
+    end
   end
 
   # Common routes (regardless of subdomain)

@@ -663,6 +663,7 @@ class BedrockService
             tool_context = {
               canvas_suggestion: nil,
               canvas_data: {},
+              execution: @execution, # Explicitly ensure execution is passed
               **@context  # Include agent_plugin, task_session, session_id, etc.
             }
 
@@ -694,24 +695,54 @@ class BedrockService
               # First, we need to make sure we return the conversation state up to this point
               # so it can be saved.
               
-              # Add the pending tool results we've collected so far
+              # If there were OTHER tools executed successfully in this turn before ask_user,
+              # we should capture their results too.
+              
+              # Capture the pending tool results we've collected so far (excluding the current failed/suspended one)
+              # Actually, we don't include the suspended tool result because it's not a "result" yet.
+              # But we do need to include the tool_use message that triggered this.
+              
               if tool_results.any?
+                # Add results of *other* tools that succeeded before this one
                 conversation_messages << {
                   role: "user",
                   content: tool_results
                 }
               end
               
-              # Re-raise with the messages payload attached to the exception object if possible,
-              # or let the caller access the state via other means.
-              # For simplicity, we rely on the caller handling the exception.
-              # BUT, the caller (StandardPluginExecutor) doesn't have access to `conversation_messages` variable here.
-              
               # We attach the messages to the exception
               e.instance_variable_set(:@conversation_context, conversation_messages)
               def e.conversation_context; @conversation_context; end
               
               raise e
+            rescue => e
+              # Check for ExecutionSuspended by name if class matching failed (handling reload issues)
+              if e.class.name.include?('ExecutionSuspended')
+                if tool_results.any?
+                  conversation_messages << {
+                    role: "user",
+                    content: tool_results
+                  }
+                end
+                
+                # Re-attach context if needed (though usually attached at raise time)
+                unless e.respond_to?(:conversation_context)
+                  e.instance_variable_set(:@conversation_context, conversation_messages)
+                  def e.conversation_context; @conversation_context; end
+                end
+                
+                raise e
+              end
+
+              # Handle generic tool errors gracefully
+              Rails.logger.error "Tool execution failed: #{e.message}"
+              tool_results << {
+                tool_result: {
+                  tool_use_id: tool_use.tool_use_id,
+                  content: [{ text: { error: e.message, success: false }.to_json }],
+                  status: "error"
+                }
+              }
             end
           end
 
@@ -780,6 +811,11 @@ class BedrockService
       Rails.logger.error "Bedrock API Error: #{e.message}"
       raise AmosErrors::BedrockError.new(e.message, context: { error_code: e.code, request_id: e.context&.request_id })
     rescue StandardError => e
+      # Allow execution suspension to bubble up
+      if e.class.name.include?('ExecutionSuspended') || (defined?(Tools::AskUserTool::ExecutionSuspended) && e.is_a?(Tools::AskUserTool::ExecutionSuspended))
+        raise e
+      end
+
       Rails.logger.error "Unexpected error from Bedrock: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
       raise AmosErrors::BedrockError.new("Unexpected error: #{e.message}", context: { error_class: e.class.name })
@@ -1271,3 +1307,4 @@ class BedrockService
     formatted
   end
 end
+

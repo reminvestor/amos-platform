@@ -1973,8 +1973,15 @@ export default class extends Controller {
     window.streamTaskContent = (data) => {
       console.log("📝 Streaming task content:", data.content)
       if (data.content && data.type === 'assistant') {
-        // The SSE stream already handles this, so we just log it
-        console.log("Task content received via ActionCable (handled by SSE)")
+        // If we have the controller instance, add the message
+        if (window.scoutController) {
+          // We assume ActionCable messages are for async events (like agent questions) 
+          // that aren't covered by the main SSE stream
+          window.scoutController.addMessage(data.content, "ai")
+          console.log("✅ Displayed task content in Scout chat")
+        } else {
+          console.warn("⚠️ scoutController not available to display task content")
+        }
       }
     }
 

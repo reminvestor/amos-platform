@@ -2370,6 +2370,108 @@ class ScoutController < ApplicationController
   end
 
   def render_dynamic_canvas(data = {})
+    # If we have a structured result but no html_content, try to format it
+    if data['html_content'].blank? && (result = data['result']).present?
+      # Check if result is a JSON string and parse it
+      if result.is_a?(String) && result.strip.start_with?('{')
+        begin
+          result = JSON.parse(result)
+        rescue JSON::ParserError
+          # keep as string
+        end
+      end
+      
+      if result.is_a?(Hash)
+        # Handle "format" field if present (from Universal Output Requirement)
+        if result['format'].present? && result['content'].present?
+          case result['format']
+          when 'markdown'
+            renderer = Redcarpet::Render::HTML.new(hard_wrap: true, filter_html: true)
+            markdown = Redcarpet::Markdown.new(renderer, autolink: true, tables: true, fenced_code_blocks: true)
+            html = "<div class='report-container markdown-content'>#{markdown.render(result['content'])}</div>"
+          when 'html'
+            html = "<div class='report-container'>#{result['content']}</div>"
+          when 'json'
+            # Fallback to JSON tree or existing logic for structured data
+            # For now, just pretty print it in a pre block or rely on existing visualization tool
+            # Ideally we'd have a JSON viewer component
+            html = "<div class='report-container'><pre>#{JSON.pretty_generate(result['content'])}</pre></div>"
+          when 'code'
+            # Use markdown code block rendering
+            renderer = Redcarpet::Render::HTML.new(hard_wrap: true, filter_html: true)
+            markdown = Redcarpet::Markdown.new(renderer, autolink: true, tables: true, fenced_code_blocks: true)
+            code_block = "```\n#{result['content']}\n```"
+            html = "<div class='report-container markdown-content'>#{markdown.render(code_block)}</div>"
+          when 'text'
+            html = "<div class='report-container'><pre>#{result['content']}</pre></div>"
+          else
+            # Default handling
+            html = "<div class='report-container'><p>#{result['content']}</p></div>"
+          end
+          
+          data['html_content'] = html
+          data['title'] ||= result['title'] || "Agent Result"
+        else
+          # Legacy/Fallback Hash handling (e.g. direct structure without 'format' wrapper)
+          # Convert hash to HTML report
+          html = "<div class='report-container'>"
+          
+          # Title
+          html += "<h1>#{result['title']}</h1>" if result['title']
+          
+          # Executive Summary
+          if result['executive_summary']
+            html += "<div class='ai-insight-box'><h3>Executive Summary</h3><p>#{result['executive_summary']}</p></div>"
+          end
+          
+          # Main Findings
+          if result['main_findings'].is_a?(Array)
+            html += "<h3>Main Findings</h3><ul>"
+            result['main_findings'].each do |finding|
+              html += "<li>#{finding}</li>"
+            end
+            html += "</ul>"
+          elsif result['main_findings'].is_a?(String)
+            html += "<h3>Main Findings</h3><p>#{result['main_findings']}</p>"
+          end
+          
+          # Analysis
+          if result['analysis']
+            html += "<h3>Analysis</h3><p>#{result['analysis']}</p>"
+          end
+          
+          # Conclusion
+          if result['conclusion']
+             html += "<div class='ai-recommendation'><h3>Conclusion</h3><p>#{result['conclusion']}</p></div>"
+          end
+          
+          # Sources
+          if result['sources'].is_a?(Array)
+            html += "<h3>Sources</h3><ul>"
+            result['sources'].each do |source|
+              if source.is_a?(Hash)
+                html += "<li><a href='#{source['url']}' target='_blank'>#{source['title'] || source['url']}</a></li>"
+              else
+                html += "<li>#{source}</li>"
+              end
+            end
+            html += "</ul>"
+          end
+          
+          html += "</div>"
+          data['html_content'] = html
+          data['title'] ||= result['title'] || "Research Report"
+        end
+      elsif result.is_a?(String)
+         # Check for markdown content
+         renderer = Redcarpet::Render::HTML.new(hard_wrap: true, filter_html: true)
+         markdown = Redcarpet::Markdown.new(renderer, autolink: true, tables: true, fenced_code_blocks: true)
+         
+         html_content = markdown.render(result)
+         data['html_content'] = "<div class='report-container markdown-content'>#{html_content}</div>"
+      end
+    end
+
     render_to_string(
       partial: "scout/canvas/dynamic_canvas",
       locals: {

@@ -17,6 +17,19 @@
           <i data-lucide="play" class="admin-icon-sm"></i>
           <span>Test Agent</span>
         <% end %>
+        
+        <% if @agent_plugin.is_public? %>
+          <%= button_to unpublish_admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-outline", form: { class: "d-inline-block" } do %>
+            <i data-lucide="lock" class="admin-icon-sm"></i>
+            <span>Unpublish</span>
+          <% end %>
+        <% else %>
+          <%= button_to publish_admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-outline", form: { class: "d-inline-block" } do %>
+            <i data-lucide="globe" class="admin-icon-sm"></i>
+            <span>Publish</span>
+          <% end %>
+        <% end %>
+
         <%= link_to edit_admin_agent_plugin_path(@agent_plugin), class: "admin-btn admin-btn-outline" do %>
           <i data-lucide="edit" class="admin-icon-sm"></i>
           <span>Edit</span>
@@ -117,6 +130,16 @@
 
             <dt class="col-sm-4">Agent Class</dt>
             <dd class="col-sm-8"><code class="small"><%= @agent_plugin.agent_class %></code></dd>
+
+            <dt class="col-sm-4">Visibility</dt>
+            <dd class="col-sm-8">
+              <% if @agent_plugin.is_public? %>
+                <span class="badge bg-success">Public</span>
+                <small class="text-muted ms-2">Since <%= @agent_plugin.published_at&.strftime("%b %d, %Y") %></small>
+              <% else %>
+                <span class="badge bg-secondary">Private</span>
+              <% end %>
+            </dd>
 
             <dt class="col-sm-4">Scope</dt>
             <dd class="col-sm-8">

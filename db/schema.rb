@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_22_010000) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_23_195906) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -471,6 +471,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_22_010000) do
     t.string "execution_strategy", default: "standard"
     t.jsonb "remote_config", default: {}
     t.vector "embedding", limit: 1536
+    t.boolean "is_public", default: false
+    t.datetime "published_at"
     t.index ["ai_model"], name: "index_agent_plugins_on_ai_model"
     t.index ["embedding"], name: "index_agent_plugins_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
@@ -1393,6 +1395,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_22_010000) do
     t.jsonb "metadata"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.vector "embedding", limit: 1536
     t.index ["name"], name: "index_integrations_on_name", unique: true
     t.index ["slug"], name: "index_integrations_on_slug", unique: true
   end
@@ -2481,6 +2484,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_22_010000) do
     t.bigint "created_by_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "is_public", default: false
+    t.datetime "published_at"
+    t.vector "embedding", limit: 1536
     t.index ["created_by_id"], name: "index_tool_definitions_on_created_by_id"
     t.index ["name"], name: "index_tool_definitions_on_name", unique: true
   end
@@ -2520,6 +2526,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_22_010000) do
     t.boolean "plugin_development_enabled", default: false
     t.bigint "entity_id", null: false
     t.jsonb "tts_preferences", default: {}, null: false
+    t.integer "agent_limit", default: 5
+    t.integer "tool_limit", default: 5
+    t.integer "integration_limit", default: 5
+    t.integer "agents_limit", default: 5
+    t.integer "tools_limit", default: 5
+    t.integer "integrations_limit", default: 5
     t.index ["api_key"], name: "index_users_on_api_key"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["entity_id"], name: "index_users_on_entity_id"

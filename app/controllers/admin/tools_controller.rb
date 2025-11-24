@@ -49,6 +49,35 @@ module Admin
       redirect_to admin_tools_path, notice: 'Tool deleted successfully'
     end
 
+    def clone
+      original = ToolDefinition.find(params[:id])
+      @tool = original.dup
+      @tool.name = "#{original.name}_copy_#{Time.now.to_i}"
+      @tool.created_at = nil
+      @tool.updated_at = nil
+      @tool.is_public = false
+      @tool.published_at = nil
+      
+      if @tool.save
+        Tools::ToolCatalog.instance.refresh_dynamic_tools!
+        redirect_to edit_admin_tool_path(@tool), notice: 'Tool cloned successfully'
+      else
+        redirect_to admin_tools_path, alert: 'Failed to clone tool'
+      end
+    end
+
+    def publish
+      @tool = ToolDefinition.find(params[:id])
+      @tool.update(is_public: true, published_at: Time.current)
+      redirect_to admin_tools_path, notice: 'Tool published'
+    end
+
+    def unpublish
+      @tool = ToolDefinition.find(params[:id])
+      @tool.update(is_public: false, published_at: nil)
+      redirect_to admin_tools_path, notice: 'Tool unpublished'
+    end
+
     private
 
     def tool_params

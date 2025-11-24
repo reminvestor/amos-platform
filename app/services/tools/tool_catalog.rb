@@ -184,6 +184,11 @@ module Tools
         tool.execute(args)
       end
     rescue => e
+      # Don't swallow execution suspension signals
+      if e.class.name.include?('ExecutionSuspended') || e.is_a?(Tools::AskUserTool::ExecutionSuspended)
+        raise e
+      end
+
       Rails.logger.error "Tool execution failed (#{name}): #{e.message}"
       { success: false, error: e.message, backtrace: e.backtrace.first(5) }
     end
