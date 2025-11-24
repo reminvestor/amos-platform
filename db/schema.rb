@@ -1095,12 +1095,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_24_012845) do
     t.string "mailgun_status"
     t.text "notes"
     t.string "unsubscribe_token"
+    t.string "ses_message_id"
     t.index ["campaign_id", "id"], name: "index_email_deliveries_on_campaign_id_and_id"
     t.index ["campaign_id", "status", "sent_at"], name: "index_email_deliveries_on_campaign_status_sent"
     t.index ["campaign_id", "status"], name: "index_email_deliveries_on_campaign_id_and_status"
     t.index ["campaign_id"], name: "index_email_deliveries_on_campaign_id"
     t.index ["contact_id"], name: "index_email_deliveries_on_contact_id"
     t.index ["email_template_id"], name: "index_email_deliveries_on_email_template_id"
+    t.index ["ses_message_id"], name: "index_email_deliveries_on_ses_message_id"
     t.index ["status"], name: "index_email_deliveries_on_status"
     t.index ["unsubscribe_token"], name: "index_email_deliveries_on_unsubscribe_token", unique: true
   end
