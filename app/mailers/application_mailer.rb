@@ -1,4 +1,4 @@
 class ApplicationMailer < ActionMailer::Base
-  default from: ENV["MAILGUN_FROM"] || "postmaster@#{ENV['MAILGUN_DOMAIN']}"
+  default from: ENV["MAILER_SENDER"] || "noreply@amoslabs.com"
   layout "mailer"
 end
