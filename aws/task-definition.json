@@ -48,7 +48,7 @@
         },
         {
           "name": "MAILER_SENDER",
-          "value": "noreply@nuvola-networks.com"
+          "value": "noreply@amoslabs.com"
         }
       ],
       "secrets": [
@@ -145,7 +145,7 @@
         },
         {
           "name": "MAILER_SENDER",
-          "value": "noreply@nuvola-networks.com"
+          "value": "noreply@amoslabs.com"
         }
       ],
       "secrets": [

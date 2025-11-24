@@ -23,7 +23,8 @@
         {"name": "PORT", "value": "3000"},
         {"name": "APP_DOMAIN", "value": "dev.amoslabs.com"},
         {"name": "AWS_REGION", "value": "us-east-1"},
-        {"name": "AI_PROVIDER", "value": "bedrock"}
+        {"name": "AI_PROVIDER", "value": "bedrock"},
+        {"name": "MAILER_SENDER", "value": "noreply@amoslabs.com"}
       ],
       "secrets": [
         {"name": "DATABASE_URL", "valueFrom": "arn:aws:secretsmanager:us-east-1:637423327454:secret:agent-marketing-dev-database-url"},
