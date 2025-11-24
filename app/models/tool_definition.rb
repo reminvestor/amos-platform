@@ -7,12 +7,17 @@ class ToolDefinition < ApplicationRecord
   validates :execution_type, inclusion: { in: %w[ruby_code http_request] }
   validate :validate_parameters_schema
   validate :validate_code_presence
+  validate :run_security_audit, if: :security_check_needed?
 
   # Scopes
   scope :admin_only, -> { where(admin_only: true) }
   scope :public_tools, -> { where(admin_only: false) }
 
   def execute(args, context = {})
+    unless security_rating == 'pass'
+       return { error: "Tool execution blocked. Security Rating: #{security_rating || 'pending'} (#{security_reason})", success: false }
+    end
+
     case execution_type
     when 'ruby_code'
       execute_ruby_code(args, context)
@@ -22,6 +27,26 @@ class ToolDefinition < ApplicationRecord
       raise "Unknown execution type: #{execution_type}"
     end
   end
+
+  def run_security_audit
+    service = SecurityCheckService.new
+    result = service.evaluate_tool(self)
+    
+    self.security_rating = result["rating"]
+    self.security_reason = result["reason"]
+    
+    if self.security_rating == 'fail'
+      errors.add(:base, "Security Audit Failed: #{self.security_reason}")
+    end
+  rescue => e
+    Rails.logger.error "Security check failed: #{e.message}"
+    errors.add(:base, "Security check system unavailable. Please try again later.")
+  end
+
+  def security_check_needed?
+    (code_changed? || api_config_changed? || new_record?)
+  end
+
 
   def to_bedrock_schema
     {

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_23_195906) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_24_012845) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2487,6 +2487,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_23_195906) do
     t.boolean "is_public", default: false
     t.datetime "published_at"
     t.vector "embedding", limit: 1536
+    t.string "security_rating"
+    t.text "security_reason"
     t.index ["created_by_id"], name: "index_tool_definitions_on_created_by_id"
     t.index ["name"], name: "index_tool_definitions_on_name", unique: true
   end

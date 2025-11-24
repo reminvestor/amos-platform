@@ -29,6 +29,7 @@
             <th>Name</th>
             <th>Description</th>
             <th>Type</th>
+            <th>Security</th>
             <th>Scope</th>
             <th>Created</th>
             <th>Actions</th>
@@ -50,6 +51,18 @@
                     <span class="admin-badge admin-badge-error">Ruby Code</span>
                   <% else %>
                     <span class="admin-badge admin-badge-info">HTTP API</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% case tool.security_rating %>
+                  <% when 'pass' %>
+                    <span class="badge bg-success" title="<%= tool.security_reason %>">Pass</span>
+                  <% when 'review' %>
+                    <span class="badge bg-warning text-dark" title="<%= tool.security_reason %>">Review</span>
+                  <% when 'fail' %>
+                    <span class="badge bg-danger" title="<%= tool.security_reason %>">Fail</span>
+                  <% else %>
+                    <span class="badge bg-secondary">Pending</span>
                   <% end %>
                 </td>
                 <td>
