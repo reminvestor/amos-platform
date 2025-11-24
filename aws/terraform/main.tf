@@ -481,7 +481,7 @@ resource "aws_ecs_task_definition" "app" {
         },
         {
           name  = "MAILER_SENDER"
-          value = "noreply@nuvola-networks.com"
+          value = "noreply@${var.domain_name}"
         }
       ]
       
@@ -574,7 +574,7 @@ resource "aws_ecs_task_definition" "app" {
         },
         {
           name  = "MAILER_SENDER"
-          value = "noreply@nuvola-networks.com"
+          value = "noreply@${var.domain_name}"
         }
       ]
       
