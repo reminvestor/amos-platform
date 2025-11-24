@@ -96,6 +96,11 @@
             <i data-lucide="bot"></i>
             <span>Agent Plugins</span>
           <% end %>
+
+          <%= link_to admin_tools_path, class: "nav-item #{'active' if controller_name == 'tools'}" do %>
+            <i data-lucide="wrench"></i>
+            <span>Tools</span>
+          <% end %>
         </nav>
 
         <%# Bottom Actions %>
