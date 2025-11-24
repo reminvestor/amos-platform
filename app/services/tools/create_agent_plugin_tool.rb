@@ -42,6 +42,16 @@ module Tools
         return error_response("Agent with slug '#{slug}' already exists. Please choose a different one.")
       end
 
+      # Check user limits
+      unless @user.admin?
+        current_count = AgentPlugin.where(entity_id: @entity.id).count
+        limit = @user.agents_limit || 5
+        
+        if current_count >= limit
+          return error_response("You have reached the limit of #{limit} custom agents. Please contact support to increase your limit.")
+        end
+      end
+
       ActiveRecord::Base.transaction do
         # Create the agent
         agent = AgentPlugin.create!(
@@ -56,11 +66,16 @@ module Tools
           configuration: {} # Default empty config
         )
 
+        # Trigger embedding update explicitly after creation if needed,
+        # although after_save callback should handle it.
+        # The after_save :update_embedding callback in AgentPlugin model
+        # is triggered on saved_change_to_status? which covers this.
+
         # Add capabilities
         capabilities.each do |cap|
           agent.agent_capabilities.create!(
             capability_name: cap["name"] || cap["capability_name"],
-            contract_schema: cap["contract_schema"] || cap["schema"] || {}
+            contract_schema: cap["input_schema"] || cap["contract_schema"] || cap["schema"] || {}
           )
         end
 

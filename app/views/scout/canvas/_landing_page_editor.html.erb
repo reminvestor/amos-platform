@@ -498,15 +498,23 @@
           // PRESERVE DIMENSIONS: 
           // If we remove the icon content, the div might collapse if it doesn't have explicit height.
           // We lock in the current computed height before modification.
-          const computedStyle = window.getComputedStyle(el);
-          if (computedStyle.height && computedStyle.height !== 'auto' && computedStyle.height !== '0px') {
-             // If it's not already set inline, set it
-             if (!el.style.height && !el.style.minHeight) {
-                el.style.height = computedStyle.height;
+          const rect = el.getBoundingClientRect();
+          // Prefer min-height to allow content to expand it if needed, but lock visible size
+          if (rect.height > 0) {
+             // If it's very small (like an icon wrapper), force a reasonable size for a background image
+             if (rect.height < 100) {
+                el.style.minHeight = '300px';
+             } else {
+                el.style.minHeight = rect.height + 'px';
              }
           } else {
-             // Fallback if we can't determine height (unlikely if it was visible)
-             if (!el.style.height) el.style.minHeight = '300px';
+             // Fallback if we can't determine height
+             el.style.minHeight = '300px';
+          }
+          
+          // Ensure block display so dimensions apply
+          if (window.getComputedStyle(el).display === 'inline') {
+             el.style.display = 'inline-block';
           }
           
           el.style.backgroundImage = `url('${newSrc}')`;

@@ -10,7 +10,7 @@
 # - Import/export agents
 #
 class Admin::AgentPluginsController < Admin::BaseController
-  before_action :set_agent_plugin, only: [:show, :edit, :update, :destroy, :activate, :deactivate, :test, :run_test, :clone]
+  before_action :set_agent_plugin, only: [:show, :edit, :update, :destroy, :activate, :deactivate, :publish, :unpublish, :test, :run_test, :clone]
   before_action :set_agent_service, only: [:index, :show, :test, :run_test, :analytics]
 
   # GET /admin/agent_plugins
@@ -117,6 +117,20 @@ class Admin::AgentPluginsController < Admin::BaseController
     @agent_plugin.deactivate!
     redirect_to admin_agent_plugin_path(@agent_plugin),
                 notice: "Agent plugin '#{@agent_plugin.name}' deactivated!"
+  end
+
+  # POST /admin/agent_plugins/:id/publish
+  def publish
+    @agent_plugin.update(is_public: true, published_at: Time.current)
+    redirect_to admin_agent_plugin_path(@agent_plugin),
+                notice: "Agent plugin '#{@agent_plugin.name}' is now public!"
+  end
+
+  # POST /admin/agent_plugins/:id/unpublish
+  def unpublish
+    @agent_plugin.update(is_public: false, published_at: nil)
+    redirect_to admin_agent_plugin_path(@agent_plugin),
+                notice: "Agent plugin '#{@agent_plugin.name}' is now private."
   end
 
   # GET /admin/agent_plugins/:id/test

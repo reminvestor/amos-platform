@@ -132,8 +132,15 @@ class User < ApplicationRecord
   end
 
   before_create :generate_api_key
+  before_create :set_resource_limits
 
   private
+
+  def set_resource_limits
+    self.agents_limit ||= 5
+    self.tools_limit ||= 5
+    self.integrations_limit ||= 5
+  end
 
   def generate_api_key
     self.api_key = SecureRandom.hex(32)

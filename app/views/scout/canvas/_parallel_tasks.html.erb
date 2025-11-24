@@ -53,40 +53,65 @@
 </div>
 
 <style>
-  /* Custom styling adjustments on top of Bootstrap */
-  .task-item {
+  /* Force isolation from global styles */
+  #parallel-tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* Explicit card styling */
+  .task-card {
+    display: flex !important;
+    flex-direction: column !important;
     background-color: #1A1F35 !important;
-    border-bottom: 1px solid #2D3748 !important;
-    transition: background-color 0.2s;
+    border: 1px solid #2D3748 !important;
+    border-radius: 0.5rem !important;
+    padding: 1rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+    overflow: hidden !important;
   }
   
-  .task-item:hover {
-    background-color: #2D3748 !important;
+  .task-card:hover {
+    background-color: #232942 !important;
+    border-color: #4A5568 !important;
   }
-  
-  .task-item.new {
-    animation: slideDown 0.4s ease-out forwards;
+
+  /* Header Row */
+  .task-header-row {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 0.75rem !important;
+    width: 100% !important;
   }
-  
-  @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
+
+  .task-header-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    flex: 1 !important;
+    min-width: 0 !important; /* Allow text truncation */
   }
-  
-  .status-indicator {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 0.5rem;
+
+  /* Status Dot */
+  .status-dot {
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
   }
-  
-  .status-indicator.running, .status-indicator.active, .status-indicator.processing { background-color: #3B82F6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); animation: pulse 2s infinite; }
-  .status-indicator.completed { background-color: #10B981; }
-  .status-indicator.failed { background-color: #EF4444; }
-  .status-indicator.queued, .status-indicator.pending { background-color: #F59E0B; }
-  .status-indicator.waiting_for_input { background-color: #8B5CF6; animation: pulse 1s infinite; }
-  .status-indicator.canceled { background-color: #6B7280; }
+
+  /* Status Colors */
+  .dot-running { background-color: #3B82F6 !important; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); animation: pulse 2s infinite; }
+  .dot-completed { background-color: #10B981 !important; }
+  .dot-failed { background-color: #EF4444 !important; }
+  .dot-queued { background-color: #F59E0B !important; }
+  .dot-waiting_for_input { background-color: #8B5CF6 !important; animation: pulse 1s infinite; }
+  .dot-canceled { background-color: #6B7280 !important; }
 
   @keyframes pulse {
     0% { opacity: 1; transform: scale(1); }
@@ -94,28 +119,129 @@
     100% { opacity: 1; transform: scale(1); }
   }
 
-  .task-detail-row {
-    font-size: 0.85rem;
-    color: #94A3B8;
-    margin-top: 0.5rem;
+  /* Typography */
+  .task-id {
+    color: #fff !important;
+    font-weight: 700 !important;
+    font-size: 0.9rem !important;
+    margin: 0 !important;
+  }
+
+  .agent-badge {
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid #4A5568 !important;
+    color: #A0AEC0 !important;
+    padding: 2px 8px !important;
+    border-radius: 4px !important;
+    font-size: 0.75rem !important;
+    white-space: nowrap !important;
+  }
+
+  .status-badge {
+    font-size: 0.75rem !important;
+    padding: 2px 8px !important;
+    border-radius: 99px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  .badge-running { background-color: rgba(59, 130, 246, 0.1) !important; color: #60A5FA !important; border: 1px solid rgba(59, 130, 246, 0.2) !important; }
+  .badge-completed { background-color: rgba(16, 185, 129, 0.1) !important; color: #34D399 !important; border: 1px solid rgba(16, 185, 129, 0.2) !important; }
+  .badge-failed { background-color: rgba(239, 68, 68, 0.1) !important; color: #F87171 !important; border: 1px solid rgba(239, 68, 68, 0.2) !important; }
+  .badge-queued { background-color: rgba(245, 158, 11, 0.1) !important; color: #FBBF24 !important; border: 1px solid rgba(245, 158, 11, 0.2) !important; }
+  .badge-waiting { background-color: rgba(139, 92, 246, 0.1) !important; color: #A78BFA !important; border: 1px solid rgba(139, 92, 246, 0.2) !important; }
+  .badge-canceled { background-color: rgba(107, 114, 128, 0.1) !important; color: #9CA3AF !important; border: 1px solid rgba(107, 114, 128, 0.2) !important; }
+
+  /* Description */
+  .task-desc {
+    color: #CBD5E0 !important;
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    margin-bottom: 1rem !important;
+    word-break: break-word !important;
+  }
+
+  /* Progress Bar */
+  .progress-container {
+    width: 100% !important;
+    margin-bottom: 0.5rem !important;
   }
   
-  .progress-slim {
-    height: 4px;
-    margin-top: 0.5rem;
+  .progress-labels {
+    display: flex !important;
+    justify-content: space-between !important;
+    margin-bottom: 0.25rem !important;
+    color: #718096 !important;
+    font-size: 0.75rem !important;
+  }
+
+  .progress-track {
+    width: 100% !important;
+    height: 6px !important;
+    background-color: #2D3748 !important;
+    border-radius: 99px !important;
+    overflow: hidden !important;
+  }
+
+  .progress-fill {
+    height: 100% !important;
+    transition: width 0.5s ease !important;
+  }
+
+  .fill-running { background-color: #3B82F6 !important; }
+  .fill-completed { background-color: #10B981 !important; }
+  .fill-failed { background-color: #EF4444 !important; }
+  .fill-queued { background-color: #F59E0B !important; }
+  .fill-waiting { background-color: #8B5CF6 !important; }
+  .fill-canceled { background-color: #6B7280 !important; }
+
+  /* Footer */
+  .task-footer {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-top: 1px solid #2D3748 !important;
+    padding-top: 0.75rem !important;
+    margin-top: 0.5rem !important;
+  }
+
+  .task-time {
+    color: #718096 !important;
+    font-size: 0.8rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+  }
+
+  .task-actions button {
+    background: none !important;
+    border: none !important;
+    color: #FC8181 !important; /* Red-300 */
+    font-size: 0.8rem !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+  }
+  .task-actions button:hover {
+    color: #F56565 !important; /* Red-400 */
+    text-decoration: underline !important;
   }
 </style>
 
 <script>
 // Initialize immediately since this is a canvas
-console.log('🚀 Initializing improved parallel tasks canvas (Bootstrap Version)');
+console.log('🚀 Initializing improved parallel tasks canvas (Refactored v3)');
 
+// ... (keep helpers) ...
 // Track active tasks count
 let activeTasksCount = 0;
 
 // Update task count in header
 function updateTaskCount() {
-  const activeTasks = document.querySelectorAll('.task-item[data-status="running"], .task-item[data-status="processing"], .task-item[data-status="waiting_for_input"]');
+  const activeTasks = document.querySelectorAll('.task-card[data-status="running"], .task-card[data-status="processing"], .task-card[data-status="waiting_for_input"]');
   const countElement = document.getElementById('task-count');
   if (countElement) {
     countElement.textContent = activeTasks.length;
@@ -123,38 +249,26 @@ function updateTaskCount() {
   }
 }
 
-// Refresh tasks (placeholder for future functionality)
 function refreshTasks(event) {
   if (event) {
     const btn = event.currentTarget;
     const icon = btn.querySelector('i');
     if (icon) icon.classList.add('spin');
-    setTimeout(() => {
-      if (icon) icon.classList.remove('spin');
-    }, 500);
+    setTimeout(() => { if (icon) icon.classList.remove('spin'); }, 500);
   }
-
   console.log('🔄 Refreshing tasks...');
-  // Could trigger a refresh from the server here
-  // Ideally re-fetch via AJAX, but for now just log
 }
 
-// Format agent type for display
 function formatAgentType(type) {
   if (!type) return 'System';
-  return type.replace(/_agent$/, '')
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  return type.replace(/_agent$/, '').split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-// Calculate duration from start time
 function calculateDuration(startTime) {
   if (!startTime) return '--';
   const start = new Date(startTime);
   const now = new Date();
   const diff = Math.floor((now - start) / 1000);
-  
   if (diff < 60) return `${diff}s`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ${diff % 60}s`;
   return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
@@ -162,17 +276,14 @@ function calculateDuration(startTime) {
 
 // Add or update task
 window.addOrUpdateTask = function addOrUpdateTask(taskData, isInitialLoad = false) {
-  console.log('🔧 addOrUpdateTask called with:', taskData);
+  console.log('🔧 addOrUpdateTask v3:', taskData);
   const container = document.getElementById('parallel-tasks-list');
   if (!container) return;
   
-  // Remove empty state if it exists
   const emptyState = document.getElementById('empty-state');
   if (emptyState) emptyState.remove();
   
-  // Normalize ID (handle number vs string)
   const taskId = String(taskData.task_id || taskData.id);
-  
   let taskElement = container.querySelector(`[data-task-id="${taskId}"]`);
   const isNew = !taskElement;
   
@@ -181,76 +292,230 @@ window.addOrUpdateTask = function addOrUpdateTask(taskData, isInitialLoad = fals
   const description = taskData.message || taskData.description || taskData.task || 'Processing...';
   const progress = taskData.progress || 0;
   const startTime = taskData.started_at || (taskElement ? taskElement.dataset.startedAt : new Date().toISOString());
-  const completedAt = taskData.completed_at;
   const error = taskData.error || (status === 'failed' ? (taskData.message || 'Unknown error') : null);
   
-  const statusLabels = {
-    queued: 'Queued',
-    pending: 'Pending',
-    running: 'Running',
-    processing: 'Processing',
-    completed: 'Completed',
-    failed: 'Failed',
-    waiting_for_input: 'Waiting for Input',
-    canceling: 'Canceling',
-    canceled: 'Canceled'
-  };
+  const statusLabel = {
+    queued: 'Queued', pending: 'Pending', running: 'Running', processing: 'Processing',
+    completed: 'Completed', failed: 'Failed', waiting_for_input: 'Waiting Input',
+    canceling: 'Canceling', canceled: 'Canceled'
+  }[status] || status;
 
-  const statusColors = {
-    queued: 'warning',
-    pending: 'warning',
-    running: 'primary',
-    processing: 'primary',
-    completed: 'success',
-    failed: 'danger',
-    waiting_for_input: 'info',
-    canceling: 'secondary',
-    canceled: 'secondary'
-  };
-  
-  const statusColor = statusColors[status] || 'secondary';
-  const statusLabel = statusLabels[status] || status;
+  const styleSuffix = {
+    queued: 'queued', pending: 'queued', running: 'running', processing: 'running',
+    completed: 'completed', failed: 'failed', waiting_for_input: 'waiting',
+    canceling: 'canceled', canceled: 'canceled'
+  }[status] || 'queued';
 
-  // Build HTML content
+  // Completely new DOM structure using specific classes
   const htmlContent = `
-    <div class="d-flex justify-content-between align-items-start mb-2">
-      <div class="d-flex align-items-center gap-2">
-        <span class="status-indicator ${status}"></span>
-        <h6 class="mb-0 text-white fw-semibold">#${taskId.substring(0, 8)}</h6>
-        <span class="badge bg-dark border border-secondary text-secondary">${agentType}</span>
+    <div class="task-header-row">
+      <div class="task-header-left">
+        <div class="status-dot dot-${styleSuffix}"></div>
+        <h6 class="task-id">#${taskId.substring(0, 8)}</h6>
+        <span class="agent-badge">${agentType}</span>
       </div>
-      <span class="badge bg-${statusColor} bg-opacity-25 text-${statusColor}">${statusLabel}</span>
+      <span class="status-badge badge-${styleSuffix}">${statusLabel}</span>
     </div>
 
-    <p class="mb-2 text-light text-opacity-75 text-break">${description}</p>
-    
-    ${error ? `<div class="alert alert-danger py-1 px-2 mb-2 small"><i data-lucide="alert-triangle" class="icon-xs me-1"></i> ${error}</div>` : ''}
-    
-    <div class="d-flex justify-content-between align-items-center small text-muted mb-1">
-      <span>Progress</span>
-      <span>${progress}%</span>
-    </div>
-    <div class="progress progress-slim bg-dark border border-secondary mb-2">
-      <div class="progress-bar bg-${statusColor}" role="progressbar" style="width: ${progress}%" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100"></div>
+    <div class="task-desc">
+      ${description}
+      ${error ? `<div style="color: #FC8181; margin-top: 0.5rem; font-size: 0.85rem;"><i data-lucide="alert-triangle" style="width:14px; display:inline; vertical-align:middle"></i> ${error}</div>` : ''}
     </div>
 
-    <div class="d-flex justify-content-between align-items-center task-detail-row">
-      <div>
-        <i data-lucide="clock" class="icon-xs me-1"></i>
+    <div class="progress-container">
+      <div class="progress-labels">
+        <span>Progress</span>
+        <span>${progress}%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill fill-${styleSuffix}" style="width: ${progress}%"></div>
+      </div>
+    </div>
+
+    <div class="task-footer">
+      <div class="task-time">
+        <i data-lucide="clock" style="width:12px;"></i>
         <span class="duration-timer" data-start-time="${startTime}">${calculateDuration(startTime)}</span>
-    </div>
-
-      <div>
-        ${(status === 'running' || status === 'processing' || status === 'waiting_for_input' || status === 'queued') ? `
-          <button class="btn btn-link btn-sm text-danger p-0 text-decoration-none" onclick="cancelTask('${taskId}')">
-            <i data-lucide="x-circle" class="icon-xs"></i> Cancel
-      </button>
+      </div>
+      <div class="task-actions">
+        ${['running', 'processing', 'waiting_for_input', 'queued'].includes(status) ? `
+          <button onclick="cancelTask('${taskId}')">
+            <i data-lucide="x-circle" style="width:14px;"></i> Cancel
+          </button>
         ` : ''}
       </div>
     </div>
   `;
   
   if (isNew) {
+    taskElement = document.createElement('div');
+    // Remove bootstrap classes to avoid interference
+    taskElement.className = 'task-card'; 
+    taskElement.setAttribute('data-task-id', taskId);
+    taskElement.setAttribute('data-status', status);
+    taskElement.dataset.startedAt = startTime;
+    
+    // Add transition animation manually
+    taskElement.style.opacity = '0';
+    taskElement.style.transform = 'translateY(-10px)';
+    taskElement.style.transition = 'opacity 0.3s, transform 0.3s';
+    
+    if (isInitialLoad) {
+      container.appendChild(taskElement);
+    } else {
+      container.insertBefore(taskElement, container.firstChild);
+    }
+    
+    // Trigger animation
+    requestAnimationFrame(() => {
+      taskElement.style.opacity = '1';
+      taskElement.style.transform = 'translateY(0)';
+    });
+  } else {
+    taskElement.setAttribute('data-status', status);
+    if (!taskElement.dataset.startedAt) taskElement.dataset.startedAt = startTime;
+  }
+  
+  taskElement.innerHTML = htmlContent;
+  
+  // Store data
+  taskElement.taskData = taskData;
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  updateTaskCount();
+};
+
+// ... existing duration interval ...
+setInterval(() => {
+  document.querySelectorAll('.duration-timer').forEach(el => {
+    const startTime = el.dataset.startTime;
+    const taskItem = el.closest('.task-card');
+    const status = taskItem?.getAttribute('data-status');
+    if (['running', 'processing', 'waiting_for_input', 'queued'].includes(status)) {
+       el.textContent = calculateDuration(startTime);
+    }
+  });
+}, 1000);
+
+// ... existing message handlers ...
+window.handleCanvasUpdate = function(data) {
+  // ... same implementation ...
+  const taskId = data.task_id || data.job_id || data.id;
+  if (!taskId) return;
+
+  let updateData = {
+    task_id: taskId,
+    status: data.status,
+    message: data.message || data.status_message,
+    progress: data.progress
+  };
+
+  switch(data.type) {
+    case 'task_progress': break;
+    case 'task_completed':
+      updateData.status = 'completed';
+      updateData.progress = 100;
+      updateData.completed_at = data.completed_at || new Date().toISOString();
+      break;
+    case 'task_failed':
+      updateData.status = 'failed';
+      updateData.error = data.error;
+      updateData.completed_at = data.completed_at || new Date().toISOString();
+      break;
+    case 'user_input_required':
+        updateData.status = 'waiting_for_input';
+        updateData.message = data.question || "Waiting for user input...";
+        break;
+  }
+  addOrUpdateTask(updateData);
+};
+
+// ... init ...
+function initializeParallelTasksCanvas() {
+  const tasks = <%= raw (@canvas_data && @canvas_data['tasks'] ? @canvas_data['tasks'].to_json : '[]') %>;
+  if (tasks.length > 0) {
+    tasks.forEach(task => {
+      addOrUpdateTask({
+        task_id: task.id,
+        task_type: task.type,
+        agent_type: task.type,
+        description: task.description,
+        status: task.status,
+        progress: task.progress,
+        message: task.message || task.description,
+        started_at: task.created_at,
+        completed_at: task.metadata?.completed_at,
+        error: task.metadata?.error
+      }, true);
+    });
+  }
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  updateTaskCount();
+}
+
+initializeParallelTasksCanvas();
+
+// ... modals ...
+window.showTaskModal = function(title, message, confirmText, confirmCallback) {
+  // ... (keep same) ...
+  const modalEl = document.getElementById('task-modal');
+  const modalTitle = document.getElementById('modal-title');
+  const modalBody = document.getElementById('modal-message');
+  const confirmBtn = document.getElementById('modal-confirm-btn');
+
+  modalTitle.textContent = title;
+  modalBody.innerHTML = message;
+  confirmBtn.textContent = confirmText || 'Confirm';
+  confirmBtn.onclick = () => {
+    if (confirmCallback) confirmCallback();
+    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+    modalInstance.hide();
+  };
+  
+  const modal = new bootstrap.Modal(modalEl);
+  modal.show();
+};
+
+window.cancelTask = function(taskId) {
+  showTaskModal(
+    'Cancel Task',
+    'Are you sure you want to cancel this task? This cannot be undone.',
+    'Yes, Cancel',
+    () => {
+      const cleanId = String(taskId).replace('amos-', '').replace('plugin-', '');
+      fetch('/scout/cancel_job', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({ job_id: cleanId })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if(data.success) {
+          addOrUpdateTask({ task_id: taskId, status: 'canceled', message: 'Task canceled by user' });
+        }
+      });
+    }
+  );
+};
+
+window.purgeOldTasks = function() {
+  showTaskModal(
+    'Purge History',
+    'Clear completed and failed tasks older than 24 hours?',
+    'Clear History',
+    () => {
+      fetch('/admin/agent_plugins/purge_executions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content },
+        body: JSON.stringify({ older_than: 24 })
+      }).then(() => location.reload());
+    }
+  );
+};
+</script>
     taskElement = document.createElement('div');
     taskElement.className = `list-group-item task-item p-3 mb-2 rounded border-0`;
     taskElement.setAttribute('data-task-id', taskId);

@@ -25,6 +25,8 @@ class AgentPluginExecution < ApplicationRecord
   belongs_to :workflow_execution, optional: true
   belongs_to :user
 
+  has_many :agent_input_requests, dependent: :destroy
+
   # Validations
   validates :status, presence: true, inclusion: { in: %w[running completed failed waiting_for_input cancelled] }
 

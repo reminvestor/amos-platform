@@ -72,7 +72,44 @@ class Integration < ApplicationRecord
     end
   end
 
+  # Vector search configuration
+  has_neighbors :embedding
+
+  # Update embedding when relevant fields change
+  after_save :update_embedding, if: -> { saved_change_to_name? || saved_change_to_description? || saved_change_to_category? }
+
+  # Class methods
+  def self.search_by_similarity(query, limit: 5)
+    # Generate embedding for the query
+    query_embedding = AiAgents::VectorStore.instance.generate_embedding(query)
+    
+    # Use pgvector nearest_neighbors search
+    active.nearest_neighbors(:embedding, query_embedding, distance: "cosine").first(limit)
+  rescue => e
+    Rails.logger.error "Vector search failed: #{e.message}"
+    # Fallback to keyword search if vector search fails
+    active.where("description ILIKE ? OR name ILIKE ?", "%#{query}%", "%#{query}%").limit(limit)
+  end
+
   private
+
+  def update_embedding
+    # Construct a rich text representation of the integration
+    embedding_text = <<~TEXT
+      Integration: #{name}
+      Category: #{category}
+      Description: #{description}
+      Operations: #{integration_operations.pluck(:name).join(", ")}
+    TEXT
+    
+    # Generate embedding using VectorStore service
+    vector = AiAgents::VectorStore.instance.generate_embedding(embedding_text)
+    
+    # Update the column directly to avoid triggering callbacks again
+    update_column(:embedding, vector)
+  rescue => e
+    Rails.logger.error "Failed to update embedding for integration #{id}: #{e.message}"
+  end
 
   def set_defaults
     self.is_active = true if is_active.nil?

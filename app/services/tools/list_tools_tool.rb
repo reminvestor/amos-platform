@@ -25,6 +25,15 @@ module Tools
       category_filter = args["category"]
       search_term = args["search"]&.downcase
 
+      # Use RAG to find relevant tools if a search term is provided
+      if search_term.present?
+        # Find relevant tool definitions via vector search
+        rag_tools = ToolDefinition.search_by_similarity(search_term, limit: 10)
+        rag_tool_names = rag_tools.map(&:name)
+      else
+        rag_tool_names = []
+      end
+
       tools = Tools::ToolCatalog.instance.tools.map do |name, tool_data|
         metadata = tool_data[:metadata] || {}
         {
@@ -32,7 +41,8 @@ module Tools
           description: metadata[:description],
           category: metadata[:category],
           type: tool_data[:type], # :class or :definition
-          input_schema: metadata[:input_schema] || metadata[:parameters]
+          input_schema: metadata[:input_schema] || metadata[:parameters],
+          relevance: rag_tool_names.include?(name) ? 1 : 0 # Boost score for RAG matches
         }
       end
 
@@ -41,12 +51,16 @@ module Tools
         tools.select! { |t| t[:category] == category_filter }
       end
 
-      # Filter by search term
+      # Filter by search term (hybrid: RAG + keyword)
       if search_term.present?
         tools.select! do |t|
+          t[:relevance] > 0 || # Keep RAG matches
           t[:name].downcase.include?(search_term) || 
           t[:description]&.downcase&.include?(search_term)
         end
+        
+        # Sort by relevance (RAG matches first)
+        tools.sort_by! { |t| -t[:relevance] }
       end
 
       success_response(

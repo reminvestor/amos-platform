@@ -50,7 +50,12 @@ class Agents::StandardPluginExecutor
       execution.add_tokens(result[:usage][:total_tokens])
     end
 
-    result[:content]
+    # If result indicates suspension or error, return the full hash so the caller can handle it
+    if result[:status] == 'suspended' || result[:error]
+      result
+    else
+      result[:content]
+    end
   end
 
   # Execute a specific capability
@@ -185,6 +190,20 @@ class Agents::StandardPluginExecutor
       parts << "\nIMPORTANT: Do NOT guess or hallucinate values for Required Inputs. If they are missing from the context, ask the user for them using the 'ask_user' tool."
     end
 
+    # Universal Output Requirement
+    parts << "\nUNIVERSAL OUTPUT REQUIREMENT:"
+    parts << "When you have completed your task and are ready to provide the final output, your response MUST be a JSON object with the following schema:"
+    parts << "{"
+    parts << "  \"summary\": \"Concise, conversational message (2-3 sentences) for the chat interface.\","
+    parts << "  \"content\": \"The main payload/result of your task.\","
+    parts << "  \"format\": \"markdown\" | \"html\" | \"json\" | \"code\" | \"text\""
+    parts << "}"
+    parts << "The 'content' field should contain the detailed report, data, or artifact you created."
+    parts << "If you are returning structured data (like a campaign object), set format to 'json' and put the data in 'content'."
+    parts << "If you are returning a document or report, set format to 'markdown' or 'html' and put the text in 'content'."
+    parts << "If you are returning code (e.g. a script), set format to 'code' and put the code in 'content'."
+    parts << "Do NOT wrap the JSON in markdown code blocks. Return the raw JSON string only."
+
     parts.join("\n")
   end
 
@@ -232,8 +251,8 @@ class Agents::StandardPluginExecutor
             role: 'user',
             content: [
               {
-                toolResult: {
-                  toolUseId: tool_use_id,
+                tool_result: {
+                  tool_use_id: tool_use_id,
                   content: [
                     { text: input_request.response_content }
                   ],
@@ -261,42 +280,64 @@ class Agents::StandardPluginExecutor
         tools: tools
       )
 
+      # Sanitize output to ensure valid JSON
+      # Strip markdown code blocks if present
+      if content.is_a?(String)
+        # Remove markdown code blocks
+        cleaned_content = content.gsub(/^```json\s*/, '').gsub(/^```\s*/, '').gsub(/```$/, '').strip
+        
+        # If content still has preamble text but contains a JSON object, extract it
+        # This regex finds the first { and the last }
+        if cleaned_content =~ /(\{.*\})/m
+          possible_json = $1
+          # Verify it parses
+          begin
+            JSON.parse(possible_json)
+            cleaned_content = possible_json
+          rescue JSON::ParserError
+            # If it doesn't parse, keep original (or maybe it was just text with braces)
+          end
+        end
+        
+        content = cleaned_content
+      end
+
       # Return in consistent format
       {
         content: content,
         usage: nil # BedrockService handles usage tracking internally
       }
-    rescue Tools::AskUserTool::ExecutionSuspended => e
-      # Capture the current conversation state before suspending
-      if execution
-        Rails.logger.info "⏸️ Execution suspended for user input: #{e.message}"
-        
-        # Save the conversation history so we can resume later
-        if e.respond_to?(:conversation_context) && e.conversation_context
-          execution.update!(conversation_context: e.conversation_context)
+    rescue => e
+      # Check for ExecutionSuspended by name if class matching failed
+      if e.class.name.include?('ExecutionSuspended') || e.is_a?(Tools::AskUserTool::ExecutionSuspended)
+        # Capture the current conversation state before suspending
+        if execution
+          Rails.logger.info "⏸️ Execution suspended for user input: #{e.message}"
+          
+          # Save the conversation history so we can resume later
+          if e.respond_to?(:conversation_context) && e.conversation_context
+            execution.update!(conversation_context: e.conversation_context)
+          end
+          
+          # Return a special "suspended" result
+          return {
+            content: "Waiting for user input...",
+            usage: nil,
+            status: 'suspended'
+          }
         end
-        
-        # Return a special "suspended" result
-        return {
-          content: "Waiting for user input...",
-          usage: nil,
-          status: 'suspended'
-        }
       end
-      
-      raise e
+
+      Rails.logger.error "StandardPluginExecutor failed: #{e.message}"
+      Rails.logger.error e.backtrace.first(5).join("\n")
+
+      # Return error in consistent format
+      {
+        content: "Error executing agent: #{e.message}",
+        error: true,
+        error_message: e.message
+      }
     end
-
-  rescue => e
-    Rails.logger.error "StandardPluginExecutor failed: #{e.message}"
-    Rails.logger.error e.backtrace.first(5).join("\n")
-
-    # Return error in consistent format
-    {
-      content: "Error executing agent: #{e.message}",
-      error: true,
-      error_message: e.message
-    }
   end
 
   def get_available_tools
@@ -342,8 +383,15 @@ class Agents::StandardPluginExecutor
       content = msg[:content]
       if content.is_a?(Array)
         content.each do |block|
-          if block[:toolUse] && block[:toolUse][:name] == tool_name
-            return block[:toolUse][:toolUseId]
+          # Handle both snake_case (internal) and camelCase (AWS SDK) keys
+          tool_use = block[:tool_use] || block[:toolUse] || block['tool_use'] || block['toolUse']
+          
+          if tool_use
+            # Handle both symbol and string keys
+            t_name = tool_use[:name] || tool_use['name']
+            t_id = tool_use[:tool_use_id] || tool_use['tool_use_id'] || tool_use[:toolUseId] || tool_use['toolUseId']
+            
+            return t_id if t_name == tool_name
           end
         end
       end

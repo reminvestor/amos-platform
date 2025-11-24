@@ -23,22 +23,40 @@ class AgentPluginExecutionJob < ApplicationJob
       result = agent.run(task_description, context_data)
 
       # Check if execution was suspended (waiting for input)
-      if result.is_a?(Hash) && result[:status] == 'suspended'
-        Rails.logger.info "⏸️ AgentPlugin #{agent_plugin.name} suspended: #{result[:content]}"
-        
-        # Broadcast suspension to Scout if we have a session
-        if context_data[:session_id]
-          ScoutChannel.broadcast_to(context_data[:session_id], {
-            type: 'task_progress',
-            job_id: execution.id,
-            status: 'waiting_for_input',
-            agent_type: agent_plugin.slug,
-            message: "❓ #{agent_plugin.name} is asking a question...",
-            progress: execution.progress || 50
-          })
+      if result.is_a?(Hash)
+        if result[:status] == 'suspended'
+          Rails.logger.info "⏸️ AgentPlugin #{agent_plugin.name} suspended: #{result[:content]}"
+          
+          # Fetch the actual question from the input request
+          input_request = execution.agent_input_requests.pending.order(created_at: :desc).first
+          question_text = input_request&.question || "Waiting for input..."
+          
+          # Broadcast suspension to Scout if we have a session
+          if context_data[:session_id]
+            # Broadcast the question to the chat
+            ScoutChannel.broadcast_to(context_data[:session_id], {
+              type: 'agent_question',
+              agent_name: agent_plugin.name,
+              execution_id: execution.id,
+              question: question_text
+            })
+
+            # Update task monitor
+            ScoutChannel.broadcast_to(context_data[:session_id], {
+              type: 'task_progress',
+              job_id: execution.id,
+              status: 'waiting_for_input',
+              agent_type: agent_plugin.slug,
+              message: "❓ #{agent_plugin.name} is asking a question...",
+              progress: 50
+            })
+          end
+          
+          return # Exit without marking completed
+        elsif result[:error]
+          # Handle explicit error returned by executor
+          raise StandardError, result[:error_message] || result[:content] || "Unknown execution error"
         end
-        
-        return # Exit without marking completed
       end
 
       # Mark execution as completed with the result
@@ -85,16 +103,67 @@ class AgentPluginExecutionJob < ApplicationJob
     })
 
     # Also broadcast task progress update
+    completion_message = "✅ #{agent_plugin.name} completed"
+    
+    # Process result to extract summary if possible
+    processed_result = result
+    
+    if result.is_a?(String)
+      # Try to parse as JSON first
+      if result.strip.start_with?('{')
+        begin
+          processed_result = JSON.parse(result)
+        rescue JSON::ParserError
+          # Keep as string
+        end
+      end
+    end
+    
+    # If result is a Hash (or parsed JSON), check for a summary/message for the chat
+    if processed_result.is_a?(Hash)
+      if processed_result['summary'].present? || processed_result[:summary].present?
+        completion_message = processed_result['summary'] || processed_result[:summary]
+      elsif processed_result['message'].present? || processed_result[:message].present?
+        completion_message = processed_result['message'] || processed_result[:message]
+      end
+    elsif processed_result.is_a?(String)
+      # Heuristic: If string has a separator like '---', take the part before it as the summary
+      if processed_result.include?("\n---\n")
+        parts = processed_result.split("\n---\n")
+        completion_message = parts.first.strip if parts.first.length < 500 # Only if reasonable length
+      elsif processed_result.include?("\n#")
+        # If it starts with a header, maybe no summary before it? 
+        # Or if there is text before the first header
+        parts = processed_result.split("\n#", 2)
+        if parts.first.present? && parts.first.length < 500
+          completion_message = parts.first.strip
+        end
+      end
+    end
+
     ScoutChannel.broadcast_to(session_id, {
       type: 'task_progress',
       job_id: execution.id,
       status: 'completed',
       agent_type: agent_plugin.slug,
-      message: "✅ #{agent_plugin.name} completed",
+      message: completion_message,
       result: result.is_a?(String) ? result.truncate(200) : result.to_s.truncate(200)
     })
 
-    # Check for auto-load canvas on completion
+    Rails.logger.info "📢 Broadcasting summary to chat: #{completion_message.truncate(50)}"
+    
+    # Broadcast conversational summary to the chat
+    ScoutChannel.broadcast_to(session_id, {
+      type: 'assistant_message',
+      content: completion_message,
+      metadata: {
+        from_agent: true,
+        agent_name: agent_plugin.name,
+        execution_id: execution.id
+      }
+    })
+
+      # Check for auto-load canvas on completion
     if agent_plugin.canvas_on_completion.present?
       Rails.logger.info "🎨 Auto-loading canvas: #{agent_plugin.canvas_on_completion}"
       
@@ -104,24 +173,52 @@ class AgentPluginExecutionJob < ApplicationJob
         result: result
       }
       
-      if result.is_a?(String) && result.strip.start_with?('{')
-        begin
-          parsed = JSON.parse(result)
-          # If result contains an ID (common pattern), pass it explicitly
-          if parsed['id'] || parsed['landing_page_id']
-             canvas_data[:landing_page_id] = parsed['id'] || parsed['landing_page_id']
+      # Helper to extract IDs from a hash
+      extract_ids = ->(data) {
+        ids = {}
+        if data.is_a?(Hash)
+          ids[:landing_page_id] = data['id'] || data[:id] || data['landing_page_id'] || data[:landing_page_id]
+          ids[:campaign_id] = data['campaign_id'] || data[:campaign_id]
+        end
+        ids
+      }
+      
+      parsed_result = nil
+      if result.is_a?(String)
+        # Try to parse main result
+        if result.strip.start_with?('{')
+          begin
+            parsed_result = JSON.parse(result)
+          rescue JSON::ParserError
+            # Ignore
           end
-          
-          # If result contains campaign_id
-          if parsed['campaign_id']
-             canvas_data[:campaign_id] = parsed['campaign_id']
-          end
-        rescue JSON::ParserError
-          # Ignore if not valid JSON
         end
       elsif result.is_a?(Hash)
-        canvas_data[:landing_page_id] = result[:landing_page_id] || result['landing_page_id']
-        canvas_data[:campaign_id] = result[:campaign_id] || result['campaign_id']
+        parsed_result = result
+      end
+
+      if parsed_result
+        # check top level
+        ids = extract_ids.call(parsed_result)
+        canvas_data.merge!(ids.compact)
+        
+        # Check nested 'content' if present (Universal Output format)
+        if parsed_result['content'].present?
+          content_data = parsed_result['content']
+          
+          # If content is string JSON, parse it
+          if content_data.is_a?(String) && content_data.strip.start_with?('{')
+             begin
+               content_data = JSON.parse(content_data)
+             rescue JSON::ParserError
+             end
+          end
+          
+          if content_data.is_a?(Hash)
+            ids = extract_ids.call(content_data)
+            canvas_data.merge!(ids.compact)
+          end
+        end
       end
       
       ScoutChannel.broadcast_to(session_id, {

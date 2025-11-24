@@ -31,6 +31,9 @@ module Tools
 
       query = get_arg(args, :query)
       num_results = get_arg(args, :num_results, 5)
+      
+      # Cap results to prevent context window explosion
+      num_results = [num_results.to_i, 5].min
 
       # Validate required args
       if error = validate_required_args(args, [ :query ])
@@ -44,10 +47,15 @@ module Tools
           result = serper.search(query, num_results: num_results)
 
           if result[:success]
+            # Truncate snippets to save tokens
+            truncated_results = result[:results].map do |r|
+              r.merge(snippet: r[:snippet]&.truncate(300))
+            end
+            
             success_response(
               query: query,
-              results: result[:results],
-              count: result[:results].length,
+              results: truncated_results,
+              count: truncated_results.length,
               source: "serper"
             )
           else

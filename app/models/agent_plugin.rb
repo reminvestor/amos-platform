@@ -28,6 +28,7 @@ class AgentPlugin < ApplicationRecord
   has_many :agent_template_bindings, dependent: :destroy
   has_many :workflow_templates, through: :agent_template_bindings
   has_many :agent_plugin_executions, dependent: :destroy
+  has_many :agent_input_requests, through: :agent_plugin_executions
 
   # Nested attributes
   accepts_nested_attributes_for :agent_capabilities, allow_destroy: true, reject_if: :all_blank

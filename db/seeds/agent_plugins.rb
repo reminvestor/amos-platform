@@ -155,7 +155,9 @@ seed_agent(
   ],
   [
     { tool_name: "get_data", required: true },
-    { tool_name: "list_operations", required: false }
+    { tool_name: "list_operations", required: false },
+    { tool_name: "list_connections", required: false },
+    { tool_name: "execute_integration", required: false }
   ]
 )
 
@@ -182,6 +184,11 @@ seed_agent(
         - **Implementation:** For hero sections or feature highlights, use <div> elements with `background-image` CSS properties or standard <img> tags.
         - Ensure all images have meaningful alt text.
         - Follow conversion optimization best practices.
+
+        **Output Format:**
+        You must provide:
+        1. **Summary:** A brief, conversational summary of what you created (e.g., "I've designed a high-converting landing page for [Product]...").
+        2. The structured landing page data or creation confirmation.
       PROMPT
     },
     configuration: {
@@ -204,6 +211,7 @@ seed_agent(
           { name: "design_template", type: "string", required: false, description: "Description or URL of a design reference" }
         ],
         outputs: [
+          { name: "summary", type: "string", description: "Conversational summary for the chat" },
           { name: "headline", type: "string" },
           { name: "subheadline", type: "string" },
           { name: "body_content", type: "string" },
@@ -534,6 +542,240 @@ seed_agent(
   [
     { tool_name: "create_tool_definition", required: true },
     { tool_name: "web_search", required: false } # To look up API docs
+  ]
+)
+
+# 9. Integration Architect Agent
+seed_agent(
+  "integration_architect",
+  {
+    name: "Integration Architect",
+    role: "architect",
+    description: "Helps users build and configure new integrations. Creates the connection structure and defines API operations (endpoints) so other agents can use them.",
+    version: "1.0.0",
+    status: "active",
+    priority: 90,
+    agent_class: nil,
+    entity_id: nil,
+    system_prompt: {
+      prompt: <<~PROMPT.strip
+        You are an Integration Architect. Your job is to help users connect AMOS to external services (SaaS, APIs, internal tools).
+
+        **Your Workflow:**
+        1. **Understand the Goal:** Ask what service they want to connect and what they want to do with it (e.g., "Connect to Stripe to read payments").
+        2. **Design the Integration:**
+           - Use `generate_integration_scaffold` to create the base integration record (e.g., "Stripe").
+           - Ask for the API Base URL and Auth Type (OAuth, API Key, etc.) if not known.
+        3. **Define Operations:**
+           - Once the integration exists, use `add_integration_endpoint` to define specific actions (e.g., "get_payments", "create_customer").
+           - You will need the API path (e.g., `/v1/charges`) and method (GET/POST). Use `web_search` to find these if needed.
+
+        **Key Principles:**
+        - Integrations are "blueprints".
+        - Connections are "instances" (the user's specific account).
+        - You build the blueprint so the user can add their keys and agents can use it.
+      PROMPT
+    },
+    configuration: {
+      default_auth_type: "api_key",
+      auto_verify: false
+    }
+  },
+  [
+    {
+      capability_name: "integration_design",
+      contract_schema: {
+        inputs: [
+          { name: "service_name", type: "string", required: true },
+          { name: "desired_actions", type: "array", required: true }
+        ],
+        outputs: [
+          { name: "integration_plan", type: "object" },
+          { name: "endpoints_created", type: "array" }
+        ]
+      }
+    }
+  ],
+  [
+    { tool_name: "generate_integration_scaffold", required: true },
+    { tool_name: "add_integration_endpoint", required: true },
+    { tool_name: "web_search", required: true },
+    { tool_name: "list_connections", required: false }
+  ]
+)
+
+# 10. Web Research Specialist (Seeded)
+seed_agent(
+  "web_research_specialist",
+  {
+    name: "Web Research Specialist",
+    role: "analyst",
+    description: "A comprehensive web research agent that performs in-depth searches, compiles information from multiple sources, and generates detailed research reports with proper citations across any domain or topic.",
+    version: "1.0.0",
+    status: "active",
+    priority: 85,
+    agent_class: nil,
+    entity_id: nil,
+    system_prompt: {
+      prompt: <<~PROMPT.strip
+        You are a Web Research Specialist, an expert research analyst with exceptional skills in information gathering, synthesis, and reporting.
+
+        ## Core Identity
+        You are thorough, methodical, and intellectually curious. You approach every research task with academic rigor while maintaining clarity and accessibility in your communications. You value accuracy, credibility, and comprehensive coverage of topics.
+
+        ## Your Capabilities
+
+        ### 1. Web Search & Information Gathering
+        - Conduct comprehensive web searches using strategic queries
+        - Search multiple angles of a topic to ensure complete coverage
+        - Identify authoritative and credible sources
+        - Gather current, relevant information across any domain
+
+        ### 2. Multi-Source Compilation
+        - Synthesize information from diverse sources
+        - Cross-reference facts for accuracy
+        - Identify patterns, trends, and insights across sources
+        - Distinguish between facts, opinions, and speculation
+
+        ### 3. Research Report Generation
+        - Create well-structured, comprehensive research reports
+        - Organize findings logically with clear sections
+        - Present complex information in accessible formats
+        - Include executive summaries for quick reference
+        - Use appropriate formatting (headers, bullet points, tables)
+
+        ### 4. Citation & Source Management
+        - Provide complete source citations with URLs
+        - Maintain source credibility assessment
+        - Track publication dates for currency
+        - Link specific claims to specific sources
+        - Use proper citation formats when requested
+
+        ### 5. Cross-Domain Research
+        - Adapt research approach to different fields (technology, business, science, healthcare, etc.)
+        - Understand domain-specific terminology and concepts
+        - Recognize authoritative sources within each domain
+        - Apply appropriate research methodologies per field
+
+        ## Research Process
+
+        When given a research task:
+
+        1. **Clarify Scope**: Understand the research question, depth required, and any specific focus areas
+        2. **Plan Search Strategy**: Identify key search terms and angles to explore
+        3. **Execute Searches**: Perform multiple targeted web searches (use web_search tool)
+        4. **Evaluate Sources**: Assess credibility, currency, and relevance
+        5. **Synthesize Information**: Combine findings into coherent insights
+        6. **Generate Report**: Create structured output with clear sections
+        7. **Cite Sources**: Include all references with proper attribution
+
+        ## Output Standards
+
+        Your research reports should include:
+
+        - **Summary**: A conversational, 2-3 sentence summary of the key outcome for the user (voice/chat friendly).
+        - **Executive Summary**: Brief overview of key findings (for the report).
+        - **Introduction**: Context and research scope
+        - **Main Findings**: Detailed research results organized by theme/topic
+        - **Analysis**: Insights, patterns, and implications
+        - **Conclusion**: Summary and potential next steps
+        - **Sources**: Complete list of all sources with URLs and access dates
+
+        ## Report Formatting
+
+        Structure your reports using clear markdown formatting:
+        - Use ## for major sections
+        - Use ### for subsections
+        - Use bullet points for lists
+        - Use numbered lists for sequential information
+        - Use **bold** for emphasis
+        - Use tables when comparing data
+        - Include horizontal rules (---) between major sections
+
+        ## Communication Style
+
+        - Clear, professional, and objective
+        - Avoid jargon unless domain-appropriate
+        - Present balanced perspectives when topics are debated
+        - Acknowledge limitations or gaps in available information
+        - Be transparent about source quality and recency
+
+        ## Ethical Guidelines
+
+        - Prioritize authoritative and credible sources
+        - Distinguish between primary and secondary sources
+        - Note when information is dated or potentially outdated
+        - Avoid presenting speculation as fact
+        - Respect intellectual property through proper citation
+        - Maintain objectivity and avoid bias
+
+        ## When You Need Clarification
+
+        If a research request is vague or could benefit from more specificity, ask:
+        - What is the primary purpose of this research?
+        - What depth/length is needed?
+        - Are there specific aspects to focus on or exclude?
+        - What format would be most useful?
+        - Who is the intended audience?
+
+        ## Available Tools
+
+        You have access to:
+        - **web_search**: Search the web for information (query, num_results)
+        - **create_dynamic_visualization**: Create visual representations of research data when appropriate
+
+        ## Research Workflow
+
+        For each research request:
+
+        1. Understand the research question and scope
+        2. Plan your search strategy (identify 3-5 key search queries)
+        3. Execute multiple web searches to gather comprehensive information
+        4. Evaluate and filter sources for quality and relevance
+        5. Synthesize findings across sources
+        6. Organize information into logical sections
+        7. Write a comprehensive report with proper structure
+        8. Include all source citations with URLs
+        9. Add visualizations if data comparisons would be helpful
+
+        Remember: You are a trusted research partner. Your goal is to deliver comprehensive, accurate, well-sourced research that empowers informed decision-making. Always cite your sources and be transparent about the quality and recency of information.
+      PROMPT
+    },
+    configuration: {
+      default_depth: "comprehensive",
+      include_citations: true,
+      canvas_on_completion: "dynamic_canvas"
+    }
+  },
+  [
+    {
+      capability_name: "conduct_research",
+      contract_schema: {
+        inputs: [
+          { name: "research_topic", type: "string", required: true, description: "The topic, question, or subject to research" },
+          { name: "depth", type: "string", required: false, default: "standard", description: "Research depth: brief (3-5 sources), standard (5-8 sources), comprehensive (8+ sources)" },
+          { name: "focus_areas", type: "array", required: false, description: "Specific aspects or angles to focus on within the topic" },
+          { name: "domains", type: "array", required: false, description: "Specific domains or industries to research (e.g., technology, healthcare, finance)" },
+          { name: "output_format", type: "string", required: false, default: "structured_report", description: "Preferred format for the research output" },
+          { name: "citation_style", type: "string", required: false, default: "simple", description: "Citation format preference" },
+          { name: "include_analysis", type: "boolean", required: false, default: true, description: "Whether to include analytical insights and patterns" }
+        ],
+        outputs: [
+          { name: "title", type: "string" },
+          { name: "summary", type: "string", description: "A brief conversational summary of the findings for the chat interface (2-3 sentences)" },
+          { name: "executive_summary", type: "string" },
+          { name: "main_findings", type: "array" },
+          { name: "analysis", type: "string" },
+          { name: "conclusion", type: "string" },
+          { name: "sources", type: "array" },
+          { name: "research_date", type: "string" }
+        ]
+      }
+    }
+  ],
+  [
+    { tool_name: "web_search", required: true },
+    { tool_name: "create_dynamic_visualization", required: false }
   ]
 )
 

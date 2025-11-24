@@ -31,7 +31,46 @@ class ToolDefinition < ApplicationRecord
     }
   end
 
+  # Vector search configuration
+  has_neighbors :embedding
+
+  # Update embedding when relevant fields change
+  after_save :update_embedding, if: -> { saved_change_to_name? || saved_change_to_description? || saved_change_to_parameters? || (saved_change_to_is_public? && is_public) }
+
+  # Class methods
+  def self.search_by_similarity(query, limit: 5)
+    # Generate embedding for the query
+    query_embedding = AiAgents::VectorStore.instance.generate_embedding(query)
+    
+    # Use pgvector nearest_neighbors search
+    # We assume RAG should return public tools or tools created by the user (handled by controller/service layer usually, but for pure semantic search we can filter after)
+    # Here we return all matches, caller must filter by permission
+    nearest_neighbors(:embedding, query_embedding, distance: "cosine").first(limit)
+  rescue => e
+    Rails.logger.error "Vector search failed: #{e.message}"
+    # Fallback to keyword search if vector search fails
+    where("description ILIKE ? OR name ILIKE ?", "%#{query}%", "%#{query}%").limit(limit)
+  end
+
   private
+
+  def update_embedding
+    # Construct a rich text representation of the tool
+    embedding_text = <<~TEXT
+      Tool: #{name}
+      Description: #{description}
+      Parameters: #{parameters.to_json}
+      Type: #{execution_type}
+    TEXT
+    
+    # Generate embedding using VectorStore service
+    vector = AiAgents::VectorStore.instance.generate_embedding(embedding_text)
+    
+    # Update the column directly to avoid triggering callbacks again
+    update_column(:embedding, vector)
+  rescue => e
+    Rails.logger.error "Failed to update embedding for tool #{id}: #{e.message}"
+  end
 
   def validate_parameters_schema
     return if parameters.blank?

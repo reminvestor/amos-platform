@@ -64,6 +64,6 @@ class Admin::UsersController < Admin::BaseController
 
   def user_params
     # Only allow role changes from the dedicated make_admin action, not from general updates
-    params.require(:user).permit(:email, :first_name, :last_name, :onboarded)
+    params.require(:user).permit(:email, :first_name, :last_name, :onboarded, :agents_limit, :tools_limit, :integrations_limit)
   end
 end

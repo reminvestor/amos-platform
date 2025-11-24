@@ -73,6 +73,41 @@
               </div>
             </div>
 
+            <%# Resource Limits %>
+            <div class="admin-mt-lg admin-pt-lg admin-border-t">
+              <h5 class="admin-section-heading admin-mb-md">
+                <%= admin_icon('sliders', size: :sm, class: 'admin-text-info') %>
+                <span>Creation Limits</span>
+              </h5>
+              
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <%= f.label :agents_limit, "Agents Limit", class: "form-label" %>
+                    <%= f.number_field :agents_limit, class: "form-control", min: 0,
+                        style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <%= f.label :tools_limit, "Tools Limit", class: "form-label" %>
+                    <%= f.number_field :tools_limit, class: "form-control", min: 0,
+                        style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-group">
+                    <%= f.label :integrations_limit, "Integrations Limit", class: "form-label" %>
+                    <%= f.number_field :integrations_limit, class: "form-control", min: 0,
+                        style: "background-color: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); padding: 0.75rem; border-radius: 0.5rem;" %>
+                  </div>
+                </div>
+              </div>
+              <p class="admin-text-secondary admin-text-sm admin-mt-sm">
+                These limits control how many custom resources this user can create. Admins bypass these limits.
+              </p>
+            </div>
+
             <%# Action Buttons %>
             <div class="admin-flex admin-flex-gap-md admin-pt-lg admin-border-t">
               <%= f.submit "Save Changes", class: "admin-btn admin-btn-primary" %>

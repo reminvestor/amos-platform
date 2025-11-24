@@ -53,11 +53,16 @@
                   <% end %>
                 </td>
                 <td>
-                  <% if tool.admin_only? %>
-                    <span class="admin-badge admin-badge-secondary">Admin Only</span>
-                  <% else %>
-                    <span class="admin-badge admin-badge-success">Public</span>
-                  <% end %>
+                  <div class="d-flex gap-1 flex-column">
+                    <% if tool.admin_only? %>
+                      <span class="badge bg-warning text-dark" style="width: fit-content;">Admin Only</span>
+                    <% end %>
+                    <% if tool.is_public? %>
+                      <span class="badge bg-success" title="Published <%= time_ago_in_words(tool.published_at) if tool.published_at %> ago" style="width: fit-content;">Published</span>
+                    <% else %>
+                      <span class="badge bg-secondary" style="width: fit-content;">Private</span>
+                    <% end %>
+                  </div>
                 </td>
                 <td>
                   <small style="color: #94A3B8;">
@@ -66,6 +71,20 @@
                 </td>
                 <td>
                   <div class="btn-group btn-group-sm">
+                    <%= button_to clone_admin_tool_path(tool), class: "btn btn-sm btn-outline-primary icon-btn", title: "Clone", style: "border-color: #1E293B; color: #3B82F6;", form: { style: "display:inline-block;" } do %>
+                      <i data-lucide="copy" style="width: 1rem; height: 1rem;"></i>
+                    <% end %>
+
+                    <% if tool.is_public? %>
+                      <%= button_to unpublish_admin_tool_path(tool), class: "btn btn-sm btn-outline-warning icon-btn", title: "Unpublish", style: "border-color: #1E293B; color: #F59E0B;", form: { style: "display:inline-block;" } do %>
+                        <i data-lucide="lock" style="width: 1rem; height: 1rem;"></i>
+                      <% end %>
+                    <% else %>
+                      <%= button_to publish_admin_tool_path(tool), class: "btn btn-sm btn-outline-success icon-btn", title: "Publish", style: "border-color: #1E293B; color: #10B981;", form: { style: "display:inline-block;" } do %>
+                        <i data-lucide="globe" style="width: 1rem; height: 1rem;"></i>
+                      <% end %>
+                    <% end %>
+
                     <%= link_to edit_admin_tool_path(tool), class: "btn btn-sm btn-outline-secondary icon-btn", title: "Edit", style: "border-color: #1E293B; color: #94A3B8;" do %>
                       <i data-lucide="edit" style="width: 1rem; height: 1rem;"></i>
                     <% end %>
