@@ -69,6 +69,7 @@ puts "Voice Assistant settings seeded!"
 puts ""
 
 # Load additional seeds
+load Rails.root.join('db', 'seeds', 'tool_definitions.rb')
 load Rails.root.join('db', 'seeds', 'agent_plugins.rb')
 
 if Rails.env.development?
