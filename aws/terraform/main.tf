@@ -746,7 +746,8 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
           data.aws_secretsmanager_secret.pinecone_index_name.arn,
           data.aws_secretsmanager_secret.openai_api_key.arn,
           data.aws_secretsmanager_secret.anthropic_api_key.arn,
-          data.aws_secretsmanager_secret.eleven_labs_api_key.arn
+          data.aws_secretsmanager_secret.eleven_labs_api_key.arn,
+          data.aws_secretsmanager_secret.serper_api_key.arn
         ]
       }
     ]
