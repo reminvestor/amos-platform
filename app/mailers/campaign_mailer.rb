@@ -33,7 +33,7 @@ class CampaignMailer < ApplicationMailer
     
     # Set SES Configuration Set
     # This tells SES to track events for this email
-    headers["X-SES-CONFIGURATION-SET"] = "agent-marketing"
+    headers["X-SES-CONFIGURATION-SET"] = ENV["SES_CONFIGURATION_SET"] || "agent-marketing"
     
     # Add tags for SES event filtering
     headers["X-SES-MESSAGE-TAGS"] = "campaign_id=#{@campaign.id},contact_id=#{@contact.id}"
@@ -68,7 +68,7 @@ class CampaignMailer < ApplicationMailer
     # Set test headers
     headers["X-Test-Email"] = "true"
     headers["X-Campaign-ID"] = @campaign.id.to_s
-    headers["X-SES-CONFIGURATION-SET"] = "agent-marketing"
+    headers["X-SES-CONFIGURATION-SET"] = ENV["SES_CONFIGURATION_SET"] || "agent-marketing"
     headers["X-SES-MESSAGE-TAGS"] = "type=test,campaign_id=#{@campaign.id}"
 
     mail(
