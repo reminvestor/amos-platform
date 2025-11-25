@@ -126,30 +126,8 @@
           <h5 class="mb-2">Loading Document...</h5>
           <p class="text-muted mb-0">Please wait while we prepare your document.</p>
         </div>
-      <% elsif canvas_data[:processing_status] == 'processing' && canvas_data[:content_type]&.include?('pdf') %>
-        <%# Show PDF while processing %>
-        <div style="position: relative; height: 100%;">
-          <iframe 
-            src="<%= canvas_data[:url] %>" 
-            style="width: 100%; height: 100%; border: none;"
-            title="<%= canvas_data[:filename] %>">
-          </iframe>
-          <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(15, 23, 42, 0.95); padding: 1rem; border-top: 1px solid #1E293B;">
-            <div class="d-flex align-items-center">
-              <div class="spinner-border spinner-border-sm text-primary me-3" role="status">
-                <span class="visually-hidden">Processing...</span>
-              </div>
-              <div>
-                <strong style="color: white;">Processing Document...</strong>
-                <div class="small text-muted mt-1">
-                  <%= canvas_data[:processing_stage]&.humanize || 'Initializing' %> - 
-                  <%= canvas_data[:processing_progress] || 0 %>% complete
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       <% else %>
+        <%# Note: Processing status is shown in #indexing-status-container below via JavaScript polling %>
         <% case canvas_data[:content_type] %>
         <% when 'application/pdf' %>
           <iframe 
