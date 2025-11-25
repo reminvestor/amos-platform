@@ -127,8 +127,12 @@ class AgentPluginExecutionJob < ApplicationJob
         completion_message = processed_result['message'] || processed_result[:message]
       end
     elsif processed_result.is_a?(String)
-      # Heuristic: If string has a separator like '---', take the part before it as the summary
-      if processed_result.include?("\n---\n")
+      # Heuristic: If it looks like our standard JSON format but failed to parse (e.g. truncation),
+      # try to extract summary via regex
+      if processed_result =~ /"summary":\s*"(.*?)"/
+        completion_message = $1
+      elsif processed_result.include?("\n---\n")
+        # Heuristic: If string has a separator like '---', take the part before it as the summary
         parts = processed_result.split("\n---\n")
         completion_message = parts.first.strip if parts.first.length < 500 # Only if reasonable length
       elsif processed_result.include?("\n#")
