@@ -82,8 +82,8 @@ module Tools
             custom: true,
             agent_plugin_id: plugin.id,
             source: 'rag_match',
-            editable: plugin.editable_by?(@user),
-            owner: plugin.user_id == @user.id ? 'you' : (plugin.user_id.nil? ? 'system' : 'other')
+            editable: @user.present? ? plugin.editable_by?(@user) : false,
+            owner: determine_owner(plugin)
           }
         end
         
@@ -179,6 +179,12 @@ module Tools
       ]
     end
     
+    def determine_owner(plugin)
+      return 'system' if plugin.user_id.nil?
+      return 'you' if @user.present? && plugin.user_id == @user.id
+      'other'
+    end
+
     def rank_agents_by_relevance(agents, task_description)
       return agents if task_description.blank?
       
