@@ -167,14 +167,49 @@ class AgentPluginExecutionJob < ApplicationJob
       }
     })
 
-      # Check for auto-load canvas on completion
-    if agent_plugin.canvas_on_completion.present?
-      Rails.logger.info "🎨 Auto-loading canvas: #{agent_plugin.canvas_on_completion}"
+    # Determine canvas to load
+    # Priority: 1) Agent's configured canvas, 2) Default based on content type
+    canvas_name = agent_plugin.canvas_on_completion
+    
+    # Parse result to determine content and appropriate canvas
+    parsed_result = nil
+    if result.is_a?(String)
+      if result.strip.start_with?('{')
+        begin
+          parsed_result = JSON.parse(result)
+        rescue JSON::ParserError
+          # Keep as string
+        end
+      end
+    elsif result.is_a?(Hash)
+      parsed_result = result
+    end
+    
+    # Extract content for canvas display
+    content_for_canvas = nil
+    content_format = 'markdown'
+    
+    if parsed_result.is_a?(Hash)
+      content_for_canvas = parsed_result['content'] || parsed_result[:content]
+      content_format = parsed_result['format'] || parsed_result[:format] || 'markdown'
+    elsif result.is_a?(String) && result.length > 200
+      content_for_canvas = result
+    end
+    
+    # If no canvas specified but we have substantial content, use dynamic_canvas
+    if canvas_name.blank? && content_for_canvas.present?
+      canvas_name = 'dynamic_canvas'
+      Rails.logger.info "🎨 No canvas configured, defaulting to dynamic_canvas for content display"
+    end
+    
+    if canvas_name.present?
+      Rails.logger.info "🎨 Auto-loading canvas: #{canvas_name}"
       
-      # Parse result if it's JSON to extract useful IDs
+      # Build canvas data
       canvas_data = { 
         execution_id: execution.id,
-        result: result
+        agent_name: agent_plugin.name,
+        title: "#{agent_plugin.name} Results"
       }
       
       # Helper to extract IDs from a hash
@@ -186,50 +221,45 @@ class AgentPluginExecutionJob < ApplicationJob
         end
         ids
       }
-      
-      parsed_result = nil
-      if result.is_a?(String)
-        # Try to parse main result
-        if result.strip.start_with?('{')
-          begin
-            parsed_result = JSON.parse(result)
-          rescue JSON::ParserError
-            # Ignore
-          end
-        end
-      elsif result.is_a?(Hash)
-        parsed_result = result
-      end
 
       if parsed_result
-        # check top level
+        # Check top level for IDs
         ids = extract_ids.call(parsed_result)
         canvas_data.merge!(ids.compact)
         
+        # For dynamic_canvas, include the content
+        if canvas_name == 'dynamic_canvas'
+          canvas_data[:content] = content_for_canvas
+          canvas_data[:format] = content_format
+          canvas_data[:title] = parsed_result['title'] || parsed_result[:title] || "#{agent_plugin.name} Results"
+        end
+        
         # Check nested 'content' if present (Universal Output format)
-        if parsed_result['content'].present?
+        if parsed_result['content'].present? && parsed_result['content'].is_a?(String)
           content_data = parsed_result['content']
           
           # If content is string JSON, parse it
-          if content_data.is_a?(String) && content_data.strip.start_with?('{')
+          if content_data.strip.start_with?('{')
              begin
                content_data = JSON.parse(content_data)
+               if content_data.is_a?(Hash)
+                 ids = extract_ids.call(content_data)
+                 canvas_data.merge!(ids.compact)
+               end
              rescue JSON::ParserError
+               # Content is not JSON, use as-is
              end
-          end
-          
-          if content_data.is_a?(Hash)
-            ids = extract_ids.call(content_data)
-            canvas_data.merge!(ids.compact)
           end
         end
       end
       
       ScoutChannel.broadcast_to(session_id, {
         type: 'load_canvas',
-        canvas_name: agent_plugin.canvas_on_completion,
+        canvas_name: canvas_name,
         canvas_data: canvas_data
       })
+    else
+      Rails.logger.info "⚠️ No canvas to load - agent has no canvas_on_completion and result has no substantial content"
     end
   end
 

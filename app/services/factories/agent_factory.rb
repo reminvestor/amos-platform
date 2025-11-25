@@ -297,6 +297,15 @@ module Factories
         # Generate slug if not provided
         slug = params[:slug] || params[:name].parameterize.underscore
 
+        # Build configuration with sensible defaults
+        config = params[:configuration] || {}
+        
+        # Set default canvas_on_completion if not specified
+        # This ensures agents always have a way to display their output
+        unless config['canvas_on_completion'] || config[:canvas_on_completion]
+          config['canvas_on_completion'] = default_canvas_for_role(params[:role])
+        end
+
         agent = AgentPlugin.create!(
           name: params[:name],
           slug: slug,
@@ -306,7 +315,7 @@ module Factories
           status: params[:status] || "draft",
           priority: params[:priority] || 50,
           system_prompt: normalize_system_prompt(params[:system_prompt]),
-          configuration: params[:configuration] || {},
+          configuration: config,
           ai_model: params[:ai_model] || "claude-sonnet-4",
           execution_strategy: params[:execution_strategy] || "standard",
           entity_id: @entity&.id,
@@ -391,6 +400,21 @@ module Factories
       return true if @user.admin?
       return false if agent.user_id.nil? # System agents can't be edited by non-admins
       agent.user_id == @user.id
+    end
+
+    def default_canvas_for_role(role)
+      case role
+      when 'analyst'
+        'dynamic_canvas'  # Analysts typically produce reports/visualizations
+      when 'executor'
+        'dynamic_canvas'  # Executors often produce detailed output
+      when 'verifier'
+        'dynamic_canvas'  # Verifiers produce validation reports
+      when 'architect', 'engineer'
+        'dynamic_canvas'  # Technical roles produce documentation
+      else
+        'dynamic_canvas'  # Default to dynamic_canvas for all agents
+      end
     end
 
     def test_agent(agent, test_prompt = nil)
