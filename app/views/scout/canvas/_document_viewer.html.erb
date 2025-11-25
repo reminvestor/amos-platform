@@ -1,5 +1,5 @@
 <!-- Document Viewer Canvas -->
-<div class="document-viewer-container" data-asset-id="<%= canvas_data[:asset_id] %>" data-url="<%= canvas_data[:url] %>">
+<div class="document-viewer-container" data-asset-id="<%= canvas_data[:asset_id] %>" data-asset-type="<%= canvas_data[:asset_type] || 'image' %>" data-url="<%= canvas_data[:url] %>">
   <div class="viewer-header mb-3">
     <div class="d-flex justify-content-between align-items-center">
       <div>
@@ -117,7 +117,16 @@
 
     <!-- Document Viewer -->
     <div class="document-frame" style="height: 600px; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem; overflow: hidden;">
-      <% if canvas_data[:processing_status] == 'processing' && canvas_data[:content_type]&.include?('pdf') %>
+      <% if !canvas_data[:url].present? %>
+        <%# No URL yet - show loading state %>
+        <div class="text-center p-5 d-flex flex-column align-items-center justify-content-center h-100" style="color: #E2E8F0;">
+          <div class="spinner-border text-primary mb-4" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <h5 class="mb-2">Loading Document...</h5>
+          <p class="text-muted mb-0">Please wait while we prepare your document.</p>
+        </div>
+      <% elsif canvas_data[:processing_status] == 'processing' && canvas_data[:content_type]&.include?('pdf') %>
         <%# Show PDF while processing %>
         <div style="position: relative; height: 100%;">
           <iframe 
@@ -320,25 +329,29 @@ setTimeout(function() {
 }, 100);
 
 // Poll document indexing status - runs immediately
-const assetId = document.querySelector('.document-viewer-container')?.dataset?.assetId;
-console.log('Asset ID from data attribute:', assetId);
+const viewerContainer = document.querySelector('.document-viewer-container');
+const assetId = viewerContainer?.dataset?.assetId;
+const assetType = viewerContainer?.dataset?.assetType || 'image';
+console.log('Asset ID from data attribute:', assetId, 'Asset Type:', assetType);
 if (assetId) {
-  console.log('Starting document status polling for asset:', assetId);
+  console.log('Starting document status polling for asset:', assetId, 'type:', assetType);
   // Clean up any existing polling interval before starting a new one
   if (window.documentViewerPollInterval) {
     clearInterval(window.documentViewerPollInterval);
   }
-  pollDocumentStatus(assetId);
+  pollDocumentStatus(assetId, assetType);
 }
 
-function pollDocumentStatus(assetId) {
+function pollDocumentStatus(assetId, assetType) {
   const statusContainer = document.getElementById('indexing-status-container');
   if (!statusContainer) return;
 
-  // Poll every 5 seconds
+  const statusUrl = `/scout/document-status/${assetId}?asset_type=${assetType}`;
+
+  // Poll every 3 seconds for faster updates
   window.documentViewerPollInterval = setInterval(async () => {
     try {
-      const response = await fetch(`/scout/document-status/${assetId}`);
+      const response = await fetch(statusUrl);
       if (!response.ok) {
         clearInterval(window.documentViewerPollInterval);
         window.documentViewerPollInterval = null;
@@ -349,7 +362,8 @@ function pollDocumentStatus(assetId) {
       displayStatusUI(status, statusContainer);
 
       // Stop polling when complete or failed
-      if (status.ready_for_chat || status.status === 'embedding_failed' ||
+      if (status.ready_for_chat || status.status === 'complete' ||
+          status.status === 'failed' || status.status === 'embedding_failed' ||
           status.status === 'extraction_failed' || status.status === 'chunking_failed' ||
           status.status === 'upload_failed') {
         clearInterval(window.documentViewerPollInterval);
@@ -358,12 +372,12 @@ function pollDocumentStatus(assetId) {
     } catch (error) {
       console.error('Error polling document status:', error);
     }
-  }, 5000);
+  }, 3000);
 
   // Poll immediately on first load
   (async () => {
     try {
-      const response = await fetch(`/scout/document-status/${assetId}`);
+      const response = await fetch(statusUrl);
       if (response.ok) {
         const status = await response.json();
         displayStatusUI(status, statusContainer);
