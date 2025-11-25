@@ -8,45 +8,75 @@ module DocumentBroadcasting
 
   # Broadcast document status updates
   def broadcast_status_update
+    status_data = {
+      action: 'update_status',
+      document_id: id,
+      status: processing_status,
+      status_html: render_status_html,
+      preview_html: render_preview_html,
+      badge_class: status_badge_class,
+      badge_text: status_badge_text
+    }
+    
+    # Broadcast to entity-wide channel
     ActionCable.server.broadcast(
       "documents:entity:#{rag_store.entity_id}",
-      {
-        action: 'update_status',
-        document_id: id,
-        status: processing_status,
-        status_html: render_status_html,
-        preview_html: render_preview_html,
-        badge_class: status_badge_class,
-        badge_text: status_badge_text
-      }
+      status_data
+    )
+    
+    # Also broadcast to document-specific channel for Scout document viewer
+    ActionCable.server.broadcast(
+      "document:#{id}",
+      status_data
     )
 
     # If processing is complete, send a special notification
-    if processing_status == 'completed'
+    if processing_status == 'completed' || processing_status == 'indexed'
+      complete_data = {
+        action: 'processing_complete',
+        document_id: id,
+        status: processing_status
+      }
+      
       ActionCable.server.broadcast(
         "documents:entity:#{rag_store.entity_id}",
-        {
-          action: 'processing_complete',
-          document_id: id,
-          redirect_url: Rails.application.routes.url_helpers.document_path(self)
-        }
+        complete_data
       )
+      
+      ActionCable.server.broadcast(
+        "document:#{id}",
+        complete_data
+      )
+      
+      Rails.logger.info "📡 Broadcast document complete: #{id}"
     end
   end
 
   # Broadcast progress updates (called from jobs)
   def broadcast_progress_update
+    broadcast_data = {
+      action: 'update_progress',
+      document_id: id,
+      status: processing_status,
+      progress: processing_progress,
+      stage: processing_stage,
+      stage_description: processing_stage_description,
+      embedding_stats: render_embedding_stats
+    }
+    
+    # Broadcast to entity-wide channel
     ActionCable.server.broadcast(
       "documents:entity:#{rag_store.entity_id}",
-      {
-        action: 'update_progress',
-        document_id: id,
-        progress: processing_progress,
-        stage: processing_stage,
-        stage_description: processing_stage_description,
-        embedding_stats: render_embedding_stats
-      }
+      broadcast_data
     )
+    
+    # Also broadcast to document-specific channel for Scout document viewer
+    ActionCable.server.broadcast(
+      "document:#{id}",
+      broadcast_data
+    )
+    
+    Rails.logger.info "📡 Broadcast document progress: #{id} - #{processing_status} (#{processing_progress}%)"
   end
 
   private
