@@ -560,40 +560,28 @@
                     </div>
                   </div>
 
-                  <div class="model-slider-section">
-                    <input type="range" id="model-power-slider" class="model-slider" min="0" max="100" value="50">
-                    <div class="slider-labels">
-                      <span>Faster</span>
-                      <span id="model-power-percent" class="power-percent">50%</span>
-                      <span>More Robust</span>
+                  <!-- Provider Selection -->
+                  <div class="mb-3">
+                    <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Provider</label>
+                    <div class="d-flex gap-2" id="provider-buttons">
+                      <button type="button" class="admin-btn admin-btn-sm admin-btn-primary w-100 provider-btn active" data-provider="anthropic">
+                        Anthropic
+                      </button>
+                      <button type="button" class="admin-btn admin-btn-sm admin-btn-ghost w-100 provider-btn" data-provider="meta">
+                        Meta
+                      </button>
+                      <button type="button" class="admin-btn admin-btn-sm admin-btn-ghost w-100 provider-btn" data-provider="alibaba">
+                        Alibaba
+                      </button>
                     </div>
                   </div>
 
-                  <div class="model-presets" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 1rem;">
-                    <button class="model-preset-btn" data-power="0">
-                      <span>Fastest</span>
-                      <span class="preset-model">Haiku 3.5</span>
-                    </button>
-                    <button class="model-preset-btn" data-power="20">
-                      <span>Fast</span>
-                      <span class="preset-model">Haiku 4.5</span>
-                    </button>
-                    <button class="model-preset-btn" data-power="40">
-                      <span>Open</span>
-                      <span class="preset-model">Qwen 72B</span>
-                    </button>
-                    <button class="model-preset-btn active" data-power="60">
-                      <span>Balanced</span>
-                      <span class="preset-model">Sonnet 3.5</span>
-                    </button>
-                    <button class="model-preset-btn" data-power="80">
-                      <span>Robust</span>
-                      <span class="preset-model">Sonnet 4.5</span>
-                    </button>
-                    <button class="model-preset-btn" data-power="100">
-                      <span>Max</span>
-                      <span class="preset-model">Opus 4.5</span>
-                    </button>
+                  <!-- Model Selection -->
+                  <div class="mb-3">
+                    <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Model</label>
+                    <select id="visible-model-select" class="form-select bg-dark text-white border-secondary">
+                      <!-- Populated by JS -->
+                    </select>
                   </div>
 
                   <div class="model-info">
@@ -1592,56 +1580,113 @@ document.addEventListener('turbo:load', function() {
   // Brain Icon Model Selector
   const modelSelectorBtn = document.getElementById('model-selector-btn');
   const modelPopover = document.getElementById('model-selector-popover');
-  const modelSlider = document.getElementById('model-power-slider');
-  const powerPercent = document.getElementById('model-power-percent');
   const currentModelName = document.getElementById('current-model-name');
-  const presetBtns = document.querySelectorAll('.model-preset-btn');
-  const modelSelect = document.getElementById('model-select');
+  const modelSelect = document.getElementById('model-select'); // Hidden select
+  const visibleModelSelect = document.getElementById('visible-model-select');
+  const providerBtns = document.querySelectorAll('.provider-btn');
 
-  // Model power to Claude model mapping
-  const MODEL_MAP = {
-    0: { model: 'claude-3-haiku', name: 'Claude 3.5 Haiku' },
-    20: { model: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
-    40: { model: 'qwen-2-5-72b', name: 'Qwen 2.5 72B' },
-    60: { model: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
-    80: { model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
-    100: { model: 'claude-opus-4-5', name: 'Claude Opus 4.5' }
+  // Provider -> Models mapping
+  const MODELS_BY_PROVIDER = {
+    anthropic: [
+      { id: 'claude-opus-4-5', name: 'Claude Opus 4.5' },
+      { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
+      { id: 'claude-opus-4-1', name: 'Claude Opus 4.1' },
+      { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
+      { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
+      { id: 'claude-3-haiku', name: 'Claude 3.5 Haiku' }
+    ],
+    meta: [
+      { id: 'meta-llama-3-2-90b', name: 'Llama 3.2 90B Vision' },
+      { id: 'meta-llama-3-3-70b', name: 'Llama 3.3 70B' }
+    ],
+    alibaba: [
+      { id: 'qwen-3-32b', name: 'Qwen 3 32B' },
+      { id: 'qwen-2-5-coder-32b', name: 'Qwen 2.5 Coder' }
+    ]
   };
 
-  // Get current model from power level
-  function getModelFromPower(power) {
-    if (power < 10) return MODEL_MAP[0];
-    if (power < 30) return MODEL_MAP[20];
-    if (power < 50) return MODEL_MAP[40];
-    if (power < 70) return MODEL_MAP[60];
-    if (power < 90) return MODEL_MAP[80];
-    return MODEL_MAP[100];
-  }
+  // Load saved state
+  let currentProvider = localStorage.getItem('scout_provider') || 'anthropic';
+  let currentModelId = localStorage.getItem('scout_selected_model') || 'claude-3-5-sonnet';
 
-  // Update brain fill based on power
-  function updateBrainFill(power) {
-    const fillPercent = 100 - power; // Invert for clip-path
+  // Update brain fill based on model
+  function updateBrainFill(modelId) {
+    let power = 50;
+    if (modelId.includes('opus')) power = 100;
+    else if (modelId.includes('sonnet')) power = 75;
+    else if (modelId.includes('haiku')) power = 25;
+    else if (modelId.includes('llama') || modelId.includes('qwen')) power = 60;
+    
+    const fillPercent = 100 - power;
     const brainFills = document.querySelectorAll('.brain-fill, .brain-fill-lg');
     brainFills.forEach(fill => {
       fill.style.clipPath = `inset(${fillPercent}% 0 0 0)`;
     });
-
-    // Update power dots
-    const dots = document.querySelectorAll('.power-dot');
-    dots[0].classList.toggle('active', power >= 33);
-    dots[1].classList.toggle('active', power >= 66);
   }
 
-  // Load saved model power or default to 60%
-  let currentPower = parseInt(localStorage.getItem('scout_model_power') || '60');
-  updateBrainFill(currentPower);
-  if (modelSlider) modelSlider.value = currentPower;
-  if (powerPercent) powerPercent.textContent = `${currentPower}%`;
+  function updateGlobalModel(id, name) {
+    if (modelSelect) modelSelect.value = id;
+    if (currentModelName) currentModelName.textContent = name || id;
+    localStorage.setItem('scout_selected_model', id);
+    updateBrainFill(id);
+  }
 
-  // Update model select and name
-  const currentModel = getModelFromPower(currentPower);
-  if (modelSelect) modelSelect.value = currentModel.model;
-  if (currentModelName) currentModelName.textContent = currentModel.name;
+  // Function to populate models
+  function populateModels(provider) {
+    if (!visibleModelSelect) return;
+    
+    visibleModelSelect.innerHTML = '';
+    const models = MODELS_BY_PROVIDER[provider] || MODELS_BY_PROVIDER['anthropic'];
+    
+    models.forEach(m => {
+      const option = document.createElement('option');
+      option.value = m.id;
+      option.textContent = m.name;
+      visibleModelSelect.appendChild(option);
+    });
+    
+    // Try to select current model if it exists in this provider list
+    const exists = models.find(m => m.id === currentModelId);
+    if (exists) {
+      visibleModelSelect.value = currentModelId;
+      updateGlobalModel(currentModelId, exists.name);
+    } else {
+      // Default to first
+      visibleModelSelect.value = models[0].id;
+      currentModelId = models[0].id;
+      updateGlobalModel(currentModelId, models[0].name);
+    }
+  }
+
+  // Init
+  if (visibleModelSelect) {
+    populateModels(currentProvider);
+    
+    // Set active provider button
+    providerBtns.forEach(btn => {
+      if (btn.dataset.provider === currentProvider) btn.classList.add('active');
+      else btn.classList.remove('active');
+      
+      btn.addEventListener('click', (e) => {
+        e.preventDefault(); // Prevent form submit if inside form
+        providerBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentProvider = btn.dataset.provider;
+        localStorage.setItem('scout_provider', currentProvider);
+        populateModels(currentProvider);
+      });
+    });
+
+    // Handle Model Change
+    visibleModelSelect.addEventListener('change', (e) => {
+      currentModelId = e.target.value;
+      const name = e.target.options[e.target.selectedIndex].text;
+      updateGlobalModel(currentModelId, name);
+    });
+  } else {
+    // Fallback if new UI not rendered yet
+    updateBrainFill(currentModelId);
+  }
 
   // Toggle popover
   console.log('Model selector button found:', !!modelSelectorBtn);
@@ -1672,42 +1717,6 @@ document.addEventListener('turbo:load', function() {
     }
   });
 
-  // Handle slider changes
-  if (modelSlider) {
-    modelSlider.addEventListener('input', (e) => {
-      const power = parseInt(e.target.value);
-      currentPower = power;
-
-      // Update UI
-      updateBrainFill(power);
-      powerPercent.textContent = `${power}%`;
-
-      // Update model
-      const model = getModelFromPower(power);
-      currentModelName.textContent = model.name;
-      if (modelSelect) modelSelect.value = model.model;
-
-      // Update active preset
-      presetBtns.forEach(btn => {
-        const presetPower = parseInt(btn.dataset.power);
-        const isActive = Math.abs(power - presetPower) < 13;
-        btn.classList.toggle('active', isActive);
-      });
-
-      // Save to localStorage
-      localStorage.setItem('scout_model_power', power.toString());
-      localStorage.setItem('scout_selected_model', model.model);
-    });
-  }
-
-  // Handle preset buttons
-  presetBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const power = parseInt(btn.dataset.power);
-      modelSlider.value = power;
-      modelSlider.dispatchEvent(new Event('input'));
-    });
-  });
 
   // Helper function to get currently selected model
   window.getSelectedModel = function() {
