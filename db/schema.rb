@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_24_012845) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_25_215541) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -217,6 +217,22 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_24_012845) do
     t.index ["pipeline_execution_id"], name: "index_agent_executions_on_pipeline_execution_id"
     t.index ["started_at"], name: "index_agent_executions_on_started_at"
     t.index ["status"], name: "index_agent_executions_on_status"
+  end
+
+  create_table "agent_genomes", force: :cascade do |t|
+    t.string "role", null: false
+    t.string "name"
+    t.text "description"
+    t.jsonb "dna", default: {}, null: false
+    t.float "fitness_score", default: 0.0
+    t.integer "generation", default: 0
+    t.bigint "parent_id"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["fitness_score"], name: "index_agent_genomes_on_fitness_score"
+    t.index ["parent_id"], name: "index_agent_genomes_on_parent_id"
+    t.index ["role"], name: "index_agent_genomes_on_role"
   end
 
   create_table "agent_input_requests", force: :cascade do |t|
@@ -473,15 +489,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_24_012845) do
     t.vector "embedding", limit: 1536
     t.boolean "is_public", default: false
     t.datetime "published_at"
+    t.bigint "user_id"
     t.index ["ai_model"], name: "index_agent_plugins_on_ai_model"
     t.index ["embedding"], name: "index_agent_plugins_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
+    t.index ["entity_id", "user_id"], name: "index_agent_plugins_on_entity_id_and_user_id"
     t.index ["entity_id"], name: "index_agent_plugins_on_entity_id"
     t.index ["execution_strategy"], name: "index_agent_plugins_on_execution_strategy"
     t.index ["priority"], name: "index_agent_plugins_on_priority"
     t.index ["role"], name: "index_agent_plugins_on_role"
     t.index ["slug"], name: "index_agent_plugins_on_slug", unique: true
     t.index ["status"], name: "index_agent_plugins_on_status"
+    t.index ["user_id"], name: "index_agent_plugins_on_user_id"
   end
 
   create_table "agent_rewards", force: :cascade do |t|
@@ -501,6 +520,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_24_012845) do
     t.index ["entity_id"], name: "index_agent_rewards_on_entity_id"
     t.index ["reward_type", "assigned_at"], name: "index_agent_rewards_on_reward_type_and_assigned_at"
     t.index ["user_id"], name: "index_agent_rewards_on_user_id"
+  end
+
+  create_table "agent_simulations", force: :cascade do |t|
+    t.bigint "agent_genome_id", null: false
+    t.bigint "agent_plugin_id"
+    t.string "task_type"
+    t.text "task_prompt"
+    t.jsonb "result", default: {}
+    t.float "score"
+    t.text "feedback"
+    t.integer "duration_ms"
+    t.string "status"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_genome_id", "score"], name: "index_agent_simulations_on_agent_genome_id_and_score"
+    t.index ["agent_genome_id"], name: "index_agent_simulations_on_agent_genome_id"
+    t.index ["agent_plugin_id"], name: "index_agent_simulations_on_agent_plugin_id"
   end
 
   create_table "agent_template_bindings", force: :cascade do |t|
@@ -2491,7 +2527,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_24_012845) do
     t.vector "embedding", limit: 1536
     t.string "security_rating"
     t.text "security_reason"
+    t.bigint "entity_id"
     t.index ["created_by_id"], name: "index_tool_definitions_on_created_by_id"
+    t.index ["entity_id"], name: "index_tool_definitions_on_entity_id"
     t.index ["name"], name: "index_tool_definitions_on_name", unique: true
   end
 
@@ -2705,6 +2743,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_24_012845) do
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
   add_foreign_key "agent_capabilities", "agent_plugins"
   add_foreign_key "agent_executions", "pipeline_executions"
+  add_foreign_key "agent_genomes", "agent_genomes", column: "parent_id"
   add_foreign_key "agent_input_requests", "agent_plugin_executions"
   add_foreign_key "agent_lightning_configs", "entities"
   add_foreign_key "agent_lightning_optimizations", "agent_training_jobs"
@@ -2725,9 +2764,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_24_012845) do
   add_foreign_key "agent_plugin_executions", "users"
   add_foreign_key "agent_plugin_executions", "workflow_executions"
   add_foreign_key "agent_plugins", "entities"
+  add_foreign_key "agent_plugins", "users"
   add_foreign_key "agent_rewards", "agent_lightning_traces"
   add_foreign_key "agent_rewards", "entities"
   add_foreign_key "agent_rewards", "users"
+  add_foreign_key "agent_simulations", "agent_genomes"
+  add_foreign_key "agent_simulations", "agent_plugins"
   add_foreign_key "agent_template_bindings", "agent_plugins"
   add_foreign_key "agent_template_bindings", "workflow_templates"
   add_foreign_key "agent_tool_executions", "agent_lightning_traces"
@@ -2907,6 +2949,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_24_012845) do
   add_foreign_key "task_events", "task_sessions"
   add_foreign_key "task_sessions", "users"
   add_foreign_key "tenant_quotas", "entities"
+  add_foreign_key "tool_definitions", "entities"
   add_foreign_key "tool_definitions", "users", column: "created_by_id"
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"

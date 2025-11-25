@@ -1,6 +1,7 @@
 class ToolDefinition < ApplicationRecord
   # Associations
   belongs_to :created_by, class_name: 'User', optional: true
+  belongs_to :entity, optional: true  # nil = available to all entities
 
   # Validations
   validates :name, presence: true, uniqueness: true, format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }
@@ -12,6 +13,20 @@ class ToolDefinition < ApplicationRecord
   # Scopes
   scope :admin_only, -> { where(admin_only: true) }
   scope :public_tools, -> { where(admin_only: false) }
+  scope :for_entity, ->(entity) { where(entity: entity).or(where(entity: nil)) }
+  scope :created_by, ->(user) { where(created_by: user) }
+  scope :editable_by, ->(user) { user.admin? ? all : where(created_by: user) }
+
+  # Instance methods for ownership
+  def editable_by?(user)
+    return true if user.admin?
+    return false if created_by_id.nil? # System tools can't be edited by non-admins
+    created_by_id == user.id
+  end
+
+  def owned_by?(user)
+    created_by_id == user.id
+  end
 
   def execute(args, context = {})
     unless security_rating == 'pass'

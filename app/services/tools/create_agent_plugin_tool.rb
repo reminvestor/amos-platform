@@ -3,7 +3,12 @@ module Tools
     def self.metadata
       {
         name: "create_agent_plugin",
-        description: "Creates a new AI Agent Plugin in the system. Use this to build new agents.",
+        description: <<~DESC.strip,
+          Creates a new AI Agent Plugin in the system. Use this to build new agents.
+          This tool uses the AgentFactory for validation and proper setup.
+          
+          DEPRECATED: Use 'create_agent' instead for better validation and testing.
+        DESC
         category: "system",
         input_schema: {
           type: "object",
@@ -30,70 +35,40 @@ module Tools
     end
 
     def execute(args)
-      name = args["name"]
-      slug = args["slug"]
-      role = args["role"]
-      system_prompt = args["system_prompt"]
-      capabilities = args["capabilities"] || []
-      tools = args["tools"] || []
-
-      # Basic validation
-      if AgentPlugin.exists?(slug: slug)
-        return error_response("Agent with slug '#{slug}' already exists. Please choose a different one.")
-      end
+      # Delegate to the new AgentFactory-based tool
+      Rails.logger.info "🏭 CreateAgentPluginTool delegating to AgentFactory"
 
       # Check user limits
       unless @user.admin?
-        current_count = AgentPlugin.where(entity_id: @entity.id).count
-        limit = @user.agents_limit || 5
+        current_count = AgentPlugin.where(entity_id: @entity.id, user_id: @user.id).count
+        limit = @user.agents_limit || 10
         
         if current_count >= limit
           return error_response("You have reached the limit of #{limit} custom agents. Please contact support to increase your limit.")
         end
       end
 
-      ActiveRecord::Base.transaction do
-        # Create the agent
-        agent = AgentPlugin.create!(
-          name: name,
-          slug: slug,
-          role: role,
-          description: args["description"] || "Custom agent created by Agent Architect",
-          version: "1.0.0",
-          status: "active", # Auto-activate for now
-          priority: 50,
-          system_prompt: { prompt: system_prompt },
-          configuration: {} # Default empty config
-        )
+      # Use the AgentFactory for proper validation
+      factory = Factories::AgentFactory.new(user: @user, entity: @entity)
+      
+      result = factory.create(
+        name: args["name"],
+        slug: args["slug"],
+        role: args["role"],
+        description: args["description"] || "Custom agent created by Agent Architect",
+        system_prompt: args["system_prompt"],
+        capabilities: args["capabilities"],
+        tools: args["tools"],
+        status: "active", # Legacy behavior: auto-activate
+        skip_test: true   # Legacy behavior: skip test
+      )
 
-        # Trigger embedding update explicitly after creation if needed,
-        # although after_save callback should handle it.
-        # The after_save :update_embedding callback in AgentPlugin model
-        # is triggered on saved_change_to_status? which covers this.
-
-        # Add capabilities
-        capabilities.each do |cap|
-          agent.agent_capabilities.create!(
-            capability_name: cap["name"] || cap["capability_name"],
-            contract_schema: cap["input_schema"] || cap["contract_schema"] || cap["schema"] || {}
-          )
-        end
-
-        # Add tools
-        # Always add 'ask_user' and 'get_data' by default if not specified, as they are essential
-        tools << "ask_user" unless tools.include?("ask_user")
-        tools << "get_data" unless tools.include?("get_data")
+      if result[:success]
+        agent = result[:agent]
         
-        tools.each do |tool_name|
-          # Verify tool exists in catalog
-          if Tools::ToolCatalog.instance.get_tool_definition(tool_name)
-            agent.agent_tools.create!(tool_name: tool_name)
-          end
-        end
-
         {
           success: true,
-          message: "Successfully created agent: #{name} (#{slug})",
+          message: "Successfully created agent: #{agent.name} (#{agent.slug})",
           agent: {
             id: agent.id,
             name: agent.name,
@@ -102,6 +77,8 @@ module Tools
             capabilities_count: agent.agent_capabilities.count
           }
         }
+      else
+        error_response(result[:error])
       end
     rescue => e
       Rails.logger.error "Failed to create agent: #{e.message}"
