@@ -275,7 +275,7 @@ class Agents::StandardPluginExecutor
         system_prompt_text,
         messages,
         model: model_name,
-        max_tokens: config[:max_tokens] || 4096,
+        max_tokens: config[:max_tokens] || 8192,
         temperature: config[:temperature] || 0.7,
         tools: tools
       )
@@ -295,7 +295,9 @@ class Agents::StandardPluginExecutor
             JSON.parse(possible_json)
             cleaned_content = possible_json
           rescue JSON::ParserError
-            # If it doesn't parse, keep original (or maybe it was just text with braces)
+            # If it doesn't parse (e.g. truncated), still prefer the extracted block over the full text
+            # This removes the "Here is your JSON:" preamble
+            cleaned_content = possible_json
           end
         end
         
