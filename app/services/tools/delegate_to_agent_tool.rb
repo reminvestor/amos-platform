@@ -122,9 +122,14 @@ module Tools
       mapping = {
         'landing_page_agent' => 'ai_landing_page_creator',
         'email_agent' => 'email_sequence_architect', # or sales_email_generator
-        'integration_agent' => 'integration_specialist', # Assumption
+        'integration_agent' => 'integration_architect',
         'data_agent' => 'data_manager', # Assumption
-        'analytics_agent' => 'campaign_optimizer'
+        'analytics_agent' => 'campaign_optimizer',
+        # Agent/Tool creation agents
+        'agent_builder' => 'agent_architect',
+        'agent_creator' => 'agent_architect',
+        'tool_creator' => 'tool_builder',
+        'tool_builder_agent' => 'tool_builder'
       }
       
       if mapped_slug = mapping[key]
