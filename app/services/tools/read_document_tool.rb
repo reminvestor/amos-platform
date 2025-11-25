@@ -23,6 +23,11 @@ module Tools
               type: 'integer',
               description: 'ImageAsset or RagDocument ID of the uploaded file'
             },
+            asset_type: {
+              type: 'string',
+              description: 'Type of asset: "document" for RagDocument (PDFs, docs), "image" for ImageAsset (images). Required to look in the correct table.',
+              enum: ['document', 'image']
+            },
             max_length: {
               type: 'integer',
               description: 'Maximum characters to return (default: 50000)',
@@ -38,6 +43,7 @@ module Tools
       
       file_url = get_arg(args, :file_url)
       asset_id = get_arg(args, :asset_id)
+      asset_type = get_arg(args, :asset_type) # 'document' or 'image'
       max_length = get_arg(args, :max_length, 50000)
       
       # Need either file_url or asset_id
@@ -49,30 +55,53 @@ module Tools
       begin
         # Find the file
         if asset_id
-          Rails.logger.info "🔍 ReadDocumentTool: Looking for asset_id: #{asset_id}"
+          Rails.logger.info "🔍 ReadDocumentTool: Looking for asset_id: #{asset_id}, asset_type: #{asset_type}"
           
-          # Try to find as ImageAsset first
-          asset = ImageAsset.find_by(id: asset_id, entity: @entity)
+          asset = nil
           
-          if asset
-            Rails.logger.info "✅ Found as ImageAsset: #{asset.id}"
-          else
-            # If not found, try as RagDocument
-            Rails.logger.info "🔍 Not found as ImageAsset, trying RagDocument..."
-            
+          # Use asset_type to look in the correct table first
+          if asset_type == 'document'
+            # Look for RagDocument first (PDFs, docs, etc.)
+            Rails.logger.info "🔍 Looking for RagDocument first (asset_type: document)..."
             rag_document = RagDocument.joins(:rag_store).find_by(
               id: asset_id, 
               rag_stores: { entity_id: @entity.id }
             )
             
             if rag_document && rag_document.file.attached?
-              # Use RagDocument's attached file
               asset = rag_document
               Rails.logger.info "✅ Found as RagDocument: #{rag_document.id}"
             else
-              Rails.logger.error "❌ Asset not found as ImageAsset or RagDocument"
-              return error_response("File not found or access denied")
+              # Fallback to ImageAsset if not found as RagDocument
+              Rails.logger.info "🔍 Not found as RagDocument, trying ImageAsset..."
+              asset = ImageAsset.find_by(id: asset_id, entity: @entity)
+              Rails.logger.info "✅ Found as ImageAsset: #{asset.id}" if asset
             end
+          else
+            # Look for ImageAsset first (images, or when asset_type not specified)
+            Rails.logger.info "🔍 Looking for ImageAsset first..."
+            asset = ImageAsset.find_by(id: asset_id, entity: @entity)
+            
+            if asset
+              Rails.logger.info "✅ Found as ImageAsset: #{asset.id}"
+            else
+              # Fallback to RagDocument if not found as ImageAsset
+              Rails.logger.info "🔍 Not found as ImageAsset, trying RagDocument..."
+              rag_document = RagDocument.joins(:rag_store).find_by(
+                id: asset_id, 
+                rag_stores: { entity_id: @entity.id }
+              )
+              
+              if rag_document && rag_document.file.attached?
+                asset = rag_document
+                Rails.logger.info "✅ Found as RagDocument: #{rag_document.id}"
+              end
+            end
+          end
+          
+          unless asset
+            Rails.logger.error "❌ Asset not found as ImageAsset or RagDocument"
+            return error_response("File not found or access denied")
           end
           
           # Download the file to a temporary location for processing

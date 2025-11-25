@@ -197,10 +197,11 @@ class ScoutController < ApplicationController
         file_details = file_urls.map do |f|
           # Support both asset_id and document_id for backward compatibility
           id = f['asset_id'] || f['document_id']
-          "📎 #{f['filename']} (asset_id: #{id}, type: #{f['content_type']})"
+          asset_type = f['asset_type'] || 'image' # Default to image for backward compatibility
+          "📎 #{f['filename']} (asset_id: #{id}, asset_type: #{asset_type}, type: #{f['content_type']})"
         end.join(", ")
 
-        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id AND asset_type to extract content from these files before responding."
         metadata[:file_urls] = file_urls
       end
 
@@ -460,10 +461,11 @@ class ScoutController < ApplicationController
         file_details = file_urls.map do |f|
           # Support both asset_id and document_id for backward compatibility
           id = f['asset_id'] || f['document_id']
-          "📎 #{f['filename']} (asset_id: #{id}, type: #{f['content_type']})"
+          asset_type = f['asset_type'] || 'image' # Default to image for backward compatibility
+          "📎 #{f['filename']} (asset_id: #{id}, asset_type: #{asset_type}, type: #{f['content_type']})"
         end.join(", ")
 
-        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding."
+        enhanced_message = "#{user_message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id AND asset_type to extract content from these files before responding."
         metadata[:file_urls] = file_urls
       end
 
@@ -3345,11 +3347,12 @@ class ScoutController < ApplicationController
       file_details = file_urls.map do |f|
         # Support both asset_id and document_id for backward compatibility
         id = f['asset_id'] || f['document_id']
+        asset_type = f['asset_type'] || 'image' # Default to image for backward compatibility
         processing_note = f['processing'] ? " - PROCESSING" : ""
-        "📎 #{f['filename']} (asset_id: #{id}, type: #{f['content_type']}#{processing_note})"
+        "📎 #{f['filename']} (asset_id: #{id}, asset_type: #{asset_type}, type: #{f['content_type']}#{processing_note})"
       end.join(", ")
 
-      enhanced_message = "#{message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id to extract content from these files before responding. If a document shows PROCESSING, it may still be extracting content."
+      enhanced_message = "#{message}\n\n[Attached Files: #{file_details}]\n\nIMPORTANT: Use the read_document tool with the asset_id AND asset_type to extract content from these files before responding. If a document shows PROCESSING, it may still be extracting content."
       metadata[:file_urls] = file_urls
     end
     
