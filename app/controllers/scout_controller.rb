@@ -1514,33 +1514,126 @@ class ScoutController < ApplicationController
   # API endpoint to check document indexing status
   def document_indexing_status
     asset_id = params[:asset_id]
+    asset_type = params[:asset_type]
     return render json: { error: "asset_id required" }, status: :bad_request if asset_id.blank?
 
-    # Check for both ImageAsset and RagDocument
-    asset = current_entity.image_assets.find_by(id: asset_id)
-    
-    if !asset
-      # Try to find as RagDocument - query RagDocument model directly
+    # Check asset_type to look in correct table first
+    if asset_type == 'document'
+      # Look for RagDocument first
       rag_document = RagDocument.joins(:rag_store)
                                .where(rag_stores: { entity_id: current_entity.id })
                                .where(id: asset_id)
                                .first
       
       if rag_document
-        # Convert RagDocument status to expected format
-        return render json: {
-          indexed: rag_document.processing_status == 'indexed',
-          processing_status: rag_document.processing_status,
-          chunk_count: rag_document.rag_chunks.count,
-          error: nil  # RagDocument doesn't have an error field
-        }
+        return render json: calculate_rag_document_status(rag_document)
       end
       
-      return render json: { error: "Document not found" }, status: :not_found
+      # Fallback to ImageAsset
+      asset = current_entity.image_assets.find_by(id: asset_id)
+    else
+      # Look for ImageAsset first
+      asset = current_entity.image_assets.find_by(id: asset_id)
+      
+      if !asset
+        # Fallback to RagDocument
+        rag_document = RagDocument.joins(:rag_store)
+                                 .where(rag_stores: { entity_id: current_entity.id })
+                                 .where(id: asset_id)
+                                 .first
+        
+        if rag_document
+          return render json: calculate_rag_document_status(rag_document)
+        end
+      end
     end
+    
+    return render json: { error: "Document not found" }, status: :not_found unless asset
 
     status = calculate_document_status(asset)
     render json: status
+  end
+  
+  # Calculate status for RagDocument (uploaded documents/PDFs)
+  def calculate_rag_document_status(rag_document)
+    status = rag_document.processing_status
+    chunk_count = rag_document.rag_chunks.count rescue 0
+    
+    case status
+    when 'indexed', 'completed'
+      {
+        status: 'complete',
+        stage: 4,
+        total_stages: 4,
+        message: 'Document ready for chat',
+        ready_for_chat: true,
+        processing_status: status,
+        chunk_count: chunk_count,
+        progress_percent: 100
+      }
+    when 'embedding', 'generating_embeddings'
+      {
+        status: 'embedding',
+        stage: 4,
+        total_stages: 4,
+        message: 'Generating embeddings...',
+        ready_for_chat: false,
+        processing_status: status,
+        chunk_count: chunk_count,
+        progress_percent: 80
+      }
+    when 'chunking', 'chunked'
+      {
+        status: 'chunking',
+        stage: 3,
+        total_stages: 4,
+        message: 'Splitting document into chunks...',
+        ready_for_chat: false,
+        processing_status: status,
+        chunk_count: chunk_count,
+        progress_percent: 60
+      }
+    when 'extracting', 'extracted'
+      {
+        status: 'extracting',
+        stage: 2,
+        total_stages: 4,
+        message: 'Extracting text content...',
+        ready_for_chat: false,
+        processing_status: status,
+        progress_percent: 40
+      }
+    when 'processing', 'uploaded'
+      {
+        status: 'processing',
+        stage: 1,
+        total_stages: 4,
+        message: 'Processing document...',
+        ready_for_chat: false,
+        processing_status: status,
+        progress_percent: 20
+      }
+    when 'failed', 'error'
+      {
+        status: 'failed',
+        stage: 0,
+        total_stages: 4,
+        message: 'Document processing failed',
+        ready_for_chat: false,
+        processing_status: status,
+        progress_percent: 0
+      }
+    else
+      {
+        status: 'pending',
+        stage: 0,
+        total_stages: 4,
+        message: 'Preparing document...',
+        ready_for_chat: false,
+        processing_status: status || 'unknown',
+        progress_percent: 10
+      }
+    end
   end
 
   private
