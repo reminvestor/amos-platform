@@ -68,30 +68,6 @@ class BedrockService
       supports_caching: true,
       endpoint_type: 'regional'
     },
-    'claude-opus-4-5' => {
-      id: 'us.anthropic.claude-opus-4-5-20250201-v1:0', # Placeholder for future release
-      name: 'Claude Opus 4.5',
-      description: 'Next generation reasoning model',
-      max_tokens: 128000,
-      cost_per_1m_input: 15.00,
-      cost_per_1m_output: 75.00,
-      supports_vision: true,
-      supports_tools: true,
-      supports_caching: true,
-      endpoint_type: 'regional'
-    },
-    'qwen-2-5-72b' => {
-      id: 'alibaba.qwen-2-5-72b-instruct-v1:0', # Placeholder - requires model access
-      name: 'Qwen 2.5 72B',
-      description: 'High performance open model from Alibaba',
-      max_tokens: 32768,
-      cost_per_1m_input: 0.35,
-      cost_per_1m_output: 0.40,
-      supports_vision: false,
-      supports_tools: true,
-      supports_caching: false,
-      endpoint_type: 'regional'
-    },
     # Aliases for Claude Haiku 4.5
     'claude-haiku-4-5' => {
       id: 'us.anthropic.claude-3-5-haiku-20241022-v1:0',
@@ -248,10 +224,6 @@ class BedrockService
       "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
-    when "claude-opus-4-5"
-      "us.anthropic.claude-opus-4-5-20250201-v1:0"
-    when "qwen-2-5-72b", "qwen-2.5-72b"
-      "alibaba.qwen-2-5-72b-instruct-v1:0"
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
@@ -599,10 +571,6 @@ class BedrockService
       "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
-    when "claude-opus-4-5"
-      "us.anthropic.claude-opus-4-5-20250201-v1:0"
-    when "qwen-2-5-72b", "qwen-2.5-72b"
-      "alibaba.qwen-2-5-72b-instruct-v1:0"
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
