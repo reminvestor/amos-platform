@@ -174,6 +174,7 @@ module Tools
           filename: filename,
           content_type: content_type,
           asset_id: asset_id,  # Canvas can build URL from this
+          asset_type: asset_type || (asset.is_a?(RagDocument) ? 'document' : 'image'),  # Pass asset_type so canvas knows which table to query
           size: asset&.file&.blob&.byte_size,
           extracted_text_preview: text_content.first(500)
         }

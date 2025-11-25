@@ -2126,19 +2126,43 @@ class ScoutController < ApplicationController
     
     # Build document URL from asset_id (single document view)
     if data[:asset_id]
-      # Try to find as ImageAsset first
-      asset = ImageAsset.find_by(id: data[:asset_id], entity: current_entity)
+      asset = nil
+      asset_type = data[:asset_type]&.to_s
       
-      # If not found, try as RagDocument
-      if !asset
+      # Use asset_type to look in the correct table first
+      if asset_type == 'document'
+        # Look for RagDocument first (PDFs, docs, etc.)
+        Rails.logger.info "🔍 Looking for RagDocument first (asset_type: document)..."
         rag_document = RagDocument.joins(:rag_store).find_by(
           id: data[:asset_id], 
           rag_stores: { entity_id: current_entity.id }
         )
         
         if rag_document && rag_document.file.attached?
-          # Use RagDocument's attached file
           asset = rag_document
+          Rails.logger.info "✅ Found as RagDocument: #{rag_document.id}"
+        else
+          # Fallback to ImageAsset
+          Rails.logger.info "🔍 Not found as RagDocument, trying ImageAsset..."
+          asset = ImageAsset.find_by(id: data[:asset_id], entity: current_entity)
+        end
+      else
+        # Look for ImageAsset first (images, or when asset_type not specified)
+        Rails.logger.info "🔍 Looking for ImageAsset first..."
+        asset = ImageAsset.find_by(id: data[:asset_id], entity: current_entity)
+        
+        # If not found, try as RagDocument
+        if !asset
+          Rails.logger.info "🔍 Not found as ImageAsset, trying RagDocument..."
+          rag_document = RagDocument.joins(:rag_store).find_by(
+            id: data[:asset_id], 
+            rag_stores: { entity_id: current_entity.id }
+          )
+          
+          if rag_document && rag_document.file.attached?
+            asset = rag_document
+            Rails.logger.info "✅ Found as RagDocument: #{rag_document.id}"
+          end
         end
       end
       
