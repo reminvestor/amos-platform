@@ -56,11 +56,33 @@ module Tools
           # Extract required inputs from capabilities
           required_inputs = []
           plugin.agent_capabilities.each do |cap|
-            next unless cap.contract_schema && cap.contract_schema['inputs']
+            next unless cap.contract_schema
             
-            cap.contract_schema['inputs'].each do |input|
-              if input['required']
-                required_inputs << "#{input['name']} (#{input['description'] || input['type']})"
+            inputs_schema = cap.contract_schema['inputs'] || cap.contract_schema[:inputs]
+            next unless inputs_schema
+            
+            # Handle two formats:
+            # 1. Array of input objects: [{ name: 'x', required: true, ... }, ...]
+            # 2. JSON Schema object: { type: 'object', required: ['x'], properties: { x: {...} } }
+            
+            if inputs_schema.is_a?(Array)
+              # Format 1: Array of input objects
+              inputs_schema.each do |input|
+                if input['required'] || input[:required]
+                  name = input['name'] || input[:name]
+                  desc = input['description'] || input[:description] || input['type'] || input[:type]
+                  required_inputs << "#{name} (#{desc})"
+                end
+              end
+            elsif inputs_schema.is_a?(Hash)
+              # Format 2: JSON Schema object
+              required_fields = inputs_schema['required'] || inputs_schema[:required] || []
+              properties = inputs_schema['properties'] || inputs_schema[:properties] || {}
+              
+              required_fields.each do |field_name|
+                prop = properties[field_name] || properties[field_name.to_sym] || {}
+                desc = prop['description'] || prop[:description] || prop['type'] || prop[:type] || 'required'
+                required_inputs << "#{field_name} (#{desc})"
               end
             end
           end
