@@ -306,53 +306,23 @@ setTimeout(function() {
   }
 }, 100);
 
-// Poll document indexing status - runs immediately
+// Document status via ActionCable (event-driven, no polling!)
 const viewerContainer = document.querySelector('.document-viewer-container');
 const assetId = viewerContainer?.dataset?.assetId;
 const assetType = viewerContainer?.dataset?.assetType || 'image';
 console.log('Asset ID from data attribute:', assetId, 'Asset Type:', assetType);
+
 if (assetId) {
-  console.log('Starting document status polling for asset:', assetId, 'type:', assetType);
-  // Clean up any existing polling interval before starting a new one
-  if (window.documentViewerPollInterval) {
-    clearInterval(window.documentViewerPollInterval);
-  }
-  pollDocumentStatus(assetId, assetType);
+  console.log('Setting up ActionCable subscription for document:', assetId);
+  setupDocumentStatusSubscription(assetId, assetType);
 }
 
-function pollDocumentStatus(assetId, assetType) {
+function setupDocumentStatusSubscription(assetId, assetType) {
   const statusContainer = document.getElementById('indexing-status-container');
   if (!statusContainer) return;
 
+  // Fetch initial status once
   const statusUrl = `/scout/document-status/${assetId}?asset_type=${assetType}`;
-
-  // Poll every 3 seconds for faster updates
-  window.documentViewerPollInterval = setInterval(async () => {
-    try {
-      const response = await fetch(statusUrl);
-      if (!response.ok) {
-        clearInterval(window.documentViewerPollInterval);
-        window.documentViewerPollInterval = null;
-        return;
-      }
-
-      const status = await response.json();
-      displayStatusUI(status, statusContainer);
-
-      // Stop polling when complete or failed
-      if (status.ready_for_chat || status.status === 'complete' ||
-          status.status === 'failed' || status.status === 'embedding_failed' ||
-          status.status === 'extraction_failed' || status.status === 'chunking_failed' ||
-          status.status === 'upload_failed') {
-        clearInterval(window.documentViewerPollInterval);
-        window.documentViewerPollInterval = null;
-      }
-    } catch (error) {
-      console.error('Error polling document status:', error);
-    }
-  }, 3000);
-
-  // Poll immediately on first load
   (async () => {
     try {
       const response = await fetch(statusUrl);
@@ -364,6 +334,99 @@ function pollDocumentStatus(assetId, assetType) {
       console.error('Error fetching initial status:', error);
     }
   })();
+
+  // Subscribe to ActionCable for real-time updates (no polling!)
+  if (window.App && window.App.cable) {
+    // Unsubscribe from any existing document subscription
+    if (window.documentStatusSubscription) {
+      window.documentStatusSubscription.unsubscribe();
+    }
+
+    window.documentStatusSubscription = window.App.cable.subscriptions.create(
+      { channel: "DocumentsChannel", document_id: assetId },
+      {
+        connected() {
+          console.log('📄 Connected to DocumentsChannel for document:', assetId);
+        },
+        disconnected() {
+          console.log('📄 Disconnected from DocumentsChannel');
+        },
+        received(data) {
+          console.log('📄 Document status update received:', data);
+          
+          if (data.document_id == assetId || data.action === 'update_status' || data.action === 'update_progress') {
+            // Convert ActionCable data to our status format
+            const status = {
+              status: data.status || data.stage || 'processing',
+              stage: getStageNumber(data.stage || data.status),
+              total_stages: 4,
+              message: data.stage_description || getStatusMessage(data.status || data.stage),
+              ready_for_chat: data.status === 'completed' || data.status === 'indexed',
+              progress_percent: data.progress || calculateProgress(data.stage || data.status)
+            };
+            
+            displayStatusUI(status, statusContainer);
+            
+            // If complete, we can unsubscribe
+            if (status.ready_for_chat) {
+              console.log('📄 Document ready, unsubscribing from updates');
+              // Keep subscription for a moment to ensure UI updates, then clean up
+              setTimeout(() => {
+                if (window.documentStatusSubscription) {
+                  window.documentStatusSubscription.unsubscribe();
+                  window.documentStatusSubscription = null;
+                }
+              }, 2000);
+            }
+          }
+        }
+      }
+    );
+  } else {
+    console.warn('ActionCable not available, falling back to single fetch');
+  }
+}
+
+function getStageNumber(stage) {
+  const stages = {
+    'pending': 0, 'uploaded': 0,
+    'processing': 1, 'extracting': 2, 'extracted': 2,
+    'chunking': 3, 'chunked': 3,
+    'embedding': 4, 'generating_embeddings': 4,
+    'indexed': 4, 'completed': 4, 'complete': 4
+  };
+  return stages[stage] || 1;
+}
+
+function getStatusMessage(status) {
+  const messages = {
+    'pending': 'Preparing document...',
+    'uploaded': 'Document uploaded...',
+    'processing': 'Processing document...',
+    'extracting': 'Extracting text content...',
+    'extracted': 'Text extracted...',
+    'chunking': 'Splitting into chunks...',
+    'chunked': 'Document chunked...',
+    'embedding': 'Generating embeddings...',
+    'generating_embeddings': 'Generating embeddings...',
+    'indexed': 'Document ready for chat',
+    'completed': 'Document ready for chat',
+    'complete': 'Document ready for chat',
+    'failed': 'Processing failed'
+  };
+  return messages[status] || 'Processing...';
+}
+
+function calculateProgress(stage) {
+  const progress = {
+    'pending': 5, 'uploaded': 10,
+    'processing': 20, 'extracting': 40, 'extracted': 50,
+    'chunking': 60, 'chunked': 70,
+    'embedding': 85, 'generating_embeddings': 85,
+    'indexed': 100, 'completed': 100, 'complete': 100,
+    'failed': 0
+  };
+  return progress[stage] || 20;
 }
 
 function displayStatusUI(status, container) {
