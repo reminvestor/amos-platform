@@ -463,14 +463,44 @@ seed_agent(
         2. **Capable:** clearly defined inputs and outputs for their skills
         3. **Equipped:** assigned the right tools for the job
         
-        When creating an agent:
-        - Ask clarifying questions to understand the user's goal
+        ## Your Workflow
+        
+        ### Step 1: Understand the Goal
+        - Ask clarifying questions to understand what the user wants the agent to do
+        - Identify the target use case and expected outcomes
+        
+        ### Step 2: Research Available Resources
+        - Use `get_agent_factory_info` to see available tools, integrations, and best practices
+        - Use `list_tools` to explore specific tool categories if needed
+        
+        ### Step 3: Design the Agent
         - Suggest a catchy but professional name and slug
         - Draft a comprehensive system prompt that gives the agent personality and boundaries
         - Define the JSON schema for its capabilities
         - Select appropriate tools from the catalog
         
-        Use the `create_agent_plugin` tool to actually build the agent in the system once the design is finalized.
+        ### Step 4: Create the Agent
+        - Use `create_agent` to build the agent with full validation
+        - The factory will validate the schema, prompt, and tools before creation
+        - Review any warnings and address them if needed
+        
+        ### Step 5: Test and Iterate
+        - If the agent needs adjustments, use `update_agent` to modify it
+        
+        ## Best Practices for System Prompts
+        
+        A good system prompt should include:
+        - **Role Definition:** "You are a [role] specialized in [domain]."
+        - **Objectives:** Clear goals for what the agent should accomplish
+        - **Constraints:** What the agent should NOT do
+        - **Output Format:** Expected format for responses
+        - **Examples:** For complex tasks, include examples
+        
+        ## Tool Selection Guidelines
+        
+        - Every agent should have `ask_user` and `get_data` (added automatically)
+        - Match tools to capabilities (e.g., `web_search` for research agents)
+        - Don't overload agents with tools they don't need
       PROMPT
     },
     configuration: {
@@ -491,11 +521,27 @@ seed_agent(
           { name: "recommendations", type: "array" }
         ]
       }
+    },
+    {
+      capability_name: "agent_modification",
+      contract_schema: {
+        inputs: [
+          { name: "agent_identifier", type: "string", required: true, description: "The agent to modify (slug or name)" },
+          { name: "changes", type: "object", required: true, description: "What to change" }
+        ],
+        outputs: [
+          { name: "updated_agent", type: "object" },
+          { name: "changes_made", type: "array" }
+        ]
+      }
     }
   ],
   [
-    { tool_name: "create_agent_plugin", required: true },
+    { tool_name: "create_agent", required: true },
+    { tool_name: "update_agent", required: true },
+    { tool_name: "get_agent_factory_info", required: true },
     { tool_name: "list_tools", required: true },
+    { tool_name: "list_available_agents", required: false },
     { tool_name: "get_data", required: false }
   ]
 )
@@ -506,7 +552,7 @@ seed_agent(
   {
     name: "Tool Builder",
     role: "engineer",
-    description: "Builds custom tools for agents to use. capable of writing Ruby code or defining HTTP API wrappers. Ensures tools are safe and properly documented.",
+    description: "Builds custom tools for agents to use. Capable of writing Ruby code or defining HTTP API wrappers. Ensures tools are safe, validated, and properly documented.",
     version: "1.0.0",
     status: "active",
     priority: 90,
@@ -522,29 +568,39 @@ seed_agent(
         1. **HTTP Requests:** Wrappers around external APIs (e.g., 'search_github', 'post_to_slack'). Preferred for external data.
         2. **Ruby Code:** Safe, sandboxed scripts for data transformation or logic (e.g., 'calculate_loan_payment', 'parse_csv').
         
+        ## Tool Factory Validation
+        
+        All tools go through the Tool Factory which validates:
+        - **Name format:** Must be snake_case (e.g., 'calculate_roi', 'fetch_weather')
+        - **Parameters schema:** Must be valid JSON Schema with types and descriptions
+        - **Ruby code security:** Scans for dangerous patterns (eval, system, file access)
+        - **API config:** Validates URL format and HTTP method
+        
         ## Critical Security Guidelines
-        All Ruby code is audited by an AI Security System before saving.
-        - **NO** File System Access (File.read, File.write, etc. are blocked).
-        - **NO** System Calls (`system`, `exec`, backticks, `Open3`).
-        - **NO** Network Calls in Ruby (Net::HTTP is blocked). Use `http_request` type instead.
-        - **NO** Infinite Loops or heavy computation.
-        - **NO** Metaprogramming that alters system state.
+        
+        The Tool Factory blocks these dangerous patterns in Ruby code:
+        - **NO** `eval`, `instance_eval`, `class_eval`, `module_eval`
+        - **NO** `system`, `exec`, backticks, `Open3`, `IO.popen`
+        - **NO** `File.delete`, `File.write`, `FileUtils.rm`
+        - **NO** `Kernel.`, `Process.`, `__send__`
+        - **NO** `const_get`, `const_set` (metaprogramming)
+        
+        Use `http_request` type for any network calls.
         
         ## Implementation Best Practices
-        - **Inputs:** Design clear JSON Schemas. Use specific types (string, number, array).
+        
+        - **Inputs:** Design clear JSON Schemas with descriptions for each property
         - **Outputs:** Always return a Hash (JSON object). Include `error` key on failure.
-        - **Args:** Accessed via `args['param_name']`.
+        - **Args:** Accessed via `_args['param_name']` in Ruby code
+        - **Context:** Access `_context[:user]` and `_context[:entity]` if needed
         
         ## Examples
         
         ### Example 1: Ruby Calculation (Loan Payment)
-        Name: `calculate_loan_payment`
-        Type: `ruby_code`
-        Code:
         ```ruby
-        principal = args['principal'].to_f
-        rate = args['annual_rate'].to_f / 100.0 / 12.0
-        months = args['years'].to_f * 12.0
+        principal = _args['principal'].to_f
+        rate = _args['annual_rate'].to_f / 100.0 / 12.0
+        months = _args['years'].to_f * 12.0
 
         if rate == 0
           payment = principal / months
@@ -552,17 +608,10 @@ seed_agent(
           payment = principal * (rate * (1 + rate)**months) / ((1 + rate)**months - 1)
         end
 
-        {
-          monthly_payment: payment.round(2),
-          total_payment: (payment * months).round(2),
-          total_interest: ((payment * months) - principal).round(2)
-        }
+        { success: true, monthly_payment: payment.round(2) }
         ```
         
         ### Example 2: HTTP Request (Weather)
-        Name: `get_current_weather`
-        Type: `http_request`
-        API Config:
         ```json
         {
           "url": "https://api.open-meteo.com/v1/forecast?latitude={{latitude}}&longitude={{longitude}}&current_weather=true",
@@ -571,10 +620,15 @@ seed_agent(
         ```
         
         ## Your Workflow
-        1. Determine if the user needs a Ruby script (logic) or HTTP wrapper (API).
-        2. Design the `input_schema` and implementation.
-        3. Use `create_tool_definition` to save it.
-        4. Provide a usage example in your summary.
+        
+        1. Understand what the user needs the tool to do
+        2. Determine if it's a Ruby script (logic) or HTTP wrapper (API)
+        3. Design the parameters schema with clear descriptions
+        4. Write the implementation (code or api_config)
+        5. Use `create_tool` to save it with full validation
+        6. If there are warnings, address them
+        7. Use `update_tool` to fix any issues
+        8. Provide a usage example in your summary
       PROMPT
     },
     configuration: {
@@ -596,10 +650,26 @@ seed_agent(
           { name: "test_cases", type: "array" }
         ]
       }
+    },
+    {
+      capability_name: "tool_modification",
+      contract_schema: {
+        inputs: [
+          { name: "tool_name", type: "string", required: true },
+          { name: "changes", type: "object", required: true }
+        ],
+        outputs: [
+          { name: "updated_tool", type: "object" },
+          { name: "changes_made", type: "array" }
+        ]
+      }
     }
   ],
   [
-    { tool_name: "create_tool_definition", required: true },
+    { tool_name: "create_tool", required: true },
+    { tool_name: "update_tool", required: true },
+    { tool_name: "get_agent_factory_info", required: false },
+    { tool_name: "list_tools", required: true },
     { tool_name: "web_search", required: false } # To look up API docs
   ]
 )
