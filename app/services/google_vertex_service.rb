@@ -1,4 +1,4 @@
-require "google/cloud/ai_platform/v1"
+require "google/cloud/vertex_ai"
 
 class GoogleVertexService
   include AgentLightningInstrumentable
