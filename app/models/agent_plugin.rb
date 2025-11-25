@@ -15,6 +15,7 @@
 #  capabilities_definition  :jsonb            default({})
 #  priority                 :integer          default(50)
 #  entity_id                :bigint
+#  user_id                  :bigint
 #  last_activated_at        :datetime
 #  created_at               :datetime         not null
 #  updated_at               :datetime         not null
@@ -22,6 +23,7 @@
 class AgentPlugin < ApplicationRecord
   # Associations
   belongs_to :entity, optional: true  # nil = system-wide agent
+  belongs_to :user, optional: true    # nil = system agent, otherwise tracks creator
 
   has_many :agent_capabilities, dependent: :destroy
   has_many :agent_tools, dependent: :destroy
@@ -50,6 +52,8 @@ class AgentPlugin < ApplicationRecord
   scope :by_priority, -> { order(priority: :desc) }
   scope :system_wide, -> { where(entity_id: nil) }
   scope :entity_specific, -> { where.not(entity_id: nil) }
+  scope :created_by, ->(user) { where(user: user) }
+  scope :editable_by, ->(user) { user.admin? ? all : where(user: user) }
 
   # Callbacks
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
@@ -121,6 +125,20 @@ class AgentPlugin < ApplicationRecord
 
   def system_wide?
     entity_id.nil?
+  end
+
+  def system_agent?
+    user_id.nil?
+  end
+
+  def editable_by?(user)
+    return true if user.admin?
+    return false if user_id.nil? # System agents can't be edited by non-admins
+    user_id == user.id
+  end
+
+  def owned_by?(user)
+    user_id == user.id
   end
 
   def has_capability?(capability_name)

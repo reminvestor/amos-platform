@@ -81,7 +81,9 @@ module Tools
             complexity: 'custom',
             custom: true,
             agent_plugin_id: plugin.id,
-            source: 'rag_match'
+            source: 'rag_match',
+            editable: plugin.editable_by?(@user),
+            owner: plugin.user_id == @user.id ? 'you' : (plugin.user_id.nil? ? 'system' : 'other')
           }
         end
         
