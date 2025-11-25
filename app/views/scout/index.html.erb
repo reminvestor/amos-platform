@@ -569,22 +569,30 @@
                     </div>
                   </div>
 
-                  <div class="model-presets">
+                  <div class="model-presets" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
                     <button class="model-preset-btn" data-power="0">
                       <span>Fastest</span>
-                      <span class="preset-model">Claude 3.5 Haiku</span>
+                      <span class="preset-model">Haiku 3.5</span>
                     </button>
-                    <button class="model-preset-btn" data-power="25">
+                    <button class="model-preset-btn" data-power="20">
                       <span>Fast</span>
-                      <span class="preset-model">Claude Haiku 4.5</span>
+                      <span class="preset-model">Haiku 4.5</span>
                     </button>
-                    <button class="model-preset-btn active" data-power="50">
+                    <button class="model-preset-btn" data-power="40">
+                      <span>Open</span>
+                      <span class="preset-model">Qwen 72B</span>
+                    </button>
+                    <button class="model-preset-btn active" data-power="60">
                       <span>Balanced</span>
-                      <span class="preset-model">Claude 3.5 Sonnet</span>
+                      <span class="preset-model">Sonnet 3.5</span>
+                    </button>
+                    <button class="model-preset-btn" data-power="80">
+                      <span>Robust</span>
+                      <span class="preset-model">Sonnet 4.5</span>
                     </button>
                     <button class="model-preset-btn" data-power="100">
-                      <span>Most Robust</span>
-                      <span class="preset-model">Claude Sonnet 4.5</span>
+                      <span>Max</span>
+                      <span class="preset-model">Opus 4.5</span>
                     </button>
                   </div>
 
@@ -1593,16 +1601,20 @@ document.addEventListener('turbo:load', function() {
   // Model power to Claude model mapping
   const MODEL_MAP = {
     0: { model: 'claude-3-haiku', name: 'Claude 3.5 Haiku' },
-    25: { model: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
-    50: { model: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
-    100: { model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' }
+    20: { model: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
+    40: { model: 'qwen-2-5-72b', name: 'Qwen 2.5 72B' },
+    60: { model: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
+    80: { model: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
+    100: { model: 'claude-opus-4-5', name: 'Claude Opus 4.5' }
   };
 
   // Get current model from power level
   function getModelFromPower(power) {
-    if (power < 12) return MODEL_MAP[0];
-    if (power < 37) return MODEL_MAP[25];
-    if (power < 75) return MODEL_MAP[50];
+    if (power < 10) return MODEL_MAP[0];
+    if (power < 30) return MODEL_MAP[20];
+    if (power < 50) return MODEL_MAP[40];
+    if (power < 70) return MODEL_MAP[60];
+    if (power < 90) return MODEL_MAP[80];
     return MODEL_MAP[100];
   }
 
@@ -1620,8 +1632,8 @@ document.addEventListener('turbo:load', function() {
     dots[1].classList.toggle('active', power >= 66);
   }
 
-  // Load saved model power or default to 50%
-  let currentPower = parseInt(localStorage.getItem('scout_model_power') || '50');
+  // Load saved model power or default to 60%
+  let currentPower = parseInt(localStorage.getItem('scout_model_power') || '60');
   updateBrainFill(currentPower);
   if (modelSlider) modelSlider.value = currentPower;
   if (powerPercent) powerPercent.textContent = `${currentPower}%`;
