@@ -9,7 +9,7 @@ class AgentLoadout
 
   # Default loadouts by agent role
   ROLE_DEFAULTS = {
-    # Main chat agent (AMOS) - Reduced tool set for better decision making
+    # Main chat agent (AMOS/Scout) - Reduced tool set for better decision making
     "main_chat" => {
       tool_allowlist: [
        # 'delegate_to_planner',        # Complex multi-step tasks
@@ -37,7 +37,10 @@ class AgentLoadout
       #  'manage_pipeline',            # AI Development Pipeline management
         'list_available_agents',      # Discover available specialized agents
         'delegate_to_agent',          # Delegate tasks to specialized agents
-        'invoke_agent_plugin'         # Invoke custom agent plugins
+        'invoke_agent_plugin',        # Invoke custom agent plugins
+        'update_agent'                # Update/fix agents (Scout can modify agents users created)
+        # NOTE: Scout does NOT have create_agent, create_tool, update_tool
+        # Those are for specialized agents (Agent Architect, Tool Builder)
       ],
       canvas_allowlist: [ "*" ],
       data_scopes: { read: [ "*" ], write: [ "*" ] },
