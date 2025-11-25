@@ -33,7 +33,7 @@ class BedrockService
       endpoint_type: 'regional'
     },
     'claude-opus-4-5' => {
-      id: 'us.anthropic.claude-opus-4-5-20251101-v1:0',
+      id: 'global.anthropic.claude-opus-4-5-20251101-v1:0', # Global inference profile
       name: 'Claude Opus 4.5',
       description: 'Newest frontier model, maximum reasoning',
       max_tokens: 30000,
@@ -41,11 +41,11 @@ class BedrockService
       cost_per_1m_output: 75.00,
       supports_vision: true,
       supports_tools: true,
-      supports_caching: true,
-      endpoint_type: 'regional'
+      supports_caching: false, # Global endpoint limitation
+      endpoint_type: 'global'
     },
     'qwen-3-32b' => {
-      id: 'qwen.qwen3-32b-v1:0', 
+      id: 'qwen.qwen3-32b-v1:0', # ON_DEMAND direct
       name: 'Qwen 3 32B',
       description: 'Latest open weights model',
       max_tokens: 32768,
@@ -56,8 +56,20 @@ class BedrockService
       supports_caching: false,
       endpoint_type: 'regional'
     },
+    'qwen-3-coder-30b' => {
+      id: 'qwen.qwen3-coder-30b-a3b-v1:0', # ON_DEMAND direct
+      name: 'Qwen 3 Coder 30B',
+      description: 'Specialized for code generation',
+      max_tokens: 32768,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 0.20,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
     'meta-llama-3-3-70b' => {
-      id: 'meta.llama3-3-70b-instruct-v1:0',
+      id: 'us.meta.llama3-3-70b-instruct-v1:0', # US inference profile
       name: 'Llama 3.3 70B',
       description: 'High performance open model',
       max_tokens: 8192,
@@ -69,7 +81,7 @@ class BedrockService
       endpoint_type: 'regional'
     },
     'meta-llama-3-2-90b' => {
-      id: 'meta.llama3-2-90b-instruct-v1:0',
+      id: 'us.meta.llama3-2-90b-instruct-v1:0', # US inference profile
       name: 'Llama 3.2 90B Vision',
       description: 'Multimodal open model',
       max_tokens: 8192,
@@ -80,10 +92,10 @@ class BedrockService
       supports_caching: false,
       endpoint_type: 'regional'
     },
-    'qwen-2-5-coder-32b' => {
-      id: 'alibaba.qwen-2-5-coder-32b-instruct-v1:0',
+    'qwen-2-5-coder-32b' => { # Legacy alias, maps to Qwen 3 Coder
+      id: 'qwen.qwen3-coder-30b-a3b-v1:0',
       name: 'Qwen 2.5 Coder 32B',
-      description: 'Specialized for code generation',
+      description: 'Specialized for code generation (legacy alias)',
       max_tokens: 32768,
       cost_per_1m_input: 0.20,
       cost_per_1m_output: 0.20,
@@ -287,17 +299,15 @@ class BedrockService
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
     when "claude-opus-4-5", "claude-opus-4.5"
-      "us.anthropic.claude-3-opus-20240229-v1:0"
+      "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
     when "qwen-3-32b", "qwen-3.32b"
-      "qwen.qwen3-32b-v1:0"
-    when "qwen-2-5-72b", "qwen-2.5-72b"
-      "alibaba.qwen-2-5-72b-instruct:1"
-    when "qwen-2-5-coder-32b", "qwen-coder"
-      "qwen.qwen3-coder-30b-a3b-v1:0" # Using Qwen 3 Coder from discovery
-    when "meta-llama-3-3-70b"
-      "meta.llama3-3-70b-instruct-v1:0"
-    when "meta-llama-3-2-90b"
-      "meta.llama3-2-90b-instruct-v1:0"
+      "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
+    when "qwen-3-coder-30b", "qwen-coder"
+      "qwen.qwen3-coder-30b-a3b-v1:0" # Qwen 3 Coder - ON_DEMAND direct
+    when "meta-llama-3-3-70b", "llama-3-3-70b"
+      "us.meta.llama3-3-70b-instruct-v1:0" # Meta Llama 3.3 inference profile
+    when "meta-llama-3-2-90b", "llama-3-2-90b"
+      "us.meta.llama3-2-90b-instruct-v1:0" # Meta Llama 3.2 90B inference profile
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
@@ -646,17 +656,15 @@ class BedrockService
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
     when "claude-opus-4-5", "claude-opus-4.5"
-      "us.anthropic.claude-3-opus-20240229-v1:0"
+      "global.anthropic.claude-opus-4-5-20251101-v1:0" # Opus 4.5 inference profile
     when "qwen-3-32b", "qwen-3.32b"
-      "qwen.qwen3-32b-v1:0"
-    when "qwen-2-5-72b", "qwen-2.5-72b"
-      "alibaba.qwen-2-5-72b-instruct:1"
-    when "qwen-2-5-coder-32b", "qwen-coder"
-      "qwen.qwen3-coder-30b-a3b-v1:0" # Using Qwen 3 Coder from discovery
-    when "meta-llama-3-3-70b"
-      "meta.llama3-3-70b-instruct-v1:0"
-    when "meta-llama-3-2-90b"
-      "meta.llama3-2-90b-instruct-v1:0"
+      "qwen.qwen3-32b-v1:0" # Qwen 3 32B - ON_DEMAND direct
+    when "qwen-3-coder-30b", "qwen-coder"
+      "qwen.qwen3-coder-30b-a3b-v1:0" # Qwen 3 Coder - ON_DEMAND direct
+    when "meta-llama-3-3-70b", "llama-3-3-70b"
+      "us.meta.llama3-3-70b-instruct-v1:0" # Meta Llama 3.3 inference profile
+    when "meta-llama-3-2-90b", "llama-3-2-90b"
+      "us.meta.llama3-2-90b-instruct-v1:0" # Meta Llama 3.2 90B inference profile
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
