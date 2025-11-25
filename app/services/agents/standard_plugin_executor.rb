@@ -41,8 +41,8 @@ class Agents::StandardPluginExecutor
     when 'workflow'
       execute_workflow(prompt, merged_context)
     else
-      # Standard execution via LLM (Bedrock or others)
-      execute_with_llm(prompt, merged_context)
+      # Standard execution via Bedrock
+      execute_with_bedrock(prompt, merged_context)
     end
 
     # Track token usage if we have an execution record
@@ -207,28 +207,19 @@ class Agents::StandardPluginExecutor
     parts.join("\n")
   end
 
-  def execute_with_llm(prompt, context_data)
+  def execute_with_bedrock(prompt, context_data)
     # Determine which model to use
     model_name = get_model_name
-    
-    # Select service based on model name
-    llm_service = if model_name&.start_with?('gemini')
-                    GoogleVertexService.new(
-                      entity: context[:entity],
-                      user: context[:user],
-                      custom_model_id: model_name,
-                      context: context,
-                      execution: execution
-                    )
-                  else
-                    BedrockService.new(
-                      entity: context[:entity],
-                      user: context[:user],
-                      custom_model_id: model_name,
-                      context: context,  # Pass full context for tool execution
-                      execution: execution  # Pass execution record for token tracking
-                    )
-                  end
+
+    # Pass full context to BedrockService so tools can access it
+    # This includes agent_plugin, task_session, session_id, etc.
+    bedrock_service = BedrockService.new(
+      entity: context[:entity],
+      user: context[:user],
+      custom_model_id: model_name,
+      context: context,  # Pass full context for tool execution
+      execution: execution  # Pass execution record for token tracking
+    )
 
     # Get available tools for this agent
     # NOTE: 'ask_user' is added by get_available_tools if available
@@ -277,10 +268,10 @@ class Agents::StandardPluginExecutor
     end
 
     begin
-      # Call Service with the correct method
+      # Call BedrockService with the correct method
       # This handles the turn loop internally for simple tools,
       # but we need to catch the suspension for ask_user
-      content = llm_service.send_message_converse(
+      content = bedrock_service.send_message_converse(
         system_prompt_text,
         messages,
         model: model_name,
