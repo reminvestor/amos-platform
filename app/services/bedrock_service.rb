@@ -33,21 +33,22 @@ class BedrockService
       endpoint_type: 'regional'
     },
     'claude-opus-4-5' => {
-      id: 'us.anthropic.claude-opus-4-5-20250215-v1:0',
-      name: 'Claude Opus 4.5',
-      description: 'Newest frontier model, maximum reasoning',
-      max_tokens: 30000,
+      id: 'us.anthropic.claude-3-opus-20240229-v1:0', # Fallback to Opus 3 until 4.5/3.5 Opus is available
+      name: 'Claude 3 Opus',
+      description: 'Most capable model for complex tasks',
+      max_tokens: 4096,
       cost_per_1m_input: 15.00,
       cost_per_1m_output: 75.00,
       supports_vision: true,
       supports_tools: true,
-      supports_caching: true,
+      supports_caching: false,
       endpoint_type: 'regional'
     },
     'qwen-2-5-72b' => {
-      id: 'alibaba.qwen-2-5-72b-instruct-v1:0',
+      # Attempt Qwen 2.5 if available, otherwise falling back will handle it
+      id: 'alibaba.qwen-2-5-72b-instruct:1', 
       name: 'Qwen 2.5 72B',
-      description: 'Strong open weights model, good reasoning',
+      description: 'Strong open weights model',
       max_tokens: 32768,
       cost_per_1m_input: 0.35,
       cost_per_1m_output: 0.40,
@@ -263,9 +264,9 @@ class BedrockService
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
     when "claude-opus-4-5", "claude-opus-4.5"
-      "us.anthropic.claude-opus-4-5-20250215-v1:0"
+      "us.anthropic.claude-3-opus-20240229-v1:0"
     when "qwen-2-5-72b", "qwen-2.5-72b"
-      "alibaba.qwen-2-5-72b-instruct-v1:0"
+      "alibaba.qwen-2-5-72b-instruct:1"
     when "qwen-2-5-coder-32b", "qwen-coder"
       "alibaba.qwen-2-5-coder-32b-instruct-v1:0"
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
@@ -616,9 +617,9 @@ class BedrockService
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
     when "claude-opus-4-5", "claude-opus-4.5"
-      "us.anthropic.claude-opus-4-5-20250215-v1:0"
+      "us.anthropic.claude-3-opus-20240229-v1:0"
     when "qwen-2-5-72b", "qwen-2.5-72b"
-      "alibaba.qwen-2-5-72b-instruct-v1:0"
+      "alibaba.qwen-2-5-72b-instruct:1"
     when "qwen-2-5-coder-32b", "qwen-coder"
       "alibaba.qwen-2-5-coder-32b-instruct-v1:0"
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
@@ -1166,6 +1167,7 @@ class BedrockService
 
       rescue Aws::BedrockRuntime::Errors::ThrottlingException,
              Aws::BedrockRuntime::Errors::ServiceUnavailableException,
+             Aws::BedrockRuntime::Errors::ValidationException,
              Timeout::Error,
              Seahorse::Client::NetworkingError => e
 
