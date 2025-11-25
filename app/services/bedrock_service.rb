@@ -32,6 +32,42 @@ class BedrockService
       supports_caching: true,
       endpoint_type: 'regional'
     },
+    'claude-opus-4-5' => {
+      id: 'us.anthropic.claude-opus-4-5-20250215-v1:0',
+      name: 'Claude Opus 4.5',
+      description: 'Newest frontier model, maximum reasoning',
+      max_tokens: 30000,
+      cost_per_1m_input: 15.00,
+      cost_per_1m_output: 75.00,
+      supports_vision: true,
+      supports_tools: true,
+      supports_caching: true,
+      endpoint_type: 'regional'
+    },
+    'qwen-2-5-72b' => {
+      id: 'alibaba.qwen-2-5-72b-instruct-v1:0',
+      name: 'Qwen 2.5 72B',
+      description: 'Strong open weights model, good reasoning',
+      max_tokens: 32768,
+      cost_per_1m_input: 0.35,
+      cost_per_1m_output: 0.40,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
+    'qwen-2-5-coder-32b' => {
+      id: 'alibaba.qwen-2-5-coder-32b-instruct-v1:0',
+      name: 'Qwen 2.5 Coder 32B',
+      description: 'Specialized for code generation',
+      max_tokens: 32768,
+      cost_per_1m_input: 0.20,
+      cost_per_1m_output: 0.20,
+      supports_vision: false,
+      supports_tools: true,
+      supports_caching: false,
+      endpoint_type: 'regional'
+    },
     'claude-3-5-sonnet' => {
       id: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
       name: 'Claude 3.5 Sonnet',
@@ -99,10 +135,12 @@ class BedrockService
   # If a model fails due to throttling, timeout, or unavailability, automatically retry with the next model
   MODEL_FALLBACK_CHAIN = [
     'claude-haiku-4-5-20251001',  # User's preferred model
+    'qwen-2-5-72b',        # Fast open model
     'claude-3-haiku',      # Fastest, cheapest - try first
     'claude-3-5-sonnet',   # Fast, capable - good backup
     'claude-sonnet-4-5',   # Latest, powerful - reliable fallback
-    'claude-opus-4-1'      # Most robust - last resort
+    'claude-opus-4-1',     # Most robust
+    'claude-opus-4-5'      # Maximum capability - last resort
   ].freeze
 
   def initialize(custom_model_id: nil, user: nil, entity: nil, context: {}, execution: nil)
@@ -224,6 +262,12 @@ class BedrockService
       "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
+    when "claude-opus-4-5", "claude-opus-4.5"
+      "us.anthropic.claude-opus-4-5-20250215-v1:0"
+    when "qwen-2-5-72b", "qwen-2.5-72b"
+      "alibaba.qwen-2-5-72b-instruct-v1:0"
+    when "qwen-2-5-coder-32b", "qwen-coder"
+      "alibaba.qwen-2-5-coder-32b-instruct-v1:0"
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
@@ -571,6 +615,12 @@ class BedrockService
       "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
     when "claude-opus-4-1", "claude-opus-4-1-20250805"
       "us.anthropic.claude-opus-4-1-20250805-v1:0"
+    when "claude-opus-4-5", "claude-opus-4.5"
+      "us.anthropic.claude-opus-4-5-20250215-v1:0"
+    when "qwen-2-5-72b", "qwen-2.5-72b"
+      "alibaba.qwen-2-5-72b-instruct-v1:0"
+    when "qwen-2-5-coder-32b", "qwen-coder"
+      "alibaba.qwen-2-5-coder-32b-instruct-v1:0"
     when "claude-3-5-sonnet", "claude-3.5-sonnet"
       "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
     when "claude-3-haiku"
