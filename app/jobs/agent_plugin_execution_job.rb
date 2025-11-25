@@ -170,6 +170,10 @@ class AgentPluginExecutionJob < ApplicationJob
     # Determine canvas to load
     # Priority: 1) Agent's configured canvas, 2) Default based on content type
     canvas_name = agent_plugin.canvas_on_completion
+    canvas_name = nil if canvas_name.blank? # Treat empty string as nil
+    
+    Rails.logger.info "🎨 [broadcast_completion] Agent canvas_on_completion: #{canvas_name.inspect}"
+    Rails.logger.info "🎨 [broadcast_completion] Result type: #{result.class}, length: #{result.to_s.length}"
     
     # Parse result to determine content and appropriate canvas
     parsed_result = nil
@@ -196,10 +200,18 @@ class AgentPluginExecutionJob < ApplicationJob
       content_for_canvas = result
     end
     
+    Rails.logger.info "🎨 [broadcast_completion] Parsed result type: #{parsed_result.class}"
+    Rails.logger.info "🎨 [broadcast_completion] Content for canvas present: #{content_for_canvas.present?}, length: #{content_for_canvas.to_s.length}"
+    
     # If no canvas specified but we have substantial content, use dynamic_canvas
     if canvas_name.blank? && content_for_canvas.present?
       canvas_name = 'dynamic_canvas'
       Rails.logger.info "🎨 No canvas configured, defaulting to dynamic_canvas for content display"
+    elsif canvas_name.blank? && result.to_s.length > 500
+      # Fallback: if we have a long result string but couldn't extract content, still show it
+      canvas_name = 'dynamic_canvas'
+      content_for_canvas = result.to_s
+      Rails.logger.info "🎨 No canvas configured, using raw result for dynamic_canvas (length: #{result.to_s.length})"
     end
     
     if canvas_name.present?
