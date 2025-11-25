@@ -4,16 +4,19 @@ module Tools
       {
         name: "update_agent",
         description: <<~DESC.strip,
-          Updates an existing AI Agent that you created. You can modify the agent's name, description,
+          Updates an existing AI Agent. You can modify the agent's name, description,
           system prompt, capabilities, tools, and other settings.
           
-          Note: You can only update agents that you created. System agents cannot be modified.
+          **This is the recommended tool for Scout to use when users want to modify agents.**
+          
+          Note: Users can only update agents they created. System agents cannot be modified by non-admins.
           
           Use this tool when a user asks to:
           - Fix or improve an agent that isn't working correctly
           - Add new tools or capabilities to an agent
           - Change the agent's behavior by updating the system prompt
           - Activate or deactivate an agent
+          - Adjust an agent's configuration
         DESC
         category: "system",
         input_schema: {

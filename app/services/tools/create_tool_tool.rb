@@ -7,6 +7,10 @@ module Tools
           Creates a new custom Tool that agents can use. Uses the Tool Factory for validation
           and security checks. Tools can be either HTTP API wrappers or Ruby code.
           
+          **IMPORTANT:** This tool is intended for specialized tool-building agents like the 
+          "Tool Builder". Scout should NOT use this tool directly - instead, delegate to the 
+          Tool Builder agent using invoke_agent_plugin.
+          
           HTTP Request tools are recommended for:
           - Calling external APIs
           - Fetching data from web services
