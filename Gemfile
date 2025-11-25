@@ -1,3 +1,3 @@
 
-# Google Cloud Vertex AI
-gem "google-cloud-vertex_ai", "~> 1.0"
+# Google Gemini AI
+gem "gemini-ai"

@@ -1,4 +1,4 @@
-require "google/cloud/vertex_ai"
+require "gemini-ai"
 
 class GoogleVertexService
   include AgentLightningInstrumentable
@@ -23,12 +23,19 @@ class GoogleVertexService
   }.freeze
 
   def initialize(custom_model_id: nil, user: nil, entity: nil, context: {}, execution: nil)
-    # Ensure credentials are set via GOOGLE_APPLICATION_CREDENTIALS env var
     @project_id = ENV["GOOGLE_CLOUD_PROJECT"]
     @location = ENV["GOOGLE_CLOUD_LOCATION"] || "us-central1"
     
-    # We use the REST client or the Ruby client if available
-    # For now, assuming the gem is loaded
+    # Initialize Gemini client
+    # We use 'vertex-ai-api' service for Vertex AI access
+    @client = Gemini.new(
+      credentials: {
+        service: 'vertex-ai-api',
+        region: @location,
+        project_id: @project_id
+      },
+      options: { server_sent_events: true }
+    )
     
     @user = user
     @entity = entity
@@ -43,27 +50,51 @@ class GoogleVertexService
     # Convert messages to Gemini format
     gemini_messages = format_messages_for_gemini(messages)
     
-    # Configure tools if present
-    tool_config = nil
-    if tools.any?
-      tool_config = {
-        function_declarations: tools.map { |t| format_tool_for_gemini(t) }
-      }
+    # Add system prompt if present
+    system_instruction = nil
+    if system_prompt.present?
+      system_instruction = { parts: [{ text: system_prompt }] }
     end
 
-    # This is a placeholder implementation using REST if the gem fails, 
-    # or using the gem's client if available.
-    # Since we can't install the gem here, I'll write the logical flow.
-    
-    Rails.logger.info "Sending request to Vertex AI (#{model_id})"
+    # Configure tools if present
+    tool_declarations = []
+    if tools.any?
+      tool_declarations = tools.map { |t| format_tool_for_gemini(t) }
+    end
 
-    # ... implementation would go here using Google::Cloud::AIPlatform::V1::PredictionService::Client ...
-    
-    # For now, return a mock response to prevent crashing if called without the gem
-    return "Gemini integration pending gem installation"
-  rescue => e
-    Rails.logger.error "Vertex AI Error: #{e.message}"
-    raise AmosErrors::LlmError.new("Vertex AI Error: #{e.message}")
+    Rails.logger.info "Sending request to Gemini (#{model_id})"
+
+    begin
+      payload = {
+        contents: gemini_messages,
+        system_instruction: system_instruction,
+        generation_config: {
+          max_output_tokens: max_tokens,
+          temperature: temperature
+        }
+      }
+      
+      if tool_declarations.any?
+        payload[:tools] = [{ function_declarations: tool_declarations }]
+      end
+
+      response = @client.generate_content(
+        payload,
+        options: { model: model_id }
+      )
+      
+      # Extract text content
+      # Note: Response format depends on gem version, assuming hash access
+      content = response.dig('candidates', 0, 'content', 'parts', 0, 'text')
+      
+      # TODO: Handle tool calls (functionCall) loop here
+      # For MVP we just return text. If tool call, content might be nil.
+      
+      return content || ""
+    rescue => e
+      Rails.logger.error "Gemini API Error: #{e.message}"
+      raise AmosErrors::LlmError.new("Gemini Error: #{e.message}")
+    end
   end
 
   private
