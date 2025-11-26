@@ -346,21 +346,119 @@ class Agents::StandardPluginExecutor
     return [] unless context[:agent_plugin]
 
     agent_plugin = context[:agent_plugin]
+    catalog = Tools::ToolCatalog.instance
+    
+    # Refresh catalog to pick up any newly created tools
+    catalog.refresh_dynamic_tools!
 
-    # Get tool names from agent configuration
-    tool_names = agent_plugin.agent_tools.pluck(:tool_name)
+    # Get explicitly assigned tool names from agent configuration
+    assigned_tool_names = agent_plugin.agent_tools.pluck(:tool_name)
     
     # Always add 'ask_user' for interactive agents
-    tool_names << 'ask_user' unless tool_names.include?('ask_user')
+    assigned_tool_names << 'ask_user' unless assigned_tool_names.include?('ask_user')
     
-    return [] if tool_names.empty?
-
-    # Load tool definitions from ToolCatalog
-    catalog = Tools::ToolCatalog.instance
-    tool_names.filter_map { |name| catalog.get_tool_definition(name) }
+    # Load assigned tool definitions
+    assigned_tools = assigned_tool_names.filter_map { |name| catalog.get_tool_definition(name) }
+    
+    # RAG Search: Find additional relevant tools based on the task
+    # This allows agents to discover and use tools they weren't explicitly assigned
+    additional_tools = discover_relevant_tools(assigned_tool_names)
+    
+    # Merge: assigned tools first, then discovered tools
+    all_tools = assigned_tools + additional_tools
+    
+    Rails.logger.info "🔧 Agent #{agent_plugin.name} loaded #{assigned_tools.size} assigned tools + #{additional_tools.size} discovered tools"
+    
+    all_tools
   rescue => e
     Rails.logger.warn "Failed to load tools for agent: #{e.message}"
     []
+  end
+
+  def discover_relevant_tools(exclude_names = [])
+    return [] unless @prompt.present?
+    
+    catalog = Tools::ToolCatalog.instance
+    discovered = []
+    
+    # 1. RAG search ToolDefinitions (custom tools) based on task description
+    if defined?(ToolDefinition) && ToolDefinition.table_exists?
+      begin
+        # Search for relevant custom tools
+        relevant_custom_tools = ToolDefinition.search_by_similarity(@prompt, limit: 5)
+        
+        relevant_custom_tools.each do |td|
+          next if exclude_names.include?(td.name)
+          next if td.security_rating == 'fail' # Skip failed security checks
+          
+          tool_def = catalog.get_tool_definition(td.name)
+          if tool_def
+            discovered << tool_def
+            Rails.logger.info "🔍 Discovered custom tool via RAG: #{td.name}"
+          end
+        end
+      rescue => e
+        Rails.logger.warn "RAG search for custom tools failed: #{e.message}"
+      end
+    end
+    
+    # 2. Keyword-based discovery from system tools
+    # Look for tools that match keywords in the task
+    task_keywords = extract_task_keywords(@prompt)
+    
+    if task_keywords.any?
+      catalog.all_tools.each do |name, info|
+        next if exclude_names.include?(name)
+        next if discovered.any? { |t| t[:name] == name }
+        next if discovered.size >= 10 # Limit total discovered tools
+        
+        description = info[:metadata][:description]&.downcase || ''
+        tool_name = name.downcase
+        
+        # Check if tool matches any task keywords
+        if task_keywords.any? { |kw| description.include?(kw) || tool_name.include?(kw) }
+          tool_def = catalog.get_tool_definition(name)
+          if tool_def
+            discovered << tool_def
+            Rails.logger.info "🔍 Discovered system tool via keyword: #{name}"
+          end
+        end
+      end
+    end
+    
+    discovered.take(10) # Limit to 10 additional tools max
+  rescue => e
+    Rails.logger.warn "Tool discovery failed: #{e.message}"
+    []
+  end
+
+  def extract_task_keywords(text)
+    return [] if text.blank?
+    
+    # Common task-related keywords that might indicate tool needs
+    keyword_patterns = {
+      'weather' => ['weather', 'forecast', 'temperature', 'climate'],
+      'search' => ['search', 'find', 'look up', 'research', 'google'],
+      'calculate' => ['calculate', 'compute', 'roi', 'math', 'percentage'],
+      'data' => ['data', 'database', 'query', 'fetch', 'retrieve'],
+      'email' => ['email', 'send', 'message', 'notify'],
+      'document' => ['document', 'pdf', 'file', 'read', 'analyze'],
+      'api' => ['api', 'integration', 'connect', 'external'],
+      'chart' => ['chart', 'graph', 'visualize', 'plot', 'dashboard'],
+      'metric' => ['metric', 'analytics', 'statistics', 'report']
+    }
+    
+    text_lower = text.downcase
+    matched_keywords = []
+    
+    keyword_patterns.each do |category, patterns|
+      if patterns.any? { |p| text_lower.include?(p) }
+        matched_keywords << category
+        matched_keywords.concat(patterns.select { |p| text_lower.include?(p) })
+      end
+    end
+    
+    matched_keywords.uniq
   end
 
   def get_model_name
