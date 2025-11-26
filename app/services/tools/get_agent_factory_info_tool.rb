@@ -99,22 +99,28 @@ module Tools
 
       # Also include any ToolDefinitions that might not be in catalog yet
       # (in case refresh didn't work or there's a race condition)
+      # Only query DB if we have few custom tools in catalog (optimization)
+      custom_tool_count = catalog_tools.count { |t| t[:source] == 'custom' }
+      
       if defined?(ToolDefinition) && ToolDefinition.table_exists?
-        custom_tools = ToolDefinition.all.map do |td|
-          next if catalog_tools.any? { |t| t[:name] == td.name }
-          
-          {
-            name: td.name,
-            description: td.description,
-            category: td.category || 'custom',
-            read_only: false,
-            parameters: summarize_parameters(td.parameters),
-            source: 'custom',
-            security_rating: td.security_rating
-          }
-        end.compact
+        db_tool_count = ToolDefinition.count
         
-        catalog_tools.concat(custom_tools)
+        # Only do fallback query if counts don't match
+        if db_tool_count > custom_tool_count
+          catalog_tool_names = catalog_tools.map { |t| t[:name] }
+          
+          ToolDefinition.where.not(name: catalog_tool_names).find_each do |td|
+            catalog_tools << {
+              name: td.name,
+              description: td.description,
+              category: td.category || 'custom',
+              read_only: false,
+              parameters: summarize_parameters(td.parameters),
+              source: 'custom',
+              security_rating: td.security_rating
+            }
+          end
+        end
       end
 
       catalog_tools.sort_by { |t| [t[:category] || 'zzz', t[:name]] }
