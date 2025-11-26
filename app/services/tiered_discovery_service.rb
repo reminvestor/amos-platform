@@ -257,12 +257,28 @@ class TieredDiscoveryService
   def discover_class_tools
     return [] if @prompt.blank?
 
+    # Try RAG-based search first (using ClassToolEmbeddingsService)
+    begin
+      service = ClassToolEmbeddingsService.instance
+      results = service.search(@prompt, limit: MAX_DISCOVERED_TOOLS / 2)
+      
+      if results.any?
+        Rails.logger.info "🔍 Found #{results.length} class tools via RAG search"
+        return results.reject { |t| CORE_TOOLS.include?(t[:name]) }.map do |tool|
+          tool.merge(priority: :medium)
+        end
+      end
+    rescue => e
+      Rails.logger.warn "Class tool RAG search failed, falling back to keywords: #{e.message}"
+    end
+
+    # Fallback to keyword matching if RAG fails
     catalog = Tools::ToolCatalog.instance
     all_tools = catalog.all_tools
 
-    # Get tool names and descriptions for semantic matching
     tool_texts = all_tools.map do |name, info|
       next if CORE_TOOLS.include?(name)
+      next unless info[:type] == :class
       {
         name: name,
         text: "#{name}: #{info[:metadata][:description]}",
@@ -270,8 +286,6 @@ class TieredDiscoveryService
       }
     end.compact
 
-    # Simple keyword matching as fallback (class tools don't have embeddings)
-    # In future, we could add embeddings to class tools too
     keywords = extract_keywords(@prompt)
     
     matched = tool_texts.select do |tool|
