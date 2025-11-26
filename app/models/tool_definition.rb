@@ -16,6 +16,7 @@ class ToolDefinition < ApplicationRecord
   scope :for_entity, ->(entity) { where(entity: entity).or(where(entity: nil)) }
   scope :created_by, ->(user) { where(created_by: user) }
   scope :editable_by, ->(user) { user.admin? ? all : where(created_by: user) }
+  scope :scout_accessible, -> { where(scout_accessible: true) }
 
   # Instance methods for ownership
   def editable_by?(user)

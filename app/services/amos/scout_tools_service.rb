@@ -160,7 +160,8 @@ module Amos
     
     def create_scout_service
       # Use the existing main_chat agent loadout from AgentLoadout model
-      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+      # Pass entity to load DB-driven tool configuration
+      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat', entity: @entity)
       
       # Create service with the loadout
       ScoutGenericToolsServiceV2.new(

@@ -570,7 +570,7 @@ class ToolRunner
 
       # Use V2 service with a session ID and main_chat loadout
       session_id = inputs[:session_id] || inputs["session_id"] || SecureRandom.uuid
-      main_chat_loadout = AgentLoadout.new(agent_role: "main_chat")
+      main_chat_loadout = AgentLoadout.new(agent_role: "main_chat", entity: entity_obj)
       service = ScoutGenericToolsServiceV2.new(user_obj, entity_obj, session_id, agent_loadout: main_chat_loadout)
 
       # Use the V2 executor
@@ -613,7 +613,7 @@ class ToolRunner
 
         # Create V2 service instance with main_chat loadout
         session_id = inputs[:session_id] || inputs["session_id"] || SecureRandom.uuid
-        main_chat_loadout = AgentLoadout.new(agent_role: "main_chat")
+        main_chat_loadout = AgentLoadout.new(agent_role: "main_chat", entity: entity)
         service = ScoutGenericToolsServiceV2.new(user, entity, session_id, agent_loadout: main_chat_loadout)
 
         # Call the V2 tool
@@ -679,7 +679,7 @@ class ToolRunner
 
         Rails.logger.info "ToolRunner: Creating V2 service with user #{user_obj.id} and entity #{entity_obj.id}"
         session_id = inputs[:session_id] || inputs["session_id"] || SecureRandom.uuid
-        main_chat_loadout = AgentLoadout.new(agent_role: "main_chat")
+        main_chat_loadout = AgentLoadout.new(agent_role: "main_chat", entity: entity_obj)
         service = ScoutGenericToolsServiceV2.new(user_obj, entity_obj, session_id, agent_loadout: main_chat_loadout)
         # Call the V2 tool
         result = service.execute_tool_by_name("analyze_landing_page_request", inputs)

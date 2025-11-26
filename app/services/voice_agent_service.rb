@@ -36,7 +36,7 @@ class VoiceAgentService
 
     # Process through Scout's generic tools service
     # Use faster/cheaper Haiku model for voice (ENV['BEDROCK_VOICE_MODEL'] or 'claude-3-haiku')
-    main_chat_loadout = AgentLoadout.new(agent_role: "main_chat")
+    main_chat_loadout = AgentLoadout.new(agent_role: "main_chat", entity: entity)
     scout_service = ScoutGenericToolsServiceV2.new(
       user,
       entity,
