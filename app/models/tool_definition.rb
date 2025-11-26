@@ -29,8 +29,15 @@ class ToolDefinition < ApplicationRecord
   end
 
   def execute(args, context = {})
-    unless security_rating == 'pass'
-       return { error: "Tool execution blocked. Security Rating: #{security_rating || 'pending'} (#{security_reason})", success: false }
+    # Only block tools that explicitly failed security check
+    # "review" and "pass" rated tools are allowed to execute
+    if security_rating == 'fail'
+       return { error: "Tool execution blocked due to security concerns: #{security_reason}", success: false }
+    end
+    
+    # Log a warning for "review" rated tools but allow execution
+    if security_rating == 'review'
+      Rails.logger.warn "⚠️ Executing tool '#{name}' with security_rating=review: #{security_reason}"
     end
 
     case execution_type
