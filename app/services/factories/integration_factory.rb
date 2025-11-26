@@ -89,7 +89,11 @@ module Factories
           integration = create_integration!(params)
           connection = create_connection!(integration, params)
           create_credential!(connection, params)
-          create_oauth_config!(integration, params) if params[:auth_type].to_s == 'oauth2'
+          
+          # Create OauthConfiguration for all integrations (needed for AuthConfigs)
+          # For OAuth2, this stores OAuth URLs; for others, it just holds AuthConfigs
+          create_oauth_config!(integration, params)
+          
           operations = create_operations!(integration, params[:operations])
 
           {
@@ -389,7 +393,7 @@ module Factories
     end
 
     def create_oauth_config!(integration, params)
-      OauthConfiguration.create!(
+      oauth_config = OauthConfiguration.create!(
         integration: integration,
         client_id: params[:client_id] || '',
         client_secret: params[:client_secret] || '',
@@ -402,6 +406,50 @@ module Factories
         status: :inactive,
         metadata: { pending_setup: true }
       )
+
+      # Create auth_configs for flexible auth patterns
+      create_auth_configs!(oauth_config, params)
+      
+      oauth_config
+    end
+
+    # Create AuthConfig records for flexible key-value auth patterns
+    # This allows any auth pattern: headers, query params, URL params
+    def create_auth_configs!(oauth_config, params)
+      auth_configs = params[:auth_configs] || []
+      
+      # If no explicit auth_configs, generate defaults based on auth_type
+      if auth_configs.empty?
+        auth_configs = default_auth_configs_for(params[:auth_type], params)
+      end
+
+      auth_configs.each_with_index do |config, idx|
+        config = config.with_indifferent_access
+        oauth_config.auth_configs.create!(
+          auth_key: config[:key] || config[:auth_key],
+          auth_value: config[:value] || config[:auth_value],
+          auth_placement: config[:placement] || config[:auth_placement] || 'header',
+          position: config[:position] || idx
+        )
+      end
+    end
+
+    # Generate default auth configs based on auth_type
+    def default_auth_configs_for(auth_type, params)
+      case auth_type.to_s
+      when 'api_key'
+        header_name = params[:auth_header_name] || 'X-API-Key'
+        [{ key: header_name, value: '{api_key}', placement: 'header' }]
+      when 'bearer_token'
+        [{ key: 'Authorization', value: 'Bearer {token}', placement: 'header' }]
+      when 'basic_auth'
+        # Basic auth is handled by IntegrationCredential#build_auth_header
+        []
+      when 'oauth2'
+        [{ key: 'Authorization', value: 'Bearer {access_token}', placement: 'header' }]
+      else
+        []
+      end
     end
 
     def create_operations!(integration, operations)
