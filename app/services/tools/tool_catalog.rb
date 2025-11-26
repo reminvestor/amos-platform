@@ -78,7 +78,8 @@ module Tools
     end
 
     # Get tools for Bedrock format
-    def get_bedrock_tools(allowlist: nil, agent_loadout: nil, enable_caching: false)
+    # Now supports tiered discovery for scaling to thousands of tools
+    def get_bedrock_tools(allowlist: nil, agent_loadout: nil, enable_caching: false, user: nil, entity: nil, prompt: nil)
       tools = []
 
       # Add canvas loading tool (always available)
@@ -120,29 +121,40 @@ module Tools
         end
       end
 
-      # Filter tools based on agent loadout or allowlist
-      tool_names = if agent_loadout&.tool_allowlist.present?
-        agent_loadout.tool_allowlist
-      elsif allowlist.present?
-        allowlist
+      # Use tiered discovery if prompt is provided (RAG-based tool selection)
+      if prompt.present? && user.present? && entity.present?
+        discovered_tools = get_tiered_tools(user: user, entity: entity, prompt: prompt, agent_loadout: agent_loadout)
+        tools += discovered_tools
+        Rails.logger.info "🔍 Tiered discovery: #{discovered_tools.length} tools discovered for prompt"
       else
-        @tools.keys
-      end
+        # Fall back to allowlist/loadout-based filtering
+        tool_names = if agent_loadout&.tool_allowlist.present?
+          agent_loadout.tool_allowlist
+        elsif allowlist.present?
+          allowlist
+        else
+          @tools.keys
+        end
 
-      # Convert to Bedrock format
-      tool_names.each do |tool_name|
-        next if tool_name == "*" # Skip wildcard
-        next if tool_name == "ask_user" # Already added
+        # Convert to Bedrock format
+        tool_names.each do |tool_name|
+          next if tool_name == "*" # Skip wildcard
+          next if tool_name == "ask_user" # Already added
+          next if tool_name == "load_canvas" # Already added
 
-        if tool_info = @tools[tool_name]
-          metadata = tool_info[:metadata]
-          tools << {
-            name: metadata[:name],
-            description: metadata[:description],
-            parameters: metadata[:input_schema] || metadata[:parameters]
-          }
+          if tool_info = @tools[tool_name]
+            metadata = tool_info[:metadata]
+            tools << {
+              name: metadata[:name],
+              description: metadata[:description],
+              parameters: metadata[:input_schema] || metadata[:parameters]
+            }
+          end
         end
       end
+
+      # Deduplicate by name
+      tools = tools.uniq { |t| t[:name] }
 
       # Add cache_control to the LAST tool (caches all tools + system prompt)
       if enable_caching && tools.any?
@@ -152,6 +164,27 @@ module Tools
 
       Rails.logger.info "🤖 Providing #{tools.length} tools to Bedrock (filtered from #{@tools.length} total)"
       tools
+    end
+
+    # Get tools using tiered discovery (RAG-based)
+    def get_tiered_tools(user:, entity:, prompt:, agent_loadout: nil)
+      discovery = TieredDiscoveryService.new(user: user, entity: entity, prompt: prompt)
+      discovered = discovery.discover_tools(include_core: true)
+
+      # If agent has a specific loadout, filter discovered tools
+      if agent_loadout&.tool_allowlist.present? && !agent_loadout.tool_allowlist.include?("*")
+        allowed = agent_loadout.tool_allowlist
+        discovered = discovered.select { |t| allowed.include?(t[:name]) }
+      end
+
+      # Convert to Bedrock format
+      discovered.map do |tool|
+        {
+          name: tool[:name],
+          description: tool[:description],
+          parameters: tool[:parameters]
+        }.compact
+      end
     end
 
     # Get tool instance
@@ -167,30 +200,77 @@ module Tools
       tool_info = @tools[name]
       return { success: false, error: "Unknown tool: #{name}" } unless tool_info
 
-      if tool_info[:type] == :definition
-        # Dynamic tool execution
-        definition = tool_info[:definition]
-        # Pass rich context to the dynamic tool
-        execution_context = context.merge({
+      start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      result = nil
+      success = false
+
+      begin
+        if tool_info[:type] == :definition
+          # Dynamic tool execution
+          definition = tool_info[:definition]
+          # Pass rich context to the dynamic tool
+          execution_context = context.merge({
+            user: user,
+            entity: entity,
+            progress_callback: progress_callback
+          })
+          result = definition.execute(args, execution_context)
+        else
+          # Class-based tool execution
+          tool = get_tool(name, user: user, entity: entity, context: context, progress_callback: progress_callback)
+          return { success: false, error: "Could not instantiate tool: #{name}" } unless tool
+          result = tool.execute(args)
+        end
+
+        success = result.is_a?(Hash) ? result[:success] != false : true
+        result
+      rescue => e
+        # Don't swallow execution suspension signals
+        if e.class.name.include?('ExecutionSuspended') || e.is_a?(Tools::AskUserTool::ExecutionSuspended)
+          raise e
+        end
+
+        Rails.logger.error "Tool execution failed (#{name}): #{e.message}"
+        result = { success: false, error: e.message, backtrace: e.backtrace.first(5) }
+        success = false
+        result
+      ensure
+        # Record usage metrics (async to avoid slowing down execution)
+        end_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        latency_ms = ((end_time - start_time) * 1000).round
+
+        record_tool_usage(
+          name: name,
           user: user,
           entity: entity,
-          progress_callback: progress_callback
-        })
-        definition.execute(args, execution_context)
-      else
-        # Class-based tool execution
-        tool = get_tool(name, user: user, entity: entity, context: context, progress_callback: progress_callback)
-        return { success: false, error: "Could not instantiate tool: #{name}" } unless tool
-        tool.execute(args)
+          tool_info: tool_info,
+          success: success,
+          latency_ms: latency_ms,
+          context: context
+        )
       end
-    rescue => e
-      # Don't swallow execution suspension signals
-      if e.class.name.include?('ExecutionSuspended') || e.is_a?(Tools::AskUserTool::ExecutionSuspended)
-        raise e
-      end
+    end
 
-      Rails.logger.error "Tool execution failed (#{name}): #{e.message}"
-      { success: false, error: e.message, backtrace: e.backtrace.first(5) }
+    def record_tool_usage(name:, user:, entity:, tool_info:, success:, latency_ms:, context:)
+      return unless defined?(ToolUsageMetric)
+
+      ToolUsageMetric.record(
+        tool_name: name,
+        user: user,
+        entity: entity,
+        tool_definition: tool_info[:type] == :definition ? tool_info[:definition] : nil,
+        tool_type: tool_info[:type].to_s,
+        success: success,
+        latency_ms: latency_ms,
+        context: context[:execution_context] || "unknown",
+        agent_slug: context[:agent_slug],
+        metadata: {
+          category: tool_info.dig(:metadata, :category)
+        }
+      )
+    rescue => e
+      # Don't let metrics recording break tool execution
+      Rails.logger.debug "Tool usage metric recording failed: #{e.message}"
     end
 
     # Check if a tool exists
