@@ -1,9 +1,25 @@
 namespace :embeddings do
-  desc "Update embeddings for all models (agents, tools, integrations)"
+  desc "Update embeddings for all models (agents, tools, integrations, class tools)"
   task update_all: :environment do
     puts "🔄 Updating embeddings for all models..."
+    
+    # Update database-backed models
     result = UpdateEmbeddingsJob.perform_now(model: "all")
-    puts "✅ Complete: #{result}"
+    puts "📊 Database models: #{result}"
+    
+    # Update class-based tools (cached)
+    puts "🔄 Updating class tool embeddings..."
+    ClassToolEmbeddingsService.instance.reload!
+    puts "✅ Class tools updated and cached"
+    
+    puts "✅ All embeddings complete!"
+  end
+
+  desc "Update embeddings for class-based tools only (cached)"
+  task update_class_tools: :environment do
+    puts "🔄 Updating class tool embeddings..."
+    ClassToolEmbeddingsService.instance.reload!
+    puts "✅ Class tools updated and cached"
   end
 
   desc "Update embeddings for agents only"
@@ -46,9 +62,10 @@ namespace :embeddings do
     puts "\n📊 Embedding Statistics\n"
     puts "=" * 50
 
+    # Database-backed models
     models = [
       { name: "AgentPlugin", class: AgentPlugin },
-      { name: "ToolDefinition", class: ToolDefinition },
+      { name: "ToolDefinition (Dynamic)", class: ToolDefinition },
       { name: "Integration", class: Integration }
     ]
 
@@ -67,6 +84,22 @@ namespace :embeddings do
       puts "  Total: #{total}"
       puts "  With embedding: #{with_embedding} (#{percentage}%)"
       puts "  Without embedding: #{without_embedding}"
+    end
+
+    # Class-based tools (cached)
+    puts "\nClass-Based Tools (Cached):"
+    begin
+      service = ClassToolEmbeddingsService.instance
+      embeddings = service.embeddings
+      total_class = embeddings.size
+      with_embedding_class = embeddings.count { |_, data| data[:embedding].present? }
+      percentage_class = total_class > 0 ? (with_embedding_class.to_f / total_class * 100).round(1) : 0
+      
+      puts "  Total: #{total_class}"
+      puts "  With embedding: #{with_embedding_class} (#{percentage_class}%)"
+      puts "  Without embedding: #{total_class - with_embedding_class}"
+    rescue => e
+      puts "  Error loading: #{e.message}"
     end
 
     puts "\n" + "=" * 50
