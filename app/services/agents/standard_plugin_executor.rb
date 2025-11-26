@@ -208,6 +208,9 @@ class Agents::StandardPluginExecutor
   end
 
   def execute_with_bedrock(prompt, context_data)
+    # Store prompt for tool discovery
+    @current_prompt = prompt
+    
     # Determine which model to use
     model_name = get_model_name
 
@@ -223,6 +226,7 @@ class Agents::StandardPluginExecutor
 
     # Get available tools for this agent
     # NOTE: 'ask_user' is added by get_available_tools if available
+    # This now includes RAG-discovered tools based on the prompt
     tools = get_available_tools
 
     # Build enhanced system prompt with configuration and capabilities
@@ -376,7 +380,9 @@ class Agents::StandardPluginExecutor
   end
 
   def discover_relevant_tools(exclude_names = [])
-    return [] unless @prompt.present?
+    return [] unless @current_prompt.present?
+    
+    Rails.logger.info "🔍 Starting tool discovery for prompt: #{@current_prompt.truncate(100)}"
     
     catalog = Tools::ToolCatalog.instance
     discovered = []
@@ -385,7 +391,7 @@ class Agents::StandardPluginExecutor
     if defined?(ToolDefinition) && ToolDefinition.table_exists?
       begin
         # Search for relevant custom tools
-        relevant_custom_tools = ToolDefinition.search_by_similarity(@prompt, limit: 5)
+        relevant_custom_tools = ToolDefinition.search_by_similarity(@current_prompt, limit: 5)
         
         relevant_custom_tools.each do |td|
           next if exclude_names.include?(td.name)
@@ -404,7 +410,7 @@ class Agents::StandardPluginExecutor
     
     # 2. Keyword-based discovery from system tools
     # Look for tools that match keywords in the task
-    task_keywords = extract_task_keywords(@prompt)
+    task_keywords = extract_task_keywords(@current_prompt)
     
     if task_keywords.any?
       catalog.all_tools.each do |name, info|
