@@ -235,9 +235,16 @@ class ScoutGenericToolsServiceV2
   private
 
   def get_filtered_tools(prompt: nil)
-    # Use tiered discovery if we have a prompt (RAG-based tool selection)
-    # This enables scaling to thousands of tools by only sending relevant ones
-    if prompt.present? && @user.present? && @entity.present?
+    # Check if tiered discovery is enabled for this entity's Scout configuration
+    # By default, Scout uses the static tool allowlist for faster responses
+    use_tiered_discovery = false
+    if @agent_loadout&.agent_role == "main_chat" && @entity.present?
+      scout_config = ScoutLoadoutConfiguration.find_by(entity: @entity)
+      use_tiered_discovery = scout_config&.use_tiered_discovery || false
+    end
+
+    # Only use tiered discovery if explicitly enabled in settings
+    if use_tiered_discovery && prompt.present? && @user.present? && @entity.present?
       tools = @tool_catalog.get_bedrock_tools(
         agent_loadout: @agent_loadout,
         enable_caching: true,
@@ -245,10 +252,11 @@ class ScoutGenericToolsServiceV2
         entity: @entity,
         prompt: prompt
       )
-      Rails.logger.info "🔍 Using tiered discovery for tool selection"
+      Rails.logger.info "🔍 Using tiered discovery for tool selection (enabled in Scout settings)"
     else
-      # Fallback to standard filtering
+      # Standard filtering - use the static tool allowlist from AgentLoadout
       tools = @tool_catalog.get_bedrock_tools(agent_loadout: @agent_loadout, enable_caching: true)
+      Rails.logger.info "⚡ Using static tool allowlist (tiered discovery disabled)"
     end
 
     # Exclude dynamic tools for the main Scout agent (main_chat)
