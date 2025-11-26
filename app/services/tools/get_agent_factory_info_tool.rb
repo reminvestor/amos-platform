@@ -75,21 +75,49 @@ module Tools
 
     def get_available_tools(category = nil)
       catalog = Tools::ToolCatalog.instance
+      
+      # Refresh to pick up any newly created ToolDefinitions
+      catalog.refresh_dynamic_tools!
+      
       tools = catalog.all_tools
 
       if category.present?
         tools = tools.select { |_, info| info[:metadata][:category] == category }
       end
 
-      tools.map do |name, info|
+      # Get tools from catalog
+      catalog_tools = tools.map do |name, info|
         {
           name: name,
           description: info[:metadata][:description],
           category: info[:metadata][:category],
           read_only: info[:read_only],
-          parameters: summarize_parameters(info[:metadata][:input_schema] || info[:metadata][:parameters])
+          parameters: summarize_parameters(info[:metadata][:input_schema] || info[:metadata][:parameters]),
+          source: info[:type] == :definition ? 'custom' : 'system'
         }
-      end.sort_by { |t| [t[:category] || 'zzz', t[:name]] }
+      end
+
+      # Also include any ToolDefinitions that might not be in catalog yet
+      # (in case refresh didn't work or there's a race condition)
+      if defined?(ToolDefinition) && ToolDefinition.table_exists?
+        custom_tools = ToolDefinition.all.map do |td|
+          next if catalog_tools.any? { |t| t[:name] == td.name }
+          
+          {
+            name: td.name,
+            description: td.description,
+            category: td.category || 'custom',
+            read_only: false,
+            parameters: summarize_parameters(td.parameters),
+            source: 'custom',
+            security_rating: td.security_rating
+          }
+        end.compact
+        
+        catalog_tools.concat(custom_tools)
+      end
+
+      catalog_tools.sort_by { |t| [t[:category] || 'zzz', t[:name]] }
     end
 
     def summarize_parameters(schema)
