@@ -1,6 +1,6 @@
 class SecurityCheckService
   def initialize
-    @bedrock_service = BedrockService.new(model: "claude-3-5-sonnet")
+    @bedrock_service = BedrockService.new
   end
 
   def evaluate_tool(tool_definition)
@@ -18,7 +18,7 @@ class SecurityCheckService
     response_content = @bedrock_service.send_message(
       nil, # No separate system prompt, included in prompt or handled by json_mode
       messages,
-      model: "claude-3-5-sonnet",
+      model: "claude-sonnet-4-5", # Use the correct model name
       temperature: 0.0, # Deterministic output
       json_mode: true
     )
