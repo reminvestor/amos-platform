@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_26_044238) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_26_063308) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1412,6 +1412,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_044238) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "is_enabled", default: true, null: false
+    t.vector "embedding", limit: 1536
+    t.index ["embedding"], name: "index_integration_operations_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["integration_id"], name: "index_integration_operations_on_integration_id"
     t.index ["is_enabled"], name: "index_integration_operations_on_is_enabled"
     t.index ["operation_id"], name: "index_integration_operations_on_operation_id"
@@ -1434,6 +1436,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_044238) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.vector "embedding", limit: 1536
+    t.index ["embedding"], name: "index_integrations_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["name"], name: "index_integrations_on_name", unique: true
     t.index ["slug"], name: "index_integrations_on_slug", unique: true
   end
@@ -2529,8 +2532,32 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_044238) do
     t.text "security_reason"
     t.bigint "entity_id"
     t.index ["created_by_id"], name: "index_tool_definitions_on_created_by_id"
+    t.index ["embedding"], name: "index_tool_definitions_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id"], name: "index_tool_definitions_on_entity_id"
     t.index ["name"], name: "index_tool_definitions_on_name", unique: true
+  end
+
+  create_table "tool_usage_metrics", force: :cascade do |t|
+    t.string "tool_name", null: false
+    t.bigint "user_id"
+    t.bigint "entity_id"
+    t.bigint "tool_definition_id"
+    t.string "tool_type"
+    t.boolean "success", default: true
+    t.integer "latency_ms"
+    t.jsonb "metadata", default: {}
+    t.string "context"
+    t.string "agent_slug"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_tool_usage_metrics_on_created_at"
+    t.index ["entity_id", "tool_name"], name: "index_tool_usage_metrics_on_entity_id_and_tool_name"
+    t.index ["entity_id"], name: "index_tool_usage_metrics_on_entity_id"
+    t.index ["tool_definition_id"], name: "index_tool_usage_metrics_on_tool_definition_id"
+    t.index ["tool_name", "success"], name: "index_tool_usage_metrics_on_tool_name_and_success"
+    t.index ["tool_name"], name: "index_tool_usage_metrics_on_tool_name"
+    t.index ["user_id", "tool_name"], name: "index_tool_usage_metrics_on_user_id_and_tool_name"
+    t.index ["user_id"], name: "index_tool_usage_metrics_on_user_id"
   end
 
   create_table "tts_usage_logs", force: :cascade do |t|
@@ -2951,6 +2978,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_044238) do
   add_foreign_key "tenant_quotas", "entities"
   add_foreign_key "tool_definitions", "entities"
   add_foreign_key "tool_definitions", "users", column: "created_by_id"
+  add_foreign_key "tool_usage_metrics", "entities"
+  add_foreign_key "tool_usage_metrics", "tool_definitions"
+  add_foreign_key "tool_usage_metrics", "users"
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"
   add_foreign_key "users", "entities"

@@ -48,9 +48,10 @@ class ScoutGenericToolsServiceV2
       Rails.logger.info "Sending #{conversation_messages.length} messages to #{@ai_provider_name}"
       progress_callback&.call("🤖 Processing request...")
 
-      # Get filtered tools based on agent loadout
-      tools = get_filtered_tools
-      Rails.logger.info "Using #{tools.length} tools (filtered by agent loadout)"
+      # Get filtered tools based on agent loadout with tiered discovery
+      # Pass the user message to enable RAG-based tool selection
+      tools = get_filtered_tools(prompt: user_message)
+      Rails.logger.info "Using #{tools.length} tools (filtered by agent loadout + tiered discovery)"
 
       # Stream the response
       accumulated_content = ""
@@ -233,9 +234,22 @@ class ScoutGenericToolsServiceV2
 
   private
 
-  def get_filtered_tools
-    # Get tools filtered by agent loadout with prompt caching enabled
-    tools = @tool_catalog.get_bedrock_tools(agent_loadout: @agent_loadout, enable_caching: true)
+  def get_filtered_tools(prompt: nil)
+    # Use tiered discovery if we have a prompt (RAG-based tool selection)
+    # This enables scaling to thousands of tools by only sending relevant ones
+    if prompt.present? && @user.present? && @entity.present?
+      tools = @tool_catalog.get_bedrock_tools(
+        agent_loadout: @agent_loadout,
+        enable_caching: true,
+        user: @user,
+        entity: @entity,
+        prompt: prompt
+      )
+      Rails.logger.info "🔍 Using tiered discovery for tool selection"
+    else
+      # Fallback to standard filtering
+      tools = @tool_catalog.get_bedrock_tools(agent_loadout: @agent_loadout, enable_caching: true)
+    end
 
     # Exclude dynamic tools for the main Scout agent (main_chat)
     # Scout uses only the trusted, class-based toolset
