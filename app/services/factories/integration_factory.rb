@@ -425,20 +425,28 @@ module Factories
         return nil
       end
 
+      # Schema columns for integration_operations:
+      # operation_id, name, description, http_method, path_template,
+      # request_schema (jsonb), response_schema (jsonb), pagination_strategy (integer enum),
+      # is_idempotent (boolean), requires_confirmation (boolean), max_limit (integer),
+      # documentation (text), examples (jsonb), version (string), deprecated_at (datetime),
+      # is_enabled (boolean, default: true)
       integration.integration_operations.create!(
         operation_id: operation_id,
         name: name.titleize,
         description: op[:description] || "#{name.titleize} operation",
         http_method: method,
         path_template: op[:path],
-        request_schema: op[:request_schema] || op[:parameters] || {},
+        request_schema: build_request_schema(op[:request_schema] || op[:parameters]),
         response_schema: op[:response_schema] || {},
-        pagination_strategy: op[:pagination_strategy] || 'no_pagination',
+        pagination_strategy: normalize_pagination_strategy(op[:pagination_strategy]),
         max_limit: op[:max_limit],
         is_idempotent: method == 'GET',
         requires_confirmation: %w[DELETE POST PUT PATCH].include?(method),
         documentation: op[:documentation],
-        examples: op[:examples]
+        examples: op[:examples],
+        version: op[:version],
+        is_enabled: true
       )
     end
 
@@ -556,6 +564,46 @@ module Factories
       when 'oauth2' then 'bearer'
       else 'header'
       end
+    end
+
+    def build_request_schema(schema_or_params)
+      return {} if schema_or_params.blank?
+      
+      # If it's already a proper JSON Schema, return it
+      if schema_or_params.is_a?(Hash) && schema_or_params['type'].present?
+        return schema_or_params.deep_stringify_keys
+      end
+
+      # Convert simple param hash to JSON Schema
+      if schema_or_params.is_a?(Hash)
+        {
+          'type' => 'object',
+          'properties' => schema_or_params.transform_values { |type|
+            { 'type' => normalize_json_schema_type(type) }
+          }.deep_stringify_keys
+        }
+      else
+        {}
+      end
+    end
+
+    def normalize_json_schema_type(type)
+      case type.to_s.downcase
+      when 'string', 'text' then 'string'
+      when 'integer', 'int', 'number' then 'integer'
+      when 'float', 'decimal' then 'number'
+      when 'boolean', 'bool' then 'boolean'
+      when 'array', 'list' then 'array'
+      when 'object', 'hash' then 'object'
+      else 'string'
+      end
+    end
+
+    def normalize_pagination_strategy(strategy)
+      return 'no_pagination' if strategy.blank?
+      
+      strategy_str = strategy.to_s.downcase
+      VALID_PAGINATION_STRATEGIES.include?(strategy_str) ? strategy_str : 'no_pagination'
     end
 
     def default_redirect_uri(integration)
