@@ -83,47 +83,27 @@ module AiAgents
     end
 
     def generate_embedding(text)
-      # Call OpenAI API to get embedding
-      require "net/http"
-      require "uri"
-      require "json"
-
-      Rails.logger.info("VECTOR_STORE: Calling OpenAI API for embedding generation")
-
-      uri = URI.parse("https://api.openai.com/v1/embeddings")
-      request = Net::HTTP::Post.new(uri)
-      request.content_type = "application/json"
-      request["Authorization"] = "Bearer #{ENV['OPENAI_API_KEY']}"
-
-      request.body = JSON.dump({
-        "model" => "text-embedding-3-small",
-        "input" => text
-      })
-
-      req_options = {
-        use_ssl: uri.scheme == "https"
-      }
+      # Use EmbeddingService which defaults to AWS Bedrock (Titan)
+      # This works via IAM roles and doesn't need internet access
+      Rails.logger.info("VECTOR_STORE: Generating embedding via EmbeddingService (Bedrock)")
 
       api_start_time = Time.current
-      response = Net::HTTP.start(uri.hostname, uri.port, req_options) do |http|
-        http.request(request)
-      end
+      embedding_service = EmbeddingService.new
+      embedding = embedding_service.generate(text)
       api_duration = Time.current - api_start_time
 
-      if response.code == "200"
-        result = JSON.parse(response.body)
-        embedding = result["data"][0]["embedding"]
-        Rails.logger.info("VECTOR_STORE: OpenAI API returned embedding in #{api_duration.round(2)}s (dimension: #{embedding.size})")
+      if embedding.present?
+        Rails.logger.info("VECTOR_STORE: Bedrock returned embedding in #{api_duration.round(2)}s (dimension: #{embedding.size})")
         embedding
       else
-        Rails.logger.error("VECTOR_STORE: Error getting embedding - HTTP #{response.code}: #{response.body}")
+        Rails.logger.error("VECTOR_STORE: EmbeddingService returned nil")
         Rails.logger.warn("VECTOR_STORE: Using random embedding as fallback")
-        # Return a random embedding as fallback
+        # Return a random embedding as fallback (1536 dimensions to match Titan v1)
         Array.new(1536) { rand }
       end
     rescue => e
-      Rails.logger.error("VECTOR_STORE: Error calling OpenAI API for embedding: #{e.message}")
-      Rails.logger.error(e.backtrace.join("\n"))
+      Rails.logger.error("VECTOR_STORE: Error generating embedding: #{e.message}")
+      Rails.logger.error(e.backtrace.first(5).join("\n"))
       Rails.logger.warn("VECTOR_STORE: Using random embedding as fallback")
       # Return a random embedding as fallback
       Array.new(1536) { rand }
