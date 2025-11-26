@@ -231,6 +231,12 @@ Rails.application.routes.draw do
     # Entity-level Agent & Tool Management
     resources :agent_plugins
     resources :tools
+    
+    # AI Settings (Scout configuration, Voice settings)
+    namespace :ai_settings do
+      resource :scout, only: [:show, :update], controller: 'scout'
+      resource :voice, only: [:show, :update], controller: 'voice'
+    end
 
   # Landing pages
   # Agent system routes

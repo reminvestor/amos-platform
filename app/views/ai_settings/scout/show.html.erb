@@ -1,0 +1,222 @@
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="admin-title mb-1">
+            <i data-lucide="bot" class="me-2" style="color: #A78BFA;"></i>
+            Scout Settings
+          </h1>
+          <p class="text-muted mb-0">Configure which tools Scout can use directly</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if flash[:notice] %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <i data-lucide="check-circle" class="me-2"></i>
+      <%= flash[:notice] %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  <% end %>
+
+  <% if flash[:alert] %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i data-lucide="alert-circle" class="me-2"></i>
+      <%= flash[:alert] %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  <% end %>
+
+  <%= form_with model: @configuration, url: ai_settings_scout_path, method: :patch, local: true, data: { controller: "scout-settings" } do |f| %>
+    <div class="row">
+      <%# Left Column - Tool Selection %>
+      <div class="col-lg-8">
+        <div class="admin-card mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 style="color: white; margin: 0;">
+              <i data-lucide="wrench" class="me-2" style="color: #A78BFA;"></i>
+              Tool Access
+            </h4>
+            <div class="btn-group btn-group-sm">
+              <button type="button" class="btn btn-outline-secondary" data-action="click->scout-settings#selectAll">
+                Select All
+              </button>
+              <button type="button" class="btn btn-outline-secondary" data-action="click->scout-settings#selectNone">
+                Select None
+              </button>
+              <button type="button" class="btn btn-outline-secondary" data-action="click->scout-settings#resetDefaults">
+                Reset Defaults
+              </button>
+            </div>
+          </div>
+          <p class="text-muted mb-4">Choose which tools Scout can use directly. Fewer tools = faster responses.</p>
+
+          <% @tool_categories.each do |category, tools| %>
+            <div class="tool-category mb-4">
+              <h5 style="color: #A78BFA; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">
+                <%= category %>
+                <span class="badge bg-secondary ms-2"><%= tools.count %></span>
+              </h5>
+              
+              <div class="row">
+                <% tools.each do |tool| %>
+                  <div class="col-md-6 mb-2">
+                    <div class="form-check tool-item" style="padding: 0.75rem; background: rgba(15, 23, 42, 0.5); border-radius: 0.5rem; border: 1px solid rgba(148, 163, 184, 0.1);">
+                      <%= check_box_tag "scout_loadout_configuration[tool_allowlist][]", 
+                          tool[:name], 
+                          tool[:enabled],
+                          id: "tool_#{tool[:name]}",
+                          class: "form-check-input",
+                          data: { scout_settings_target: "toolCheckbox", default: ScoutLoadoutConfiguration::DEFAULT_TOOL_ALLOWLIST.include?(tool[:name]).to_s } %>
+                      <label class="form-check-label ms-2" for="tool_<%= tool[:name] %>" style="cursor: pointer;">
+                        <strong style="color: white;"><%= tool[:name] %></strong>
+                        <% if tool[:type] == :dynamic %>
+                          <span class="badge bg-info ms-1" style="font-size: 0.65rem;">Custom</span>
+                        <% end %>
+                        <br>
+                        <small class="text-muted"><%= truncate(tool[:description], length: 80) %></small>
+                      </label>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Right Column - Settings %>
+      <div class="col-lg-4">
+        <div class="admin-card mb-4">
+          <h4 style="color: white; margin-bottom: 1.5rem;">
+            <i data-lucide="settings" class="me-2" style="color: #A78BFA;"></i>
+            Performance Settings
+          </h4>
+
+          <div class="mb-4">
+            <label class="admin-label">Max Tokens per Response</label>
+            <%= f.number_field :budgets, 
+                value: @configuration.effective_budgets[:max_tokens],
+                name: "scout_loadout_configuration[budgets][max_tokens]",
+                class: "admin-input",
+                min: 1000, max: 25000, step: 1000 %>
+            <small class="text-muted">Higher = longer responses, more cost</small>
+          </div>
+
+          <div class="mb-4">
+            <label class="admin-label">Max Tool Calls per Request</label>
+            <%= f.number_field :budgets,
+                value: @configuration.effective_budgets[:max_tool_calls],
+                name: "scout_loadout_configuration[budgets][max_tool_calls]",
+                class: "admin-input",
+                min: 1, max: 50 %>
+            <small class="text-muted">Limit how many tools Scout can use in one request</small>
+          </div>
+
+          <div class="mb-4">
+            <label class="admin-label">Timeout (seconds)</label>
+            <%= f.number_field :budgets,
+                value: @configuration.effective_budgets[:timeout_seconds],
+                name: "scout_loadout_configuration[budgets][timeout_seconds]",
+                class: "admin-input",
+                min: 30, max: 300 %>
+            <small class="text-muted">Max time before request times out</small>
+          </div>
+        </div>
+
+        <div class="admin-card mb-4">
+          <h4 style="color: white; margin-bottom: 1.5rem;">
+            <i data-lucide="sparkles" class="me-2" style="color: #A78BFA;"></i>
+            Advanced Options
+          </h4>
+
+          <div class="form-check mb-3" style="padding-left: 0;">
+            <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+              <%= f.check_box :use_tiered_discovery, 
+                  class: "form-check-input mt-1",
+                  id: "use_tiered_discovery",
+                  style: "width: 1.25rem; height: 1.25rem;" %>
+              <label class="form-check-label" for="use_tiered_discovery" style="color: white;">
+                <strong>Enable Dynamic Tool Discovery</strong>
+                <br>
+                <small class="text-muted">Let Scout discover additional tools based on your request (slower but more capable)</small>
+              </label>
+            </div>
+          </div>
+
+          <div class="mb-4" id="discovery_count_container" style="<%= @configuration.use_tiered_discovery ? '' : 'opacity: 0.5;' %>">
+            <label class="admin-label">Max Tools to Discover</label>
+            <%= f.number_field :max_discovered_tools, 
+                class: "admin-input",
+                min: 0, max: 20,
+                disabled: !@configuration.use_tiered_discovery %>
+            <small class="text-muted">How many additional tools to find via RAG search</small>
+          </div>
+        </div>
+
+        <div class="admin-card" style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1px solid rgba(124, 58, 237, 0.3);">
+          <h5 style="color: white; margin-bottom: 1rem;">
+            <i data-lucide="info" class="me-2" style="color: #A78BFA;"></i>
+            Tips
+          </h5>
+          <ul class="text-muted mb-0" style="padding-left: 1.25rem; font-size: 0.875rem;">
+            <li class="mb-2">Fewer tools = faster responses</li>
+            <li class="mb-2">Scout can delegate to agents for complex tasks</li>
+            <li class="mb-2">Custom tools must be marked as "Scout Accessible" to appear here</li>
+            <li>Dynamic discovery adds latency but enables more capabilities</li>
+          </ul>
+        </div>
+
+        <div class="mt-4">
+          <%= f.submit "Save Settings", class: "admin-btn admin-btn-primary w-100" %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Toggle discovery count field when checkbox changes
+    const discoveryCheckbox = document.getElementById('use_tiered_discovery');
+    const discoveryContainer = document.getElementById('discovery_count_container');
+    const discoveryInput = discoveryContainer?.querySelector('input');
+    
+    if (discoveryCheckbox && discoveryContainer) {
+      discoveryCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+          discoveryContainer.style.opacity = '1';
+          if (discoveryInput) discoveryInput.disabled = false;
+        } else {
+          discoveryContainer.style.opacity = '0.5';
+          if (discoveryInput) discoveryInput.disabled = true;
+        }
+      });
+    }
+  });
+</script>
+
+<style>
+  .tool-item:hover {
+    border-color: rgba(167, 139, 250, 0.3) !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+  }
+  
+  .form-check-input:checked {
+    background-color: #A78BFA;
+    border-color: #A78BFA;
+  }
+  
+  .form-check-input:focus {
+    border-color: #A78BFA;
+    box-shadow: 0 0 0 0.25rem rgba(167, 139, 250, 0.25);
+  }
+  
+  .tool-category:not(:last-child) {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    padding-bottom: 1.5rem;
+  }
+</style>
+
