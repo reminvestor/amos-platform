@@ -112,14 +112,22 @@ module Tools
         result = api_service.test_connection
 
         if result[:success]
+          # Update connection status to connected if test passes
+          connection.update!(status: :connected, last_health_check: Time.current)
+          Rails.logger.info "✅ Integration test passed for #{integration.name}, connection marked as connected"
+          
           success_response(
             integration: integration.name,
             status: "connected",
-            message: result[:message] || "Connection successful!",
+            message: result[:message] || "Connection successful! Integration is now ready to use.",
             status_code: result[:status_code],
-            response_preview: args["verbose"] ? result[:data]&.to_json&.truncate(500) : nil
+            response_preview: args["verbose"] ? result[:data]&.to_json&.truncate(500) : nil,
+            ready_to_use: true
           )
         else
+          # Update connection status to failing if test fails
+          connection.update!(status: :failing, last_health_check: Time.current) if connection.connected?
+          
           error_response(
             "Connection test failed for #{integration.name}: #{result[:error]}",
             status_code: result[:status_code],

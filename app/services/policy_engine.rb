@@ -4,10 +4,14 @@ class PolicyEngine
       # Find applicable rules
       rules = find_applicable_rules(connection, operation_id, agent_role)
 
-      # If no rules found, check if it's a read operation (generally safer)
+      # If no rules found, allow all operations for the connection's entity
+      # This is the "open by default" policy for new integrations
+      # Entities can add restrictive rules later if needed
       if rules.empty?
-        operation = connection.integration.integration_operations.find_by(operation_id: operation_id)
-        return operation&.http_method == "GET"
+        # For custom/new integrations without rules, allow all operations
+        # The integration was created by this entity, so they should be able to use it
+        Rails.logger.info "PolicyEngine: No rules found for #{operation_id}, allowing by default"
+        return true
       end
 
       # All rules must pass

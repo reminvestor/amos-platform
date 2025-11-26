@@ -1,6 +1,6 @@
 class IntegrationLog < ApplicationRecord
   belongs_to :connection
-  belongs_to :user
+  belongs_to :user, optional: true  # User may be nil for system/background operations
   belongs_to :scout_message, optional: true
   belongs_to :integration_operation, optional: true
 

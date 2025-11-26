@@ -115,6 +115,331 @@ module Factories
       end
     end
 
+    # ============================================================
+    # STAGED CREATION METHODS
+    # These allow creating integrations in phases for better accuracy
+    # ============================================================
+
+    # STAGE 1: Create foundation (name, base_url, docs)
+    def create_foundation(name:, base_url:, documentation_url:, description: nil, category: nil, api_version: nil)
+      @errors = []
+      @warnings = []
+
+      # Validate required fields
+      validate_required!(:name, name, "Integration name")
+      validate_required!(:base_url, base_url, "API base URL")
+      validate_required!(:documentation_url, documentation_url, "Documentation URL")
+      
+      return failure_result if @errors.any?
+
+      # Validate fields
+      validate_name!(name)
+      validate_url!(:base_url, base_url)
+      validate_url!(:documentation_url, documentation_url)
+      validate_category!(category) if category.present?
+
+      return failure_result if @errors.any?
+
+      # Check user limits
+      unless @user.admin?
+        current_count = custom_integrations_count
+        limit = @user.integrations_limit || 5
+        
+        if current_count >= limit
+          @errors << "You have reached your limit of #{limit} custom integrations"
+          return failure_result
+        end
+      end
+
+      begin
+        ActiveRecord::Base.transaction do
+          slug = generate_slug(name)
+          
+          integration = Integration.create!(
+            name: name,
+            slug: slug,
+            description: description || "Integration with #{name}",
+            category: category || 'custom',
+            auth_type: :api_key, # Placeholder - will be set in Stage 2
+            api_base_url: normalize_url(base_url),
+            allowed_hosts: extract_hosts(base_url),
+            documentation_url: documentation_url,
+            is_active: false, # Not active until auth is configured
+            is_verified: false,
+            auth_config: {},
+            metadata: build_metadata({ name: name, api_version: api_version })
+          )
+
+          # Create connection in disconnected state
+          Connection.create!(
+            integration: integration,
+            entity: @entity,
+            name: "#{name} Connection",
+            status: :disconnected,
+            metadata: {
+              created_by: 'integration_factory',
+              stage: 'foundation',
+              setup_required: true
+            }
+          )
+
+          {
+            success: true,
+            integration: integration,
+            warnings: @warnings
+          }
+        end
+      rescue ActiveRecord::RecordInvalid => e
+        @errors << "Database validation failed: #{e.message}"
+        failure_result
+      rescue => e
+        Rails.logger.error "IntegrationFactory.create_foundation error: #{e.message}"
+        @errors << "Unexpected error: #{e.message}"
+        failure_result
+      end
+    end
+
+    # STAGE 2: Configure authentication
+    def configure_auth(integration_id:, auth_type:, auth_placement:, test_endpoint:, 
+                       auth_configs: nil, auth_header_name: nil, username_label: nil, 
+                       password_required: nil, authorize_url: nil, token_url: nil, 
+                       scopes: nil, callback_params: nil)
+      @errors = []
+      @warnings = []
+
+      integration = Integration.find_by(id: integration_id)
+      unless integration
+        @errors << "Integration not found: #{integration_id}"
+        return failure_result
+      end
+
+      unless can_edit?(integration)
+        @errors << "You don't have permission to edit this integration"
+        return failure_result
+      end
+
+      # Validate auth type
+      validate_auth_type!(auth_type)
+      return failure_result if @errors.any?
+
+      # Validate OAuth2 requirements
+      if auth_type == 'oauth2'
+        validate_required!(:authorize_url, authorize_url, "OAuth authorize URL")
+        validate_required!(:token_url, token_url, "OAuth token URL")
+        validate_url!(:authorize_url, authorize_url) if authorize_url.present?
+        validate_url!(:token_url, token_url) if token_url.present?
+        return failure_result if @errors.any?
+      end
+
+      begin
+        ActiveRecord::Base.transaction do
+          # Update integration auth type
+          integration.update!(
+            auth_type: auth_type,
+            is_active: true,
+            auth_config: build_auth_config({
+              auth_type: auth_type,
+              auth_header_name: auth_header_name,
+              username_label: username_label,
+              password_required: password_required,
+              test_endpoint: test_endpoint
+            })
+          )
+
+          # Create or update OauthConfiguration
+          oauth_config = OauthConfiguration.find_or_initialize_by(integration: integration)
+          oauth_config.update!(
+            client_id: '',
+            client_secret: '',
+            redirect_uri: default_redirect_uri(integration),
+            authorize_url: authorize_url,
+            token_url: token_url,
+            scopes: Array(scopes).join(','),
+            callback_params: Array(callback_params),
+            test_endpoint: test_endpoint,
+            status: :inactive,
+            metadata: { pending_setup: true, auth_placement: auth_placement }
+          )
+
+          # Delete existing auth configs and create new ones
+          oauth_config.auth_configs.destroy_all
+          
+          auth_configs_created = []
+          
+          if auth_configs.present?
+            # Use provided auth_configs
+            auth_configs.each_with_index do |config, idx|
+              config = config.with_indifferent_access
+              ac = oauth_config.auth_configs.create!(
+                auth_key: config[:key],
+                auth_value: config[:value],
+                auth_placement: config[:placement] || auth_placement,
+                position: idx
+              )
+              auth_configs_created << { key: ac.auth_key, placement: ac.auth_placement }
+            end
+          else
+            # Generate default auth configs based on auth_type and placement
+            default_configs = generate_default_auth_configs(auth_type, auth_placement, auth_header_name)
+            default_configs.each_with_index do |config, idx|
+              ac = oauth_config.auth_configs.create!(
+                auth_key: config[:key],
+                auth_value: config[:value],
+                auth_placement: config[:placement],
+                position: idx
+              )
+              auth_configs_created << { key: ac.auth_key, placement: ac.auth_placement }
+            end
+          end
+
+          # Update connection metadata
+          connection = integration.connections.find_by(entity: @entity)
+          connection&.update!(
+            metadata: connection.metadata.merge('stage' => 'auth_configured')
+          )
+
+          {
+            success: true,
+            integration: integration,
+            auth_configs_created: auth_configs_created,
+            warnings: @warnings
+          }
+        end
+      rescue ActiveRecord::RecordInvalid => e
+        @errors << "Database validation failed: #{e.message}"
+        failure_result
+      rescue => e
+        Rails.logger.error "IntegrationFactory.configure_auth error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+        @errors << "Unexpected error: #{e.message}"
+        failure_result
+      end
+    end
+
+    # STAGE 3: Test authentication with credentials
+    def test_auth(integration_id:, credentials:)
+      @errors = []
+      @warnings = []
+
+      integration = Integration.find_by(id: integration_id)
+      unless integration
+        @errors << "Integration not found: #{integration_id}"
+        return failure_result
+      end
+
+      connection = integration.connections.find_by(entity: @entity)
+      unless connection
+        @errors << "No connection found for this integration"
+        return failure_result
+      end
+
+      oauth_config = integration.oauth_configurations.first
+      unless oauth_config&.test_endpoint.present?
+        @errors << "No test endpoint configured. Call configure_integration_auth first."
+        return failure_result
+      end
+
+      begin
+        # Create or update credential
+        credential = connection.integration_credentials.first_or_initialize(
+          name: "API Credentials"
+        )
+        
+        credential.update!(
+          credentials: credentials.to_json,
+          auth_method: auth_method_for(integration.auth_type),
+          status: :active
+        )
+
+        # Test the connection
+        api_service = IntegrationApiService.new(connection)
+        result = api_service.test_connection
+
+        if result[:success]
+          # Mark connection as connected
+          connection.update!(status: :connected, last_health_check: Time.current)
+          connection.update!(metadata: connection.metadata.merge('stage' => 'authenticated'))
+          
+          Rails.logger.info "✅ Integration #{integration.name} auth test passed"
+
+          {
+            success: true,
+            integration: integration,
+            test_response: result[:data],
+            warnings: @warnings
+          }
+        else
+          # Mark connection as failing
+          connection.update!(status: :failing)
+          credential.update!(status: :expired)
+          
+          {
+            success: false,
+            errors: ["Authentication test failed: #{result[:error]}"],
+            status_code: result[:status_code],
+            suggestion: suggest_auth_fix(integration.auth_type, result[:status_code], result[:error]),
+            debug_info: {
+              test_endpoint: oauth_config.test_endpoint,
+              auth_type: integration.auth_type,
+              auth_placement: oauth_config.metadata&.dig('auth_placement')
+            }
+          }
+        end
+      rescue => e
+        Rails.logger.error "IntegrationFactory.test_auth error: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
+        @errors << "Test failed: #{e.message}"
+        failure_result
+      end
+    end
+
+    # STAGE 4: Add operations
+    def add_operations(integration_id:, operations:)
+      @errors = []
+      @warnings = []
+
+      integration = Integration.find_by(id: integration_id)
+      unless integration
+        @errors << "Integration not found: #{integration_id}"
+        return failure_result
+      end
+
+      unless can_edit?(integration)
+        @errors << "You don't have permission to edit this integration"
+        return failure_result
+      end
+
+      connection = integration.connections.find_by(entity: @entity)
+      unless connection&.connected?
+        @warnings << "Integration is not connected. Operations will be created but may not work until auth is configured."
+      end
+
+      validate_operations!(operations)
+      return failure_result if @errors.any?
+
+      begin
+        created_operations = create_operations!(integration, operations)
+        
+        # Update connection metadata
+        connection&.update!(
+          metadata: connection.metadata.merge('stage' => 'complete')
+        )
+
+        {
+          success: true,
+          integration: integration,
+          operations_created: created_operations,
+          warnings: @warnings
+        }
+      rescue => e
+        Rails.logger.error "IntegrationFactory.add_operations error: #{e.message}"
+        @errors << "Failed to add operations: #{e.message}"
+        failure_result
+      end
+    end
+
+    # ============================================================
+    # END STAGED CREATION METHODS
+    # ============================================================
+
     # Update existing integration
     def update(identifier, params)
       @errors = []
@@ -367,14 +692,18 @@ module Factories
     end
 
     def create_connection!(integration, params)
+      # If credentials are provided and validated, mark as connected
+      # Otherwise, mark as disconnected (pending setup)
+      initial_status = params[:credentials_validated] ? :connected : :disconnected
+      
       Connection.create!(
         integration: integration,
         entity: @entity,
         name: "#{params[:name]} Connection",
-        status: :disconnected,
+        status: initial_status,
         metadata: {
           created_by: 'integration_factory',
-          setup_required: true
+          setup_required: !params[:credentials_validated]
         }
       )
     end
@@ -578,6 +907,66 @@ module Factories
       
       steps << "Once connected, use execute_integration to call API operations"
       steps
+    end
+
+    # Generate default auth configs based on auth type and placement
+    def generate_default_auth_configs(auth_type, auth_placement, auth_header_name = nil)
+      configs = []
+      
+      case auth_type.to_s
+      when 'api_key'
+        if auth_placement == 'query'
+          # Query param auth (like Trello)
+          configs << { key: 'key', value: '{api_key}', placement: 'query' }
+        else
+          # Header auth (most common)
+          header_name = auth_header_name || 'X-API-Key'
+          configs << { key: header_name, value: '{api_key}', placement: 'header' }
+        end
+      when 'bearer_token'
+        configs << { key: 'Authorization', value: 'Bearer {token}', placement: 'header' }
+      when 'basic_auth'
+        # Basic auth uses API key as username (like Stripe)
+        # We still need an AuthConfig so the UI knows to show an input field
+        configs << { key: 'api_key', value: '{api_key}', placement: 'header' }
+      when 'oauth2'
+        configs << { key: 'Authorization', value: 'Bearer {access_token}', placement: 'header' }
+      end
+      
+      configs
+    end
+
+    # Suggest fixes for auth failures
+    def suggest_auth_fix(auth_type, status_code, error_message)
+      case status_code
+      when 401, 403
+        case auth_type.to_s
+        when 'api_key'
+          "Authentication failed. Check:\n" \
+          "1. Is the API key correct?\n" \
+          "2. Is auth_placement correct? (header vs query)\n" \
+          "3. Are the parameter names correct? (e.g., 'key' vs 'api_key')\n" \
+          "4. Does the API require multiple auth params? (e.g., Trello needs 'key' AND 'token')"
+        when 'bearer_token'
+          "Authentication failed. Check:\n" \
+          "1. Is the token correct and not expired?\n" \
+          "2. Does the token have required scopes?"
+        when 'basic_auth'
+          "Authentication failed. Check:\n" \
+          "1. Is the username/API key correct?\n" \
+          "2. Is the password correct (or empty if using API key as username)?"
+        else
+          "Authentication failed. Verify your credentials."
+        end
+      when 404
+        "Endpoint not found. Check:\n" \
+        "1. Is the test_endpoint path correct?\n" \
+        "2. Does the path need a version prefix (e.g., /v1/, /1/)?"
+      when 429
+        "Rate limited. Wait and try again."
+      else
+        "Request failed with status #{status_code}. Check the API documentation."
+      end
     end
 
     def generate_slug(name)

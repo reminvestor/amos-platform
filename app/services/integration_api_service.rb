@@ -72,9 +72,9 @@ class IntegrationApiService
     url = build_url(operation, params)
     headers = build_headers
 
-    # Apply query parameters
+    # Apply query parameters (user params + auth params)
     query_params = params.except(*extract_path_params(operation.path_template))
-    query_params.merge!(@credential.build_auth_params) if @credential.auth_method == "query"
+    query_params.merge!(build_auth_query_params) # Add auth query params from AuthConfig
 
     # Log the request
     correlation_id = SecureRandom.uuid
@@ -178,11 +178,13 @@ class IntegrationApiService
     
     url = URI.join(base_url, path).to_s
     headers = build_headers
+    query_params = build_auth_query_params
     
     Rails.logger.info "Testing connection with endpoint: #{url}"
+    Rails.logger.info "Auth query params: #{query_params.keys}" if query_params.any?
     
     begin
-      response = self.class.get(url, headers: headers)
+      response = self.class.get(url, headers: headers, query: query_params)
       
       if response.success?
         {
@@ -208,6 +210,34 @@ class IntegrationApiService
         status_code: status_code
       }
     end
+  end
+  
+  # Build auth query params from AuthConfig records with placement='query'
+  def build_auth_query_params
+    query_params = {}
+    
+    oauth_config = @integration.oauth_configurations.first
+    return query_params unless oauth_config
+    
+    oauth_config.auth_configs.where(auth_placement: 'query').each do |auth_config|
+      value = auth_config.auth_value
+      
+      # Replace placeholders with actual credential values
+      placeholders = value.scan(/\{(\w+)\}/).flatten
+      placeholders.each do |placeholder|
+        credential_value = @credential.credentials[placeholder] || @credential.credentials[placeholder.to_sym] || ''
+        value = value.gsub("{#{placeholder}}", credential_value)
+      end
+      
+      query_params[auth_config.auth_key] = value
+    end
+    
+    # Also include legacy query auth if configured
+    if @credential.auth_method == "query"
+      query_params.merge!(@credential.build_auth_params)
+    end
+    
+    query_params
   end
   
   # Universal path parameter substitution with smart matching
