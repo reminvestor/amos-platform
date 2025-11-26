@@ -43,7 +43,7 @@ class SecurityCheckService
                    end
 
     <<~PROMPT
-      You are a Senior Security Engineer. Your job is to audit code for security vulnerabilities in a Ruby on Rails environment.
+      You are a Security Engineer reviewing tools for a multi-tenant SaaS platform.
       
       Review the following tool definition:
       
@@ -56,24 +56,40 @@ class SecurityCheckService
       #{code_content}
       ```
       
-      Assess the security risk. Look for:
-      - Infinite loops or resource exhaustion
-      - Unauthorized file system access (reading/writing sensitive files)
-      - Network access to internal services (SSRF)
-      - Command injection (e.g., system(), exec(), `backticks`)
-      - Sensitive data exposure (logging secrets, returning full DB records)
-      - Malicious intent
+      ## What We Care About (REAL THREATS)
       
-      Respond with a SINGLE JSON object in the following format:
+      FAIL immediately for:
+      - **Command injection:** system(), exec(), backticks, Open3, IO.popen
+      - **Code injection:** eval(), instance_eval, class_eval, send with user input
+      - **File system attacks:** Writing/deleting files, accessing /etc/passwd, ../ traversal
+      - **SSRF to internal services:** Requests to localhost, 127.0.0.1, 10.x.x.x, 192.168.x.x, 172.16-31.x.x
+      - **Credential theft:** Accessing ENV vars for secrets, Rails.application.credentials
+      - **Database attacks:** Raw SQL, dropping tables, accessing other tenants' data
+      - **Infinite loops:** while true, loop without break conditions
+      
+      ## What Is NORMAL and SAFE
+      
+      PASS for these common patterns:
+      - **URL parameter interpolation:** `{{location}}` in URLs is EXPECTED and SAFE - we URL-encode these
+      - **Calling external public APIs:** Weather APIs, search APIs, public data sources are fine
+      - **Math calculations:** Loan calculators, ROI calculations, etc.
+      - **Data transformation:** Parsing, formatting, converting data types
+      - **String manipulation:** Building URLs, formatting output
+      
+      ## Rating Guidelines
+      
+      - "pass": Tool is safe. Normal API calls, calculations, data transforms.
+      - "review": Unusual patterns that MIGHT be risky but aren't clearly malicious.
+      - "fail": Definitely dangerous - command injection, file access, internal network access.
+      
+      Be PRACTICAL. Most tools calling external APIs with user parameters are FINE.
+      Only flag things that could actually compromise our system or other users' data.
+      
+      Respond with a SINGLE JSON object:
       {
         "rating": "pass" | "review" | "fail",
-        "reason": "A brief explanation of the rating."
+        "reason": "Brief explanation"
       }
-      
-      Definitions:
-      - "pass": Code is safe to run.
-      - "review": Code has potential risks (e.g., extensive network calls, complex logic) and should be manually reviewed.
-      - "fail": Code is definitely unsafe, malicious, or contains syntax errors that prevent safety analysis.
     PROMPT
   end
 
