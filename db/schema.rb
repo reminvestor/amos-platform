@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_25_215541) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_26_044238) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1361,7 +1361,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_25_215541) do
 
   create_table "integration_logs", force: :cascade do |t|
     t.bigint "connection_id", null: false
-    t.bigint "user_id", null: false
+    t.bigint "user_id"
     t.bigint "scout_message_id"
     t.bigint "integration_operation_id", null: false
     t.string "correlation_id"
