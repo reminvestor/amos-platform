@@ -126,7 +126,7 @@ class InteractiveTaskService
       })
       
       # Delegate back to AI to handle the modification
-      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat', entity: @entity)
       generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout, model: @model)
       
       modification_context = "User provided feedback on the workflow plan: #{message}\n\nOriginal request: #{@task_session.metadata['request_text']}\n\nPlease create a revised plan incorporating their feedback."
@@ -640,7 +640,7 @@ class InteractiveTaskService
     end
     
     # Let the AI decide if it needs planning - no more keyword checking
-    main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+    main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat', entity: @entity)
     generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout, model: @model)
     
     # Pass task session context and any additional context (like files) so AI can delegate if needed
@@ -1490,7 +1490,7 @@ class InteractiveTaskService
       Rails.logger.error "Planning failed: #{plan_result[:error]}"
       
       # Delegate to autonomous system with main_chat loadout
-      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat')
+      main_chat_loadout = AgentLoadout.new(agent_role: 'main_chat', entity: @entity)
       generic_tools_service = ScoutGenericToolsServiceV2.new(@user, @entity, @session_id, agent_loadout: main_chat_loadout, model: @model)
       
       if @progress_callback

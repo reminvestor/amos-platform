@@ -39,6 +39,9 @@ class Entity < ApplicationRecord
   has_many :email_sequences, dependent: :destroy
   has_many :sequence_enrollments, dependent: :destroy
 
+  # Scout configuration
+  has_one :scout_loadout_configuration, dependent: :destroy
+
   # Scout AI Associations
   has_many :scout_conversations, dependent: :destroy
   has_many :business_insights, dependent: :destroy

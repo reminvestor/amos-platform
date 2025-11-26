@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_26_063308) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_26_173545) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -2080,6 +2080,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_063308) do
     t.index ["user_id"], name: "index_scout_conversations_on_user_id"
   end
 
+  create_table "scout_loadout_configurations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.jsonb "tool_allowlist", default: []
+    t.jsonb "canvas_allowlist", default: ["*"]
+    t.jsonb "budgets", default: {}
+    t.boolean "use_tiered_discovery", default: false
+    t.integer "max_discovered_tools", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_scout_loadout_configurations_on_entity_id", unique: true
+  end
+
   create_table "scout_messages", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id"
@@ -2531,10 +2543,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_063308) do
     t.string "security_rating"
     t.text "security_reason"
     t.bigint "entity_id"
+    t.boolean "scout_accessible", default: false
     t.index ["created_by_id"], name: "index_tool_definitions_on_created_by_id"
     t.index ["embedding"], name: "index_tool_definitions_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id"], name: "index_tool_definitions_on_entity_id"
     t.index ["name"], name: "index_tool_definitions_on_name", unique: true
+    t.index ["scout_accessible"], name: "index_tool_definitions_on_scout_accessible"
   end
 
   create_table "tool_usage_metrics", force: :cascade do |t|
@@ -2943,6 +2957,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_063308) do
   add_foreign_key "saved_searches", "users"
   add_foreign_key "scout_conversations", "entities"
   add_foreign_key "scout_conversations", "users"
+  add_foreign_key "scout_loadout_configurations", "entities"
   add_foreign_key "scout_messages", "entities"
   add_foreign_key "scout_messages", "users"
   add_foreign_key "sequence_enrollments", "contacts"

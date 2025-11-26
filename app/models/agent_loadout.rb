@@ -3,45 +3,18 @@ class AgentLoadout
   include ActiveModel::Model
 
   attr_accessor :step_id, :agent_role, :tool_allowlist, :canvas_allowlist,
-                :data_scopes, :budgets, :confirmations, :prompts, :agent_plugin
+                :data_scopes, :budgets, :confirmations, :prompts, :agent_plugin, :entity
 
   AGENT_ROLES = %w[planner executor analyst verifier].freeze
 
   # Default loadouts by agent role
+  # NOTE: main_chat (Scout) defaults are now in ScoutLoadoutConfiguration
+  # and can be customized per entity in the database
   ROLE_DEFAULTS = {
-    # Main chat agent (AMOS/Scout) - Reduced tool set for better decision making
+    # Main chat agent (AMOS/Scout) - Fallback if no DB config exists
+    # The actual config comes from ScoutLoadoutConfiguration.for_entity(entity)
     "main_chat" => {
-      tool_allowlist: [
-       # 'delegate_to_planner',        # Complex multi-step tasks
-        'get_schema',                 # Check field structure before creating
-        'get_data',                   # Simple data queries
-        'create_object',              # Simple object creation
-        'update_object',              # Simple updates
-        'update_landing_page_content', # Update existing landing pages
-        'execute_integration',        # Simple integration calls
-        'list_operations',            # Discover integration capabilities
-        'list_connections',           # See available integrations
-        #'query_metric',               # Analytics queries
-        #'list_metrics',               # Discover metrics
-        'explain_query',              # Explain analytics queries
-        'read_document',              # Read uploaded PDFs/docs
-        'query_document_content',     # Search uploaded documents (session + RAG)
-        'query_rag_store',            # Query RAG knowledge base
-        'load_canvas',                # UI interactions
-        'create_dynamic_visualization', # Quick visualizations
-        'get_workflow_context',       # Access uploaded files
-      #  'get_my_ai_usage',           # Usage tracking
-        'retrieve_history',           # Retrieve older conversation messages
-        'get_message_count',          # Get total message count
-        'search_history',             # Search conversation history
-      #  'manage_pipeline',            # AI Development Pipeline management
-        'list_available_agents',      # Discover available specialized agents
-        'delegate_to_agent',          # Delegate tasks to specialized agents
-        'invoke_agent_plugin',        # Invoke custom agent plugins
-        'update_agent'                # Update/fix agents (Scout can modify agents users created)
-        # NOTE: Scout does NOT have create_agent, create_tool, update_tool
-        # Those are for specialized agents (Agent Architect, Tool Builder)
-      ],
+      tool_allowlist: ScoutLoadoutConfiguration::DEFAULT_TOOL_ALLOWLIST,
       canvas_allowlist: [ "*" ],
       data_scopes: { read: [ "*" ], write: [ "*" ] },
       budgets: { max_tokens: 8000, max_tool_calls: 15, timeout_seconds: 90 }
@@ -183,13 +156,28 @@ class AgentLoadout
   end
 
   def apply_role_defaults
-    defaults = ROLE_DEFAULTS[agent_role] || {}
+    # For Scout (main_chat), use DB-driven configuration if entity is available
+    if agent_role == "main_chat" && entity.present?
+      apply_scout_config_from_db
+    else
+      defaults = ROLE_DEFAULTS[agent_role] || {}
 
-    self.tool_allowlist ||= defaults[:tool_allowlist]
-    self.canvas_allowlist ||= defaults[:canvas_allowlist]
-    self.data_scopes ||= defaults[:data_scopes]
-    self.budgets ||= defaults[:budgets]
+      self.tool_allowlist ||= defaults[:tool_allowlist]
+      self.canvas_allowlist ||= defaults[:canvas_allowlist]
+      self.data_scopes ||= defaults[:data_scopes]
+      self.budgets ||= defaults[:budgets]
+    end
+    
     self.prompts ||= {}  # Initialize prompts to empty hash if not set
+  end
+
+  def apply_scout_config_from_db
+    config = ScoutLoadoutConfiguration.for_entity(entity)
+    
+    self.tool_allowlist ||= config.effective_tool_allowlist
+    self.canvas_allowlist ||= config.canvas_allowlist.presence || ["*"]
+    self.data_scopes ||= { read: ["*"], write: ["*"] }
+    self.budgets ||= config.effective_budgets
   end
 
   def default_prompt_for_role

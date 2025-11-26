@@ -59,7 +59,8 @@ class ScoutController < ApplicationController
       Rails.logger.info "Scout: Saved user message"
 
       # Use the new V2 tools service with main_chat agent loadout
-      main_chat_loadout = AgentLoadout.new(agent_role: "main_chat")
+      # Pass entity to load DB-driven tool configuration
+      main_chat_loadout = AgentLoadout.new(agent_role: "main_chat", entity: current_entity)
       generic_tools_service = ScoutGenericToolsServiceV2.new(
         current_user,
         current_entity,
