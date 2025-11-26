@@ -6,19 +6,16 @@ module Tools
         description: <<~DESC.strip,
           Helps structure API research before creating an integration.
           
-          This tool guides you through researching an API systematically:
-          1. Returns what information you need to find
-          2. Suggests search queries to run
-          3. Validates your findings before creation
+          **EFFICIENT WORKFLOW (3 calls max):**
+          1. `start` - Get what to research
+          2. Do web_search, then `bulk_record` - Save ALL findings at once
+          3. `generate` - Get create_integration params (auto-validates)
           
-          Use this BEFORE create_integration to ensure you have accurate information.
-          
-          **Workflow:**
-          1. Call research_api with action: "start" and the service name
-          2. Use web_search to find the information listed
-          3. Call research_api with action: "record" to save each finding
-          4. Call research_api with action: "validate" to check completeness
-          5. Call research_api with action: "generate" to get create_integration params
+          **Actions:**
+          - `start`: Begin research, get required fields list
+          - `bulk_record`: Save multiple findings in ONE call (preferred!)
+          - `record`: Save a single finding (use bulk_record instead)
+          - `generate`: Validate and output create_integration params
         DESC
         category: "integration",
         input_schema: {
@@ -26,28 +23,40 @@ module Tools
           properties: {
             action: {
               type: "string",
-              enum: %w[start record validate generate],
-              description: "Action: start (begin research), record (save a finding), validate (check completeness), generate (create params)"
+              enum: %w[start record bulk_record generate],
+              description: "Action: start, bulk_record (preferred), record, generate"
             },
             service_name: {
               type: "string",
-              description: "Name of the service/API to research (for 'start' action)"
+              description: "Name of the service/API (for 'start')"
             },
+            # For bulk_record - save everything at once
+            findings: {
+              type: "object",
+              description: "All findings to record at once (for 'bulk_record'). Keys: base_url, auth_type, documentation_url, test_endpoint, auth_details, operations, etc.",
+              additionalProperties: true
+            },
+            source_urls: {
+              type: "array",
+              items: { type: "string" },
+              description: "List of documentation URLs used (for 'bulk_record')"
+            },
+            # For single record (legacy)
             field: {
               type: "string",
-              description: "Field being recorded (for 'record' action): base_url, auth_type, auth_details, test_endpoint, operation, etc."
+              description: "Field being recorded (for 'record')"
             },
             value: {
-              type: ["string", "object"],
-              description: "Value found from research (for 'record' action)"
+              type: ["string", "object", "array"],
+              description: "Value found (for 'record')"
             },
             source_url: {
               type: "string",
-              description: "URL where this information was found (for 'record' action)"
+              description: "URL source (for 'record')"
             },
             research_id: {
               type: "string",
-              description: "Research session ID (returned from 'start', required for other actions)"
+              description: "Research session ID (from 'start')"
             }
           },
           required: ["action"]
@@ -61,6 +70,8 @@ module Tools
       case args["action"]
       when "start"
         start_research(args["service_name"])
+      when "bulk_record"
+        bulk_record_findings(args["research_id"], args["findings"], args["source_urls"])
       when "record"
         record_finding(args["research_id"], args["field"], args["value"], args["source_url"])
       when "validate"
@@ -196,6 +207,69 @@ module Tools
       )
     end
 
+    def bulk_record_findings(research_id, findings, source_urls)
+      return error_response("research_id is required") if research_id.blank?
+      return error_response("findings hash is required") if findings.blank?
+
+      research_data = Rails.cache.read("api_research:#{research_id}")
+      return error_response("Research session not found or expired") unless research_data
+
+      # Record all findings at once
+      findings.each do |field, value|
+        next if value.blank?
+        research_data[:findings][field.to_s] = {
+          value: value,
+          recorded_at: Time.current
+        }
+      end
+
+      # Track all sources
+      if source_urls.present?
+        research_data[:sources] += Array(source_urls)
+        research_data[:sources].uniq!
+      end
+
+      Rails.cache.write("api_research:#{research_id}", research_data, expires_in: 1.hour)
+
+      # Check completeness
+      required = %w[base_url auth_type documentation_url]
+      found = research_data[:findings].keys
+      missing = required - found
+
+      if missing.empty?
+        # Auto-validate and generate params
+        validation = validate_research_internal(research_data)
+        
+        if validation[:ready]
+          # Generate params directly
+          params = build_integration_params(research_data)
+          
+          success_response(
+            recorded_fields: findings.keys,
+            findings_count: research_data[:findings].size,
+            ready_to_create: true,
+            create_integration_params: params,
+            sources_used: research_data[:sources],
+            next_step: "All research complete! Call create_integration with the params above."
+          )
+        else
+          success_response(
+            recorded_fields: findings.keys,
+            findings_count: research_data[:findings].size,
+            issues: validation[:issues],
+            next_step: "Please address the issues, then call generate"
+          )
+        end
+      else
+        success_response(
+          recorded_fields: findings.keys,
+          findings_count: research_data[:findings].size,
+          missing_required: missing,
+          message: "Recorded #{findings.keys.size} fields. Still need: #{missing.join(', ')}"
+        )
+      end
+    end
+
     def record_finding(research_id, field, value, source_url)
       return error_response("research_id is required") if research_id.blank?
       return error_response("field is required") if field.blank?
@@ -309,6 +383,18 @@ module Tools
         return error_response("Research not complete: #{validation[:issues].join(', ')}")
       end
 
+      params = build_integration_params(research_data)
+
+      success_response(
+        message: "Research compiled into create_integration parameters",
+        service_name: research_data[:service_name],
+        sources_used: research_data[:sources],
+        create_integration_params: params,
+        next_step: "Call create_integration with the params above"
+      )
+    end
+
+    def build_integration_params(research_data)
       findings = research_data[:findings]
 
       # Build the params for create_integration
@@ -322,9 +408,8 @@ module Tools
       # Add auth details
       auth_details = findings.dig("auth_details", :value) || {}
       if auth_details.is_a?(Hash)
-        params.merge!(auth_details.symbolize_keys)
+        params.merge!(auth_details.transform_keys(&:to_sym))
       elsif auth_details.is_a?(String)
-        # Try to parse common patterns
         if auth_details.include?("header")
           params[:auth_header_name] = extract_header_name(auth_details)
         end
@@ -338,9 +423,16 @@ module Tools
       # Add test endpoint
       params[:test_endpoint] = findings.dig("test_endpoint", :value) if findings["test_endpoint"]
 
-      # Add operations
+      # Add operations - parse if it's a JSON string
       if findings["operations"].present?
         ops = findings.dig("operations", :value)
+        if ops.is_a?(String)
+          begin
+            ops = JSON.parse(ops)
+          rescue JSON::ParserError
+            # Keep as string if not valid JSON
+          end
+        end
         params[:operations] = ops.is_a?(Array) ? ops : [ops]
       end
 
@@ -350,13 +442,7 @@ module Tools
       params[:description] = findings.dig("description", :value) if findings["description"]
       params[:category] = findings.dig("category", :value) if findings["category"]
 
-      success_response(
-        message: "Research compiled into create_integration parameters",
-        service_name: research_data[:service_name],
-        sources_used: research_data[:sources],
-        create_integration_params: params.compact,
-        next_step: "Review the params above, then call create_integration with these values"
-      )
+      params.compact
     end
 
     def validate_research_internal(research_data)

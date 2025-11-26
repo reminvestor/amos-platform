@@ -709,7 +709,8 @@ class BedrockService
 
     begin
       # Tool use loop - continue conversation until we get final text response
-      max_turns = 10
+      # Default 10 turns, but complex agents may need more (passed via options)
+      max_turns = options[:max_tool_turns] || 15
       turn_count = 0
       conversation_messages = converse_messages.dup
 
