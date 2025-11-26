@@ -437,10 +437,8 @@ module Factories
         max_limit: op[:max_limit],
         is_idempotent: method == 'GET',
         requires_confirmation: %w[DELETE POST PUT PATCH].include?(method),
-        is_enabled: true,
         documentation: op[:documentation],
-        examples: op[:examples],
-        metadata: { created_by: 'integration_factory', created_at: Time.current }
+        examples: op[:examples]
       )
     end
 

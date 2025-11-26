@@ -77,13 +77,7 @@ module Tools
           request_schema: generate_request_schema(parameters),
           response_schema: response_format || {},
           is_idempotent: http_method.upcase == "GET",
-          requires_confirmation: [ "DELETE", "POST", "PUT", "PATCH" ].include?(http_method.upcase),
-          is_enabled: true,
-          metadata: {
-            generated_by: "ai_integration_builder",
-            created_at: Time.current,
-            parameters: parameters
-          }
+          requires_confirmation: [ "DELETE", "POST", "PUT", "PATCH" ].include?(http_method.upcase)
         )
 
         result = {
