@@ -911,10 +911,11 @@ When an agent's energy hits **zero**, they don't get deprecated immediately - th
 │  │     → Try different curriculum modules                          │    │
 │  │     → Max 3 retry attempts                                      │    │
 │  │                                                                  │    │
-│  │  ❌ EXPEL (student worse OR max retries exceeded)               │    │
-│  │     → Deprecate both versions                                   │    │
-│  │     → Create completely new agent for the role                  │    │
-│  │     → Learn from failure for future agents                      │    │
+│  │  🔻 PROBATION (student worse OR max retries exceeded)           │    │
+│  │     → Check if agent is IRREPLACEABLE (only one with capability)│    │
+│  │     → If irreplaceable: Keep active but with low priority       │    │
+│  │     → If replaceable: Deprecate and create new agent            │    │
+│  │     → Either way: Learn from failure for future agents          │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -1227,11 +1228,12 @@ class AgentSchool
       if enrollment.attempt_number < MAX_RETRY_ATTEMPTS
         retry_school(enrollment, comparison)
       else
-        expel(enrollment, comparison)
+        # Max retries exceeded - check if replaceable before expelling
+        handle_failed_graduation(enrollment, comparison)
       end
     else
-      # Variant is worse
-      expel(enrollment, comparison)
+      # Variant is worse - check if replaceable before expelling
+      handle_failed_graduation(enrollment, comparison)
     end
   end
   
@@ -1289,8 +1291,137 @@ class AgentSchool
     enroll(enrollment.agent_plugin)
   end
   
+  def handle_failed_graduation(enrollment, comparison)
+    original = enrollment.agent_plugin
+    student = enrollment.student_agent
+    
+    # Check if this agent is irreplaceable
+    irreplaceability = assess_irreplaceability(original)
+    
+    if irreplaceability[:is_irreplaceable]
+      # Can't expel - put on probation instead
+      probation(enrollment, comparison, irreplaceability)
+    else
+      # Safe to deprecate and replace
+      expel(enrollment, comparison)
+    end
+  end
+  
+  def assess_irreplaceability(agent)
+    # Check multiple factors that make an agent irreplaceable
+    
+    result = {
+      is_irreplaceable: false,
+      reasons: [],
+      replacement_difficulty: 0.0  # 0-1 scale
+    }
+    
+    # Factor 1: Only agent with certain capabilities
+    unique_capabilities = agent.capabilities.select do |cap|
+      other_agents = AgentPlugin.active
+        .where(entity: agent.entity)
+        .where.not(id: agent.id)
+      
+      other_agents.none? { |a| a.has_capability?(cap) }
+    end
+    
+    if unique_capabilities.any?
+      result[:reasons] << {
+        type: :unique_capabilities,
+        capabilities: unique_capabilities,
+        severity: :high
+      }
+      result[:replacement_difficulty] += 0.4
+    end
+    
+    # Factor 2: Only agent that can handle certain task types
+    exclusive_task_types = find_exclusive_task_types(agent)
+    
+    if exclusive_task_types.any?
+      result[:reasons] << {
+        type: :exclusive_task_coverage,
+        task_types: exclusive_task_types,
+        severity: :high
+      }
+      result[:replacement_difficulty] += 0.3
+    end
+    
+    # Factor 3: Has critical integrations/connections
+    critical_connections = agent.connections.where(is_critical: true)
+    
+    if critical_connections.any?
+      result[:reasons] << {
+        type: :critical_connections,
+        connections: critical_connections.pluck(:name),
+        severity: :medium
+      }
+      result[:replacement_difficulty] += 0.2
+    end
+    
+    # Factor 4: Historical knowledge that would be lost
+    if agent.total_tasks > 500 && agent.success_rate > 0.5
+      result[:reasons] << {
+        type: :institutional_knowledge,
+        tasks_completed: agent.total_tasks,
+        severity: :medium
+      }
+      result[:replacement_difficulty] += 0.1
+    end
+    
+    # Agent is irreplaceable if difficulty > 0.5 or has high-severity reason
+    result[:is_irreplaceable] = result[:replacement_difficulty] > 0.5 ||
+      result[:reasons].any? { |r| r[:severity] == :high }
+    
+    result
+  end
+  
+  def probation(enrollment, comparison, irreplaceability)
+    Rails.logger.info "[AgentSchool] ⚠️ Agent #{enrollment.agent_plugin.name} on PROBATION (irreplaceable)"
+    
+    original = enrollment.agent_plugin
+    student = enrollment.student_agent
+    
+    # Keep the better version active, but mark as probationary
+    better_agent = comparison[:variant_mean_quality] > comparison[:control_mean_quality] ? 
+                   student : original
+    worse_agent = better_agent == student ? original : student
+    
+    # Archive the worse one
+    worse_agent.update!(status: 'archived', archived_reason: 'probation_replacement')
+    
+    # Put better one on probation
+    better_agent.update!(
+      status: 'probation',
+      probation_started_at: Time.current,
+      probation_reasons: irreplaceability[:reasons],
+      priority_score: calculate_probation_priority(better_agent, irreplaceability)
+    )
+    
+    # Give minimal energy to continue operating
+    better_agent.energy_state.update!(current_energy: 20)
+    
+    enrollment.update!(
+      status: 'probation',
+      outcome: 'irreplaceable_failure',
+      comparison_results: comparison,
+      irreplaceability_assessment: irreplaceability,
+      completed_at: Time.current
+    )
+    
+    # Schedule periodic re-evaluation
+    schedule_probation_review(better_agent)
+    
+    # Record learnings
+    record_failed_improvement(enrollment)
+    
+    # Notify system to start training a replacement in background
+    if irreplaceability[:replacement_difficulty] < 0.8
+      schedule_replacement_training(better_agent, irreplaceability)
+    end
+  end
+  
   def expel(enrollment, comparison)
-    Rails.logger.info "[AgentSchool] ❌ Agent #{enrollment.agent_plugin.name} EXPELLED"
+    Rails.logger.info "[AgentSchool] ❌ Agent #{enrollment.agent_plugin.name} EXPELLED (replaceable)"
     
     original = enrollment.agent_plugin
     student = enrollment.student_agent
@@ -1306,14 +1437,151 @@ class AgentSchool
       completed_at: Time.current
     )
     
-    # Create replacement agent if role is needed
-    if role_still_needed?(original)
-      create_replacement_agent(original, enrollment)
-    end
+    # Create replacement agent
+    create_replacement_agent(original, enrollment)
     
     # Record learnings to avoid same mistakes
     record_failed_improvement(enrollment)
   end
+  
+  def calculate_probation_priority(agent, irreplaceability)
+    # Probationary agents get lower priority in task routing
+    # But still higher than nothing if they're the only option
+    
+    base_priority = 0.3  # Low but not zero
+    
+    # Boost if they have unique capabilities
+    if irreplaceability[:reasons].any? { |r| r[:type] == :unique_capabilities }
+      base_priority += 0.3
+    end
+    
+    # Boost based on historical success (they might just be in a slump)
+    if agent.lifetime_success_rate > 0.7
+      base_priority += 0.2
+    end
+    
+    base_priority.clamp(0.1, 0.8)  # Never fully trusted, never fully ignored
+  end
+  
+  def schedule_replacement_training(probation_agent, irreplaceability)
+    # Start training a replacement agent in the background
+    # The probation agent stays active until replacement is ready
+    
+    ReplacementTrainingJob.perform_later(
+      probation_agent_id: probation_agent.id,
+      target_capabilities: irreplaceability[:reasons]
+        .select { |r| r[:type] == :unique_capabilities }
+        .flat_map { |r| r[:capabilities] },
+      target_task_types: irreplaceability[:reasons]
+        .select { |r| r[:type] == :exclusive_task_coverage }
+        .flat_map { |r| r[:task_types] }
+    )
+  end
+end
+
+# Task routing must account for agent status and irreplaceability
+class IreplaceabilityAwareRouter
+  def route_task(task, entity)
+    # Get all agents that COULD handle this task
+    capable_agents = find_capable_agents(task, entity)
+    
+    if capable_agents.empty?
+      return { error: 'No capable agents available' }
+    end
+    
+    # Score each agent
+    scored_agents = capable_agents.map do |agent|
+      {
+        agent: agent,
+        base_score: calculate_base_score(agent, task),
+        status_modifier: status_score_modifier(agent),
+        irreplaceability_bonus: irreplaceability_bonus(agent, task, capable_agents),
+        final_score: 0.0
+      }
+    end
+    
+    # Calculate final scores
+    scored_agents.each do |sa|
+      sa[:final_score] = sa[:base_score] * sa[:status_modifier] + sa[:irreplaceability_bonus]
+    end
+    
+    # Sort by final score
+    scored_agents.sort_by! { |sa| -sa[:final_score] }
+    
+    # If the best agent is on probation but is the ONLY option, use them anyway
+    best = scored_agents.first
+    
+    if best[:agent].status == 'probation' && scored_agents.size == 1
+      Rails.logger.warn "[Router] Using probationary agent #{best[:agent].name} - only capable agent"
+      return { agent: best[:agent], reason: :only_capable_agent }
+    end
+    
+    # If best is on probation but others exist, prefer active agents
+    if best[:agent].status == 'probation'
+      active_alternative = scored_agents.find { |sa| sa[:agent].status == 'active' }
+      
+      if active_alternative && active_alternative[:final_score] > best[:final_score] * 0.7
+        # Active agent is close enough in score - prefer them
+        return { agent: active_alternative[:agent], reason: :prefer_active }
+      end
+    end
+    
+    { agent: best[:agent], reason: :best_score }
+  end
+  
+  private
+  
+  def status_score_modifier(agent)
+    case agent.status
+    when 'active'
+      1.0
+    when 'probation'
+      agent.priority_score || 0.5  # Use their probation priority
+    when 'in_school'
+      0.0  # Don't route to agents in school
+    else
+      0.0
+    end
+  end
+  
+  def irreplaceability_bonus(agent, task, all_capable)
+    # Bonus for being the only agent that can do this
+    
+    if all_capable.size == 1
+      # Only capable agent - significant bonus
+      return 0.5
+    end
+    
+    # Check if this agent has unique capabilities for this specific task
+    task_requirements = extract_task_requirements(task)
+    
+    unique_for_task = task_requirements.any? do |req|
+      other_capable = all_capable.reject { |a| a.id == agent.id }
+      other_capable.none? { |a| a.has_capability?(req) }
+    end
+    
+    unique_for_task ? 0.3 : 0.0
+  end
+  
+  def calculate_base_score(agent, task)
+    # Combine multiple factors
+    capability_match = agent.capability_match_score(task)
+    historical_success = agent.success_rate_for_task_type(task)
+    current_energy = agent.energy_state.current_energy / 100.0
+    availability = agent.current_load < 3 ? 1.0 : 0.5
+    
+    # Weighted combination
+    (capability_match * 0.4) +
+    (historical_success * 0.3) +
+    (current_energy * 0.2) +
+    (availability * 0.1)
+  end
+end
+```
+
+```ruby
+class AgentSchool
+  # ... (continued from above)
   
   def statistical_comparison(control_stats, variant_stats)
     results = {
