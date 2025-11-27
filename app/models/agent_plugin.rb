@@ -24,6 +24,8 @@ class AgentPlugin < ApplicationRecord
   # Associations
   belongs_to :entity, optional: true  # nil = system-wide agent
   belongs_to :user, optional: true    # nil = system agent, otherwise tracks creator
+  belongs_to :parent_agent, class_name: 'AgentPlugin', optional: true
+  belongs_to :school_enrollment, class_name: 'AgentSchoolEnrollment', optional: true
 
   has_many :agent_capabilities, dependent: :destroy
   has_many :agent_tools, dependent: :destroy
@@ -31,6 +33,17 @@ class AgentPlugin < ApplicationRecord
   has_many :workflow_templates, through: :agent_template_bindings
   has_many :agent_plugin_executions, dependent: :destroy
   has_many :agent_input_requests, through: :agent_plugin_executions
+
+  # Collaboration system associations
+  has_one :energy_state, class_name: 'AgentEnergyState', dependent: :destroy
+  has_one :decision_boundary, class_name: 'AgentDecisionBoundary', dependent: :destroy
+  has_many :capability_beliefs, class_name: 'AgentCapabilityBelief', dependent: :destroy
+  has_many :relationships_as_requester, class_name: 'AgentRelationship', foreign_key: :requester_id, dependent: :destroy
+  has_many :relationships_as_helper, class_name: 'AgentRelationship', foreign_key: :helper_id, dependent: :destroy
+  has_many :collaboration_requests_made, class_name: 'AgentCollaborationRequest', foreign_key: :requesting_agent_id
+  has_many :collaboration_requests_received, class_name: 'AgentCollaborationRequest', foreign_key: :helper_agent_id
+  has_many :school_enrollments, class_name: 'AgentSchoolEnrollment', dependent: :destroy
+  has_many :child_agents, class_name: 'AgentPlugin', foreign_key: :parent_agent_id
 
   # Nested attributes
   accepts_nested_attributes_for :agent_capabilities, allow_destroy: true, reject_if: :all_blank
@@ -40,13 +53,14 @@ class AgentPlugin < ApplicationRecord
   validates :name, presence: true, length: { minimum: 3, maximum: 100 }
   validates :slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }
   validates :role, inclusion: { in: %w[executor planner analyst verifier fixer architect engineer custom] }, allow_nil: true
-  validates :status, presence: true, inclusion: { in: %w[draft active deprecated] }
+  validates :status, presence: true, inclusion: { in: %w[draft active deprecated in_school probation archived sabbatical testing] }
   validates :priority, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 100 }
   validates :version, format: { with: /\A\d+\.\d+\.\d+\z/, message: "must be in format X.Y.Z" }, allow_blank: true
   validates :execution_strategy, inclusion: { in: %w[standard workflow remote_http], message: "%{value} is not a valid strategy" }
 
   # Scopes
   scope :active, -> { where(status: 'active') }
+  scope :available, -> { where(status: %w[active probation]) }  # Can receive tasks
   scope :for_entity, ->(entity) { where(entity: entity).or(where(entity: nil)) }
   scope :by_role, ->(role) { where(role: role) }
   scope :by_priority, -> { order(priority: :desc) }
@@ -54,6 +68,9 @@ class AgentPlugin < ApplicationRecord
   scope :entity_specific, -> { where.not(entity_id: nil) }
   scope :created_by, ->(user) { where(user: user) }
   scope :editable_by, ->(user) { user.admin? ? all : where(user: user) }
+  scope :in_school, -> { where(status: 'in_school') }
+  scope :on_probation, -> { where(status: 'probation') }
+  scope :protected, -> { where(protected_status: true) }
 
   # Callbacks
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
@@ -140,6 +157,125 @@ class AgentPlugin < ApplicationRecord
   def owned_by?(user)
     user_id == user.id
   end
+
+  # ============================================
+  # COLLABORATION SYSTEM
+  # ============================================
+
+  def ensure_energy_state!
+    energy_state || create_energy_state!(entity: entity || Entity.first)
+  end
+
+  def ensure_decision_boundary!
+    decision_boundary || create_decision_boundary!
+  end
+
+  def current_energy
+    energy_state&.current_energy || 50.0
+  end
+
+  def in_school?
+    status == 'in_school'
+  end
+
+  def on_probation?
+    status == 'probation'
+  end
+
+  def on_sabbatical?
+    status == 'sabbatical' && sabbatical_until.present? && sabbatical_until > Time.current
+  end
+
+  def available_for_tasks?
+    %w[active probation].include?(status) && !on_sabbatical?
+  end
+
+  def can_help_others?
+    available_for_tasks? && current_energy >= 30
+  end
+
+  def should_ask_for_help?(task_confidence)
+    ensure_decision_boundary!.should_ask_for_help?(task_confidence)
+  end
+
+  def estimate_confidence(task)
+    # Estimate confidence based on capability beliefs
+    task_type = classify_task_type(task)
+    belief = capability_beliefs.find_by(task_type: task_type)
+
+    if belief
+      belief.confidence_for_task
+    else
+      50.0  # Default confidence for unknown task types
+    end
+  end
+
+  def capability_for_task(task)
+    task_type = classify_task_type(task)
+    belief = capability_beliefs.find_by(task_type: task_type)
+    belief&.avg_quality || 0.5
+  end
+
+  def success_rate_for_task_type(task)
+    task_type = classify_task_type(task)
+    belief = capability_beliefs.find_by(task_type: task_type)
+    belief&.success_rate || 0.5
+  end
+
+  def update_capability_belief!(task_type:, success:, quality:)
+    belief = capability_beliefs.find_or_create_by!(task_type: task_type)
+    belief.update_from_outcome!(success: success, quality: quality)
+  end
+
+  def lifetime_success_rate
+    energy_state&.success_rate || 0.5
+  end
+
+  def total_tasks
+    (energy_state&.tasks_completed || 0) + (energy_state&.tasks_failed || 0)
+  end
+
+  def active_task_count
+    agent_plugin_executions.where(status: 'running').count
+  end
+
+  def availability_score
+    # 1.0 = fully available, 0.0 = overloaded
+    active = active_task_count
+    max_concurrent = 3
+
+    if active >= max_concurrent
+      0.0
+    else
+      1.0 - (active.to_f / max_concurrent)
+    end
+  end
+
+  private
+
+  def classify_task_type(task)
+    # Simple task type classification based on keywords
+    task_description = task.is_a?(String) ? task : task[:description] || task['description'] || ''
+    task_description = task_description.to_s.downcase
+
+    if task_description.include?('analyze') || task_description.include?('analysis')
+      'analysis'
+    elsif task_description.include?('create') || task_description.include?('generate')
+      'creation'
+    elsif task_description.include?('research') || task_description.include?('find')
+      'research'
+    elsif task_description.include?('integrate') || task_description.include?('api')
+      'integration'
+    elsif task_description.include?('email') || task_description.include?('message')
+      'communication'
+    elsif task_description.include?('report') || task_description.include?('visualiz')
+      'reporting'
+    else
+      'general'
+    end
+  end
+
+  public
 
   def has_capability?(capability_name)
     agent_capabilities.exists?(capability_name: capability_name)

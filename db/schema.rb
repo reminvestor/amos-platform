@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_26_173545) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_27_000010) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -172,6 +172,33 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_173545) do
     t.index ["user_id"], name: "index_affiliates_on_user_id"
   end
 
+  create_table "agent_ab_tests", force: :cascade do |t|
+    t.bigint "control_agent_id", null: false
+    t.bigint "variant_agent_id", null: false
+    t.bigint "enrollment_id"
+    t.bigint "entity_id", null: false
+    t.string "status", default: "pending", null: false
+    t.integer "target_tasks", default: 50, null: false
+    t.jsonb "metrics_to_compare", default: ["success_rate", "quality_score", "efficiency"]
+    t.integer "control_tasks_completed", default: 0
+    t.integer "variant_tasks_completed", default: 0
+    t.jsonb "control_results", default: {}
+    t.jsonb "variant_results", default: {}
+    t.jsonb "statistical_analysis", default: {}
+    t.string "winner"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["control_agent_id", "status"], name: "index_agent_ab_tests_on_control_agent_id_and_status"
+    t.index ["control_agent_id"], name: "index_agent_ab_tests_on_control_agent_id"
+    t.index ["enrollment_id"], name: "index_agent_ab_tests_on_enrollment_id"
+    t.index ["entity_id"], name: "index_agent_ab_tests_on_entity_id"
+    t.index ["status"], name: "index_agent_ab_tests_on_status"
+    t.index ["variant_agent_id", "status"], name: "index_agent_ab_tests_on_variant_agent_id_and_status"
+    t.index ["variant_agent_id"], name: "index_agent_ab_tests_on_variant_agent_id"
+  end
+
   create_table "agent_activities", force: :cascade do |t|
     t.bigint "conversation_id", null: false
     t.string "agent_name"
@@ -194,6 +221,128 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_173545) do
     t.index ["agent_plugin_id", "capability_name"], name: "index_agent_capabilities_on_plugin_and_name", unique: true
     t.index ["agent_plugin_id"], name: "index_agent_capabilities_on_agent_plugin_id"
     t.index ["capability_name"], name: "index_agent_capabilities_on_capability_name"
+  end
+
+  create_table "agent_capability_beliefs", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.string "task_type", null: false
+    t.integer "attempts", default: 0, null: false
+    t.integer "successes", default: 0, null: false
+    t.float "total_quality", default: 0.0
+    t.float "avg_quality", default: 0.5
+    t.jsonb "confidence_interval", default: [0.0, 1.0]
+    t.boolean "is_specialty", default: false
+    t.boolean "is_weakness", default: false
+    t.float "z_score"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id", "task_type"], name: "idx_on_agent_plugin_id_task_type_3d9550fc88", unique: true
+    t.index ["agent_plugin_id"], name: "index_agent_capability_beliefs_on_agent_plugin_id"
+    t.index ["is_specialty"], name: "index_agent_capability_beliefs_on_is_specialty"
+    t.index ["is_weakness"], name: "index_agent_capability_beliefs_on_is_weakness"
+  end
+
+  create_table "agent_collaboration_requests", force: :cascade do |t|
+    t.bigint "requesting_agent_id", null: false
+    t.bigint "helper_agent_id"
+    t.bigint "entity_id", null: false
+    t.bigint "agent_plugin_execution_id"
+    t.bigint "parent_request_id"
+    t.string "request_type", null: false
+    t.text "description"
+    t.jsonb "context", default: {}
+    t.string "urgency", default: "medium"
+    t.jsonb "required_capabilities", default: []
+    t.string "status", default: "pending"
+    t.datetime "accepted_at"
+    t.datetime "completed_at"
+    t.datetime "timeout_at"
+    t.jsonb "response"
+    t.float "quality_rating"
+    t.boolean "was_helpful"
+    t.text "feedback"
+    t.float "energy_cost"
+    t.float "energy_reward"
+    t.integer "depth", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "idx_on_agent_plugin_execution_id_5a699e4a66"
+    t.index ["depth"], name: "index_agent_collaboration_requests_on_depth"
+    t.index ["entity_id"], name: "index_agent_collaboration_requests_on_entity_id"
+    t.index ["helper_agent_id", "status"], name: "idx_on_helper_agent_id_status_a0fdb53589"
+    t.index ["helper_agent_id"], name: "index_agent_collaboration_requests_on_helper_agent_id"
+    t.index ["parent_request_id"], name: "index_agent_collaboration_requests_on_parent_request_id"
+    t.index ["request_type"], name: "index_agent_collaboration_requests_on_request_type"
+    t.index ["requesting_agent_id", "status"], name: "idx_on_requesting_agent_id_status_caa967ce5e"
+    t.index ["requesting_agent_id"], name: "index_agent_collaboration_requests_on_requesting_agent_id"
+    t.index ["status"], name: "index_agent_collaboration_requests_on_status"
+  end
+
+  create_table "agent_decision_boundaries", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.float "ask_alpha", default: 1.0, null: false
+    t.float "ask_beta", default: 1.0, null: false
+    t.float "solo_alpha", default: 1.0, null: false
+    t.float "solo_beta", default: 1.0, null: false
+    t.float "current_threshold", default: 50.0
+    t.jsonb "decision_history", default: []
+    t.integer "total_decisions", default: 0
+    t.integer "correct_decisions", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id"], name: "index_agent_decision_boundaries_on_agent_plugin_id"
+  end
+
+  create_table "agent_energy_states", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.bigint "entity_id", null: false
+    t.float "current_energy", default: 50.0, null: false
+    t.float "max_energy", default: 100.0, null: false
+    t.float "regeneration_rate", default: 2.0, null: false
+    t.boolean "in_debt", default: false
+    t.float "total_earned", default: 0.0, null: false
+    t.float "total_spent", default: 0.0, null: false
+    t.integer "tasks_completed", default: 0, null: false
+    t.integer "tasks_failed", default: 0, null: false
+    t.integer "tasks_delegated", default: 0, null: false
+    t.integer "help_given", default: 0, null: false
+    t.integer "help_received", default: 0, null: false
+    t.float "success_rate", default: 0.0
+    t.float "avg_quality", default: 0.5
+    t.float "collaboration_score", default: 0.5
+    t.float "elo_rating", default: 1000.0
+    t.datetime "last_energy_update_at"
+    t.datetime "debt_started_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id"], name: "index_agent_energy_states_on_agent_plugin_id"
+    t.index ["entity_id", "current_energy"], name: "idx_energy_entity_current"
+    t.index ["entity_id"], name: "index_agent_energy_states_on_entity_id"
+    t.index ["in_debt"], name: "idx_energy_in_debt"
+  end
+
+  create_table "agent_energy_transactions", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.bigint "entity_id", null: false
+    t.bigint "agent_plugin_execution_id"
+    t.bigint "collaboration_request_id"
+    t.string "transaction_type", null: false
+    t.float "amount", null: false
+    t.string "reason", null: false
+    t.float "balance_before", null: false
+    t.float "balance_after", null: false
+    t.jsonb "metadata", default: {}
+    t.string "hash"
+    t.string "previous_hash"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_agent_energy_transactions_on_agent_plugin_execution_id"
+    t.index ["agent_plugin_id", "created_at"], name: "idx_on_agent_plugin_id_created_at_a5c3ddbc09"
+    t.index ["agent_plugin_id"], name: "index_agent_energy_transactions_on_agent_plugin_id"
+    t.index ["collaboration_request_id"], name: "index_agent_energy_transactions_on_collaboration_request_id"
+    t.index ["created_at"], name: "index_agent_energy_transactions_on_created_at"
+    t.index ["entity_id"], name: "index_agent_energy_transactions_on_entity_id"
+    t.index ["transaction_type"], name: "index_agent_energy_transactions_on_transaction_type"
   end
 
   create_table "agent_executions", force: :cascade do |t|
@@ -490,17 +639,60 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_173545) do
     t.boolean "is_public", default: false
     t.datetime "published_at"
     t.bigint "user_id"
+    t.datetime "probation_started_at"
+    t.jsonb "probation_reasons", default: []
+    t.float "priority_score", default: 1.0
+    t.datetime "sabbatical_until"
+    t.bigint "parent_agent_id"
+    t.integer "generation", default: 1
+    t.jsonb "lineage", default: []
+    t.datetime "graduated_at"
+    t.string "primary_niche"
+    t.jsonb "specialties", default: []
+    t.jsonb "weaknesses", default: []
+    t.boolean "protected_status", default: false
+    t.datetime "last_refinement_at"
+    t.float "refinement_priority", default: 0.0
+    t.bigint "school_enrollment_id"
     t.index ["ai_model"], name: "index_agent_plugins_on_ai_model"
     t.index ["embedding"], name: "index_agent_plugins_on_embedding", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["entity_id", "status"], name: "index_agent_plugins_on_entity_id_and_status"
     t.index ["entity_id", "user_id"], name: "index_agent_plugins_on_entity_id_and_user_id"
     t.index ["entity_id"], name: "index_agent_plugins_on_entity_id"
     t.index ["execution_strategy"], name: "index_agent_plugins_on_execution_strategy"
+    t.index ["generation"], name: "index_agent_plugins_on_generation"
+    t.index ["parent_agent_id"], name: "index_agent_plugins_on_parent_agent_id"
+    t.index ["primary_niche"], name: "index_agent_plugins_on_primary_niche"
     t.index ["priority"], name: "index_agent_plugins_on_priority"
+    t.index ["priority_score"], name: "index_agent_plugins_on_priority_score"
+    t.index ["protected_status"], name: "index_agent_plugins_on_protected_status"
     t.index ["role"], name: "index_agent_plugins_on_role"
+    t.index ["school_enrollment_id"], name: "index_agent_plugins_on_school_enrollment_id"
     t.index ["slug"], name: "index_agent_plugins_on_slug", unique: true
     t.index ["status"], name: "index_agent_plugins_on_status"
     t.index ["user_id"], name: "index_agent_plugins_on_user_id"
+  end
+
+  create_table "agent_relationships", force: :cascade do |t|
+    t.bigint "requester_id", null: false
+    t.bigint "helper_id", null: false
+    t.bigint "entity_id", null: false
+    t.integer "total_collaborations", default: 0, null: false
+    t.integer "successful_collaborations", default: 0, null: false
+    t.float "total_quality", default: 0.0
+    t.bigint "total_response_time_ms", default: 0
+    t.jsonb "helpfulness_ratings", default: []
+    t.float "compatibility_score", default: 0.5
+    t.float "trust_score", default: 0.5
+    t.bigint "inherited_from_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["compatibility_score"], name: "index_agent_relationships_on_compatibility_score"
+    t.index ["entity_id"], name: "index_agent_relationships_on_entity_id"
+    t.index ["helper_id"], name: "index_agent_relationships_on_helper_id"
+    t.index ["inherited_from_id"], name: "index_agent_relationships_on_inherited_from_id"
+    t.index ["requester_id", "helper_id"], name: "index_agent_relationships_on_requester_id_and_helper_id", unique: true
+    t.index ["requester_id"], name: "index_agent_relationships_on_requester_id"
   end
 
   create_table "agent_rewards", force: :cascade do |t|
@@ -520,6 +712,33 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_173545) do
     t.index ["entity_id"], name: "index_agent_rewards_on_entity_id"
     t.index ["reward_type", "assigned_at"], name: "index_agent_rewards_on_reward_type_and_assigned_at"
     t.index ["user_id"], name: "index_agent_rewards_on_user_id"
+  end
+
+  create_table "agent_school_enrollments", force: :cascade do |t|
+    t.bigint "agent_plugin_id", null: false
+    t.bigint "student_agent_id"
+    t.bigint "entity_id", null: false
+    t.string "status", default: "enrolled", null: false
+    t.string "enrollment_reason", null: false
+    t.integer "attempt_number", default: 1, null: false
+    t.jsonb "diagnosis", default: {}
+    t.jsonb "curriculum_applied", default: []
+    t.jsonb "comparison_results", default: {}
+    t.jsonb "irreplaceability_assessment", default: {}
+    t.string "outcome"
+    t.datetime "enrolled_at"
+    t.datetime "diagnosis_completed_at"
+    t.datetime "curriculum_completed_at"
+    t.datetime "testing_started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id", "attempt_number"], name: "idx_on_agent_plugin_id_attempt_number_00e6ae94bc"
+    t.index ["agent_plugin_id"], name: "index_agent_school_enrollments_on_agent_plugin_id"
+    t.index ["entity_id"], name: "index_agent_school_enrollments_on_entity_id"
+    t.index ["outcome"], name: "index_agent_school_enrollments_on_outcome"
+    t.index ["status"], name: "index_agent_school_enrollments_on_status"
+    t.index ["student_agent_id"], name: "index_agent_school_enrollments_on_student_agent_id"
   end
 
   create_table "agent_simulations", force: :cascade do |t|
@@ -814,6 +1033,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_173545) do
     t.index ["referral_id"], name: "index_commissions_on_referral_id"
     t.index ["status", "approved_at"], name: "index_commissions_on_status_and_approved_at"
     t.index ["subscription_event_id"], name: "index_commissions_on_subscription_event_id"
+  end
+
+  create_table "community_energy_pools", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.float "current_balance", default: 0.0, null: false
+    t.float "total_deposited", default: 0.0, null: false
+    t.float "total_distributed", default: 0.0, null: false
+    t.integer "distribution_count", default: 0
+    t.datetime "last_distribution_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["entity_id"], name: "index_community_energy_pools_on_entity_id"
   end
 
   create_table "connections", force: :cascade do |t|
@@ -2781,8 +3012,25 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_173545) do
   add_foreign_key "affiliate_clicks", "affiliates"
   add_foreign_key "affiliates", "admin_users", column: "approved_by_id"
   add_foreign_key "affiliates", "users"
+  add_foreign_key "agent_ab_tests", "agent_plugins", column: "control_agent_id"
+  add_foreign_key "agent_ab_tests", "agent_plugins", column: "variant_agent_id"
+  add_foreign_key "agent_ab_tests", "agent_school_enrollments", column: "enrollment_id"
+  add_foreign_key "agent_ab_tests", "entities"
   add_foreign_key "agent_activities", "scout_conversations", column: "conversation_id"
   add_foreign_key "agent_capabilities", "agent_plugins"
+  add_foreign_key "agent_capability_beliefs", "agent_plugins"
+  add_foreign_key "agent_collaboration_requests", "agent_collaboration_requests", column: "parent_request_id"
+  add_foreign_key "agent_collaboration_requests", "agent_plugin_executions"
+  add_foreign_key "agent_collaboration_requests", "agent_plugins", column: "helper_agent_id"
+  add_foreign_key "agent_collaboration_requests", "agent_plugins", column: "requesting_agent_id"
+  add_foreign_key "agent_collaboration_requests", "entities"
+  add_foreign_key "agent_decision_boundaries", "agent_plugins"
+  add_foreign_key "agent_energy_states", "agent_plugins"
+  add_foreign_key "agent_energy_states", "entities"
+  add_foreign_key "agent_energy_transactions", "agent_collaboration_requests", column: "collaboration_request_id"
+  add_foreign_key "agent_energy_transactions", "agent_plugin_executions"
+  add_foreign_key "agent_energy_transactions", "agent_plugins"
+  add_foreign_key "agent_energy_transactions", "entities"
   add_foreign_key "agent_executions", "pipeline_executions"
   add_foreign_key "agent_genomes", "agent_genomes", column: "parent_id"
   add_foreign_key "agent_input_requests", "agent_plugin_executions"
@@ -2804,11 +3052,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_173545) do
   add_foreign_key "agent_plugin_executions", "agent_plugins"
   add_foreign_key "agent_plugin_executions", "users"
   add_foreign_key "agent_plugin_executions", "workflow_executions"
+  add_foreign_key "agent_plugins", "agent_plugins", column: "parent_agent_id"
+  add_foreign_key "agent_plugins", "agent_school_enrollments", column: "school_enrollment_id"
   add_foreign_key "agent_plugins", "entities"
   add_foreign_key "agent_plugins", "users"
+  add_foreign_key "agent_relationships", "agent_plugins", column: "helper_id"
+  add_foreign_key "agent_relationships", "agent_plugins", column: "requester_id"
+  add_foreign_key "agent_relationships", "agent_relationships", column: "inherited_from_id"
+  add_foreign_key "agent_relationships", "entities"
   add_foreign_key "agent_rewards", "agent_lightning_traces"
   add_foreign_key "agent_rewards", "entities"
   add_foreign_key "agent_rewards", "users"
+  add_foreign_key "agent_school_enrollments", "agent_plugins"
+  add_foreign_key "agent_school_enrollments", "agent_plugins", column: "student_agent_id"
+  add_foreign_key "agent_school_enrollments", "entities"
   add_foreign_key "agent_simulations", "agent_genomes"
   add_foreign_key "agent_simulations", "agent_plugins"
   add_foreign_key "agent_template_bindings", "agent_plugins"
@@ -2842,6 +3099,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_26_173545) do
   add_foreign_key "commissions", "entities"
   add_foreign_key "commissions", "referrals"
   add_foreign_key "commissions", "subscription_events"
+  add_foreign_key "community_energy_pools", "entities"
   add_foreign_key "connections", "entities"
   add_foreign_key "connections", "integrations"
   add_foreign_key "contact_groups", "entities"
