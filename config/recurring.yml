@@ -30,6 +30,28 @@ production:
     queue: maintenance
     schedule: every hour
 
+  # ========================================
+  # Agent Collaboration System Jobs
+  # ========================================
+  
+  # Hourly energy regeneration for all agents
+  agent_energy_regeneration:
+    class: EnergyRegenerationJob
+    queue: agents
+    schedule: every hour
+  
+  # Weekly capability recalibration - update specialization detection
+  agent_capability_recalibration:
+    class: AgentCapabilityRecalibrationJob
+    queue: agents
+    schedule: at 4am every monday
+  
+  # Daily decision boundary updates - learn from recent outcomes
+  agent_decision_boundary_update:
+    class: AgentDecisionBoundaryUpdateJob
+    queue: agents
+    schedule: at 5am every day
+
 # Development environment - run less frequently to avoid noise
 development:
   # Daily metrics in dev (just for testing)
@@ -49,6 +71,12 @@ development:
     class: CleanupTemporaryUploadsJob
     queue: maintenance
     schedule: every hour
+
+  # Agent energy regeneration - every 2 hours in dev
+  agent_energy_regeneration:
+    class: EnergyRegenerationJob
+    queue: agents
+    schedule: every 2 hours
 
 # Test environment - disable recurring jobs
 test:
