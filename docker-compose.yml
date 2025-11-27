@@ -119,9 +119,6 @@ services:
       - VOICE_ASSISTANT_ENABLED=${VOICE_ASSISTANT_ENABLED:-true}
       - POLLY_VOICE_ID=${POLLY_VOICE_ID:-Matthew}
       - POLLY_ENGINE=${POLLY_ENGINE:-neural}
-      # Agent Lightning Python Service
-      - AGENT_LIGHTNING_SERVICE_URL=http://agent_lightning:4747
-      - AGENT_LIGHTNING_ENABLED=true
     depends_on:
       db:
         condition: service_healthy
@@ -182,36 +179,11 @@ services:
     stdin_open: true
     tty: true
 
-  agent_lightning:
-    build:
-      context: ./python_services/agent_lightning
-      dockerfile: Dockerfile
-    ports:
-      - "4747:4747"  # API server
-      - "4748:4748"  # Store server
-    environment:
-      - DATABASE_URL=postgresql://postgres:123password@db:5432/agent_marketing_development
-      - RAILS_API_URL=http://web:3000
-      - AGENT_LIGHTNING_RUNNERS=4
-      - AGENT_LIGHTNING_STRATEGY=cs
-      - LOG_LEVEL=INFO
-      - DEBUG=false
-    volumes:
-      - agent_lightning_checkpoints:/app/checkpoints
-      - ./python_services/agent_lightning:/app
-    depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4747/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+  # NOTE: Agent Lightning service has been replaced by the internal Agent Collaboration System
+  # which includes Agent School for agent improvement. See docs/AGENT_COLLABORATION_ARCHITECTURE.md
 
 volumes:
   postgres_data:
   redis_data:
   bundle_cache:
   node_modules:
-  agent_lightning_checkpoints:

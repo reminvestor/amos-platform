@@ -1,0 +1,274 @@
+<% content_for :title, "Agent School" %>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div class="header-content">
+      <h1><i data-lucide="graduation-cap" class="me-2"></i> Agent School</h1>
+      <p class="text-muted">Monitor agent rehabilitation and improvement</p>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="admin-tabs mb-4">
+    <%= link_to dashboard_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="layout-dashboard"></i> Dashboard
+    <% end %>
+    <%= link_to agents_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="bot"></i> Agents
+    <% end %>
+    <%= link_to school_admin_agent_collaboration_index_path, class: "admin-tab active" do %>
+      <i data-lucide="graduation-cap"></i> School
+    <% end %>
+    <%= link_to collaborations_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="message-circle"></i> Collaborations
+    <% end %>
+    <%= link_to ab_tests_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="flask-conical"></i> A/B Tests
+    <% end %>
+    <%= link_to transactions_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="receipt"></i> Transactions
+    <% end %>
+  </div>
+
+  <!-- Stats -->
+  <div class="admin-stats-grid mb-4">
+    <div class="admin-stat-card">
+      <div class="stat-icon bg-primary">
+        <i data-lucide="users"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value"><%= @stats[:total_enrollments] %></div>
+        <div class="stat-label">Total Enrollments</div>
+      </div>
+    </div>
+
+    <div class="admin-stat-card">
+      <div class="stat-icon bg-warning">
+        <i data-lucide="book-open"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value"><%= @stats[:active] %></div>
+        <div class="stat-label">Currently In School</div>
+      </div>
+    </div>
+
+    <div class="admin-stat-card">
+      <div class="stat-icon bg-success">
+        <i data-lucide="award"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value"><%= @stats[:graduation_rate] %>%</div>
+        <div class="stat-label">Graduation Rate</div>
+        <div class="stat-sublabel"><%= @stats[:graduated] %> graduated</div>
+      </div>
+    </div>
+
+    <div class="admin-stat-card">
+      <div class="stat-icon bg-danger">
+        <i data-lucide="user-x"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-value"><%= @stats[:expelled] %></div>
+        <div class="stat-label">Expelled</div>
+        <div class="stat-sublabel"><%= @stats[:probation] %> on probation</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Active Enrollments -->
+    <div class="col-lg-6">
+      <div class="admin-card">
+        <div class="card-header">
+          <h3><i data-lucide="book-open"></i> Currently In School</h3>
+        </div>
+        <div class="card-body p-0">
+          <% if @active_enrollments.any? %>
+            <div class="list-group list-group-flush">
+              <% @active_enrollments.each do |enrollment| %>
+                <div class="list-group-item">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <strong><%= enrollment.agent_plugin.name %></strong>
+                      <br>
+                      <small class="text-muted">
+                        <%= enrollment.entity.name %> •
+                        Attempt #<%= enrollment.attempt_number %> •
+                        Enrolled <%= time_ago_in_words(enrollment.enrolled_at) %> ago
+                      </small>
+                    </div>
+                    <div class="text-end">
+                      <% badge_class = case enrollment.status
+                         when 'enrolled' then 'badge-info'
+                         when 'diagnosing' then 'badge-warning'
+                         when 'curriculum' then 'badge-primary'
+                         when 'testing' then 'badge-success'
+                         else 'badge-secondary'
+                         end %>
+                      <span class="admin-badge <%= badge_class %>"><%= enrollment.status.titleize %></span>
+                      <% if enrollment.student_agent.present? %>
+                        <br><small class="text-muted">Student: <%= enrollment.student_agent.name %></small>
+                      <% end %>
+                    </div>
+                  </div>
+
+                  <% if enrollment.diagnosis.present? %>
+                    <div class="mt-2 p-2 bg-light rounded">
+                      <small>
+                        <strong>Diagnosis:</strong>
+                        <%= enrollment.diagnosis['total_failures'] || 0 %> failures analyzed •
+                        <%= enrollment.diagnosis['root_causes']&.size || 0 %> root causes identified
+                      </small>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center text-muted py-5">
+              <i data-lucide="check-circle" style="width: 48px; height: 48px;"></i>
+              <p class="mt-2">No agents currently in school</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Completed Enrollments -->
+    <div class="col-lg-6">
+      <div class="admin-card">
+        <div class="card-header">
+          <h3><i data-lucide="history"></i> Enrollment History</h3>
+        </div>
+        <div class="card-body p-0">
+          <div class="admin-table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="admin-table">
+              <thead class="sticky-top">
+                <tr>
+                  <th>Agent</th>
+                  <th>Outcome</th>
+                  <th>Attempt</th>
+                  <th>Duration</th>
+                  <th>Completed</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @completed_enrollments.each do |enrollment| %>
+                  <tr>
+                    <td>
+                      <strong><%= enrollment.agent_plugin.name %></strong>
+                      <br><small class="text-muted"><%= enrollment.entity.name %></small>
+                    </td>
+                    <td>
+                      <% badge_class = case enrollment.outcome
+                         when 'success' then 'badge-success'
+                         when 'failure' then 'badge-danger'
+                         when 'irreplaceable_failure' then 'badge-warning'
+                         else 'badge-secondary'
+                         end %>
+                      <span class="admin-badge <%= badge_class %>">
+                        <%= enrollment.outcome == 'success' ? '🎓 Graduated' :
+                            enrollment.outcome == 'failure' ? '❌ Expelled' :
+                            enrollment.outcome == 'irreplaceable_failure' ? '⚠️ Probation' :
+                            enrollment.outcome || 'Unknown' %>
+                      </span>
+                    </td>
+                    <td>#<%= enrollment.attempt_number %></td>
+                    <td>
+                      <% if enrollment.duration %>
+                        <%= distance_of_time_in_words(enrollment.duration) %>
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td>
+                      <small><%= enrollment.completed_at&.strftime('%b %d, %H:%M') || '-' %></small>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+
+  .admin-stat-card {
+    background: var(--admin-card-bg);
+    border: 1px solid var(--admin-border);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+
+  .stat-icon.bg-primary { background: var(--admin-primary); }
+  .stat-icon.bg-success { background: #10b981; }
+  .stat-icon.bg-warning { background: #f59e0b; }
+  .stat-icon.bg-danger { background: #ef4444; }
+
+  .stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.875rem;
+    color: var(--admin-text-secondary);
+  }
+
+  .stat-sublabel {
+    font-size: 0.75rem;
+    color: var(--admin-text-muted);
+  }
+
+  .admin-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--admin-border);
+    padding-bottom: 0;
+    margin-bottom: 1.5rem;
+  }
+
+  .admin-tab {
+    padding: 0.75rem 1rem;
+    color: var(--admin-text-secondary);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+  }
+
+  .admin-tab:hover {
+    color: var(--admin-text);
+  }
+
+  .admin-tab.active {
+    color: var(--admin-primary);
+    border-bottom-color: var(--admin-primary);
+  }
+</style>
+

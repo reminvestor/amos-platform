@@ -87,9 +87,9 @@
             </div>
           </div>
 
-          <%= link_to dashboard_admin_agent_lightning_index_path, class: "nav-item #{'active' if request.path.start_with?('/admin/agent_lightning')}" do %>
-            <i data-lucide="zap"></i>
-            <span>Agent Lightning</span>
+          <%= link_to dashboard_admin_agent_collaboration_index_path, class: "nav-item #{'active' if request.path.start_with?('/admin/agent_collaboration')}" do %>
+            <i data-lucide="users"></i>
+            <span>Agent Collaboration</span>
           <% end %>
 
           <%= link_to admin_agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
