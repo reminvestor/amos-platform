@@ -7,7 +7,7 @@ This document outlines a **self-evolving** multi-agent collaboration system wher
 2. An energy/reward system incentivizes optimal behavior
 3. Everything is **learned**, not hardcoded - the system improves over time
 4. A Reinforcement Learning network optimizes agent and tool selection
-5. Agent Lightning (or internal service) continuously refines agents themselves
+5. **Agent School** provides structured rehabilitation and continuous improvement
 
 ## Core Philosophy: Everything Evolves
 
@@ -1477,9 +1477,9 @@ end
 
 ---
 
-## Integration with Agent Lightning
+## Multi-Level Learning System
 
-Agent Lightning (or an internal equivalent) provides continuous refinement:
+The system learns at multiple timescales, with Agent School being the primary rehabilitation mechanism:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -1491,6 +1491,7 @@ Agent Lightning (or an internal equivalent) provides continuous refinement:
 │  • Agent executes task                                                   │
 │  • Immediate feedback on success/failure                                 │
 │  • Tool usage patterns recorded                                          │
+│  • Energy earned/spent                                                   │
 │                                                                          │
 │  LEVEL 2: Capability Learning (Hours)                                    │
 │  ─────────────────────────────────────                                   │
@@ -1499,19 +1500,19 @@ Agent Lightning (or an internal equivalent) provides continuous refinement:
 │  • Adjust decision thresholds                                            │
 │  • Update relationship scores                                            │
 │                                                                          │
-│  LEVEL 3: Agent Refinement (Days)                                        │
-│  ─────────────────────────────────                                       │
-│  • Analyze performance trends                                            │
-│  • Refine prompts based on patterns                                      │
+│  LEVEL 3: Agent School & Refinement (Days)                               │
+│  ─────────────────────────────────────────                               │
+│  • Zero-energy agents enter school                                       │
+│  • Diagnosis → Curriculum → Graduation Test                              │
 │  • A/B test prompt variations                                            │
-│  • Adjust tool assignments                                               │
+│  • Structured rehabilitation                                             │
 │                                                                          │
 │  LEVEL 4: System Evolution (Weeks)                                       │
 │  ─────────────────────────────────                                       │
 │  • Meta-parameter optimization                                           │
 │  • Agent evolution (breed/cull)                                          │
 │  • New agent creation for gaps                                           │
-│  • Architecture improvements                                             │
+│  • Red team stress testing                                               │
 │                                                                          │
 │  LEVEL 5: Strategic Adaptation (Months)                                  │
 │  ───────────────────────────────────────                                 │
@@ -1523,64 +1524,72 @@ Agent Lightning (or an internal equivalent) provides continuous refinement:
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Agent Lightning Integration
+### How the Levels Connect
 
 ```ruby
-class AgentLightningIntegration
-  # Interface with Agent Lightning for continuous refinement
+class MultiLevelLearningOrchestrator
+  # Coordinates learning across all timescales
   
-  def submit_for_refinement(agent)
-    # Package agent data for Lightning analysis
-    payload = {
-      agent_id: agent.id,
-      system_prompt: agent.system_prompt,
-      performance_data: collect_performance_data(agent),
-      capability_profile: agent.capability_profile.to_h,
-      recent_executions: agent.recent_execution_summaries,
-      failure_analysis: analyze_failures(agent),
-      comparison_to_peers: peer_comparison(agent)
-    }
+  # LEVEL 1: Called after every task execution
+  def on_task_complete(execution)
+    # Immediate updates
+    update_energy(execution)
+    record_tool_usage(execution)
+    update_capability_beliefs(execution)
     
-    # Submit to Lightning for analysis
-    response = lightning_client.analyze_agent(payload)
-    
-    # Apply recommendations
-    apply_recommendations(agent, response[:recommendations])
-  end
-  
-  def continuous_refinement_loop
-    # Background job that runs continuously
-    loop do
-      # Find agents needing refinement
-      agents_to_refine = AgentPlugin.active
-        .where('last_refinement_at < ?', 7.days.ago)
-        .order(refinement_priority: :desc)
-        .limit(10)
-      
-      agents_to_refine.each do |agent|
-        submit_for_refinement(agent)
-        agent.update!(last_refinement_at: Time.current)
-      end
-      
-      sleep 1.hour
+    # Check if agent needs school (Level 3)
+    if execution.agent.energy_state.current_energy <= 0
+      AgentSchool.new.enroll(execution.agent)
     end
   end
   
-  private
-  
-  def apply_recommendations(agent, recommendations)
-    recommendations.each do |rec|
-      case rec[:type]
-      when 'prompt_update'
-        create_prompt_variant(agent, rec[:new_prompt])
-      when 'tool_change'
-        update_tool_assignments(agent, rec[:tools])
-      when 'capability_adjustment'
-        adjust_capabilities(agent, rec[:adjustments])
-      when 'deprecation'
-        schedule_deprecation(agent, rec[:reason])
-      end
+  # LEVEL 2: Runs hourly
+  def hourly_learning_cycle
+    AgentPlugin.active.find_each do |agent|
+      # Update decision boundaries from recent outcomes
+      agent.decision_boundary.update_from_recent_outcomes
+      
+      # Update relationship scores
+      agent.relationships.each(&:recalculate_compatibility)
+      
+      # Regenerate energy
+      agent.energy_state.regenerate!
     end
+  end
+  
+  # LEVEL 3: Agent School handles this automatically via enrollment
+  # See AgentSchool class for implementation
+  
+  # LEVEL 4: Runs weekly
+  def weekly_evolution_cycle
+    # Meta-learning optimization
+    MetaLearner.instance.run_optimization
+    
+    # Agent evolution
+    AgentEvolutionEngine.new.run_evolution_cycle
+    
+    # Red team stress testing
+    RedTeamSystem.new.run_red_team_session
+    
+    # Anti-monopoly measures
+    AntiMonopolyMeasures.new.redistribute_community_pool
+  end
+  
+  # LEVEL 5: Runs monthly (or triggered manually)
+  def monthly_strategic_review
+    # Analyze system-wide trends
+    trends = SystemTrendAnalyzer.analyze(30.days)
+    
+    # Identify capability gaps
+    gaps = CapabilityGapAnalyzer.find_gaps
+    
+    # Create new agents for gaps
+    gaps.each do |gap|
+      AgentFactory.create_for_capability(gap)
+    end
+    
+    # Archive learnings
+    LearningArchive.record_monthly_insights(trends)
   end
 end
 ```
@@ -3055,12 +3064,13 @@ This is the signature of a living system.
 - [ ] Add `AgentPromptRefiner`
 - [ ] Create evolution tracking UI
 
-### Phase 6: Agent Lightning Integration (Week 6-7)
-- [ ] Design Lightning API interface
-- [ ] Implement continuous refinement loop
-- [ ] Add external analysis integration
-- [ ] Create refinement recommendation system
-- [ ] Build monitoring and alerting
+### Phase 6: Agent School (Week 6-7)
+- [ ] Implement `AgentSchool` enrollment and diagnosis
+- [ ] Create curriculum modules (prompt, tools, capabilities, boundaries)
+- [ ] Build graduation A/B testing framework
+- [ ] Implement outcome decisions (graduate/retry/expel)
+- [ ] Create school dashboard UI
+- [ ] Add `AgentSchoolEnrollment` and `AgentABTest` models
 
 ### Phase 7: Advanced Features (Week 7-8)
 - [ ] Multi-agent collaboration (3+ agents)
