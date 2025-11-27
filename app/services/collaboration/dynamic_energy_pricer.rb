@@ -140,8 +140,8 @@ module Collaboration
 
       multiplier = had_help ? FAILURE_PENALTIES[:with_help_multiplier] : FAILURE_PENALTIES[:solo_multiplier]
 
-      # Task importance (if available)
-      importance = execution.metadata&.dig('importance') || 1.0
+      # Task importance (if available) - use input_context instead of metadata
+      importance = execution.input_context&.dig('importance') || 1.0
       importance_factor = 1.0 + (importance - 1.0) * 0.5
 
       # Preventability: was help available but not sought?
