@@ -1,0 +1,197 @@
+<% content_for :title, "Agent Energy Management" %>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div class="header-content">
+      <h1><i data-lucide="bot" class="me-2"></i> Agent Energy Management</h1>
+      <p class="text-muted">View and manage agent energy states</p>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="admin-tabs mb-4">
+    <%= link_to dashboard_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="layout-dashboard"></i> Dashboard
+    <% end %>
+    <%= link_to agents_admin_agent_collaboration_index_path, class: "admin-tab active" do %>
+      <i data-lucide="bot"></i> Agents
+    <% end %>
+    <%= link_to school_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="graduation-cap"></i> School
+    <% end %>
+    <%= link_to collaborations_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="message-circle"></i> Collaborations
+    <% end %>
+    <%= link_to ab_tests_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="flask-conical"></i> A/B Tests
+    <% end %>
+    <%= link_to transactions_admin_agent_collaboration_index_path, class: "admin-tab" do %>
+      <i data-lucide="receipt"></i> Transactions
+    <% end %>
+  </div>
+
+  <!-- Filters -->
+  <div class="admin-card mb-4">
+    <div class="card-body">
+      <%= form_tag agents_admin_agent_collaboration_index_path, method: :get, class: "row g-3" do %>
+        <div class="col-md-3">
+          <%= select_tag :status, options_for_select([
+            ['All Statuses', ''],
+            ['Active', 'active'],
+            ['In School', 'in_school'],
+            ['Probation', 'probation'],
+            ['Testing', 'testing'],
+            ['Deprecated', 'deprecated']
+          ], params[:status]), class: 'form-select' %>
+        </div>
+        <div class="col-md-3">
+          <%= select_tag :energy_filter, options_for_select([
+            ['All Energy Levels', ''],
+            ['Healthy (≥50)', 'healthy'],
+            ['Low (<20)', 'low'],
+            ['In Debt', 'debt']
+          ], params[:energy_filter]), class: 'form-select' %>
+        </div>
+        <div class="col-md-3">
+          <%= select_tag :entity_id, options_for_select(
+            [['All Entities', '']] + @entities.map { |e| [e.name, e.id] },
+            params[:entity_id]
+          ), class: 'form-select' %>
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="admin-btn admin-btn-primary w-100">
+            <i data-lucide="filter"></i> Filter
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Agents Table -->
+  <div class="admin-card">
+    <div class="card-body p-0">
+      <div class="admin-table-responsive">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Entity</th>
+              <th>Status</th>
+              <th>Energy</th>
+              <th>Success Rate</th>
+              <th>Tasks</th>
+              <th>Collaborations</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @agents.each do |agent| %>
+              <% state = agent.energy_state %>
+              <tr class="<%= 'table-danger' if state&.in_debt? %> <%= 'table-warning' if agent.in_school? %>">
+                <td>
+                  <strong><%= agent.name %></strong>
+                  <br><small class="text-muted"><%= agent.role %></small>
+                </td>
+                <td><%= agent.entity&.name || 'System' %></td>
+                <td>
+                  <% badge_class = case agent.status
+                     when 'active' then 'badge-success'
+                     when 'in_school' then 'badge-warning'
+                     when 'probation' then 'badge-danger'
+                     when 'testing' then 'badge-info'
+                     else 'badge-secondary'
+                     end %>
+                  <span class="admin-badge <%= badge_class %>"><%= agent.status.titleize %></span>
+                </td>
+                <td>
+                  <% if state %>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="progress flex-grow-1" style="height: 20px; width: 80px;">
+                        <% energy_pct = [(state.current_energy / state.max_energy * 100), 0].max %>
+                        <% bar_class = energy_pct > 50 ? 'bg-success' : energy_pct > 20 ? 'bg-warning' : 'bg-danger' %>
+                        <div class="progress-bar <%= bar_class %>" style="width: <%= energy_pct %>%">
+                          <%= state.current_energy.round(1) %>
+                        </div>
+                      </div>
+                    </div>
+                    <% if state.in_debt? %>
+                      <small class="text-danger">⚠️ In debt</small>
+                    <% end %>
+                  <% else %>
+                    <span class="text-muted">-</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if state %>
+                    <%= (state.success_rate * 100).round(1) %>%
+                  <% else %>
+                    -
+                  <% end %>
+                </td>
+                <td>
+                  <% if state %>
+                    <span class="text-success"><%= state.tasks_completed %></span> /
+                    <span class="text-danger"><%= state.tasks_failed %></span>
+                  <% else %>
+                    -
+                  <% end %>
+                </td>
+                <td>
+                  <% if state %>
+                    <i data-lucide="arrow-up" class="text-success" style="width: 14px;"></i> <%= state.help_given %>
+                    <i data-lucide="arrow-down" class="text-info ms-2" style="width: 14px;"></i> <%= state.help_received %>
+                  <% else %>
+                    -
+                  <% end %>
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <%= link_to agent_detail_admin_agent_collaboration_path(agent), class: "admin-btn admin-btn-sm admin-btn-ghost" do %>
+                      <i data-lucide="eye"></i>
+                    <% end %>
+                    <% unless agent.in_school? %>
+                      <%= link_to enroll_agent_admin_agent_collaboration_path(agent), method: :post, class: "admin-btn admin-btn-sm admin-btn-ghost", data: { confirm: 'Send to school?' } do %>
+                        <i data-lucide="graduation-cap"></i>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .admin-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--admin-border);
+    padding-bottom: 0;
+    margin-bottom: 1.5rem;
+  }
+
+  .admin-tab {
+    padding: 0.75rem 1rem;
+    color: var(--admin-text-secondary);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+  }
+
+  .admin-tab:hover {
+    color: var(--admin-text);
+  }
+
+  .admin-tab.active {
+    color: var(--admin-primary);
+    border-bottom-color: var(--admin-primary);
+  }
+</style>
+

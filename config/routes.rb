@@ -682,14 +682,24 @@ Rails.application.routes.draw do
       get "performance", to: "metrics#performance"
     end
 
-    # Agent Lightning Dashboard
-    resources :agent_lightning, only: [] do
+    # Agent Collaboration System Dashboard (replaces Agent Lightning)
+    resources :agent_collaboration, only: [] do
       collection do
         get :dashboard, as: :dashboard
-        post :train_now, as: :train_now
-        get :metrics, as: :metrics
-        get :training_history, as: :training_history
-        get :export_data, as: :export_data
+        get :agents, as: :agents
+        get :school, as: :school
+        get :collaborations, as: :collaborations
+        get :ab_tests, as: :ab_tests
+        get :transactions, as: :transactions
+        post :regenerate_all, as: :regenerate_all
+        post :distribute_pools, as: :distribute_pools
+        post :recalibrate_capabilities, as: :recalibrate_capabilities
+        post :update_boundaries, as: :update_boundaries
+      end
+      member do
+        get :agent_detail, as: :agent_detail
+        post :enroll_agent, as: :enroll_agent
+        post :cancel_test, as: :cancel_test
       end
     end
 
