@@ -1,21 +1,216 @@
 <% content_for :title, "Agent Energy Dashboard" %>
 
+<style>
+  .energy-card {
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(255,255,255,0.02) 100%);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+  
+  .energy-stat-card {
+    border-radius: 12px;
+    padding: 1.25rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .energy-stat-card.primary { background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); }
+  .energy-stat-card.success { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
+  .energy-stat-card.info { background: linear-gradient(135deg, #06B6D4 0%, #0891B2 100%); }
+  .energy-stat-card.warning { background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); }
+  
+  .energy-stat-card .stat-icon {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 3rem;
+    opacity: 0.3;
+  }
+  
+  .energy-stat-card h6 { opacity: 0.85; margin-bottom: 0.25rem; font-size: 0.875rem; }
+  .energy-stat-card h2 { margin-bottom: 0.25rem; font-weight: 700; }
+  .energy-stat-card small { opacity: 0.75; }
+  
+  .energy-table {
+    width: 100%;
+  }
+  
+  .energy-table th {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.875rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .energy-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+  }
+  
+  .energy-table tr:hover {
+    background: rgba(255,255,255,0.02);
+  }
+  
+  .energy-bar {
+    height: 24px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    overflow: hidden;
+    min-width: 100px;
+  }
+  
+  .energy-bar-fill {
+    height: 100%;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    transition: width 0.3s ease;
+  }
+  
+  .energy-bar-fill.high { background: linear-gradient(90deg, #10B981, #34D399); }
+  .energy-bar-fill.medium { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
+  .energy-bar-fill.low { background: linear-gradient(90deg, #EF4444, #F87171); }
+  
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  
+  .status-badge.active { background: rgba(16, 185, 129, 0.2); color: #10B981; }
+  .status-badge.in_school { background: rgba(245, 158, 11, 0.2); color: #F59E0B; }
+  .status-badge.probation { background: rgba(239, 68, 68, 0.2); color: #EF4444; }
+  .status-badge.testing { background: rgba(6, 182, 212, 0.2); color: #06B6D4; }
+  .status-badge.default { background: rgba(148, 163, 184, 0.2); color: #94A3B8; }
+  
+  .transaction-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+  
+  .transaction-badge.earned { background: rgba(16, 185, 129, 0.2); color: #10B981; }
+  .transaction-badge.spent { background: rgba(6, 182, 212, 0.2); color: #06B6D4; }
+  .transaction-badge.penalty { background: rgba(239, 68, 68, 0.2); color: #EF4444; }
+  .transaction-badge.system { background: rgba(148, 163, 184, 0.2); color: #94A3B8; }
+  
+  .sidebar-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  
+  .sidebar-card-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 600;
+  }
+  
+  .sidebar-card-body {
+    padding: 1rem;
+  }
+  
+  .sidebar-list-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .sidebar-list-item:last-child {
+    border-bottom: none;
+  }
+  
+  .health-bar {
+    height: 6px;
+    background: var(--bg-secondary);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 0.25rem;
+  }
+  
+  .health-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  
+  .health-bar-fill.primary { background: #3B82F6; }
+  .health-bar-fill.warning { background: #F59E0B; }
+  .health-bar-fill.danger { background: #EF4444; }
+  
+  .btn-action {
+    padding: 0.375rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .btn-action:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+  }
+  
+  .btn-action.primary {
+    border-color: #3B82F6;
+    color: #3B82F6;
+  }
+  
+  .btn-action.primary:hover {
+    background: rgba(59, 130, 246, 0.1);
+  }
+  
+  .btn-action.success {
+    border-color: #10B981;
+    color: #10B981;
+  }
+  
+  .btn-action.success:hover {
+    background: rgba(16, 185, 129, 0.1);
+  }
+  
+  .empty-state {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+  }
+</style>
+
 <div class="container-fluid py-4">
   <!-- Header -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h1 class="h3 mb-1">
-        <i class="bi bi-lightning-charge-fill text-warning"></i>
-        Agent Energy Dashboard
+      <h1 class="h3 mb-1" style="color: var(--text-primary);">
+        ⚡ Agent Energy Dashboard
       </h1>
-      <p class="text-muted mb-0">Monitor agent energy, collaboration, and school enrollments</p>
+      <p class="mb-0" style="color: var(--text-muted);">Monitor agent energy, collaboration, and school enrollments</p>
     </div>
     <div class="d-flex gap-2">
-      <%= button_to regenerate_dashboard_energy_index_path, method: :post, class: "btn btn-outline-primary" do %>
-        <i class="bi bi-arrow-clockwise"></i> Regenerate All
+      <%= button_to regenerate_dashboard_energy_index_path, method: :post, class: "btn-action primary", form: { style: "display: inline;" } do %>
+        🔄 Regenerate All
       <% end %>
-      <%= button_to distribute_pool_dashboard_energy_index_path, method: :post, class: "btn btn-outline-success" do %>
-        <i class="bi bi-share-fill"></i> Distribute Pool
+      <%= button_to distribute_pool_dashboard_energy_index_path, method: :post, class: "btn-action success", form: { style: "display: inline;" } do %>
+        🏦 Distribute Pool
       <% end %>
     </div>
   </div>
@@ -23,59 +218,35 @@
   <!-- Stats Cards -->
   <div class="row g-3 mb-4">
     <div class="col-md-3">
-      <div class="card bg-primary text-white">
-        <div class="card-body">
-          <div class="d-flex justify-content-between">
-            <div>
-              <h6 class="card-subtitle mb-1 opacity-75">Total Energy</h6>
-              <h2 class="card-title mb-0"><%= @stats[:total_energy] %></h2>
-            </div>
-            <div class="display-6 opacity-50">⚡</div>
-          </div>
-          <small class="opacity-75">Avg: <%= @stats[:avg_energy] %> per agent</small>
-        </div>
+      <div class="energy-stat-card primary">
+        <h6>Total Energy</h6>
+        <h2><%= @stats[:total_energy] %></h2>
+        <small>Avg: <%= @stats[:avg_energy] %> per agent</small>
+        <div class="stat-icon">⚡</div>
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card bg-success text-white">
-        <div class="card-body">
-          <div class="d-flex justify-content-between">
-            <div>
-              <h6 class="card-subtitle mb-1 opacity-75">Success Rate</h6>
-              <h2 class="card-title mb-0"><%= @stats[:avg_success_rate] %>%</h2>
-            </div>
-            <div class="display-6 opacity-50">✓</div>
-          </div>
-          <small class="opacity-75"><%= @stats[:total_tasks_completed] %> completed / <%= @stats[:total_tasks_failed] %> failed</small>
-        </div>
+      <div class="energy-stat-card success">
+        <h6>Success Rate</h6>
+        <h2><%= @stats[:avg_success_rate] %>%</h2>
+        <small><%= @stats[:total_tasks_completed] %> completed / <%= @stats[:total_tasks_failed] %> failed</small>
+        <div class="stat-icon">✓</div>
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card bg-info text-white">
-        <div class="card-body">
-          <div class="d-flex justify-content-between">
-            <div>
-              <h6 class="card-subtitle mb-1 opacity-75">Collaborations</h6>
-              <h2 class="card-title mb-0"><%= @stats[:total_collaborations] %></h2>
-            </div>
-            <div class="display-6 opacity-50">🤝</div>
-          </div>
-          <small class="opacity-75">Help given + received</small>
-        </div>
+      <div class="energy-stat-card info">
+        <h6>Collaborations</h6>
+        <h2><%= @stats[:total_collaborations] %></h2>
+        <small>Help given + received</small>
+        <div class="stat-icon">🤝</div>
       </div>
     </div>
     <div class="col-md-3">
-      <div class="card bg-warning text-dark">
-        <div class="card-body">
-          <div class="d-flex justify-content-between">
-            <div>
-              <h6 class="card-subtitle mb-1 opacity-75">Community Pool</h6>
-              <h2 class="card-title mb-0"><%= @community_pool.current_balance.round(1) %></h2>
-            </div>
-            <div class="display-6 opacity-50">🏦</div>
-          </div>
-          <small class="opacity-75"><%= @stats[:in_debt] %> agents in debt</small>
-        </div>
+      <div class="energy-stat-card warning">
+        <h6>Community Pool</h6>
+        <h2><%= @community_pool.current_balance.round(1) %></h2>
+        <small><%= @stats[:in_debt] %> agents in debt</small>
+        <div class="stat-icon">🏦</div>
       </div>
     </div>
   </div>
@@ -83,133 +254,124 @@
   <div class="row">
     <!-- Agent Energy List -->
     <div class="col-lg-8">
-      <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">Agent Energy Levels</h5>
-          <span class="badge bg-secondary"><%= @agents.count %> agents</span>
+      <div class="energy-card mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0" style="color: var(--text-primary);">Agent Energy Levels</h5>
+          <span class="status-badge default"><%= @agents.count %> agents</span>
         </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-hover mb-0">
-              <thead class="table-light">
+        <div style="overflow-x: auto;">
+          <table class="energy-table">
+            <thead>
+              <tr>
+                <th>Agent</th>
+                <th>Status</th>
+                <th>Energy</th>
+                <th>Success Rate</th>
+                <th>Tasks</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @agents.each do |agent| %>
+                <% state = agent.energy_state %>
                 <tr>
-                  <th>Agent</th>
-                  <th>Status</th>
-                  <th>Energy</th>
-                  <th>Success Rate</th>
-                  <th>Tasks</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% @agents.each do |agent| %>
-                  <% state = agent.energy_state %>
-                  <tr class="<%= 'table-danger' if state&.in_debt? %> <%= 'table-warning' if agent.in_school? %>">
-                    <td>
-                      <strong><%= agent.name %></strong>
-                      <br><small class="text-muted"><%= agent.role %></small>
-                    </td>
-                    <td>
-                      <% case agent.status %>
-                      <% when 'active' %>
-                        <span class="badge bg-success">Active</span>
-                      <% when 'in_school' %>
-                        <span class="badge bg-warning text-dark">In School</span>
-                      <% when 'probation' %>
-                        <span class="badge bg-danger">Probation</span>
-                      <% when 'testing' %>
-                        <span class="badge bg-info">Testing</span>
-                      <% else %>
-                        <span class="badge bg-secondary"><%= agent.status %></span>
-                      <% end %>
-                    </td>
-                    <td>
-                      <% if state %>
-                        <div class="d-flex align-items-center gap-2">
-                          <div class="progress flex-grow-1" style="height: 20px; width: 100px;">
-                            <% energy_pct = [(state.current_energy / state.max_energy * 100), 0].max %>
-                            <% bar_class = energy_pct > 50 ? 'bg-success' : energy_pct > 20 ? 'bg-warning' : 'bg-danger' %>
-                            <div class="progress-bar <%= bar_class %>" style="width: <%= energy_pct %>%">
-                              <%= state.current_energy.round(1) %>
-                            </div>
-                          </div>
+                  <td>
+                    <strong style="color: var(--text-primary);"><%= agent.name %></strong>
+                    <br><small style="color: var(--text-muted);"><%= agent.role %></small>
+                  </td>
+                  <td>
+                    <% status_class = case agent.status
+                       when 'active' then 'active'
+                       when 'in_school' then 'in_school'
+                       when 'probation' then 'probation'
+                       when 'testing' then 'testing'
+                       else 'default'
+                       end %>
+                    <span class="status-badge <%= status_class %>"><%= agent.status.titleize %></span>
+                  </td>
+                  <td>
+                    <% if state %>
+                      <% energy_pct = [(state.current_energy / state.max_energy * 100), 0].max %>
+                      <% bar_class = energy_pct > 50 ? 'high' : energy_pct > 20 ? 'medium' : 'low' %>
+                      <div class="energy-bar">
+                        <div class="energy-bar-fill <%= bar_class %>" style="width: <%= energy_pct %>%">
+                          <%= state.current_energy.round(1) %>
                         </div>
-                        <% if state.in_debt? %>
-                          <small class="text-danger">⚠️ In debt</small>
-                        <% end %>
-                      <% else %>
-                        <span class="text-muted">No state</span>
+                      </div>
+                      <% if state.in_debt? %>
+                        <small style="color: #EF4444;">⚠️ In debt</small>
                       <% end %>
-                    </td>
-                    <td>
-                      <% if state %>
-                        <%= (state.success_rate * 100).round(1) %>%
-                      <% else %>
-                        -
-                      <% end %>
-                    </td>
-                    <td>
-                      <% if state %>
-                        <span class="text-success"><%= state.tasks_completed %></span> /
-                        <span class="text-danger"><%= state.tasks_failed %></span>
-                      <% else %>
-                        -
-                      <% end %>
-                    </td>
-                    <td>
-                      <%= link_to 'Details', dashboard_energy_path(agent), class: 'btn btn-sm btn-outline-primary' %>
-                    </td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
+                    <% else %>
+                      <span style="color: var(--text-muted);">No state</span>
+                    <% end %>
+                  </td>
+                  <td style="color: var(--text-primary);">
+                    <% if state %>
+                      <%= (state.success_rate * 100).round(1) %>%
+                    <% else %>
+                      -
+                    <% end %>
+                  </td>
+                  <td>
+                    <% if state %>
+                      <span style="color: #10B981;"><%= state.tasks_completed %></span> /
+                      <span style="color: #EF4444;"><%= state.tasks_failed %></span>
+                    <% else %>
+                      -
+                    <% end %>
+                  </td>
+                  <td>
+                    <%= link_to 'Details', dashboard_energy_path(agent), class: 'btn-action' %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
         </div>
       </div>
 
       <!-- Recent Transactions -->
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">Recent Energy Transactions</h5>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-            <table class="table table-sm mb-0">
-              <thead class="table-light sticky-top">
+      <div class="energy-card">
+        <h5 class="mb-3" style="color: var(--text-primary);">Recent Energy Transactions</h5>
+        <div style="max-height: 400px; overflow-y: auto;">
+          <table class="energy-table">
+            <thead style="position: sticky; top: 0; background: var(--card-bg);">
+              <tr>
+                <th>Time</th>
+                <th>Agent</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if @recent_transactions.empty? %>
                 <tr>
-                  <th>Time</th>
-                  <th>Agent</th>
-                  <th>Type</th>
-                  <th>Amount</th>
-                  <th>Reason</th>
+                  <td colspan="5" class="empty-state">No transactions yet</td>
                 </tr>
-              </thead>
-              <tbody>
+              <% else %>
                 <% @recent_transactions.each do |tx| %>
                   <tr>
-                    <td><small><%= time_ago_in_words(tx.created_at) %> ago</small></td>
-                    <td><%= tx.agent_plugin.name %></td>
+                    <td><small style="color: var(--text-muted);"><%= time_ago_in_words(tx.created_at) %> ago</small></td>
+                    <td style="color: var(--text-primary);"><%= tx.agent_plugin.name %></td>
                     <td>
-                      <% case tx.transaction_type %>
-                      <% when 'earned', 'task_completion', 'helped_agent' %>
-                        <span class="badge bg-success"><%= tx.transaction_type %></span>
-                      <% when 'spent' %>
-                        <span class="badge bg-info"><%= tx.transaction_type %></span>
-                      <% when 'penalty', 'task_failure' %>
-                        <span class="badge bg-danger"><%= tx.transaction_type %></span>
-                      <% else %>
-                        <span class="badge bg-secondary"><%= tx.transaction_type %></span>
-                      <% end %>
+                      <% tx_class = case tx.transaction_type
+                         when 'earned', 'task_completion', 'helped_agent' then 'earned'
+                         when 'spent' then 'spent'
+                         when 'penalty', 'task_failure' then 'penalty'
+                         else 'system'
+                         end %>
+                      <span class="transaction-badge <%= tx_class %>"><%= tx.transaction_type %></span>
                     </td>
-                    <td class="<%= tx.amount > 0 ? 'text-success' : 'text-danger' %>">
+                    <td style="color: <%= tx.amount > 0 ? '#10B981' : '#EF4444' %>;">
                       <%= tx.amount > 0 ? '+' : '' %><%= tx.amount.round(1) %>
                     </td>
-                    <td><small><%= tx.reason %></small></td>
+                    <td><small style="color: var(--text-muted);"><%= tx.reason %></small></td>
                   </tr>
                 <% end %>
-              </tbody>
-            </table>
-          </div>
+              <% end %>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -217,125 +379,122 @@
     <!-- Sidebar -->
     <div class="col-lg-4">
       <!-- School Enrollments -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">🎓 School Enrollments</h5>
+      <div class="sidebar-card mb-4">
+        <div class="sidebar-card-header" style="color: var(--text-primary);">
+          🎓 School Enrollments
         </div>
-        <div class="list-group list-group-flush">
-          <% if @school_enrollments.empty? %>
-            <div class="list-group-item text-muted text-center py-4">
-              No agents in school
-            </div>
-          <% else %>
-            <% @school_enrollments.each do |enrollment| %>
-              <div class="list-group-item">
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <strong><%= enrollment.agent_plugin.name %></strong>
-                    <br>
-                    <small class="text-muted">
-                      Attempt #<%= enrollment.attempt_number %> •
-                      <%= enrollment.status.titleize %>
-                    </small>
-                  </div>
-                  <% case enrollment.status %>
-                  <% when 'graduated' %>
-                    <span class="badge bg-success">🎓</span>
-                  <% when 'expelled' %>
-                    <span class="badge bg-danger">❌</span>
-                  <% when 'probation' %>
-                    <span class="badge bg-warning text-dark">⚠️</span>
-                  <% else %>
-                    <span class="badge bg-info"><%= enrollment.status %></span>
-                  <% end %>
+        <% if @school_enrollments.empty? %>
+          <div class="empty-state">No agents in school</div>
+        <% else %>
+          <% @school_enrollments.each do |enrollment| %>
+            <div class="sidebar-list-item">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <strong style="color: var(--text-primary);"><%= enrollment.agent_plugin.name %></strong>
+                  <br>
+                  <small style="color: var(--text-muted);">
+                    Attempt #<%= enrollment.attempt_number %> •
+                    <%= enrollment.status.titleize %>
+                  </small>
                 </div>
+                <% case enrollment.status %>
+                <% when 'graduated' %>
+                  <span class="status-badge active">🎓</span>
+                <% when 'expelled' %>
+                  <span class="status-badge probation">❌</span>
+                <% when 'probation' %>
+                  <span class="status-badge in_school">⚠️</span>
+                <% else %>
+                  <span class="status-badge testing"><%= enrollment.status %></span>
+                <% end %>
               </div>
-            <% end %>
+            </div>
           <% end %>
-        </div>
+        <% end %>
       </div>
 
       <!-- A/B Tests -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">🧪 A/B Tests</h5>
+      <div class="sidebar-card mb-4">
+        <div class="sidebar-card-header" style="color: var(--text-primary);">
+          🧪 A/B Tests
         </div>
-        <div class="list-group list-group-flush">
-          <% if @ab_tests.empty? %>
-            <div class="list-group-item text-muted text-center py-4">
-              No active tests
-            </div>
-          <% else %>
-            <% @ab_tests.each do |test| %>
-              <div class="list-group-item">
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <strong><%= test.control_agent.name %></strong>
-                    <span class="text-muted">vs</span>
-                    <strong><%= test.variant_agent.name %></strong>
-                    <br>
-                    <small class="text-muted">
-                      Progress: <%= test.progress %>%
-                    </small>
-                  </div>
-                  <% if test.completed? %>
-                    <span class="badge bg-<%= test.winner == 'variant' ? 'success' : test.winner == 'control' ? 'secondary' : 'warning' %>">
-                      <%= test.winner.titleize %>
-                    </span>
-                  <% else %>
-                    <span class="badge bg-info">Running</span>
-                  <% end %>
+        <% if @ab_tests.empty? %>
+          <div class="empty-state">No active tests</div>
+        <% else %>
+          <% @ab_tests.each do |test| %>
+            <div class="sidebar-list-item">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <strong style="color: var(--text-primary);"><%= test.control_agent.name %></strong>
+                  <span style="color: var(--text-muted);">vs</span>
+                  <strong style="color: var(--text-primary);"><%= test.variant_agent.name %></strong>
+                  <br>
+                  <small style="color: var(--text-muted);">
+                    Progress: <%= test.progress %>%
+                  </small>
                 </div>
+                <% if test.completed? %>
+                  <span class="status-badge <%= test.winner == 'variant' ? 'active' : test.winner == 'control' ? 'default' : 'in_school' %>">
+                    <%= test.winner.titleize %>
+                  </span>
+                <% else %>
+                  <span class="status-badge testing">Running</span>
+                <% end %>
               </div>
-            <% end %>
+            </div>
           <% end %>
-        </div>
+        <% end %>
       </div>
 
       <!-- Quick Stats -->
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">📊 System Health</h5>
+      <div class="sidebar-card">
+        <div class="sidebar-card-header" style="color: var(--text-primary);">
+          📊 System Health
         </div>
-        <div class="card-body">
+        <div class="sidebar-card-body">
           <div class="mb-3">
             <div class="d-flex justify-content-between mb-1">
-              <span>Agents with Energy</span>
-              <span><%= @stats[:agents_with_energy] %>/<%= @stats[:total_agents] %></span>
+              <span style="color: var(--text-muted);">Agents with Energy</span>
+              <span style="color: var(--text-primary);"><%= @stats[:agents_with_energy] %>/<%= @stats[:total_agents] %></span>
             </div>
-            <div class="progress" style="height: 8px;">
+            <div class="health-bar">
               <% pct = @stats[:total_agents] > 0 ? (@stats[:agents_with_energy].to_f / @stats[:total_agents] * 100) : 0 %>
-              <div class="progress-bar bg-primary" style="width: <%= pct %>%"></div>
+              <div class="health-bar-fill primary" style="width: <%= pct %>%"></div>
             </div>
           </div>
 
           <div class="mb-3">
             <div class="d-flex justify-content-between mb-1">
-              <span>In School</span>
-              <span><%= @stats[:in_school] %></span>
+              <span style="color: var(--text-muted);">In School</span>
+              <span style="color: var(--text-primary);"><%= @stats[:in_school] %></span>
             </div>
-            <div class="progress" style="height: 8px;">
+            <div class="health-bar">
               <% pct = @stats[:total_agents] > 0 ? (@stats[:in_school].to_f / @stats[:total_agents] * 100) : 0 %>
-              <div class="progress-bar bg-warning" style="width: <%= pct %>%"></div>
+              <div class="health-bar-fill warning" style="width: <%= pct %>%"></div>
             </div>
           </div>
 
           <div class="mb-3">
             <div class="d-flex justify-content-between mb-1">
-              <span>On Probation</span>
-              <span><%= @stats[:on_probation] %></span>
+              <span style="color: var(--text-muted);">On Probation</span>
+              <span style="color: var(--text-primary);"><%= @stats[:on_probation] %></span>
             </div>
-            <div class="progress" style="height: 8px;">
+            <div class="health-bar">
               <% pct = @stats[:total_agents] > 0 ? (@stats[:on_probation].to_f / @stats[:total_agents] * 100) : 0 %>
-              <div class="progress-bar bg-danger" style="width: <%= pct %>%"></div>
+              <div class="health-bar-fill danger" style="width: <%= pct %>%"></div>
             </div>
           </div>
 
-          <hr>
+          <hr style="border-color: var(--border-color);">
 
           <div class="d-flex justify-content-between">
-            <span>Community Pool Health:</span>
-            <span class="badge bg-<%= @community_pool.health_status == :healthy ? 'success' : @community_pool.health_status == :moderate ? 'warning' : 'danger' %>">
+            <span style="color: var(--text-muted);">Community Pool Health:</span>
+            <% pool_class = case @community_pool.health_status
+               when :healthy then 'active'
+               when :moderate then 'in_school'
+               else 'probation'
+               end %>
+            <span class="status-badge <%= pool_class %>">
               <%= @community_pool.health_status.to_s.titleize %>
             </span>
           </div>
@@ -344,4 +503,3 @@
     </div>
   </div>
 </div>
-

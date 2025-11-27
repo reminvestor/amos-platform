@@ -2,6 +2,8 @@
 
 module Dashboard
   class EnergyController < ApplicationController
+    layout 'customer_admin'
+    
     before_action :authenticate_user!
     before_action :set_entity
 
