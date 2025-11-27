@@ -12,6 +12,7 @@
 #
 class TieredDiscoveryService
   # Core tools that are ALWAYS available (essential for basic operation)
+  # NOTE: This is legacy - tool allowlist is now managed via ScoutLoadoutConfiguration
   CORE_TOOLS = %w[
     load_canvas
     ask_user

@@ -1,12 +1,15 @@
 class Integration < ApplicationRecord
   # Associations
+  belongs_to :entity, optional: true  # NULL = global/system integration
+  belongs_to :created_by, class_name: 'User', optional: true
   has_many :connections, dependent: :destroy
   has_many :integration_operations, dependent: :destroy
   has_many :entities, through: :connections
   has_many :oauth_configurations, dependent: :destroy
 
   # Validations
-  validates :name, :slug, presence: true, uniqueness: true
+  validates :name, :slug, presence: true
+  validates :slug, uniqueness: { scope: :entity_id }  # Unique per entity (or globally if entity_id is nil)
   validates :auth_type, :api_base_url, presence: true
   validates :category, inclusion: { in: %w[payment ecommerce crm communication productivity marketing analytics custom] }
 
@@ -16,13 +19,18 @@ class Integration < ApplicationRecord
     bearer_token: 1,
     basic_auth: 2,
     oauth2: 3,
-    custom: 4  # Reserved for user-managed OAuth apps (future)
+    no_auth: 4,  # No authentication required (can't use 'none' - conflicts with AR)
+    custom: 5  # Reserved for user-managed OAuth apps (future)
   }
 
   # Scopes
   scope :active, -> { where(is_active: true) }
   scope :verified, -> { where(is_verified: true) }
   scope :by_category, ->(category) { where(category: category) }
+  scope :global, -> { where(entity_id: nil) }
+  scope :for_entity, ->(entity) { where(entity_id: [nil, entity.id]).or(where(is_public: true)) }
+  scope :user_created, -> { where.not(entity_id: nil) }
+  scope :public_integrations, -> { where(is_public: true) }
 
   # Default values
   after_initialize :set_defaults, if: :new_record?
@@ -114,8 +122,19 @@ class Integration < ApplicationRecord
   def set_defaults
     self.is_active = true if is_active.nil?
     self.is_verified = false if is_verified.nil?
+    self.is_public = false if is_public.nil?
     self.allowed_hosts ||= []
     self.auth_config ||= {}
     self.metadata ||= {}
+  end
+
+  # Is this a global/system integration (available to all)?
+  def global?
+    entity_id.nil?
+  end
+
+  # Is this integration visible to the given entity?
+  def visible_to?(entity)
+    global? || is_public? || entity_id == entity.id
   end
 end

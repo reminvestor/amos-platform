@@ -18,21 +18,26 @@ module Collaboration
       full_delegation: 25.0
     }.freeze
 
-    # Task completion rewards
+    # Task completion rewards - generous to encourage task completion
+    # A successful task should recover ~2 failed tasks worth of energy
     TASK_REWARDS = {
-      base: 35.0,
-      quality_multiplier: 30.0,  # 0-1 quality score * this
-      speed_bonus_max: 15.0,
-      user_satisfaction_max: 25.0
+      base: 25.0,                  # Guaranteed base reward
+      quality_multiplier: 15.0,   # 0-1 quality score * this
+      speed_bonus_max: 10.0,
+      user_satisfaction_max: 15.0,
+      first_success_bonus: 10.0   # Extra bonus for first successful task
     }.freeze
 
-    # Failure penalties
+    # Failure penalties - balanced to allow recovery
+    # An agent should be able to fail 2-3 times before hitting critical energy
     FAILURE_PENALTIES = {
-      base: 50.0,
-      solo_multiplier: 1.5,      # Higher penalty for solo failures
-      with_help_multiplier: 0.8, # Lower penalty if help was sought
-      importance_multiplier: 2.0,
-      preventability_multiplier: 1.5
+      base: 15.0,                 # Reduced from 50 - allows ~3 failures before critical
+      solo_multiplier: 1.3,      # Slightly higher penalty for solo failures
+      with_help_multiplier: 0.7, # Lower penalty if help was sought
+      importance_multiplier: 1.5,
+      preventability_multiplier: 1.2,
+      rookie_protection_tasks: 5, # First N tasks get reduced penalties
+      rookie_multiplier: 0.5      # Rookies pay 50% penalty
     }.freeze
 
     # ============================================
@@ -107,22 +112,36 @@ module Collaboration
     def task_completion_reward(execution)
       base = TASK_REWARDS[:base]
 
-      # Quality multiplier
-      quality = execution.quality_score || 0.5
+      # Quality multiplier - use output_result metadata if available, otherwise default
+      quality = extract_quality_score(execution)
       quality_bonus = quality * TASK_REWARDS[:quality_multiplier]
 
       # Speed bonus
       speed_bonus = calculate_speed_bonus(execution)
 
-      # User satisfaction (if available)
+      # User satisfaction (if available from output_result)
       satisfaction_bonus = 0
-      if execution.user_rating.present?
-        satisfaction_bonus = (execution.user_rating / 5.0) * TASK_REWARDS[:user_satisfaction_max]
+      user_rating = extract_user_rating(execution)
+      if user_rating.present?
+        satisfaction_bonus = (user_rating / 5.0) * TASK_REWARDS[:user_satisfaction_max]
       end
 
       total = base + quality_bonus + speed_bonus + satisfaction_bonus
 
       total.round(1)
+    end
+
+    def extract_quality_score(execution)
+      # Try to get quality from output_result metadata
+      execution.output_result&.dig('quality_score') ||
+        execution.output_result&.dig('quality') ||
+        0.5 # Default quality
+    end
+
+    def extract_user_rating(execution)
+      # Try to get user rating from output_result metadata
+      execution.output_result&.dig('user_rating') ||
+        execution.output_result&.dig('rating')
     end
 
     # ============================================
@@ -131,6 +150,11 @@ module Collaboration
 
     def failure_penalty(agent, execution)
       base = FAILURE_PENALTIES[:base]
+
+      # Rookie protection - new agents get reduced penalties
+      total_tasks = agent.energy_state&.tasks_completed.to_i + agent.energy_state&.tasks_failed.to_i
+      is_rookie = total_tasks < FAILURE_PENALTIES[:rookie_protection_tasks]
+      rookie_factor = is_rookie ? FAILURE_PENALTIES[:rookie_multiplier] : 1.0
 
       # Solo vs with help
       had_help = agent.collaboration_requests_made
@@ -142,20 +166,23 @@ module Collaboration
 
       # Task importance (if available) - use input_context instead of metadata
       importance = execution.input_context&.dig('importance') || 1.0
-      importance_factor = 1.0 + (importance - 1.0) * 0.5
+      importance_factor = 1.0 + (importance - 1.0) * 0.3  # Reduced impact
 
       # Preventability: was help available but not sought?
-      could_have_asked = agent.can_help_others? && !had_help
+      could_have_asked = agent.respond_to?(:can_help_others?) && agent.can_help_others? && !had_help
       preventability_factor = could_have_asked ? FAILURE_PENALTIES[:preventability_multiplier] : 1.0
 
-      # Agent failure trend
+      # Agent failure trend - only penalize repeat offenders
       trend_factor = calculate_failure_trend_factor(agent)
 
-      penalty = base * multiplier * importance_factor * preventability_factor * trend_factor
+      penalty = base * multiplier * importance_factor * preventability_factor * trend_factor * rookie_factor
 
-      # Ensure failure always costs more than asking for help would have
-      min_penalty = 25.0  # More than max collaboration cost
-      [penalty, min_penalty].max.clamp(20.0, 100.0).round(1)
+      # Ensure failure costs more than asking for help, but not catastrophically
+      # Min penalty should allow an agent to fail 2-3 times before hitting critical
+      min_penalty = is_rookie ? 8.0 : 12.0
+      max_penalty = is_rookie ? 25.0 : 50.0
+
+      penalty.clamp(min_penalty, max_penalty).round(1)
     end
 
     private

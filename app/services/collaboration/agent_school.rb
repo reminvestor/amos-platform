@@ -162,8 +162,8 @@ module Collaboration
 
         if result[task_type][:examples].size < 3
           result[task_type][:examples] << {
-            task: execution.input&.dig('task_description')&.to_s&.truncate(100),
-            error: execution.error_message&.truncate(200)
+            task: execution.input_context&.dig('task_description')&.to_s&.truncate(100),
+            error: extract_error_message(execution)&.truncate(200)
           }
         end
       end
@@ -175,11 +175,15 @@ module Collaboration
       result = {}
 
       failures.each do |execution|
-        (execution.metadata&.dig('tools_used') || []).each do |tool|
-          if execution.metadata&.dig('tool_errors', tool).present?
+        # Use input_context instead of metadata (which doesn't exist on AgentPluginExecution)
+        tools_used = execution.input_context&.dig('tools_used') || []
+        tool_errors = execution.output_result&.dig('tool_errors') || {}
+
+        tools_used.each do |tool|
+          if tool_errors[tool].present?
             result[tool] ||= { count: 0, errors: [] }
             result[tool][:count] += 1
-            result[tool][:errors] << execution.metadata.dig('tool_errors', tool)
+            result[tool][:errors] << tool_errors[tool]
           end
         end
       end
@@ -192,7 +196,8 @@ module Collaboration
 
       failures.each do |execution|
         # Check if agent had low confidence but didn't ask for help
-        confidence = execution.metadata&.dig('confidence_at_start')
+        # Use input_context instead of metadata
+        confidence = execution.input_context&.dig('energy_tracking', 'confidence_at_start')
         asked_for_help = agent.collaboration_requests_made
           .where(agent_plugin_execution: execution)
           .exists?
@@ -200,7 +205,7 @@ module Collaboration
         if confidence.present? && confidence < 60 && !asked_for_help
           gaps << {
             execution_id: execution.id,
-            task: execution.input&.dig('task_description')&.to_s&.truncate(100),
+            task: execution.input_context&.dig('task_description')&.to_s&.truncate(100),
             confidence: confidence,
             suggestion: 'Should have asked for help'
           }
@@ -677,7 +682,8 @@ module Collaboration
     end
 
     def classify_task_type(execution)
-      task = execution.input&.dig('task_description') || ''
+      # Use input_context instead of input (which doesn't exist on AgentPluginExecution)
+      task = execution.input_context&.dig('task_description') || ''
       task = task.to_s.downcase
 
       if task.include?('analyze') || task.include?('analysis')
@@ -689,6 +695,14 @@ module Collaboration
       else
         'general'
       end
+    end
+
+    def extract_error_message(execution)
+      # AgentPluginExecution stores errors in output_result
+      execution.output_result&.dig('error') ||
+        execution.output_result&.dig('error_message') ||
+        execution.output_result&.dig('message') ||
+        'Unknown error'
     end
   end
 end

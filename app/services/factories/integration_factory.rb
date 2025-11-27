@@ -14,7 +14,7 @@ module Factories
     # The factory ensures the configuration is structurally valid.
 
     # These come from the Integration model's enum
-    VALID_AUTH_TYPES = %w[api_key bearer_token basic_auth oauth2 custom].freeze
+    VALID_AUTH_TYPES = %w[api_key bearer_token basic_auth oauth2 no_auth custom].freeze
     
     # These come from the IntegrationOperation model
     VALID_HTTP_METHODS = %w[GET POST PUT PATCH DELETE HEAD OPTIONS].freeze
@@ -200,7 +200,7 @@ module Factories
     end
 
     # STAGE 2: Configure authentication
-    def configure_auth(integration_id:, auth_type:, auth_placement:, test_endpoint:, 
+    def configure_auth(integration_id:, auth_type:, auth_placement: nil, test_endpoint: nil, 
                        auth_configs: nil, auth_header_name: nil, username_label: nil, 
                        password_required: nil, authorize_url: nil, token_url: nil, 
                        scopes: nil, callback_params: nil)
@@ -221,6 +221,12 @@ module Factories
       # Validate auth type
       validate_auth_type!(auth_type)
       return failure_result if @errors.any?
+
+      # For no_auth, set sensible defaults
+      if auth_type == 'no_auth'
+        auth_placement ||= 'none'
+        test_endpoint ||= '/' # Default to root for testing
+      end
 
       # Validate OAuth2 requirements
       if auth_type == 'oauth2'
@@ -776,6 +782,9 @@ module Factories
         []
       when 'oauth2'
         [{ key: 'Authorization', value: 'Bearer {access_token}', placement: 'header' }]
+      when 'no_auth'
+        # No authentication needed - return empty config
+        []
       else
         []
       end
@@ -931,6 +940,9 @@ module Factories
         configs << { key: 'api_key', value: '{api_key}', placement: 'header' }
       when 'oauth2'
         configs << { key: 'Authorization', value: 'Bearer {access_token}', placement: 'header' }
+      when 'no_auth'
+        # No authentication needed - no configs required
+        # Leave configs empty
       end
       
       configs
@@ -999,6 +1011,7 @@ module Factories
       when 'bearer_token' then 'bearer'
       when 'basic_auth' then 'basic'
       when 'oauth2' then 'bearer'
+      when 'no_auth' then 'none'
       else 'header'
       end
     end
