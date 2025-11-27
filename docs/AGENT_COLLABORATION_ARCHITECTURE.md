@@ -836,6 +836,647 @@ end
 
 ---
 
+## Agent School: Rehabilitation System
+
+When an agent's energy hits **zero**, they don't get deprecated immediately - they go to **school** for rehabilitation and improvement. This gives underperforming agents a structured path to recovery.
+
+### The School Process
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         AGENT SCHOOL SYSTEM                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  TRIGGER: Agent energy reaches 0                                         │
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │  PHASE 1: ENROLLMENT                                            │    │
+│  │  • Agent suspended from active duty (status: 'in_school')       │    │
+│  │  • Clone created as "student" version                           │    │
+│  │  • Original preserved as "control" for A/B comparison           │    │
+│  │  • School record created with enrollment timestamp              │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                              ↓                                           │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │  PHASE 2: DIAGNOSIS                                             │    │
+│  │  • Analyze ALL failures that led to 0 energy                    │    │
+│  │  • Identify patterns: task types, tools, timing                 │    │
+│  │  • Compare to successful agents with similar roles              │    │
+│  │  • Identify collaboration gaps (should have asked for help?)    │    │
+│  │  • Generate "improvement prescription"                          │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                              ↓                                           │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │  PHASE 3: CURRICULUM (Applied to Student Version)               │    │
+│  │                                                                  │    │
+│  │  Module 1: Prompt Refinement                                    │    │
+│  │  • AI analyzes failure patterns and rewrites prompt             │    │
+│  │  • Add guardrails for common failure modes                      │    │
+│  │  • Strengthen areas where agent succeeded                       │    │
+│  │                                                                  │    │
+│  │  Module 2: Tool Assignment Review                               │    │
+│  │  • Remove tools that caused repeated failures                   │    │
+│  │  • Add tools that successful peers use                          │    │
+│  │  • Adjust tool proficiency scores                               │    │
+│  │                                                                  │    │
+│  │  Module 3: Capability Recalibration                             │    │
+│  │  • Reset overconfident capability beliefs                       │    │
+│  │  • Lower thresholds for asking for help                         │    │
+│  │  • Increase collaboration tendency                              │    │
+│  │                                                                  │    │
+│  │  Module 4: Decision Boundary Adjustment                         │    │
+│  │  • Shift ask-for-help threshold lower                           │    │
+│  │  • Make agent more likely to collaborate                        │    │
+│  │  • Add "when in doubt, ask" behavior                            │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                              ↓                                           │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │  PHASE 4: GRADUATION TEST (A/B Comparison)                      │    │
+│  │  • Both versions receive identical task stream                  │    │
+│  │  • Run for N tasks or T time period                             │    │
+│  │  • Track: success rate, quality, efficiency, collaboration     │    │
+│  │  • Require statistical significance (p < 0.05)                  │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                              ↓                                           │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │  PHASE 5: OUTCOME DECISION                                      │    │
+│  │                                                                  │    │
+│  │  🎓 GRADUATE (student significantly better)                     │    │
+│  │     → Student replaces original                                 │    │
+│  │     → Original archived with learnings                          │    │
+│  │     → Student gets 50 energy to start fresh                     │    │
+│  │                                                                  │    │
+│  │  🔄 RETRY (no significant difference)                           │    │
+│  │     → Merge best traits from both                               │    │
+│  │     → Try different curriculum modules                          │    │
+│  │     → Max 3 retry attempts                                      │    │
+│  │                                                                  │    │
+│  │  ❌ EXPEL (student worse OR max retries exceeded)               │    │
+│  │     → Deprecate both versions                                   │    │
+│  │     → Create completely new agent for the role                  │    │
+│  │     → Learn from failure for future agents                      │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Implementation
+
+```ruby
+class AgentSchool
+  MAX_RETRY_ATTEMPTS = 3
+  GRADUATION_TEST_TASKS = 50
+  SIGNIFICANCE_THRESHOLD = 0.05  # p-value for A/B test
+  
+  def enroll(agent)
+    return if agent.current_energy > 0
+    
+    Rails.logger.info "[AgentSchool] Enrolling agent #{agent.id} (#{agent.name})"
+    
+    # Create school enrollment record
+    enrollment = AgentSchoolEnrollment.create!(
+      agent_plugin: agent,
+      entity: agent.entity,
+      status: 'enrolled',
+      enrollment_reason: 'zero_energy',
+      attempt_number: previous_enrollments(agent).count + 1
+    )
+    
+    # Suspend original agent
+    agent.update!(status: 'in_school')
+    
+    # Run diagnosis
+    diagnosis = diagnose(agent, enrollment)
+    enrollment.update!(diagnosis: diagnosis)
+    
+    # Create student version
+    student = create_student(agent, enrollment)
+    
+    # Apply curriculum
+    apply_curriculum(student, diagnosis, enrollment)
+    
+    # Start graduation test
+    start_graduation_test(agent, student, enrollment)
+    
+    enrollment
+  end
+  
+  private
+  
+  def diagnose(agent, enrollment)
+    # Collect all failures that led to 0 energy
+    failures = agent.executions
+      .where(status: 'failed')
+      .where('created_at > ?', 30.days.ago)
+      .order(created_at: :desc)
+    
+    # Analyze patterns
+    diagnosis = {
+      total_failures: failures.count,
+      failure_by_task_type: {},
+      failure_by_tool: {},
+      collaboration_gaps: [],
+      overconfidence_areas: [],
+      comparison_to_peers: {},
+      root_causes: [],
+      prescription: {}
+    }
+    
+    # Task type analysis
+    failures.each do |execution|
+      task_type = classify_task_type(execution.task_description)
+      diagnosis[:failure_by_task_type][task_type] ||= { count: 0, examples: [] }
+      diagnosis[:failure_by_task_type][task_type][:count] += 1
+      diagnosis[:failure_by_task_type][task_type][:examples] << {
+        task: execution.task_description.truncate(100),
+        error: execution.error_message
+      }
+    end
+    
+    # Tool failure analysis
+    failures.each do |execution|
+      execution.tool_errors&.each do |tool, error|
+        diagnosis[:failure_by_tool][tool] ||= { count: 0, errors: [] }
+        diagnosis[:failure_by_tool][tool][:count] += 1
+        diagnosis[:failure_by_tool][tool][:errors] << error
+      end
+    end
+    
+    # Collaboration gap analysis
+    failures.each do |execution|
+      if execution.collaboration_requests.empty? && 
+         execution.confidence_at_start.to_f < 60
+        diagnosis[:collaboration_gaps] << {
+          task: execution.task_description.truncate(100),
+          confidence: execution.confidence_at_start,
+          suggestion: "Should have asked for help"
+        }
+      end
+    end
+    
+    # Compare to successful peers
+    successful_peers = find_successful_peers(agent)
+    diagnosis[:comparison_to_peers] = compare_to_peers(agent, successful_peers)
+    
+    # Generate root causes
+    diagnosis[:root_causes] = identify_root_causes(diagnosis)
+    
+    # Generate prescription
+    diagnosis[:prescription] = generate_prescription(diagnosis)
+    
+    diagnosis
+  end
+  
+  def create_student(original, enrollment)
+    student = original.dup
+    student.name = "#{original.name} (Student v#{enrollment.attempt_number})"
+    student.status = 'testing'
+    student.parent_agent_id = original.id
+    student.generation = original.generation + 1
+    student.school_enrollment_id = enrollment.id
+    student.save!
+    
+    # Clone capability profile
+    if original.capability_profile.present?
+      student_profile = original.capability_profile.dup
+      student_profile.agent_plugin = student
+      student_profile.save!
+    end
+    
+    # Create fresh energy state
+    AgentEnergyState.create!(
+      agent_plugin: student,
+      entity: student.entity,
+      current_energy: 30,  # Start with some energy for testing
+      max_energy: 100
+    )
+    
+    enrollment.update!(student_agent: student)
+    student
+  end
+  
+  def apply_curriculum(student, diagnosis, enrollment)
+    curriculum_applied = []
+    
+    # Module 1: Prompt Refinement
+    if diagnosis[:failure_by_task_type].any?
+      refined_prompt = refine_prompt(student, diagnosis)
+      student.update!(system_prompt: refined_prompt)
+      curriculum_applied << {
+        module: 'prompt_refinement',
+        changes: summarize_prompt_changes(student.system_prompt, refined_prompt)
+      }
+    end
+    
+    # Module 2: Tool Assignment Review
+    if diagnosis[:failure_by_tool].any?
+      tool_changes = adjust_tools(student, diagnosis)
+      curriculum_applied << {
+        module: 'tool_assignment',
+        changes: tool_changes
+      }
+    end
+    
+    # Module 3: Capability Recalibration
+    if diagnosis[:overconfidence_areas].any?
+      capability_changes = recalibrate_capabilities(student, diagnosis)
+      curriculum_applied << {
+        module: 'capability_recalibration',
+        changes: capability_changes
+      }
+    end
+    
+    # Module 4: Decision Boundary Adjustment
+    if diagnosis[:collaboration_gaps].any?
+      boundary_changes = adjust_decision_boundary(student, diagnosis)
+      curriculum_applied << {
+        module: 'decision_boundary',
+        changes: boundary_changes
+      }
+    end
+    
+    enrollment.update!(curriculum_applied: curriculum_applied)
+  end
+  
+  def refine_prompt(student, diagnosis)
+    analysis_prompt = <<~PROMPT
+      You are an expert at improving AI agent prompts. An agent has been 
+      performing poorly and needs its system prompt refined.
+      
+      CURRENT PROMPT:
+      #{student.system_prompt}
+      
+      FAILURE ANALYSIS:
+      - Failed task types: #{diagnosis[:failure_by_task_type].to_json}
+      - Tool failures: #{diagnosis[:failure_by_tool].to_json}
+      - Collaboration gaps: #{diagnosis[:collaboration_gaps].to_json}
+      - Root causes: #{diagnosis[:root_causes].to_json}
+      
+      SUCCESSFUL PEER COMPARISON:
+      #{diagnosis[:comparison_to_peers].to_json}
+      
+      Please rewrite the system prompt to:
+      1. Add explicit guardrails for the identified failure modes
+      2. Encourage asking for help when confidence is low
+      3. Provide clearer guidance for the problematic task types
+      4. Maintain the agent's core purpose and strengths
+      
+      Return ONLY the improved prompt, no explanations.
+    PROMPT
+    
+    response = BedrockService.new.send_message(
+      messages: [{ role: 'user', content: analysis_prompt }],
+      model: 'claude-sonnet-4-20250514'
+    )
+    
+    response[:content]
+  end
+  
+  def adjust_tools(student, diagnosis)
+    changes = { removed: [], added: [], proficiency_adjusted: [] }
+    
+    # Remove tools with high failure rates
+    diagnosis[:failure_by_tool].each do |tool, data|
+      if data[:count] >= 3
+        student.tools.delete(tool)
+        changes[:removed] << tool
+      end
+    end
+    
+    # Find tools that successful peers use
+    successful_peers = find_successful_peers(student)
+    peer_tools = successful_peers.flat_map(&:tools).tally
+    
+    # Add commonly used tools that this agent lacks
+    peer_tools.each do |tool, count|
+      if count >= 2 && !student.tools.include?(tool)
+        student.tools << tool
+        changes[:added] << tool
+      end
+    end
+    
+    student.save!
+    changes
+  end
+  
+  def adjust_decision_boundary(student, diagnosis)
+    boundary = student.decision_boundary || student.create_decision_boundary!
+    
+    # Make agent more likely to ask for help
+    # Shift the Bayesian prior toward asking
+    old_values = {
+      ask_alpha: boundary.ask_alpha,
+      ask_beta: boundary.ask_beta
+    }
+    
+    # Increase ask_alpha (evidence that asking is good)
+    # based on collaboration gaps found
+    gap_count = diagnosis[:collaboration_gaps].size
+    boundary.ask_alpha += gap_count * 2
+    boundary.solo_beta += gap_count  # Decrease solo confidence
+    
+    boundary.save!
+    
+    {
+      old_values: old_values,
+      new_values: {
+        ask_alpha: boundary.ask_alpha,
+        ask_beta: boundary.ask_beta
+      },
+      reason: "#{gap_count} collaboration gaps identified"
+    }
+  end
+  
+  def start_graduation_test(original, student, enrollment)
+    test = AgentABTest.create!(
+      control_agent: original,
+      variant_agent: student,
+      entity: original.entity,
+      enrollment: enrollment,
+      status: 'running',
+      target_tasks: GRADUATION_TEST_TASKS,
+      metrics_to_compare: ['success_rate', 'quality_score', 'efficiency', 'collaboration_rate'],
+      started_at: Time.current
+    )
+    
+    # Both agents will receive tasks through normal routing
+    # The test monitors their performance
+    
+    enrollment.update!(
+      graduation_test: test,
+      status: 'testing'
+    )
+    
+    test
+  end
+  
+  def evaluate_graduation(enrollment)
+    test = enrollment.graduation_test
+    return unless test.completed?
+    
+    # Calculate statistics
+    control_stats = calculate_agent_stats(test.control_agent, test)
+    variant_stats = calculate_agent_stats(test.variant_agent, test)
+    
+    # Perform statistical comparison
+    comparison = statistical_comparison(control_stats, variant_stats)
+    
+    if comparison[:variant_significantly_better]
+      graduate(enrollment, comparison)
+    elsif comparison[:no_significant_difference]
+      if enrollment.attempt_number < MAX_RETRY_ATTEMPTS
+        retry_school(enrollment, comparison)
+      else
+        expel(enrollment, comparison)
+      end
+    else
+      # Variant is worse
+      expel(enrollment, comparison)
+    end
+  end
+  
+  def graduate(enrollment, comparison)
+    Rails.logger.info "[AgentSchool] 🎓 Agent #{enrollment.agent_plugin.name} GRADUATED!"
+    
+    original = enrollment.agent_plugin
+    student = enrollment.student_agent
+    
+    # Archive original
+    original.update!(
+      status: 'archived',
+      archived_reason: 'replaced_by_graduate',
+      archived_at: Time.current
+    )
+    
+    # Promote student
+    student.update!(
+      status: 'active',
+      name: original.name,  # Take original's name
+      graduated_at: Time.current
+    )
+    
+    # Give graduate fresh energy
+    student.energy_state.update!(current_energy: 50)
+    
+    enrollment.update!(
+      status: 'graduated',
+      outcome: 'success',
+      comparison_results: comparison,
+      completed_at: Time.current
+    )
+    
+    # Record learnings for future agents
+    record_successful_improvement(enrollment)
+  end
+  
+  def retry_school(enrollment, comparison)
+    Rails.logger.info "[AgentSchool] 🔄 Agent #{enrollment.agent_plugin.name} retrying school (attempt #{enrollment.attempt_number + 1})"
+    
+    # Create new enrollment with merged learnings
+    new_student = merge_best_traits(
+      enrollment.agent_plugin,
+      enrollment.student_agent
+    )
+    
+    enrollment.update!(
+      status: 'retry',
+      outcome: 'inconclusive',
+      comparison_results: comparison,
+      completed_at: Time.current
+    )
+    
+    # Start new enrollment
+    enroll(enrollment.agent_plugin)
+  end
+  
+  def expel(enrollment, comparison)
+    Rails.logger.info "[AgentSchool] ❌ Agent #{enrollment.agent_plugin.name} EXPELLED"
+    
+    original = enrollment.agent_plugin
+    student = enrollment.student_agent
+    
+    # Deprecate both
+    original.update!(status: 'deprecated', deprecated_reason: 'school_expulsion')
+    student.update!(status: 'deprecated', deprecated_reason: 'school_expulsion')
+    
+    enrollment.update!(
+      status: 'expelled',
+      outcome: 'failure',
+      comparison_results: comparison,
+      completed_at: Time.current
+    )
+    
+    # Create replacement agent if role is needed
+    if role_still_needed?(original)
+      create_replacement_agent(original, enrollment)
+    end
+    
+    # Record learnings to avoid same mistakes
+    record_failed_improvement(enrollment)
+  end
+  
+  def statistical_comparison(control_stats, variant_stats)
+    results = {
+      metrics: {},
+      variant_significantly_better: false,
+      no_significant_difference: false
+    }
+    
+    significant_improvements = 0
+    significant_regressions = 0
+    
+    %w[success_rate quality_score efficiency].each do |metric|
+      t_stat, p_value = calculate_t_test(
+        control_stats[metric],
+        variant_stats[metric]
+      )
+      
+      results[:metrics][metric] = {
+        control_mean: control_stats[metric][:mean],
+        variant_mean: variant_stats[metric][:mean],
+        p_value: p_value,
+        significant: p_value < SIGNIFICANCE_THRESHOLD
+      }
+      
+      if p_value < SIGNIFICANCE_THRESHOLD
+        if variant_stats[metric][:mean] > control_stats[metric][:mean]
+          significant_improvements += 1
+        else
+          significant_regressions += 1
+        end
+      end
+    end
+    
+    results[:variant_significantly_better] = significant_improvements >= 2 && 
+                                              significant_regressions == 0
+    results[:no_significant_difference] = significant_improvements == 0 && 
+                                           significant_regressions == 0
+    
+    results
+  end
+end
+```
+
+### Database Models for School
+
+```ruby
+# Migration: create_agent_school_tables.rb
+
+class CreateAgentSchoolTables < ActiveRecord::Migration[8.0]
+  def change
+    create_table :agent_school_enrollments do |t|
+      t.references :agent_plugin, null: false, foreign_key: true
+      t.references :student_agent, foreign_key: { to_table: :agent_plugins }
+      t.references :entity, null: false, foreign_key: true
+      
+      t.string :status, default: 'enrolled'  # enrolled, testing, graduated, retry, expelled
+      t.string :enrollment_reason
+      t.integer :attempt_number, default: 1
+      
+      t.jsonb :diagnosis, default: {}
+      t.jsonb :curriculum_applied, default: []
+      t.jsonb :comparison_results, default: {}
+      
+      t.string :outcome  # success, failure, inconclusive
+      
+      t.datetime :enrolled_at
+      t.datetime :testing_started_at
+      t.datetime :completed_at
+      
+      t.timestamps
+      
+      t.index :status
+      t.index [:agent_plugin_id, :attempt_number]
+    end
+    
+    create_table :agent_ab_tests do |t|
+      t.references :control_agent, null: false, foreign_key: { to_table: :agent_plugins }
+      t.references :variant_agent, null: false, foreign_key: { to_table: :agent_plugins }
+      t.references :enrollment, foreign_key: { to_table: :agent_school_enrollments }
+      t.references :entity, null: false, foreign_key: true
+      
+      t.string :status, default: 'pending'  # pending, running, completed, cancelled
+      t.integer :target_tasks, default: 50
+      t.jsonb :metrics_to_compare, default: []
+      
+      t.integer :control_tasks_completed, default: 0
+      t.integer :variant_tasks_completed, default: 0
+      
+      t.jsonb :control_results, default: {}
+      t.jsonb :variant_results, default: {}
+      t.jsonb :statistical_analysis, default: {}
+      
+      t.datetime :started_at
+      t.datetime :completed_at
+      
+      t.timestamps
+      
+      t.index :status
+    end
+    
+    # Track which improvements worked for future reference
+    create_table :agent_improvement_learnings do |t|
+      t.references :enrollment, null: false, foreign_key: { to_table: :agent_school_enrollments }
+      t.references :entity, null: false, foreign_key: true
+      
+      t.string :outcome  # success, failure
+      t.jsonb :original_config, default: {}
+      t.jsonb :improved_config, default: {}
+      t.jsonb :diagnosis_patterns, default: {}
+      t.jsonb :curriculum_that_worked, default: []
+      t.jsonb :curriculum_that_failed, default: []
+      
+      t.text :lessons_learned
+      
+      t.timestamps
+      
+      t.index :outcome
+    end
+  end
+end
+```
+
+### School Monitoring Dashboard
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       AGENT SCHOOL DASHBOARD                             │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  CURRENT ENROLLMENTS                                                     │
+│  ────────────────────                                                    │
+│  │ Agent              │ Status     │ Attempt │ Progress │ Outlook    │  │
+│  ├────────────────────┼────────────┼─────────┼──────────┼────────────┤  │
+│  │ Data Analyzer      │ Testing    │ 1       │ 32/50    │ 🟢 Good    │  │
+│  │ Report Generator   │ Curriculum │ 2       │ -        │ 🟡 Neutral │  │
+│  │ Email Writer       │ Diagnosis  │ 1       │ -        │ 🟡 Pending │  │
+│  └────────────────────┴────────────┴─────────┴──────────┴────────────┘  │
+│                                                                          │
+│  GRADUATION STATISTICS (Last 30 Days)                                    │
+│  ────────────────────────────────────                                    │
+│  🎓 Graduated:     12 (60%)                                             │
+│  🔄 Retrying:       4 (20%)                                             │
+│  ❌ Expelled:       4 (20%)                                             │
+│                                                                          │
+│  MOST EFFECTIVE CURRICULUM MODULES                                       │
+│  ─────────────────────────────────                                       │
+│  1. Decision Boundary Adjustment  → 85% improvement rate                │
+│  2. Prompt Refinement             → 72% improvement rate                │
+│  3. Tool Assignment Review        → 65% improvement rate                │
+│  4. Capability Recalibration      → 58% improvement rate                │
+│                                                                          │
+│  COMMON FAILURE PATTERNS (Leading to School)                             │
+│  ───────────────────────────────────────────                             │
+│  • Overconfidence on complex tasks     (34%)                            │
+│  • Wrong tool selection                (28%)                            │
+│  • Failure to ask for help             (22%)                            │
+│  • Misunderstanding task requirements  (16%)                            │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Integration with Agent Lightning
 
 Agent Lightning (or an internal equivalent) provides continuous refinement:
