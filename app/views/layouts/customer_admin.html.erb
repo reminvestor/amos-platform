@@ -267,6 +267,9 @@
                 <%= link_to ai_settings_voice_path, class: "nav-item #{'active' if controller_path == 'ai_settings/voice'}" do %>
                   <span>Voice Settings</span>
                 <% end %>
+                <%= link_to dashboard_energy_index_path, class: "nav-item #{'active' if controller_name == 'energy'}" do %>
+                  <span>Agent Energy</span>
+                <% end %>
               </div>
             </div>
           </div>
