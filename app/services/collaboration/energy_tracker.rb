@@ -15,15 +15,18 @@ module Collaboration
       # Ensure energy state exists
       ensure_energy_state!
 
-      # Record start time and initial confidence
-      execution.update!(
-        metadata: (execution.metadata || {}).merge(
-          'energy_tracking' => {
-            'start_energy' => @agent.current_energy,
-            'started_at' => Time.current.iso8601
-          }
-        )
-      )
+      # Record start time and initial confidence in input_context
+      # AgentPluginExecution uses input_context, not metadata
+      begin
+        current_context = execution.input_context || {}
+        current_context['energy_tracking'] = {
+          'start_energy' => @agent.current_energy,
+          'started_at' => Time.current.iso8601
+        }
+        execution.update!(input_context: current_context)
+      rescue => e
+        Rails.logger.warn "[EnergyTracker] Could not update execution context: #{e.message}"
+      end
 
       Rails.logger.info "[EnergyTracker] 🔋 Agent #{@agent.name} starting execution with #{@agent.current_energy.round(1)} energy"
     end
@@ -260,7 +263,8 @@ module Collaboration
       end
 
       # More tool usage indicates complexity
-      tools_used = execution.metadata&.dig('tools_used')&.size || 0
+      # Use input_context instead of metadata (which doesn't exist on AgentPluginExecution)
+      tools_used = execution.input_context&.dig('tools_used')&.size || 0
       difficulty += tools_used * 50
 
       difficulty
@@ -274,8 +278,8 @@ module Collaboration
         .where(agent_plugin_execution: execution)
         .exists?
 
-      # Get confidence at start
-      confidence = execution.metadata&.dig('energy_tracking', 'confidence_at_start') || 50.0
+      # Get confidence at start from input_context
+      confidence = execution.input_context&.dig('energy_tracking', 'confidence_at_start') || 50.0
 
       # Update decision boundary
       @agent.decision_boundary.learn_from_outcome!(
@@ -287,14 +291,19 @@ module Collaboration
     end
 
     def update_execution_energy_metadata(execution, data)
-      energy_tracking = execution.metadata&.dig('energy_tracking') || {}
-      energy_tracking.merge!(data.stringify_keys)
-      energy_tracking['end_energy'] = @agent.current_energy
-      energy_tracking['ended_at'] = Time.current.iso8601
+      # Use input_context instead of metadata
+      begin
+        current_context = execution.input_context || {}
+        energy_tracking = current_context['energy_tracking'] || {}
+        energy_tracking.merge!(data.stringify_keys)
+        energy_tracking['end_energy'] = @agent.current_energy
+        energy_tracking['ended_at'] = Time.current.iso8601
+        current_context['energy_tracking'] = energy_tracking
 
-      execution.update!(
-        metadata: (execution.metadata || {}).merge('energy_tracking' => energy_tracking)
-      )
+        execution.update!(input_context: current_context)
+      rescue => e
+        Rails.logger.warn "[EnergyTracker] Could not update execution energy metadata: #{e.message}"
+      end
     end
   end
 end
