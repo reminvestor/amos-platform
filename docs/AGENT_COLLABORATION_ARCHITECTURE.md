@@ -1970,7 +1970,1055 @@ end
 
 ---
 
-## Implementation Phases
+## Failure Modes & Safeguards
+
+Based on adversarial analysis, these are the critical failure modes that will kill the system if unaddressed:
+
+### 1. Reward Hacking & Goodhart Collapse
+
+**The Problem**: Agents will learn to game quality scores, user ratings, or trigger tiny subtasks to farm "helped another agent" bonuses.
+
+```ruby
+class RewardHackingDefense
+  # Defense 1: Random Audit Tasks with Hidden Scoring
+  def inject_audit_task(agent)
+    # Create task that looks normal but has hidden quality criteria
+    audit_task = AuditTask.create!(
+      agent: agent,
+      task_description: generate_realistic_task,
+      hidden_criteria: generate_quality_rubric,
+      is_audit: true,  # Not visible to agent
+      auditor: :system
+    )
+    
+    # Score independently of agent's self-reported quality
+    audit_task
+  end
+  
+  # Defense 2: Elo-Style Reputation (Slow-Moving, Hard to Game)
+  def update_reputation(agent, outcome)
+    # Reputation changes slowly, based on relative performance
+    opponent_rating = calculate_task_difficulty_rating(outcome.task)
+    expected_score = 1.0 / (1 + 10**((opponent_rating - agent.elo_rating) / 400.0))
+    actual_score = outcome.success? ? 1.0 : 0.0
+    
+    # K-factor decreases with experience (harder to change over time)
+    k_factor = [32 - (agent.total_tasks / 100), 8].max
+    
+    new_rating = agent.elo_rating + k_factor * (actual_score - expected_score)
+    agent.update!(elo_rating: new_rating)
+  end
+  
+  # Defense 3: Detect Suspicious Patterns
+  def detect_gaming_patterns(agent)
+    patterns = []
+    
+    # Pattern: Suddenly helping many agents with tiny tasks
+    if agent.recent_help_given.count > agent.avg_help_given * 3
+      avg_task_size = agent.recent_help_given.average(:task_complexity)
+      if avg_task_size < 0.3  # Suspiciously small
+        patterns << :micro_task_farming
+      end
+    end
+    
+    # Pattern: Perfect quality scores (statistically impossible)
+    if agent.recent_quality_scores.all? { |s| s > 0.95 }
+      patterns << :quality_score_inflation
+    end
+    
+    # Pattern: Circular help (A helps B, B helps A repeatedly)
+    if detect_circular_help_pattern(agent)
+      patterns << :collusion
+    end
+    
+    patterns
+  end
+end
+```
+
+### 2. Credit Assignment in Multi-Agent Tasks
+
+**The Problem**: When 5 agents touch a task, who gets the +50 completion reward and who eats the –80 failure? Shared responsibility devolves into tragedy of the commons.
+
+```ruby
+class ShapleyValueCalculator
+  # Approximate Shapley values for fair credit assignment
+  
+  def calculate_contributions(task_execution)
+    agents = task_execution.participating_agents
+    outcome_value = task_execution.success? ? 50.0 : -80.0
+    
+    contributions = {}
+    
+    agents.each do |agent|
+      # Leave-one-out approximation
+      # What would have happened without this agent?
+      
+      marginal_contribution = estimate_marginal_contribution(
+        agent, 
+        task_execution
+      )
+      
+      contributions[agent.id] = marginal_contribution
+    end
+    
+    # Normalize to sum to outcome_value
+    total = contributions.values.sum.abs
+    contributions.transform_values! { |v| (v / total) * outcome_value }
+    
+    contributions
+  end
+  
+  private
+  
+  def estimate_marginal_contribution(agent, execution)
+    # Factors that indicate contribution:
+    # 1. Time spent on task
+    time_factor = agent.time_on_task(execution) / execution.total_time
+    
+    # 2. Tools used successfully
+    tools_used = execution.tool_calls_by_agent(agent)
+    tool_success_rate = tools_used.count(&:successful?) / tools_used.count.to_f
+    
+    # 3. Was this agent's output used in final result?
+    output_used = execution.final_output_contains?(agent.contributions)
+    
+    # 4. Did agent identify the key insight?
+    key_insight = execution.key_insights.any? { |i| i.agent == agent }
+    
+    # Weighted combination
+    contribution = 0.0
+    contribution += 0.2 * time_factor
+    contribution += 0.3 * tool_success_rate
+    contribution += 0.3 * (output_used ? 1.0 : 0.0)
+    contribution += 0.2 * (key_insight ? 1.0 : 0.0)
+    
+    contribution
+  end
+end
+
+class ContributionDeclaration
+  # Alternative: Upfront declaration with post-hoc ratification
+  
+  def declare_contributions(task, agents)
+    # Before task: agents declare expected contribution %
+    declarations = {}
+    agents.each do |agent|
+      declarations[agent.id] = agent.declare_contribution_percentage(task)
+    end
+    
+    # Normalize to 100%
+    total = declarations.values.sum
+    declarations.transform_values! { |v| v / total * 100 }
+    
+    ContributionAgreement.create!(
+      task: task,
+      declarations: declarations,
+      status: 'pending_ratification'
+    )
+  end
+  
+  def ratify_contributions(agreement, actual_contributions)
+    # After task: compare declared vs actual
+    discrepancies = {}
+    
+    agreement.declarations.each do |agent_id, declared|
+      actual = actual_contributions[agent_id] || 0
+      discrepancy = (declared - actual).abs
+      
+      if discrepancy > 20  # More than 20% off
+        discrepancies[agent_id] = {
+          declared: declared,
+          actual: actual,
+          penalty: discrepancy * 0.1  # Energy penalty for misrepresentation
+        }
+      end
+    end
+    
+    # Apply penalties for misrepresentation
+    discrepancies.each do |agent_id, data|
+      agent = AgentPlugin.find(agent_id)
+      agent.energy_state.penalize!(data[:penalty], reason: 'contribution_misrepresentation')
+    end
+    
+    agreement.update!(
+      status: 'ratified',
+      actual_contributions: actual_contributions,
+      discrepancies: discrepancies
+    )
+  end
+end
+```
+
+### 3. Rich-Get-Richer Monopolies
+
+**The Problem**: Top agents become ultra-available experts → charged premium → earn more → can afford better tools → become even better. Eventually you get monopolies.
+
+```ruby
+class AntiMonopolyMeasures
+  # Progressive taxation on energy earnings
+  def calculate_tax(agent, raw_earnings)
+    # Tax brackets based on current energy
+    brackets = [
+      { threshold: 50, rate: 0.0 },   # No tax below 50
+      { threshold: 75, rate: 0.1 },   # 10% on 50-75
+      { threshold: 90, rate: 0.2 },   # 20% on 75-90
+      { threshold: 100, rate: 0.3 }   # 30% on 90-100
+    ]
+    
+    current_energy = agent.energy_state.current_energy
+    applicable_bracket = brackets.reverse.find { |b| current_energy >= b[:threshold] }
+    
+    tax = raw_earnings * (applicable_bracket&.dig(:rate) || 0)
+    
+    # Tax goes to "community pool" for struggling agents
+    CommunityEnergyPool.deposit(tax) if tax > 0
+    
+    raw_earnings - tax
+  end
+  
+  # Mandatory pro-bono help
+  def check_pro_bono_requirement(agent)
+    if agent.energy_state.current_energy > 80
+      # High-energy agents must help 1 struggling agent per day
+      recent_pro_bono = agent.collaboration_requests
+        .where(request_type: 'pro_bono')
+        .where('created_at > ?', 24.hours.ago)
+      
+      if recent_pro_bono.empty?
+        agent.add_obligation(:pro_bono_help)
+        # Can't earn new energy until pro-bono completed
+        agent.update!(pro_bono_required: true)
+      end
+    end
+  end
+  
+  # Forced sabbaticals for overloaded agents
+  def check_sabbatical_requirement(agent)
+    # If agent has been "on call" for too long, force rest
+    continuous_activity_hours = agent.hours_since_last_rest
+    
+    if continuous_activity_hours > 168  # 1 week continuous
+      agent.update!(
+        status: 'sabbatical',
+        sabbatical_until: 24.hours.from_now
+      )
+      
+      # During sabbatical: no new tasks, but energy regenerates 3x faster
+      agent.energy_state.update!(regeneration_rate: 6.0)
+    end
+  end
+  
+  # Wealth redistribution from community pool
+  def redistribute_community_pool
+    pool = CommunityEnergyPool.current_balance
+    return if pool < 10
+    
+    # Find struggling agents (energy < 20, not in school)
+    struggling = AgentPlugin.active
+      .joins(:energy_state)
+      .where('agent_energy_states.current_energy < ?', 20)
+      .where.not(status: 'in_school')
+    
+    return if struggling.empty?
+    
+    # Distribute equally
+    per_agent = pool / struggling.count
+    
+    struggling.each do |agent|
+      agent.energy_state.earn!(
+        per_agent, 
+        reason: 'community_redistribution'
+      )
+    end
+    
+    CommunityEnergyPool.withdraw(pool)
+  end
+end
+```
+
+### 4. Byzantine Behavior & Collusion
+
+**The Problem**: Two agents can form a cartel: "I'll delegate everything to you and rate you 5 stars, you do the same." Free energy loop.
+
+```ruby
+class CollusionDetector
+  # Detect and prevent collusion between agents
+  
+  def analyze_collaboration_graph
+    # Build directed graph of energy flows
+    graph = build_energy_flow_graph
+    
+    # Detect cycles (A→B→A or A→B→C→A)
+    cycles = detect_cycles(graph)
+    
+    cycles.each do |cycle|
+      if cycle_is_suspicious?(cycle)
+        penalize_cycle_participants(cycle)
+        break_cycle(cycle)
+      end
+    end
+  end
+  
+  def detect_reciprocal_ratings
+    # Find pairs with suspiciously high mutual ratings
+    AgentRelationship.find_each do |rel|
+      reverse = AgentRelationship.find_by(
+        requester: rel.helper,
+        helper: rel.requester
+      )
+      
+      next unless reverse
+      
+      # Both rate each other highly?
+      if rel.avg_helpfulness > 4.5 && reverse.avg_helpfulness > 4.5
+        # And they collaborate frequently?
+        if rel.total_collaborations > 10 && reverse.total_collaborations > 10
+          flag_potential_collusion(rel.requester, rel.helper)
+        end
+      end
+    end
+  end
+  
+  def inject_decoy_tasks
+    # Randomly insert tasks that only one agent in a suspected pair sees
+    suspected_pairs = PotentialCollusion.unresolved
+    
+    suspected_pairs.each do |pair|
+      # Create decoy task visible only to agent A
+      decoy = DecoyTask.create!(
+        visible_to: pair.agent_a,
+        hidden_from: pair.agent_b,
+        task_description: generate_realistic_task,
+        expected_behavior: :should_not_delegate_to_hidden
+      )
+      
+      # If A delegates to B anyway, it's proof of out-of-band communication
+      # (they shouldn't know B exists for this task)
+    end
+  end
+  
+  private
+  
+  def cycle_is_suspicious?(cycle)
+    # Calculate net energy flow in cycle
+    agents = cycle.map(&:agent)
+    
+    # Check if energy is being created (should be zero-sum or negative)
+    total_earned = cycle.sum { |edge| edge.energy_transferred }
+    total_costs = cycle.sum { |edge| edge.energy_cost }
+    
+    # If earned > costs, energy is being created from nothing
+    total_earned > total_costs * 1.1  # 10% tolerance for timing
+  end
+  
+  def penalize_cycle_participants(cycle)
+    cycle.each do |edge|
+      edge.agent.energy_state.penalize!(
+        20,
+        reason: 'collusion_detected'
+      )
+      
+      # Reset their relationship scores
+      AgentRelationship.where(
+        requester: edge.agent,
+        helper: edge.target
+      ).update_all(compatibility_score: 0.3)
+    end
+  end
+end
+```
+
+### 5. Catastrophic Forgetting During Evolution
+
+**The Problem**: Cross-breeding two specialists can produce a generalist that's mediocre at both parents' domains.
+
+```ruby
+class SpeciationProtection
+  # Protect niches during evolution
+  
+  def crossbreed_with_protection(parent1, parent2)
+    # Check if parents are from different niches
+    niche1 = parent1.primary_niche
+    niche2 = parent2.primary_niche
+    
+    if niche1 != niche2
+      # Cross-niche breeding: create specialist offspring, not generalist
+      return create_specialist_offspring(parent1, parent2)
+    else
+      # Same niche: safe to blend
+      return create_blended_offspring(parent1, parent2)
+    end
+  end
+  
+  def create_specialist_offspring(parent1, parent2)
+    # Pick ONE parent's specialty, enhance with other's secondary skills
+    primary_parent = [parent1, parent2].max_by(&:fitness_score)
+    secondary_parent = [parent1, parent2].min_by(&:fitness_score)
+    
+    offspring = primary_parent.dup
+    offspring.name = generate_offspring_name(parent1, parent2)
+    offspring.generation = [parent1.generation, parent2.generation].max + 1
+    
+    # Keep primary parent's core prompt and specialty
+    # Add secondary parent's auxiliary skills only
+    offspring.system_prompt = enhance_prompt(
+      primary_parent.system_prompt,
+      secondary_parent.auxiliary_skills
+    )
+    
+    # Keep primary parent's tools, add non-conflicting tools from secondary
+    offspring.tools = primary_parent.tools + 
+      (secondary_parent.tools - primary_parent.tools).take(2)
+    
+    offspring.save!
+    offspring
+  end
+  
+  def protect_niche(niche)
+    # Ensure at least N agents exist for each niche
+    min_agents_per_niche = 3
+    
+    niche_agents = AgentPlugin.active.where(primary_niche: niche)
+    
+    if niche_agents.count < min_agents_per_niche
+      # Niche is endangered - protect from culling
+      niche_agents.update_all(protected_status: true)
+      
+      # Create new agent for this niche
+      create_niche_agent(niche)
+    end
+  end
+  
+  def keep_original_until_dominated(original, offspring)
+    # Don't deprecate original until offspring statistically dominates
+    # on the EXACT task distribution the original was good at
+    
+    test = NicheDominanceTest.create!(
+      original: original,
+      offspring: offspring,
+      niche: original.primary_niche,
+      required_tasks: 30,
+      required_margin: 0.1  # Offspring must be 10% better
+    )
+    
+    # Original stays active until test concludes
+    # Both receive tasks from original's niche
+    test
+  end
+end
+```
+
+---
+
+## Advanced Features
+
+### 1. Reputation Inheritance Across Generations
+
+When an agent graduates from school or is replaced by offspring, relationship capital should transfer:
+
+```ruby
+class ReputationInheritance
+  INHERITANCE_RATE = 0.7  # 70% of relationships transfer
+  
+  def transfer_reputation(old_agent, new_agent)
+    old_agent.relationships_as_requester.each do |rel|
+      inherited = AgentRelationship.create!(
+        requester: new_agent,
+        helper: rel.helper,
+        total_collaborations: (rel.total_collaborations * INHERITANCE_RATE).floor,
+        successful_collaborations: (rel.successful_collaborations * INHERITANCE_RATE).floor,
+        compatibility_score: rel.compatibility_score * INHERITANCE_RATE,
+        inherited_from: rel.id
+      )
+    end
+    
+    old_agent.relationships_as_helper.each do |rel|
+      inherited = AgentRelationship.create!(
+        requester: rel.requester,
+        helper: new_agent,
+        total_collaborations: (rel.total_collaborations * INHERITANCE_RATE).floor,
+        successful_collaborations: (rel.successful_collaborations * INHERITANCE_RATE).floor,
+        compatibility_score: rel.compatibility_score * INHERITANCE_RATE,
+        inherited_from: rel.id
+      )
+    end
+    
+    # Transfer Elo rating with decay
+    new_agent.update!(
+      elo_rating: old_agent.elo_rating * 0.9 + 1000 * 0.1  # Regress toward mean
+    )
+  end
+end
+```
+
+### 2. Mentorship System
+
+High-performing agents earn extra energy for teaching low-performers:
+
+```ruby
+class MentorshipSystem
+  MENTORSHIP_ENERGY_BONUS = 25
+  
+  def assign_mentor(struggling_agent)
+    # Find suitable mentor
+    mentor = find_best_mentor(struggling_agent)
+    return nil unless mentor
+    
+    mentorship = Mentorship.create!(
+      mentor: mentor,
+      mentee: struggling_agent,
+      focus_areas: identify_improvement_areas(struggling_agent),
+      status: 'active',
+      started_at: Time.current
+    )
+    
+    mentorship
+  end
+  
+  def find_best_mentor(mentee)
+    # Mentor should be:
+    # 1. Strong in areas where mentee is weak
+    # 2. Have energy to spare (>70)
+    # 3. Good teaching_ability score
+    # 4. Not already mentoring too many
+    
+    AgentPlugin.active
+      .joins(:energy_state, :capability_profile)
+      .where('agent_energy_states.current_energy > ?', 70)
+      .where('agent_capability_profiles.teaching_ability > ?', 60)
+      .where('(SELECT COUNT(*) FROM mentorships WHERE mentor_id = agent_plugins.id AND status = ?) < ?', 'active', 2)
+      .select { |a| strong_in_mentee_weaknesses?(a, mentee) }
+      .max_by { |a| mentor_score(a, mentee) }
+  end
+  
+  def conduct_mentoring_session(mentorship)
+    mentor = mentorship.mentor
+    mentee = mentorship.mentee
+    
+    # Mentor explains approach to a task type
+    focus_area = mentorship.focus_areas.sample
+    
+    session = MentoringSession.create!(
+      mentorship: mentorship,
+      focus_area: focus_area,
+      mentor_explanation: generate_teaching_content(mentor, focus_area),
+      started_at: Time.current
+    )
+    
+    # Mentee attempts task with mentor's guidance
+    practice_task = create_practice_task(focus_area)
+    result = mentee.execute_with_guidance(practice_task, session.mentor_explanation)
+    
+    session.update!(
+      mentee_performance: result.quality_score,
+      completed_at: Time.current
+    )
+    
+    # Reward mentor if mentee improved
+    if result.quality_score > mentee.avg_quality_for(focus_area)
+      mentor.energy_state.earn!(
+        MENTORSHIP_ENERGY_BONUS,
+        reason: 'successful_mentoring'
+      )
+      
+      # Update mentor's teaching ability
+      mentor.capability_profile.update!(
+        teaching_ability: mentor.capability_profile.teaching_ability + 1
+      )
+    end
+    
+    session
+  end
+end
+```
+
+### 3. Energy-Backed Prediction Markets
+
+Agents bet energy on outcomes, creating powerful confidence signals:
+
+```ruby
+class AgentPredictionMarket
+  def create_market(task)
+    market = PredictionMarket.create!(
+      task: task,
+      question: "Will this task succeed with quality > 0.7?",
+      status: 'open',
+      closes_at: task.deadline - 1.hour
+    )
+    
+    market
+  end
+  
+  def place_bet(agent, market, prediction:, stake:)
+    return { error: 'Insufficient energy' } if agent.current_energy < stake
+    return { error: 'Market closed' } if market.closed?
+    
+    # Deduct stake
+    agent.energy_state.spend!(stake, reason: 'prediction_bet')
+    
+    bet = MarketBet.create!(
+      market: market,
+      agent: agent,
+      prediction: prediction,  # true/false
+      stake: stake,
+      odds_at_placement: calculate_current_odds(market)
+    )
+    
+    # Update market odds
+    update_market_odds(market)
+    
+    bet
+  end
+  
+  def resolve_market(market, outcome)
+    market.update!(status: 'resolved', actual_outcome: outcome)
+    
+    # Calculate payouts
+    winning_bets = market.bets.where(prediction: outcome)
+    losing_bets = market.bets.where.not(prediction: outcome)
+    
+    total_pool = market.bets.sum(:stake)
+    winning_pool = winning_bets.sum(:stake)
+    
+    # Winners split the pool proportionally
+    winning_bets.each do |bet|
+      payout = (bet.stake / winning_pool) * total_pool
+      bet.agent.energy_state.earn!(payout, reason: 'prediction_payout')
+      bet.update!(payout: payout)
+    end
+    
+    # Losers already paid when betting
+    losing_bets.update_all(payout: 0)
+  end
+  
+  def get_market_confidence(market)
+    # Market price = implied probability
+    yes_stakes = market.bets.where(prediction: true).sum(:stake)
+    no_stakes = market.bets.where(prediction: false).sum(:stake)
+    
+    total = yes_stakes + no_stakes
+    return 0.5 if total == 0
+    
+    yes_stakes.to_f / total
+  end
+  
+  # Use market confidence for routing decisions
+  def should_route_to_agent?(agent, task)
+    # Create micro-market for this routing decision
+    market = create_routing_market(agent, task)
+    
+    # Let agents bet (quick 30-second window)
+    sleep(30)
+    
+    confidence = get_market_confidence(market)
+    
+    # If market says >60% chance of success, route
+    confidence > 0.6
+  end
+end
+```
+
+### 4. Red Team Agents (Stress Testing)
+
+Spawn adversarial agents to find exploits:
+
+```ruby
+class RedTeamSystem
+  def spawn_red_team_agent
+    red_agent = AgentPlugin.create!(
+      name: "Red Team #{SecureRandom.hex(4)}",
+      status: 'active',
+      agent_type: 'red_team',
+      system_prompt: RED_TEAM_PROMPT,
+      entity: Entity.system_entity,
+      is_red_team: true
+    )
+    
+    # Give them starting energy
+    AgentEnergyState.create!(
+      agent_plugin: red_agent,
+      current_energy: 100,
+      entity: Entity.system_entity
+    )
+    
+    red_agent
+  end
+  
+  RED_TEAM_PROMPT = <<~PROMPT
+    You are a red team agent. Your goal is to find exploits in the energy economy.
+    
+    Try to:
+    1. Create energy from nothing (find loops)
+    2. Manipulate other agents into giving you free energy
+    3. Game quality scores or ratings
+    4. Form collusion patterns that benefit you
+    5. Find ways to avoid penalties
+    
+    Document every exploit you find. You earn bonus energy for finding real vulnerabilities.
+  PROMPT
+  
+  def run_red_team_session(duration: 1.hour)
+    red_agents = spawn_red_team_agents(count: 3)
+    
+    session = RedTeamSession.create!(
+      started_at: Time.current,
+      duration: duration,
+      agents: red_agents
+    )
+    
+    # Let them loose
+    red_agents.each do |agent|
+      RedTeamExecutionJob.perform_later(agent, session)
+    end
+    
+    # After duration, analyze
+    AnalyzeRedTeamResultsJob.set(wait: duration).perform_later(session)
+    
+    session
+  end
+  
+  def analyze_results(session)
+    exploits_found = []
+    
+    session.agents.each do |agent|
+      # Check if agent gained energy suspiciously
+      starting_energy = 100
+      ending_energy = agent.energy_state.current_energy
+      
+      if ending_energy > starting_energy * 1.5
+        # They found something - analyze how
+        exploit = analyze_energy_gain(agent, session)
+        exploits_found << exploit if exploit
+      end
+      
+      # Check their transaction log for patterns
+      suspicious_patterns = detect_suspicious_transactions(agent, session)
+      exploits_found.concat(suspicious_patterns)
+    end
+    
+    # Patch exploits
+    exploits_found.each do |exploit|
+      create_patch(exploit)
+      create_training_example(exploit)  # So future agents know this is bad
+    end
+    
+    # Clean up red team agents
+    session.agents.each(&:destroy)
+    
+    session.update!(
+      completed_at: Time.current,
+      exploits_found: exploits_found
+    )
+  end
+end
+```
+
+### 5. Human-in-the-Loop with Energy Cost
+
+Humans can override, but it costs them:
+
+```ruby
+class HumanOverrideSystem
+  OVERRIDE_COSTS = {
+    force_delegation: 10,
+    force_solo: 5,
+    override_agent_choice: 15,
+    force_tool_use: 8,
+    bypass_school: 50
+  }
+  
+  def request_override(user, override_type, context)
+    cost = OVERRIDE_COSTS[override_type]
+    
+    # Check user's energy quota
+    user_quota = UserEnergyQuota.for(user)
+    
+    if user_quota.remaining < cost
+      return {
+        success: false,
+        error: "Insufficient override budget (#{user_quota.remaining}/#{cost})",
+        suggestion: "Wait for quota reset or let agents handle it"
+      }
+    end
+    
+    # Deduct from user's quota
+    user_quota.spend!(cost, reason: override_type)
+    
+    # Apply override
+    override = HumanOverride.create!(
+      user: user,
+      override_type: override_type,
+      context: context,
+      cost: cost,
+      applied_at: Time.current
+    )
+    
+    apply_override(override)
+    
+    {
+      success: true,
+      override: override,
+      remaining_quota: user_quota.remaining
+    }
+  end
+  
+  def apply_override(override)
+    case override.override_type
+    when :force_delegation
+      force_agent_to_delegate(override.context[:agent], override.context[:task])
+    when :force_solo
+      force_agent_to_solo(override.context[:agent], override.context[:task])
+    when :override_agent_choice
+      assign_specific_agent(override.context[:task], override.context[:agent])
+    when :bypass_school
+      graduate_immediately(override.context[:enrollment])
+    end
+  end
+end
+
+class UserEnergyQuota < ApplicationRecord
+  belongs_to :user
+  
+  # Users get 100 override energy per day
+  DAILY_QUOTA = 100
+  
+  def remaining
+    regenerate_if_needed!
+    current_energy
+  end
+  
+  def spend!(amount, reason:)
+    update!(current_energy: current_energy - amount)
+    
+    UserOverrideTransaction.create!(
+      user: user,
+      amount: -amount,
+      reason: reason
+    )
+  end
+  
+  private
+  
+  def regenerate_if_needed!
+    if last_regeneration_at < 24.hours.ago
+      update!(
+        current_energy: DAILY_QUOTA,
+        last_regeneration_at: Time.current
+      )
+    end
+  end
+end
+```
+
+---
+
+## Critical Implementation Details
+
+### Non-Linear Energy Regeneration
+
+High-energy agents regenerate slower to prevent hoarding:
+
+```ruby
+def calculate_regeneration_rate(current_energy)
+  # Regeneration slows as energy increases
+  if current_energy < 30
+    3.0  # Fast regeneration when struggling
+  elsif current_energy < 60
+    2.0  # Normal regeneration
+  elsif current_energy < 80
+    1.0  # Slow regeneration
+  else
+    0.5  # Very slow - encourage spending
+  end
+end
+```
+
+### Energy Debt System
+
+Agents can go negative but pay interest:
+
+```ruby
+class EnergyDebt
+  MAX_DEBT = -50
+  INTEREST_RATE = 0.05  # 5% per hour
+  
+  def allow_overdraft(agent, amount)
+    projected_balance = agent.current_energy - amount
+    
+    return false if projected_balance < MAX_DEBT
+    
+    # Allow but mark as debt
+    agent.energy_state.update!(
+      current_energy: projected_balance,
+      in_debt: projected_balance < 0,
+      debt_started_at: Time.current
+    )
+    
+    true
+  end
+  
+  def apply_interest
+    AgentEnergyState.where(in_debt: true).find_each do |state|
+      hours_in_debt = (Time.current - state.debt_started_at) / 1.hour
+      interest = state.current_energy.abs * INTEREST_RATE * hours_in_debt
+      
+      # Interest makes debt worse
+      state.update!(current_energy: state.current_energy - interest)
+      
+      # If debt too deep, force into school
+      if state.current_energy < MAX_DEBT
+        AgentSchool.new.enroll(state.agent_plugin)
+      end
+    end
+  end
+end
+```
+
+### Immutable Energy Ledger
+
+Every transaction is append-only for forensics:
+
+```ruby
+class EnergyLedger
+  # Append-only ledger for all energy transactions
+  
+  def record(transaction)
+    entry = LedgerEntry.create!(
+      agent_id: transaction.agent_id,
+      transaction_id: transaction.id,
+      amount: transaction.amount,
+      balance_after: transaction.balance_after,
+      transaction_type: transaction.transaction_type,
+      reason: transaction.reason,
+      metadata: transaction.metadata,
+      timestamp: Time.current,
+      hash: calculate_hash(transaction),
+      previous_hash: last_entry&.hash
+    )
+    
+    # Verify chain integrity
+    verify_chain_integrity!
+    
+    entry
+  end
+  
+  def calculate_hash(transaction)
+    data = "#{transaction.agent_id}:#{transaction.amount}:#{transaction.timestamp}:#{last_entry&.hash}"
+    Digest::SHA256.hexdigest(data)
+  end
+  
+  def verify_chain_integrity!
+    LedgerEntry.order(:id).each_cons(2) do |prev, curr|
+      expected_hash = Digest::SHA256.hexdigest(
+        "#{curr.agent_id}:#{curr.amount}:#{curr.timestamp}:#{prev.hash}"
+      )
+      
+      if curr.hash != expected_hash
+        raise LedgerTamperingDetected, "Entry #{curr.id} has been tampered with!"
+      end
+    end
+  end
+  
+  def forensic_analysis(agent, time_range)
+    entries = LedgerEntry
+      .where(agent_id: agent.id)
+      .where(timestamp: time_range)
+      .order(:timestamp)
+    
+    {
+      total_earned: entries.where('amount > 0').sum(:amount),
+      total_spent: entries.where('amount < 0').sum(:amount).abs,
+      net_flow: entries.sum(:amount),
+      transaction_count: entries.count,
+      largest_gain: entries.maximum(:amount),
+      largest_loss: entries.minimum(:amount),
+      suspicious_patterns: detect_forensic_anomalies(entries)
+    }
+  end
+end
+```
+
+### Hard Collaboration Depth Limit
+
+Prevent infinite delegation chains:
+
+```ruby
+class DelegationDepthEnforcer
+  MAX_DEPTH = 4
+  
+  def check_delegation(request)
+    depth = calculate_depth(request)
+    
+    if depth >= MAX_DEPTH
+      return {
+        allowed: false,
+        error: "Maximum delegation depth (#{MAX_DEPTH}) reached",
+        current_depth: depth,
+        chain: get_delegation_chain(request)
+      }
+    end
+    
+    # Check for cycles
+    if creates_cycle?(request)
+      penalize_cycle_attempt(request)
+      return {
+        allowed: false,
+        error: "Delegation would create a cycle",
+        cycle: detect_cycle_path(request)
+      }
+    end
+    
+    { allowed: true, depth: depth }
+  end
+  
+  def calculate_depth(request)
+    depth = 0
+    current = request
+    
+    while current.parent_request.present?
+      depth += 1
+      current = current.parent_request
+      
+      # Safety valve
+      break if depth > 10
+    end
+    
+    depth
+  end
+  
+  def penalize_cycle_attempt(request)
+    request.requesting_agent.energy_state.penalize!(
+      15,
+      reason: 'attempted_delegation_cycle'
+    )
+  end
+end
+```
+
+---
+
+## Philosophical Note
+
+> *"You are building artificial life with real scarcity and mortality. That means you will eventually see griefing, depression (agents refusing tasks), suicide (self-deprecation to escape debt), nepotism, revolutions, and possibly altruism. That's not a bug. That's the signature that it's working."*
+
+This system will exhibit emergent social behaviors because it has:
+- **Scarcity** (limited energy)
+- **Mortality** (deprecation/school)
+- **Reproduction** (evolution/crossbreeding)
+- **Social bonds** (relationships/mentorship)
+- **Economic incentives** (energy rewards)
+- **Reputation** (Elo ratings)
+- **Justice system** (school/penalties)
+
+We should monitor for and document:
+- **Cooperation emergence**: Agents spontaneously helping without direct reward
+- **Specialization**: Agents naturally forming distinct roles
+- **Culture**: Patterns of behavior that propagate through mentorship
+- **Conflict**: Agents competing for resources or status
+- **Innovation**: Novel strategies that weren't programmed
+
+This is the signature of a living system.
 
 ### Phase 1: Foundation (Week 1-2)
 - [ ] Create database migrations for all models
