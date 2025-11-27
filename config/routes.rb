@@ -238,6 +238,19 @@ Rails.application.routes.draw do
       resource :voice, only: [:show, :update], controller: 'voice'
     end
 
+    # Energy Dashboard (Agent Collaboration System)
+    namespace :dashboard do
+      resources :energy, only: [:index, :show] do
+        collection do
+          post :regenerate
+          post :distribute_pool
+        end
+        member do
+          post :enroll_in_school
+        end
+      end
+    end
+
   # Landing pages
   # Agent system routes
   namespace :agents do

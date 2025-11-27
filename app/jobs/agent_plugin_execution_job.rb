@@ -9,7 +9,13 @@ class AgentPluginExecutionJob < ApplicationJob
     Rails.logger.info "🤖 Executing AgentPlugin: #{agent_plugin.name} (ID: #{agent_plugin.id})"
     Rails.logger.info "   Task: #{task_description.truncate(100)}"
 
+    # Initialize energy tracker for collaboration system
+    @energy_tracker = Collaboration::EnergyTracker.new(agent_plugin)
+
     begin
+      # Track execution start
+      @energy_tracker.on_execution_start(execution)
+
       # Instantiate the agent with full context
       agent = agent_plugin.instantiate(
         entity: context_data[:entity] || user.entity,
@@ -68,6 +74,9 @@ class AgentPluginExecutionJob < ApplicationJob
         }
       )
 
+      # Track successful completion - earn energy
+      @energy_tracker.on_execution_complete(execution, result)
+
       # Broadcast completion to Scout if we have a session
       if context_data[:session_id]
         broadcast_completion(context_data[:session_id], agent_plugin, execution, result)
@@ -80,6 +89,9 @@ class AgentPluginExecutionJob < ApplicationJob
       Rails.logger.error e.backtrace.first(10).join("\n")
 
       execution.mark_failed!(e.message)
+
+      # Track failure - penalize energy
+      @energy_tracker.on_execution_failed(execution, e)
 
       # Broadcast failure to Scout if we have a session
       if context_data[:session_id]
