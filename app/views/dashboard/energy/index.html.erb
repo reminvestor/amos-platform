@@ -11,10 +11,10 @@
       <p class="text-muted mb-0">Monitor agent energy, collaboration, and school enrollments</p>
     </div>
     <div class="d-flex gap-2">
-      <%= link_to dashboard_energy_regenerate_path, method: :post, class: "btn btn-outline-primary" do %>
+      <%= button_to regenerate_dashboard_energy_index_path, method: :post, class: "btn btn-outline-primary" do %>
         <i class="bi bi-arrow-clockwise"></i> Regenerate All
       <% end %>
-      <%= link_to dashboard_energy_distribute_pool_path, method: :post, class: "btn btn-outline-success" do %>
+      <%= button_to distribute_pool_dashboard_energy_index_path, method: :post, class: "btn btn-outline-success" do %>
         <i class="bi bi-share-fill"></i> Distribute Pool
       <% end %>
     </div>
