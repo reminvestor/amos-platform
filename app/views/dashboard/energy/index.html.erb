@@ -1,0 +1,347 @@
+<% content_for :title, "Agent Energy Dashboard" %>
+
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">
+        <i class="bi bi-lightning-charge-fill text-warning"></i>
+        Agent Energy Dashboard
+      </h1>
+      <p class="text-muted mb-0">Monitor agent energy, collaboration, and school enrollments</p>
+    </div>
+    <div class="d-flex gap-2">
+      <%= link_to dashboard_energy_regenerate_path, method: :post, class: "btn btn-outline-primary" do %>
+        <i class="bi bi-arrow-clockwise"></i> Regenerate All
+      <% end %>
+      <%= link_to dashboard_energy_distribute_pool_path, method: :post, class: "btn btn-outline-success" do %>
+        <i class="bi bi-share-fill"></i> Distribute Pool
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card bg-primary text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h6 class="card-subtitle mb-1 opacity-75">Total Energy</h6>
+              <h2 class="card-title mb-0"><%= @stats[:total_energy] %></h2>
+            </div>
+            <div class="display-6 opacity-50">⚡</div>
+          </div>
+          <small class="opacity-75">Avg: <%= @stats[:avg_energy] %> per agent</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-success text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h6 class="card-subtitle mb-1 opacity-75">Success Rate</h6>
+              <h2 class="card-title mb-0"><%= @stats[:avg_success_rate] %>%</h2>
+            </div>
+            <div class="display-6 opacity-50">✓</div>
+          </div>
+          <small class="opacity-75"><%= @stats[:total_tasks_completed] %> completed / <%= @stats[:total_tasks_failed] %> failed</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-info text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h6 class="card-subtitle mb-1 opacity-75">Collaborations</h6>
+              <h2 class="card-title mb-0"><%= @stats[:total_collaborations] %></h2>
+            </div>
+            <div class="display-6 opacity-50">🤝</div>
+          </div>
+          <small class="opacity-75">Help given + received</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-warning text-dark">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <div>
+              <h6 class="card-subtitle mb-1 opacity-75">Community Pool</h6>
+              <h2 class="card-title mb-0"><%= @community_pool.current_balance.round(1) %></h2>
+            </div>
+            <div class="display-6 opacity-50">🏦</div>
+          </div>
+          <small class="opacity-75"><%= @stats[:in_debt] %> agents in debt</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Agent Energy List -->
+    <div class="col-lg-8">
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Agent Energy Levels</h5>
+          <span class="badge bg-secondary"><%= @agents.count %> agents</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Agent</th>
+                  <th>Status</th>
+                  <th>Energy</th>
+                  <th>Success Rate</th>
+                  <th>Tasks</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @agents.each do |agent| %>
+                  <% state = agent.energy_state %>
+                  <tr class="<%= 'table-danger' if state&.in_debt? %> <%= 'table-warning' if agent.in_school? %>">
+                    <td>
+                      <strong><%= agent.name %></strong>
+                      <br><small class="text-muted"><%= agent.role %></small>
+                    </td>
+                    <td>
+                      <% case agent.status %>
+                      <% when 'active' %>
+                        <span class="badge bg-success">Active</span>
+                      <% when 'in_school' %>
+                        <span class="badge bg-warning text-dark">In School</span>
+                      <% when 'probation' %>
+                        <span class="badge bg-danger">Probation</span>
+                      <% when 'testing' %>
+                        <span class="badge bg-info">Testing</span>
+                      <% else %>
+                        <span class="badge bg-secondary"><%= agent.status %></span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if state %>
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="progress flex-grow-1" style="height: 20px; width: 100px;">
+                            <% energy_pct = [(state.current_energy / state.max_energy * 100), 0].max %>
+                            <% bar_class = energy_pct > 50 ? 'bg-success' : energy_pct > 20 ? 'bg-warning' : 'bg-danger' %>
+                            <div class="progress-bar <%= bar_class %>" style="width: <%= energy_pct %>%">
+                              <%= state.current_energy.round(1) %>
+                            </div>
+                          </div>
+                        </div>
+                        <% if state.in_debt? %>
+                          <small class="text-danger">⚠️ In debt</small>
+                        <% end %>
+                      <% else %>
+                        <span class="text-muted">No state</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if state %>
+                        <%= (state.success_rate * 100).round(1) %>%
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if state %>
+                        <span class="text-success"><%= state.tasks_completed %></span> /
+                        <span class="text-danger"><%= state.tasks_failed %></span>
+                      <% else %>
+                        -
+                      <% end %>
+                    </td>
+                    <td>
+                      <%= link_to 'Details', dashboard_energy_path(agent), class: 'btn btn-sm btn-outline-primary' %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Transactions -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Recent Energy Transactions</h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+            <table class="table table-sm mb-0">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th>Time</th>
+                  <th>Agent</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @recent_transactions.each do |tx| %>
+                  <tr>
+                    <td><small><%= time_ago_in_words(tx.created_at) %> ago</small></td>
+                    <td><%= tx.agent_plugin.name %></td>
+                    <td>
+                      <% case tx.transaction_type %>
+                      <% when 'earned', 'task_completion', 'helped_agent' %>
+                        <span class="badge bg-success"><%= tx.transaction_type %></span>
+                      <% when 'spent' %>
+                        <span class="badge bg-info"><%= tx.transaction_type %></span>
+                      <% when 'penalty', 'task_failure' %>
+                        <span class="badge bg-danger"><%= tx.transaction_type %></span>
+                      <% else %>
+                        <span class="badge bg-secondary"><%= tx.transaction_type %></span>
+                      <% end %>
+                    </td>
+                    <td class="<%= tx.amount > 0 ? 'text-success' : 'text-danger' %>">
+                      <%= tx.amount > 0 ? '+' : '' %><%= tx.amount.round(1) %>
+                    </td>
+                    <td><small><%= tx.reason %></small></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <!-- School Enrollments -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">🎓 School Enrollments</h5>
+        </div>
+        <div class="list-group list-group-flush">
+          <% if @school_enrollments.empty? %>
+            <div class="list-group-item text-muted text-center py-4">
+              No agents in school
+            </div>
+          <% else %>
+            <% @school_enrollments.each do |enrollment| %>
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <strong><%= enrollment.agent_plugin.name %></strong>
+                    <br>
+                    <small class="text-muted">
+                      Attempt #<%= enrollment.attempt_number %> •
+                      <%= enrollment.status.titleize %>
+                    </small>
+                  </div>
+                  <% case enrollment.status %>
+                  <% when 'graduated' %>
+                    <span class="badge bg-success">🎓</span>
+                  <% when 'expelled' %>
+                    <span class="badge bg-danger">❌</span>
+                  <% when 'probation' %>
+                    <span class="badge bg-warning text-dark">⚠️</span>
+                  <% else %>
+                    <span class="badge bg-info"><%= enrollment.status %></span>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- A/B Tests -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">🧪 A/B Tests</h5>
+        </div>
+        <div class="list-group list-group-flush">
+          <% if @ab_tests.empty? %>
+            <div class="list-group-item text-muted text-center py-4">
+              No active tests
+            </div>
+          <% else %>
+            <% @ab_tests.each do |test| %>
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <strong><%= test.control_agent.name %></strong>
+                    <span class="text-muted">vs</span>
+                    <strong><%= test.variant_agent.name %></strong>
+                    <br>
+                    <small class="text-muted">
+                      Progress: <%= test.progress %>%
+                    </small>
+                  </div>
+                  <% if test.completed? %>
+                    <span class="badge bg-<%= test.winner == 'variant' ? 'success' : test.winner == 'control' ? 'secondary' : 'warning' %>">
+                      <%= test.winner.titleize %>
+                    </span>
+                  <% else %>
+                    <span class="badge bg-info">Running</span>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">📊 System Health</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span>Agents with Energy</span>
+              <span><%= @stats[:agents_with_energy] %>/<%= @stats[:total_agents] %></span>
+            </div>
+            <div class="progress" style="height: 8px;">
+              <% pct = @stats[:total_agents] > 0 ? (@stats[:agents_with_energy].to_f / @stats[:total_agents] * 100) : 0 %>
+              <div class="progress-bar bg-primary" style="width: <%= pct %>%"></div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span>In School</span>
+              <span><%= @stats[:in_school] %></span>
+            </div>
+            <div class="progress" style="height: 8px;">
+              <% pct = @stats[:total_agents] > 0 ? (@stats[:in_school].to_f / @stats[:total_agents] * 100) : 0 %>
+              <div class="progress-bar bg-warning" style="width: <%= pct %>%"></div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-1">
+              <span>On Probation</span>
+              <span><%= @stats[:on_probation] %></span>
+            </div>
+            <div class="progress" style="height: 8px;">
+              <% pct = @stats[:total_agents] > 0 ? (@stats[:on_probation].to_f / @stats[:total_agents] * 100) : 0 %>
+              <div class="progress-bar bg-danger" style="width: <%= pct %>%"></div>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="d-flex justify-content-between">
+            <span>Community Pool Health:</span>
+            <span class="badge bg-<%= @community_pool.health_status == :healthy ? 'success' : @community_pool.health_status == :moderate ? 'warning' : 'danger' %>">
+              <%= @community_pool.health_status.to_s.titleize %>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
