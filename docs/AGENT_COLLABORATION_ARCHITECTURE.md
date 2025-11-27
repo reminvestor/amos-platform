@@ -1,906 +1,1422 @@
-# Agent Collaboration & Reinforcement Learning Architecture
+# Agent Collaboration & Self-Evolving AI System Architecture
 
 ## Overview
 
-This document outlines a system where agents can collaborate by asking other agents for help, governed by an energy/reward system that encourages self-reliance while enabling collaboration when beneficial. This feeds into a broader Reinforcement Learning (RL) network that optimizes agent and tool selection.
+This document outlines a **self-evolving** multi-agent collaboration system where:
+1. Agents collaborate by asking other agents for help
+2. An energy/reward system incentivizes optimal behavior
+3. Everything is **learned**, not hardcoded - the system improves over time
+4. A Reinforcement Learning network optimizes agent and tool selection
+5. Agent Lightning (or internal service) continuously refines agents themselves
 
-## Core Concepts
-
-### The Energy Model
-
-Every agent has an **energy score** that governs their ability to collaborate:
+## Core Philosophy: Everything Evolves
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         AGENT ENERGY SYSTEM                              │
+│                    SELF-EVOLVING SYSTEM PRINCIPLES                       │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  ENERGY SOURCES (+)                    ENERGY COSTS (-)                  │
-│  ─────────────────                     ─────────────────                 │
-│  • Task completion: +10-50             • Ask for help: -5                │
-│  • High quality result: +20            • Delegate task: -10              │
-│  • Fast completion: +5                 • Failed attempt: -3              │
-│  • User satisfaction: +15              • Timeout: -5                     │
-│  • Helped another agent: +8            • Retry needed: -2                │
-│  • Passive regeneration: +1/hour                                         │
-│                                                                          │
-│  ENERGY THRESHOLDS                                                       │
-│  ─────────────────────                                                   │
-│  • 100+ : Can help others freely                                         │
-│  • 50-99: Normal operation                                               │
-│  • 20-49: Should try harder before asking                                │
-│  • 1-19 : Must complete tasks solo to recover                            │
-│  • 0    : Cannot ask for help, must regenerate                           │
+│  ❌ STATIC (What we avoid)              ✅ DYNAMIC (What we do)          │
+│  ──────────────────────────             ─────────────────────────        │
+│  "Failure costs -30"                    "Failure cost = f(impact)"       │
+│  "Ask advice costs -5"                  "Advice cost = f(relationship)"  │
+│  "Confidence > 80% = solo"              "Threshold = learned per agent"  │
+│  "Max 10 requests/hour"                 "Limits = f(system health)"      │
+│  "Agent has fixed capabilities"         "Capabilities evolve from data"  │
+│  "Fixed prompt templates"               "Prompts refined by outcomes"    │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Collaboration Flow
+---
+
+## The Energy Economy (Corrected)
+
+### Key Insight: Failure Must Cost More Than Collaboration
+
+The energy system must incentivize **asking for help when needed** over **failing alone**.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    AGENT COLLABORATION FLOW                              │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  1. AGENT RECEIVES TASK                                                  │
-│     "Analyze this financial report and create visualizations"           │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  2. SELF-ASSESSMENT                                                      │
-│     • Do I have the skills for this? (capability match)                 │
-│     • Do I have the tools needed? (tool availability)                   │
-│     • How confident am I? (0-100%)                                      │
-│     • What's my current energy? (collaboration budget)                  │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                    ┌───────────────┴───────────────┐
-                    ▼                               ▼
-        ┌─────────────────────┐         ┌─────────────────────┐
-        │  HIGH CONFIDENCE    │         │  LOW CONFIDENCE     │
-        │  (>70%)             │         │  (<70%)             │
-        ├─────────────────────┤         ├─────────────────────┤
-        │ Execute solo        │         │ Consider options:   │
-        │                     │         │ • Try anyway        │
-        │                     │         │ • Ask for advice    │
-        │                     │         │ • Delegate subtask  │
-        │                     │         │ • Full delegation   │
-        └─────────────────────┘         └─────────────────────┘
-                    │                               │
-                    │                   ┌───────────┴───────────┐
-                    │                   ▼                       ▼
-                    │       ┌─────────────────────┐ ┌─────────────────────┐
-                    │       │  ENOUGH ENERGY?     │ │  LOW ENERGY         │
-                    │       │  (>20)              │ │  (<20)              │
-                    │       ├─────────────────────┤ ├─────────────────────┤
-                    │       │ Can ask for help    │ │ Must try solo       │
-                    │       │ or delegate         │ │ to earn energy      │
-                    │       └─────────────────────┘ └─────────────────────┘
-                    │                   │                       │
-                    └───────────────────┴───────────────────────┘
-                                        │
-                                        ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│  3. EXECUTION & REWARD                                                   │
-│     • Complete task → earn energy based on quality                      │
-│     • Help given → helper earns energy too                              │
-│     • Failure → lose energy, learn from mistake                         │
+│                    BALANCED ENERGY ECONOMICS                             │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  EARNING ENERGY (+)                                                      │
+│  ─────────────────                                                       │
+│  • Task completion (base):      +30 to +50 (based on complexity)        │
+│  • Quality bonus:               +10 to +30 (0.5 - 1.0 quality score)    │
+│  • Speed bonus:                 +5 to +15 (faster than expected)        │
+│  • User satisfaction:           +10 to +25 (user rating)                │
+│  • Helped another agent:        +15 to +40 (based on helpfulness)       │
+│  • Passive regeneration:        +2/hour                                 │
+│                                                                          │
+│  SPENDING ENERGY (-)                                                     │
+│  ──────────────────                                                      │
+│  • Ask for advice:              -2 to -8 (dynamic pricing)              │
+│  • Request review:              -2 to -8 (dynamic pricing)              │
+│  • Delegate subtask:            -10 to -20 (dynamic pricing)            │
+│  • Full delegation:             -15 to -30 (dynamic pricing)            │
+│                                                                          │
+│  PENALTIES (-)                                                           │
+│  ─────────────                                                           │
+│  • Failed task (solo):          -40 to -80 (scaled by impact)           │
+│  • Failed task (with help):     -20 to -40 (shared responsibility)      │
+│  • Timeout:                     -15 to -30                              │
+│  • Retry needed:                -10                                     │
+│  • User dissatisfaction:        -20 to -40                              │
+│                                                                          │
+│  ⚠️  KEY BALANCE: Failure penalty > Collaboration cost                  │
+│      This ensures agents prefer asking for help over failing alone      │
+│                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Dynamic Energy Pricing
+
+Energy costs are **not fixed** - they adjust based on market conditions:
+
+```ruby
+class DynamicEnergyPricer
+  # Prices adjust based on system state - nothing is hardcoded
+  
+  def advice_cost(requesting_agent, potential_helper)
+    base_cost = 2.0
+    
+    # Factor 1: Helper availability (scarce expertise = expensive)
+    availability_multiplier = calculate_availability_factor(potential_helper)
+    # Range: 0.5 (very available) to 2.0 (in high demand)
+    
+    # Factor 2: Helper expertise (expert = premium)
+    expertise_multiplier = calculate_expertise_premium(
+      potential_helper, 
+      requesting_agent.current_task
+    )
+    # Range: 0.8 (generalist) to 2.0 (top expert)
+    
+    # Factor 3: Relationship discount (frequent collaborators = cheaper)
+    relationship_discount = calculate_relationship_discount(
+      requesting_agent, 
+      potential_helper
+    )
+    # Range: 0.0 (strangers) to 0.4 (best collaborators)
+    
+    # Factor 4: System load (busy system = expensive)
+    system_load_multiplier = calculate_system_load_factor
+    # Range: 0.8 (idle) to 1.5 (overloaded)
+    
+    final_cost = base_cost * 
+                 availability_multiplier * 
+                 expertise_multiplier * 
+                 system_load_multiplier * 
+                 (1 - relationship_discount)
+    
+    # Bounds to prevent extremes
+    final_cost.clamp(1.0, 15.0)
+  end
+  
+  def failure_penalty(agent, task, outcome)
+    base_penalty = 40.0
+    
+    # Factor 1: Task importance (critical tasks = higher penalty)
+    importance_multiplier = task.importance_score  # 0.5 to 2.0
+    
+    # Factor 2: Was collaboration available? (higher if help was offered)
+    preventability = was_collaboration_available?(agent, task)
+    preventability_multiplier = preventability ? 1.5 : 0.8
+    
+    # Factor 3: Downstream impact (affects other tasks/users)
+    impact_multiplier = calculate_downstream_impact(task)  # 1.0 to 2.0
+    
+    # Factor 4: Agent's failure trend (repeat failures = escalating penalty)
+    history_multiplier = agent_failure_trend_multiplier(agent)  # 1.0 to 2.0
+    
+    penalty = base_penalty * 
+              importance_multiplier * 
+              preventability_multiplier * 
+              impact_multiplier * 
+              history_multiplier
+    
+    # Ensure failure always costs more than asking for help would have
+    min_penalty = most_expensive_collaboration_option + 10
+    [penalty, min_penalty].max.clamp(20.0, 100.0)
+  end
+  
+  private
+  
+  def calculate_availability_factor(helper)
+    # Based on helper's current load and recent activity
+    current_tasks = helper.active_task_count
+    recent_help_requests = helper.recent_help_given_count(1.hour)
+    
+    base = 1.0
+    base += 0.2 * current_tasks  # More tasks = less available
+    base += 0.1 * recent_help_requests  # Already helping others
+    base.clamp(0.5, 2.0)
+  end
+  
+  def calculate_relationship_discount(requester, helper)
+    relationship = AgentRelationship.find_by(
+      requester: requester, 
+      helper: helper
+    )
+    return 0.0 unless relationship
+    
+    # Better relationships = bigger discounts
+    (relationship.successful_collaborations.to_f / 20).clamp(0.0, 0.4)
+  end
+end
+```
+
+---
+
+## Self-Evolving Components
+
+### 1. Adaptive Decision Boundaries
+
+Each agent learns **their own** optimal threshold for when to ask for help:
+
+```ruby
+class AdaptiveDecisionBoundary
+  # Each agent learns their personal optimal decision threshold
+  # NOT a global setting - personalized based on agent's actual performance
+  
+  def initialize(agent)
+    @agent = agent
+    @alpha = 1.0  # Bayesian prior: successes when asking
+    @beta = 1.0   # Bayesian prior: failures when asking
+    @solo_alpha = 1.0
+    @solo_beta = 1.0
+  end
+  
+  def should_ask_for_help?(task)
+    confidence = @agent.estimate_confidence(task)
+    
+    # Thompson Sampling: Sample from posterior to balance explore/exploit
+    ask_threshold = sample_ask_threshold
+    
+    decision = confidence < ask_threshold
+    
+    # Record for learning (will be updated when outcome is known)
+    record_pending_decision(confidence, decision, task)
+    
+    {
+      should_ask: decision,
+      confidence: confidence,
+      sampled_threshold: ask_threshold,
+      reasoning: generate_reasoning(confidence, ask_threshold)
+    }
+  end
+  
+  def learn_from_outcome(decision_record, outcome)
+    confidence = decision_record[:confidence]
+    asked = decision_record[:asked_for_help]
+    success = outcome.success?
+    quality = outcome.quality_score
+    
+    if asked
+      if success && quality > 0.7
+        # Asking was a good choice
+        @alpha += 1  # Increase belief that asking is good
+      else
+        # Asked but still poor result
+        @beta += 0.5  # Slight decrease in asking belief
+      end
+    else
+      if success && quality > 0.7
+        # Solo worked well
+        @solo_alpha += 1
+      else
+        # Solo failed - should have asked
+        @solo_beta += 2  # Strong signal: should have asked
+        @alpha += 1      # Increase asking tendency
+      end
+    end
+    
+    persist_learning!
+  end
+  
+  private
+  
+  def sample_ask_threshold
+    # Beta distribution for "when should I ask"
+    # Higher alpha = more likely to ask (asking has worked)
+    # Higher beta = less likely to ask (solo has worked)
+    
+    ask_success_rate = BetaDistribution.sample(@alpha, @beta)
+    solo_success_rate = BetaDistribution.sample(@solo_alpha, @solo_beta)
+    
+    # Convert to threshold: if asking works better, lower threshold (ask more)
+    if ask_success_rate > solo_success_rate
+      # Asking has been working - lower threshold to ask more often
+      threshold = 100 - (ask_success_rate * 50)  # 50-100 range
+    else
+      # Solo has been working - higher threshold to ask less
+      threshold = 50 + (solo_success_rate * 30)  # 50-80 range
+    end
+    
+    # Add exploration noise
+    threshold + rand(-5..5)
+  end
+end
+```
+
+### 2. Emergent Agent Specialization
+
+Agents naturally develop specialties based on their performance:
+
+```ruby
+class EmergentSpecializationTracker
+  # Agents don't have fixed roles - roles EMERGE from performance data
+  
+  def update_specialization(agent, task_outcome)
+    task_type = classify_task_type(task_outcome.task)
+    
+    # Update capability beliefs for this task type
+    beliefs = agent.capability_beliefs[task_type] ||= {
+      attempts: 0,
+      successes: 0,
+      total_quality: 0.0,
+      avg_quality: 0.5,
+      confidence_interval: [0.0, 1.0]
+    }
+    
+    beliefs[:attempts] += 1
+    beliefs[:successes] += 1 if task_outcome.success?
+    beliefs[:total_quality] += task_outcome.quality_score
+    beliefs[:avg_quality] = beliefs[:total_quality] / beliefs[:attempts]
+    
+    # Calculate confidence interval (Bayesian)
+    beliefs[:confidence_interval] = calculate_confidence_interval(beliefs)
+    
+    # Determine if this is a specialty or weakness
+    recalculate_specialties(agent)
+  end
+  
+  def recalculate_specialties(agent)
+    all_agents = AgentPlugin.active.where(entity: agent.entity)
+    
+    agent.capability_beliefs.each do |task_type, beliefs|
+      next if beliefs[:attempts] < 5  # Not enough data
+      
+      # Compare to population
+      population_stats = calculate_population_stats(all_agents, task_type)
+      
+      z_score = (beliefs[:avg_quality] - population_stats[:mean]) / 
+                population_stats[:std_dev]
+      
+      if z_score > 1.5
+        agent.add_specialty(task_type, confidence: z_score)
+      elsif z_score < -1.0
+        agent.add_weakness(task_type, severity: z_score.abs)
+      else
+        agent.mark_average(task_type)
+      end
+    end
+    
+    agent.save!
+  end
+  
+  def get_best_agent_for_task(task, entity)
+    task_type = classify_task_type(task)
+    
+    candidates = AgentPlugin.active.where(entity: entity)
+    
+    candidates.map do |agent|
+      beliefs = agent.capability_beliefs[task_type]
+      
+      {
+        agent: agent,
+        expected_quality: beliefs&.dig(:avg_quality) || 0.5,
+        confidence: beliefs&.dig(:attempts).to_i > 10 ? :high : :low,
+        is_specialist: agent.specialties.include?(task_type),
+        is_weak: agent.weaknesses.include?(task_type)
+      }
+    end.sort_by { |c| -c[:expected_quality] }
+  end
+end
+```
+
+### 3. Relationship Learning
+
+Agents learn which other agents they collaborate well with:
+
+```ruby
+class AgentRelationshipLearner
+  # Learn and optimize agent-to-agent collaboration patterns
+  
+  def record_collaboration(requester, helper, outcome)
+    relationship = AgentRelationship.find_or_create_by(
+      requester: requester,
+      helper: helper
+    )
+    
+    # Update collaboration statistics
+    relationship.total_collaborations += 1
+    relationship.successful_collaborations += 1 if outcome.success?
+    relationship.total_quality += outcome.quality_score
+    relationship.total_response_time += outcome.response_time_ms
+    
+    # Update helpfulness ratings
+    if outcome.requester_rating.present?
+      relationship.helpfulness_ratings << outcome.requester_rating
+    end
+    
+    # Recalculate compatibility score
+    relationship.compatibility_score = calculate_compatibility(relationship)
+    relationship.save!
+    
+    # Update reverse relationship (helper's view of requester)
+    update_reverse_relationship(helper, requester, outcome)
+  end
+  
+  def find_best_helper(requester, task)
+    potential_helpers = AgentPlugin.active
+      .where(entity: requester.entity)
+      .where.not(id: requester.id)
+      .where('current_energy >= ?', 10)
+    
+    scored_helpers = potential_helpers.map do |helper|
+      relationship = AgentRelationship.find_by(
+        requester: requester, 
+        helper: helper
+      )
+      
+      {
+        helper: helper,
+        # Historical compatibility (learned)
+        compatibility: relationship&.compatibility_score || 0.5,
+        # Task-specific fit (from specialization)
+        task_fit: helper.capability_for_task(task),
+        # Current availability
+        availability: helper.availability_score,
+        # Energy level
+        energy: helper.current_energy,
+        # Combined expected value
+        expected_value: calculate_expected_value(
+          relationship, helper, task
+        )
+      }
+    end
+    
+    # Return sorted by expected value, with some exploration
+    if should_explore?
+      # Sometimes try a less-proven helper to learn
+      explore_selection(scored_helpers)
+    else
+      scored_helpers.max_by { |h| h[:expected_value] }
+    end
+  end
+  
+  private
+  
+  def calculate_compatibility(relationship)
+    return 0.5 if relationship.total_collaborations < 3
+    
+    success_rate = relationship.successful_collaborations.to_f / 
+                   relationship.total_collaborations
+    
+    avg_quality = relationship.total_quality / 
+                  relationship.total_collaborations
+    
+    avg_response_time = relationship.total_response_time / 
+                        relationship.total_collaborations
+    
+    avg_helpfulness = relationship.helpfulness_ratings.sum.to_f / 
+                      relationship.helpfulness_ratings.size rescue 0.5
+    
+    # Weighted combination - weights are ALSO learned via meta-learning
+    weights = MetaLearner.instance.get_weights(:relationship_compatibility)
+    
+    weights[:success_rate] * success_rate +
+    weights[:quality] * avg_quality +
+    weights[:speed] * normalize_response_time(avg_response_time) +
+    weights[:helpfulness] * (avg_helpfulness / 5.0)
+  end
+  
+  def should_explore?
+    # Thompson Sampling for exploration
+    rand < MetaLearner.instance.exploration_rate
+  end
+end
+```
+
+### 4. Meta-Learning: The System That Learns How to Learn
+
+```ruby
+class MetaLearner
+  include Singleton
+  
+  # The meta-learner optimizes ALL the hyperparameters of the system
+  # It learns the optimal learning rates, weights, thresholds, etc.
+  
+  TUNABLE_PARAMETERS = {
+    # Energy economy
+    base_task_reward: { min: 20, max: 60, default: 35 },
+    failure_penalty_base: { min: 30, max: 80, default: 50 },
+    collaboration_cost_multiplier: { min: 0.5, max: 2.0, default: 1.0 },
+    
+    # Decision making
+    exploration_rate: { min: 0.01, max: 0.20, default: 0.10 },
+    confidence_prior: { min: 40, max: 60, default: 50 },
+    
+    # Learning rates
+    capability_learning_rate: { min: 0.01, max: 0.15, default: 0.08 },
+    relationship_learning_rate: { min: 0.05, max: 0.20, default: 0.10 },
+    
+    # Collaboration
+    max_delegation_depth: { min: 2, max: 5, default: 3 },
+    relationship_memory_decay: { min: 0.90, max: 0.99, default: 0.95 },
+    
+    # Weights for compatibility calculation
+    compatibility_weight_success: { min: 0.1, max: 0.5, default: 0.3 },
+    compatibility_weight_quality: { min: 0.1, max: 0.5, default: 0.3 },
+    compatibility_weight_speed: { min: 0.05, max: 0.3, default: 0.2 },
+    compatibility_weight_helpfulness: { min: 0.05, max: 0.3, default: 0.2 }
+  }
+  
+  def initialize
+    @current_params = load_or_initialize_params
+    @performance_history = []
+    @optimization_interval = 1000  # Optimize every N executions
+    @execution_count = 0
+  end
+  
+  def get_param(name)
+    @current_params[name] || TUNABLE_PARAMETERS[name][:default]
+  end
+  
+  def get_weights(category)
+    case category
+    when :relationship_compatibility
+      {
+        success_rate: get_param(:compatibility_weight_success),
+        quality: get_param(:compatibility_weight_quality),
+        speed: get_param(:compatibility_weight_speed),
+        helpfulness: get_param(:compatibility_weight_helpfulness)
+      }
+    end
+  end
+  
+  def record_execution(execution_result)
+    @execution_count += 1
+    @performance_history << measure_execution_quality(execution_result)
+    
+    # Periodic optimization
+    if @execution_count % @optimization_interval == 0
+      optimize_parameters_async
+    end
+  end
+  
+  def optimize_parameters_async
+    MetaLearnerOptimizationJob.perform_later
+  end
+  
+  def run_optimization
+    Rails.logger.info "[MetaLearner] Starting parameter optimization..."
+    
+    current_performance = calculate_recent_performance
+    
+    # Generate parameter variations (evolutionary approach)
+    variations = generate_variations(@current_params, num_variations: 10)
+    
+    # Evaluate each variation (can use simulation or A/B test)
+    evaluated = variations.map do |params|
+      {
+        params: params,
+        expected_performance: simulate_performance(params)
+      }
+    end
+    
+    # Select best
+    best = evaluated.max_by { |v| v[:expected_performance] }
+    
+    if best[:expected_performance] > current_performance * 1.02  # 2% improvement threshold
+      apply_parameters(best[:params])
+      log_optimization_result(best, current_performance)
+    end
+  end
+  
+  private
+  
+  def generate_variations(base_params, num_variations:)
+    variations = []
+    
+    num_variations.times do
+      variant = base_params.dup
+      
+      # Mutate 1-3 parameters
+      params_to_mutate = TUNABLE_PARAMETERS.keys.sample(rand(1..3))
+      
+      params_to_mutate.each do |param|
+        config = TUNABLE_PARAMETERS[param]
+        current = variant[param] || config[:default]
+        
+        # Gaussian mutation
+        mutation = rand_gaussian * (config[:max] - config[:min]) * 0.1
+        new_value = (current + mutation).clamp(config[:min], config[:max])
+        
+        variant[param] = new_value
+      end
+      
+      variations << variant
+    end
+    
+    variations
+  end
+  
+  def simulate_performance(params)
+    # Run Monte Carlo simulation with these parameters
+    # OR use historical data to predict performance
+    
+    simulator = SystemSimulator.new(params)
+    simulator.run_simulation(num_episodes: 100)
+    simulator.average_reward
+  end
+end
+```
+
+### 5. Agent Evolution Engine
+
+Successful agent configurations propagate; unsuccessful ones are refined or retired:
+
+```ruby
+class AgentEvolutionEngine
+  # Agents evolve over time - successful patterns are replicated
+  
+  def run_evolution_cycle
+    Rails.logger.info "[Evolution] Starting evolution cycle..."
+    
+    # 1. Evaluate all agents
+    rankings = rank_agents_by_performance
+    
+    # 2. Handle underperformers
+    handle_underperformers(rankings[:bottom_quartile])
+    
+    # 3. Replicate top performers
+    replicate_top_performers(rankings[:top_quartile])
+    
+    # 4. Cross-breed successful agents
+    crossbreed_successful_agents(rankings[:top_half])
+    
+    # 5. Introduce random mutations for exploration
+    introduce_mutations
+    
+    Rails.logger.info "[Evolution] Cycle complete"
+  end
+  
+  def rank_agents_by_performance
+    agents = AgentPlugin.active.includes(:energy_state, :capability_profile)
+    
+    scored = agents.map do |agent|
+      {
+        agent: agent,
+        score: calculate_fitness_score(agent),
+        metrics: {
+          success_rate: agent.success_rate,
+          avg_quality: agent.avg_quality,
+          efficiency: agent.tasks_per_energy,
+          collaboration_value: agent.collaboration_score
+        }
+      }
+    end.sort_by { |a| -a[:score] }
+    
+    quartile_size = scored.size / 4
+    
+    {
+      top_quartile: scored[0...quartile_size],
+      top_half: scored[0...(scored.size / 2)],
+      bottom_quartile: scored[(-quartile_size)..-1]
+    }
+  end
+  
+  def handle_underperformers(underperformers)
+    underperformers.each do |entry|
+      agent = entry[:agent]
+      
+      if agent.total_tasks < 20
+        # Not enough data - give more time
+        next
+      end
+      
+      if can_improve?(agent)
+        # Try to improve through prompt refinement
+        refine_agent(agent)
+      else
+        # Deprecate and potentially replace
+        deprecate_agent(agent)
+      end
+    end
+  end
+  
+  def replicate_top_performers(top_performers)
+    top_performers.each do |entry|
+      agent = entry[:agent]
+      
+      # Only replicate if there's demand for this agent type
+      next unless demand_exists_for?(agent)
+      
+      # Create variant with small mutations
+      create_variant(agent, mutation_rate: 0.1)
+    end
+  end
+  
+  def crossbreed_successful_agents(successful_agents)
+    # Select pairs for crossbreeding
+    pairs = select_breeding_pairs(successful_agents)
+    
+    pairs.each do |parent1, parent2|
+      create_offspring(parent1[:agent], parent2[:agent])
+    end
+  end
+  
+  private
+  
+  def calculate_fitness_score(agent)
+    # Multi-objective fitness function
+    weights = MetaLearner.instance.get_weights(:agent_fitness)
+    
+    weights[:success_rate] * agent.success_rate +
+    weights[:quality] * agent.avg_quality +
+    weights[:efficiency] * normalize_efficiency(agent.tasks_per_energy) +
+    weights[:collaboration] * agent.collaboration_score +
+    weights[:user_satisfaction] * agent.avg_user_rating
+  end
+  
+  def refine_agent(agent)
+    # Use AI to analyze failures and suggest prompt improvements
+    failure_analysis = analyze_agent_failures(agent)
+    
+    prompt_suggestions = AgentPromptRefiner.new.suggest_improvements(
+      agent.system_prompt,
+      failure_analysis
+    )
+    
+    # Create refined version
+    refined = agent.dup
+    refined.system_prompt = prompt_suggestions[:improved_prompt]
+    refined.parent_agent = agent
+    refined.generation = agent.generation + 1
+    refined.status = 'testing'  # A/B test against original
+    refined.save!
+    
+    # Set up A/B test
+    ABTestService.create_test(
+      control: agent,
+      variant: refined,
+      metric: :overall_fitness,
+      duration: 7.days
+    )
+  end
+  
+  def create_offspring(parent1, parent2)
+    # Genetic crossover of agent configurations
+    offspring_config = {}
+    
+    # Crossover system prompt (take sections from each)
+    offspring_config[:system_prompt] = crossover_prompts(
+      parent1.system_prompt,
+      parent2.system_prompt
+    )
+    
+    # Crossover tool assignments
+    offspring_config[:tools] = (parent1.tools + parent2.tools).uniq
+    
+    # Crossover capabilities (average with noise)
+    offspring_config[:capabilities] = merge_capabilities(
+      parent1.capability_profile,
+      parent2.capability_profile
+    )
+    
+    # Create with mutation
+    mutated_config = apply_mutation(offspring_config)
+    
+    AgentPlugin.create!(
+      entity: parent1.entity,
+      name: generate_offspring_name(parent1, parent2),
+      configuration: mutated_config,
+      lineage: [parent1.id, parent2.id],
+      generation: [parent1.generation, parent2.generation].max + 1,
+      status: 'testing'
+    )
+  end
+end
+```
+
+### 6. Continuous Prompt Refinement
+
+Agent prompts evolve based on performance:
+
+```ruby
+class AgentPromptRefiner
+  # Automatically refine agent prompts based on performance data
+  
+  def analyze_and_refine(agent)
+    # Collect performance data
+    recent_executions = agent.executions.where('created_at > ?', 7.days.ago)
+    
+    failures = recent_executions.where(status: 'failed')
+    low_quality = recent_executions.where('quality_score < 0.6')
+    successes = recent_executions.where(status: 'completed', 'quality_score > 0.8')
+    
+    # Analyze patterns
+    failure_patterns = extract_failure_patterns(failures)
+    success_patterns = extract_success_patterns(successes)
+    
+    # Generate refinement suggestions
+    suggestions = generate_refinement_suggestions(
+      current_prompt: agent.system_prompt,
+      failure_patterns: failure_patterns,
+      success_patterns: success_patterns
+    )
+    
+    suggestions
+  end
+  
+  def generate_refinement_suggestions(current_prompt:, failure_patterns:, success_patterns:)
+    # Use AI to suggest prompt improvements
+    analysis_prompt = <<~PROMPT
+      Analyze this agent's system prompt and suggest improvements based on performance data.
+      
+      CURRENT PROMPT:
+      #{current_prompt}
+      
+      FAILURE PATTERNS:
+      #{failure_patterns.to_json}
+      
+      SUCCESS PATTERNS:
+      #{success_patterns.to_json}
+      
+      Suggest specific improvements to:
+      1. Address the failure patterns
+      2. Reinforce the success patterns
+      3. Improve clarity and specificity
+      
+      Return the improved prompt and explanation of changes.
+    PROMPT
+    
+    response = BedrockService.new.send_message(
+      messages: [{ role: 'user', content: analysis_prompt }],
+      model: 'claude-sonnet-4-20250514'
+    )
+    
+    parse_refinement_response(response)
+  end
+  
+  private
+  
+  def extract_failure_patterns(failures)
+    patterns = {
+      common_error_types: {},
+      task_types_failed: {},
+      tool_failures: {},
+      common_phrases_in_errors: []
+    }
+    
+    failures.each do |execution|
+      error_type = classify_error(execution.error_message)
+      patterns[:common_error_types][error_type] ||= 0
+      patterns[:common_error_types][error_type] += 1
+      
+      task_type = classify_task(execution.task_description)
+      patterns[:task_types_failed][task_type] ||= 0
+      patterns[:task_types_failed][task_type] += 1
+      
+      execution.tools_used.each do |tool|
+        if execution.tool_errors[tool].present?
+          patterns[:tool_failures][tool] ||= 0
+          patterns[:tool_failures][tool] += 1
+        end
+      end
+    end
+    
+    patterns
+  end
+end
+```
+
+---
+
+## Integration with Agent Lightning
+
+Agent Lightning (or an internal equivalent) provides continuous refinement:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    MULTI-LEVEL LEARNING SYSTEM                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  LEVEL 1: Task Execution (Milliseconds)                                  │
+│  ───────────────────────────────────────                                 │
+│  • Agent executes task                                                   │
+│  • Immediate feedback on success/failure                                 │
+│  • Tool usage patterns recorded                                          │
+│                                                                          │
+│  LEVEL 2: Capability Learning (Hours)                                    │
+│  ─────────────────────────────────────                                   │
+│  • Aggregate task outcomes                                               │
+│  • Update capability beliefs                                             │
+│  • Adjust decision thresholds                                            │
+│  • Update relationship scores                                            │
+│                                                                          │
+│  LEVEL 3: Agent Refinement (Days)                                        │
+│  ─────────────────────────────────                                       │
+│  • Analyze performance trends                                            │
+│  • Refine prompts based on patterns                                      │
+│  • A/B test prompt variations                                            │
+│  • Adjust tool assignments                                               │
+│                                                                          │
+│  LEVEL 4: System Evolution (Weeks)                                       │
+│  ─────────────────────────────────                                       │
+│  • Meta-parameter optimization                                           │
+│  • Agent evolution (breed/cull)                                          │
+│  • New agent creation for gaps                                           │
+│  • Architecture improvements                                             │
+│                                                                          │
+│  LEVEL 5: Strategic Adaptation (Months)                                  │
+│  ───────────────────────────────────────                                 │
+│  • New capability development                                            │
+│  • Integration of new tools                                              │
+│  • Cross-entity learning                                                 │
+│  • Model upgrades                                                        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Agent Lightning Integration
+
+```ruby
+class AgentLightningIntegration
+  # Interface with Agent Lightning for continuous refinement
+  
+  def submit_for_refinement(agent)
+    # Package agent data for Lightning analysis
+    payload = {
+      agent_id: agent.id,
+      system_prompt: agent.system_prompt,
+      performance_data: collect_performance_data(agent),
+      capability_profile: agent.capability_profile.to_h,
+      recent_executions: agent.recent_execution_summaries,
+      failure_analysis: analyze_failures(agent),
+      comparison_to_peers: peer_comparison(agent)
+    }
+    
+    # Submit to Lightning for analysis
+    response = lightning_client.analyze_agent(payload)
+    
+    # Apply recommendations
+    apply_recommendations(agent, response[:recommendations])
+  end
+  
+  def continuous_refinement_loop
+    # Background job that runs continuously
+    loop do
+      # Find agents needing refinement
+      agents_to_refine = AgentPlugin.active
+        .where('last_refinement_at < ?', 7.days.ago)
+        .order(refinement_priority: :desc)
+        .limit(10)
+      
+      agents_to_refine.each do |agent|
+        submit_for_refinement(agent)
+        agent.update!(last_refinement_at: Time.current)
+      end
+      
+      sleep 1.hour
+    end
+  end
+  
+  private
+  
+  def apply_recommendations(agent, recommendations)
+    recommendations.each do |rec|
+      case rec[:type]
+      when 'prompt_update'
+        create_prompt_variant(agent, rec[:new_prompt])
+      when 'tool_change'
+        update_tool_assignments(agent, rec[:tools])
+      when 'capability_adjustment'
+        adjust_capabilities(agent, rec[:adjustments])
+      when 'deprecation'
+        schedule_deprecation(agent, rec[:reason])
+      end
+    end
+  end
+end
+```
+
+---
 
 ## Database Models
 
-### AgentEnergyState
+### Core Models
+
+```ruby
+# Migration: create_agent_collaboration_tables.rb
+
+class CreateAgentCollaborationTables < ActiveRecord::Migration[8.0]
+  def change
+    # Agent Energy State
+    create_table :agent_energy_states do |t|
+      t.references :agent_plugin, null: false, foreign_key: true
+      t.references :entity, null: false, foreign_key: true
+      
+      # Current state
+      t.float :current_energy, default: 50.0
+      t.float :max_energy, default: 100.0
+      t.float :regeneration_rate, default: 2.0  # per hour
+      
+      # Lifetime stats
+      t.float :total_earned, default: 0.0
+      t.float :total_spent, default: 0.0
+      t.integer :tasks_completed, default: 0
+      t.integer :tasks_delegated, default: 0
+      t.integer :help_given, default: 0
+      t.integer :help_received, default: 0
+      
+      # Performance
+      t.float :success_rate, default: 0.0
+      t.float :avg_quality, default: 0.5
+      t.float :collaboration_score, default: 0.5
+      
+      t.datetime :last_energy_update_at
+      t.timestamps
+      
+      t.index [:agent_plugin_id], unique: true
+    end
+    
+    # Agent Relationships
+    create_table :agent_relationships do |t|
+      t.references :requester, null: false, foreign_key: { to_table: :agent_plugins }
+      t.references :helper, null: false, foreign_key: { to_table: :agent_plugins }
+      
+      t.integer :total_collaborations, default: 0
+      t.integer :successful_collaborations, default: 0
+      t.float :total_quality, default: 0.0
+      t.integer :total_response_time_ms, default: 0
+      t.jsonb :helpfulness_ratings, default: []
+      t.float :compatibility_score, default: 0.5
+      
+      t.timestamps
+      
+      t.index [:requester_id, :helper_id], unique: true
+    end
+    
+    # Collaboration Requests
+    create_table :agent_collaboration_requests do |t|
+      t.references :requesting_agent, null: false, foreign_key: { to_table: :agent_plugins }
+      t.references :helper_agent, foreign_key: { to_table: :agent_plugins }
+      t.references :entity, null: false, foreign_key: true
+      t.references :parent_request, foreign_key: { to_table: :agent_collaboration_requests }
+      
+      t.string :request_type  # advice, review, subtask, full_delegation
+      t.text :description
+      t.jsonb :context, default: {}
+      t.string :urgency, default: 'medium'
+      
+      t.string :status, default: 'pending'
+      t.datetime :accepted_at
+      t.datetime :completed_at
+      t.datetime :timeout_at
+      
+      t.jsonb :response
+      t.float :quality_rating
+      t.boolean :was_helpful
+      
+      t.float :energy_cost
+      t.float :energy_reward
+      
+      t.timestamps
+      
+      t.index :status
+      t.index :request_type
+    end
+    
+    # Energy Transactions
+    create_table :agent_energy_transactions do |t|
+      t.references :agent_plugin, null: false, foreign_key: true
+      t.references :entity, null: false, foreign_key: true
+      t.references :execution, foreign_key: { to_table: :agent_plugin_executions }
+      t.references :collaboration_request, foreign_key: true
+      
+      t.string :transaction_type  # earned, spent, penalty, regenerated
+      t.float :amount
+      t.string :reason
+      t.float :balance_before
+      t.float :balance_after
+      t.jsonb :metadata, default: {}
+      
+      t.timestamps
+      
+      t.index :transaction_type
+      t.index :created_at
+    end
+    
+    # Capability Beliefs (learned over time)
+    create_table :agent_capability_beliefs do |t|
+      t.references :agent_plugin, null: false, foreign_key: true
+      
+      t.string :task_type
+      t.integer :attempts, default: 0
+      t.integer :successes, default: 0
+      t.float :total_quality, default: 0.0
+      t.float :avg_quality, default: 0.5
+      t.jsonb :confidence_interval, default: [0.0, 1.0]
+      
+      t.timestamps
+      
+      t.index [:agent_plugin_id, :task_type], unique: true
+    end
+    
+    # Decision Boundary State (learned per agent)
+    create_table :agent_decision_boundaries do |t|
+      t.references :agent_plugin, null: false, foreign_key: true
+      
+      t.float :ask_alpha, default: 1.0
+      t.float :ask_beta, default: 1.0
+      t.float :solo_alpha, default: 1.0
+      t.float :solo_beta, default: 1.0
+      
+      t.jsonb :decision_history, default: []
+      
+      t.timestamps
+      
+      t.index [:agent_plugin_id], unique: true
+    end
+    
+    # Meta-Learning Parameters
+    create_table :meta_learning_states do |t|
+      t.references :entity, null: false, foreign_key: true
+      
+      t.jsonb :current_parameters, default: {}
+      t.jsonb :parameter_history, default: []
+      t.float :current_performance, default: 0.0
+      t.integer :optimization_count, default: 0
+      t.datetime :last_optimization_at
+      
+      t.timestamps
+      
+      t.index [:entity_id], unique: true
+    end
+    
+    # Agent Lineage (for evolution tracking)
+    create_table :agent_lineages do |t|
+      t.references :agent_plugin, null: false, foreign_key: true
+      t.references :parent1, foreign_key: { to_table: :agent_plugins }
+      t.references :parent2, foreign_key: { to_table: :agent_plugins }
+      
+      t.integer :generation, default: 1
+      t.jsonb :mutation_log, default: []
+      t.float :fitness_at_creation
+      t.float :current_fitness
+      
+      t.timestamps
+    end
+  end
+end
+```
+
+### Model Classes
 
 ```ruby
 class AgentEnergyState < ApplicationRecord
   belongs_to :agent_plugin
   belongs_to :entity
+  has_many :transactions, class_name: 'AgentEnergyTransaction'
   
-  # Current State
-  attribute :current_energy, :float, default: 50.0
-  attribute :max_energy, :float, default: 100.0
-  attribute :energy_regeneration_rate, :float, default: 1.0  # per hour
-  
-  # Lifetime Stats
-  attribute :total_energy_earned, :float, default: 0.0
-  attribute :total_energy_spent, :float, default: 0.0
-  attribute :tasks_completed, :integer, default: 0
-  attribute :tasks_delegated, :integer, default: 0
-  attribute :help_requests_made, :integer, default: 0
-  attribute :help_requests_received, :integer, default: 0
-  
-  # Performance Metrics
-  attribute :success_rate, :float, default: 0.0
-  attribute :avg_task_quality, :float, default: 0.0
-  attribute :avg_response_time_ms, :integer
-  
-  # Collaboration Stats
-  attribute :collaboration_score, :float, default: 0.0  # How good at teamwork
-  attribute :autonomy_score, :float, default: 0.0       # How self-sufficient
-  
-  # Timestamps
-  attribute :last_energy_update_at, :datetime
-  attribute :last_task_at, :datetime
-  
-  # Methods
-  def can_ask_for_help?
-    current_energy >= 5  # Cost of asking
+  def earn!(amount, reason:, execution: nil, request: nil)
+    transaction do
+      before = current_energy
+      new_energy = [current_energy + amount, max_energy].min
+      
+      update!(
+        current_energy: new_energy,
+        total_earned: total_earned + amount,
+        last_energy_update_at: Time.current
+      )
+      
+      transactions.create!(
+        entity: entity,
+        transaction_type: 'earned',
+        amount: amount,
+        reason: reason,
+        balance_before: before,
+        balance_after: new_energy,
+        execution: execution,
+        collaboration_request: request
+      )
+    end
   end
   
-  def can_delegate?
-    current_energy >= 10  # Cost of delegation
+  def spend!(amount, reason:, request: nil)
+    raise InsufficientEnergyError if current_energy < amount
+    
+    transaction do
+      before = current_energy
+      new_energy = current_energy - amount
+      
+      update!(
+        current_energy: new_energy,
+        total_spent: total_spent + amount,
+        last_energy_update_at: Time.current
+      )
+      
+      transactions.create!(
+        entity: entity,
+        transaction_type: 'spent',
+        amount: -amount,
+        reason: reason,
+        balance_before: before,
+        balance_after: new_energy,
+        collaboration_request: request
+      )
+    end
   end
   
-  def should_try_solo?
-    current_energy < 20  # Low energy, need to earn
+  def penalize!(amount, reason:, execution: nil)
+    transaction do
+      before = current_energy
+      new_energy = [current_energy - amount, 0].max
+      
+      update!(
+        current_energy: new_energy,
+        last_energy_update_at: Time.current
+      )
+      
+      transactions.create!(
+        entity: entity,
+        transaction_type: 'penalty',
+        amount: -amount,
+        reason: reason,
+        balance_before: before,
+        balance_after: new_energy,
+        execution: execution
+      )
+    end
   end
   
-  def regenerate_energy!
-    hours_since_update = (Time.current - last_energy_update_at) / 1.hour
-    regenerated = hours_since_update * energy_regeneration_rate
-    new_energy = [current_energy + regenerated, max_energy].min
-    update!(current_energy: new_energy, last_energy_update_at: Time.current)
+  def regenerate!
+    return if last_energy_update_at.nil?
+    
+    hours_elapsed = (Time.current - last_energy_update_at) / 1.hour
+    regen_amount = hours_elapsed * regeneration_rate
+    
+    if regen_amount > 0.1  # Only update if meaningful
+      earn!(regen_amount, reason: 'passive_regeneration')
+    end
   end
 end
-```
 
-### AgentCollaborationRequest
-
-```ruby
-class AgentCollaborationRequest < ApplicationRecord
-  belongs_to :requesting_agent, class_name: 'AgentPlugin'
-  belongs_to :target_agent, class_name: 'AgentPlugin', optional: true
-  belongs_to :task_execution, optional: true
-  belongs_to :entity
+class AgentRelationship < ApplicationRecord
+  belongs_to :requester, class_name: 'AgentPlugin'
+  belongs_to :helper, class_name: 'AgentPlugin'
   
-  # Request Details
-  attribute :request_type, :string  # advice, subtask, full_delegation, review
-  attribute :description, :text     # What help is needed
-  attribute :context, :jsonb        # Task context, what's been tried
-  attribute :urgency, :string       # low, medium, high, critical
+  def success_rate
+    return 0.5 if total_collaborations.zero?
+    successful_collaborations.to_f / total_collaborations
+  end
   
-  # Agent Selection
-  attribute :required_capabilities, :jsonb  # Skills needed
-  attribute :preferred_agents, :jsonb       # Specific agents if any
-  attribute :excluded_agents, :jsonb        # Agents to avoid
+  def avg_quality
+    return 0.5 if total_collaborations.zero?
+    total_quality / total_collaborations
+  end
   
-  # Status
-  attribute :status, :string, default: 'pending'  # pending, accepted, completed, rejected, expired
-  attribute :accepted_by_agent_id, :integer
-  attribute :accepted_at, :datetime
-  attribute :completed_at, :datetime
-  
-  # Results
-  attribute :response, :jsonb       # The help provided
-  attribute :quality_rating, :float # 0-1, rated by requester
-  attribute :was_helpful, :boolean
-  
-  # Energy Transaction
-  attribute :energy_cost, :float    # What requester paid
-  attribute :energy_reward, :float  # What helper earned
-  
-  # Timing
-  attribute :timeout_at, :datetime
-  attribute :created_at, :datetime
+  def avg_helpfulness
+    return 0.5 if helpfulness_ratings.empty?
+    helpfulness_ratings.sum.to_f / helpfulness_ratings.size
+  end
 end
-```
 
-### AgentEnergyTransaction
-
-```ruby
-class AgentEnergyTransaction < ApplicationRecord
-  belongs_to :agent_plugin
-  belongs_to :entity
-  belongs_to :related_task, class_name: 'AgentPluginExecution', optional: true
-  belongs_to :collaboration_request, optional: true
-  
-  attribute :transaction_type, :string  # earned, spent, regenerated, bonus, penalty
-  attribute :amount, :float             # Positive or negative
-  attribute :reason, :string            # Description
-  attribute :balance_before, :float
-  attribute :balance_after, :float
-  attribute :metadata, :jsonb
-  
-  # Types of transactions
-  EARN_TYPES = %w[task_completion quality_bonus speed_bonus user_satisfaction helped_agent]
-  SPEND_TYPES = %w[ask_advice delegate_subtask full_delegation]
-  PENALTY_TYPES = %w[task_failure timeout retry_needed]
-end
-```
-
-### AgentCapabilityProfile
-
-```ruby
-class AgentCapabilityProfile < ApplicationRecord
+class AgentCapabilityBelief < ApplicationRecord
   belongs_to :agent_plugin
   
-  # Skill Ratings (0-100, learned over time)
-  attribute :capabilities, :jsonb, default: {}
-  # Example: {
-  #   "data_analysis": 85,
-  #   "visualization": 72,
-  #   "writing": 90,
-  #   "coding": 65,
-  #   "research": 88,
-  #   "integration_apis": 45
-  # }
-  
-  # Tool Proficiency (0-100)
-  attribute :tool_proficiency, :jsonb, default: {}
-  # Example: {
-  #   "web_search": 95,
-  #   "create_visualization": 80,
-  #   "execute_integration": 60
-  # }
-  
-  # Collaboration Traits
-  attribute :helpfulness_score, :float, default: 50.0    # How good at helping
-  attribute :independence_score, :float, default: 50.0   # How self-sufficient
-  attribute :teaching_ability, :float, default: 50.0     # How good at explaining
-  attribute :learning_rate, :float, default: 1.0         # How fast skills improve
-  
-  # Update capability based on task outcome
-  def update_capability(skill, success:, quality: 0.5)
-    current = capabilities[skill] || 50.0
-    adjustment = success ? (quality * 2) : -1
-    new_value = [[current + adjustment, 0].max, 100].min
-    capabilities[skill] = new_value
+  def update_from_outcome!(success:, quality:)
+    self.attempts += 1
+    self.successes += 1 if success
+    self.total_quality += quality
+    self.avg_quality = total_quality / attempts
+    
+    # Update Bayesian confidence interval
+    self.confidence_interval = calculate_confidence_interval
     save!
   end
-end
-```
-
-## Reinforcement Learning Network
-
-### Task Router (RL Agent)
-
-The Task Router is an RL agent that learns to assign tasks optimally:
-
-```ruby
-class TaskRouter
-  # State: Current task features + available agents + historical performance
-  # Action: Which agent(s) to assign
-  # Reward: Task success, quality, speed, cost efficiency
-  
-  def route_task(task_description, context = {})
-    # 1. Extract task features
-    task_features = extract_features(task_description)
-    
-    # 2. Get available agents with their states
-    agents = get_available_agents(context[:entity])
-    
-    # 3. Score each agent for this task
-    agent_scores = agents.map do |agent|
-      {
-        agent: agent,
-        capability_match: calculate_capability_match(agent, task_features),
-        energy_available: agent.energy_state.current_energy,
-        historical_success: get_historical_success(agent, task_features),
-        current_load: agent.current_task_count,
-        expected_quality: predict_quality(agent, task_features),
-        expected_time: predict_completion_time(agent, task_features)
-      }
-    end
-    
-    # 4. Apply RL policy to select best agent(s)
-    selected = apply_policy(agent_scores, task_features)
-    
-    # 5. Record decision for learning
-    record_routing_decision(task_features, selected)
-    
-    selected
-  end
   
   private
   
-  def apply_policy(agent_scores, task_features)
-    # Multi-armed bandit with Thompson Sampling
-    # or Deep Q-Network for more complex decisions
+  def calculate_confidence_interval
+    return [0.0, 1.0] if attempts < 3
     
-    # Exploration vs Exploitation
-    if should_explore?
-      # Try a less-proven agent to learn
-      explore_selection(agent_scores)
-    else
-      # Pick the best known option
-      exploit_selection(agent_scores)
-    end
+    # Wilson score interval
+    z = 1.96  # 95% confidence
+    n = attempts.to_f
+    p_hat = successes.to_f / n
+    
+    denominator = 1 + z**2 / n
+    center = (p_hat + z**2 / (2 * n)) / denominator
+    margin = z * Math.sqrt((p_hat * (1 - p_hat) + z**2 / (4 * n)) / n) / denominator
+    
+    [(center - margin).clamp(0, 1), (center + margin).clamp(0, 1)]
   end
 end
 ```
 
-### Reward Function
+---
 
-```ruby
-class TaskRewardCalculator
-  # Calculate reward for a completed task
-  def calculate(execution)
-    base_reward = 10.0
-    
-    # Quality multiplier (0.5 - 2.0)
-    quality_score = evaluate_quality(execution)
-    quality_multiplier = 0.5 + (quality_score * 1.5)
-    
-    # Speed bonus (0 - 10)
-    speed_bonus = calculate_speed_bonus(execution)
-    
-    # User satisfaction (0 - 15)
-    satisfaction_bonus = execution.user_rating.present? ? 
-      (execution.user_rating / 5.0) * 15 : 0
-    
-    # Collaboration efficiency
-    collab_bonus = calculate_collaboration_bonus(execution)
-    
-    # Penalties
-    penalties = calculate_penalties(execution)
-    
-    total = (base_reward * quality_multiplier) + 
-            speed_bonus + 
-            satisfaction_bonus + 
-            collab_bonus - 
-            penalties
-    
-    [total, 0].max  # Never negative
-  end
-  
-  private
-  
-  def calculate_speed_bonus(execution)
-    expected_time = execution.agent_plugin.avg_completion_time
-    actual_time = execution.duration_ms
-    
-    if actual_time < expected_time * 0.5
-      10  # Much faster than expected
-    elsif actual_time < expected_time * 0.8
-      5   # Faster than expected
-    else
-      0
-    end
-  end
-  
-  def calculate_collaboration_bonus(execution)
-    # Bonus for efficient collaboration
-    if execution.collaboration_requests.any?
-      helpful_collabs = execution.collaboration_requests.where(was_helpful: true)
-      (helpful_collabs.count * 3) - (execution.collaboration_requests.count * 1)
-    else
-      2  # Small bonus for independence
-    end
-  end
-  
-  def calculate_penalties(execution)
-    penalty = 0
-    penalty += 3 if execution.failed?
-    penalty += 2 if execution.retried?
-    penalty += 5 if execution.timed_out?
-    penalty
-  end
-end
-```
-
-## Collaboration Protocol
-
-### Asking for Help
-
-```ruby
-class AgentCollaborationService
-  def request_help(requesting_agent, request_type:, description:, context: {})
-    energy_state = requesting_agent.energy_state
-    
-    # Check if agent can afford to ask
-    cost = energy_cost_for(request_type)
-    unless energy_state.current_energy >= cost
-      return {
-        success: false,
-        error: "Insufficient energy (#{energy_state.current_energy}/#{cost} needed)",
-        suggestion: "Complete more tasks solo to earn energy"
-      }
-    end
-    
-    # Find suitable agents to help
-    candidates = find_helper_candidates(
-      requesting_agent: requesting_agent,
-      required_capabilities: extract_capabilities(description),
-      request_type: request_type
-    )
-    
-    if candidates.empty?
-      return {
-        success: false,
-        error: "No suitable agents available",
-        suggestion: "Try breaking down the task or attempting solo"
-      }
-    end
-    
-    # Create collaboration request
-    request = AgentCollaborationRequest.create!(
-      requesting_agent: requesting_agent,
-      request_type: request_type,
-      description: description,
-      context: context,
-      energy_cost: cost,
-      timeout_at: 5.minutes.from_now
-    )
-    
-    # Deduct energy
-    energy_state.spend_energy!(cost, reason: "collaboration_request", request: request)
-    
-    # Route to best available helper
-    helper = select_best_helper(candidates, request)
-    request.update!(target_agent: helper, status: 'pending')
-    
-    # Notify helper agent
-    notify_agent(helper, request)
-    
-    { success: true, request: request, helper: helper }
-  end
-  
-  def respond_to_help_request(helper_agent, request, response:)
-    return { error: "Request expired" } if request.expired?
-    return { error: "Already handled" } unless request.pending?
-    
-    request.update!(
-      accepted_by_agent_id: helper_agent.id,
-      accepted_at: Time.current,
-      status: 'in_progress'
-    )
-    
-    # Helper provides assistance
-    result = helper_agent.provide_help(request, response)
-    
-    # Complete the request
-    request.update!(
-      status: 'completed',
-      completed_at: Time.current,
-      response: result
-    )
-    
-    # Reward helper
-    reward = calculate_helper_reward(request)
-    helper_agent.energy_state.earn_energy!(reward, reason: "helped_agent", request: request)
-    
-    { success: true, result: result }
-  end
-  
-  private
-  
-  def energy_cost_for(request_type)
-    case request_type
-    when 'advice'        then 5
-    when 'review'        then 5
-    when 'subtask'       then 10
-    when 'full_delegation' then 15
-    else 5
-    end
-  end
-  
-  def find_helper_candidates(requesting_agent:, required_capabilities:, request_type:)
-    AgentPlugin.active
-      .where.not(id: requesting_agent.id)
-      .joins(:energy_state)
-      .where('agent_energy_states.current_energy >= ?', 10)  # Must have energy to help
-      .select { |agent| agent.can_help_with?(required_capabilities) }
-      .sort_by { |agent| -agent.capability_profile.helpfulness_score }
-  end
-end
-```
-
-### Collaboration Types
+## Continuous Improvement Loops
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                      COLLABORATION TYPES                                 │
+│                    FEEDBACK LOOPS FOR CONTINUOUS IMPROVEMENT             │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  ADVICE (Cost: 5 energy)                                                │
-│  ───────────────────────                                                │
-│  • Quick question/answer                                                 │
-│  • "How should I approach this?"                                        │
-│  • Helper provides guidance, requester executes                         │
-│  • Helper reward: 3-8 energy based on helpfulness                       │
+│  LOOP 1: Execution → Learning                                            │
+│  ────────────────────────────                                            │
+│  Task Execution                                                          │
+│       ↓                                                                  │
+│  Outcome Recorded                                                        │
+│       ↓                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │ • Update capability beliefs                                      │    │
+│  │ • Update decision boundary                                       │    │
+│  │ • Update relationship scores                                     │    │
+│  │ • Update energy state                                            │    │
+│  │ • Update tool proficiency                                        │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│       ↓                                                                  │
+│  Better Future Decisions                                                 │
 │                                                                          │
-│  REVIEW (Cost: 5 energy)                                                │
-│  ───────────────────────                                                │
-│  • Check work before submitting                                         │
-│  • "Does this look right?"                                              │
-│  • Helper validates and suggests improvements                           │
-│  • Helper reward: 3-8 energy                                            │
+│  LOOP 2: Aggregation → Meta-Learning                                     │
+│  ────────────────────────────────────                                    │
+│  Collect 1000 Executions                                                 │
+│       ↓                                                                  │
+│  Calculate System Performance                                            │
+│       ↓                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │ • Generate parameter variations                                  │    │
+│  │ • Simulate/evaluate each                                         │    │
+│  │ • Select best performing                                         │    │
+│  │ • Apply if improvement > threshold                               │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│       ↓                                                                  │
+│  Optimized System Parameters                                             │
 │                                                                          │
-│  SUBTASK (Cost: 10 energy)                                              │
-│  ─────────────────────────                                              │
-│  • Delegate a portion of the work                                       │
-│  • "Can you handle the data analysis part?"                             │
-│  • Helper completes subtask, requester integrates                       │
-│  • Helper reward: 8-15 energy                                           │
+│  LOOP 3: Evolution → Agent Improvement                                   │
+│  ──────────────────────────────────────                                  │
+│  Weekly Evolution Cycle                                                  │
+│       ↓                                                                  │
+│  Rank All Agents by Fitness                                              │
+│       ↓                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │ • Refine/deprecate underperformers                               │    │
+│  │ • Replicate top performers                                       │    │
+│  │ • Crossbreed successful agents                                   │    │
+│  │ • Introduce mutations for exploration                            │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│       ↓                                                                  │
+│  Improved Agent Population                                               │
 │                                                                          │
-│  FULL DELEGATION (Cost: 15 energy)                                      │
-│  ─────────────────────────────────                                      │
-│  • Hand off entire task                                                  │
-│  • "I'm not equipped for this, can you take over?"                      │
-│  • Helper takes full ownership                                          │
-│  • Helper reward: 15-30 energy (gets task completion bonus)             │
+│  LOOP 4: Prompt Refinement                                               │
+│  ─────────────────────────                                               │
+│  Analyze Failure Patterns                                                │
+│       ↓                                                                  │
+│  Generate Prompt Improvements                                            │
+│       ↓                                                                  │
+│  A/B Test New Prompts                                                    │
+│       ↓                                                                  │
+│  Deploy Winners                                                          │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Agent Decision Making
-
-### Should I Ask for Help?
-
-```ruby
-class AgentDecisionEngine
-  def should_ask_for_help?(agent, task)
-    # Factors to consider
-    confidence = agent.estimate_confidence(task)
-    energy = agent.energy_state.current_energy
-    task_complexity = estimate_complexity(task)
-    time_pressure = task.urgent?
-    
-    # Decision matrix
-    decision_score = 0
-    
-    # Low confidence increases desire to ask
-    decision_score += (100 - confidence) * 0.5
-    
-    # High complexity increases desire to ask
-    decision_score += task_complexity * 0.3
-    
-    # Time pressure increases desire to ask
-    decision_score += 20 if time_pressure
-    
-    # Low energy discourages asking (need to earn)
-    decision_score -= (50 - energy) * 0.5 if energy < 50
-    
-    # Check if asking makes sense
-    should_ask = decision_score > 40 && energy >= 5
-    
-    {
-      should_ask: should_ask,
-      confidence: confidence,
-      decision_score: decision_score,
-      energy_available: energy,
-      recommendation: generate_recommendation(should_ask, confidence, energy)
-    }
-  end
-  
-  private
-  
-  def generate_recommendation(should_ask, confidence, energy)
-    if energy < 5
-      "Complete tasks solo to regenerate energy before asking for help"
-    elsif confidence > 80
-      "You've got this! Execute with confidence"
-    elsif should_ask
-      "Consider asking for advice or delegating a subtask"
-    else
-      "Try your best first - you'll learn and earn energy"
-    end
-  end
-end
-```
-
-## Learning & Adaptation
-
-### Capability Learning
-
-```ruby
-class CapabilityLearner
-  # Update agent capabilities based on task outcomes
-  def learn_from_execution(execution)
-    agent = execution.agent_plugin
-    profile = agent.capability_profile
-    
-    # Extract skills used in this task
-    skills_used = extract_skills(execution.task_description)
-    
-    # Update each skill based on outcome
-    skills_used.each do |skill|
-      profile.update_capability(
-        skill,
-        success: execution.successful?,
-        quality: execution.quality_score || 0.5
-      )
-    end
-    
-    # Update tool proficiency
-    execution.tools_used.each do |tool_name|
-      profile.update_tool_proficiency(
-        tool_name,
-        success: execution.successful?
-      )
-    end
-    
-    # Update collaboration traits
-    if execution.collaboration_requests.any?
-      update_collaboration_traits(profile, execution)
-    end
-  end
-  
-  private
-  
-  def update_collaboration_traits(profile, execution)
-    requests = execution.collaboration_requests
-    
-    # If agent asked for help effectively
-    helpful_requests = requests.where(was_helpful: true)
-    if helpful_requests.any?
-      # Good at knowing when to ask
-      profile.independence_score = [profile.independence_score - 1, 0].max
-    end
-    
-    # If agent helped others
-    if execution.helped_with_requests.any?
-      profile.helpfulness_score = [profile.helpfulness_score + 2, 100].min
-    end
-  end
-end
-```
-
-### RL Policy Updates
-
-```ruby
-class PolicyUpdater
-  # Update routing policy based on outcomes
-  def update_from_execution(execution)
-    routing_decision = execution.routing_decision
-    return unless routing_decision
-    
-    # Calculate reward
-    reward = TaskRewardCalculator.new.calculate(execution)
-    
-    # Update Q-values or policy network
-    update_policy(
-      state: routing_decision.state_features,
-      action: routing_decision.selected_agent_id,
-      reward: reward,
-      next_state: get_current_state
-    )
-    
-    # Update exploration rate (decay over time)
-    decay_exploration_rate
-  end
-  
-  private
-  
-  def update_policy(state:, action:, reward:, next_state:)
-    # Simple Q-learning update
-    # Q(s,a) = Q(s,a) + α * (r + γ * max(Q(s',a')) - Q(s,a))
-    
-    learning_rate = 0.1
-    discount_factor = 0.95
-    
-    current_q = get_q_value(state, action)
-    max_next_q = get_max_q_value(next_state)
-    
-    new_q = current_q + learning_rate * (reward + discount_factor * max_next_q - current_q)
-    
-    set_q_value(state, action, new_q)
-  end
-end
-```
-
-## Limits & Safeguards
-
-### Collaboration Limits
-
-```ruby
-class CollaborationLimits
-  # Per-agent limits
-  MAX_HELP_REQUESTS_PER_HOUR = 10
-  MAX_DELEGATIONS_PER_HOUR = 5
-  MAX_CONCURRENT_COLLABORATIONS = 3
-  
-  # Per-entity limits
-  MAX_TOTAL_COLLABORATIONS_PER_HOUR = 50
-  
-  # Depth limits (prevent infinite chains)
-  MAX_DELEGATION_DEPTH = 3  # A can delegate to B, B to C, C to D, stop
-  
-  def can_request_collaboration?(agent, request_type)
-    # Check hourly limits
-    recent_requests = agent.collaboration_requests
-      .where('created_at > ?', 1.hour.ago)
-    
-    return false if recent_requests.count >= MAX_HELP_REQUESTS_PER_HOUR
-    
-    if request_type == 'full_delegation'
-      delegations = recent_requests.where(request_type: 'full_delegation')
-      return false if delegations.count >= MAX_DELEGATIONS_PER_HOUR
-    end
-    
-    # Check concurrent limit
-    active = agent.collaboration_requests.where(status: ['pending', 'in_progress'])
-    return false if active.count >= MAX_CONCURRENT_COLLABORATIONS
-    
-    true
-  end
-  
-  def check_delegation_depth(request)
-    depth = 0
-    current = request
-    
-    while current.parent_request.present?
-      depth += 1
-      return false if depth >= MAX_DELEGATION_DEPTH
-      current = current.parent_request
-    end
-    
-    true
-  end
-end
-```
-
-### Circuit Breakers
-
-```ruby
-class CollaborationCircuitBreaker
-  # Prevent collaboration storms
-  
-  def check_entity_health(entity)
-    recent_collabs = AgentCollaborationRequest
-      .where(entity: entity)
-      .where('created_at > ?', 1.hour.ago)
-    
-    if recent_collabs.count > CollaborationLimits::MAX_TOTAL_COLLABORATIONS_PER_HOUR
-      # Trip the circuit breaker
-      trip_breaker!(entity, reason: "Too many collaborations")
-      return false
-    end
-    
-    # Check for collaboration loops
-    if detect_collaboration_loop?(entity)
-      trip_breaker!(entity, reason: "Collaboration loop detected")
-      return false
-    end
-    
-    true
-  end
-  
-  def detect_collaboration_loop?(entity)
-    # Detect A -> B -> C -> A patterns
-    recent = AgentCollaborationRequest
-      .where(entity: entity, status: 'completed')
-      .where('created_at > ?', 10.minutes.ago)
-      .includes(:requesting_agent, :target_agent)
-    
-    # Build graph and detect cycles
-    graph = build_collaboration_graph(recent)
-    has_cycle?(graph)
-  end
-end
-```
-
-## UI Components
-
-### Agent Energy Dashboard
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  AGENT: Data Analyst                                    Energy: 78/100  │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ████████████████████████████████████████░░░░░░░░░░░░  78%              │
-│                                                                          │
-│  Today's Activity:                                                       │
-│  ├─ Tasks completed: 12 (+45 energy)                                    │
-│  ├─ Help given: 3 (+18 energy)                                          │
-│  ├─ Help received: 2 (-10 energy)                                       │
-│  └─ Regenerated: +5 energy                                              │
-│                                                                          │
-│  Capabilities:                          Collaboration Stats:            │
-│  • Data Analysis: ████████░░ 85%        • Help requests made: 24        │
-│  • Visualization: ███████░░░ 72%        • Help requests received: 18    │
-│  • SQL Queries:   ████████░░ 82%        • Avg helpfulness rating: 4.2   │
-│  • Python:        ██████░░░░ 65%        • Independence score: 72        │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-### Collaboration Network View
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    AGENT COLLABORATION NETWORK                           │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│                        ┌─────────────┐                                  │
-│                   ┌───►│   Scout     │◄───┐                             │
-│                   │    │  (Energy:85)│    │                             │
-│                   │    └──────┬──────┘    │                             │
-│                   │           │           │                             │
-│            advice │    delegate│    review│                             │
-│                   │           ▼           │                             │
-│         ┌─────────┴───┐ ┌───────────┐ ┌───┴─────────┐                   │
-│         │Data Analyst │ │Tool Builder│ │ Researcher │                   │
-│         │ (Energy:78) │ │ (Energy:62)│ │ (Energy:91)│                   │
-│         └─────────────┘ └───────────┘ └─────────────┘                   │
-│                   │           │           │                             │
-│                   └───────────┼───────────┘                             │
-│                               ▼                                         │
-│                    ┌───────────────────┐                                │
-│                    │ Integration Agent │                                │
-│                    │   (Energy: 45)    │                                │
-│                    └───────────────────┘                                │
-│                                                                          │
-│  Legend: ──► advice  ═══► delegation  - - -> subtask                    │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+---
 
 ## Implementation Phases
 
-### Phase 1: Energy System
-- [ ] Create `AgentEnergyState` model and migrations
-- [ ] Implement energy earning/spending logic
-- [ ] Add energy regeneration background job
+### Phase 1: Foundation (Week 1-2)
+- [ ] Create database migrations for all models
+- [ ] Implement `AgentEnergyState` with earn/spend/penalize
+- [ ] Implement `DynamicEnergyPricer` with market-based pricing
+- [ ] Add energy tracking to agent executions
 - [ ] Create energy dashboard UI
-- [ ] Integrate with existing agent execution
 
-### Phase 2: Collaboration Protocol
-- [ ] Create `AgentCollaborationRequest` model
-- [ ] Implement `AgentCollaborationService`
+### Phase 2: Collaboration Protocol (Week 2-3)
+- [ ] Implement `AgentCollaborationRequest` workflow
+- [ ] Create `AgentRelationshipLearner`
 - [ ] Add collaboration tools to agents
-- [ ] Build collaboration request UI
-- [ ] Add limits and circuit breakers
+- [ ] Implement request routing and matching
+- [ ] Add collaboration limits and circuit breakers
 
-### Phase 3: Capability Profiles
-- [ ] Create `AgentCapabilityProfile` model
-- [ ] Implement capability learning from outcomes
-- [ ] Add tool proficiency tracking
-- [ ] Build capability visualization UI
+### Phase 3: Adaptive Learning (Week 3-4)
+- [ ] Implement `AdaptiveDecisionBoundary` per agent
+- [ ] Create `AgentCapabilityBelief` tracking
+- [ ] Implement `EmergentSpecializationTracker`
+- [ ] Add Thompson Sampling for exploration
+- [ ] Create learning visualization UI
 
-### Phase 4: RL Task Router
-- [ ] Implement `TaskRouter` with basic policy
-- [ ] Add Q-learning or bandit algorithm
-- [ ] Create routing decision logging
-- [ ] Build A/B testing framework
-- [ ] Add policy update pipeline
+### Phase 4: Meta-Learning (Week 4-5)
+- [ ] Implement `MetaLearner` singleton
+- [ ] Create parameter variation and evaluation
+- [ ] Add simulation framework for testing
+- [ ] Implement A/B testing infrastructure
+- [ ] Create meta-learning dashboard
 
-### Phase 5: Advanced Features
+### Phase 5: Evolution Engine (Week 5-6)
+- [ ] Implement `AgentEvolutionEngine`
+- [ ] Create agent fitness scoring
+- [ ] Implement crossbreeding and mutation
+- [ ] Add `AgentPromptRefiner`
+- [ ] Create evolution tracking UI
+
+### Phase 6: Agent Lightning Integration (Week 6-7)
+- [ ] Design Lightning API interface
+- [ ] Implement continuous refinement loop
+- [ ] Add external analysis integration
+- [ ] Create refinement recommendation system
+- [ ] Build monitoring and alerting
+
+### Phase 7: Advanced Features (Week 7-8)
 - [ ] Multi-agent collaboration (3+ agents)
-- [ ] Collaboration templates for common patterns
+- [ ] Cross-entity learning (with privacy)
 - [ ] Agent mentorship system
-- [ ] Cross-entity collaboration (marketplace)
+- [ ] Collaboration marketplace
+- [ ] Advanced analytics and insights
 
-## Metrics & Monitoring
+---
 
-### Key Metrics to Track
+## Key Metrics
 
-1. **Energy Economy**
-   - Total energy in circulation
-   - Energy velocity (earned/spent per hour)
-   - Energy distribution across agents
+### System Health
+| Metric | Target | Alert Threshold |
+|--------|--------|-----------------|
+| Overall Success Rate | > 85% | < 75% |
+| Avg Task Quality | > 0.8 | < 0.6 |
+| Collaboration Efficiency | > 70% helpful | < 50% |
+| Energy Circulation | Stable | ±20% weekly |
+| Agent Improvement Rate | Positive | Negative trend |
 
-2. **Collaboration Efficiency**
-   - Help request success rate
-   - Average time to get help
-   - Collaboration ROI (value gained vs energy spent)
+### Learning Effectiveness
+| Metric | Description |
+|--------|-------------|
+| Capability Convergence | How quickly agents learn their strengths |
+| Decision Accuracy | % of correct ask/solo decisions |
+| Relationship Prediction | Accuracy of helper selection |
+| Meta-Learning Lift | % improvement from parameter tuning |
+| Evolution Fitness Gain | Generation-over-generation improvement |
 
-3. **Agent Performance**
-   - Solo success rate vs collaborative success rate
-   - Capability growth over time
-   - Task completion quality trends
-
-4. **System Health**
-   - Collaboration depth distribution
-   - Circuit breaker trips
-   - Queue wait times
+---
 
 ## Open Questions
 
-1. **Energy Economy Balance**: How do we prevent energy inflation/deflation?
-2. **Cold Start**: How do new agents get initial energy and capabilities?
-3. **Fairness**: How do we ensure all agents get opportunities to help?
-4. **Gaming**: How do we prevent agents from gaming the energy system?
-5. **Human Override**: When should users be able to force collaboration?
+1. **Cross-Entity Learning**: How do we share learnings across entities while preserving privacy?
+2. **Cold Start for New Agents**: What's the optimal initial configuration for new agents?
+3. **Catastrophic Forgetting**: How do we prevent agents from forgetting old skills when learning new ones?
+4. **Adversarial Agents**: How do we prevent/detect agents gaming the energy system?
+5. **Human Override**: When should users be able to force specific behaviors?
+
+---
 
 ## Related Documentation
 
 - [Agent Factory](./AGENT_FACTORY.md) - Creating agents
-- [Tool Factory](./TOOL_FACTORY.md) - Creating tools
+- [Tool Factory](./TOOL_FACTORY.md) - Creating tools  
+- [Integration Factory](./INTEGRATION_FACTORY.md) - Creating integrations
 - [Code Runner](./CODE_RUNNER_ARCHITECTURE.md) - Code execution system
-
