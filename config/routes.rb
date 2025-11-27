@@ -90,6 +90,16 @@ Rails.application.routes.draw do
       end
       # Alternative route for submissions by landing page slug
       post "landing_pages/:landing_page_slug/submit", to: "landing_page_submissions#create"
+
+      # Benchmark API
+      resources :benchmarks, only: [:index, :show] do
+        collection do
+          get :report
+          get :trends
+          get :comparison
+          post :run
+        end
+      end
     end
   end
 
@@ -680,6 +690,18 @@ Rails.application.routes.draw do
       get "workflows", to: "metrics#workflows"
       get "errors", to: "metrics#errors"
       get "performance", to: "metrics#performance"
+    end
+
+    # Benchmark System
+    resources :benchmarks, only: [:index, :show, :create] do
+      collection do
+        get :trends
+        post :cleanup
+        get 'status/:run_id', action: :status, as: :status
+      end
+      member do
+        get :compare
+      end
     end
 
     # Agent Collaboration System Dashboard (replaces Agent Lightning)

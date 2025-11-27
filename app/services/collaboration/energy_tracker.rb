@@ -233,7 +233,8 @@ module Collaboration
     end
 
     def classify_task_type(execution)
-      task = execution.input&.dig('task_description') || ''
+      # Use input_context instead of input (which doesn't exist on AgentPluginExecution)
+      task = execution.input_context&.dig('task_description') || ''
       task = task.to_s.downcase
 
       if task.include?('analyze') || task.include?('analysis')

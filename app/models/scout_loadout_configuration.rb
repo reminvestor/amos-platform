@@ -38,6 +38,8 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     delegate_to_agent
     invoke_agent_plugin
     update_agent
+    ask_agent_for_help
+    web_search
   ].freeze
 
   # Tools that should NEVER be given to Scout (always delegate)

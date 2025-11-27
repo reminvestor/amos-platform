@@ -52,6 +52,25 @@ production:
     queue: agents
     schedule: at 5am every day
 
+  # ========================================
+  # Benchmark Tracking Jobs
+  # ========================================
+  
+  # Weekly benchmark run - track performance over time
+  scheduled_benchmark:
+    class: ScheduledBenchmarkJob
+    queue: agents
+    schedule: at 6am every monday
+  
+  # Daily quick benchmark (smaller sample)
+  daily_benchmark:
+    class: ScheduledBenchmarkJob
+    queue: agents
+    schedule: at 6am every day
+    args:
+      - null
+      - sample_size: 1
+
 # Development environment - run less frequently to avoid noise
 development:
   # Daily metrics in dev (just for testing)

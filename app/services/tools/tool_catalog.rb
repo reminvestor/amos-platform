@@ -121,35 +121,64 @@ module Tools
         end
       end
 
-      # Use tiered discovery if prompt is provided (RAG-based tool selection)
-      if prompt.present? && user.present? && entity.present?
-        discovered_tools = get_tiered_tools(user: user, entity: entity, prompt: prompt, agent_loadout: agent_loadout)
-        tools += discovered_tools
-        Rails.logger.info "🔍 Tiered discovery: #{discovered_tools.length} tools discovered for prompt"
+      # ═══════════════════════════════════════════════════════════════
+      # TOOL SELECTION ARCHITECTURE:
+      # 1. ALWAYS start with base tools from allowlist (DB-driven)
+      # 2. OPTIONALLY add discovered tools via RAG if enabled
+      # This allows the system to evolve while maintaining a stable base
+      # ═══════════════════════════════════════════════════════════════
+
+      # Step 1: Get base tools from allowlist (always applied)
+      tool_names = if agent_loadout&.tool_allowlist.present?
+        agent_loadout.tool_allowlist
+      elsif allowlist.present?
+        allowlist
       else
-        # Fall back to allowlist/loadout-based filtering
-        tool_names = if agent_loadout&.tool_allowlist.present?
-          agent_loadout.tool_allowlist
-        elsif allowlist.present?
-          allowlist
-        else
-          @tools.keys
+        # No allowlist = wildcard access (for backwards compatibility)
+        @tools.keys
+      end
+
+      # Convert base tools to Bedrock format
+      tool_names.each do |tool_name|
+        next if tool_name == "*" # Skip wildcard marker
+        next if tool_name == "ask_user" # Already added
+        next if tool_name == "load_canvas" # Already added
+
+        if tool_info = @tools[tool_name]
+          metadata = tool_info[:metadata]
+          tools << {
+            name: metadata[:name],
+            description: metadata[:description],
+            parameters: metadata[:input_schema] || metadata[:parameters]
+          }
+        end
+      end
+
+      base_tool_count = tools.length
+      Rails.logger.info "📦 Base tools from allowlist: #{base_tool_count}"
+
+      # Step 2: OPTIONALLY add discovered tools via tiered discovery
+      # This is controlled by ScoutLoadoutConfiguration.use_tiered_discovery for Scout
+      # or can be enabled per-agent for other agents
+      if prompt.present? && user.present? && entity.present?
+        # Check if tiered discovery is enabled (passed via agent_loadout or entity config)
+        tiered_enabled = agent_loadout&.respond_to?(:enable_tiered_discovery) && agent_loadout.enable_tiered_discovery
+        
+        # For Scout (main_chat), check the ScoutLoadoutConfiguration
+        if agent_loadout&.agent_role == "main_chat"
+          scout_config = ScoutLoadoutConfiguration.find_by(entity: entity)
+          tiered_enabled = scout_config&.use_tiered_discovery || false
         end
 
-        # Convert to Bedrock format
-        tool_names.each do |tool_name|
-          next if tool_name == "*" # Skip wildcard
-          next if tool_name == "ask_user" # Already added
-          next if tool_name == "load_canvas" # Already added
-
-          if tool_info = @tools[tool_name]
-            metadata = tool_info[:metadata]
-            tools << {
-              name: metadata[:name],
-              description: metadata[:description],
-              parameters: metadata[:input_schema] || metadata[:parameters]
-            }
-          end
+        if tiered_enabled
+          discovered_tools = get_tiered_tools(user: user, entity: entity, prompt: prompt, agent_loadout: agent_loadout)
+          # Only add tools not already in the base set
+          existing_names = tools.map { |t| t[:name] }
+          new_tools = discovered_tools.reject { |t| existing_names.include?(t[:name]) }
+          tools += new_tools
+          Rails.logger.info "🔍 Tiered discovery: +#{new_tools.length} additional tools discovered (#{discovered_tools.length} total matched)"
+        else
+          Rails.logger.info "⚡ Tiered discovery disabled - using base tools only"
         end
       end
 

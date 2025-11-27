@@ -115,7 +115,29 @@ class AgentEnergyState < ApplicationRecord
       )
 
       # Check if agent needs to go to school
-      if new_energy <= 0
+      # Only enroll if:
+      # 1. Energy is critically low (below -20, not just 0)
+      # 2. OR agent has failed 3+ times recently AND energy is below 10
+      should_enroll = false
+
+      if new_energy <= -20
+        # Critically low - definitely needs school
+        should_enroll = true
+        Rails.logger.warn "[AgentEnergyState] Agent #{agent_plugin_id} critically low energy (#{new_energy}), enrolling in school"
+      elsif new_energy <= 10 && tasks_failed >= 3
+        # Low energy + multiple failures
+        recent_failures = agent_plugin.agent_plugin_executions
+          .where(status: 'failed')
+          .where('created_at > ?', 24.hours.ago)
+          .count
+
+        if recent_failures >= 3
+          should_enroll = true
+          Rails.logger.warn "[AgentEnergyState] Agent #{agent_plugin_id} has #{recent_failures} recent failures and low energy (#{new_energy}), enrolling in school"
+        end
+      end
+
+      if should_enroll
         AgentSchoolEnrollmentJob.perform_later(agent_plugin_id)
       end
     end
@@ -215,22 +237,24 @@ class AgentEnergyState < ApplicationRecord
   private
 
   def set_defaults
-    self.current_energy ||= 50.0
+    self.current_energy ||= 75.0  # Start with more energy to allow learning
     self.max_energy ||= 100.0
-    self.regeneration_rate ||= 2.0
+    self.regeneration_rate ||= 3.0  # Faster base regeneration
     self.last_energy_update_at ||= Time.current
   end
 
   def calculate_regeneration_rate
-    # Non-linear: high energy = slower regen
-    if current_energy < 30
-      3.0  # Fast regeneration when struggling
+    # Non-linear: struggling agents regenerate faster to encourage recovery
+    if current_energy < 20
+      5.0  # Very fast regeneration when critically low
+    elsif current_energy < 40
+      4.0  # Fast regeneration when struggling
     elsif current_energy < 60
-      2.0  # Normal regeneration
+      3.0  # Normal regeneration
     elsif current_energy < 80
-      1.0  # Slow regeneration
+      2.0  # Slower regeneration
     else
-      0.5  # Very slow - encourage spending
+      1.0  # Slow - encourage spending
     end
   end
 
@@ -261,11 +285,11 @@ class AgentEnergyState < ApplicationRecord
       balance_before: before,
       balance_after: after,
       metadata: metadata,
-      previous_hash: last_tx&.hash
+      previous_ledger_hash: last_tx&.ledger_hash
     )
 
     # Calculate hash for immutable ledger
-    tx.update_column(:hash, tx.calculate_hash)
+    tx.update_column(:ledger_hash, tx.calculate_ledger_hash)
   end
 end
 

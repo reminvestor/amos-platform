@@ -13,9 +13,9 @@ class CreateAgentEnergyTransactions < ActiveRecord::Migration[8.0]
       t.float :balance_after, null: false
       t.jsonb :metadata, default: {}
 
-      # For immutable ledger
-      t.string :hash
-      t.string :previous_hash
+      # For immutable ledger (use ledger_hash to avoid conflict with Ruby's hash method)
+      t.string :ledger_hash
+      t.string :previous_ledger_hash
 
       t.timestamps
     end

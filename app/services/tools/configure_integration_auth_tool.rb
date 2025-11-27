@@ -19,6 +19,7 @@ module Tools
           - bearer_token: Token sent as "Authorization: Bearer <token>"
           - basic_auth: Username:password encoded in Authorization header
           - oauth2: Full OAuth 2.0 flow
+          - no_auth: No authentication required (public APIs like JSONPlaceholder)
           
           **Auth Placement Guide (CRITICAL!):**
           - header: Auth in HTTP header (most common)
@@ -44,8 +45,8 @@ module Tools
             },
             auth_type: {
               type: "string",
-              enum: %w[api_key bearer_token basic_auth oauth2],
-              description: "Authentication method - MUST match what the API actually uses"
+              enum: %w[api_key bearer_token basic_auth oauth2 no_auth],
+              description: "Authentication method - MUST match what the API actually uses. Use 'no_auth' for public APIs."
             },
             auth_placement: {
               type: "string",
@@ -118,7 +119,7 @@ module Tools
               description: "For oauth2: Extra params from callback to save"
             }
           },
-          required: %w[integration_id auth_type auth_placement test_endpoint]
+          required: %w[integration_id auth_type]  # auth_placement and test_endpoint optional for no_auth
         }
       }
     end
@@ -188,6 +189,8 @@ module Tools
         "Please provide your #{integration_name} API Key (and password if required)"
       when "oauth2"
         "Click 'Connect' to authorize with #{integration_name}"
+      when "no_auth"
+        "No credentials needed - #{integration_name} is a public API. You can proceed to test."
       else
         "Please provide your #{integration_name} credentials"
       end

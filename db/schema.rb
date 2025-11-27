@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_27_000010) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_27_184622) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -332,8 +332,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_000010) do
     t.float "balance_before", null: false
     t.float "balance_after", null: false
     t.jsonb "metadata", default: {}
-    t.string "hash"
-    t.string "previous_hash"
+    t.string "ledger_hash"
+    t.string "previous_ledger_hash"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["agent_plugin_execution_id"], name: "index_agent_energy_transactions_on_agent_plugin_execution_id"
@@ -946,6 +946,64 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_000010) do
     t.datetime "updated_at", null: false
     t.index ["oauth_configuration_id", "position"], name: "index_auth_configs_on_oauth_configuration_id_and_position"
     t.index ["oauth_configuration_id"], name: "index_auth_configs_on_oauth_configuration_id"
+  end
+
+  create_table "benchmark_runs", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.string "run_id", null: false
+    t.string "run_type", null: false
+    t.string "benchmark_category"
+    t.string "agent_slug"
+    t.boolean "collaboration_enabled", default: true
+    t.integer "total_tasks", default: 0
+    t.integer "correct_count", default: 0
+    t.integer "failed_count", default: 0
+    t.float "accuracy_percentage"
+    t.integer "avg_execution_time_ms"
+    t.integer "total_tokens_used", default: 0
+    t.float "total_cost_cents", default: 0.0
+    t.integer "collaboration_requests", default: 0
+    t.integer "collaboration_helped_count", default: 0
+    t.string "environment"
+    t.string "model_used"
+    t.string "git_commit"
+    t.jsonb "metadata", default: {}
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["benchmark_category"], name: "index_benchmark_runs_on_benchmark_category"
+    t.index ["entity_id", "created_at"], name: "index_benchmark_runs_on_entity_id_and_created_at"
+    t.index ["entity_id"], name: "index_benchmark_runs_on_entity_id"
+    t.index ["run_id"], name: "index_benchmark_runs_on_run_id", unique: true
+    t.index ["run_type"], name: "index_benchmark_runs_on_run_type"
+  end
+
+  create_table "benchmark_task_results", force: :cascade do |t|
+    t.bigint "benchmark_run_id", null: false
+    t.bigint "agent_plugin_id"
+    t.bigint "agent_plugin_execution_id"
+    t.string "task_id", null: false
+    t.string "category"
+    t.string "difficulty"
+    t.text "question"
+    t.text "expected_answer"
+    t.text "actual_answer"
+    t.boolean "correct", default: false
+    t.integer "execution_time_ms"
+    t.integer "tokens_used"
+    t.float "cost_cents"
+    t.boolean "asked_for_help", default: false
+    t.string "helper_agent_slug"
+    t.boolean "collaboration_helped", default: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_benchmark_task_results_on_agent_plugin_execution_id"
+    t.index ["agent_plugin_id"], name: "index_benchmark_task_results_on_agent_plugin_id"
+    t.index ["benchmark_run_id", "task_id"], name: "index_benchmark_task_results_on_benchmark_run_id_and_task_id"
+    t.index ["benchmark_run_id"], name: "index_benchmark_task_results_on_benchmark_run_id"
+    t.index ["task_id"], name: "index_benchmark_task_results_on_task_id"
   end
 
   create_table "business_insights", force: :cascade do |t|
@@ -1667,7 +1725,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_000010) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.vector "embedding", limit: 1536
+    t.bigint "entity_id"
+    t.boolean "is_public", default: false, null: false
+    t.bigint "created_by_id"
+    t.index ["created_by_id"], name: "index_integrations_on_created_by_id"
     t.index ["embedding"], name: "index_integrations_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["entity_id"], name: "index_integrations_on_entity_id"
+    t.index ["is_public"], name: "index_integrations_on_is_public"
     t.index ["name"], name: "index_integrations_on_name", unique: true
     t.index ["slug"], name: "index_integrations_on_slug", unique: true
   end
@@ -3085,6 +3149,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_000010) do
   add_foreign_key "artifacts", "entities"
   add_foreign_key "artifacts", "users"
   add_foreign_key "auth_configs", "oauth_configurations"
+  add_foreign_key "benchmark_runs", "entities"
+  add_foreign_key "benchmark_task_results", "agent_plugin_executions"
+  add_foreign_key "benchmark_task_results", "agent_plugins"
+  add_foreign_key "benchmark_task_results", "benchmark_runs"
   add_foreign_key "business_insights", "entities"
   add_foreign_key "business_insights", "scout_conversations", column: "source_conversation_id"
   add_foreign_key "business_profiles", "entities"
@@ -3157,6 +3225,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_000010) do
   add_foreign_key "integration_logs", "scout_messages"
   add_foreign_key "integration_logs", "users"
   add_foreign_key "integration_operations", "integrations"
+  add_foreign_key "integrations", "entities"
+  add_foreign_key "integrations", "users", column: "created_by_id"
   add_foreign_key "knowledge_documents", "entities"
   add_foreign_key "landing_page_chat_messages", "landing_pages"
   add_foreign_key "landing_page_chat_messages", "users"

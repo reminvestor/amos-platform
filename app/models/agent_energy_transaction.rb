@@ -29,8 +29,8 @@ class AgentEnergyTransaction < ApplicationRecord
   scope :for_agent, ->(agent) { where(agent_plugin: agent) }
 
   # Calculate hash for immutable ledger
-  def calculate_hash
-    data = "#{agent_plugin_id}:#{amount}:#{created_at.to_i}:#{previous_hash}"
+  def calculate_ledger_hash
+    data = "#{agent_plugin_id}:#{amount}:#{created_at.to_i}:#{previous_ledger_hash}"
     Digest::SHA256.hexdigest(data)
   end
 
@@ -39,9 +39,9 @@ class AgentEnergyTransaction < ApplicationRecord
     transactions = where(agent_plugin_id: agent_plugin_id).order(:id)
 
     transactions.each_cons(2) do |prev, curr|
-      expected_hash = curr.calculate_hash_with_previous(prev.hash)
+      expected_hash = curr.calculate_hash_with_previous(prev.ledger_hash)
 
-      if curr.hash != expected_hash
+      if curr.ledger_hash != expected_hash
         raise LedgerTamperingDetected, "Transaction #{curr.id} has been tampered with!"
       end
     end

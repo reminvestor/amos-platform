@@ -3381,9 +3381,81 @@ This is the signature of a living system.
 
 ---
 
+## Benchmark & Validation System
+
+### Overview
+
+The system includes a comprehensive benchmarking framework to validate that the collaboration system actually improves outcomes. This uses public benchmarks (GSM8K, HotpotQA-style) and custom tasks to measure real performance.
+
+### Benchmark Categories
+
+| Category | Description | Tests |
+|----------|-------------|-------|
+| GSM8K | Grade school math word problems | Multi-step reasoning |
+| HotpotQA | Multi-hop knowledge questions | When to delegate |
+| Tool Use | Tasks requiring specific tools | Tool selection |
+| Collaboration | Multi-agent coordination | Delegation effectiveness |
+
+### Key Validation Questions
+
+1. **Does collaboration improve accuracy?** - A/B test: same tasks with collaboration ON vs OFF
+2. **Do agents ask for help appropriately?** - Cross-domain test: specialists vs non-specialists
+3. **Is the energy economy balanced?** - Track energy flows and agent sustainability
+4. **Does the system improve over time?** - Trend analysis of benchmark results
+
+### Benchmark Tracking
+
+```ruby
+# Run a tracked benchmark
+rake benchmark:tracked[agent_slug,category]
+
+# Generate report
+rake benchmark:report[30]  # Last 30 days
+
+# View history
+rake benchmark:history
+
+# A/B comparison over time
+rake benchmark:compare_history
+```
+
+### Scheduled Benchmarks
+
+The system runs automated benchmarks to track performance:
+
+- **Daily**: Quick sample (1 task per category)
+- **Weekly**: Full suite (all tasks)
+
+Degradation alerts trigger if accuracy drops >15% below recent average.
+
+### API Endpoints
+
+```
+GET  /api/v1/benchmarks          # List recent runs
+GET  /api/v1/benchmarks/:id      # Get detailed run results
+GET  /api/v1/benchmarks/report   # Generate comprehensive report
+GET  /api/v1/benchmarks/trends   # Get trend data for charts
+GET  /api/v1/benchmarks/comparison  # Compare collab ON vs OFF
+POST /api/v1/benchmarks/run      # Trigger benchmark run
+```
+
+### Publishing Results
+
+Reports can be exported in JSON or Markdown format for publishing:
+
+```bash
+# Generate markdown report
+rake benchmark:report_md
+
+# Output saved to docs/BENCHMARK_REPORT.md
+```
+
+---
+
 ## Related Documentation
 
 - [Agent Factory](./AGENT_FACTORY.md) - Creating agents
 - [Tool Factory](./TOOL_FACTORY.md) - Creating tools  
 - [Integration Factory](./INTEGRATION_FACTORY.md) - Creating integrations
 - [Code Runner](./CODE_RUNNER_ARCHITECTURE.md) - Code execution system
+- [Benchmark Report](./BENCHMARK_REPORT.md) - Latest benchmark results
