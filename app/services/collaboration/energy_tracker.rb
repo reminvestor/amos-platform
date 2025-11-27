@@ -183,7 +183,8 @@ module Collaboration
 
     def find_best_helper(task_description, required_capabilities: [])
       # Use the router to find the best helper
-      router = IreplaceabilityAwareRouter.new(entity: @agent.entity)
+      # Note: router is not used in current implementation but kept for future expansion
+      # router = IreplaceabilityAwareRouter.new(entity: @agent.entity)
 
       # Filter out self
       candidates = AgentPlugin.available
