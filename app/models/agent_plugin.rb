@@ -70,7 +70,7 @@ class AgentPlugin < ApplicationRecord
   scope :editable_by, ->(user) { user.admin? ? all : where(user: user) }
   scope :in_school, -> { where(status: 'in_school') }
   scope :on_probation, -> { where(status: 'probation') }
-  scope :protected, -> { where(protected_status: true) }
+  scope :with_protected_status, -> { where(protected_status: true) }
 
   # Callbacks
   before_validation :generate_slug, if: -> { slug.blank? && name.present? }
