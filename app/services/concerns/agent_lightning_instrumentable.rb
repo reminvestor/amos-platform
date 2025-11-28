@@ -37,8 +37,11 @@ module AgentLightningInstrumentable
 
   # Get or create lightning store for current entity/user
   def lightning_store
-    @lightning_store ||= if @entity && @user
-      LightningStoreService.new(@entity, @user)
+    entity = @entity || context&.dig(:entity)
+    user = @user || context&.dig(:user)
+    
+    @lightning_store ||= if entity && user
+      LightningStoreService.new(entity, user)
     else
       nil
     end
@@ -46,9 +49,17 @@ module AgentLightningInstrumentable
 
   # Check if we should record traces
   def should_record_lightning_trace?
-    return false unless @entity && @user
+    entity = @entity || context&.dig(:entity)
+    user = @user || context&.dig(:user)
+    
+    return false unless entity && user
+    return false unless lightning_store
+    
     config = lightning_store.get_config
-    config.enabled?
+    config&.enabled? || false
+  rescue => e
+    Rails.logger.debug "Lightning trace check failed: #{e.message}"
+    false
   end
 
   # Get agent role from context (can be overridden)
@@ -92,5 +103,34 @@ module AgentLightningInstrumentable
                     response_content.downcase.include?("action")
 
     [score, 1.0].min  # Cap at 1.0
+  end
+
+  # Record an agent execution (from StandardPluginExecutor)
+  def record_agent_execution_to_lightning(
+    agent_role:,
+    prompt:,
+    response:,
+    duration_ms:,
+    status:,
+    tools_used: [],
+    error_message: nil
+  )
+    return unless should_record_lightning_trace?
+
+    # Record as a tool execution (agent execution is a type of tool use)
+    lightning_store.record_tool_execution(
+      tool_name: "agent_execution:#{agent_role}",
+      tool_category: "agent",
+      input_arguments: { prompt: prompt.to_s.truncate(2000), tools_available: tools_used },
+      output_result: {
+        response: response.to_s.truncate(5000),
+        status: status,
+        error: error_message
+      }.compact,
+      execution_time_ms: duration_ms,
+      success: status == 'success'
+    )
+  rescue => e
+    Rails.logger.warn "Failed to record agent execution to Lightning: #{e.message}"
   end
 end

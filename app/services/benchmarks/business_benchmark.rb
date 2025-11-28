@@ -2951,6 +2951,15 @@ module Benchmarks
       def by_difficulty(difficulty)
         TASKS.select { |t| t[:difficulty] == difficulty.to_sym }
       end
+
+      def difficulty_breakdown
+        {
+          easy: TASKS.count { |t| t[:difficulty] == :easy },
+          medium: TASKS.count { |t| t[:difficulty] == :medium },
+          hard: TASKS.count { |t| t[:difficulty] == :hard },
+          extreme: TASKS.count { |t| t[:difficulty] == :extreme }
+        }
+      end
     end
   end
 end

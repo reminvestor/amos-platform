@@ -194,27 +194,66 @@ class LightningStoreService
     reward_type:,
     reward_value:,
     source: "automated",
-    reason: nil
+    reason: nil,
+    metadata: {}
   )
-    return unless @trace
+    # For benchmark rewards, we may not have a trace - create a standalone reward
+    trace_to_use = @trace
+    
+    # If no trace, try to find a recent one or create a benchmark trace
+    if trace_to_use.nil? && source == 'bob_benchmark'
+      trace_to_use = find_or_create_benchmark_trace(metadata)
+    end
+    
+    return unless trace_to_use
 
     reward = AgentReward.create!(
       entity: entity,
-      agent_lightning_trace: @trace,
+      agent_lightning_trace: trace_to_use,
       user: user,
       reward_type: reward_type,
       reward_value: reward_value.to_d,
       source: source,
       reason: reason,
+      metadata: metadata,
       assigned_at: Time.current
     )
 
     # Update trace with highest reward signal
-    if !@trace.reward_signal || reward_value > @trace.reward_signal
-      @trace.update!(reward_signal: reward_value.to_d, reward_source: source)
+    if !trace_to_use.reward_signal || reward_value > trace_to_use.reward_signal
+      trace_to_use.update!(reward_signal: reward_value.to_d, reward_source: source)
     end
 
     reward
+  end
+
+  # Find or create a trace for benchmark rewards
+  def find_or_create_benchmark_trace(metadata)
+    task_id = metadata[:task_id]
+    
+    # Try to find a recent trace for this task
+    recent_trace = entity.agent_lightning_traces
+      .where('created_at > ?', 1.hour.ago)
+      .where("metadata->>'task_id' = ?", task_id.to_s)
+      .order(created_at: :desc)
+      .first
+    
+    return recent_trace if recent_trace
+
+    # Create a new trace for this benchmark task
+    AgentLightningTrace.create!(
+      entity: entity,
+      user: user,
+      trace_id: SecureRandom.uuid,
+      trace_type: "benchmark",
+      status: "completed",
+      input_data: { task_id: task_id, task_name: metadata[:task_name] },
+      output_data: { success: metadata[:success], grounded: metadata[:grounded] },
+      started_at: Time.current,
+      completed_at: Time.current,
+      duration_ms: metadata[:elapsed_ms],
+      metadata: metadata.except(:elapsed_ms)
+    )
   end
 
   # Mark trace as ready for training

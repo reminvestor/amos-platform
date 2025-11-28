@@ -243,7 +243,8 @@ module Amos
     
     def analyze_intent(content)
       # Simplified approach: Let Scout's LLM decide intelligently
-      # We only intervene for clear delegation needs
+      # Scout has delegation tools and knows when to use them
+      # We only intervene for clear delegation needs as a fast path
       
       intent = {
         raw_content: content,
@@ -268,6 +269,7 @@ module Amos
       # Scout's LLM will decide whether to:
       # - Load a canvas (show documents, campaigns, etc.)
       # - Use tools to get data
+      # - Delegate to specialists (Scout knows how!)
       # - Have a conversation
       # - Or any combination of the above
       Rails.logger.info "[Amos] Sending to Scout with tools - let LLM decide"

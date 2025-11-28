@@ -92,6 +92,11 @@
             <span>Agent Collaboration</span>
           <% end %>
 
+          <%= link_to admin_agent_lightning_path, class: "nav-item #{'active' if controller_name == 'agent_lightning'}" do %>
+            <i data-lucide="zap"></i>
+            <span>Agent Lightning</span>
+          <% end %>
+
           <%= link_to admin_benchmarks_path, class: "nav-item #{'active' if controller_name == 'benchmarks'}" do %>
             <i data-lucide="gauge"></i>
             <span>Benchmarks</span>

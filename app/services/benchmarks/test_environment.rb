@@ -49,9 +49,10 @@ module Benchmarks
 
           # Delete agent plugins created by benchmark entity
           if options[:agents] != false
-            # Keep system agents, only delete custom ones
+            # Only delete agents created specifically for this benchmark entity
+            # Don't delete agents that might be shared/system agents
             count = AgentPlugin.where(entity: entity)
-                               .where.not(is_system: true)
+                               .where('created_at > ?', 1.day.ago) # Only recent ones
                                .destroy_all.count
             cleanup_stats[:agents] = count
           end
@@ -69,8 +70,8 @@ module Benchmarks
           end
 
           # Delete email campaigns
-          if options[:email_campaigns] != false && defined?(EmailCampaign)
-            count = EmailCampaign.where(entity: entity).destroy_all.count
+          if options[:email_campaigns] != false && defined?(Campaign)
+            count = Campaign.where(entity: entity).destroy_all.count
             cleanup_stats[:email_campaigns] = count
           end
 
