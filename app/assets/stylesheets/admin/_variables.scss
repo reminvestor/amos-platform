@@ -1,62 +1,72 @@
-// Admin Dark Theme Variables
+// Admin Theme Variables - Using CSS Custom Properties for unified light/dark theming
+// These map to the CSS variables defined in themes.scss
 
-// Colors
-$admin-bg-primary: #0A0E1A;
-$admin-bg-secondary: #151B2D;
-$admin-bg-card: #1A1F35;
-$admin-bg-elevated: #1F2937;
+// Colors - Using CSS custom properties for theme switching
+// Note: SCSS vars are kept for backwards compatibility but resolve to CSS vars
+$admin-bg-primary: var(--bg-primary);
+$admin-bg-secondary: var(--bg-card);
+$admin-bg-card: var(--bg-card);
+$admin-bg-tertiary: var(--bg-secondary);
+$admin-bg-elevated: var(--bg-tertiary);
+$admin-bg-hover: var(--bg-hover);
+$admin-bg-input: var(--bg-input);
 
-$admin-text-primary: #FFFFFF;
-$admin-text-secondary: #94A3B8;
-$admin-text-muted: #64748B;
+$admin-text-primary: var(--text-primary);
+$admin-text-secondary: var(--text-secondary);
+$admin-text-muted: var(--text-muted);
 
-$admin-border: #1E293B;
+$admin-border: var(--border-primary);
+$admin-border-secondary: var(--border-secondary);
 
-// Brand Colors
-$admin-purple-start: #7C3AED;
-$admin-purple-end: #A78BFA;
-$admin-purple-gradient: linear-gradient(135deg, $admin-purple-start 0%, $admin-purple-end 100%);
+// Brand Colors (same in both themes - use accent vars)
+$admin-purple-start: var(--accent-purple-start);
+$admin-purple-end: var(--accent-purple-end);
+$admin-purple-gradient: linear-gradient(135deg, var(--accent-purple-start) 0%, var(--accent-purple-end) 100%);
 
 // Accent colors (aliases for purple)
-$admin-accent-start: $admin-purple-start;
-$admin-accent-end: $admin-purple-end;
+$admin-accent-start: var(--accent-purple-start);
+$admin-accent-end: var(--accent-purple-end);
 
-$admin-green-success: rgb(74, 222, 128);
-$admin-green-bg: rgba(34, 197, 94, 0.1);
-$admin-green-border: rgba(34, 197, 94, 0.2);
+// Status Colors - Using theme CSS variables
+$admin-green-success: var(--status-success-text);
+$admin-green-bg: var(--status-success-bg);
+$admin-green-border: var(--status-success-border);
 
-$admin-red-error: rgb(248, 113, 113);
-$admin-red-bg: rgba(239, 68, 68, 0.1);
-$admin-red-border: rgba(239, 68, 68, 0.2);
+$admin-red-error: var(--status-error-text);
+$admin-red-bg: var(--status-error-bg);
+$admin-red-border: var(--status-error-border);
 
-$admin-yellow-warning: rgb(250, 204, 21);
-$admin-yellow-bg: rgba(234, 179, 8, 0.1);
-$admin-yellow-border: rgba(234, 179, 8, 0.2);
+$admin-yellow-warning: var(--status-warning-text);
+$admin-yellow-bg: var(--status-warning-bg);
+$admin-yellow-border: var(--status-warning-border);
 
-$admin-cyan-info: #22D3EE;
-$admin-cyan-bg: rgba(34, 211, 238, 0.1);
-$admin-cyan-border: rgba(34, 211, 238, 0.2);
+$admin-cyan-info: var(--status-info-text);
+$admin-cyan-bg: var(--status-info-bg);
+$admin-cyan-border: var(--status-info-border);
 
-// Spacing
+// Accent colors - Fixed values (same in both themes)
+$admin-cyan: var(--accent-cyan);
+
+// Spacing (these don't change with theme)
 $admin-spacing-xs: 0.25rem;
 $admin-spacing-sm: 0.5rem;
 $admin-spacing-md: 1rem;
 $admin-spacing-lg: 1.5rem;
 $admin-spacing-xl: 2rem;
 
-// Border Radius
+// Border Radius (these don't change with theme)
 $admin-radius-sm: 0.25rem;
 $admin-radius-md: 0.5rem;
 $admin-radius-lg: 0.75rem;
 $admin-radius-xl: 1rem;
 
-// Icon Sizes
+// Icon Sizes (these don't change with theme)
 $admin-icon-sm: 1rem;
 $admin-icon-md: 1.25rem;
 $admin-icon-lg: 1.5rem;
 $admin-icon-xl: 2rem;
 
-// Font Sizes
+// Font Sizes (these don't change with theme)
 $admin-text-xs: 0.75rem;
 $admin-text-sm: 0.875rem;
 $admin-text-base: 1rem;
@@ -64,3 +74,19 @@ $admin-text-lg: 1.125rem;
 $admin-text-xl: 1.25rem;
 $admin-text-2xl: 1.5rem;
 $admin-text-3xl: 1.875rem;
+
+// Shadow (using theme variables)
+$admin-shadow-sm: var(--shadow-sm);
+$admin-shadow-md: var(--shadow-md);
+$admin-shadow-lg: var(--shadow-lg);
+
+// Transparent variants (for hover states, glows, etc.)
+$admin-border-hover: var(--border-hover);
+$admin-border-subtle: var(--border-subtle);
+$admin-bg-primary-50: var(--bg-primary-50);
+$admin-accent-glow: var(--accent-glow);
+$admin-accent-glow-md: var(--accent-glow-md);
+$admin-cyan-glow: var(--cyan-glow);
+
+// Element backgrounds (for buttons/badges - same in both themes)
+$admin-element-bg: #2D3548;

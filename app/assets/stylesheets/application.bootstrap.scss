@@ -74,47 +74,37 @@
 // @import "bootstrap/scss/placeholders";
 
 // ============================================================================
-// ADMIN DARK THEME
+// ADMIN THEME STYLES
 // ============================================================================
-// Based on Figma design with dark backgrounds and gradient accents
+// Uses CSS custom properties from themes.scss for light/dark mode support
+// Variables are defined in admin/_variables.scss and reference --theme-* vars
 
-// Color Palette
-$admin-bg-primary: #0A0E1A;      // Main background
-$admin-bg-secondary: #1A1F35;    // Card backgrounds
-$admin-bg-tertiary: #0F172A;     // Sidebar background
-$admin-border: #1E293B;          // Borders
-$admin-text-primary: #FFFFFF;    // Primary text
-$admin-text-secondary: #94A3B8;  // Secondary text (slate-400)
-$admin-text-muted: #64748B;      // Muted text (slate-500)
-$admin-accent-start: #7C3AED;    // Purple gradient start
-$admin-accent-end: #A78BFA;      // Purple gradient end
-$admin-cyan: #22D3EE;            // Cyan accent
-$admin-element-bg: #2D3548;      // Button/badge backgrounds
-
-// Admin Layout
-.admin-dark {
-  background-color: $admin-bg-primary;
+// Admin Layout - Now uses CSS variables for theme switching
+.admin-layout {
+  background-color: var(--bg-primary);
   min-height: 100vh;
-  color: $admin-text-primary;
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 
   // Override Bootstrap defaults
   .container-fluid {
     background-color: transparent;
   }
+}
 
 // Admin Sidebar
 .admin-sidebar {
   width: 256px;
-  background-color: $admin-bg-tertiary;
+  background-color: var(--bg-secondary);
   height: 100vh;
   position: fixed;
   left: 0;
   top: 0;
-  border-right: 1px solid $admin-border;
+  border-right: 1px solid var(--border-primary);
   display: flex;
   flex-direction: column;
   z-index: 1000;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, background-color 0.3s ease;
 
   // Collapsed state - icon-only view
   &.collapsed {
@@ -164,7 +154,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
     .hamburger-toggle {
       background: transparent !important;
       border: none;
-      color: $admin-text-secondary;
+      color: var(--text-secondary);
       padding: 0.5rem;
       cursor: pointer;
       display: flex;
@@ -177,18 +167,18 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
       margin-left: auto; // Push to far right
 
       &:hover {
-        background-color: rgba($admin-border, 0.5) !important;
-        color: $admin-text-primary;
+        background-color: var(--bg-hover) !important;
+        color: var(--text-primary);
       }
 
       &:focus {
-        background-color: rgba($admin-border, 0.5) !important;
+        background-color: var(--bg-hover) !important;
         outline: none;
         box-shadow: none !important;
       }
 
       &:active {
-        background-color: rgba($admin-border, 0.7) !important;
+        background-color: var(--bg-tertiary) !important;
       }
 
       i, svg {
@@ -201,7 +191,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
       width: 2.5rem;
       height: 2.5rem;
       border-radius: 0.75rem;
-      background: linear-gradient(135deg, $admin-accent-start 0%, $admin-accent-end 100%);
+      background: linear-gradient(135deg, var(--accent-purple-start) 0%, var(--accent-purple-end) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -210,7 +200,7 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
     }
 
     .logo-text {
-      color: $admin-text-primary;
+      color: var(--text-primary);
       font-weight: 500;
       transition: opacity 0.3s ease;
     }
@@ -506,12 +496,13 @@ $admin-element-bg: #2D3548;      // Button/badge backgrounds
   }
 
   &-primary {
-    background-color: $admin-cyan;
+    background-color: var(--accent-cyan);
     color: #000000;
     border: none;
 
     &:hover {
-      background-color: color.adjust($admin-cyan, $lightness: -10%);
+      // Darker cyan (approximately -10% lightness from #22D3EE)
+      background-color: #1ab3c9;
     }
   }
 
@@ -1850,40 +1841,37 @@ select.form-control {
 .admin-mb-lg { margin-bottom: 1.5rem; }
 .admin-mt-xl { margin-top: 2rem; }
 
-  // Accessibility - screen reader only
-  .visually-hidden {
-    position: absolute !important;
-    width: 1px !important;
-    height: 1px !important;
-    padding: 0 !important;
-    margin: -1px !important;
-    overflow: hidden !important;
-    clip: rect(0, 0, 0, 0) !important;
-    white-space: nowrap !important;
-    border: 0 !important;
-  }
+// Accessibility - screen reader only
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
 
-  // FORCE OVERRIDE for inputs that might be fighting with Bootstrap or admin_dark.css
-  .admin-card, .tab-content, .admin-form-group {
-    input[type="text"],
-    input[type="email"],
-    input[type="password"],
-    input[type="number"],
-    input[type="url"],
-    input[type="search"],
-    textarea,
-    select {
-      background-color: $admin-bg-primary !important;
-      border: 1px solid $admin-border !important;
-      color: $admin-text-primary !important;
-      
-      &:focus {
-        background-color: rgba($admin-bg-primary, 0.5) !important;
-        border-color: $admin-accent-end !important;
-        color: $admin-text-primary !important;
-      }
+// FORCE OVERRIDE for inputs that might be fighting with Bootstrap
+.admin-card, .tab-content, .admin-form-group {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="url"],
+  input[type="search"],
+  textarea,
+  select {
+    background-color: var(--bg-primary) !important;
+    border: 1px solid var(--border-primary) !important;
+    color: var(--text-primary) !important;
+
+    &:focus {
+      background-color: var(--bg-primary-50) !important;
+      border-color: var(--accent-purple-end) !important;
+      color: var(--text-primary) !important;
     }
   }
-
-// Close .admin-dark block
 }
