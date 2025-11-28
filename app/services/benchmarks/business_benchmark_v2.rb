@@ -1046,12 +1046,7 @@ module Benchmarks
         {
           total: TASKS.size,
           by_category: CATEGORIES.keys.each_with_object({}) { |cat, h| h[cat] = tasks_by_category(cat).size },
-          by_difficulty: { 
-            easy: by_difficulty(:easy).size, 
-            medium: by_difficulty(:medium).size, 
-            hard: by_difficulty(:hard).size,
-            extreme: by_difficulty(:extreme).size
-          },
+          by_difficulty: difficulty_breakdown,
           grounded: grounded_tasks.size,
           creation: creation_tasks.size,
           delegation: delegation_tasks.size,
@@ -1059,6 +1054,15 @@ module Benchmarks
           orchestration: orchestration_tasks.size,
           extreme: extreme_tasks.size,
           multi_agent: multi_agent_tasks.size
+        }
+      end
+
+      def difficulty_breakdown
+        {
+          easy: by_difficulty(:easy).size,
+          medium: by_difficulty(:medium).size,
+          hard: by_difficulty(:hard).size,
+          extreme: by_difficulty(:extreme).size
         }
       end
     end
