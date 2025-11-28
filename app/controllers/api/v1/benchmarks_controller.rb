@@ -2,7 +2,7 @@
 
 module Api
   module V1
-    class BenchmarksController < Api::V1::BaseController
+    class BenchmarksController < Api::BaseController
       before_action :authenticate_user!
       before_action :set_entity
 
