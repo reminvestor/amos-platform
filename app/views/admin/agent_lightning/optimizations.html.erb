@@ -53,7 +53,7 @@
                   <td>
                     <div class="btn-group btn-group-sm">
                       <% if opt.can_rollback? %>
-                        <%= button_to admin_agent_lightning_rollback_path(opt.id), 
+                        <%= button_to rollback_admin_agent_lightning_path(opt.id), 
                             method: :post, 
                             class: "btn btn-outline-warning",
                             title: "Rollback to previous prompts",
@@ -150,7 +150,7 @@
         <div class="modal-footer border-secondary">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
           <% if opt.can_rollback? %>
-            <%= button_to admin_agent_lightning_rollback_path(opt.id), 
+            <%= button_to rollback_admin_agent_lightning_path(opt.id), 
                 method: :post, 
                 class: "btn btn-warning",
                 data: { confirm: "Rollback this optimization?" } do %>

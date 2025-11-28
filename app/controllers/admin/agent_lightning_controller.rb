@@ -24,7 +24,7 @@ module Admin
       @performance = calculate_performance_metrics
 
       # Get agents for the agent selector
-      @agents = AgentPlugin.where(is_active: true).order(:name)
+      @agents = AgentPlugin.where(status: 'active').order(:name)
     end
 
     # GET /admin/agent_lightning/training_jobs
