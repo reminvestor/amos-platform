@@ -9,9 +9,10 @@ module Admin
                                  .order(created_at: :desc)
                                  .limit(20)
       
-      @categories = Benchmarks::BusinessBenchmark::CATEGORIES
-      @task_count = Benchmarks::BusinessBenchmark.all_tasks.count
-      @difficulty_breakdown = Benchmarks::BusinessBenchmark.difficulty_breakdown
+      # Use v2 benchmark (64 tasks, harder and more focused)
+      @categories = Benchmarks::BusinessBenchmarkV2::CATEGORIES
+      @task_count = Benchmarks::BusinessBenchmarkV2.all_tasks.count
+      @difficulty_breakdown = Benchmarks::BusinessBenchmarkV2.difficulty_breakdown
     end
 
     def show
