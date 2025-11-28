@@ -66,7 +66,7 @@
         </h3>
       </div>
       <div class="admin-card-body">
-        <div class="admin-flex admin-items-end admin-flex-gap-sm" style="height: 200px;">
+        <div class="admin-flex admin-items-end admin-flex-gap-sm admin-h-200">
           <% max_count = @execution_timeline.values.max || 1 %>
           <% @execution_timeline.sort.each do |date, count| %>
             <div class="admin-flex-1 admin-flex admin-flex-col admin-items-center">

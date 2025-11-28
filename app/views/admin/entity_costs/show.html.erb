@@ -200,7 +200,7 @@
                       $<%= number_with_precision(driver[:total_cost], precision: 2) %>
                     </span>
                   </div>
-                  <div class="progress" style="height: 10px;">
+                  <div class="progress admin-progress-10">
                     <div class="progress-bar bg-<%= ['primary', 'info', 'warning', 'danger', 'success'][index % 5] %>"
                          style="width: <%= (driver[:total_cost] / @total_cost * 100).round %>%"></div>
                   </div>

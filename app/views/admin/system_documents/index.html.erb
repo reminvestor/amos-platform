@@ -130,7 +130,7 @@
                         <i data-lucide="check-circle"></i> Indexed <%= time_ago_in_words(doc.indexed_at) %> ago
                       </span>
                     <% elsif doc.status_failed? %>
-                      <div class="alert alert-danger mt-2 mb-0 py-2" style="font-size: 0.85em;">
+                      <div class="alert alert-danger mt-2 mb-0 py-2 admin-text-0-85em">
                         <i data-lucide="alert-triangle"></i> <%= doc.error_message %>
                       </div>
                     <% end %>

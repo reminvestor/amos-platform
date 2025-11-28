@@ -53,7 +53,7 @@
         <i data-lucide="bar-chart-3" class="admin-icon-md d-inline-block align-middle me-2"></i>
         Token Usage Over Time
       </h3>
-      <div style="position: relative; height: 250px; width: 100%;">
+      <div class="admin-chart-250">
         <canvas id="entityTokenChart"></canvas>
       </div>
     </div>
@@ -64,7 +64,7 @@
         <i data-lucide="trending-up" class="admin-icon-md d-inline-block align-middle me-2"></i>
         Cost Over Time
       </h3>
-      <div style="position: relative; height: 250px; width: 100%;">
+      <div class="admin-chart-250">
         <canvas id="entityCostChart"></canvas>
       </div>
     </div>
@@ -113,7 +113,7 @@
               <td class="text-end text-success fw-bold"><%= number_with_delimiter(@output_tokens) %></td>
               <td class="text-end fw-bold"><%= number_with_delimiter(@total_tokens) %></td>
               <td class="text-end">
-                <span class="text-danger fw-bold" style="font-size: 1.1em;">$<%= number_with_precision(@total_cost, precision: 4) %></span>
+                <span class="text-danger fw-bold admin-text-1-1em">$<%= number_with_precision(@total_cost, precision: 4) %></span>
               </td>
             </tr>
           </tfoot>

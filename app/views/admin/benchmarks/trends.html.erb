@@ -60,7 +60,7 @@
         </div>
         <div class="card-body">
           <% if @accuracy_trend.any? %>
-            <div style="height: 300px;">
+            <div class="admin-h-300">
               <canvas id="accuracyChart"></canvas>
             </div>
           <% else %>
@@ -86,7 +86,7 @@
                   <span><%= category.titleize %></span>
                   <span><%= accuracy&.round(1) || 0 %>%</span>
                 </div>
-                <div class="progress" style="height: 8px;">
+                <div class="progress admin-progress-8">
                   <div class="progress-bar <%= accuracy.to_f >= 80 ? 'bg-success' : accuracy.to_f >= 60 ? 'bg-warning' : 'bg-danger' %>" 
                        style="width: <%= accuracy || 0 %>%"></div>
                 </div>
@@ -105,7 +105,7 @@
         </div>
         <div class="card-body">
           <% if @runs_by_day.any? %>
-            <div style="height: 250px;">
+            <div class="admin-h-250">
               <canvas id="runsChart"></canvas>
             </div>
           <% else %>

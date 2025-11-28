@@ -1,5 +1,5 @@
 <div class="admin-content">
-  <div style="padding: 2rem;">
+  <div class="admin-p-2rem">
     <div class="container-fluid">
   <div class="row mb-4">
     <div class="col">
@@ -7,7 +7,7 @@
         <% if @connection.integration.icon_url.present? %>
           <img src="<%= @connection.integration.icon_url %>" 
                alt="<%= @connection.integration.name %>" 
-               class="rounded me-2" style="width: 40px; height: 40px;">
+               class="rounded me-2 admin-icon-40">
         <% else %>
           <i data-lucide="plug" class="text-primary"></i>
         <% end %>

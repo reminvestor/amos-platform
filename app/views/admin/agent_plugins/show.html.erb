@@ -121,7 +121,7 @@
             <dt class="col-sm-4">Priority</dt>
             <dd class="col-sm-8">
               <div class="d-flex align-items-center gap-2">
-                <div class="progress flex-grow-1" style="height: 8px;">
+                <div class="progress flex-grow-1 admin-progress-thin">
                   <div class="progress-bar bg-gradient" role="progressbar" style="width: <%= @agent_plugin.priority %>%;" aria-valuenow="<%= @agent_plugin.priority %>" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
                 <span class="text-muted small"><%= @agent_plugin.priority %>/100</span>
@@ -394,12 +394,12 @@
   </div>
 
     <!-- Danger Zone -->
-    <div class="admin-card admin-mt-xl" style="border: 2px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.02);">
+    <div class="admin-card admin-mt-xl admin-danger-zone-card">
       <div class="admin-card-body p-4">
         <div class="d-flex align-items-start gap-4">
           <div class="flex-shrink-0">
-            <div class="d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: rgba(239, 68, 68, 0.1); border-radius: 12px;">
-              <i data-lucide="<%= @agent_plugin.status == 'active' ? 'alert-triangle' : 'info' %>" class="<%= @agent_plugin.status == 'active' ? 'text-danger' : 'text-info' %>" style="width: 28px; height: 28px;"></i>
+            <div class="admin-danger-zone-icon-box">
+              <i data-lucide="<%= @agent_plugin.status == 'active' ? 'alert-triangle' : 'info' %>" class="<%= @agent_plugin.status == 'active' ? 'text-danger' : 'text-info' %> admin-icon-28"></i>
             </div>
           </div>
           <div class="flex-grow-1">
@@ -412,7 +412,7 @@
 
             <!-- Activate Agent (for non-active agents) -->
             <% if @agent_plugin.status != 'active' %>
-              <div class="p-3 rounded mb-3" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);">
+              <div class="p-3 rounded mb-3 admin-action-box-success">
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
                     <h6 class="mb-1 fw-semibold text-success">Activate this agent</h6>
@@ -435,7 +435,7 @@
 
             <!-- Deactivate Agent (for active agents) -->
             <% if @agent_plugin.status == 'active' %>
-              <div class="p-3 rounded mb-3" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2);">
+              <div class="p-3 rounded mb-3 admin-action-box-danger">
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
                     <h6 class="mb-1 fw-semibold">Deactivate this agent</h6>
@@ -458,7 +458,7 @@
 
             <!-- Deprecate Agent (for all except deprecated) -->
             <% if @agent_plugin.status != 'deprecated' %>
-              <div class="p-3 rounded" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2);">
+              <div class="p-3 rounded admin-action-box-danger">
                 <div class="d-flex align-items-center justify-content-between">
                   <div>
                     <h6 class="mb-1 fw-semibold">Mark as deprecated</h6>

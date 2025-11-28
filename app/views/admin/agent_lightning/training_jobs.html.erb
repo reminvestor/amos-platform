@@ -48,7 +48,7 @@
                   </td>
                   <td>
                     <% if job.running? %>
-                      <div class="progress" style="width: 80px; height: 6px;">
+                      <div class="progress admin-progress-w-80 admin-progress-6">
                         <div class="progress-bar bg-primary" style="width: <%= job.progress_percentage %>%"></div>
                       </div>
                       <small class="text-muted"><%= job.progress_percentage %>%</small>

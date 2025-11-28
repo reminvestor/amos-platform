@@ -154,7 +154,7 @@
                       <strong>$<%= number_with_precision(entity_data[:total_cost], precision: 2) %></strong>
                       <% if entity.cost_thresholds['total'].present? %>
                         <br>
-                        <div class="progress mt-1" style="height: 5px;">
+                        <div class="progress mt-1 admin-progress-5">
                           <div class="progress-bar <%= entity_data[:total_cost] > entity.cost_thresholds['total'] ? 'bg-danger' : 'bg-success' %>"
                                style="width: <%= [(entity_data[:total_cost] / entity.cost_thresholds['total'] * 100), 100].min %>%"></div>
                         </div>
