@@ -180,7 +180,7 @@
             <tr>
               <td>
                 <div class="admin-flex admin-items-center admin-flex-gap-sm">
-                  <i data-lucide="bot" class="admin-icon-sm" style="color: #3B82F6;"></i>
+                  <i data-lucide="bot" class="admin-icon-sm admin-icon-blue"></i>
                   <div>
                     <strong><%= link_to agent.name, admin_agent_plugin_path(agent), class: "admin-text-info" %></strong>
                     <div class="admin-text-muted admin-text-xs"><%= agent.slug %></div>
@@ -204,8 +204,8 @@
               </td>
               <td>
                 <div class="admin-flex admin-items-center admin-flex-gap-sm admin-priority-bar">
-                  <div class="progress flex-grow-1 admin-rounded-sm" style="height: 6px; background: #1E293B;">
-                    <div class="progress-bar admin-rounded-sm" role="progressbar" style="width: <%= agent.priority %>%; background: #3B82F6;"></div>
+                  <div class="progress flex-grow-1 admin-rounded-sm admin-progress-6 admin-progress-bg">
+                    <div class="progress-bar admin-rounded-sm admin-progress-bar-blue" role="progressbar" style="width: <%= agent.priority %>%;"></div>
                   </div>
                   <small class="admin-text-secondary"><%= agent.priority %></small>
                 </div>

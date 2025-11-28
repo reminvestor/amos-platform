@@ -82,7 +82,7 @@
 
         <%# Service Details %>
         <% if service[:details].present? && service[:details].any? && service[:error].blank? %>
-          <div class="admin-border-t admin-mt-md" style="padding-top: 1rem;">
+          <div class="admin-border-t admin-mt-md admin-pt-lg">
             <% service[:details].first(3).each do |key, value| %>
               <div class="admin-flex-between admin-items-center admin-mb-sm">
                 <span class="admin-text-muted admin-text-sm"><%= key.to_s.titleize %></span>

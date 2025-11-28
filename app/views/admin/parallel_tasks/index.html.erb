@@ -138,7 +138,7 @@
                 </span>
               </td>
               <td class="admin-text-secondary"><%= task.user.email %></td>
-              <td class="admin-text-primary admin-text-truncate" style="max-width: 200px;">
+              <td class="admin-text-primary admin-text-truncate admin-max-w-200">
                 <%= task.metadata['description'] || '-' %>
               </td>
               <td>
@@ -146,8 +146,8 @@
               </td>
               <td>
                 <div class="admin-flex admin-items-center admin-flex-gap-sm">
-                  <div class="admin-progress-mini admin-rounded-sm" style="background: #1E293B;">
-                    <div class="admin-rounded-sm" style="width: <%= task.progress || 0 %>%; height: 100%; background: #3B82F6;"></div>
+                  <div class="admin-progress-mini admin-rounded-sm admin-progress-bg">
+                    <div class="admin-rounded-sm admin-h-full admin-progress-bar-blue" style="width: <%= task.progress || 0 %>%;"></div>
                   </div>
                   <span class="admin-text-xs admin-text-secondary"><%= task.progress || 0 %>%</span>
                 </div>

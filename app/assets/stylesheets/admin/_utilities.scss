@@ -1176,3 +1176,209 @@
 .admin-ml-lg {
   margin-left: 1.5rem;
 }
+
+// Additional icon sizes for specific needs
+.admin-icon-14 {
+  width: 14px;
+  height: 14px;
+}
+
+.admin-icon-18 {
+  width: 18px;
+  height: 18px;
+}
+
+.admin-icon-24 {
+  width: 24px;
+  height: 24px;
+}
+
+.admin-icon-28 {
+  width: 28px;
+  height: 28px;
+}
+
+.admin-icon-32 {
+  width: 32px;
+  height: 32px;
+}
+
+// Danger Zone Card
+.admin-danger-zone-card {
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.02);
+}
+
+// Danger Zone Icon Box
+.admin-danger-zone-icon-box {
+  width: 48px;
+  height: 48px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Action Boxes for danger zone sections
+.admin-action-box-success {
+  padding: 0.75rem;
+  border-radius: $admin-radius-md;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.admin-action-box-danger {
+  padding: 0.75rem;
+  border-radius: $admin-radius-md;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+// Status Management Card (non-active agents)
+.admin-status-mgmt-card {
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.02);
+}
+
+// Progress bar height variants
+.admin-progress-thin {
+  height: 8px;
+}
+
+// Padding utility
+.admin-p-2rem {
+  padding: 2rem;
+}
+
+// Max-width utilities
+.admin-max-w-200 { max-width: 200px; }
+.admin-max-w-300 { max-width: 300px; }
+.admin-max-w-400 { max-width: 400px; }
+
+// Max-height scrollable containers
+.admin-scroll-300 {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.admin-scroll-400 {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.admin-scroll-500 {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+// Progress bar height variants
+.admin-progress-5 { height: 5px; }
+.admin-progress-6 { height: 6px; }
+.admin-progress-8 { height: 8px; }
+.admin-progress-10 { height: 10px; }
+.admin-progress-20 { height: 20px; }
+
+// Chart container utilities
+.admin-chart-250 {
+  position: relative;
+  height: 250px;
+  width: 100%;
+}
+
+.admin-chart-300 {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+// Icon colors
+.admin-icon-blue { color: #3B82F6; }
+.admin-icon-green { color: #22C55E; }
+
+// Icon sizing for specific icons
+.admin-icon-16 {
+  width: 16px;
+  height: 16px;
+}
+
+// Integration/connection icon
+.admin-icon-40 {
+  width: 40px;
+  height: 40px;
+}
+
+.admin-icon-48 {
+  width: 48px;
+  height: 48px;
+}
+
+// Progress bar background
+.admin-progress-bg {
+  background: #1E293B;
+}
+
+.admin-progress-bar-blue {
+  background: #3B82F6;
+}
+
+// Pre/code scrollable
+.admin-pre-scroll-200 {
+  max-height: 200px;
+  overflow: auto;
+}
+
+.admin-pre-scroll-300 {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+// Font size utility
+.admin-text-1-1em {
+  font-size: 1.1em;
+}
+
+// Card header colors
+.admin-card-header-blue {
+  background-color: #3B82F6;
+  color: white;
+}
+
+// Padding left utilities
+.admin-pl-lg {
+  padding-left: 1.25rem;
+}
+
+.admin-ml-1-5rem {
+  margin-left: 1.5rem;
+}
+
+// Progress bar width utilities (for fixed widths)
+.admin-progress-w-80 { width: 80px; }
+.admin-progress-w-100 { width: 100px; }
+
+// Padding top utilities
+.admin-pt-lg {
+  padding-top: 1rem;
+}
+
+// Font size utility for alerts
+.admin-text-0-85em {
+  font-size: 0.85em;
+}
+
+// Height 100%
+.admin-h-full {
+  height: 100%;
+}
+
+// Chart/canvas height utilities
+.admin-h-200 { height: 200px; }
+.admin-h-250 { height: 250px; }
+.admin-h-300 { height: 300px; }
+
+// Pre scroll utilities
+.admin-scroll-200 {
+  max-height: 200px;
+  overflow: auto;
+}
