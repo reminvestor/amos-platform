@@ -9,7 +9,7 @@
         <i data-lucide="<%= @service_status[:online] ? 'check-circle' : 'x-circle' %>" class="icon-sm"></i>
         Service <%= @service_status[:online] ? 'Online' : 'Offline' %>
       </span>
-      <%= button_to admin_agent_lightning_start_training_path, 
+      <%= button_to start_training_admin_agent_lightning_path, 
           method: :post, 
           class: "btn btn-primary d-flex align-items-center gap-1",
           disabled: !@service_status[:online] do %>
@@ -101,7 +101,7 @@
       <div class="card bg-dark border-secondary">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Recent Training Jobs</h5>
-          <%= link_to admin_agent_lightning_training_jobs_path, class: "btn btn-sm btn-outline-secondary" do %>
+          <%= link_to training_jobs_admin_agent_lightning_path, class: "btn btn-sm btn-outline-secondary" do %>
             View All
           <% end %>
         </div>
@@ -148,7 +148,7 @@
       <div class="card bg-dark border-secondary">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Recent Optimizations</h5>
-          <%= link_to admin_agent_lightning_optimizations_path, class: "btn btn-sm btn-outline-secondary" do %>
+          <%= link_to optimizations_admin_agent_lightning_path, class: "btn btn-sm btn-outline-secondary" do %>
             View All
           <% end %>
         </div>
@@ -184,7 +184,7 @@
                       </td>
                       <td>
                         <% if opt.can_rollback? %>
-                          <%= button_to admin_agent_lightning_rollback_path(opt.id), 
+                          <%= button_to rollback_admin_agent_lightning_path(opt.id), 
                               method: :post, 
                               class: "btn btn-sm btn-outline-warning",
                               data: { confirm: "Are you sure you want to rollback this optimization?" } do %>
@@ -212,7 +212,7 @@
   <div class="card bg-dark border-secondary mt-4">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Recent Traces</h5>
-      <%= link_to admin_agent_lightning_traces_path, class: "btn btn-sm btn-outline-secondary" do %>
+      <%= link_to traces_admin_agent_lightning_path, class: "btn btn-sm btn-outline-secondary" do %>
         View All
       <% end %>
     </div>
@@ -268,7 +268,7 @@
         <div class="row g-3">
           <% @agents.limit(6).each do |agent| %>
             <div class="col-md-4">
-              <%= link_to admin_agent_lightning_agent_detail_path(agent.id), class: "text-decoration-none" do %>
+              <%= link_to agent_detail_admin_agent_lightning_path(agent.id), class: "text-decoration-none" do %>
                 <div class="card bg-secondary bg-opacity-25 border-0 h-100">
                   <div class="card-body">
                     <div class="d-flex align-items-center gap-2 mb-2">

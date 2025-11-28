@@ -11,10 +11,10 @@
           </p>
         </div>
         <div class="d-flex gap-2">
-          <%= link_to admin_benchmarks_trends_path, class: "btn btn-outline-secondary" do %>
+          <%= link_to trends_admin_benchmarks_path, class: "btn btn-outline-secondary" do %>
             <i class="bi bi-graph-up me-1"></i> Trends
           <% end %>
-          <%= button_to admin_benchmarks_cleanup_path, method: :post, class: "btn btn-outline-danger", data: { confirm: "Clean up all test data?" } do %>
+          <%= button_to cleanup_admin_benchmarks_path, method: :post, class: "btn btn-outline-danger", data: { confirm: "Clean up all test data?" } do %>
             <i class="bi bi-trash me-1"></i> Cleanup
           <% end %>
         </div>

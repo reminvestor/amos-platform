@@ -11,8 +11,8 @@
       <p class="text-muted mb-0"><%= @agent.description.to_s.truncate(100) %></p>
     </div>
     <div class="d-flex gap-2">
-      <span class="badge <%= @agent.is_active? ? 'bg-success' : 'bg-secondary' %>">
-        <%= @agent.is_active? ? 'Active' : 'Inactive' %>
+      <span class="badge <%= @agent.status == 'active' ? 'bg-success' : 'bg-secondary' %>">
+        <%= @agent.status&.capitalize || 'Unknown' %>
       </span>
     </div>
   </div>

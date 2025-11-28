@@ -9,7 +9,7 @@
       </nav>
       <h1 class="h3 mb-0">Training Jobs</h1>
     </div>
-    <%= button_to admin_agent_lightning_start_training_path, 
+    <%= button_to start_training_admin_agent_lightning_path, 
         method: :post, 
         class: "btn btn-primary d-flex align-items-center gap-1" do %>
       <i data-lucide="plus" class="icon-sm"></i>
@@ -71,7 +71,7 @@
                   </td>
                   <td>
                     <% if job.running? %>
-                      <%= button_to admin_agent_lightning_stop_training_path(job_id: job.job_id), 
+                      <%= button_to stop_training_admin_agent_lightning_path(job_id: job.job_id), 
                           method: :post, 
                           class: "btn btn-sm btn-outline-danger",
                           data: { confirm: "Stop this training job?" } do %>
@@ -95,7 +95,7 @@
           <i data-lucide="cpu" class="icon-xl mb-3"></i>
           <h5>No Training Jobs</h5>
           <p class="mb-3">Start a training job to optimize your agents using collected traces.</p>
-          <%= button_to admin_agent_lightning_start_training_path, 
+          <%= button_to start_training_admin_agent_lightning_path, 
               method: :post, 
               class: "btn btn-primary" do %>
             <i data-lucide="zap" class="icon-sm me-1"></i>
