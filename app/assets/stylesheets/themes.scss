@@ -51,6 +51,14 @@
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+  /* Transparent Variants */
+  --border-hover: rgba(30, 41, 59, 0.5);
+  --border-subtle: rgba(30, 41, 59, 0.3);
+  --bg-primary-50: rgba(248, 250, 252, 0.5);
+  --accent-glow: rgba(124, 58, 237, 0.1);
+  --accent-glow-md: rgba(124, 58, 237, 0.25);
+  --cyan-glow: rgba(34, 211, 238, 0.1);
 }
 
 /* ============================================
@@ -95,6 +103,14 @@
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+
+  /* Transparent Variants - Dark Theme */
+  --border-hover: rgba(30, 41, 59, 0.5);
+  --border-subtle: rgba(30, 41, 59, 0.3);
+  --bg-primary-50: rgba(10, 14, 26, 0.5);
+  --accent-glow: rgba(167, 139, 250, 0.1);
+  --accent-glow-md: rgba(167, 139, 250, 0.25);
+  --cyan-glow: rgba(34, 211, 238, 0.1);
 }
 
 /* ============================================
