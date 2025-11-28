@@ -12,7 +12,8 @@
 #
 class TieredDiscoveryService
   # Core tools that are ALWAYS available (essential for basic operation)
-  # NOTE: This is legacy - tool allowlist is now managed via ScoutLoadoutConfiguration
+  # NOTE: This is legacy for Scout - tool allowlist is now managed via ScoutLoadoutConfiguration
+  # For agents, these tools enable collaboration and basic operations
   CORE_TOOLS = %w[
     load_canvas
     ask_user
@@ -25,6 +26,14 @@ class TieredDiscoveryService
     web_search
     read_document
     query_document_content
+  ].freeze
+
+  # Core tools specifically for AGENT collaboration
+  # These are always available to agents (in addition to their assigned tools)
+  AGENT_COLLABORATION_TOOLS = %w[
+    ask_agent_for_help
+    list_available_agents
+    ask_user
   ].freeze
 
   # Maximum tools to send to LLM per category
@@ -234,6 +243,21 @@ class TieredDiscoveryService
       prompt_used: @prompt,
       discovery_timestamp: Time.current.iso8601
     }
+  end
+
+  # Get core collaboration tools for agents
+  # These enable agent-to-agent collaboration and are always available
+  def self.agent_collaboration_tools
+    catalog = Tools::ToolCatalog.instance
+    
+    AGENT_COLLABORATION_TOOLS.filter_map do |tool_name|
+      catalog.get_tool_definition(tool_name)
+    end
+  end
+
+  # Get the list of agent collaboration tool names
+  def self.agent_collaboration_tool_names
+    AGENT_COLLABORATION_TOOLS
   end
 
   private

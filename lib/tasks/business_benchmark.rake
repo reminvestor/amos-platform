@@ -331,6 +331,222 @@ namespace :benchmark do
       puts ""
       runner.generate_report
     end
+
+    # ============================================
+    # V2 BENCHMARK - HARD MODE
+    # ============================================
+    namespace :v2 do
+      desc "Show V2 Benchmark info (Hard Mode)"
+      task :info => :environment do
+        summary = Benchmarks::BusinessBenchmarkV2.summary
+        
+        puts "\n" + "=" * 70
+        puts "🔥 BUSINESS OPERATIONS BENCHMARK (BOB) v2.0 - HARD MODE"
+        puts "=" * 70
+        puts ""
+        puts "Total tasks: #{summary[:total]}"
+        puts ""
+        puts "Categories:"
+        Benchmarks::BusinessBenchmarkV2::CATEGORIES.each do |key, name|
+          count = Benchmarks::BusinessBenchmarkV2.tasks_by_category(key).size
+          puts "  #{name}: #{count} tasks"
+        end
+        puts ""
+        puts "Difficulty breakdown:"
+        summary[:by_difficulty].each do |diff, count|
+          puts "  #{diff.to_s.capitalize}: #{count} tasks"
+        end
+        puts ""
+        puts "Special categories:"
+        puts "  Grounded (require tools): #{summary[:grounded]}"
+        puts "  Creation (make assets): #{summary[:creation]}"
+        puts "  Delegation (use agents): #{summary[:delegation]}"
+        puts "  Multi-agent: #{summary[:multi_agent]}"
+        puts "  Extreme challenges: #{summary[:extreme]}"
+        puts ""
+        puts "Commands:"
+        puts "  rake benchmark:business:v2:quick    # Run 1 task per category"
+        puts "  rake benchmark:business:v2:full     # Run all tasks"
+        puts "  rake benchmark:business:v2:extreme  # Run only extreme challenges"
+        puts "  rake benchmark:business:v2:single[task_id]  # Run single task"
+        puts "=" * 70
+      end
+
+      desc "Run V2 quick benchmark (1 per category)"
+      task :quick => :environment do
+        runner = Benchmarks::BusinessBenchmarkRunner.new(use_test_env: true, cleanup_before: true)
+        puts "Using test environment: #{runner.entity.name}"
+        
+        puts "\n" + "=" * 70
+        puts "🔥 BOB v2.0 - QUICK BENCHMARK"
+        puts "=" * 70
+        puts ""
+
+        Benchmarks::BusinessBenchmarkV2::CATEGORIES.each do |category_key, category_name|
+          tasks = Benchmarks::BusinessBenchmarkV2.tasks_by_category(category_key).first(1)
+          next if tasks.empty?
+          
+          puts "📁 #{category_name}"
+          tasks.each do |task|
+            print "  • #{task[:name].truncate(50)}... "
+            result = runner.run_task(task, use_scout: true)
+            runner.results << result
+            
+            status = result[:success] ? "✓" : "✗"
+            tools = result[:tools_used]&.any? ? " 🔧#{result[:tools_used].size}" : ""
+            agents = result[:agents_used]&.any? ? " 🤖#{result[:agents_used].size}" : ""
+            puts "#{status}#{tools}#{agents}"
+            sleep(0.3)
+          end
+        end
+        puts ""
+        runner.generate_report
+      end
+
+      desc "Run V2 full benchmark (all tasks)"
+      task :full => :environment do
+        runner = Benchmarks::BusinessBenchmarkRunner.new(use_test_env: true, cleanup_before: true)
+        puts "Using test environment: #{runner.entity.name}"
+        
+        puts "\n" + "=" * 70
+        puts "🔥 BOB v2.0 - FULL BENCHMARK"
+        puts "=" * 70
+        puts "Running #{Benchmarks::BusinessBenchmarkV2.all_tasks.size} tasks"
+        puts ""
+
+        Benchmarks::BusinessBenchmarkV2::CATEGORIES.each do |category_key, category_name|
+          tasks = Benchmarks::BusinessBenchmarkV2.tasks_by_category(category_key)
+          next if tasks.empty?
+          
+          puts "📁 #{category_name} (#{tasks.size} tasks)"
+          tasks.each_with_index do |task, idx|
+            print "  #{idx + 1}. #{task[:name].truncate(40)}... "
+            result = runner.run_task(task, use_scout: true)
+            runner.results << result
+            
+            status = result[:success] ? "✓" : "✗"
+            time = "(#{result[:elapsed_ms]}ms)"
+            tools = result[:tools_used]&.any? ? " 🔧#{result[:tools_used].size}" : ""
+            agents = result[:agents_used]&.any? ? " 🤖#{result[:agents_used].size}" : ""
+            assets = result[:created_assets]&.values&.flatten&.size.to_i
+            assets_str = assets > 0 ? " 📦#{assets}" : ""
+            puts "#{status} #{time}#{tools}#{agents}#{assets_str}"
+            sleep(0.3)
+          end
+          puts ""
+        end
+        runner.generate_report
+      end
+
+      desc "Run V2 extreme challenges only"
+      task :extreme => :environment do
+        runner = Benchmarks::BusinessBenchmarkRunner.new(use_test_env: true, cleanup_before: true)
+        puts "Using test environment: #{runner.entity.name}"
+        
+        tasks = Benchmarks::BusinessBenchmarkV2.extreme_tasks
+        
+        puts "\n" + "=" * 70
+        puts "🔥🔥🔥 EXTREME CHALLENGES - NEARLY IMPOSSIBLE 🔥🔥🔥"
+        puts "=" * 70
+        puts "Running #{tasks.size} extreme multi-agent orchestration tasks"
+        puts "These are designed to push the system to its limits!"
+        puts ""
+
+        tasks.each_with_index do |task, idx|
+          puts "-" * 70
+          puts "#{idx + 1}/#{tasks.size}: #{task[:name]}"
+          puts "Request: #{task[:request].truncate(200)}"
+          puts ""
+          
+          result = runner.run_task(task, use_scout: true)
+          runner.results << result
+          
+          puts ""
+          puts "Result: #{result[:success] ? '✅ SUCCESS' : '❌ FAILED'}"
+          puts "Time: #{result[:elapsed_ms]}ms"
+          puts "Tools used: #{result[:tools_used]&.join(', ') || 'none'}"
+          puts "Agents used: #{result[:agents_used]&.join(', ') || 'none'}"
+          
+          if result[:created_assets]
+            result[:created_assets].each do |type, items|
+              puts "#{type}: #{items.size} created" if items.any?
+            end
+          end
+          
+          puts ""
+          sleep(1) # Give more time between extreme tasks
+        end
+        
+        puts "=" * 70
+        runner.generate_report
+      end
+
+      desc "Run single V2 task"
+      task :single, [:task_id] => :environment do |t, args|
+        task_id = args[:task_id]
+        
+        unless task_id
+          puts "Usage: rake benchmark:business:v2:single[task_id]"
+          puts "Example: rake benchmark:business:v2:single[extreme_001]"
+          next
+        end
+
+        task = Benchmarks::BusinessBenchmarkV2.task(task_id)
+        unless task
+          puts "❌ Task '#{task_id}' not found"
+          puts "Available extreme tasks:"
+          Benchmarks::BusinessBenchmarkV2.extreme_tasks.each do |t|
+            puts "  #{t[:id]}: #{t[:name]}"
+          end
+          next
+        end
+
+        runner = Benchmarks::BusinessBenchmarkRunner.new(use_test_env: true, cleanup_before: false)
+
+        puts "\n" + "=" * 70
+        puts "🔥 Running: #{task[:name]}"
+        puts "=" * 70
+        puts ""
+        puts "Scenario: #{task[:scenario]}"
+        puts ""
+        puts "Request:"
+        puts task[:request]
+        puts ""
+        puts "Rubric:"
+        task[:rubric].each { |r| puts "  • #{r}" }
+        puts ""
+        puts "-" * 70
+        
+        result = runner.run_task(task, use_scout: true)
+        
+        puts ""
+        puts "=" * 70
+        puts "RESULTS"
+        puts "=" * 70
+        puts "Success: #{result[:success]}"
+        puts "Time: #{result[:elapsed_ms]}ms"
+        puts ""
+        puts "Tools used: #{result[:tools_used]&.join(', ') || 'none'}"
+        puts "Agents used: #{result[:agents_used]&.join(', ') || 'none'}"
+        puts "Delegated jobs: #{result[:delegated_jobs]&.join(', ') || 'none'}"
+        puts ""
+        
+        if result[:created_assets]
+          puts "Created Assets:"
+          result[:created_assets].each do |type, items|
+            if items.any?
+              puts "  #{type}:"
+              items.each { |item| puts "    - #{item.inspect}" }
+            end
+          end
+        end
+        
+        puts ""
+        puts "Response:"
+        puts result[:response].to_s[0..2000]
+        puts "=" * 70
+      end
+    end
   end
 end
 

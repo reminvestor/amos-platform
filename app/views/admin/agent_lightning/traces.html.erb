@@ -1,0 +1,81 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+          <li class="breadcrumb-item"><%= link_to 'Agent Lightning', admin_agent_lightning_path %></li>
+          <li class="breadcrumb-item active">Traces</li>
+        </ol>
+      </nav>
+      <h1 class="h3 mb-0">Execution Traces</h1>
+      <p class="text-muted mb-0">Raw traces collected from agent executions for training</p>
+    </div>
+  </div>
+
+  <div class="card bg-dark border-secondary">
+    <div class="card-body p-0">
+      <% if @traces.any? %>
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Trace ID</th>
+                <th>Type</th>
+                <th>Entity</th>
+                <th>User</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @traces.each do |trace| %>
+                <tr>
+                  <td>
+                    <code><%= trace.trace_id[0..11] %></code>
+                  </td>
+                  <td><span class="badge bg-secondary"><%= trace.trace_type %></span></td>
+                  <td><%= trace.entity&.name || 'N/A' %></td>
+                  <td><%= trace.user&.email&.split('@')&.first || 'N/A' %></td>
+                  <td>
+                    <span class="badge <%= trace_status_badge_class(trace.status) %>">
+                      <%= trace.status %>
+                    </span>
+                  </td>
+                  <td>
+                    <% if trace.duration_ms %>
+                      <%= trace.duration_ms < 1000 ? "#{trace.duration_ms}ms" : "#{(trace.duration_ms / 1000.0).round(1)}s" %>
+                    <% else %>
+                      <span class="text-muted">-</span>
+                    <% end %>
+                  </td>
+                  <td class="text-muted"><%= trace.created_at.strftime('%b %d, %H:%M:%S') %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <% if @traces.respond_to?(:total_pages) && @traces.total_pages > 1 %>
+          <div class="card-footer bg-dark border-secondary">
+            <%= paginate @traces, theme: 'bootstrap-5' %>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="text-center py-5 text-muted">
+          <i data-lucide="activity" class="icon-xl mb-3"></i>
+          <h5>No Traces Collected</h5>
+          <p class="mb-0">Traces will appear here as agents execute tasks.</p>
+          <p class="small">Make sure trace collection is enabled in BedrockService and StandardPluginExecutor.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+  });
+</script>
+

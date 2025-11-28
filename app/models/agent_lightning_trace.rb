@@ -10,8 +10,8 @@ class AgentLightningTrace < ApplicationRecord
   has_many :agent_rewards, dependent: :destroy
 
   validates :trace_id, presence: true, uniqueness: true
-  validates :trace_type, presence: true, inclusion: { in: %w[workflow llm_call tool_execution phase_execution] }
-  validates :status, presence: true, inclusion: { in: %w[pending completed failed training_ready] }
+  validates :trace_type, presence: true, inclusion: { in: %w[workflow llm_call tool_execution phase_execution benchmark agent_execution] }
+  validates :status, presence: true, inclusion: { in: %w[pending running completed failed training_ready] }
 
   scope :for_training, -> { where(included_in_training: true) }
   scope :recent, -> { order(created_at: :desc) }

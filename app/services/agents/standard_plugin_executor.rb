@@ -15,6 +15,7 @@
 #   result = agent.run("Generate a sales email for John Smith")
 #
 class Agents::StandardPluginExecutor
+  include AgentLightningInstrumentable
   attr_reader :role, :capabilities, :system_prompt, :config, :context, :execution
 
   def initialize(role:, capabilities:, system_prompt:, config: {}, context: {})
@@ -271,6 +272,8 @@ class Agents::StandardPluginExecutor
       end
     end
 
+    execution_start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
     begin
       # Call BedrockService with the correct method
       # This handles the turn loop internally for simple tools,
@@ -282,6 +285,16 @@ class Agents::StandardPluginExecutor
         max_tokens: config[:max_tokens] || 8192,
         temperature: config[:temperature] || 0.7,
         tools: tools
+      )
+
+      # Record successful execution to Agent Lightning
+      record_agent_execution_to_lightning(
+        agent_role: context[:agent_plugin]&.slug || role.to_s,
+        prompt: prompt,
+        response: content,
+        duration_ms: ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - execution_start_time) * 1000).round,
+        status: 'success',
+        tools_used: tools.map { |t| t[:name] }
       )
 
       # Sanitize output to ensure valid JSON
@@ -337,6 +350,16 @@ class Agents::StandardPluginExecutor
       Rails.logger.error "StandardPluginExecutor failed: #{e.message}"
       Rails.logger.error e.backtrace.first(5).join("\n")
 
+      # Record failed execution to Agent Lightning
+      record_agent_execution_to_lightning(
+        agent_role: context[:agent_plugin]&.slug || role.to_s,
+        prompt: prompt,
+        response: nil,
+        duration_ms: ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - execution_start_time) * 1000).round,
+        status: 'failed',
+        error_message: e.message
+      )
+
       # Return error in consistent format
       {
         content: "Error executing agent: #{e.message}",
@@ -355,23 +378,31 @@ class Agents::StandardPluginExecutor
     # Refresh catalog to pick up any newly created tools
     catalog.refresh_dynamic_tools!
 
-    # Get explicitly assigned tool names from agent configuration
+    # Start with COLLABORATION TOOLS that ALL agents get
+    # This enables agent-to-agent collaboration (ask_agent_for_help, list_available_agents, ask_user)
+    collaboration_tool_names = TieredDiscoveryService.agent_collaboration_tool_names.dup
+    
+    # Add explicitly assigned tool names from agent configuration
     assigned_tool_names = agent_plugin.agent_tools.pluck(:tool_name)
     
-    # Always add 'ask_user' for interactive agents
-    assigned_tool_names << 'ask_user' unless assigned_tool_names.include?('ask_user')
+    # Combine: collaboration tools + assigned tools
+    all_tool_names = (collaboration_tool_names + assigned_tool_names).uniq
     
-    # Load assigned tool definitions
-    assigned_tools = assigned_tool_names.filter_map { |name| catalog.get_tool_definition(name) }
+    # Load tool definitions
+    base_tools = all_tool_names.filter_map { |name| catalog.get_tool_definition(name) }
     
     # RAG Search: Find additional relevant tools based on the task
     # This allows agents to discover and use tools they weren't explicitly assigned
-    additional_tools = discover_relevant_tools(assigned_tool_names)
+    additional_tools = discover_relevant_tools(all_tool_names)
     
-    # Merge: assigned tools first, then discovered tools
-    all_tools = assigned_tools + additional_tools
+    # Merge: base tools first, then discovered tools
+    all_tools = base_tools + additional_tools
     
-    Rails.logger.info "🔧 Agent #{agent_plugin.name} loaded #{assigned_tools.size} assigned tools + #{additional_tools.size} discovered tools"
+    collab_count = collaboration_tool_names.size
+    assigned_count = assigned_tool_names.size
+    discovered_count = additional_tools.size
+    
+    Rails.logger.info "🤝 Agent #{agent_plugin.name} loaded #{collab_count} collaboration + #{assigned_count} assigned + #{discovered_count} discovered tools (#{all_tools.size} total)"
     
     all_tools
   rescue => e

@@ -1,0 +1,115 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+          <li class="breadcrumb-item"><%= link_to 'Agent Lightning', admin_agent_lightning_path %></li>
+          <li class="breadcrumb-item active">Training Jobs</li>
+        </ol>
+      </nav>
+      <h1 class="h3 mb-0">Training Jobs</h1>
+    </div>
+    <%= button_to admin_agent_lightning_start_training_path, 
+        method: :post, 
+        class: "btn btn-primary d-flex align-items-center gap-1" do %>
+      <i data-lucide="plus" class="icon-sm"></i>
+      Start New Training
+    <% end %>
+  </div>
+
+  <div class="card bg-dark border-secondary">
+    <div class="card-body p-0">
+      <% if @training_jobs.any? %>
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Job ID</th>
+                <th>Type</th>
+                <th>Entity</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Improvement</th>
+                <th>Started</th>
+                <th>Completed</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @training_jobs.each do |job| %>
+                <tr>
+                  <td><code><%= job.job_id[0..11] %></code></td>
+                  <td><span class="badge bg-secondary"><%= job.job_type.humanize %></span></td>
+                  <td><%= job.entity&.name || 'N/A' %></td>
+                  <td>
+                    <span class="badge <%= job_status_badge_class(job.status) %>">
+                      <%= job.status %>
+                    </span>
+                  </td>
+                  <td>
+                    <% if job.running? %>
+                      <div class="progress" style="width: 80px; height: 6px;">
+                        <div class="progress-bar bg-primary" style="width: <%= job.progress_percentage %>%"></div>
+                      </div>
+                      <small class="text-muted"><%= job.progress_percentage %>%</small>
+                    <% else %>
+                      <span class="text-muted">-</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% if job.improvement_score %>
+                      <span class="<%= improvement_color_class(job.improvement_score) %>">
+                        <%= job.improvement_score > 0 ? '+' : '' %><%= job.improvement_score.round(1) %>%
+                      </span>
+                    <% else %>
+                      <span class="text-muted">-</span>
+                    <% end %>
+                  </td>
+                  <td class="text-muted"><%= job.created_at.strftime('%b %d, %H:%M') %></td>
+                  <td class="text-muted">
+                    <%= job.completed_at ? job.completed_at.strftime('%b %d, %H:%M') : '-' %>
+                  </td>
+                  <td>
+                    <% if job.running? %>
+                      <%= button_to admin_agent_lightning_stop_training_path(job_id: job.job_id), 
+                          method: :post, 
+                          class: "btn btn-sm btn-outline-danger",
+                          data: { confirm: "Stop this training job?" } do %>
+                        <i data-lucide="square" class="icon-sm"></i>
+                      <% end %>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <% if @training_jobs.respond_to?(:total_pages) && @training_jobs.total_pages > 1 %>
+          <div class="card-footer bg-dark border-secondary">
+            <%= paginate @training_jobs, theme: 'bootstrap-5' %>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="text-center py-5 text-muted">
+          <i data-lucide="cpu" class="icon-xl mb-3"></i>
+          <h5>No Training Jobs</h5>
+          <p class="mb-3">Start a training job to optimize your agents using collected traces.</p>
+          <%= button_to admin_agent_lightning_start_training_path, 
+              method: :post, 
+              class: "btn btn-primary" do %>
+            <i data-lucide="zap" class="icon-sm me-1"></i>
+            Start Training
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+  });
+</script>
+

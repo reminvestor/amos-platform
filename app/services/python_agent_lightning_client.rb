@@ -153,6 +153,58 @@ class PythonAgentLightningClient
       raise ServiceUnavailableError, "Python service unavailable: #{e.message}"
     end
 
+    # Stop a running training job
+    def stop_training(job_id)
+      raise ServiceUnavailableError unless available?
+
+      response = HTTParty.post(
+        "#{BASE_URL}/api/training/#{job_id}/stop",
+        timeout: 30
+      )
+
+      result = handle_response(response)
+      { success: true, message: result['message'] || 'Training stopped' }
+    rescue HTTParty::Error, Timeout::Error => e
+      Rails.logger.error("Failed to stop training: #{e.message}")
+      { success: false, error: e.message }
+    rescue TrainingError => e
+      { success: false, error: e.message }
+    end
+
+    # Rollback an optimization
+    def rollback_optimization(optimization_id)
+      raise ServiceUnavailableError unless available?
+
+      response = HTTParty.post(
+        "#{BASE_URL}/api/optimizations/#{optimization_id}/rollback",
+        timeout: 30
+      )
+
+      result = handle_response(response)
+      { success: true, message: result['message'] || 'Rollback successful' }
+    rescue HTTParty::Error, Timeout::Error => e
+      Rails.logger.error("Failed to rollback optimization: #{e.message}")
+      { success: false, error: e.message }
+    rescue TrainingError => e
+      { success: false, error: e.message }
+    end
+
+    # Health check with detailed status
+    def health_check
+      response = HTTParty.get("#{BASE_URL}/health", timeout: 5)
+      if response.success?
+        {
+          status: 'healthy',
+          version: response.parsed_response['version'],
+          agent_lightning_available: response.parsed_response['agent_lightning_available']
+        }
+      else
+        { status: 'unhealthy', error: response.message }
+      end
+    rescue => e
+      { status: 'unavailable', error: e.message }
+    end
+
     private
 
     def handle_response(response)

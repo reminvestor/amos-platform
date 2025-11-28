@@ -71,6 +71,16 @@ production:
       - null
       - sample_size: 1
 
+  # ========================================
+  # Agent Lightning Jobs
+  # ========================================
+  
+  # Hourly auto-rollback check - monitors optimization performance
+  agent_lightning_auto_rollback:
+    class: AgentLightningAutoRollbackJob
+    queue: agent_lightning
+    schedule: every hour
+
 # Development environment - run less frequently to avoid noise
 development:
   # Daily metrics in dev (just for testing)

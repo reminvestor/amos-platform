@@ -204,6 +204,11 @@ module Benchmarks
           end
         end
 
+        # ============================================
+        # EMIT REWARD SIGNAL TO AGENT LIGHTNING
+        # ============================================
+        emit_benchmark_reward(task, task_result)
+
         task_result
       rescue => e
         Rails.logger.error "[BusinessBenchmark] Task #{task[:id]} failed: #{e.message}"
@@ -521,6 +526,79 @@ module Benchmarks
 
     private
 
+    # Emit reward signal to Agent Lightning for training
+    def emit_benchmark_reward(task, task_result)
+      return unless @entity && @user
+
+      begin
+        lightning_store = LightningStoreService.new(@entity, @user)
+        
+        # Calculate reward value based on task success and quality
+        reward_value = calculate_benchmark_reward(task, task_result)
+        
+        # Record the reward
+        lightning_store.record_reward(
+          reward_type: 'benchmark',
+          reward_value: reward_value,
+          source: 'bob_benchmark',
+          metadata: {
+            task_id: task[:id],
+            task_category: task[:category],
+            task_name: task[:name],
+            success: task_result[:success],
+            grounded: task_result[:grounded],
+            tool_calls: task_result[:tool_calls],
+            agent_calls: task_result[:agent_calls],
+            creation_success: task_result[:creation_success],
+            verification_success: task_result[:verification_success],
+            elapsed_ms: task_result[:elapsed_ms]
+          }
+        )
+
+        Rails.logger.debug "[Benchmark] Emitted reward signal: #{reward_value} for task #{task[:id]}"
+      rescue => e
+        Rails.logger.warn "[Benchmark] Failed to emit reward signal: #{e.message}"
+      end
+    end
+
+    # Calculate reward value (0.0 to 1.0) based on task result
+    def calculate_benchmark_reward(task, result)
+      return 0.0 unless result[:success]
+
+      score = 0.5  # Base score for task completion
+
+      # Bonus for using tools when required
+      if task[:requires_tools] || task[:grounding_required]
+        score += 0.15 if result[:grounded]
+      else
+        score += 0.1  # Small bonus for non-tool tasks
+      end
+
+      # Bonus for successful asset creation
+      if task[:creates_agent] || task[:creates_tool] || task[:creates_integration] || task[:creates_asset]
+        score += 0.15 if result[:creation_success]
+        score += 0.1 if result[:verification_success]
+      end
+
+      # Bonus for agent delegation when expected
+      if task[:expected_agent].present?
+        score += 0.1 if result[:agent_calls].to_i > 0
+      end
+
+      # Penalty for very slow responses (>60s)
+      if result[:elapsed_ms].to_i > 60_000
+        score -= 0.05
+      end
+
+      # Bonus for fast responses (<10s)
+      if result[:elapsed_ms].to_i < 10_000
+        score += 0.05
+      end
+
+      # Clamp to 0.0-1.0
+      [[score, 0.0].max, 1.0].min
+    end
+
     def build_prompt(task)
       <<~PROMPT
         You are Scout, a business assistant helping a small/medium business owner.
@@ -537,60 +615,124 @@ module Benchmarks
 
     def run_with_scout(prompt)
       session_id = "benchmark_#{SecureRandom.hex(4)}"
-      scout = ScoutGenericToolsServiceV2.new(@user, @entity, session_id)
+      
+      Rails.logger.info "[Benchmark] Starting Scout session: #{session_id}"
+      Rails.logger.info "[Benchmark] Entity: #{@entity.name} (ID: #{@entity.id})"
+      Rails.logger.info "[Benchmark] User: #{@user.email} (ID: #{@user.id})"
+      
+      begin
+        scout = ScoutGenericToolsServiceV2.new(@user, @entity, session_id)
+      rescue => e
+        Rails.logger.error "[Benchmark] Failed to initialize Scout: #{e.message}"
+        return {
+          response: nil,
+          tool_calls: 0,
+          agent_calls: 0,
+          tools_used: [],
+          agents_used: [],
+          data_sources: [],
+          delegated_jobs: [],
+          agent_results: [],
+          error: "Scout initialization failed: #{e.message}"
+        }
+      end
 
       response_text = ""
       tool_call_log = []
       delegated_job_ids = []
+      chunk_count = 0
       
+      # Robust callback that captures all relevant data
       callback = ->(chunk) { 
-        if chunk.is_a?(String)
-          response_text += chunk
-        elsif chunk.is_a?(Hash)
-          # Track tool calls from streaming chunks
-          # Note: chunk[:type] can be a string or symbol, so check both
-          chunk_type = chunk[:type].to_s
-          
-          # Capture tool starts
-          if chunk_type == 'tool_start'
-            tool_name = chunk[:tool_name] || chunk[:name]
-            if tool_name.present?
-              tool_call_log << {
-                name: tool_name,
-                type: :tool,
-                timestamp: Time.current
-              }
+        chunk_count += 1
+        
+        begin
+          if chunk.is_a?(String)
+            response_text += chunk
+          elsif chunk.is_a?(Hash)
+            # Track tool calls from streaming chunks
+            # Handle both string and symbol keys
+            chunk_type = (chunk[:type] || chunk['type']).to_s
+            
+            # Capture tool starts
+            if chunk_type == 'tool_start'
+              tool_name = chunk[:tool_name] || chunk[:name] || chunk['tool_name'] || chunk['name']
+              if tool_name.present?
+                Rails.logger.debug "[Benchmark] Tool start: #{tool_name}"
+                tool_call_log << {
+                  name: tool_name,
+                  type: :tool,
+                  timestamp: Time.current
+                }
+              end
+            end
+            
+            # Capture tool completions (more reliable for tool names)
+            if chunk_type == 'tool_complete'
+              tool_name = chunk[:name] || chunk['name']
+              if tool_name.present? && !tool_call_log.any? { |t| t[:name] == tool_name }
+                Rails.logger.debug "[Benchmark] Tool complete: #{tool_name}"
+                tool_call_log << {
+                  name: tool_name,
+                  type: :tool,
+                  timestamp: Time.current
+                }
+              end
+            end
+            
+            # Track delegated agent jobs - THIS IS CRITICAL
+            if chunk_type == 'agent_delegated'
+              job_id = chunk[:job_id] || chunk['job_id']
+              agent_name = chunk[:agent] || chunk['agent']
+              
+              if job_id
+                Rails.logger.info "[Benchmark] 🎯 CAPTURED delegated job: #{job_id} to #{agent_name}"
+                delegated_job_ids << job_id
+              else
+                Rails.logger.warn "[Benchmark] ⚠️ agent_delegated chunk without job_id: #{chunk.inspect}"
+              end
+            end
+            
+            # Capture content chunks
+            if chunk_type == 'content_chunk'
+              content = chunk[:content] || chunk['content']
+              response_text += content if content.present?
             end
           end
-          
-          # Capture tool completions (more reliable for tool names)
-          if chunk_type == 'tool_complete' && chunk[:name].present?
-            tool_call_log << {
-              name: chunk[:name],
-              type: :tool,
-              timestamp: Time.current
-            } unless tool_call_log.any? { |t| t[:name] == chunk[:name] }
-          end
-          
-          # Track delegated agent jobs
-          if chunk_type == 'agent_delegated' && chunk[:job_id]
-            Rails.logger.info "[Benchmark] Captured delegated job: #{chunk[:job_id]} to #{chunk[:agent]}"
-            delegated_job_ids << chunk[:job_id]
-          end
-          
-          # Capture content chunks
-          if chunk_type == 'content_chunk' && chunk[:content].present?
-            response_text += chunk[:content]
-          end
+        rescue => e
+          Rails.logger.error "[Benchmark] Callback error on chunk #{chunk_count}: #{e.message}"
         end
       }
 
-      result = scout.process_message_with_tools_streaming(
-        prompt,
-        callback,
-        [],
-        nil
-      )
+      # Call Scout with streaming
+      Rails.logger.info "[Benchmark] Calling Scout process_message_with_tools_streaming..."
+      
+      begin
+        result = scout.process_message_with_tools_streaming(
+          prompt,
+          callback,
+          [],
+          nil
+        )
+      rescue => e
+        Rails.logger.error "[Benchmark] Scout streaming failed: #{e.message}"
+        Rails.logger.error e.backtrace.first(5).join("\n")
+        return {
+          response: response_text.presence,
+          tool_calls: tool_call_log.size,
+          agent_calls: 0,
+          tools_used: tool_call_log.map { |t| t[:name] }.compact.uniq,
+          agents_used: [],
+          data_sources: [],
+          delegated_jobs: delegated_job_ids,
+          agent_results: [],
+          error: "Scout streaming failed: #{e.message}"
+        }
+      end
+      
+      Rails.logger.info "[Benchmark] Scout returned. Chunks received: #{chunk_count}"
+      Rails.logger.info "[Benchmark] Tool call log: #{tool_call_log.map { |t| t[:name] }.inspect}"
+      Rails.logger.info "[Benchmark] Delegated jobs from callback: #{delegated_job_ids.inspect}"
 
       # Extract final response and tool usage from result
       response = nil
@@ -599,12 +741,16 @@ module Benchmarks
       data_sources = []
       
       if result.is_a?(Hash)
+        Rails.logger.debug "[Benchmark] Result keys: #{result.keys.inspect}"
+        
         final = result[:final_response] || result['final_response'] || {}
         response = final[:message] || final['message'] || result[:message] || response_text
         
         # Extract tool usage from result metadata
-        if result[:tool_results] || result[:tools_executed]
-          tool_results = result[:tool_results] || result[:tools_executed] || []
+        tool_results = result[:tool_results] || result[:tools_executed] || []
+        if tool_results.any?
+          Rails.logger.debug "[Benchmark] Processing #{tool_results.size} tool results"
+          
           tool_results.each do |tr|
             tool_name = tr[:name] || tr[:tool_name] || tr['name'] || tr['tool_name']
             tools_used << tool_name if tool_name
@@ -618,14 +764,20 @@ module Benchmarks
               data_sources << { type: 'document', tool: tool_name }
             end
             
-            # Track agent delegations and capture job IDs
+            # Track agent delegations and capture job IDs from result
             if tool_name&.include?('delegate') || tool_name&.include?('invoke_agent') || tool_name&.include?('ask_agent')
-              agent_slug = tr[:result]&.dig(:agent) || tr[:result]&.dig(:agent_type) || tr[:arguments]&.dig(:agent_slug) || 'unknown'
+              tr_result = tr[:result] || tr['result'] || {}
+              agent_slug = tr_result[:agent] || tr_result['agent'] || 
+                          tr_result[:agent_type] || tr_result['agent_type'] || 
+                          tr[:arguments]&.dig(:agent_type) || 'unknown'
               agents_used << agent_slug
               
-              # Capture job ID from delegation result
-              job_id = tr[:result]&.dig(:job_id) || tr[:result]&.dig('job_id')
-              delegated_job_ids << job_id if job_id
+              # Capture job ID from delegation result (backup to callback)
+              job_id = tr_result[:job_id] || tr_result['job_id']
+              if job_id && !delegated_job_ids.include?(job_id)
+                Rails.logger.info "[Benchmark] 🎯 CAPTURED job_id from result: #{job_id}"
+                delegated_job_ids << job_id
+              end
             end
           end
         end
@@ -633,6 +785,11 @@ module Benchmarks
         # Also check for tools_used in result
         if result[:tools_used].is_a?(Array)
           tools_used = (tools_used + result[:tools_used]).uniq
+        end
+        
+        # Check if delegation occurred flag is set
+        if result[:delegation_occurred]
+          Rails.logger.info "[Benchmark] Delegation occurred flag is true"
         end
       else
         response = result.to_s.presence || response_text
@@ -646,21 +803,58 @@ module Benchmarks
       tools_used = tools_used.compact.uniq
       agents_used = agents_used.compact.uniq
       delegated_job_ids = delegated_job_ids.compact.uniq
+      
+      Rails.logger.info "[Benchmark] Final tools_used: #{tools_used.inspect}"
+      Rails.logger.info "[Benchmark] Final agents_used: #{agents_used.inspect}"
+      Rails.logger.info "[Benchmark] Final delegated_job_ids: #{delegated_job_ids.inspect}"
 
       # ============================================
       # WAIT FOR DELEGATED AGENT JOBS TO COMPLETE
       # ============================================
       agent_results = []
       if delegated_job_ids.any?
-        Rails.logger.info "[Benchmark] Waiting for #{delegated_job_ids.size} delegated jobs to complete..."
+        Rails.logger.info "[Benchmark] ⏳ Waiting for #{delegated_job_ids.size} delegated jobs to complete..."
         
         delegated_job_ids.each do |job_id|
+          Rails.logger.info "[Benchmark] Waiting for job #{job_id}..."
           agent_result = wait_for_agent_completion(job_id)
           agent_results << agent_result
+          
+          Rails.logger.info "[Benchmark] Job #{job_id} result: success=#{agent_result[:success]}, status=#{agent_result[:status]}"
           
           # Append agent's response to the main response
           if agent_result[:success] && agent_result[:output].present?
             response = [response, "\n\n---\n**Agent Result:**\n#{agent_result[:output]}"].compact.join
+            agents_used << agent_result[:agent_slug] if agent_result[:agent_slug]
+          elsif !agent_result[:success]
+            Rails.logger.warn "[Benchmark] Job #{job_id} failed: #{agent_result[:error]}"
+          end
+        end
+        
+        Rails.logger.info "[Benchmark] ✅ All delegated jobs processed"
+      else
+        # No jobs captured from callback - check if we should look for recent executions
+        # This is a fallback for cases where the callback didn't capture the job_id
+        if tools_used.any? { |t| t&.include?('delegate') || t&.include?('invoke_agent') }
+          Rails.logger.warn "[Benchmark] ⚠️ Delegation tool used but no job_id captured - checking recent executions..."
+          
+          recent_execution = AgentPluginExecution
+            .where(user: @user)
+            .where('created_at > ?', 30.seconds.ago)
+            .order(created_at: :desc)
+            .first
+          
+          if recent_execution
+            Rails.logger.info "[Benchmark] Found recent execution: #{recent_execution.id} (#{recent_execution.agent_plugin&.slug})"
+            delegated_job_ids << recent_execution.id
+            
+            agent_result = wait_for_agent_completion(recent_execution.id)
+            agent_results << agent_result
+            
+            if agent_result[:success] && agent_result[:output].present?
+              response = [response, "\n\n---\n**Agent Result:**\n#{agent_result[:output]}"].compact.join
+              agents_used << agent_result[:agent_slug] if agent_result[:agent_slug]
+            end
           end
         end
       end
@@ -670,7 +864,7 @@ module Benchmarks
         tool_calls: tools_used.size,
         agent_calls: agents_used.size,
         tools_used: tools_used,
-        agents_used: agents_used,
+        agents_used: agents_used.uniq,
         data_sources: data_sources,
         delegated_jobs: delegated_job_ids,
         agent_results: agent_results
@@ -814,7 +1008,7 @@ module Benchmarks
             verified: true,
             tool_id: tool_def.id,
             tool_name: tool_def.name,
-            tool_type: tool_def.tool_type,
+            execution_type: tool_def.execution_type,
             test_result: result.to_s.truncate(500),
             success: !result.is_a?(Hash) || result[:error].blank?
           }
@@ -825,7 +1019,7 @@ module Benchmarks
             verified: true,
             tool_id: tool_def.id,
             tool_name: tool_def.name,
-            tool_type: tool_def.tool_type,
+            execution_type: tool_def.execution_type,
             test_result: result.to_s.truncate(500),
             success: !result.is_a?(Hash) || result[:error].blank?
           }
@@ -935,25 +1129,26 @@ module Benchmarks
     end
 
     # Verify a created landing page
-    def verify_created_landing_page(page_id_or_name)
-      page = if page_id_or_name.is_a?(Integer)
-        LandingPage.find_by(id: page_id_or_name, entity: @entity)
+    def verify_created_landing_page(page_id_or_title)
+      page = if page_id_or_title.is_a?(Integer)
+        LandingPage.find_by(id: page_id_or_title, entity: @entity)
       else
-        LandingPage.where("name ILIKE ?", "%#{page_id_or_name}%").where(entity: @entity).order(created_at: :desc).first
+        LandingPage.where("title ILIKE ?", "%#{page_id_or_title}%").where(entity: @entity).order(created_at: :desc).first
       end
 
       return { verified: false, error: "Landing page not found" } unless page
 
+      content = page.html_content.to_s
       {
         verified: true,
         page_id: page.id,
-        page_name: page.name,
+        page_title: page.title,
         page_slug: page.slug,
-        has_content: page.content.present?,
-        content_length: page.content.to_s.length,
-        has_hero: page.content.to_s.include?('hero') || page.content.to_s.include?('headline'),
-        has_cta: page.content.to_s.downcase.include?('cta') || page.content.to_s.include?('button'),
-        published: page.published?,
+        has_content: content.present?,
+        content_length: content.length,
+        has_hero: content.include?('hero') || content.downcase.include?('headline'),
+        has_cta: content.downcase.include?('cta') || content.include?('button'),
+        status: page.status,
         created_at: page.created_at
       }
     end
@@ -961,9 +1156,9 @@ module Benchmarks
     # Verify a created email campaign
     def verify_created_email_campaign(campaign_id_or_name)
       campaign = if campaign_id_or_name.is_a?(Integer)
-        EmailCampaign.find_by(id: campaign_id_or_name, entity: @entity)
+        Campaign.find_by(id: campaign_id_or_name, entity: @entity)
       else
-        EmailCampaign.where("name ILIKE ?", "%#{campaign_id_or_name}%").where(entity: @entity).order(created_at: :desc).first
+        Campaign.where("name ILIKE ?", "%#{campaign_id_or_name}%").where(entity: @entity).order(created_at: :desc).first
       end
 
       return { verified: false, error: "Email campaign not found" } unless campaign
@@ -972,9 +1167,7 @@ module Benchmarks
         verified: true,
         campaign_id: campaign.id,
         campaign_name: campaign.name,
-        email_count: campaign.emails&.count || 0,
-        has_subject: campaign.emails&.any? { |e| e.subject.present? },
-        has_content: campaign.emails&.any? { |e| e.body.present? || e.content.present? },
+        has_template: campaign.email_template_id.present?,
         status: campaign.status,
         created_at: campaign.created_at
       }
@@ -994,7 +1187,7 @@ module Benchmarks
         assets[:tools] = ToolDefinition.where(entity: @entity)
                                        .or(ToolDefinition.where(created_by: @user))
                                        .where('created_at > ?', since)
-                                       .map { |t| { id: t.id, name: t.name, type: t.tool_type } }
+                                       .map { |t| { id: t.id, name: t.name, execution_type: t.execution_type } }
       end
 
       if types.include?(:integration)
@@ -1009,13 +1202,13 @@ module Benchmarks
       if types.include?(:landing_page) && defined?(LandingPage)
         assets[:landing_pages] = LandingPage.where(entity: @entity)
                                             .where('created_at > ?', since)
-                                            .map { |p| { id: p.id, name: p.name, slug: p.slug } }
+                                            .map { |p| { id: p.id, title: p.title, slug: p.slug } }
       end
 
-      if types.include?(:email_campaign) && defined?(EmailCampaign)
-        assets[:email_campaigns] = EmailCampaign.where(entity: @entity)
-                                                .where('created_at > ?', since)
-                                                .map { |c| { id: c.id, name: c.name } }
+      if types.include?(:email_campaign) && defined?(Campaign)
+        assets[:email_campaigns] = Campaign.where(entity: @entity)
+                                           .where('created_at > ?', since)
+                                           .map { |c| { id: c.id, name: c.name, status: c.status } }
       end
 
       assets
