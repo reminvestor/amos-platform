@@ -1082,3 +1082,97 @@
 .admin-service-icon-error {
   background: rgba(239, 68, 68, 0.1);
 }
+
+// Form Input Utilities
+.admin-form-input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent-purple-end);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+
+  &:disabled,
+  &.admin-form-disabled {
+    background-color: var(--bg-secondary);
+    color: var(--text-muted);
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.admin-form-select {
+  @extend .admin-form-input;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394A3B8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem;
+}
+
+// Flex column utility
+.admin-flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+// Flex gap extra small
+.admin-flex-gap-xs {
+  gap: 0.25rem;
+}
+
+// Code block styling
+.admin-code-block {
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+// Card with gradient background
+.admin-card-gradient-purple {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
+}
+
+// Sticky card (for form actions)
+.admin-sticky-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+// Summary/details styling
+.admin-summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+// Field background subtle
+.admin-field-bg {
+  background: rgba(0, 0, 0, 0.02);
+
+  [data-theme="dark"] & {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}
+
+// Margin left utility
+.admin-ml-lg {
+  margin-left: 1.5rem;
+}
