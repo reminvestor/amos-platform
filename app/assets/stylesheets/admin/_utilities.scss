@@ -160,6 +160,22 @@
   background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
 }
 
+.admin-icon-gradient-warning {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+}
+
+.admin-icon-gradient-success {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+.admin-icon-gradient-info {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+}
+
+.admin-icon-gradient-error {
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+}
+
 // Stat Card Text
 .admin-stat-label {
   color: $admin-text-secondary;
