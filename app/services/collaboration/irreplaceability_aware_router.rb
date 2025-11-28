@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Collaboration
-  class IreplaceabilityAwareRouter
+  class IrreplaceabilityAwareRouter
     def initialize(entity:)
       @entity = entity
     end
