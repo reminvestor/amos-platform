@@ -81,6 +81,22 @@ production:
     queue: agent_lightning
     schedule: every hour
 
+  # ========================================
+  # Scheduled Agent Tasks
+  # ========================================
+  
+  # Check for due scheduled tasks every minute
+  scheduled_task_dispatcher:
+    class: ScheduledTaskDispatcherJob
+    queue: default
+    schedule: every minute
+  
+  # Refresh auto-refresh visualizations
+  visualization_refresh:
+    class: RefreshVisualizationsJob
+    queue: maintenance
+    schedule: every 15 minutes
+
 # Development environment - run less frequently to avoid noise
 development:
   # Daily metrics in dev (just for testing)
@@ -106,6 +122,12 @@ development:
     class: EnergyRegenerationJob
     queue: agents
     schedule: every 2 hours
+
+  # Check for due scheduled tasks every 5 minutes in dev
+  scheduled_task_dispatcher:
+    class: ScheduledTaskDispatcherJob
+    queue: default
+    schedule: every 5 minutes
 
 # Test environment - disable recurring jobs
 test:

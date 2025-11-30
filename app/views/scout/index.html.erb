@@ -401,10 +401,14 @@
           <i data-lucide="home"></i>
           <span class="nav-text">Dashboard</span>
         </div>
-        <div class="nav-item" data-action="click->scout#loadParallelTasksCanvas" title="View running background tasks">
-          <i data-lucide="workflow"></i>
-          <span class="nav-text">Active Tasks</span>
+        <div class="nav-item" data-action="click->scout#loadScheduledTasksCanvas" title="View scheduled and active tasks">
+          <i data-lucide="calendar-clock"></i>
+          <span class="nav-text">Tasks & Schedules</span>
           <span id="active-task-count" class="task-badge" style="display: none;">0</span>
+        </div>
+        <div class="nav-item" data-action="click->scout#loadWorkInboxCanvas" title="View agent work inbox">
+          <i data-lucide="inbox"></i>
+          <span class="nav-text">Work Inbox</span>
         </div>
         <div class="nav-item" data-template-type="landing_page" data-action="click->scout#loadLandingPagesCanvas">
           <i data-lucide="globe"></i>

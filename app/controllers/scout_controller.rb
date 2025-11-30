@@ -1019,6 +1019,36 @@ class ScoutController < ApplicationController
       when "task_progress"
         canvas_content = render_task_progress(canvas_data)
         canvas_title = "Task Progress"
+      when "work_inbox"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/work_inbox",
+          locals: { canvas_data: canvas_data }
+        )
+        canvas_title = "Work Inbox"
+      when "scheduled_tasks"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/scheduled_tasks",
+          locals: { canvas_data: canvas_data }
+        )
+        canvas_title = "Scheduled Tasks"
+      when "scheduled_task_editor"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/scheduled_task_editor",
+          locals: { canvas_data: canvas_data }
+        )
+        task_id = canvas_data&.dig('task_id') || canvas_data&.dig(:task_id)
+        if task_id
+          task = ScheduledAgentTask.find_by(id: task_id)
+          canvas_title = "Edit: #{task&.name || 'Task'}"
+        else
+          canvas_title = "New Scheduled Task"
+        end
+      when "saved_visualizations"
+        canvas_content = render_to_string(
+          partial: "scout/canvas/saved_visualizations",
+          locals: { canvas_data: canvas_data }
+        )
+        canvas_title = "Saved Visualizations"
       when "campaign_editor"
         canvas_content = render_campaign_editor(canvas_data)
         canvas_title = "Campaign Editor"

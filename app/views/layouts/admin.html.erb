@@ -102,6 +102,11 @@
             <span>Benchmarks</span>
           <% end %>
 
+          <%= link_to admin_scheduled_tasks_path, class: "nav-item #{'active' if controller_name == 'scheduled_tasks'}" do %>
+            <i data-lucide="clock"></i>
+            <span>Scheduled Tasks</span>
+          <% end %>
+
           <%= link_to admin_agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
             <i data-lucide="bot"></i>
             <span>Agent Plugins</span>
