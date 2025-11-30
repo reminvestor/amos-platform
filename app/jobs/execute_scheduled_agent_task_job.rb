@@ -203,9 +203,9 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
     tools_executed = []
     
     required_tools.each do |tool_name|
-      tool_class = Tools::ToolCatalog.find_tool(tool_name)
+      catalog = Tools::ToolCatalog.instance
       
-      unless tool_class
+      unless catalog.tool_exists?(tool_name)
         if @scheduled_task.allow_fallback?
           Rails.logger.warn "⚠️ Tool '#{tool_name}' not found, skipping"
           next
@@ -217,16 +217,17 @@ class ExecuteScheduledAgentTaskJob < ApplicationJob
       # Build tool arguments from the prompt/context
       tool_args = build_tool_args(tool_name)
       
-      # Execute the tool
-      tool_instance = tool_class.new(
-        entity: entity,
-        user: user,
-        session_id: session_id
-      )
-      
       begin
-        result = tool_instance.execute(tool_args)
-        tool_results << { tool: tool_name, success: true, result: result }
+        # Use the catalog's execute_tool method which handles instantiation
+        result = catalog.execute_tool(
+          tool_name,
+          tool_args,
+          user: user,
+          entity: entity,
+          context: { session_id: session_id }
+        )
+        
+        tool_results << { tool: tool_name, success: result[:success] != false, result: result }
         tools_executed << tool_name
       rescue => e
         Rails.logger.error "Tool #{tool_name} failed: #{e.message}"
