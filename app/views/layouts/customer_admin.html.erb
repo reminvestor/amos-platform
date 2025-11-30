@@ -244,20 +244,23 @@
 
           <%# AI Section - Agents, Tools, and Settings %>
           <div class="nav-section-collapsible">
-            <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#aiCollapse" aria-expanded="<%= ['agent_plugins', 'tools', 'scout', 'voice'].include?(controller_name) || controller_path.start_with?('ai_settings') %>">
+            <button class="nav-section-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#aiCollapse" aria-expanded="<%= ['agent_plugins', 'tools', 'scout', 'voice', 'scheduled_tasks'].include?(controller_name) || controller_path.start_with?('ai_settings') %>">
               <div class="d-flex align-items-center gap-3">
                 <i data-lucide="sparkles"></i>
                 <span>AI</span>
               </div>
               <i data-lucide="chevron-down" class="collapse-icon"></i>
             </button>
-            <div class="collapse <%= 'show' if ['agent_plugins', 'tools', 'scout', 'voice'].include?(controller_name) || controller_path.start_with?('ai_settings') %>" id="aiCollapse">
+            <div class="collapse <%= 'show' if ['agent_plugins', 'tools', 'scout', 'voice', 'scheduled_tasks'].include?(controller_name) || controller_path.start_with?('ai_settings') %>" id="aiCollapse">
               <div class="nav-section-content">
                 <%= link_to agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
                   <span>My Agents</span>
                 <% end %>
                 <%= link_to tools_path, class: "nav-item #{'active' if controller_name == 'tools'}" do %>
                   <span>My Tools</span>
+                <% end %>
+                <%= link_to scheduled_tasks_path, class: "nav-item #{'active' if controller_name == 'scheduled_tasks'}" do %>
+                  <span>Scheduled Tasks</span>
                 <% end %>
                 <% if current_user.entity_admin? %>
                   <%= link_to ai_settings_scout_path, class: "nav-item #{'active' if controller_path == 'ai_settings/scout'}" do %>

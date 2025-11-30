@@ -1376,6 +1376,29 @@ export default class extends Controller {
     this.loadScoutCanvas("parallel_tasks", { session_id: sessionId })
   }
 
+  loadScheduledTasksCanvas() {
+    console.log("📅 Loading scheduled tasks canvas")
+    const sessionId = document.querySelector('[data-scout-session-id]')?.dataset.scoutSessionId || 
+                      this.chatMessagesTarget?.dataset.sessionId ||
+                      'current_session'
+    this.loadScoutCanvas("scheduled_tasks", { session_id: sessionId })
+  }
+
+  loadWorkInboxCanvas() {
+    console.log("📥 Loading work inbox canvas")
+    this.loadScoutCanvas("work_inbox", {})
+  }
+
+  loadScheduledTaskEditorCanvas(taskId = null) {
+    console.log("📝 Loading scheduled task editor canvas, taskId:", taskId)
+    this.loadScoutCanvas("scheduled_task_editor", { task_id: taskId })
+  }
+
+  loadSavedVisualizationsCanvas() {
+    console.log("📊 Loading saved visualizations canvas")
+    this.loadScoutCanvas("saved_visualizations", {})
+  }
+
   // Profile and settings methods
   openSettings() {
     console.log("⚙️ Opening business settings")
@@ -1649,6 +1672,14 @@ export default class extends Controller {
     window.scoutSendMessage = (message) => {
       this.sendScoutMessage(message)
     }
+    
+    // Listen for custom scout:send-message events from canvases
+    window.addEventListener('scout:send-message', (event) => {
+      console.log('📨 Received scout:send-message event:', event.detail)
+      if (event.detail && event.detail.message) {
+        this.sendScoutMessage(event.detail.message)
+      }
+    })
 
     // Navigation functions
     window.scoutBackToLandingPages = () => this.loadScoutCanvas('landing_page_viewer', {})
