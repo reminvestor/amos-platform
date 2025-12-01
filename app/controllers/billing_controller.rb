@@ -116,6 +116,9 @@ class BillingController < ApplicationController
   def setup_payment
     @billing_account.ensure_stripe_customer!
     
+    # Check if this is onboarding (no payment method yet)
+    @is_onboarding = !@billing_account.has_payment_method?
+    
     # Create a SetupIntent for collecting payment method
     @setup_intent = Stripe::SetupIntent.create(
       customer: @billing_account.stripe_customer_id,
@@ -133,10 +136,30 @@ class BillingController < ApplicationController
     payment_method_id = params[:payment_method_id]
     
     begin
+      # Attach the payment method
       @billing_account.attach_payment_method!(payment_method_id)
-      redirect_to settings_billing_path, notice: 'Payment method added successfully.'
+      
+      # Update billing settings if provided
+      if params[:auto_replenish_enabled].present?
+        @billing_account.update(
+          auto_replenish_enabled: params[:auto_replenish_enabled],
+          auto_replenish_amount_usd: params[:auto_replenish_amount_usd] || 20,
+          monthly_limit_usd: params[:monthly_limit_usd] || 100
+        )
+      end
+      
+      # Respond based on request type
+      if request.format.json? || request.content_type&.include?('json')
+        render json: { success: true, message: 'Payment method added successfully.' }
+      else
+        redirect_to settings_billing_path, notice: 'Payment method added successfully.'
+      end
     rescue Stripe::StripeError => e
-      redirect_to setup_payment_billing_path, alert: "Failed to add payment method: #{e.message}"
+      if request.format.json? || request.content_type&.include?('json')
+        render json: { success: false, error: e.message }, status: :unprocessable_entity
+      else
+        redirect_to setup_payment_billing_path, alert: "Failed to add payment method: #{e.message}"
+      end
     end
   end
 
