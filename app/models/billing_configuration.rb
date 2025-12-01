@@ -118,11 +118,29 @@ class BillingConfiguration < ApplicationRecord
     'default' => { input: 3.00, output: 15.00 }
   }.freeze
 
-  # SES pricing
+  # ============================================
+  # AWS SES Pricing (as of Dec 2024)
+  # ============================================
+  # Outbound email: $0.10 per 1,000 emails = $0.0001 per email
+  # Attachments: $0.12 per GB (tracked separately if needed)
+  # Inbound email: $0.10 per 1,000 emails (if we receive emails)
   SES_COST_PER_EMAIL = 0.0001  # $0.0001 per email ($0.10 per 1000)
+  SES_ATTACHMENT_COST_PER_GB = 0.12  # $0.12 per GB of attachments
   
-  # S3 pricing (per GB per month)
+  # ============================================
+  # AWS S3 Pricing (as of Dec 2024)
+  # ============================================
+  # Standard storage: $0.023 per GB/month
   S3_COST_PER_GB_MONTH = 0.023  # $0.023 per GB/month
+  
+  # ============================================
+  # API Call Pricing
+  # ============================================
+  # External API calls (HubSpot, Salesforce, etc.) have no direct AWS cost
+  # but we charge a small operational overhead for processing
+  # This is configurable via the api_call_rate column in the database
+  # Default: 0.1 work tokens per call = $0.000001 per call (negligible)
+  API_CALL_DEFAULT_RATE = 0.1  # work tokens per API call (fallback if not in DB)
 
   # Validations
   validates :name, presence: true, uniqueness: true
@@ -199,6 +217,24 @@ class BillingConfiguration < ApplicationRecord
   def calculate_storage_work_tokens(megabytes:)
     gigabytes = megabytes / 1024.0
     raw_cost_usd = gigabytes * S3_COST_PER_GB_MONTH
+    base_work_tokens = (raw_cost_usd / WORK_TOKEN_VALUE).round
+    apply_uplift(base_work_tokens)
+  end
+
+  # Calculate work tokens for API calls (external integrations)
+  # These have no direct AWS cost - just operational overhead
+  # Uses the api_call_rate column from DB, or default fallback
+  def calculate_api_work_tokens(call_count:)
+    rate = api_call_rate || API_CALL_DEFAULT_RATE
+    base_work_tokens = (call_count * rate).round
+    apply_uplift(base_work_tokens)
+  end
+
+  # Calculate work tokens for email with attachments
+  def calculate_email_with_attachments_work_tokens(email_count:, attachment_size_gb: 0)
+    email_cost = email_count * SES_COST_PER_EMAIL
+    attachment_cost = attachment_size_gb * SES_ATTACHMENT_COST_PER_GB
+    raw_cost_usd = email_cost + attachment_cost
     base_work_tokens = (raw_cost_usd / WORK_TOKEN_VALUE).round
     apply_uplift(base_work_tokens)
   end
