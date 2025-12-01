@@ -49,7 +49,8 @@ class BedrockService
       id: 'qwen.qwen3-32b-v1:0', # ON_DEMAND direct
       name: 'Qwen 3 32B',
       description: 'Latest open weights model',
-      max_tokens: 32768,
+      max_tokens: 8192, # Output limit (context window is 32K, need room for input)
+      context_window: 32768,
       cost_per_1m_input: 0.35,
       cost_per_1m_output: 0.40,
       supports_vision: false,
@@ -61,7 +62,8 @@ class BedrockService
       id: 'qwen.qwen3-coder-30b-a3b-v1:0', # ON_DEMAND direct
       name: 'Qwen 3 Coder 30B',
       description: 'Specialized for code generation',
-      max_tokens: 32768,
+      max_tokens: 8192, # Output limit (context window is 32K, need room for input)
+      context_window: 32768,
       cost_per_1m_input: 0.20,
       cost_per_1m_output: 0.20,
       supports_vision: false,
@@ -97,7 +99,8 @@ class BedrockService
       id: 'qwen.qwen3-coder-30b-a3b-v1:0',
       name: 'Qwen 2.5 Coder 32B',
       description: 'Specialized for code generation (legacy alias)',
-      max_tokens: 32768,
+      max_tokens: 8192, # Output limit (context window is 32K, need room for input)
+      context_window: 32768,
       cost_per_1m_input: 0.20,
       cost_per_1m_output: 0.20,
       supports_vision: false,
