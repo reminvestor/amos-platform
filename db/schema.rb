@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_30_000001) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_01_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -3109,6 +3109,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_30_000001) do
     t.datetime "last_usage_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "last_threshold_notified"
+    t.integer "free_tokens_granted"
+    t.datetime "last_low_balance_notified_at"
     t.index ["status"], name: "index_user_billing_accounts_on_status"
     t.index ["stripe_customer_id"], name: "index_user_billing_accounts_on_stripe_customer_id", unique: true
     t.index ["user_id"], name: "index_user_billing_accounts_on_user_id", unique: true
