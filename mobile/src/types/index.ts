@@ -9,6 +9,7 @@ export interface User {
   name: string;
   role: 'admin' | 'marketer' | 'viewer';
   entity_id: string;
+  entity_name?: string;
   api_key?: string;
   created_at?: string;
   updated_at?: string;
@@ -31,6 +32,42 @@ export interface LoginResponse {
   user: User;
   api_key: string;
   token: string;
+  mfa_required?: boolean;
+  mfa_session_token?: string;
+}
+
+// MFA
+export interface MFADevice {
+  id: string;
+  device_type: 'authenticator' | 'sms' | 'email';
+  name?: string;
+  phone_number?: string;
+  email?: string;
+  primary: boolean;
+  verified_at?: string;
+  last_used_at?: string;
+  created_at: string;
+}
+
+export interface MFAVerifyRequest {
+  mfa_session_token: string;
+  code: string;
+  use_backup_code?: boolean;
+}
+
+export interface MFAVerifyResponse {
+  user: User;
+  api_key: string;
+  token: string;
+}
+
+export interface BiometricAuthData {
+  email: string;
+  credential: string; // Encrypted token
+}
+
+export interface MFAResendRequest {
+  mfa_session_token: string;
 }
 
 // Entity

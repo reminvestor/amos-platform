@@ -3,16 +3,14 @@ import {
   View,
   ScrollView,
   StyleSheet,
-  Switch,
-  TouchableOpacity,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { List, Switch, Button, ActivityIndicator, Avatar, Divider, RadioButton } from 'react-native-paper';
+import { ChevronRight, Lock, Moon, Sun, ALargeSmall, Bell, Mail, FormInput, AlertCircle, FileText, ShieldCheck, LogOut } from 'lucide-react-native';
 import { useAppDispatch, useAppSelector } from '@store';
 import { setTheme, setFontSize, updateNotificationSettings } from '@store/slices/uiSlice';
-import { logout } from '@store/slices/authSlice';
+import { logoutUser } from '@store/slices/authSlice';
 import { getColors } from '@theme/colors';
 import { StyledText } from '@components/StyledText';
 import { BottomSheet } from '@components/BottomSheet';
@@ -26,7 +24,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const dispatch = useAppDispatch();
 
   const { theme, fontSize, notificationSettings } = useAppSelector((state) => state.ui);
-  const { user, isLoading } = useAppSelector((state) => state.auth);
+  const { user } = useAppSelector((state) => state.auth);
   const colors = getColors(theme);
 
   const [fontSizeModalVisible, setFontSizeModalVisible] = useState(false);
@@ -55,7 +53,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         onPress: async () => {
           setLoggingOut(true);
           try {
-            await dispatch(logout()).unwrap();
+            await dispatch(logoutUser()).unwrap();
             navigation.reset({
               index: 0,
               routes: [{ name: 'Auth' }],
@@ -67,21 +65,6 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         },
       },
     ]);
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This action cannot be undone. All your data will be permanently deleted.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => Alert.alert('Not Implemented', 'Account deletion will be implemented soon.'),
-        },
-      ]
-    );
   };
 
   const fontSizes = [
@@ -97,206 +80,191 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Section */}
-        <View style={[styles.section, { borderBottomColor: colors.border }]}>
-          <StyledText style={[styles.sectionTitle, { color: colors.text }]}>Profile</StyledText>
+        <List.Section>
+          <List.Subheader style={[styles.sectionTitle, { color: colors.text }]}>Profile</List.Subheader>
 
-          <TouchableOpacity
-            style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            activeOpacity={0.7}
+          <List.Item
+            title={user?.name || 'User'}
+            description={user?.email}
+            titleStyle={[styles.profileName, { color: colors.text }]}
+            descriptionStyle={{ color: colors.textSecondary }}
+            left={() => (
+              <Avatar.Text
+                size={48}
+                label={user?.name?.charAt(0).toUpperCase() || 'U'}
+                style={{ backgroundColor: colors.primary }}
+              />
+            )}
+            right={() => <ChevronRight size={20} color={colors.textTertiary} style={styles.iconRight} />}
             onPress={() => Alert.alert('Not Implemented', 'Profile editing coming soon')}
-          >
-            <View style={styles.profileInfo}>
-              <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-                <StyledText style={{ color: '#FFFFFF', fontSize: 20, fontWeight: 'bold' }}>
-                  {user?.name?.charAt(0).toUpperCase()}
-                </StyledText>
-              </View>
-              <View>
-                <StyledText style={[styles.profileName, { color: colors.text }]}>
-                  {user?.name || 'User'}
-                </StyledText>
-                <StyledText style={[styles.profileEmail, { color: colors.textSecondary }]}>
-                  {user?.email}
-                </StyledText>
-              </View>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textTertiary} />
-          </TouchableOpacity>
+            style={[styles.listItem, { backgroundColor: colors.surface }]}
+          />
 
-          <TouchableOpacity
-            style={[styles.settingRow, { borderBottomColor: colors.border }]}
+          <List.Item
+            title="Change Password"
+            titleStyle={{ color: colors.text }}
+            left={() => <Lock size={24} color={colors.primary} style={styles.iconLeft} />}
+            right={() => <ChevronRight size={20} color={colors.textTertiary} style={styles.iconRight} />}
             onPress={() => Alert.alert('Not Implemented', 'Password change coming soon')}
-          >
-            <View style={styles.settingLeft}>
-              <MaterialCommunityIcons name="lock" size={20} color={colors.primary} />
-              <StyledText style={[styles.settingLabel, { color: colors.text }]}>Change Password</StyledText>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
+            style={styles.listItem}
+          />
+        </List.Section>
+
+        <Divider style={{ backgroundColor: colors.border }} />
 
         {/* Appearance Section */}
-        <View style={[styles.section, { borderBottomColor: colors.border }]}>
-          <StyledText style={[styles.sectionTitle, { color: colors.text }]}>Appearance</StyledText>
+        <List.Section>
+          <List.Subheader style={[styles.sectionTitle, { color: colors.text }]}>Appearance</List.Subheader>
 
-          <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.settingLeft}>
-              <MaterialCommunityIcons
-                name={theme === 'dark' ? 'moon-waning-crescent' : 'white-balance-sunny'}
-                size={20}
+          <List.Item
+            title="Dark Mode"
+            titleStyle={{ color: colors.text }}
+            left={() => (
+              theme === 'dark' ? <Moon size={24} color={colors.primary} style={styles.iconLeft} /> : <Sun size={24} color={colors.primary} style={styles.iconLeft} />
+            )}
+            right={() => (
+              <Switch
+                value={theme === 'dark'}
+                onValueChange={handleThemeToggle}
                 color={colors.primary}
               />
-              <StyledText style={[styles.settingLabel, { color: colors.text }]}>Dark Mode</StyledText>
-            </View>
-            <Switch
-              value={theme === 'dark'}
-              onValueChange={handleThemeToggle}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={theme === 'dark' ? '#0A84FF' : '#FFFFFF'}
-            />
-          </View>
+            )}
+            style={styles.listItem}
+          />
 
-          <TouchableOpacity
-            style={[styles.settingRow, { borderBottomColor: colors.border }]}
+          <List.Item
+            title="Font Size"
+            description={fontSize.charAt(0).toUpperCase() + fontSize.slice(1)}
+            titleStyle={{ color: colors.text }}
+            descriptionStyle={{ color: colors.textSecondary }}
+            left={() => <ALargeSmall size={24} color={colors.primary} style={styles.iconLeft} />}
+            right={() => <ChevronRight size={20} color={colors.textTertiary} style={styles.iconRight} />}
             onPress={() => setFontSizeModalVisible(true)}
-          >
-            <View style={styles.settingLeft}>
-              <MaterialCommunityIcons name="format-font-size-increase" size={20} color={colors.primary} />
-              <StyledText style={[styles.settingLabel, { color: colors.text }]}>Font Size</StyledText>
-            </View>
-            <View style={styles.settingRight}>
-              <StyledText style={[styles.settingValue, { color: colors.textSecondary }]}>
-                {fontSize.charAt(0).toUpperCase() + fontSize.slice(1)}
-              </StyledText>
-              <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
-            </View>
-          </TouchableOpacity>
-        </View>
+            style={styles.listItem}
+          />
+        </List.Section>
+
+        <Divider style={{ backgroundColor: colors.border }} />
 
         {/* Notifications Section */}
-        <View style={[styles.section, { borderBottomColor: colors.border }]}>
-          <StyledText style={[styles.sectionTitle, { color: colors.text }]}>Notifications</StyledText>
+        <List.Section>
+          <List.Subheader style={[styles.sectionTitle, { color: colors.text }]}>Notifications</List.Subheader>
 
-          <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.settingLeft}>
-              <MaterialCommunityIcons name="bell" size={20} color={colors.primary} />
-              <StyledText style={[styles.settingLabel, { color: colors.text }]}>All Notifications</StyledText>
-            </View>
-            <Switch
-              value={notificationSettings.general}
-              onValueChange={(value) => handleNotificationToggle('general', value)}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={notificationSettings.general ? '#0A84FF' : '#FFFFFF'}
-            />
-          </View>
+          <List.Item
+            title="All Notifications"
+            titleStyle={{ color: colors.text }}
+            left={() => <Bell size={24} color={colors.primary} style={styles.iconLeft} />}
+            right={() => (
+              <Switch
+                value={notificationSettings.general}
+                onValueChange={(value) => handleNotificationToggle('general', value)}
+                color={colors.primary}
+              />
+            )}
+            style={styles.listItem}
+          />
 
           {notificationSettings.general && (
             <>
-              <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-                <View style={styles.settingLeft}>
-                  <MaterialCommunityIcons name="email" size={20} color={colors.info} />
-                  <StyledText style={[styles.settingLabel, { color: colors.text }]}>Campaign Status</StyledText>
-                </View>
-                <Switch
-                  value={notificationSettings.campaignStatus}
-                  onValueChange={(value) => handleNotificationToggle('campaignStatus', value)}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor={notificationSettings.campaignStatus ? '#0A84FF' : '#FFFFFF'}
-                />
-              </View>
+              <List.Item
+                title="Campaign Status"
+                titleStyle={{ color: colors.text }}
+                left={() => <Mail size={24} color={colors.info} style={styles.iconLeft} />}
+                right={() => (
+                  <Switch
+                    value={notificationSettings.campaignStatus}
+                    onValueChange={(value) => handleNotificationToggle('campaignStatus', value)}
+                    color={colors.primary}
+                  />
+                )}
+                style={styles.listItem}
+              />
 
-              <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-                <View style={styles.settingLeft}>
-                  <MaterialCommunityIcons name="form-textarea" size={20} color={colors.success} />
-                  <StyledText style={[styles.settingLabel, { color: colors.text }]}>Form Submissions</StyledText>
-                </View>
-                <Switch
-                  value={notificationSettings.formSubmissions}
-                  onValueChange={(value) => handleNotificationToggle('formSubmissions', value)}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor={notificationSettings.formSubmissions ? '#0A84FF' : '#FFFFFF'}
-                />
-              </View>
+              <List.Item
+                title="Form Submissions"
+                titleStyle={{ color: colors.text }}
+                left={() => <FormInput size={24} color={colors.success} style={styles.iconLeft} />}
+                right={() => (
+                  <Switch
+                    value={notificationSettings.formSubmissions}
+                    onValueChange={(value) => handleNotificationToggle('formSubmissions', value)}
+                    color={colors.primary}
+                  />
+                )}
+                style={styles.listItem}
+              />
 
-              <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-                <View style={styles.settingLeft}>
-                  <MaterialCommunityIcons name="alert-circle" size={20} color={colors.warning} />
-                  <StyledText style={[styles.settingLabel, { color: colors.text }]}>Alerts</StyledText>
-                </View>
-                <Switch
-                  value={notificationSettings.alerts}
-                  onValueChange={(value) => handleNotificationToggle('alerts', value)}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor={notificationSettings.alerts ? '#0A84FF' : '#FFFFFF'}
-                />
-              </View>
+              <List.Item
+                title="Alerts"
+                titleStyle={{ color: colors.text }}
+                left={() => <AlertCircle size={24} color={colors.warning} style={styles.iconLeft} />}
+                right={() => (
+                  <Switch
+                    value={notificationSettings.alerts}
+                    onValueChange={(value) => handleNotificationToggle('alerts', value)}
+                    color={colors.primary}
+                  />
+                )}
+                style={styles.listItem}
+              />
             </>
           )}
-        </View>
+        </List.Section>
+
+        <Divider style={{ backgroundColor: colors.border }} />
 
         {/* About Section */}
-        <View style={[styles.section, { borderBottomColor: colors.border }]}>
-          <StyledText style={[styles.sectionTitle, { color: colors.text }]}>About</StyledText>
+        <List.Section>
+          <List.Subheader style={[styles.sectionTitle, { color: colors.text }]}>About</List.Subheader>
 
-          <View style={[styles.settingRow, { borderBottomColor: colors.border }]}>
-            <StyledText style={[styles.settingLabel, { color: colors.text }]}>App Version</StyledText>
-            <StyledText style={[styles.settingValue, { color: colors.textSecondary }]}>1.0.0</StyledText>
-          </View>
+          <List.Item
+            title="App Version"
+            titleStyle={{ color: colors.text }}
+            right={() => <StyledText style={{ color: colors.textSecondary }}>1.0.0</StyledText>}
+            style={styles.listItem}
+          />
 
-          <TouchableOpacity
-            style={[styles.settingRow, { borderBottomColor: colors.border }]}
-            onPress={() => Alert.alert('Not Implemented', 'Terms will open in browser')}
-          >
-            <View style={styles.settingLeft}>
-              <MaterialCommunityIcons name="file-document" size={20} color={colors.primary} />
-              <StyledText style={[styles.settingLabel, { color: colors.text }]}>Terms of Service</StyledText>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
+          <List.Item
+            title="Terms of Service"
+            titleStyle={{ color: colors.text }}
+            left={() => <FileText size={24} color={colors.primary} style={styles.iconLeft} />}
+            right={() => <ChevronRight size={20} color={colors.textTertiary} style={styles.iconRight} />}
+            onPress={() => navigation.navigate('Terms')}
+            style={styles.listItem}
+          />
 
-          <TouchableOpacity
-            style={[styles.settingRow]}
-            onPress={() => Alert.alert('Not Implemented', 'Privacy policy will open in browser')}
-          >
-            <View style={styles.settingLeft}>
-              <MaterialCommunityIcons name="shield-lock" size={20} color={colors.primary} />
-              <StyledText style={[styles.settingLabel, { color: colors.text }]}>Privacy Policy</StyledText>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
+          <List.Item
+            title="Privacy Policy"
+            titleStyle={{ color: colors.text }}
+            left={() => <ShieldCheck size={24} color={colors.primary} style={styles.iconLeft} />}
+            right={() => <ChevronRight size={20} color={colors.textTertiary} style={styles.iconRight} />}
+            onPress={() => navigation.navigate('Privacy')}
+            style={styles.listItem}
+          />
+        </List.Section>
 
-        {/* Danger Zone */}
-        <View style={styles.section}>
-          <StyledText style={[styles.sectionTitle, { color: colors.text }]}>Account</StyledText>
+        <Divider style={{ backgroundColor: colors.border }} />
 
-          <TouchableOpacity
-            style={[styles.settingRow, { borderBottomColor: colors.border }]}
+        {/* Account Section */}
+        <List.Section>
+          <List.Subheader style={[styles.sectionTitle, { color: colors.text }]}>Account</List.Subheader>
+
+          <List.Item
+            title="Logout"
+            titleStyle={{ color: colors.error }}
+            left={() =>
+              loggingOut ? (
+                <ActivityIndicator size={20} color={colors.error} style={{ marginLeft: 8 }} />
+              ) : (
+                <LogOut size={24} color={colors.error} style={styles.iconLeft} />
+              )
+            }
+            right={() => !loggingOut && <ChevronRight size={20} color={colors.textTertiary} style={styles.iconRight} />}
             onPress={handleLogout}
             disabled={loggingOut}
-          >
-            <View style={styles.settingLeft}>
-              {loggingOut ? (
-                <ActivityIndicator size={20} color={colors.error} />
-              ) : (
-                <MaterialCommunityIcons name="logout" size={20} color={colors.error} />
-              )}
-              <StyledText style={[styles.settingLabel, { color: colors.error }]}>Logout</StyledText>
-            </View>
-            {!loggingOut && <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.settingRow]}
-            onPress={handleDeleteAccount}
-          >
-            <View style={styles.settingLeft}>
-              <MaterialCommunityIcons name="delete" size={20} color={colors.error} />
-              <StyledText style={[styles.settingLabel, { color: colors.error }]}>Delete Account</StyledText>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
+            style={styles.listItem}
+          />
+        </List.Section>
 
         <View style={{ height: insets.bottom + 32 }} />
       </ScrollView>
@@ -307,33 +275,24 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
         onClose={() => setFontSizeModalVisible(false)}
         title="Font Size"
       >
-        <View style={{ paddingBottom: 16 }}>
+        <RadioButton.Group onValueChange={(value) => handleFontSizeSelect(value as 'small' | 'medium' | 'large')} value={fontSize}>
           {fontSizes.map((size) => (
-            <TouchableOpacity
+            <RadioButton.Item
               key={size.value}
-              style={[
-                styles.modalOption,
-                { backgroundColor: fontSize === size.value ? colors.primaryLight : 'transparent' },
+              label={size.label}
+              value={size.value}
+              labelStyle={[
+                styles.radioLabel,
+                { color: colors.text, fontSize: size.value === 'small' ? 14 : size.value === 'large' ? 18 : 16 }
               ]}
-              onPress={() => handleFontSizeSelect(size.value)}
-            >
-              <StyledText
-                style={[
-                  styles.modalOptionText,
-                  {
-                    color: fontSize === size.value ? colors.primary : colors.text,
-                    fontSize: size.value === 'small' ? 14 : size.value === 'large' ? 18 : 16,
-                  },
-                ]}
-              >
-                {size.label}
-              </StyledText>
-              {fontSize === size.value && (
-                <MaterialCommunityIcons name="check" size={20} color={colors.primary} />
-              )}
-            </TouchableOpacity>
+              color={colors.primary}
+              style={[
+                styles.radioItem,
+                fontSize === size.value && { backgroundColor: colors.primaryLight }
+              ]}
+            />
           ))}
-        </View>
+        </RadioButton.Group>
       </BottomSheet>
     </View>
   );
@@ -344,85 +303,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     paddingBottom: 32,
   },
-  section: {
-    marginBottom: 24,
-    borderBottomWidth: 1,
-    paddingBottom: 16,
-  },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
-  },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 12,
-    justifyContent: 'space-between',
-  },
-  profileInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
   },
   profileName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
   },
-  profileEmail: {
-    fontSize: 13,
+  listItem: {
+    paddingVertical: 4,
   },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  settingRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingLabel: {
-    fontSize: 16,
-    marginLeft: 12,
-    fontWeight: '500',
-  },
-  settingValue: {
-    fontSize: 14,
-    marginRight: 8,
-  },
-  modalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  radioItem: {
     borderRadius: 8,
     marginBottom: 8,
   },
-  modalOptionText: {
+  radioLabel: {
     fontWeight: '500',
+  },
+  iconLeft: {
+    marginLeft: 8,
+    marginRight: 8,
+  },
+  iconRight: {
+    marginRight: 8,
   },
 });

@@ -71,9 +71,11 @@ services:
       - REDIS_URL=redis://redis:6379/0  # Internal Docker network still uses 6379
       - RAILS_ENV=development
       - RAILS_MAX_THREADS=5
+      - WEB_CONCURRENCY=2
       # Chromium path for Ferrum (web page capture)
       - CHROME_PATH=/usr/bin/chromium
       - DOCKER_ENV=true
+      - DOCKER_CONTAINER=true
       # AWS Bedrock - Required (add your credentials)
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
@@ -172,9 +174,6 @@ services:
       # Voice Assistant
       - ELEVEN_LABS_API_KEY=${ELEVEN_LABS_API_KEY}
       - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
-      # S3 (for RAG document storage)
-      - RAG_BUCKET=${RAG_BUCKET}
-      - AWS_S3_ENDPOINT=${AWS_S3_ENDPOINT}
     depends_on:
       db:
         condition: service_healthy

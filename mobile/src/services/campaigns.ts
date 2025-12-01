@@ -95,9 +95,10 @@ export async function updateCampaign(id: string, data: Partial<Campaign>): Promi
  */
 export async function pauseCampaign(id: string): Promise<Campaign> {
   try {
-    const response = await apiClient.patch<Campaign>(`/api/v1/campaigns/${id}`, {
-      status: 'paused',
-    });
+    const response = await apiClient.post<Campaign>(
+      `/api/v1/campaigns/${id}/pause`,
+      {}
+    );
     return response;
   } catch (error: any) {
     throw {
@@ -112,9 +113,10 @@ export async function pauseCampaign(id: string): Promise<Campaign> {
  */
 export async function resumeCampaign(id: string): Promise<Campaign> {
   try {
-    const response = await apiClient.patch<Campaign>(`/api/v1/campaigns/${id}`, {
-      status: 'in_progress',
-    });
+    const response = await apiClient.post<Campaign>(
+      `/api/v1/campaigns/${id}/resume`,
+      {}
+    );
     return response;
   } catch (error: any) {
     throw {

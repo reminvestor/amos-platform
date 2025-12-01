@@ -12,7 +12,7 @@ import {
   Modal,
   RefreshControl,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { AlertCircle, ChevronLeft, MoreVertical, Calendar, Users, Clock, Send, MailOpen, MousePointerClick, TrendingUp, Pencil, Copy, Mail, Trash2, Archive } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '@store';
 import { fetchCampaignDetail } from '@store/slices/campaignsSlice';
@@ -160,7 +160,7 @@ export default function CampaignDetailScreen({ navigation, route }: CampaignDeta
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContainer}>
-          <MaterialCommunityIcons name="alert-circle" size={64} color="#c33" />
+          <AlertCircle size={64} color="#c33" />
           <Text style={styles.errorTitle}>{error || 'Campaign not found'}</Text>
           <TouchableOpacity
             style={styles.retryButton}
@@ -195,7 +195,7 @@ export default function CampaignDetailScreen({ navigation, route }: CampaignDeta
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <MaterialCommunityIcons name="chevron-left" size={24} color="#333" />
+            <ChevronLeft size={24} color="#333" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.campaignName} numberOfLines={2}>
@@ -209,7 +209,7 @@ export default function CampaignDetailScreen({ navigation, route }: CampaignDeta
             style={styles.menuButton}
             onPress={() => setIsActionMenuVisible(true)}
           >
-            <MaterialCommunityIcons name="dots-vertical" size={24} color="#333" />
+            <MoreVertical size={24} color="#333" />
           </TouchableOpacity>
         </View>
 
@@ -218,22 +218,22 @@ export default function CampaignDetailScreen({ navigation, route }: CampaignDeta
           <Text style={styles.sectionTitle}>Campaign Information</Text>
           <View style={styles.infoGrid}>
             <InfoCard
-              icon="calendar"
+              Icon={Calendar}
               label="Created"
               value={formatShortDate(campaign.created_at)}
             />
             <InfoCard
-              icon="account-multiple"
+              Icon={Users}
               label="Recipients"
               value={formatContactCount(campaign.contact_count || 0)}
             />
             <InfoCard
-              icon="clock-outline"
+              Icon={Clock}
               label="Scheduled"
               value={campaign.scheduled_at ? formatShortDate(campaign.scheduled_at) : 'Not scheduled'}
             />
             <InfoCard
-              icon="send"
+              Icon={Send}
               label="Sent"
               value={analytics?.sent_count ? formatContactCount(analytics.sent_count) : '0'}
             />
@@ -247,25 +247,25 @@ export default function CampaignDetailScreen({ navigation, route }: CampaignDeta
             <MetricCard
               label="Open Rate"
               value={openRate}
-              icon="email-open"
+              Icon={MailOpen}
               color="#4A90E2"
             />
             <MetricCard
               label="Click Rate"
               value={clickRate}
-              icon="cursor-default-click"
+              Icon={MousePointerClick}
               color="#27AE60"
             />
             <MetricCard
               label="Conversion Rate"
               value={conversionRate}
-              icon="trending-up"
+              Icon={TrendingUp}
               color="#F5A623"
             />
             <MetricCard
               label="Bounce Rate"
               value={analytics?.bounce_rate ? formatPercentage(analytics.bounce_rate) : 'N/A'}
-              icon="alert-circle"
+              Icon={AlertCircle}
               color="#E74C3C"
             />
           </View>
@@ -322,25 +322,25 @@ export default function CampaignDetailScreen({ navigation, route }: CampaignDeta
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <ActionButton
-            icon="pencil"
+            Icon={Pencil}
             label="Edit Campaign"
             onPress={handleEdit}
             variant="primary"
           />
           <ActionButton
-            icon="content-duplicate"
+            Icon={Copy}
             label="Duplicate Campaign"
             onPress={handleDuplicate}
             variant="secondary"
           />
           <ActionButton
-            icon="email-send"
+            Icon={Mail}
             label="Send Test Email"
             onPress={handleTestSend}
             variant="secondary"
           />
           <ActionButton
-            icon="archive"
+            Icon={Archive}
             label="Archive Campaign"
             onPress={handleArchive}
             variant="danger"
@@ -365,7 +365,7 @@ export default function CampaignDetailScreen({ navigation, route }: CampaignDeta
               style={styles.menuItem}
               onPress={handleEdit}
             >
-              <MaterialCommunityIcons name="pencil" size={20} color="#4A90E2" />
+              <Pencil size={20} color="#4A90E2" />
               <Text style={styles.menuItemText}>Edit Campaign</Text>
             </TouchableOpacity>
 
@@ -373,7 +373,7 @@ export default function CampaignDetailScreen({ navigation, route }: CampaignDeta
               style={styles.menuItem}
               onPress={handleDuplicate}
             >
-              <MaterialCommunityIcons name="content-duplicate" size={20} color="#27AE60" />
+              <Copy size={20} color="#27AE60" />
               <Text style={styles.menuItemText}>Duplicate Campaign</Text>
             </TouchableOpacity>
 
@@ -381,7 +381,7 @@ export default function CampaignDetailScreen({ navigation, route }: CampaignDeta
               style={styles.menuItem}
               onPress={handleTestSend}
             >
-              <MaterialCommunityIcons name="email-send" size={20} color="#F5A623" />
+              <Mail size={20} color="#F5A623" />
               <Text style={styles.menuItemText}>Send Test Email</Text>
             </TouchableOpacity>
 
@@ -389,7 +389,7 @@ export default function CampaignDetailScreen({ navigation, route }: CampaignDeta
               style={[styles.menuItem, styles.menuItemDanger]}
               onPress={handleArchive}
             >
-              <MaterialCommunityIcons name="trash-can" size={20} color="#E74C3C" />
+              <Trash2 size={20} color="#E74C3C" />
               <Text style={[styles.menuItemText, styles.menuItemTextDanger]}>
                 Delete Campaign
               </Text>
@@ -409,9 +409,9 @@ export default function CampaignDetailScreen({ navigation, route }: CampaignDeta
 }
 
 // Helper Components
-const InfoCard = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
+const InfoCard = ({ Icon, label, value }: { Icon: React.ComponentType<any>; label: string; value: string }) => (
   <View style={styles.infoCard}>
-    <MaterialCommunityIcons name={icon} size={24} color="#4A90E2" />
+    <Icon size={24} color="#4A90E2" />
     <Text style={styles.infoLabel}>{label}</Text>
     <Text style={styles.infoValue} numberOfLines={2}>
       {value}
@@ -422,17 +422,17 @@ const InfoCard = ({ icon, label, value }: { icon: string; label: string; value: 
 const MetricCard = ({
   label,
   value,
-  icon,
+  Icon,
   color,
 }: {
   label: string;
   value: string;
-  icon: string;
+  Icon: React.ComponentType<any>;
   color: string;
 }) => (
   <View style={styles.metricCard}>
     <View style={[styles.metricIconContainer, { backgroundColor: color + '20' }]}>
-      <MaterialCommunityIcons name={icon} size={24} color={color} />
+      <Icon size={24} color={color} />
     </View>
     <Text style={styles.metricLabel}>{label}</Text>
     <Text style={[styles.metricValue, { color }]}>{value}</Text>
@@ -447,12 +447,12 @@ const DetailRow = ({ label, value }: { label: string; value: string }) => (
 );
 
 const ActionButton = ({
-  icon,
+  Icon,
   label,
   onPress,
   variant = 'primary',
 }: {
-  icon: string;
+  Icon: React.ComponentType<any>;
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'danger';
@@ -466,8 +466,7 @@ const ActionButton = ({
     ]}
     onPress={onPress}
   >
-    <MaterialCommunityIcons
-      name={icon}
+    <Icon
       size={18}
       color={variant === 'secondary' ? '#4A90E2' : '#fff'}
     />

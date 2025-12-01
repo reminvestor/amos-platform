@@ -15,10 +15,20 @@ export async function getLandingPages(params?: {
     if (params?.perPage) queryParams.append('per_page', params.perPage.toString());
     if (params?.status) queryParams.append('status', params.status);
 
-    const response = await apiClient.get<PaginatedResponse<LandingPage>>(
+    const response = await apiClient.get<any>(
       `/api/v1/landing_pages?${queryParams.toString()}`
     );
-    return response;
+
+    // API now returns mobile-friendly field names (view_count, submission_count)
+    return {
+      data: response.data || [],
+      pagination: {
+        page: response.pagination?.current_page || 1,
+        per_page: response.pagination?.per_page || 20,
+        total: response.pagination?.total_count || 0,
+        total_pages: response.pagination?.total_pages || 1,
+      },
+    };
   } catch (error: any) {
     throw {
       message: error.response?.data?.message || 'Failed to fetch landing pages',
@@ -87,9 +97,9 @@ export async function updateLandingPage(
  */
 export async function publishLandingPage(id: string): Promise<LandingPage> {
   try {
-    const response = await apiClient.patch<LandingPage>(
-      `/api/v1/landing_pages/${id}`,
-      { status: 'published' }
+    const response = await apiClient.post<LandingPage>(
+      `/api/v1/landing_pages/${id}/publish`,
+      {}
     );
     return response;
   } catch (error: any) {
@@ -105,9 +115,9 @@ export async function publishLandingPage(id: string): Promise<LandingPage> {
  */
 export async function unpublishLandingPage(id: string): Promise<LandingPage> {
   try {
-    const response = await apiClient.patch<LandingPage>(
-      `/api/v1/landing_pages/${id}`,
-      { status: 'draft' }
+    const response = await apiClient.post<LandingPage>(
+      `/api/v1/landing_pages/${id}/unpublish`,
+      {}
     );
     return response;
   } catch (error: any) {

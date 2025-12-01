@@ -9,7 +9,7 @@ interface UIState {
 }
 
 const initialState: UIState = {
-  theme: 'light',
+  theme: 'dark',
   fontSize: 'medium',
   isOnline: true,
   notificationSettings: {

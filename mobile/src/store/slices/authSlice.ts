@@ -1,13 +1,21 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AuthState, LoginCredentials, User } from '@types';
+import { AuthState, LoginCredentials, User, MFAVerifyRequest, MFAResendRequest } from '@types';
 import * as authService from '@services/auth';
+import * as mfaService from '@services/mfa';
 
-const initialState: AuthState = {
+interface ExtendedAuthState extends AuthState {
+  mfaSessionToken: string | null;
+  mfaRequired: boolean;
+}
+
+const initialState: ExtendedAuthState = {
   user: null,
   token: null,
   isAuthenticated: false,
   isLoading: false,
   error: null,
+  mfaSessionToken: null,
+  mfaRequired: false,
 };
 
 // Async Thunks
@@ -59,6 +67,32 @@ export const refreshToken = createAsyncThunk(
   }
 );
 
+// MFA Verification
+export const verifyMFA = createAsyncThunk(
+  'auth/verifyMFA',
+  async (request: MFAVerifyRequest, { rejectWithValue }) => {
+    try {
+      const response = await mfaService.verifyMFACode(request);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// Resend MFA Code
+export const resendMFACode = createAsyncThunk(
+  'auth/resendMFACode',
+  async (request: MFAResendRequest, { rejectWithValue }) => {
+    try {
+      const response = await mfaService.resendMFACode(request);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -70,6 +104,14 @@ const authSlice = createSlice({
       state.user = action.payload;
       state.isAuthenticated = true;
     },
+    setMFARequired: (state, action: PayloadAction<{ required: boolean; sessionToken: string | null }>) => {
+      state.mfaRequired = action.payload.required;
+      state.mfaSessionToken = action.payload.sessionToken;
+    },
+    clearMFA: (state) => {
+      state.mfaRequired = false;
+      state.mfaSessionToken = null;
+    },
   },
   extraReducers: (builder) => {
     // Login
@@ -80,9 +122,19 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.api_key;
-        state.isAuthenticated = true;
+
+        // Check if MFA is required
+        if (action.payload.mfa_required && action.payload.mfa_session_token) {
+          state.mfaRequired = true;
+          state.mfaSessionToken = action.payload.mfa_session_token;
+          state.isAuthenticated = false;
+        } else {
+          state.user = action.payload.user;
+          state.token = action.payload.api_key;
+          state.isAuthenticated = true;
+          state.mfaRequired = false;
+          state.mfaSessionToken = null;
+        }
         state.error = null;
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -102,6 +154,8 @@ const authSlice = createSlice({
         state.token = null;
         state.isAuthenticated = false;
         state.error = null;
+        state.mfaRequired = false;
+        state.mfaSessionToken = null;
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -141,8 +195,40 @@ const authSlice = createSlice({
         state.token = null;
         state.isAuthenticated = false;
       });
+
+    // Verify MFA
+    builder
+      .addCase(verifyMFA.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(verifyMFA.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.token = action.payload.api_key;
+        state.isAuthenticated = true;
+        state.mfaRequired = false;
+        state.mfaSessionToken = null;
+        state.error = null;
+      })
+      .addCase(verifyMFA.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // Resend MFA Code
+    builder
+      .addCase(resendMFACode.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(resendMFACode.fulfilled, (state) => {
+        state.error = null;
+      })
+      .addCase(resendMFACode.rejected, (state, action) => {
+        state.error = action.payload as string;
+      });
   },
 });
 
-export const { clearError, setUser } = authSlice.actions;
+export const { clearError, setUser, setMFARequired, clearMFA } = authSlice.actions;
 export default authSlice.reducer;

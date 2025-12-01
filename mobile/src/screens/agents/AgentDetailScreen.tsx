@@ -11,7 +11,7 @@ import {
   SafeAreaView,
   Modal,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { AlertCircle, FilePlus, TrendingUp, Plug, Workflow, Bot, CheckCircle, Clock, Loader, HelpCircle, PlayCircle, X } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '@store';
 import { fetchAgentDetail, executeAgentAsync, clearExecution, clearCurrentAgent } from '@store/slices/agentsSlice';
@@ -69,14 +69,18 @@ export default function AgentDetailScreen({ navigation, route }: AgentDetailScre
   }, [execution]);
 
   const getIconForAgent = (agentType: string) => {
-    const iconMap: Record<string, string> = {
-      content_generator: 'file-document-plus',
-      data_processor: 'chart-line',
-      api_integration: 'api',
-      workflow_automation: 'workflow',
-      custom: 'robot',
-    };
-    return iconMap[agentType] || 'robot';
+    switch (agentType) {
+      case 'content_generator':
+        return FilePlus;
+      case 'data_processor':
+        return TrendingUp;
+      case 'api_integration':
+        return Plug;
+      case 'workflow_automation':
+        return Workflow;
+      default:
+        return Bot;
+    }
   };
 
   const getLabelForAgentType = (agentType: string) => {
@@ -149,15 +153,15 @@ export default function AgentDetailScreen({ navigation, route }: AgentDetailScre
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'clock-outline';
+        return Clock;
       case 'processing':
-        return 'loading';
+        return Loader;
       case 'completed':
-        return 'check-circle';
+        return CheckCircle;
       case 'failed':
-        return 'alert-circle';
+        return AlertCircle;
       default:
-        return 'help-circle';
+        return HelpCircle;
     }
   };
 
@@ -175,7 +179,7 @@ export default function AgentDetailScreen({ navigation, route }: AgentDetailScre
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centerContainer}>
-          <MaterialCommunityIcons name="alert-circle" size={64} color={colors.error} />
+          <AlertCircle size={64} color={colors.error} />
           <Text style={[styles.errorText, { color: colors.error }]}>
             Failed to load agent
           </Text>
@@ -198,11 +202,7 @@ export default function AgentDetailScreen({ navigation, route }: AgentDetailScre
           <View
             style={[styles.agentIconContainer, { backgroundColor: colors.primary + '20' }]}
           >
-            <MaterialCommunityIcons
-              name={getIconForAgent(agent.agent_type) as any}
-              size={40}
-              color={colors.primary}
-            />
+            {React.createElement(getIconForAgent(agent.agent_type), { size: 40, color: colors.primary })}
           </View>
           <Text style={[styles.agentName, { color: colors.text }]}>{agent.name}</Text>
           <Text style={[styles.agentType, { color: colors.textSecondary }]}>
@@ -325,8 +325,7 @@ export default function AgentDetailScreen({ navigation, route }: AgentDetailScre
                 key={`${capability}-${index}`}
                 style={[styles.capabilityItem, { borderColor: colors.border }]}
               >
-                <MaterialCommunityIcons
-                  name="check-circle"
+                <CheckCircle
                   size={18}
                   color={colors.success}
                   style={styles.capabilityIcon}
@@ -356,7 +355,7 @@ export default function AgentDetailScreen({ navigation, route }: AgentDetailScre
             </>
           ) : (
             <>
-              <MaterialCommunityIcons name="play-circle" size={20} color="white" />
+              <PlayCircle size={20} color="white" />
               <Text style={styles.executeButtonText}>Execute Agent</Text>
             </>
           )}
@@ -384,7 +383,7 @@ export default function AgentDetailScreen({ navigation, route }: AgentDetailScre
                 dispatch(clearExecution());
               }}
             >
-              <MaterialCommunityIcons name="close" size={24} color={colors.text} />
+              <X size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -394,11 +393,10 @@ export default function AgentDetailScreen({ navigation, route }: AgentDetailScre
                 {/* Status Card */}
                 <View style={[styles.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <View style={styles.statusRow}>
-                    <MaterialCommunityIcons
-                      name={getStatusIcon(execution.status) as any}
-                      size={32}
-                      color={getStatusColor(execution.status)}
-                    />
+                    {React.createElement(getStatusIcon(execution.status), {
+                      size: 32,
+                      color: getStatusColor(execution.status),
+                    })}
                     <View style={styles.statusInfo}>
                       <Text style={[styles.statusLabel, { color: colors.textSecondary }]}>
                         Status

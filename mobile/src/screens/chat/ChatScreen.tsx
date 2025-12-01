@@ -13,28 +13,102 @@ import {
   Alert,
   Modal,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { MessageCircle, X, Lightbulb, Mic, Send, Plus, FileText, Users, Mail, CheckSquare, Globe, CloudUpload, HelpCircle, ChevronRight } from 'lucide-react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import * as chatService from '@services/chat';
+import { setSSEEventCallback, SSEEvent } from '@services/chat';
 import { ChatMessage } from '@types';
 import { formatRelativeTime } from '@utils/formatters';
+import { useAppSelector, useAppDispatch } from '@store';
+import {
+  setMessages,
+  addMessage,
+  updateMessage,
+  clearMessages,
+  setLoading,
+  setError as setChatError,
+} from '@store/slices/chatSlice';
+import { getColors } from '@theme/colors';
+import { useVoiceInput } from '../../hooks/useVoiceInput';
+import TaskMonitor from '@components/TaskMonitor';
+import { useTaskMonitor, parseTaskEvent } from '../../contexts/TaskMonitorContext';
+
+// Quick action options for the idea menu
+const QUICK_ACTIONS = [
+  { id: 'documents', label: 'Show documents', Icon: FileText, message: 'Show my documents' },
+  { id: 'contacts', label: 'Show contacts', Icon: Users, message: 'Show my contacts' },
+  { id: 'campaigns', label: 'Show campaigns', Icon: Mail, message: 'Show my campaigns' },
+  { id: 'tasks', label: 'Show my tasks', Icon: CheckSquare, message: 'Show my tasks' },
+  { id: 'landing-page', label: 'Create a landing page', Icon: Globe, message: 'Help me create a landing page' },
+  { id: 'upload', label: 'Upload a document', Icon: CloudUpload, message: 'I want to upload a document' },
+  { id: 'help', label: 'What can you do?', Icon: HelpCircle, message: 'What can you help me with?' },
+];
 
 export default function ChatScreen() {
   const navigation = useNavigation<any>();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const route = useRoute<any>();
+  const dispatch = useAppDispatch();
+  const { theme } = useAppSelector((state) => state.ui);
+  const { messages, isLoading, error } = useAppSelector((state) => state.chat);
+  const colors = getColors(theme);
   const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showTaskMenu, setShowTaskMenu] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
   const [selectedMessageForTask, setSelectedMessageForTask] = useState<ChatMessage | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
-  // Load chat history on mount
+  // Task monitor integration
+  const { addOrUpdateTask } = useTaskMonitor();
+
+  // Set up SSE event callback for task updates
   useEffect(() => {
-    loadChatHistory();
-  }, []);
+    const handleSSEEvent = (event: SSEEvent) => {
+      // Handle task events
+      const taskEvent = parseTaskEvent(event);
+      if (taskEvent) {
+        addOrUpdateTask(taskEvent);
+      }
+    };
+
+    setSSEEventCallback(handleSSEEvent);
+
+    // Cleanup on unmount
+    return () => {
+      setSSEEventCallback(null);
+    };
+  }, [addOrUpdateTask]);
+
+  // Load chat history on mount (only if not already loaded)
+  useEffect(() => {
+    if (!historyLoaded && messages.length === 0) {
+      loadChatHistory();
+    }
+  }, [historyLoaded, messages.length]);
+
+  // Handle new conversation request (from AppHeader)
+  useEffect(() => {
+    if (route.params?.resetChat) {
+      handleClearConversation();
+      // Clear the param so it doesn't trigger again
+      navigation.setParams({ resetChat: undefined });
+    }
+  }, [route.params?.resetChat]);
+
+  const handleClearConversation = async () => {
+    try {
+      // Clear local messages immediately for responsiveness
+      dispatch(clearMessages());
+      setHistoryLoaded(false);
+      // Call API to clear server-side history
+      await chatService.clearConversation();
+    } catch (err: any) {
+      console.error('Error clearing conversation:', err);
+      // Don't show error - local clear still worked
+    }
+  };
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -45,20 +119,23 @@ export default function ChatScreen() {
 
   const loadChatHistory = async () => {
     try {
-      setIsLoading(true);
-      const history = await chatService.getChatHistory({ page: 1, perPage: 50 });
-      setMessages(
+      dispatch(setLoading(true));
+      const response = await chatService.getChatHistory({ perPage: 50 });
+      // Response now returns { messages, hasMore, total }
+      const history = response.messages || [];
+      dispatch(setMessages(
         history.map((msg) => ({
           ...msg,
           id: msg.id || `${Date.now()}-${Math.random()}`,
         }))
-      );
-      setError(null);
+      ));
+      dispatch(setChatError(null));
+      setHistoryLoaded(true);
     } catch (err: any) {
-      setError('Failed to load chat history');
+      dispatch(setChatError('Failed to load chat history'));
       console.error('Error loading history:', err);
     } finally {
-      setIsLoading(false);
+      dispatch(setLoading(false));
     }
   };
 
@@ -74,12 +151,12 @@ export default function ChatScreen() {
       timestamp: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    dispatch(addMessage(userMessage));
     setInputText('');
-    setError(null);
+    dispatch(setChatError(null));
 
     try {
-      setIsLoading(true);
+      dispatch(setLoading(true));
 
       // Create AI message placeholder
       const aiMessageId = `${Date.now()}-ai`;
@@ -91,7 +168,7 @@ export default function ChatScreen() {
         is_streaming: true,
       };
 
-      setMessages((prev) => [...prev, aiMessage]);
+      dispatch(addMessage(aiMessage));
 
       // Stream response
       let fullResponse = '';
@@ -99,29 +176,15 @@ export default function ChatScreen() {
         fullResponse += chunk;
 
         // Update message with streaming content
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === aiMessageId
-              ? { ...msg, content: fullResponse }
-              : msg
-          )
-        );
+        dispatch(updateMessage({ id: aiMessageId, updates: { content: fullResponse } }));
       }
 
       // Mark as complete
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === aiMessageId
-            ? { ...msg, is_streaming: false }
-            : msg
-        )
-      );
+      dispatch(updateMessage({ id: aiMessageId, updates: { is_streaming: false } }));
     } catch (err: any) {
-      setError(err.message || 'Failed to send message');
-      // Remove incomplete AI message
-      setMessages((prev) => prev.filter((msg) => msg.id !== `${Date.now()}-ai`));
+      dispatch(setChatError(err.message || 'Failed to send message'));
     } finally {
-      setIsLoading(false);
+      dispatch(setLoading(false));
     }
   };
 
@@ -132,29 +195,6 @@ export default function ChatScreen() {
     Alert.alert(
       'Voice Input Coming Soon',
       'STT (Speech-to-Text) using Eleven Labs Scribe v3 is planned to match the web app.'
-    );
-  };
-
-  const handleClearChat = () => {
-    Alert.alert(
-      'Clear Conversation',
-      'Are you sure you want to clear the chat history?',
-      [
-        { text: 'Cancel', onPress: () => {} },
-        {
-          text: 'Clear',
-          onPress: async () => {
-            try {
-              await chatService.clearConversation();
-              setMessages([]);
-              setError(null);
-            } catch (err: any) {
-              setError('Failed to clear conversation');
-            }
-          },
-          style: 'destructive',
-        },
-      ]
     );
   };
 
@@ -174,6 +214,54 @@ export default function ChatScreen() {
     });
   };
 
+  const handleQuickAction = async (action: typeof QUICK_ACTIONS[0]) => {
+    setShowQuickActions(false);
+    // Set the message and send it
+    const message = action.message;
+
+    const userMessage: ChatMessage = {
+      id: `${Date.now()}-user`,
+      role: 'user',
+      content: message,
+      timestamp: new Date().toISOString(),
+    };
+
+    dispatch(addMessage(userMessage));
+    dispatch(setChatError(null));
+
+    try {
+      dispatch(setLoading(true));
+
+      // Create AI message placeholder
+      const aiMessageId = `${Date.now()}-ai`;
+      const aiMessage: ChatMessage = {
+        id: aiMessageId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date().toISOString(),
+        is_streaming: true,
+      };
+
+      dispatch(addMessage(aiMessage));
+
+      // Stream response
+      let fullResponse = '';
+      for await (const chunk of chatService.sendChatMessage(message)) {
+        fullResponse += chunk;
+
+        // Update message with streaming content
+        dispatch(updateMessage({ id: aiMessageId, updates: { content: fullResponse } }));
+      }
+
+      // Mark as complete
+      dispatch(updateMessage({ id: aiMessageId, updates: { is_streaming: false } }));
+    } catch (err: any) {
+      dispatch(setChatError(err.message || 'Failed to send message'));
+    } finally {
+      dispatch(setLoading(false));
+    }
+  };
+
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isUser = item.role === 'user';
 
@@ -187,13 +275,17 @@ export default function ChatScreen() {
         <View
           style={[
             styles.messageBubble,
-            isUser ? styles.userBubble : styles.aiBubble,
+            isUser
+              ? { backgroundColor: colors.primary }
+              : { backgroundColor: colors.surface },
           ]}
         >
           <Text
             style={[
               styles.messageText,
-              isUser ? styles.userText : styles.aiText,
+              isUser
+                ? { color: '#fff' }
+                : { color: colors.text },
             ]}
           >
             {item.content}
@@ -201,12 +293,12 @@ export default function ChatScreen() {
           {item.is_streaming && (
             <ActivityIndicator
               size="small"
-              color={isUser ? '#fff' : '#333'}
+              color={isUser ? '#fff' : colors.text}
               style={styles.streamingIndicator}
             />
           )}
         </View>
-        <Text style={styles.timestamp}>
+        <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
           {formatRelativeTime(item.timestamp)}
         </Text>
       </View>
@@ -215,63 +307,33 @@ export default function ChatScreen() {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <MaterialCommunityIcons
-        name="chat-outline"
-        size={64}
-        color="#ccc"
-      />
-      <Text style={styles.emptyTitle}>No messages yet</Text>
-      <Text style={styles.emptySubtitle}>
+      <MessageCircle size={64} color={colors.textTertiary} />
+      <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No messages yet</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>
         Start a conversation with the AI assistant
       </Text>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
         keyboardVerticalOffset={90}
       >
-        {/* Header with actions */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Amos AI</Text>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={() => handleCreateTaskFromMessage(messages[messages.length - 1] || { id: '', role: 'user', content: '', timestamp: new Date().toISOString() })}
-              disabled={messages.length === 0}
-              style={styles.headerButton}
-            >
-              <MaterialCommunityIcons
-                name="checkbox-marked-circle-plus-outline"
-                size={24}
-                color={messages.length > 0 ? '#666' : '#ccc'}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleClearChat}
-              disabled={messages.length === 0}
-              style={styles.headerButton}
-            >
-              <MaterialCommunityIcons
-                name="delete-outline"
-                size={24}
-                color={messages.length > 0 ? '#666' : '#ccc'}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Error message */}
         {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={() => setError(null)}>
-              <MaterialCommunityIcons name="close" size={20} color="#c33" />
+          <View style={[styles.errorBox, { backgroundColor: colors.errorLight, borderColor: colors.error }]}>
+            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+            <TouchableOpacity onPress={() => dispatch(setChatError(null))}>
+              <X size={20} color={colors.error} />
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Task Monitor - shows active agent tasks */}
+        <TaskMonitor />
 
         {/* Messages list */}
         <FlatList
@@ -285,19 +347,27 @@ export default function ChatScreen() {
         />
 
         {/* Input area */}
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
           {isLoading ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator size="small" color="#4A90E2" />
-              <Text style={styles.loadingText}>AI is thinking...</Text>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>AI is thinking...</Text>
             </View>
           ) : (
-            <View style={styles.inputWrapper}>
+            <View style={[styles.inputWrapper, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <TouchableOpacity
+                style={styles.ideaButton}
+                onPress={() => setShowQuickActions(true)}
+                disabled={isLoading}
+              >
+                <Lightbulb size={22} color={colors.primary} />
+              </TouchableOpacity>
+
               <TextInput
                 ref={inputRef}
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="Ask me anything..."
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.textTertiary}
                 value={inputText}
                 onChangeText={setInputText}
                 multiline
@@ -310,27 +380,26 @@ export default function ChatScreen() {
                 onPress={handleVoiceInput}
                 disabled={isLoading || isListening}
               >
-                <MaterialCommunityIcons
-                  name={isListening ? 'microphone' : 'microphone-outline'}
+                <Mic
                   size={20}
-                  color={isListening ? '#4A90E2' : '#666'}
+                  color={isListening ? colors.primary : colors.textSecondary}
                 />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
                   styles.sendButton,
-                  (!inputText.trim() || isLoading) && styles.sendButtonDisabled,
+                  { backgroundColor: colors.primary },
+                  (!inputText.trim() || isLoading) && { backgroundColor: colors.border },
                 ]}
                 onPress={handleSendMessage}
                 disabled={!inputText.trim() || isLoading}
               >
-                <MaterialCommunityIcons
-                  name="send"
+                <Send
                   size={20}
                   color={
                     !inputText.trim() || isLoading
-                      ? '#ccc'
+                      ? colors.textTertiary
                       : '#fff'
                   }
                 />
@@ -353,23 +422,19 @@ export default function ChatScreen() {
             { backgroundColor: 'rgba(0,0,0,0.5)' },
           ]}
         >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create Task from Message</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Create Task from Message</Text>
               <TouchableOpacity onPress={() => setShowTaskMenu(false)}>
-                <MaterialCommunityIcons
-                  name="close"
-                  size={24}
-                  color="#333"
-                />
+                <X size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.modalBody}>
               <View style={styles.messagePreview}>
-                <Text style={styles.messagePreviewLabel}>Message:</Text>
-                <View style={styles.messagePreviewBox}>
-                  <Text style={styles.messagePreviewText} numberOfLines={3}>
+                <Text style={[styles.messagePreviewLabel, { color: colors.textSecondary }]}>Message:</Text>
+                <View style={[styles.messagePreviewBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={[styles.messagePreviewText, { color: colors.text }]} numberOfLines={3}>
                     {selectedMessageForTask?.content}
                   </Text>
                 </View>
@@ -377,23 +442,59 @@ export default function ChatScreen() {
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
-                  style={[styles.modalButton, { backgroundColor: '#f0f0f0' }]}
+                  style={[styles.modalButton, { backgroundColor: colors.surface }]}
                   onPress={() => setShowTaskMenu(false)}
                 >
-                  <Text style={[styles.modalButtonText, { color: '#333' }]}>Cancel</Text>
+                  <Text style={[styles.modalButtonText, { color: colors.text }]}>Cancel</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.modalButton, { backgroundColor: '#4A90E2' }]}
+                  style={[styles.modalButton, { backgroundColor: colors.primary }]}
                   onPress={handleCreateQuickTask}
                 >
-                  <MaterialCommunityIcons name="plus" size={18} color="#fff" />
+                  <Plus size={18} color="#fff" />
                   <Text style={[styles.modalButtonText, { color: '#fff', marginLeft: 6 }]}>Create Task</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Quick Actions Modal */}
+      <Modal
+        visible={showQuickActions}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowQuickActions(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowQuickActions(false)}
+        >
+          <View style={[styles.quickActionsContent, { backgroundColor: colors.background }]}>
+            <View style={[styles.quickActionsHeader, { borderBottomColor: colors.border }]}>
+              <Lightbulb size={20} color={colors.primary} />
+              <Text style={[styles.quickActionsTitle, { color: colors.text }]}>Quick Actions</Text>
+            </View>
+
+            {QUICK_ACTIONS.map((action) => (
+              <TouchableOpacity
+                key={action.id}
+                style={[styles.quickActionItem, { borderBottomColor: colors.border }]}
+                onPress={() => handleQuickAction(action)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.quickActionIconContainer, { backgroundColor: colors.primaryLight }]}>
+                  <action.Icon size={22} color={colors.primary} />
+                </View>
+                <Text style={[styles.quickActionLabel, { color: colors.text }]}>{action.label}</Text>
+                <ChevronRight size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
@@ -402,7 +503,6 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   flex: {
     flex: 1,
@@ -411,19 +511,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
   },
   errorBox: {
-    backgroundColor: '#fee',
-    borderColor: '#fcc',
     borderWidth: 1,
     marginHorizontal: 16,
     marginTop: 8,
@@ -436,7 +537,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorText: {
-    color: '#c33',
     fontSize: 13,
     flex: 1,
   },
@@ -555,10 +655,6 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     backgroundColor: '#ddd',
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
   headerButton: {
     padding: 4,
   },
@@ -626,5 +722,47 @@ const styles = StyleSheet.create({
   modalButtonText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  ideaButton: {
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    marginRight: 4,
+  },
+  quickActionsContent: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 32,
+  },
+  quickActionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    gap: 8,
+  },
+  quickActionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  quickActionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  quickActionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  quickActionLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
   },
 });

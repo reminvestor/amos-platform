@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Card, ActivityIndicator, Chip } from 'react-native-paper';
+import { MotiView } from 'moti';
+import { FilePlus, TrendingUp, Plug, Workflow, Settings, ChevronRight, AlertCircle } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '@store';
 import { fetchAgents } from '@store/slices/agentsSlice';
@@ -49,14 +49,18 @@ export default function AgentListScreen({ navigation }: AgentListScreenProps) {
   };
 
   const getIconForAgent = (agent: Agent) => {
-    const iconMap: Record<string, string> = {
-      content_generator: 'file-document-plus',
-      data_processor: 'chart-line',
-      api_integration: 'api',
-      workflow_automation: 'workflow',
-      custom: 'robot',
-    };
-    return iconMap[agent.agent_type] || 'robot';
+    switch (agent.agent_type) {
+      case 'content_generator':
+        return FilePlus;
+      case 'data_processor':
+        return TrendingUp;
+      case 'api_integration':
+        return Plug;
+      case 'workflow_automation':
+        return Workflow;
+      default:
+        return Settings;
+    }
   };
 
   const getLabelForAgentType = (agentType: string) => {
@@ -70,46 +74,56 @@ export default function AgentListScreen({ navigation }: AgentListScreenProps) {
     return labelMap[agentType] || agentType;
   };
 
-  const renderAgentItem = ({ item }: { item: Agent }) => (
-    <TouchableOpacity
-      style={[styles.agentCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-      onPress={() => handleAgentPress(item)}
+  const renderAgentItem = ({ item, index }: { item: Agent; index: number }) => (
+    <MotiView
+      from={{ opacity: 0, translateY: 20 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: 'timing', duration: 350, delay: index * 50 }}
     >
-      <View style={styles.agentHeader}>
-        <View
-          style={[styles.agentIconContainer, { backgroundColor: colors.primary + '20' }]}
-        >
-          <MaterialCommunityIcons
-            name={getIconForAgent(item) as any}
-            size={24}
-            color={colors.primary}
-          />
+      <Card
+        style={[styles.agentCard, { backgroundColor: colors.card }]}
+        onPress={() => handleAgentPress(item)}
+        mode="outlined"
+      >
+      <Card.Content>
+        <View style={styles.agentHeader}>
+          <View
+            style={[styles.agentIconContainer, { backgroundColor: colors.primary + '20' }]}
+          >
+            {React.createElement(getIconForAgent(item), { size: 24, color: colors.primary })}
+          </View>
+          <View style={styles.agentInfo}>
+            <Text style={[styles.agentName, { color: colors.text }]}>{item.name}</Text>
+            <Text style={[styles.agentType, { color: colors.textSecondary }]}>
+              {getLabelForAgentType(item.agent_type)}
+            </Text>
+          </View>
+          <ChevronRight size={24} color={colors.textSecondary} />
         </View>
-        <View style={styles.agentInfo}>
-          <Text style={[styles.agentName, { color: colors.text }]}>{item.name}</Text>
-          <Text style={[styles.agentType, { color: colors.textSecondary }]}>
-            {getLabelForAgentType(item.agent_type)}
+        {item.description && (
+          <Text style={[styles.agentDescription, { color: colors.textSecondary }]}>
+            {item.description}
           </Text>
-        </View>
-        <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textSecondary} />
-      </View>
-      {item.description && (
-        <Text style={[styles.agentDescription, { color: colors.textSecondary }]}>
-          {item.description}
-        </Text>
-      )}
-      {item.interactive && (
-        <View style={styles.interactiveTag}>
-          <MaterialCommunityIcons name="chat-processing" size={12} color={colors.primary} />
-          <Text style={[styles.interactiveText, { color: colors.primary }]}>Interactive</Text>
-        </View>
-      )}
-    </TouchableOpacity>
+        )}
+        {item.interactive && (
+          <Chip
+            icon="chat-processing"
+            mode="flat"
+            compact
+            style={[styles.interactiveChip, { backgroundColor: colors.primary + '15' }]}
+            textStyle={[styles.interactiveText, { color: colors.primary }]}
+          >
+            Interactive
+          </Chip>
+        )}
+      </Card.Content>
+    </Card>
+    </MotiView>
   );
 
   const renderEmpty = () => (
     <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
-      <MaterialCommunityIcons name="robot-outline" size={64} color={colors.textSecondary} />
+      <Settings size={64} color={colors.textSecondary} />
       <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
         No agents available
       </Text>
@@ -121,7 +135,7 @@ export default function AgentListScreen({ navigation }: AgentListScreenProps) {
 
   const renderError = () => (
     <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
-      <MaterialCommunityIcons name="alert-circle" size={64} color={colors.error} />
+      <AlertCircle size={64} color={colors.error} />
       <Text style={[styles.errorText, { color: colors.error }]}>
         Failed to load agents
       </Text>
@@ -173,10 +187,8 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   agentCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 16,
     marginBottom: 12,
+    borderRadius: 12,
   },
   agentHeader: {
     flexDirection: 'row',
@@ -207,14 +219,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 8,
   },
-  interactiveTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  interactiveChip: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
+    marginTop: 4,
   },
   interactiveText: {
     fontSize: 11,
@@ -225,6 +232,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingTop: 100,
   },
   emptyText: {
     fontSize: 16,

@@ -25,6 +25,11 @@ Rails.application.routes.draw do
 
   # API routes
   namespace :api do
+    # Mobile App Authentication
+    post 'auth/login', to: 'auth#login'
+    get 'auth/me', to: 'auth#me'
+    post 'auth/refresh_token', to: 'auth#refresh_token'
+
     # Voice Assistant API
     namespace :voice do
       resources :sessions, only: [:create, :show], controller: "voice_sessions", param: :id do

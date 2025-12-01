@@ -1,112 +1,119 @@
-class Api::V1::AgentsController < Api::BaseController
-  before_action :authenticate_user!
-  before_action :set_entity
-  before_action :set_agent, only: [:show, :execute]
+# frozen_string_literal: true
 
-  # GET /api/v1/agents
-  def index
-    agents = @entity.custom_agent_definitions.active.select(:id, :name, :agent_type, :definition, :created_at)
+module Api
+  module V1
+    class AgentsController < BaseController
+      before_action :set_agent, only: [:show, :execute]
 
-    render json: {
-      agents: agents.map { |a| agent_list_json(a) },
-      total: agents.count
-    }
-  end
+      # GET /api/v1/agents
+      def index
+        # Use AgentPlugin which is the existing agents table
+        agents = AgentPlugin.for_entity(current_entity).active
+        agents_data = agents.map { |a| agent_list_json(a) }
 
-  # GET /api/v1/agents/:id
-  def show
-    render json: agent_detail_json(@agent)
-  end
+        render json: {
+          agents: agents_data,
+          total: agents_data.size
+        }
+      end
 
-  # POST /api/v1/agents/:id/execute
-  def execute
-    task = params[:task]
+      # GET /api/v1/agents/:id
+      def show
+        render json: agent_detail_json(@agent)
+      end
 
-    unless task.present?
-      return render json: { error: 'Task is required' }, status: :bad_request
+      # POST /api/v1/agents/:id/execute
+      def execute
+        task = params[:task]
+
+        unless task.present?
+          return render json: { error: 'Task is required' }, status: :bad_request
+        end
+
+        begin
+          # Create execution record
+          execution = @agent.agent_plugin_executions.create!(
+            entity: current_entity,
+            user: current_user,
+            status: 'pending',
+            input_data: { task: task, source: 'mobile_app' }
+          )
+
+          render json: {
+            job_id: execution.id,
+            status: execution.status,
+            message: "Agent execution started"
+          }, status: :accepted
+        rescue => e
+          Rails.logger.error("Agent execution error: #{e.message}")
+          render json: {
+            error: 'Failed to execute agent',
+            message: e.message
+          }, status: :service_unavailable
+        end
+      end
+
+      # GET /api/v1/agents/agent_types
+      def agent_types
+        types = %w[executor planner analyst verifier fixer custom].map { |type| { key: type, label: type.humanize } }
+        render json: { types: types }
+      end
+
+      private
+
+      def agent_list_json(agent)
+        config = agent.configuration || {}
+        {
+          id: agent.id,
+          name: agent.name,
+          description: agent.description,
+          agent_type: agent.role,
+          interactive: config['interactive'] || false,
+          icon: icon_for_role(agent.role),
+          created_at: agent.created_at.iso8601
+        }
+      end
+
+      def agent_detail_json(agent)
+        config = agent.configuration || {}
+        {
+          id: agent.id,
+          name: agent.name,
+          description: agent.description,
+          agent_type: agent.role,
+          interactive: config['interactive'] || false,
+          icon: icon_for_role(agent.role),
+          fields: config['fields'] || [],
+          required_context: config['required_context'] || [],
+          capabilities: agent.capability_names,
+          tools: agent.agent_tools.map { |t| { name: t.tool_name, required: t.required } },
+          created_at: agent.created_at.iso8601,
+          updated_at: agent.updated_at.iso8601
+        }
+      end
+
+      def icon_for_role(role)
+        case role
+        when 'executor'
+          'play-circle'
+        when 'planner'
+          'clipboard-list'
+        when 'analyst'
+          'chart-line'
+        when 'verifier'
+          'check-circle'
+        when 'fixer'
+          'wrench'
+        else
+          'robot'
+        end
+      end
+
+      def set_agent
+        @agent = AgentPlugin.for_entity(current_entity).active.find(params[:id])
+      rescue ActiveRecord::RecordNotFound
+        render json: { error: 'Agent not found' }, status: :not_found
+      end
     end
-
-    begin
-      job_record = @agent.execute(task, {
-        session_id: SecureRandom.uuid,
-        user_id: current_user.id,
-        source: 'mobile_app'
-      })
-
-      render json: {
-        job_id: job_record.job_id,
-        status: job_record.status,
-        message: "Agent execution started"
-      }, status: :accepted
-    rescue => e
-      Rails.logger.error("Agent execution error: #{e.message}")
-      render json: {
-        error: 'Failed to execute agent',
-        message: e.message
-      }, status: :service_unavailable
-    end
-  end
-
-  # GET /api/v1/agents/types/list
-  def agent_types
-    types = CustomAgentDefinition::AGENT_TYPES.map { |type| { key: type, label: type.humanize } }
-    render json: { types: types }
-  end
-
-  private
-
-  def agent_list_json(agent)
-    definition = agent.definition || {}
-    {
-      id: agent.id,
-      name: agent.name,
-      description: definition['description'],
-      agent_type: agent.agent_type,
-      interactive: definition['interactive'] || false,
-      icon: icon_for_type(agent.agent_type),
-      created_at: agent.created_at.iso8601
-    }
-  end
-
-  def agent_detail_json(agent)
-    definition = agent.definition || {}
-    {
-      id: agent.id,
-      name: agent.name,
-      description: definition['description'],
-      agent_type: agent.agent_type,
-      interactive: definition['interactive'] || false,
-      icon: icon_for_type(agent.agent_type),
-      fields: definition['fields'] || [],
-      required_context: definition['required_context'] || [],
-      capabilities: definition['capabilities'] || [],
-      created_at: agent.created_at.iso8601,
-      updated_at: agent.updated_at.iso8601
-    }
-  end
-
-  def icon_for_type(type)
-    case type
-    when 'content_generator'
-      'file-document-plus'
-    when 'data_processor'
-      'chart-line'
-    when 'api_integration'
-      'api'
-    when 'workflow_automation'
-      'workflow'
-    else
-      'robot'
-    end
-  end
-
-  def set_agent
-    @agent = @entity.custom_agent_definitions.active.find(params[:id])
-  rescue ActiveRecord::RecordNotFound
-    render json: { error: 'Agent not found' }, status: :not_found
-  end
-
-  def set_entity
-    @entity = current_user.entity
   end
 end

@@ -1,4 +1,4 @@
-import apiClient from './api';
+import { apiClient } from './api';
 import { Agent, AgentDetail, AgentExecution, AgentExecutionRequest } from '@types';
 
 /**
@@ -6,8 +6,9 @@ import { Agent, AgentDetail, AgentExecution, AgentExecutionRequest } from '@type
  */
 export async function getAgents(): Promise<{ agents: Agent[]; total: number }> {
   try {
-    const response = await apiClient.get('/api/v1/agents');
-    return response.data;
+    // apiClient.get() already returns response.data
+    const data = await apiClient.get<{ agents: Agent[]; total: number }>('/api/v1/agents');
+    return data;
   } catch (error: any) {
     console.error('Error fetching agents:', error);
     throw error;
@@ -19,8 +20,9 @@ export async function getAgents(): Promise<{ agents: Agent[]; total: number }> {
  */
 export async function getAgent(id: string): Promise<AgentDetail> {
   try {
-    const response = await apiClient.get(`/api/v1/agents/${id}`);
-    return response.data;
+    // apiClient.get() already returns response.data
+    const data = await apiClient.get<AgentDetail>(`/api/v1/agents/${id}`);
+    return data;
   } catch (error: any) {
     console.error(`Error fetching agent ${id}:`, error);
     throw error;
@@ -35,11 +37,12 @@ export async function executeAgent(
   request: AgentExecutionRequest
 ): Promise<AgentExecution> {
   try {
-    const response = await apiClient.post(`/api/v1/agents/${agentId}/execute`, {
+    // apiClient.post() already returns response.data
+    const data = await apiClient.post<AgentExecution>(`/api/v1/agents/${agentId}/execute`, {
       task: request.task,
       context: request.context
     });
-    return response.data;
+    return data;
   } catch (error: any) {
     console.error(`Error executing agent ${agentId}:`, error);
     throw error;
@@ -53,8 +56,9 @@ export async function getAgentTypes(): Promise<
   { key: string; label: string }[]
 > {
   try {
-    const response = await apiClient.get('/api/v1/agents/agent_types');
-    return response.data.types;
+    // apiClient.get() already returns response.data
+    const data = await apiClient.get<{ types: { key: string; label: string }[] }>('/api/v1/agents/agent_types');
+    return data.types;
   } catch (error: any) {
     console.error('Error fetching agent types:', error);
     throw error;

@@ -10,7 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ArrowLeft, Trash2, AlertCircle, CheckCircle, Clock, Circle, CircleSlash, ChevronRight, Calendar, Pencil, Trash, X, Check, Link2 } from 'lucide-react-native';
 import { useAppDispatch, useAppSelector } from '@store';
 import {
   fetchTaskDetail,
@@ -188,15 +188,15 @@ export default function TaskDetailScreen({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'check-circle';
+        return CheckCircle;
       case 'in_progress':
-        return 'progress-clock';
+        return Clock;
       case 'pending':
-        return 'circle-outline';
+        return Circle;
       case 'cancelled':
-        return 'close-circle';
+        return CircleSlash;
       default:
-        return 'circle-outline';
+        return Circle;
     }
   };
 
@@ -251,29 +251,21 @@ export default function TaskDetailScreen({
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons
-              name="arrow-left"
-              size={24}
-              color={colors.text}
-            />
+            <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
           <TouchableOpacity
             onPress={handleDelete}
             disabled={isUpdating}
           >
-            <MaterialCommunityIcons
-              name="trash-can-outline"
-              size={24}
-              color={colors.error}
-            />
+            <Trash2 size={24} color={colors.error} />
           </TouchableOpacity>
         </View>
 
         {/* Error State */}
         {error && (
           <View style={[styles.errorContainer, { backgroundColor: colors.error }]}>
-            <MaterialCommunityIcons name="alert-circle" size={20} color="#fff" />
+            <AlertCircle size={20} color="#fff" />
             <StyledText style={[styles.errorText, { color: '#fff' }]}>
               {error}
             </StyledText>
@@ -321,11 +313,10 @@ export default function TaskDetailScreen({
               },
             ]}
           >
-            <MaterialCommunityIcons
-              name={getStatusIcon(task.status)}
-              size={28}
-              color={getStatusColor(task.status)}
-            />
+            {React.createElement(getStatusIcon(task.status), {
+              size: 28,
+              color: getStatusColor(task.status),
+            })}
             <View style={{ flex: 1, marginLeft: 8 }}>
               <StyledText style={[styles.cardLabel, { color: colors.textSecondary }]}>
                 Status
@@ -334,11 +325,7 @@ export default function TaskDetailScreen({
                 {task.status.replace('_', ' ')}
               </StyledText>
             </View>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={20}
-              color={colors.textSecondary}
-            />
+            <ChevronRight size={20} color={colors.textSecondary} />
           </TouchableOpacity>
 
           {/* Priority Card */}
@@ -368,11 +355,7 @@ export default function TaskDetailScreen({
                 {task.priority}
               </StyledText>
             </View>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={20}
-              color={colors.textSecondary}
-            />
+            <ChevronRight size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -388,11 +371,7 @@ export default function TaskDetailScreen({
             },
           ]}
         >
-          <MaterialCommunityIcons
-            name="calendar"
-            size={20}
-            color={isOverdue ? colors.error : colors.primary}
-          />
+          <Calendar size={20} color={isOverdue ? colors.error : colors.primary} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <StyledText style={[styles.cardLabel, { color: colors.textSecondary }]}>
               Due Date
@@ -501,11 +480,7 @@ export default function TaskDetailScreen({
               },
             ]}
           >
-            <MaterialCommunityIcons
-              name="link-variant"
-              size={20}
-              color={colors.primary}
-            />
+            <Link2 size={20} color={colors.primary} />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <StyledText style={[styles.cardLabel, { color: colors.textSecondary }]}>
                 Related {task.related_entity.type}
@@ -549,11 +524,7 @@ export default function TaskDetailScreen({
               { backgroundColor: colors.primary },
             ]}
           >
-            <MaterialCommunityIcons
-              name="pencil"
-              size={18}
-              color="#fff"
-            />
+            <Pencil size={18} color="#fff" />
             <StyledText style={[styles.actionButtonText, { color: '#fff' }]}>
               Edit
             </StyledText>
@@ -567,11 +538,7 @@ export default function TaskDetailScreen({
               { backgroundColor: colors.error },
             ]}
           >
-            <MaterialCommunityIcons
-              name="trash-can"
-              size={18}
-              color="#fff"
-            />
+            <Trash size={18} color="#fff" />
             <StyledText style={[styles.actionButtonText, { color: '#fff' }]}>
               Delete
             </StyledText>
@@ -613,11 +580,7 @@ export default function TaskDetailScreen({
                 onPress={() => setShowStatusModal(false)}
                 disabled={isUpdating}
               >
-                <MaterialCommunityIcons
-                  name="close"
-                  size={24}
-                  color={colors.text}
-                />
+                <X size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -639,11 +602,10 @@ export default function TaskDetailScreen({
                     },
                   ]}
                 >
-                  <MaterialCommunityIcons
-                    name={getStatusIcon(status)}
-                    size={24}
-                    color={getStatusColor(status)}
-                  />
+                  {React.createElement(getStatusIcon(status), {
+                    size: 24,
+                    color: getStatusColor(status),
+                  })}
                   <StyledText
                     style={[
                       styles.modalOptionText,
@@ -657,8 +619,7 @@ export default function TaskDetailScreen({
                     {status.replace('_', ' ')}
                   </StyledText>
                   {selectedStatus === status && (
-                    <MaterialCommunityIcons
-                      name="check"
+                    <Check
                       size={20}
                       color={getStatusColor(status)}
                       style={{ marginLeft: 'auto' }}
@@ -703,11 +664,7 @@ export default function TaskDetailScreen({
                 onPress={() => setShowPriorityModal(false)}
                 disabled={isUpdating}
               >
-                <MaterialCommunityIcons
-                  name="close"
-                  size={24}
-                  color={colors.text}
-                />
+                <X size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -748,8 +705,7 @@ export default function TaskDetailScreen({
                     {priority}
                   </StyledText>
                   {selectedPriority === priority && (
-                    <MaterialCommunityIcons
-                      name="check"
+                    <Check
                       size={20}
                       color={getPriorityColor(priority)}
                       style={{ marginLeft: 'auto' }}

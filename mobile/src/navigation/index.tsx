@@ -1,25 +1,32 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import { NavigationContainer, useNavigationState } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Building2, Bot, Settings2, Settings } from 'lucide-react-native';
+import { SegmentedButtons } from 'react-native-paper';
+import { useAppSelector } from '@store';
+import { getColors } from '@theme/colors';
+import AppHeader from '@components/AppHeader';
+import GlobalChatInput from '@components/GlobalChatInput';
 
 // Auth Screens (will be created)
 import LoginScreen from '@screens/auth/LoginScreen';
 import ForgotPasswordScreen from '@screens/auth/ForgotPasswordScreen';
+import MFAVerificationScreen from '@screens/auth/MFAVerificationScreen';
 
 // Main Screens (will be created)
 import ChatScreen from '@screens/chat/ChatScreen';
 import CampaignListScreen from '@screens/campaigns/CampaignListScreen';
 import CampaignDetailScreen from '@screens/campaigns/CampaignDetailScreen';
 import ContactListScreen from '@screens/contacts/ContactListScreen';
+import AddContactScreen from '@screens/contacts/AddContactScreen';
 import LandingPageListScreen from '@screens/landing-pages/LandingPageListScreen';
-import TaskListScreen from '@screens/tasks/TaskListScreen';
-import TaskDetailScreen from '@screens/tasks/TaskDetailScreen';
-import TaskEditScreen from '@screens/tasks/TaskEditScreen';
 import AgentListScreen from '@screens/agents/AgentListScreen';
 import AgentDetailScreen from '@screens/agents/AgentDetailScreen';
 import SettingsScreen from '@screens/settings/SettingsScreen';
+import TermsScreen from '@screens/legal/TermsScreen';
+import PrivacyPolicyScreen from '@screens/legal/PrivacyPolicyScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -28,19 +35,39 @@ const Tab = createBottomTabNavigator();
  * Auth Navigator - Shown to unauthenticated users
  */
 export function AuthNavigator() {
+  const { theme } = useAppSelector((state) => state.ui);
+  const colors = getColors(theme);
+
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        cardStyle: { backgroundColor: 'white' },
+        contentStyle: { backgroundColor: colors.background },
       }}
     >
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="MFAVerification" component={MFAVerificationScreen} />
       <Stack.Screen
         name="ForgotPassword"
         component={ForgotPasswordScreen}
         options={{
-          cardStyle: { backgroundColor: 'white' },
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
+      <Stack.Screen
+        name="Terms"
+        component={TermsScreen}
+        options={{
+          headerShown: true,
+          title: 'Terms of Service',
+        }}
+      />
+      <Stack.Screen
+        name="Privacy"
+        component={PrivacyPolicyScreen}
+        options={{
+          headerShown: true,
+          title: 'Privacy Policy',
         }}
       />
     </Stack.Navigator>
@@ -48,115 +75,87 @@ export function AuthNavigator() {
 }
 
 /**
- * Chat Navigator Stack
+ * Entity Screen with Paper SegmentedButtons
  */
-function ChatNavigator() {
+function EntityWithSegments() {
+  const { theme } = useAppSelector((state) => state.ui);
+  const colors = getColors(theme);
+  const [activeTab, setActiveTab] = useState('campaigns');
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'campaigns':
+        return <CampaignListScreen />;
+      case 'contacts':
+        return <ContactListScreen />;
+      case 'pages':
+        return <LandingPageListScreen />;
+      default:
+        return <CampaignListScreen />;
+    }
+  };
+
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: true,
-        headerBackTitleVisible: false,
-      }}
-    >
-      <Stack.Screen
-        name="ChatMain"
-        component={ChatScreen}
-        options={{ title: 'Amos AI' }}
-      />
-    </Stack.Navigator>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={[segmentStyles.container, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <SegmentedButtons
+          value={activeTab}
+          onValueChange={setActiveTab}
+          buttons={[
+            { value: 'campaigns', label: 'Campaigns' },
+            { value: 'contacts', label: 'Contacts' },
+            { value: 'pages', label: 'Pages' },
+          ]}
+          style={segmentStyles.segmentedButtons}
+        />
+      </View>
+      <View style={{ flex: 1 }}>
+        {renderContent()}
+      </View>
+    </View>
   );
 }
 
+const segmentStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  segmentedButtons: {
+    borderRadius: 4, // Reduced from 8 for more squared look
+  },
+});
+
 /**
- * Campaign Navigator Stack
+ * Entity Navigator Stack - Wraps segment tabs with stack for detail screens
  */
-function CampaignNavigator() {
+function EntityNavigator() {
+  const { theme } = useAppSelector((state) => state.ui);
+  const colors = getColors(theme);
+
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         headerBackTitleVisible: false,
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.text,
       }}
     >
       <Stack.Screen
-        name="CampaignList"
-        component={CampaignListScreen}
-        options={{ title: 'Campaigns' }}
+        name="EntityMain"
+        component={EntityWithSegments}
       />
       <Stack.Screen
         name="CampaignDetail"
         component={CampaignDetailScreen}
-        options={{ title: 'Campaign Details' }}
-      />
-    </Stack.Navigator>
-  );
-}
-
-/**
- * Contact Navigator Stack
- */
-function ContactNavigator() {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: true,
-        headerBackTitleVisible: false,
-      }}
-    >
-      <Stack.Screen
-        name="ContactList"
-        component={ContactListScreen}
-        options={{ title: 'Contacts' }}
-      />
-    </Stack.Navigator>
-  );
-}
-
-/**
- * Landing Page Navigator Stack
- */
-function LandingPageNavigator() {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: true,
-        headerBackTitleVisible: false,
-      }}
-    >
-      <Stack.Screen
-        name="LandingPageList"
-        component={LandingPageListScreen}
-        options={{ title: 'Landing Pages' }}
-      />
-    </Stack.Navigator>
-  );
-}
-
-/**
- * Task Navigator Stack
- */
-function TaskNavigator() {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: true,
-        headerBackTitleVisible: false,
-      }}
-    >
-      <Stack.Screen
-        name="TaskList"
-        component={TaskListScreen}
-        options={{ title: 'Tasks' }}
+        options={{ headerShown: true, title: 'Campaign Details' }}
       />
       <Stack.Screen
-        name="TaskDetail"
-        component={TaskDetailScreen}
-        options={{ title: 'Task Details' }}
-      />
-      <Stack.Screen
-        name="TaskEdit"
-        component={TaskEditScreen}
-        options={{ title: 'Edit Task' }}
+        name="AddContact"
+        component={AddContactScreen}
+        options={{ headerShown: true, title: 'Add Contact' }}
       />
     </Stack.Navigator>
   );
@@ -169,19 +168,18 @@ function AgentNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         headerBackTitleVisible: false,
       }}
     >
       <Stack.Screen
         name="AgentList"
         component={AgentListScreen}
-        options={{ title: 'Agents' }}
       />
       <Stack.Screen
         name="AgentDetail"
         component={AgentDetailScreen}
-        options={{ title: 'Agent Details' }}
+        options={{ headerShown: true, title: 'Agent Details' }}
       />
     </Stack.Navigator>
   );
@@ -194,89 +192,82 @@ function SettingsNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         headerBackTitleVisible: false,
       }}
     >
       <Stack.Screen
         name="SettingsMain"
         component={SettingsScreen}
-        options={{ title: 'Settings' }}
+      />
+      <Stack.Screen
+        name="Terms"
+        component={TermsScreen}
+        options={{ headerShown: true, title: 'Terms of Service' }}
+      />
+      <Stack.Screen
+        name="Privacy"
+        component={PrivacyPolicyScreen}
+        options={{ headerShown: true, title: 'Privacy Policy' }}
       />
     </Stack.Navigator>
   );
 }
 
 /**
- * Root Navigator - Main app navigation
+ * Main Tab Navigator - 4 tabs: Entity, AMOS, Agents, Settings
  */
-export function RootNavigator() {
+function MainTabs({ onTabChange }: { onTabChange?: (tabName: string) => void }) {
+  const { theme } = useAppSelector((state) => state.ui);
+  const colors = getColors(theme);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ color, size }) => {
-          let iconName = 'help';
-
           switch (route.name) {
-            case 'Chat':
-              iconName = 'chat';
-              break;
-            case 'Campaigns':
-              iconName = 'email';
-              break;
-            case 'Contacts':
-              iconName = 'account-multiple';
-              break;
-            case 'LandingPages':
-              iconName = 'file-document';
-              break;
-            case 'Tasks':
-              iconName = 'checkbox-marked-circle-outline';
-              break;
+            case 'Entity':
+              return <Building2 size={size} color={color} />;
+            case 'AMOS':
+              return <Bot size={size} color={color} />;
             case 'Agents':
-              iconName = 'robot';
-              break;
+              return <Settings2 size={size} color={color} />;
             case 'Settings':
-              iconName = 'cog';
-              break;
+              return <Settings size={size} color={color} />;
+            default:
+              return <Bot size={size} color={color} />;
           }
-
-          return (
-            <MaterialCommunityIcons name={iconName as any} size={size} color={color} />
-          );
         },
-        tabBarActiveTintColor: '#4A90E2',
-        tabBarInactiveTintColor: '#999',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        },
         tabBarLabelStyle: {
           fontSize: 12,
         },
       })}
+      screenListeners={{
+        state: (e) => {
+          const state = e.data.state;
+          if (state && onTabChange) {
+            const currentRoute = state.routes[state.index];
+            onTabChange(currentRoute.name);
+          }
+        },
+      }}
     >
       <Tab.Screen
-        name="Chat"
-        component={ChatNavigator}
-        options={{ title: 'Chat' }}
+        name="AMOS"
+        component={ChatScreen}
+        options={{ title: 'AMOS' }}
       />
       <Tab.Screen
-        name="Campaigns"
-        component={CampaignNavigator}
-        options={{ title: 'Campaigns' }}
-      />
-      <Tab.Screen
-        name="Contacts"
-        component={ContactNavigator}
-        options={{ title: 'Contacts' }}
-      />
-      <Tab.Screen
-        name="LandingPages"
-        component={LandingPageNavigator}
-        options={{ title: 'Pages' }}
-      />
-      <Tab.Screen
-        name="Tasks"
-        component={TaskNavigator}
-        options={{ title: 'Tasks' }}
+        name="Entity"
+        component={EntityNavigator}
+        options={{ title: 'Business' }}
       />
       <Tab.Screen
         name="Agents"
@@ -291,3 +282,41 @@ export function RootNavigator() {
     </Tab.Navigator>
   );
 }
+
+/**
+ * Wrapper that adds AppHeader to main tabs
+ */
+function MainWithHeader() {
+  const { theme } = useAppSelector((state) => state.ui);
+  const colors = getColors(theme);
+  const { user } = useAppSelector((state) => state.auth);
+  const entityName = user?.entity_name || 'Business';
+  const [currentTab, setCurrentTab] = useState('AMOS');
+
+  // Hide global chat input on AMOS tab since it has its own chat interface
+  const showGlobalInput = currentTab !== 'AMOS';
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <AppHeader showNewChat={true} subtitle={entityName} />
+      <MainTabs onTabChange={setCurrentTab} />
+      <GlobalChatInput visible={showGlobalInput} />
+    </View>
+  );
+}
+
+/**
+ * Root Navigator - Main app navigation
+ */
+export function RootNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="Main" component={MainWithHeader} />
+    </Stack.Navigator>
+  );
+}
+

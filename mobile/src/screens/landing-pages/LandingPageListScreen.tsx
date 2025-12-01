@@ -3,21 +3,20 @@ import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  ActivityIndicator,
   RefreshControl,
-  TextInput,
-  Modal,
   Alert,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Card, Searchbar, IconButton, Button, ActivityIndicator, Chip, Portal, Modal } from 'react-native-paper';
+import { MotiView } from 'moti';
+import { FileText, Eye, Percent, FileQuestion } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAppDispatch, useAppSelector } from '@store';
+import { useAppSelector } from '@store';
 import { LandingPage } from '@types';
 import { formatShortDate, formatPercentage } from '@utils/formatters';
 import * as landingPageService from '@services/landing-pages';
+import { getColors } from '@theme/colors';
 
 interface LandingPageListScreenProps {
   navigation: any;
@@ -26,6 +25,8 @@ interface LandingPageListScreenProps {
 type StatusFilter = 'draft' | 'published' | undefined;
 
 export default function LandingPageListScreen({ navigation }: LandingPageListScreenProps) {
+  const { theme } = useAppSelector((state) => state.ui);
+  const colors = getColors(theme);
   const [pages, setPages] = useState<LandingPage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -180,130 +181,151 @@ export default function LandingPageListScreen({ navigation }: LandingPageListScr
     );
   };
 
-  const renderPageCard = ({ item }: { item: LandingPage }) => {
+  const showActionMenu = (page: LandingPage) => {
+    const isPublished = page.status === 'published';
+    Alert.alert(
+      'Actions',
+      '',
+      [
+        {
+          text: isPublished ? 'Unpublish' : 'Publish',
+          onPress: () => handlePublishToggle(page),
+        },
+        {
+          text: 'View Submissions',
+          onPress: () => handleViewSubmissions(page),
+        },
+        {
+          text: 'Delete',
+          onPress: () => handleDeletePage(page),
+          style: 'destructive',
+        },
+        { text: 'Cancel', onPress: () => {} },
+      ]
+    );
+  };
+
+  const renderPageCard = ({ item, index }: { item: LandingPage; index: number }) => {
     const isPublished = item.status === 'published';
     const submissionBadge = (item.unread_submissions_count || 0) > 0;
 
     return (
-      <TouchableOpacity
-        style={styles.pageCard}
-        onPress={() => handlePagePress(item)}
+      <MotiView
+        from={{ opacity: 0, translateY: 20 }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: 'timing', duration: 350, delay: index * 50 }}
       >
-        {/* Header with status and actions */}
-        <View style={styles.cardHeader}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.pageTitle} numberOfLines={2}>
-              {item.title}
-            </Text>
-            <View style={styles.statusBadgeContainer}>
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: isPublished ? '#27AE60' : '#95A5A6' },
-                ]}
-              >
-                <Text style={styles.statusText}>
-                  {isPublished ? 'Published' : 'Draft'}
+        <Card
+          style={[styles.pageCard, { backgroundColor: colors.card }]}
+          onPress={() => handlePagePress(item)}
+          mode="outlined"
+        >
+          <Card.Content>
+            {/* Header with status and actions */}
+            <View style={styles.cardHeader}>
+              <View style={styles.titleContainer}>
+                <Text style={[styles.pageTitle, { color: colors.text }]} numberOfLines={2}>
+                  {item.title}
+                </Text>
+                <View style={styles.statusBadgeContainer}>
+                  <Chip
+                    compact
+                    mode="flat"
+                    style={[
+                      styles.statusChip,
+                      { backgroundColor: isPublished ? colors.success + '20' : colors.textTertiary + '20' },
+                    ]}
+                    textStyle={[
+                      styles.statusChipText,
+                      { color: isPublished ? colors.success : colors.textTertiary },
+                    ]}
+                  >
+                    {isPublished ? 'Published' : 'Draft'}
+                  </Chip>
+                  {submissionBadge && (
+                    <View style={[styles.unreadBadge, { backgroundColor: colors.error }]}>
+                      <Text style={styles.unreadBadgeText}>
+                        {item.unread_submissions_count}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <IconButton
+                icon="dots-vertical"
+                size={20}
+                iconColor={colors.textSecondary}
+                onPress={() => showActionMenu(item)}
+                style={styles.menuButton}
+              />
+            </View>
+
+            {/* Description */}
+            {item.description && (
+              <Text style={[styles.pageDescription, { color: colors.textSecondary }]} numberOfLines={2}>
+                {item.description}
+              </Text>
+            )}
+
+            {/* Stats */}
+            <View style={[styles.statsContainer, { borderTopColor: colors.border, borderBottomColor: colors.border }]}>
+              <View style={styles.statItem}>
+                <FileText size={16} color={colors.primary} />
+                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Submissions:</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{item.submission_count || 0}</Text>
+              </View>
+
+              <View style={styles.statItem}>
+                <Eye size={16} color={colors.success} />
+                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Views:</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>{item.view_count || 0}</Text>
+              </View>
+
+              <View style={styles.statItem}>
+                <Percent size={16} color={colors.warning} />
+                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>Conv:</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {item.submission_count && item.view_count
+                    ? formatPercentage(item.submission_count / item.view_count)
+                    : 'N/A'}
                 </Text>
               </View>
-              {submissionBadge && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadBadgeText}>
-                    {item.unread_submissions_count}
-                  </Text>
-                </View>
+            </View>
+
+            {/* Footer */}
+            <View style={styles.cardFooter}>
+              <Text style={[styles.footerText, { color: colors.textTertiary }]}>
+                Created {formatShortDate(item.created_at)}
+              </Text>
+              {item.published_at && (
+                <Text style={[styles.footerText, { color: colors.textTertiary }]}>
+                  Updated {formatShortDate(item.published_at)}
+                </Text>
               )}
             </View>
-          </View>
-
-          {/* Action Menu Button */}
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => {
-              Alert.alert(
-                'Actions',
-                '',
-                [
-                  {
-                    text: isPublished ? 'Unpublish' : 'Publish',
-                    onPress: () => handlePublishToggle(item),
-                  },
-                  {
-                    text: 'View Submissions',
-                    onPress: () => handleViewSubmissions(item),
-                  },
-                  {
-                    text: 'Delete',
-                    onPress: () => handleDeletePage(item),
-                    style: 'destructive',
-                  },
-                  { text: 'Cancel', onPress: () => {} },
-                ]
-              );
-            }}
-          >
-            <MaterialCommunityIcons name="dots-vertical" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Description */}
-        {item.description && (
-          <Text style={styles.pageDescription} numberOfLines={2}>
-            {item.description}
-          </Text>
-        )}
-
-        {/* Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <MaterialCommunityIcons name="form-textbox" size={16} color="#4A90E2" />
-            <Text style={styles.statLabel}>Submissions:</Text>
-            <Text style={styles.statValue}>{item.submission_count || 0}</Text>
-          </View>
-
-          <View style={styles.statItem}>
-            <MaterialCommunityIcons name="eye" size={16} color="#27AE60" />
-            <Text style={styles.statLabel}>Views:</Text>
-            <Text style={styles.statValue}>{item.view_count || 0}</Text>
-          </View>
-
-          <View style={styles.statItem}>
-            <MaterialCommunityIcons name="percent" size={16} color="#F5A623" />
-            <Text style={styles.statLabel}>Conversion:</Text>
-            <Text style={styles.statValue}>
-              {item.submission_count && item.view_count
-                ? formatPercentage(item.submission_count / item.view_count)
-                : 'N/A'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Footer */}
-        <View style={styles.cardFooter}>
-          <Text style={styles.footerText}>
-            Created {formatShortDate(item.created_at)}
-          </Text>
-          {item.published_at && (
-            <Text style={styles.footerText}>
-              Updated {formatShortDate(item.published_at)}
-            </Text>
-          )}
-        </View>
-      </TouchableOpacity>
+          </Card.Content>
+        </Card>
+      </MotiView>
     );
   };
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <MaterialCommunityIcons name="file-document-outline" size={64} color="#ccc" />
-      <Text style={styles.emptyTitle}>No landing pages yet</Text>
-      <Text style={styles.emptySubtitle}>
+      <FileQuestion size={64} color={colors.textTertiary} />
+      <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No landing pages yet</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>
         Create your first landing page to collect submissions
       </Text>
-      <TouchableOpacity style={styles.createButton} onPress={handleCreatePage}>
-        <MaterialCommunityIcons name="plus" size={20} color="#fff" />
-        <Text style={styles.createButtonText}>Create Landing Page</Text>
-      </TouchableOpacity>
+      <Button
+        mode="contained"
+        onPress={handleCreatePage}
+        icon="plus"
+        style={styles.createButton}
+        buttonColor={colors.primary}
+      >
+        Create Landing Page
+      </Button>
     </View>
   );
 
@@ -311,56 +333,90 @@ export default function LandingPageListScreen({ navigation }: LandingPageListScr
     if (!isLoading || pages.length === 0) return null;
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color="#4A90E2" />
+        <ActivityIndicator size="small" color={colors.primary} />
       </View>
     );
   };
 
+  const getFilterLabel = () => {
+    if (statusFilter === 'draft') return 'Draft';
+    if (statusFilter === 'published') return 'Published';
+    return 'All';
+  };
+
   if (isLoading && pages.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Loading landing pages...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading landing pages...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View>
-          <Text style={styles.headerTitle}>Landing Pages</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Landing Pages</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>
             {pagination.total} total pages
           </Text>
         </View>
-        <TouchableOpacity style={styles.createButtonHeader} onPress={handleCreatePage}>
-          <MaterialCommunityIcons name="plus" size={24} color="#4A90E2" />
-        </TouchableOpacity>
+        <IconButton
+          icon="plus"
+          size={24}
+          iconColor={colors.primary}
+          onPress={handleCreatePage}
+        />
       </View>
 
       {/* Search Bar */}
-      <View style={styles.searchBar}>
-        <MaterialCommunityIcons name="magnify" size={20} color="#999" />
-        <TextInput
-          style={styles.searchInput}
+      <View style={styles.searchContainer}>
+        <Searchbar
           placeholder="Search landing pages..."
-          placeholderTextColor="#999"
           value={searchText}
           onChangeText={setSearchText}
+          style={[styles.searchBar, { backgroundColor: colors.surface }]}
+          inputStyle={{ color: colors.text }}
+          iconColor={colors.textTertiary}
+          placeholderTextColor={colors.textTertiary}
         />
-        <TouchableOpacity onPress={() => setIsFilterModalVisible(true)}>
-          <MaterialCommunityIcons name="filter" size={20} color="#4A90E2" />
-        </TouchableOpacity>
+        <IconButton
+          icon="filter-variant"
+          size={24}
+          iconColor={statusFilter ? colors.primary : colors.textSecondary}
+          onPress={() => setIsFilterModalVisible(true)}
+          style={[
+            styles.filterButton,
+            statusFilter && { backgroundColor: colors.primary + '15' },
+          ]}
+        />
       </View>
+
+      {/* Active Filter Chip */}
+      {statusFilter && (
+        <View style={styles.activeFilterContainer}>
+          <Chip
+            mode="outlined"
+            onClose={() => {
+              setStatusFilter(undefined);
+              loadPages();
+            }}
+            style={{ borderColor: colors.primary }}
+            textStyle={{ color: colors.primary }}
+          >
+            Status: {getFilterLabel()}
+          </Chip>
+        </View>
+      )}
 
       {/* Error message */}
       {error && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={[styles.errorBox, { backgroundColor: colors.errorLight, borderLeftColor: colors.error }]}>
+          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
         </View>
       )}
 
@@ -374,7 +430,7 @@ export default function LandingPageListScreen({ navigation }: LandingPageListScr
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#4A90E2"
+            tintColor={colors.primary}
           />
         }
         onEndReached={handleLoadMore}
@@ -384,62 +440,61 @@ export default function LandingPageListScreen({ navigation }: LandingPageListScr
       />
 
       {/* Filter Modal */}
-      <Modal
-        visible={isFilterModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setIsFilterModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filter Pages</Text>
-              <TouchableOpacity onPress={() => setIsFilterModalVisible(false)}>
-                <MaterialCommunityIcons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.filterOptions}>
-              <Text style={styles.filterLabel}>Status</Text>
-              {[
-                { value: undefined, label: 'All' },
-                { value: 'draft', label: 'Draft' },
-                { value: 'published', label: 'Published' },
-              ].map((option) => (
-                <TouchableOpacity
-                  key={option.label}
-                  style={[
-                    styles.filterOption,
-                    statusFilter === option.value && styles.filterOptionSelected,
-                  ]}
-                  onPress={() => {
-                    setStatusFilter(statusFilter === option.value ? undefined : option.value as StatusFilter);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.filterOptionText,
-                      statusFilter === option.value && styles.filterOptionTextSelected,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              style={styles.applyFilterButton}
-              onPress={() => {
-                setIsFilterModalVisible(false);
-                loadPages();
-              }}
-            >
-              <Text style={styles.applyFilterButtonText}>Apply Filter</Text>
-            </TouchableOpacity>
+      <Portal>
+        <Modal
+          visible={isFilterModalVisible}
+          onDismiss={() => setIsFilterModalVisible(false)}
+          contentContainerStyle={[styles.modalContent, { backgroundColor: colors.surface }]}
+        >
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Filter Pages</Text>
+            <IconButton
+              icon="close"
+              size={24}
+              iconColor={colors.text}
+              onPress={() => setIsFilterModalVisible(false)}
+            />
           </View>
-        </View>
-      </Modal>
+
+          <View style={styles.filterOptions}>
+            <Text style={[styles.filterLabel, { color: colors.text }]}>Status</Text>
+            {[
+              { value: undefined, label: 'All' },
+              { value: 'draft' as StatusFilter, label: 'Draft' },
+              { value: 'published' as StatusFilter, label: 'Published' },
+            ].map((option) => (
+              <Chip
+                key={option.label}
+                mode={statusFilter === option.value ? 'flat' : 'outlined'}
+                selected={statusFilter === option.value}
+                onPress={() => setStatusFilter(option.value)}
+                style={[
+                  styles.filterChip,
+                  statusFilter === option.value && { backgroundColor: colors.primary + '20' },
+                ]}
+                textStyle={[
+                  styles.filterChipText,
+                  { color: statusFilter === option.value ? colors.primary : colors.textSecondary },
+                ]}
+              >
+                {option.label}
+              </Chip>
+            ))}
+          </View>
+
+          <Button
+            mode="contained"
+            onPress={() => {
+              setIsFilterModalVisible(false);
+              loadPages();
+            }}
+            style={styles.applyFilterButton}
+            buttonColor={colors.primary}
+          >
+            Apply Filter
+          </Button>
+        </Modal>
+      </Portal>
     </SafeAreaView>
   );
 }
@@ -447,7 +502,6 @@ export default function LandingPageListScreen({ navigation }: LandingPageListScr
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
   },
   centerContainer: {
     flex: 1,
@@ -457,7 +511,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#666',
   },
   header: {
     flexDirection: 'row',
@@ -465,71 +518,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#999',
     marginTop: 4,
   },
-  createButtonHeader: {
-    padding: 8,
-  },
-  searchBar: {
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginVertical: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#eee',
+    paddingVertical: 8,
   },
-  searchInput: {
+  searchBar: {
     flex: 1,
-    marginHorizontal: 8,
-    fontSize: 14,
-    color: '#333',
+    elevation: 0,
+    borderRadius: 8,
+  },
+  filterButton: {
+    marginLeft: 4,
+  },
+  activeFilterContainer: {
+    paddingHorizontal: 12,
+    paddingBottom: 8,
   },
   errorBox: {
-    backgroundColor: '#fee',
-    marginHorizontal: 16,
+    marginHorizontal: 12,
     marginVertical: 8,
     padding: 12,
     borderRadius: 6,
     borderLeftWidth: 4,
-    borderLeftColor: '#c33',
   },
   errorText: {
-    color: '#c33',
     fontSize: 13,
   },
   listContent: {
     paddingHorizontal: 12,
     paddingVertical: 8,
+    flexGrow: 1,
   },
   pageCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
-    padding: 16,
     marginBottom: 12,
+    borderRadius: 12,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   titleContainer: {
     flex: 1,
@@ -537,30 +577,26 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
+    fontWeight: '600',
     marginBottom: 8,
   },
   statusBadgeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+  statusChip: {
     marginRight: 8,
   },
-  statusText: {
+  statusChipText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#fff',
   },
   unreadBadge: {
-    backgroundColor: '#E74C3C',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 3,
+    borderRadius: 10,
+    minWidth: 20,
+    alignItems: 'center',
   },
   unreadBadgeText: {
     fontSize: 10,
@@ -568,12 +604,10 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   menuButton: {
-    padding: 8,
-    marginRight: -8,
+    margin: -8,
   },
   pageDescription: {
     fontSize: 13,
-    color: '#666',
     marginBottom: 12,
     lineHeight: 18,
   },
@@ -582,9 +616,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
     marginBottom: 12,
   },
   statItem: {
@@ -593,128 +625,81 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 11,
     marginHorizontal: 4,
   },
   statValue: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#333',
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   footerText: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 11,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingTop: 60,
   },
   emptyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
     marginTop: 12,
   },
   emptySubtitle: {
     fontSize: 13,
-    color: '#999',
     marginTop: 6,
     textAlign: 'center',
   },
   createButton: {
     marginTop: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: '#4A90E2',
     borderRadius: 8,
-  },
-  createButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
   },
   footerLoader: {
     paddingVertical: 16,
     alignItems: 'center',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
   modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingBottom: 24,
+    margin: 20,
+    borderRadius: 16,
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingLeft: 16,
+    paddingRight: 4,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
   },
   filterOptions: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    padding: 16,
   },
   filterLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#333',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  filterChip: {
     marginBottom: 8,
   },
-  filterOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  filterOptionSelected: {
-    backgroundColor: '#E8F1FF',
-    borderColor: '#4A90E2',
-  },
-  filterOptionText: {
+  filterChipText: {
     fontSize: 14,
-    color: '#666',
-  },
-  filterOptionTextSelected: {
-    color: '#4A90E2',
-    fontWeight: '600',
   },
   applyFilterButton: {
     marginHorizontal: 16,
-    marginTop: 16,
-    paddingVertical: 12,
-    backgroundColor: '#4A90E2',
     borderRadius: 8,
-    alignItems: 'center',
-  },
-  applyFilterButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Star } from 'lucide-react-native';
 import { useAppDispatch, useAppSelector } from '@store';
 import { toggleCampaignFavorite, toggleContactFavorite } from '@store/slices/favoritesSlice';
 import { getColors } from '@theme/colors';
@@ -42,10 +42,10 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
       style={styles.button}
       activeOpacity={0.7}
     >
-      <MaterialCommunityIcons
-        name={isFavorite ? 'star' : 'star-outline'}
+      <Star
         size={size}
         color={isFavorite ? colors.warning : colors.textTertiary}
+        fill={isFavorite ? colors.warning : 'transparent'}
       />
     </TouchableOpacity>
   );

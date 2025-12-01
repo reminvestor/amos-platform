@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Search, XCircle, SlidersHorizontal, AlertCircle, Check, CheckCircle, Clock, Circle, CircleSlash, CircleCheckBig, Plus } from 'lucide-react-native';
 import { useAppDispatch, useAppSelector } from '@store';
 import {
   fetchTasks,
@@ -129,15 +129,15 @@ export default function TaskListScreen({ navigation, route }: TaskListScreenProp
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'check-circle';
+        return CheckCircle;
       case 'in_progress':
-        return 'progress-clock';
+        return Clock;
       case 'pending':
-        return 'circle-outline';
+        return Circle;
       case 'cancelled':
-        return 'close-circle';
+        return CircleSlash;
       default:
-        return 'circle-outline';
+        return Circle;
     }
   };
 
@@ -230,7 +230,7 @@ export default function TaskListScreen({ navigation, route }: TaskListScreenProp
               onPress={() => handleCompleteTask(item.id)}
               style={[styles.quickCompleteBtn, { backgroundColor: colors.primary }]}
             >
-              <MaterialCommunityIcons name="check" size={16} color="#fff" />
+              <Check size={16} color="#fff" />
             </TouchableOpacity>
           )}
         </View>
@@ -247,11 +247,10 @@ export default function TaskListScreen({ navigation, route }: TaskListScreenProp
                 },
               ]}
             >
-              <MaterialCommunityIcons
-                name={getStatusIcon(item.status)}
-                size={12}
-                color={getStatusColor(item.status)}
-              />
+              {React.createElement(getStatusIcon(item.status), {
+                size: 12,
+                color: getStatusColor(item.status),
+              })}
               <StyledText
                 style={[
                   styles.badgeText,
@@ -339,8 +338,7 @@ export default function TaskListScreen({ navigation, route }: TaskListScreenProp
 
   const renderEmptyState = () => (
     <View style={[styles.emptyContainer, { paddingTop: insets.top + 100 }]}>
-      <MaterialCommunityIcons
-        name="checkbox-marked-circle-outline"
+      <CircleCheckBig
         size={64}
         color={colors.textSecondary}
       />
@@ -385,8 +383,7 @@ export default function TaskListScreen({ navigation, route }: TaskListScreenProp
             { borderColor: colors.border, backgroundColor: colors.background },
           ]}
         >
-          <MaterialCommunityIcons
-            name="magnify"
+          <Search
             size={20}
             color={colors.textSecondary}
           />
@@ -400,8 +397,7 @@ export default function TaskListScreen({ navigation, route }: TaskListScreenProp
           />
           {searchQuery !== '' && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <MaterialCommunityIcons
-                name="close-circle"
+              <XCircle
                 size={18}
                 color={colors.textSecondary}
               />
@@ -420,8 +416,7 @@ export default function TaskListScreen({ navigation, route }: TaskListScreenProp
             },
           ]}
         >
-          <MaterialCommunityIcons
-            name="filter-variant"
+          <SlidersHorizontal
             size={20}
             color={
               Object.keys(filters).length > 0 ? '#fff' : colors.text
@@ -433,7 +428,7 @@ export default function TaskListScreen({ navigation, route }: TaskListScreenProp
       {/* Error State */}
       {error && (
         <View style={[styles.errorContainer, { backgroundColor: colors.error }]}>
-          <MaterialCommunityIcons name="alert-circle" size={20} color="#fff" />
+          <AlertCircle size={20} color="#fff" />
           <StyledText style={[styles.errorText, { color: '#fff' }]}>
             {error}
           </StyledText>
@@ -492,8 +487,7 @@ export default function TaskListScreen({ navigation, route }: TaskListScreenProp
                 Filter Tasks
               </StyledText>
               <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-                <MaterialCommunityIcons
-                  name="close"
+                <XCircle
                   size={24}
                   color={colors.text}
                 />
@@ -693,7 +687,7 @@ export default function TaskListScreen({ navigation, route }: TaskListScreenProp
           },
         ]}
       >
-        <MaterialCommunityIcons name="plus" size={28} color="#fff" />
+        <Plus size={28} color="#fff" />
       </TouchableOpacity>
     </View>
   );
