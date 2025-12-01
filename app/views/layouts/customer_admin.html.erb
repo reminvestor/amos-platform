@@ -273,6 +273,10 @@
                 <%= link_to dashboard_energy_index_path, class: "nav-item #{'active' if controller_name == 'energy'}" do %>
                   <span>Agent Energy</span>
                 <% end %>
+                <%= link_to billing_path, class: "nav-item #{'active' if controller_name == 'billing'}" do %>
+                  <i data-lucide="coins" style="width: 16px; height: 16px;" class="me-1 text-warning"></i>
+                  <span>Work Tokens</span>
+                <% end %>
               </div>
             </div>
           </div>

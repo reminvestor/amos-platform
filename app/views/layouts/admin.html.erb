@@ -107,6 +107,11 @@
             <span>Scheduled Tasks</span>
           <% end %>
 
+          <%= link_to admin_billing_index_path, class: "nav-item #{'active' if controller_name == 'billing'}" do %>
+            <i data-lucide="credit-card"></i>
+            <span>Billing & Tokens</span>
+          <% end %>
+
           <%= link_to admin_agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
             <i data-lucide="bot"></i>
             <span>Agent Plugins</span>

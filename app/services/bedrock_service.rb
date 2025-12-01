@@ -3,6 +3,7 @@ require "json"
 
 class BedrockService
   include AgentLightningInstrumentable
+  include WorkTokenTrackable
 
   attr_reader :model_registry
 
@@ -399,6 +400,14 @@ class BedrockService
               cache_read: response_body["usage"]["cache_read_input_tokens"] || 0,
               full_model_id: model_id
             }
+          )
+          
+          # Track work tokens for billing
+          track_ai_work_tokens(
+            input_tokens: tokens[:input],
+            output_tokens: tokens[:output],
+            model: short_model_name,
+            metadata: { method: 'invoke_model', full_model_id: model_id }
           )
         end
 
@@ -1176,6 +1185,14 @@ class BedrockService
                     cache_read: cache_read,
                     full_model_id: model_id
                   }
+                )
+                
+                # Track work tokens for billing
+                track_ai_work_tokens(
+                  input_tokens: tokens[:input],
+                  output_tokens: tokens[:output],
+                  model: short_model_name,
+                  metadata: { method: 'invoke_model_with_response_stream', full_model_id: model_id, duration_ms: duration_ms }
                 )
               end
 
