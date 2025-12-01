@@ -1,0 +1,143 @@
+<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="mb-4">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb mb-2">
+            <li class="breadcrumb-item"><%= link_to "Billing", billing_path %></li>
+            <li class="breadcrumb-item"><%= link_to "Settings", billing_settings_path %></li>
+            <li class="breadcrumb-item active">Add Payment Method</li>
+          </ol>
+        </nav>
+        <h1 class="h3 mb-0 text-white">
+          <i data-lucide="credit-card" class="me-2 text-primary"></i>
+          Add Payment Method
+        </h1>
+        <p class="text-muted">Add a card for purchasing tokens and auto-replenishment</p>
+      </div>
+
+      <div class="card bg-dark border-secondary">
+        <div class="card-body">
+          <form id="payment-form">
+            <div class="mb-4">
+              <label class="form-label text-white">Card Details</label>
+              <div id="card-element" class="form-control bg-dark border-secondary" style="padding: 12px; min-height: 44px;">
+                <!-- Stripe Elements will be inserted here -->
+              </div>
+              <div id="card-errors" class="text-danger small mt-2" role="alert"></div>
+            </div>
+
+            <button type="submit" id="submit-button" class="btn btn-primary w-100" disabled>
+              <span id="button-text">Add Payment Method</span>
+              <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+            </button>
+          </form>
+
+          <div class="mt-4 text-center">
+            <p class="text-muted small mb-0">
+              <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+              Your payment info is securely processed by Stripe
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <%= link_to billing_settings_path, class: "btn btn-outline-secondary mt-3" do %>
+        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+        Back to Settings
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    const stripe = Stripe('<%= @publishable_key %>');
+    const elements = stripe.elements();
+    
+    // Custom styling for Stripe Elements
+    const style = {
+      base: {
+        color: '#fff',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontSmoothing: 'antialiased',
+        fontSize: '16px',
+        '::placeholder': {
+          color: '#6c757d'
+        }
+      },
+      invalid: {
+        color: '#dc3545',
+        iconColor: '#dc3545'
+      }
+    };
+    
+    const cardElement = elements.create('card', { style: style });
+    cardElement.mount('#card-element');
+    
+    const submitButton = document.getElementById('submit-button');
+    const cardErrors = document.getElementById('card-errors');
+    
+    // Enable submit button when card is complete
+    cardElement.on('change', function(event) {
+      submitButton.disabled = !event.complete;
+      if (event.error) {
+        cardErrors.textContent = event.error.message;
+      } else {
+        cardErrors.textContent = '';
+      }
+    });
+    
+    // Handle form submission
+    const form = document.getElementById('payment-form');
+    form.addEventListener('submit', async function(event) {
+      event.preventDefault();
+      
+      submitButton.disabled = true;
+      document.getElementById('button-text').classList.add('d-none');
+      document.getElementById('spinner').classList.remove('d-none');
+      
+      const { setupIntent, error } = await stripe.confirmCardSetup(
+        '<%= @setup_intent.client_secret %>',
+        {
+          payment_method: {
+            card: cardElement,
+          }
+        }
+      );
+      
+      if (error) {
+        cardErrors.textContent = error.message;
+        submitButton.disabled = false;
+        document.getElementById('button-text').classList.remove('d-none');
+        document.getElementById('spinner').classList.add('d-none');
+      } else {
+        // Submit the payment method ID to our server
+        const response = await fetch('<%= billing_confirm_payment_method_path %>', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify({
+            payment_method_id: setupIntent.payment_method
+          })
+        });
+        
+        if (response.ok) {
+          window.location.href = '<%= billing_settings_path %>';
+        } else {
+          const data = await response.json();
+          cardErrors.textContent = data.error || 'Failed to save payment method';
+          submitButton.disabled = false;
+          document.getElementById('button-text').classList.remove('d-none');
+          document.getElementById('spinner').classList.add('d-none');
+        }
+      }
+    });
+  });
+</script>
+
