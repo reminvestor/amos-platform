@@ -11,29 +11,110 @@ class BillingConfiguration < ApplicationRecord
   # Work token conversion: 1 work token = this many dollars
   WORK_TOKEN_VALUE = 0.00001  # $0.00001 per work token = 100,000 tokens per dollar
 
-  # Model pricing per million tokens (in dollars) - Bedrock pricing
+  # Model pricing per million tokens (in dollars) - AWS BEDROCK pricing
+  # Source: BedrockService::AVAILABLE_MODELS and AWS Bedrock pricing page
+  # These are the actual prices we pay AWS, not Anthropic direct pricing
+  # Updated: December 2024
   MODEL_PRICING = {
-    # Claude Sonnet 4.5 / 3.5
+    # ============================================
+    # Claude 4.5 Series (via Bedrock)
+    # ============================================
+    # Claude Sonnet 4.5: $3.00/M input, $15.00/M output
     'claude-sonnet-4-5' => { input: 3.00, output: 15.00 },
     'claude-4-5-sonnet' => { input: 3.00, output: 15.00 },
-    'claude-3-5-sonnet' => { input: 3.00, output: 15.00 },
-    'claude-sonnet-3.5' => { input: 3.00, output: 15.00 },
     
-    # Claude Opus
-    'claude-3-opus' => { input: 15.00, output: 75.00 },
+    # Claude Haiku 4.5: $0.20/M input, $1.00/M output (Bedrock pricing)
+    'claude-haiku-4-5' => { input: 0.20, output: 1.00 },
+    'claude-4-5-haiku' => { input: 0.20, output: 1.00 },
+    'claude-haiku-4-5-20251001' => { input: 0.20, output: 1.00 },
+    
+    # Claude Opus 4.5: $15.00/M input, $75.00/M output
+    'claude-opus-4-5' => { input: 15.00, output: 75.00 },
+    'claude-4-5-opus' => { input: 15.00, output: 75.00 },
+    
+    # ============================================
+    # Claude 4 Series (via Bedrock)
+    # ============================================
+    # Claude Opus 4.1: $15.00/M input, $75.00/M output
+    'claude-opus-4-1' => { input: 15.00, output: 75.00 },
+    'claude-4-1-opus' => { input: 15.00, output: 75.00 },
+    
+    # Claude Opus 4: $15.00/M input, $75.00/M output
     'claude-opus-4' => { input: 15.00, output: 75.00 },
+    'claude-4-opus' => { input: 15.00, output: 75.00 },
     
-    # Claude Haiku
-    'claude-3-haiku' => { input: 0.25, output: 1.25 },
+    # Claude Sonnet 4: $3.00/M input, $15.00/M output
+    'claude-sonnet-4' => { input: 3.00, output: 15.00 },
+    'claude-4-sonnet' => { input: 3.00, output: 15.00 },
+    
+    # ============================================
+    # Claude 3.5 Series (via Bedrock)
+    # ============================================
+    # Claude 3.5 Sonnet: $3.00/M input, $15.00/M output
+    'claude-3-5-sonnet' => { input: 3.00, output: 15.00 },
+    'claude-sonnet-3-5' => { input: 3.00, output: 15.00 },
+    
+    # Claude 3.5 Haiku: $0.80/M input, $4.00/M output
     'claude-3-5-haiku' => { input: 0.80, output: 4.00 },
+    'claude-haiku-3-5' => { input: 0.80, output: 4.00 },
     
-    # GPT models
+    # ============================================
+    # Claude 3 Series (via Bedrock)
+    # ============================================
+    # Claude 3 Opus: $15.00/M input, $75.00/M output
+    'claude-3-opus' => { input: 15.00, output: 75.00 },
+    'claude-opus-3' => { input: 15.00, output: 75.00 },
+    
+    # Claude 3 Sonnet: $3.00/M input, $15.00/M output
+    'claude-3-sonnet' => { input: 3.00, output: 15.00 },
+    'claude-sonnet-3' => { input: 3.00, output: 15.00 },
+    
+    # Claude 3 Haiku: $0.25/M input, $1.25/M output
+    'claude-3-haiku' => { input: 0.25, output: 1.25 },
+    'claude-haiku-3' => { input: 0.25, output: 1.25 },
+    
+    # ============================================
+    # Qwen models (via Bedrock)
+    # ============================================
+    # Qwen 3 32B: $0.35/M input, $0.40/M output (Bedrock pricing)
+    'qwen-3-32b' => { input: 0.35, output: 0.40 },
+    'qwen3-32b' => { input: 0.35, output: 0.40 },
+    
+    # Qwen 3 Coder 30B: $0.20/M input, $0.20/M output (Bedrock pricing)
+    'qwen3-coder-30b' => { input: 0.20, output: 0.20 },
+    'qwen-3-coder-30b' => { input: 0.20, output: 0.20 },
+    
+    # Qwen 2.5 Coder 32B: $0.20/M input, $0.20/M output (Bedrock pricing)
+    'qwen-2-5-72b' => { input: 0.20, output: 0.20 },
+    'qwen-2-5-coder-32b' => { input: 0.20, output: 0.20 },
+    
+    # ============================================
+    # Meta Llama models (via Bedrock)
+    # ============================================
+    # Llama 3.3 70B Instruct: $0.72/M input, $0.72/M output
+    'llama-3-3-70b' => { input: 0.72, output: 0.72 },
+    'llama-3.3-70b' => { input: 0.72, output: 0.72 },
+    
+    # Llama 3.2 90B Vision: $0.90/M input, $0.90/M output (Bedrock pricing)
+    'llama-3-2-90b' => { input: 0.90, output: 0.90 },
+    'llama-3.2-90b' => { input: 0.90, output: 0.90 },
+    
+    # ============================================
+    # Legacy Claude models
+    # ============================================
+    'claude-2-1' => { input: 8.00, output: 24.00 },
+    'claude-2-0' => { input: 8.00, output: 24.00 },
+    'claude-instant' => { input: 0.80, output: 2.40 },
+    
+    # ============================================
+    # GPT models (for reference if ever used)
+    # ============================================
     'gpt-4o' => { input: 2.50, output: 10.00 },
     'gpt-4' => { input: 10.00, output: 30.00 },
     'gpt-4-turbo' => { input: 10.00, output: 30.00 },
     'gpt-3.5-turbo' => { input: 0.50, output: 1.50 },
     
-    # Default fallback
+    # Default fallback (use Sonnet pricing)
     'default' => { input: 3.00, output: 15.00 }
   }.freeze
 
