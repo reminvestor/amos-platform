@@ -6,7 +6,7 @@ import {
   Animated,
   ViewStyle,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Pencil, Archive, Trash2, ChevronLeft } from 'lucide-react-native';
 import { useAppSelector } from '@store';
 import { getColors } from '@theme/colors';
 
@@ -91,7 +91,7 @@ export const SwipeableListItem: React.FC<SwipeableListItemProps> = ({
             style={[styles.actionButton, { backgroundColor: colors.info }]}
             onPress={handleEdit}
           >
-            <MaterialCommunityIcons name="pencil" size={20} color="#fff" />
+            <Pencil size={20} color="#fff" />
           </TouchableOpacity>
         )}
 
@@ -100,7 +100,7 @@ export const SwipeableListItem: React.FC<SwipeableListItemProps> = ({
             style={[styles.actionButton, { backgroundColor: colors.warning }]}
             onPress={handleArchive}
           >
-            <MaterialCommunityIcons name="archive" size={20} color="#fff" />
+            <Archive size={20} color="#fff" />
           </TouchableOpacity>
         )}
 
@@ -109,7 +109,7 @@ export const SwipeableListItem: React.FC<SwipeableListItemProps> = ({
             style={[styles.actionButton, { backgroundColor: colors.error }]}
             onPress={handleDelete}
           >
-            <MaterialCommunityIcons name="delete" size={20} color="#fff" />
+            <Trash2 size={20} color="#fff" />
           </TouchableOpacity>
         )}
       </View>
@@ -136,11 +136,7 @@ export const SwipeableListItem: React.FC<SwipeableListItemProps> = ({
             style={styles.swipeHint}
             onLongPress={handleOpen}
           >
-            <MaterialCommunityIcons
-              name="chevron-left"
-              size={20}
-              color={colors.textTertiary}
-            />
+            <ChevronLeft size={20} color={colors.textTertiary} />
           </TouchableOpacity>
         )}
       </Animated.View>

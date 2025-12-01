@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ArrowLeft, ChevronDown, CheckCircle, Clock, Circle, CircleSlash, Calendar, X, PlusCircle, Check } from 'lucide-react-native';
 import { useAppDispatch, useAppSelector } from '@store';
 import {
   createTask,
@@ -212,15 +212,15 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'check-circle';
+        return CheckCircle;
       case 'in_progress':
-        return 'progress-clock';
+        return Clock;
       case 'pending':
-        return 'circle-outline';
+        return Circle;
       case 'cancelled':
-        return 'close-circle';
+        return CircleSlash;
       default:
-        return 'circle-outline';
+        return Circle;
     }
   };
 
@@ -239,11 +239,7 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons
-            name="arrow-left"
-            size={24}
-            color={colors.text}
-          />
+          <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <StyledText style={[styles.headerTitle, { color: colors.text }]}>
           {mode === 'create' ? 'New Task' : 'Edit Task'}
@@ -354,11 +350,7 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
             <StyledText style={[styles.selectorText, { color: colors.text }]}>
               {formData.priority}
             </StyledText>
-            <MaterialCommunityIcons
-              name="chevron-down"
-              size={20}
-              color={colors.textSecondary}
-            />
+            <ChevronDown size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -379,19 +371,14 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
               },
             ]}
           >
-            <MaterialCommunityIcons
-              name={getStatusIcon(formData.status)}
-              size={20}
-              color={getStatusColor(formData.status)}
-            />
+            {React.createElement(getStatusIcon(formData.status), {
+              size: 20,
+              color: getStatusColor(formData.status),
+            })}
             <StyledText style={[styles.selectorText, { color: colors.text }]}>
               {formData.status.replace('_', ' ')}
             </StyledText>
-            <MaterialCommunityIcons
-              name="chevron-down"
-              size={20}
-              color={colors.textSecondary}
-            />
+            <ChevronDown size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -412,11 +399,7 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
               },
             ]}
           >
-            <MaterialCommunityIcons
-              name="calendar"
-              size={20}
-              color={colors.primary}
-            />
+            <Calendar size={20} color={colors.primary} />
             <StyledText style={[styles.selectorText, { color: colors.text }]}>
               {formData.dueDate
                 ? formData.dueDate.toLocaleDateString('en-US', {
@@ -430,11 +413,7 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
               <TouchableOpacity
                 onPress={() => setFormData({ ...formData, dueDate: undefined })}
               >
-                <MaterialCommunityIcons
-                  name="close"
-                  size={18}
-                  color={colors.textSecondary}
-                />
+                <X size={18} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </TouchableOpacity>
@@ -478,8 +457,7 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
               onPress={handleAddTag}
               disabled={isSaving || formData.tags.length >= 10}
             >
-              <MaterialCommunityIcons
-                name="plus-circle"
+              <PlusCircle
                 size={20}
                 color={formData.tags.length >= 10 ? colors.textSecondary : colors.primary}
               />
@@ -503,11 +481,7 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
                   onPress={() => handleRemoveTag(tag)}
                   disabled={isSaving}
                 >
-                  <MaterialCommunityIcons
-                    name="close"
-                    size={14}
-                    color={colors.primary}
-                  />
+                  <X size={14} color={colors.primary} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -584,11 +558,7 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
                 Select Priority
               </StyledText>
               <TouchableOpacity onPress={() => setShowPriorityModal(false)}>
-                <MaterialCommunityIcons
-                  name="close"
-                  size={24}
-                  color={colors.text}
-                />
+                <X size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -631,8 +601,7 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
                     {priority}
                   </StyledText>
                   {formData.priority === priority && (
-                    <MaterialCommunityIcons
-                      name="check"
+                    <Check
                       size={20}
                       color={getPriorityColor(priority)}
                       style={{ marginLeft: 'auto' }}
@@ -674,11 +643,7 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
                 Select Status
               </StyledText>
               <TouchableOpacity onPress={() => setShowStatusModal(false)}>
-                <MaterialCommunityIcons
-                  name="close"
-                  size={24}
-                  color={colors.text}
-                />
+                <X size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -709,11 +674,10 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
                     },
                   ]}
                 >
-                  <MaterialCommunityIcons
-                    name={getStatusIcon(status)}
-                    size={20}
-                    color={getStatusColor(status)}
-                  />
+                  {React.createElement(getStatusIcon(status), {
+                    size: 20,
+                    color: getStatusColor(status),
+                  })}
                   <StyledText
                     style={[
                       styles.modalOptionText,
@@ -727,8 +691,7 @@ export default function TaskEditScreen({ navigation, route }: TaskEditScreenProp
                     {status.replace('_', ' ')}
                   </StyledText>
                   {formData.status === status && (
-                    <MaterialCommunityIcons
-                      name="check"
+                    <Check
                       size={20}
                       color={getStatusColor(status)}
                       style={{ marginLeft: 'auto' }}

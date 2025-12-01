@@ -9,7 +9,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { AlertCircle, ArrowLeft, Trash2, Copy, Phone, Calendar, Clock, AlertTriangle, CheckCircle, PauseCircle, XCircle, Check } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '@store';
 import { getColors } from '@theme/colors';
@@ -111,7 +111,7 @@ export default function ContactDetailScreen({ navigation, route }: ContactDetail
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centerContainer}>
-          <MaterialCommunityIcons name="alert-circle" size={64} color={colors.error} />
+          <AlertCircle size={64} color={colors.error} />
           <StyledText style={[styles.errorTitle, { color: colors.text }]}>
             Failed to Load Contact
           </StyledText>
@@ -147,12 +147,12 @@ export default function ContactDetailScreen({ navigation, route }: ContactDetail
         {/* Header with back button */}
         <View style={[styles.header, { paddingTop: insets.top }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
+            <ArrowLeft size={24} color={colors.primary} />
           </TouchableOpacity>
           <View style={styles.headerActions}>
             <FavoriteButton id={contactId} type="contact" size={20} />
             <TouchableOpacity onPress={handleDelete}>
-              <MaterialCommunityIcons name="delete" size={20} color={colors.error} />
+              <Trash2 size={20} color={colors.error} />
             </TouchableOpacity>
           </View>
         </View>
@@ -176,7 +176,7 @@ export default function ContactDetailScreen({ navigation, route }: ContactDetail
               <StyledText style={[styles.email, { color: colors.textSecondary }]}>
                 {contact.email}
               </StyledText>
-              <MaterialCommunityIcons name="content-copy" size={14} color={colors.primary} />
+              <Copy size={14} color={colors.primary} />
             </TouchableOpacity>
             <View
               style={[
@@ -195,7 +195,7 @@ export default function ContactDetailScreen({ navigation, route }: ContactDetail
 
           {contact.phone && (
             <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
-              <MaterialCommunityIcons name="phone" size={18} color={colors.primary} />
+              <Phone size={18} color={colors.primary} />
               <TouchableOpacity
                 style={styles.detailContent}
                 onPress={() => copyToClipboard(contact.phone!, 'Phone')}
@@ -211,7 +211,7 @@ export default function ContactDetailScreen({ navigation, route }: ContactDetail
           )}
 
           <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
-            <MaterialCommunityIcons name="calendar" size={18} color={colors.primary} />
+            <Calendar size={18} color={colors.primary} />
             <View style={styles.detailContent}>
               <StyledText style={[styles.detailLabel, { color: colors.textSecondary }]}>
                 Added Date
@@ -224,7 +224,7 @@ export default function ContactDetailScreen({ navigation, route }: ContactDetail
 
           {contact.last_engaged_at && (
             <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
-              <MaterialCommunityIcons name="clock" size={18} color={colors.primary} />
+              <Clock size={18} color={colors.primary} />
               <View style={styles.detailContent}>
                 <StyledText style={[styles.detailLabel, { color: colors.textSecondary }]}>
                   Last Engaged
@@ -238,7 +238,7 @@ export default function ContactDetailScreen({ navigation, route }: ContactDetail
 
           {contact.bounce_status && (
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="alert" size={18} color={colors.warning} />
+              <AlertTriangle size={18} color={colors.warning} />
               <View style={styles.detailContent}>
                 <StyledText style={[styles.detailLabel, { color: colors.textSecondary }]}>
                   Bounce Status
@@ -277,46 +277,43 @@ export default function ContactDetailScreen({ navigation, route }: ContactDetail
         <View style={styles.section}>
           <StyledText style={[styles.sectionTitle, { color: colors.text }]}>Status</StyledText>
 
-          {['active', 'inactive', 'unsubscribed', 'bounced'].map((status) => (
-            <TouchableOpacity
-              key={status}
-              style={[
-                styles.statusOption,
-                {
-                  backgroundColor: contact.status === status ? colors.primaryLight : colors.surface,
-                  borderColor: contact.status === status ? colors.primary : colors.border,
-                },
-              ]}
-              onPress={() => handleUpdateStatus(status)}
-            >
-              <MaterialCommunityIcons
-                name={
-                  status === 'active'
-                    ? 'check-circle'
-                    : status === 'inactive'
-                    ? 'pause-circle'
-                    : status === 'unsubscribed'
-                    ? 'close-circle'
-                    : 'alert-circle'
-                }
-                size={20}
-                color={contact.status === status ? colors.primary : colors.textSecondary}
-              />
-              <StyledText
+          {['active', 'inactive', 'unsubscribed', 'bounced'].map((status) => {
+            const StatusIcon = status === 'active' ? CheckCircle
+              : status === 'inactive' ? PauseCircle
+              : status === 'unsubscribed' ? XCircle
+              : AlertCircle;
+            return (
+              <TouchableOpacity
+                key={status}
                 style={[
-                  styles.statusOptionText,
+                  styles.statusOption,
                   {
-                    color: contact.status === status ? colors.primary : colors.text,
+                    backgroundColor: contact.status === status ? colors.primaryLight : colors.surface,
+                    borderColor: contact.status === status ? colors.primary : colors.border,
                   },
                 ]}
+                onPress={() => handleUpdateStatus(status)}
               >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </StyledText>
-              {contact.status === status && (
-                <MaterialCommunityIcons name="check" size={20} color={colors.primary} />
-              )}
-            </TouchableOpacity>
-          ))}
+                <StatusIcon
+                  size={20}
+                  color={contact.status === status ? colors.primary : colors.textSecondary}
+                />
+                <StyledText
+                  style={[
+                    styles.statusOptionText,
+                    {
+                      color: contact.status === status ? colors.primary : colors.text,
+                    },
+                  ]}
+                >
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </StyledText>
+                {contact.status === status && (
+                  <Check size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <View style={{ height: insets.bottom + 32 }} />

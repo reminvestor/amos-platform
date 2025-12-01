@@ -10,7 +10,7 @@ import {
   FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { AlertCircle, ArrowLeft, Trash2, CloudCheck, CloudUpload, Link, Eye, FileText, Percent, Calendar, Pencil } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAppSelector } from '@store';
 import { getColors } from '@theme/colors';
@@ -150,7 +150,7 @@ export default function LandingPageDetailScreen({
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centerContainer}>
-          <MaterialCommunityIcons name="alert-circle" size={64} color={colors.error} />
+          <AlertCircle size={64} color={colors.error} />
           <StyledText style={[styles.errorTitle, { color: colors.text }]}>
             Failed to Load Landing Page
           </StyledText>
@@ -204,12 +204,12 @@ export default function LandingPageDetailScreen({
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
+            <ArrowLeft size={24} color={colors.primary} />
           </TouchableOpacity>
           <View style={styles.headerActions}>
             <FavoriteButton id={landingPageId} type="campaign" size={20} />
             <TouchableOpacity onPress={handleDelete}>
-              <MaterialCommunityIcons name="delete" size={20} color={colors.error} />
+              <Trash2 size={20} color={colors.error} />
             </TouchableOpacity>
           </View>
         </View>
@@ -239,11 +239,11 @@ export default function LandingPageDetailScreen({
               ]}
               onPress={handleTogglePublish}
             >
-              <MaterialCommunityIcons
-                name={page.status === 'published' ? 'cloud-check' : 'cloud-upload'}
-                size={18}
-                color="#fff"
-              />
+              {page.status === 'published' ? (
+                <CloudCheck size={18} color="#fff" />
+              ) : (
+                <CloudUpload size={18} color="#fff" />
+              )}
               <StyledText style={styles.publishButtonText}>
                 {page.status === 'published' ? 'Unpublish' : 'Publish'}
               </StyledText>
@@ -261,7 +261,7 @@ export default function LandingPageDetailScreen({
               style={styles.urlContainer}
               onPress={() => copyToClipboard(page.url!, 'URL')}
             >
-              <MaterialCommunityIcons name="link" size={14} color={colors.primary} />
+              <Link size={14} color={colors.primary} />
               <StyledText style={[styles.pageUrl, { color: colors.primary }]}>
                 {page.url}
               </StyledText>
@@ -275,7 +275,7 @@ export default function LandingPageDetailScreen({
 
           <View style={styles.metricsGrid}>
             <View style={[styles.metricCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <MaterialCommunityIcons name="eye" size={24} color={colors.primary} />
+              <Eye size={24} color={colors.primary} />
               <StyledText style={[styles.metricValue, { color: colors.text }]}>
                 {page.views}
               </StyledText>
@@ -285,7 +285,7 @@ export default function LandingPageDetailScreen({
             </View>
 
             <View style={[styles.metricCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <MaterialCommunityIcons name="form-textarea" size={24} color={colors.success} />
+              <FileText size={24} color={colors.success} />
               <StyledText style={[styles.metricValue, { color: colors.text }]}>
                 {page.submissions}
               </StyledText>
@@ -295,7 +295,7 @@ export default function LandingPageDetailScreen({
             </View>
 
             <View style={[styles.metricCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <MaterialCommunityIcons name="percent" size={24} color={colors.info} />
+              <Percent size={24} color={colors.info} />
               <StyledText style={[styles.metricValue, { color: colors.text }]}>
                 {(page.conversion_rate * 100).toFixed(1)}%
               </StyledText>
@@ -311,7 +311,7 @@ export default function LandingPageDetailScreen({
           <StyledText style={[styles.sectionTitle, { color: colors.text }]}>Details</StyledText>
 
           <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
-            <MaterialCommunityIcons name="calendar" size={18} color={colors.primary} />
+            <Calendar size={18} color={colors.primary} />
             <View style={styles.detailContent}>
               <StyledText style={[styles.detailLabel, { color: colors.textSecondary }]}>
                 Created
@@ -324,7 +324,7 @@ export default function LandingPageDetailScreen({
 
           {page.published_at && (
             <View style={[styles.detailRow, { borderBottomColor: colors.border }]}>
-              <MaterialCommunityIcons name="cloud-check" size={18} color={colors.success} />
+              <CloudCheck size={18} color={colors.success} />
               <View style={styles.detailContent}>
                 <StyledText style={[styles.detailLabel, { color: colors.textSecondary }]}>
                   Published
@@ -337,7 +337,7 @@ export default function LandingPageDetailScreen({
           )}
 
           <View style={styles.detailRow}>
-            <MaterialCommunityIcons name="pencil" size={18} color={colors.primary} />
+            <Pencil size={18} color={colors.primary} />
             <View style={styles.detailContent}>
               <StyledText style={[styles.detailLabel, { color: colors.textSecondary }]}>
                 Last Updated

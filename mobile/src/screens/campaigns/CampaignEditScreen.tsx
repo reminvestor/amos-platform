@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ArrowLeft, LayoutTemplate, ChevronRight, Calendar, Clock, Save, Check, Mail, Tag, Newspaper, Receipt } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAppDispatch, useAppSelector } from '@store';
 import { getColors } from '@theme/colors';
@@ -61,10 +61,10 @@ export default function CampaignEditScreen({ navigation, route }: CampaignEditSc
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const templates = [
-    { id: 'welcome', label: 'Welcome Series', icon: 'email' },
-    { id: 'promotional', label: 'Promotional', icon: 'tag' },
-    { id: 'newsletter', label: 'Newsletter', icon: 'newspaper' },
-    { id: 'transactional', label: 'Transactional', icon: 'receipt' },
+    { id: 'welcome', label: 'Welcome Series', Icon: Mail },
+    { id: 'promotional', label: 'Promotional', Icon: Tag },
+    { id: 'newsletter', label: 'Newsletter', Icon: Newspaper },
+    { id: 'transactional', label: 'Transactional', Icon: Receipt },
   ];
 
   useEffect(() => {
@@ -205,7 +205,7 @@ export default function CampaignEditScreen({ navigation, route }: CampaignEditSc
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top }]}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
+            <ArrowLeft size={24} color={colors.primary} />
           </TouchableOpacity>
           <StyledText style={[styles.headerTitle, { color: colors.text }]}>
             {campaignId ? 'Edit Campaign' : 'Create Campaign'}
@@ -373,13 +373,13 @@ export default function CampaignEditScreen({ navigation, route }: CampaignEditSc
             style={[styles.templateButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => setTemplateModalVisible(true)}
           >
-            <MaterialCommunityIcons name="template" size={18} color={colors.primary} />
+            <LayoutTemplate size={18} color={colors.primary} />
             <StyledText style={[styles.templateButtonText, { color: colors.text }]}>
               {formData.template
                 ? templates.find((t) => t.id === formData.template)?.label || 'Select Template'
                 : 'Choose a template'}
             </StyledText>
-            <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
+            <ChevronRight size={18} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
@@ -403,7 +403,7 @@ export default function CampaignEditScreen({ navigation, route }: CampaignEditSc
                 style={[styles.dateButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => setShowDatePicker(true)}
               >
-                <MaterialCommunityIcons name="calendar" size={18} color={colors.primary} />
+                <Calendar size={18} color={colors.primary} />
                 <StyledText style={[styles.dateButtonText, { color: colors.text }]}>
                   {formattedDate}
                 </StyledText>
@@ -413,7 +413,7 @@ export default function CampaignEditScreen({ navigation, route }: CampaignEditSc
                 style={[styles.dateButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => setShowTimePicker(true)}
               >
-                <MaterialCommunityIcons name="clock" size={18} color={colors.primary} />
+                <Clock size={18} color={colors.primary} />
                 <StyledText style={[styles.dateButtonText, { color: colors.text }]}>
                   {formattedTime}
                 </StyledText>
@@ -459,7 +459,7 @@ export default function CampaignEditScreen({ navigation, route }: CampaignEditSc
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              <MaterialCommunityIcons name="content-save" size={18} color="#fff" />
+              <Save size={18} color="#fff" />
               <StyledText style={styles.saveButtonText}>
                 {campaignId ? 'Update' : 'Create'} Campaign
               </StyledText>
@@ -489,7 +489,7 @@ export default function CampaignEditScreen({ navigation, route }: CampaignEditSc
                 setTemplateModalVisible(false);
               }}
             >
-              <MaterialCommunityIcons name={template.icon} size={20} color={colors.primary} />
+              <template.Icon size={20} color={colors.primary} />
               <StyledText
                 style={[
                   styles.templateOptionText,
@@ -501,7 +501,7 @@ export default function CampaignEditScreen({ navigation, route }: CampaignEditSc
                 {template.label}
               </StyledText>
               {formData.template === template.id && (
-                <MaterialCommunityIcons name="check" size={20} color={colors.primary} />
+                <Check size={20} color={colors.primary} />
               )}
             </TouchableOpacity>
           ))}

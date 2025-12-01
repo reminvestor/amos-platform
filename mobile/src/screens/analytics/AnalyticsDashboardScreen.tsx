@@ -8,7 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Send, MailOpen, MousePointerClick, AlertCircle } from 'lucide-react-native';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import { useAppSelector } from '@store';
 import { getColors } from '@theme/colors';
@@ -185,7 +185,7 @@ export default function AnalyticsDashboardScreen({
         {/* Key Metrics */}
         <View style={styles.metricsGrid}>
           <View style={[styles.metricCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="send" size={24} color={colors.primary} />
+            <Send size={24} color={colors.primary} />
             <StyledText style={[styles.metricValue, { color: colors.text }]}>
               {(analyticsData.campaignMetrics.sent / 1000).toFixed(1)}k
             </StyledText>
@@ -195,7 +195,7 @@ export default function AnalyticsDashboardScreen({
           </View>
 
           <View style={[styles.metricCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="email-open" size={24} color={colors.success} />
+            <MailOpen size={24} color={colors.success} />
             <StyledText style={[styles.metricValue, { color: colors.text }]}>
               {formatPercentage(openRate)}
             </StyledText>
@@ -205,7 +205,7 @@ export default function AnalyticsDashboardScreen({
           </View>
 
           <View style={[styles.metricCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="cursor-default-click" size={24} color={colors.info} />
+            <MousePointerClick size={24} color={colors.info} />
             <StyledText style={[styles.metricValue, { color: colors.text }]}>
               {formatPercentage(clickRate)}
             </StyledText>
@@ -215,7 +215,7 @@ export default function AnalyticsDashboardScreen({
           </View>
 
           <View style={[styles.metricCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <MaterialCommunityIcons name="alert-circle" size={24} color={colors.error} />
+            <AlertCircle size={24} color={colors.error} />
             <StyledText style={[styles.metricValue, { color: colors.text }]}>
               {analyticsData.campaignMetrics.bounced}
             </StyledText>

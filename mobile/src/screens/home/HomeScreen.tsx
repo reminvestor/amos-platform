@@ -8,7 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Settings, Mails, Contact, Globe, PlayCircle, MailPlus, UserPlus, GlobeLock, CirclePlus, ChevronRight, Send, UserRoundPlus, Globe2, CalendarDays, AlertCircle, CircleOff, CheckCircle, Circle } from 'lucide-react-native';
 import { useAppDispatch, useAppSelector } from '@store';
 import { fetchCampaigns } from '@store/slices/campaignsSlice';
 import { fetchContacts, fetchContactGroups } from '@store/slices/contactsSlice';
@@ -24,7 +24,7 @@ interface HomeScreenProps {
 interface StatCard {
   title: string;
   value: string | number;
-  icon: string;
+  Icon: React.ComponentType<any>;
   color: string;
   onPress?: () => void;
 }
@@ -89,28 +89,28 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     {
       title: 'Total Campaigns',
       value: campaignPagination.total || 0,
-      icon: 'email-multiple',
+      Icon: Mails,
       color: colors.primary,
       onPress: () => navigation.navigate('Campaigns'),
     },
     {
       title: 'Total Contacts',
       value: contactPagination.total || 0,
-      icon: 'contacts',
+      Icon: Contact,
       color: colors.success,
       onPress: () => navigation.navigate('Contacts'),
     },
     {
       title: 'Landing Pages',
       value: landingPages,
-      icon: 'web',
+      Icon: Globe,
       color: colors.info,
       onPress: () => navigation.navigate('LandingPages'),
     },
     {
       title: 'Active Campaigns',
       value: campaigns.filter((c) => c.status === 'in_progress').length,
-      icon: 'play-circle',
+      Icon: PlayCircle,
       color: colors.warning,
       onPress: () => navigation.navigate('Campaigns'),
     },
@@ -122,7 +122,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       type: 'campaign',
       title: 'Campaign Created',
       description: 'New campaign started',
-      icon: 'email-send',
+      Icon: Send,
       time: '2 hours ago',
     },
     {
@@ -130,7 +130,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       type: 'contact',
       title: 'Contacts Imported',
       description: '150 new contacts added',
-      icon: 'account-multiple-plus',
+      Icon: UserRoundPlus,
       time: '1 day ago',
     },
     {
@@ -138,7 +138,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       type: 'landing',
       title: 'Landing Page Published',
       description: 'New landing page went live',
-      icon: 'web-check',
+      Icon: Globe2,
       time: '3 days ago',
     },
   ];
@@ -170,7 +170,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             style={[styles.notificationButton, { backgroundColor: colors.surface }]}
             onPress={() => navigation.navigate('Settings')}
           >
-            <MaterialCommunityIcons name="cog" size={24} color={colors.primary} />
+            <Settings size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -195,11 +195,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                       { backgroundColor: `${stat.color}15` },
                     ]}
                   >
-                    <MaterialCommunityIcons
-                      name={stat.icon}
-                      size={24}
-                      color={stat.color}
-                    />
+                    <stat.Icon size={24} color={stat.color} />
                   </View>
                   <StyledText style={[styles.statValue, { color: colors.text }]}>
                     {isLoadingLandingPages && stat.title === 'Landing Pages' ? (
@@ -226,9 +222,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             activeOpacity={0.7}
             onPress={() => navigation.navigate('Campaigns')}
           >
-            <MaterialCommunityIcons name="email-plus" size={20} color="#fff" />
+            <MailPlus size={20} color="#fff" />
             <StyledText style={styles.actionButtonText}>Create Campaign</StyledText>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#fff" />
+            <ChevronRight size={20} color="#fff" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -236,9 +232,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             activeOpacity={0.7}
             onPress={() => navigation.navigate('Contacts')}
           >
-            <MaterialCommunityIcons name="account-plus" size={20} color="#fff" />
+            <UserPlus size={20} color="#fff" />
             <StyledText style={styles.actionButtonText}>Add Contact</StyledText>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#fff" />
+            <ChevronRight size={20} color="#fff" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -246,9 +242,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             activeOpacity={0.7}
             onPress={() => navigation.navigate('LandingPages')}
           >
-            <MaterialCommunityIcons name="web-plus" size={20} color="#fff" />
+            <GlobeLock size={20} color="#fff" />
             <StyledText style={styles.actionButtonText}>Create Landing Page</StyledText>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#fff" />
+            <ChevronRight size={20} color="#fff" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -256,9 +252,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             activeOpacity={0.7}
             onPress={() => navigation.navigate('Tasks', { screen: 'TaskEdit', params: { mode: 'create' } })}
           >
-            <MaterialCommunityIcons name="checkbox-marked-circle-plus-outline" size={20} color="#fff" />
+            <CirclePlus size={20} color="#fff" />
             <StyledText style={styles.actionButtonText}>Create Task</StyledText>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#fff" />
+            <ChevronRight size={20} color="#fff" />
           </TouchableOpacity>
         </View>
 
@@ -278,11 +274,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               activeOpacity={0.7}
             >
               <View style={styles.taskWidgetContent}>
-                <MaterialCommunityIcons
-                  name="calendar-today"
-                  size={24}
-                  color={colors.primary}
-                />
+                <CalendarDays size={24} color={colors.primary} />
                 <View style={{ marginLeft: 12, flex: 1 }}>
                   <StyledText style={[styles.taskWidgetValue, { color: colors.text }]}>
                     {tasks.filter((t) => t.status !== 'completed').length}
@@ -300,11 +292,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               activeOpacity={0.7}
             >
               <View style={styles.taskWidgetContent}>
-                <MaterialCommunityIcons
-                  name="alert-circle"
-                  size={24}
-                  color={colors.error}
-                />
+                <AlertCircle size={24} color={colors.error} />
                 <View style={{ marginLeft: 12, flex: 1 }}>
                   <StyledText style={[styles.taskWidgetValue, { color: colors.text }]}>
                     {tasks.filter(
@@ -324,11 +312,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
           {tasks.length === 0 && (
             <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
-              <MaterialCommunityIcons
-                name="checkbox-blank-circle-outline"
-                size={32}
-                color={colors.textSecondary}
-              />
+              <CircleOff size={32} color={colors.textSecondary} />
               <StyledText style={[styles.emptyStateText, { color: colors.textSecondary }]}>
                 No tasks yet. Create one to get started!
               </StyledText>
@@ -362,13 +346,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                       },
                     ]}
                   >
-                    <MaterialCommunityIcons
-                      name={task.status === 'completed' ? 'check-circle' : 'circle-outline'}
-                      size={16}
-                      color={
-                        task.status === 'completed' ? colors.success : colors.warning
-                      }
-                    />
+                    {task.status === 'completed' ? (
+                      <CheckCircle size={16} color={colors.success} />
+                    ) : (
+                      <Circle size={16} color={colors.warning} />
+                    )}
                   </View>
 
                   <View style={{ flex: 1 }}>
@@ -442,8 +424,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                   },
                 ]}
               >
-                <MaterialCommunityIcons
-                  name={activity.icon}
+                <activity.Icon
                   size={20}
                   color={activity.type === 'campaign'
                     ? colors.primary

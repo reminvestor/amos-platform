@@ -4,9 +4,10 @@ class ScoutController < ApplicationController
   include Scout::Streaming  # Streaming helpers
   include Scout::StreamingKeepalive  # Keep-alive for long operations
 
-  before_action :authenticate_user!
+  skip_before_action :verify_authenticity_token, only: [:chat_stream, :chat]
+  before_action :authenticate_user_or_api!
   before_action :ensure_entity_exists
-  before_action :ensure_onboarded
+  before_action :ensure_onboarded, unless: :api_request?
 
   layout "scout"
 
@@ -416,7 +417,13 @@ class ScoutController < ApplicationController
   end
 
   def chat_stream
-    @session_id = session[:scout_session_id] ||= SecureRandom.uuid
+    # For API requests, use provided session_id or generate UUID per user
+    # For web requests, use Rails session
+    if api_request?
+      @session_id = params[:session_id] || "mobile_#{current_user.id}_#{Date.current.strftime('%Y%m%d')}"
+    else
+      @session_id = session[:scout_session_id] ||= SecureRandom.uuid
+    end
     user_message = params[:message]&.strip
     current_canvas = params[:current_canvas]
     context = params[:context]
@@ -2131,6 +2138,32 @@ class ScoutController < ApplicationController
     end
 
     data.b
+  end
+
+  # Support both Devise session auth (web) and Bearer token auth (mobile API)
+  def authenticate_user_or_api!
+    token = request.headers["Authorization"]&.gsub(/^Bearer /, "")
+
+    if token.present?
+      # Mobile API request with Bearer token
+      @current_user = User.find_by(api_key: token)
+      unless @current_user
+        if request.format.json? || api_request?
+          render json: { error: "Invalid token" }, status: :unauthorized
+        else
+          redirect_to new_user_session_path
+        end
+        return
+      end
+    else
+      # Web request - use Devise session auth
+      authenticate_user!
+    end
+  end
+
+  # Check if this is an API request (Bearer token present)
+  def api_request?
+    request.headers["Authorization"]&.start_with?("Bearer ")
   end
 
   def is_approval_response?(message)

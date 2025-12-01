@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.example.com';
+// Use LAN IP for local development - your phone needs to reach the backend
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.211:3000';
 const APP_ENV = process.env.EXPO_PUBLIC_APP_ENV || 'development';
 const LOG_LEVEL = process.env.EXPO_PUBLIC_LOG_LEVEL || 'debug';
 
