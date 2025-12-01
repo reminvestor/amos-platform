@@ -1,212 +1,388 @@
-<div class="container-fluid">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h1 class="h3 mb-0 text-white">
-        <i data-lucide="coins" class="me-2 text-warning"></i>
-        AMOS Work Tokens
-      </h1>
-      <p class="text-muted">Track your AI usage and manage billing</p>
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon" style="background: linear-gradient(135deg, #EAB308 0%, #FACC15 100%);">
+        <i data-lucide="coins"></i>
+      </div>
+      <div class="header-text">
+        <h1>Usage & Billing</h1>
+        <p>Track your AI usage, workflows, and manage AMOS Work Tokens</p>
+      </div>
     </div>
-    <div class="d-flex gap-2">
-      <%= link_to settings_billing_path, class: "btn btn-outline-secondary" do %>
-        <i data-lucide="settings" style="width: 16px; height: 16px;"></i>
-        Settings
+
+    <div class="header-actions" style="display: flex; gap: 0.5rem;">
+      <%= link_to billing_path(timeframe: 'today'),
+          class: "admin-btn admin-btn-sm #{@timeframe == 'today' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+        <i data-lucide="calendar-days"></i>
+        <span>Today</span>
       <% end %>
-      <%= link_to purchase_billing_path, class: "btn btn-primary" do %>
-        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
-        Buy Tokens
+      <%= link_to billing_path(timeframe: '7d'),
+          class: "admin-btn admin-btn-sm #{@timeframe == '7d' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+        <i data-lucide="calendar-range"></i>
+        <span>7 Days</span>
+      <% end %>
+      <%= link_to billing_path(timeframe: '30d'),
+          class: "admin-btn admin-btn-sm #{@timeframe == '30d' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+        <i data-lucide="calendar"></i>
+        <span>30 Days</span>
+      <% end %>
+      <div style="width: 1px; background: #334155; margin: 0 0.5rem;"></div>
+      <%= link_to settings_billing_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+        <i data-lucide="settings"></i>
+        <span>Settings</span>
+      <% end %>
+      <%= link_to purchase_billing_path, class: "admin-btn admin-btn-sm admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>Buy Tokens</span>
       <% end %>
     </div>
   </div>
 
-  <!-- Balance & Stats Cards -->
-  <div class="row g-4 mb-4">
-    <div class="col-md-4">
-      <div class="card bg-dark border-warning h-100">
-        <div class="card-body">
-          <div class="d-flex align-items-center gap-3 mb-3">
-            <div class="icon-circle bg-warning bg-opacity-10" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
-              <i data-lucide="coins" class="text-warning" style="width: 24px; height: 24px;"></i>
-            </div>
-            <div>
-              <div class="text-muted small">Current Balance</div>
-              <div class="h2 mb-0 text-warning"><%= number_with_delimiter(@stats[:balance]) %></div>
-            </div>
+  <%# Work Token Balance Section %>
+  <div style="margin-bottom: 2rem;">
+    <h3 style="color: white; font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+      <i data-lucide="coins" class="icon-lg text-warning"></i>
+      Work Token Balance
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
+      <%# Current Balance - Gold %>
+      <div class="admin-card" style="border-color: #EAB308;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #EAB308 0%, #FACC15 100%); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="coins" class="icon-xl text-white"></i>
           </div>
-          <% if @stats[:free_remaining] > 0 %>
-            <div class="small text-success">
-              <i data-lucide="gift" style="width: 14px; height: 14px;"></i>
-              Includes <%= number_with_delimiter(@stats[:free_remaining]) %> free tokens
-            </div>
-          <% end %>
-          <% if @billing_account.low_balance? %>
-            <div class="alert alert-warning py-2 mt-2 mb-0">
-              <i data-lucide="alert-triangle" style="width: 14px; height: 14px;"></i>
-              Low balance - 
-              <% if @billing_account.auto_replenish_enabled? && @billing_account.has_payment_method? %>
-                will auto-replenish
-              <% else %>
-                <%= link_to "add tokens", purchase_billing_path %>
-              <% end %>
-            </div>
-          <% end %>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Current Balance</p>
+            <h3 style="color: #EAB308; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@stats[:balance]) %></h3>
+          </div>
         </div>
-      </div>
-    </div>
-    
-    <div class="col-md-4">
-      <div class="card bg-dark border-secondary h-100">
-        <div class="card-body">
-          <div class="d-flex align-items-center gap-3 mb-3">
-            <div class="icon-circle bg-info bg-opacity-10" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
-              <i data-lucide="activity" class="text-info" style="width: 24px; height: 24px;"></i>
-            </div>
-            <div>
-              <div class="text-muted small">Used This Month</div>
-              <div class="h2 mb-0 text-white"><%= number_with_delimiter(@stats[:usage_this_month]) %></div>
-            </div>
+        <% if @stats[:free_remaining] > 0 %>
+          <div class="mt-2" style="font-size: 0.875rem; color: #22C55E;">
+            <i data-lucide="gift" style="width: 14px; height: 14px;"></i>
+            Includes <%= number_with_delimiter(@stats[:free_remaining]) %> free tokens
           </div>
-          <div class="small text-muted">
-            ≈ $<%= number_with_precision(@stats[:spending_this_month], precision: 2) %>
-            <% if @stats[:monthly_limit] > 0 %>
-              / $<%= @stats[:monthly_limit] %> limit
+        <% end %>
+        <% if @billing_account.low_balance? %>
+          <div class="alert alert-warning py-2 mt-2 mb-0" style="font-size: 0.875rem;">
+            <i data-lucide="alert-triangle" style="width: 14px; height: 14px;"></i>
+            Low balance - 
+            <% if @billing_account.auto_replenish_enabled? && @billing_account.has_payment_method? %>
+              will auto-replenish
+            <% else %>
+              <%= link_to "add tokens", purchase_billing_path %>
             <% end %>
           </div>
+        <% end %>
+      </div>
+
+      <%# Used This Month - Cyan %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
+            <i data-lucide="activity" class="icon-xl text-info"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Used This Month</p>
+            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@stats[:usage_this_month]) %></h3>
+          </div>
+        </div>
+        <div class="mt-2" style="font-size: 0.875rem; color: #94A3B8;">
+          ≈ $<%= number_with_precision(@stats[:spending_this_month], precision: 2) %>
           <% if @stats[:monthly_limit] > 0 %>
-            <div class="progress mt-2" style="height: 4px;">
-              <% pct = [(@stats[:spending_this_month] / @stats[:monthly_limit] * 100), 100].min %>
-              <div class="progress-bar <%= pct > 80 ? 'bg-warning' : 'bg-info' %>" style="width: <%= pct %>%"></div>
-            </div>
+            / $<%= @stats[:monthly_limit] %> limit
           <% end %>
+        </div>
+        <% if @stats[:monthly_limit] > 0 %>
+          <div class="progress mt-2" style="height: 4px; background: #1E293B;">
+            <% pct = [(@stats[:spending_this_month].to_f / @stats[:monthly_limit] * 100), 100].min %>
+            <div class="progress-bar <%= pct > 80 ? 'bg-warning' : 'bg-info' %>" style="width: <%= pct %>%"></div>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Lifetime Stats - Green %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
+            <i data-lucide="trending-up" class="icon-xl text-success"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Lifetime Stats</p>
+            <h3 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@stats[:lifetime_used]) %> used</h3>
+          </div>
+        </div>
+        <div class="mt-2" style="font-size: 0.875rem; color: #94A3B8;">
+          <%= number_with_delimiter(@stats[:lifetime_purchased]) %> purchased total
         </div>
       </div>
     </div>
-    
-    <div class="col-md-4">
-      <div class="card bg-dark border-secondary h-100">
-        <div class="card-body">
-          <div class="d-flex align-items-center gap-3 mb-3">
-            <div class="icon-circle bg-success bg-opacity-10" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
-              <i data-lucide="trending-up" class="text-success" style="width: 24px; height: 24px;"></i>
+  </div>
+
+  <%# AI Usage Stats %>
+  <div style="margin-bottom: 2rem;">
+    <h3 style="color: white; font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+      <i data-lucide="bot" class="icon-lg text-info"></i>
+      AI Usage
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+      <%# Conversations - Purple Gradient %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="message-square" class="icon-xl text-white"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Conversations</p>
+            <h3 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= @ai_stats[:conversations] %></h3>
+          </div>
+        </div>
+      </div>
+
+      <%# Messages - Cyan %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
+            <i data-lucide="messages-square" class="icon-xl text-info"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Messages</p>
+            <h3 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= @ai_stats[:messages] %></h3>
+          </div>
+        </div>
+      </div>
+
+      <%# Workflows Started %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(148, 163, 184, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(148, 163, 184, 0.2);">
+            <i data-lucide="play-circle" style="width: 1.5rem; height: 1.5rem; color: #94A3B8;"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Workflows</p>
+            <h3 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= @ai_stats[:workflows_started] %></h3>
+          </div>
+        </div>
+      </div>
+
+      <%# Workflows Completed - Green %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
+            <i data-lucide="check-circle" class="icon-xl text-success"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Completed</p>
+            <h3 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= @ai_stats[:workflows_completed] %></h3>
+          </div>
+        </div>
+      </div>
+
+      <%# Workflows Failed - Red %>
+      <div class="admin-card">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(239, 68, 68, 0.2);">
+            <i data-lucide="x-circle" class="icon-xl text-danger"></i>
+          </div>
+          <div>
+            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Failed</p>
+            <h3 style="color: white; font-size: 1.5rem; font-weight: 600; margin: 0;"><%= @ai_stats[:workflows_failed] %></h3>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# Integrations & Campaigns Row %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <%# Integration Stats %>
+    <div>
+      <h3 style="color: white; font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="plug" style="width: 1.25rem; height: 1.25rem; color: rgb(250, 204, 21);"></i>
+        Integrations
+      </h3>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+        <div class="admin-card">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(148, 163, 184, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(148, 163, 184, 0.2);">
+              <i data-lucide="link" style="width: 1.25rem; height: 1.25rem; color: #94A3B8;"></i>
             </div>
             <div>
-              <div class="text-muted small">Lifetime Stats</div>
-              <div class="h4 mb-0 text-white"><%= number_with_delimiter(@stats[:lifetime_used]) %> used</div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">Connections</p>
+              <h3 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= @integration_stats[:active_connections] %></h3>
             </div>
           </div>
-          <div class="small text-muted">
-            <%= number_with_delimiter(@stats[:lifetime_purchased]) %> purchased total
+        </div>
+        <div class="admin-card">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
+              <i data-lucide="arrow-right-left" style="width: 1.25rem; height: 1.25rem; color: #22C55E;"></i>
+            </div>
+            <div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">API Calls</p>
+              <h3 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= @integration_stats[:api_calls] %></h3>
+            </div>
+          </div>
+        </div>
+        <div class="admin-card">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(239, 68, 68, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(239, 68, 68, 0.2);">
+              <i data-lucide="alert-octagon" style="width: 1.25rem; height: 1.25rem; color: #EF4444;"></i>
+            </div>
+            <div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">Failed</p>
+              <h3 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= @integration_stats[:failed_calls] %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Campaign Stats %>
+    <div>
+      <h3 style="color: white; font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <i data-lucide="mail" class="icon-lg text-info"></i>
+        Campaigns
+      </h3>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+        <div class="admin-card">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(148, 163, 184, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(148, 163, 184, 0.2);">
+              <i data-lucide="list" style="width: 1.25rem; height: 1.25rem; color: #94A3B8;"></i>
+            </div>
+            <div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">Total</p>
+              <h3 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= @campaign_stats[:total] %></h3>
+            </div>
+          </div>
+        </div>
+        <div class="admin-card">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
+              <i data-lucide="send" style="width: 1.25rem; height: 1.25rem; color: #22C55E;"></i>
+            </div>
+            <div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">Sent</p>
+              <h3 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= @campaign_stats[:sent] %></h3>
+            </div>
+          </div>
+        </div>
+        <div class="admin-card">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(234, 179, 8, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(234, 179, 8, 0.2);">
+              <i data-lucide="file-edit" style="width: 1.25rem; height: 1.25rem; color: #EAB308;"></i>
+            </div>
+            <div>
+              <p style="color: #94A3B8; font-size: 0.75rem; margin: 0;">Drafts</p>
+              <h3 style="color: white; font-size: 1.25rem; font-weight: 600; margin: 0;"><%= @campaign_stats[:draft] %></h3>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Usage by Category -->
-  <div class="row g-4 mb-4">
-    <div class="col-lg-6">
-      <div class="card bg-dark border-secondary h-100">
-        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
-          <h5 class="mb-0 text-white">
-            <i data-lucide="pie-chart" class="me-2 text-primary"></i>
-            Usage by Category (30 days)
-          </h5>
-          <%= link_to usage_billing_path, class: "btn btn-sm btn-outline-secondary" do %>
-            Details
-          <% end %>
-        </div>
-        <div class="card-body">
-          <% if @usage_summary[:by_category].any? %>
-            <% max_tokens = @usage_summary[:by_category].values.max || 1 %>
-            <% @usage_summary[:by_category].each do |category, tokens| %>
-              <div class="mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                  <span>
-                    <%= case category
-                        when 'ai_tokens' then '🤖 AI Usage'
-                        when 'email' then '📧 Email'
-                        when 'storage' then '💾 Storage'
-                        when 'api_call' then '🔌 API Calls'
-                        when 'other_compute' then '☁️ Other Compute'
-                        else category&.titleize || 'Other'
-                        end %>
-                  </span>
-                  <span class="badge bg-secondary"><%= number_with_delimiter(tokens) %></span>
-                </div>
-                <div class="progress" style="height: 8px;">
-                  <div class="progress-bar bg-primary" style="width: <%= (tokens.to_f / max_tokens * 100).round %>%"></div>
-                </div>
+  <%# Usage by Category & Recent Activity %>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="admin-card h-100">
+      <div class="admin-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h5 style="color: white; font-size: 1rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="pie-chart" class="text-primary"></i>
+          Token Usage by Category
+        </h5>
+        <%= link_to usage_billing_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+          Details
+        <% end %>
+      </div>
+      <div class="admin-card-body">
+        <% if @usage_summary[:by_category].any? %>
+          <% max_tokens = @usage_summary[:by_category].values.max || 1 %>
+          <% @usage_summary[:by_category].each do |category, tokens| %>
+            <div style="margin-bottom: 1rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                <span style="color: #E2E8F0; font-size: 0.875rem;">
+                  <%= case category
+                      when 'ai_tokens' then '🤖 AI Usage'
+                      when 'email' then '📧 Email'
+                      when 'storage' then '💾 Storage'
+                      when 'api_call' then '🔌 API Calls'
+                      when 'other_compute' then '☁️ Other Compute'
+                      else category&.titleize || 'Other'
+                      end %>
+                </span>
+                <span class="badge" style="background: #334155; color: #E2E8F0;"><%= number_with_delimiter(tokens) %></span>
               </div>
-            <% end %>
-          <% else %>
-            <div class="text-center py-4 text-muted">
-              <i data-lucide="bar-chart-2" style="width: 32px; height: 32px;" class="mb-2"></i>
-              <p class="mb-0">No usage data yet</p>
+              <div class="progress" style="height: 6px; background: #1E293B;">
+                <div class="progress-bar bg-primary" style="width: <%= (tokens.to_f / max_tokens * 100).round %>%"></div>
+              </div>
             </div>
           <% end %>
-        </div>
+        <% else %>
+          <div class="text-center py-4" style="color: #94A3B8;">
+            <i data-lucide="bar-chart-2" style="width: 32px; height: 32px;" class="mb-2"></i>
+            <p class="mb-0">No usage data yet</p>
+          </div>
+        <% end %>
       </div>
     </div>
 
-    <div class="col-lg-6">
-      <div class="card bg-dark border-secondary h-100">
-        <div class="card-header bg-dark border-secondary d-flex justify-content-between align-items-center">
-          <h5 class="mb-0 text-white">
-            <i data-lucide="history" class="me-2 text-primary"></i>
-            Recent Activity
-          </h5>
-          <%= link_to transactions_billing_path, class: "btn btn-sm btn-outline-secondary" do %>
-            View All
-          <% end %>
-        </div>
-        <div class="card-body p-0">
-          <% if @recent_transactions.any? %>
-            <div class="table-responsive">
-              <table class="table table-dark table-striped table-hover mb-0">
-                <tbody>
-                  <% @recent_transactions.each do |tx| %>
-                    <tr>
-                      <td style="width: 40px;"><%= tx.category_icon %></td>
-                      <td>
-                        <div><%= tx.category_label %></div>
-                        <div class="small text-muted"><%= truncate(tx.description, length: 40) %></div>
-                      </td>
-                      <td class="text-end <%= tx.credit? ? 'text-success' : 'text-danger' %>">
-                        <%= tx.formatted_amount %>
-                      </td>
-                      <td class="text-muted small text-end">
-                        <%= time_ago_in_words(tx.created_at) %>
-                      </td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% else %>
-            <div class="text-center py-4 text-muted">
-              <i data-lucide="list" style="width: 32px; height: 32px;" class="mb-2"></i>
-              <p class="mb-0">No transactions yet</p>
-            </div>
-          <% end %>
-        </div>
+    <div class="admin-card h-100">
+      <div class="admin-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h5 style="color: white; font-size: 1rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="history" class="text-primary"></i>
+          Recent Transactions
+        </h5>
+        <%= link_to transactions_billing_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+          View All
+        <% end %>
+      </div>
+      <div class="admin-card-body p-0">
+        <% if @recent_transactions.any? %>
+          <div class="table-responsive">
+            <table class="table table-dark table-striped table-hover mb-0" style="font-size: 0.875rem;">
+              <tbody>
+                <% @recent_transactions.each do |tx| %>
+                  <tr>
+                    <td style="width: 32px;"><%= tx.category_icon %></td>
+                    <td>
+                      <div style="color: #E2E8F0;"><%= tx.category_label %></div>
+                      <div style="color: #64748B; font-size: 0.75rem;"><%= truncate(tx.description, length: 35) %></div>
+                    </td>
+                    <td class="text-end <%= tx.credit? ? 'text-success' : 'text-danger' %>">
+                      <%= tx.formatted_amount %>
+                    </td>
+                    <td style="color: #64748B; font-size: 0.75rem; text-align: right;">
+                      <%= time_ago_in_words(tx.created_at) %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="text-center py-4" style="color: #94A3B8;">
+            <i data-lucide="list" style="width: 32px; height: 32px;" class="mb-2"></i>
+            <p class="mb-0">No transactions yet</p>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>
 
-  <!-- Recent Purchases -->
+  <%# Recent Purchases %>
   <% if @purchases.any? %>
-    <div class="card bg-dark border-secondary">
-      <div class="card-header bg-dark border-secondary">
-        <h5 class="mb-0 text-white">
-          <i data-lucide="credit-card" class="me-2 text-success"></i>
+    <div class="admin-card">
+      <div class="admin-card-header">
+        <h5 style="color: white; font-size: 1rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+          <i data-lucide="credit-card" class="text-success"></i>
           Recent Purchases
         </h5>
       </div>
-      <div class="card-body p-0">
+      <div class="admin-card-body p-0">
         <div class="table-responsive">
-          <table class="table table-dark table-striped table-hover mb-0">
+          <table class="table table-dark table-striped table-hover mb-0" style="font-size: 0.875rem;">
             <thead>
-              <tr>
+              <tr style="color: #94A3B8;">
                 <th>Date</th>
                 <th>Amount</th>
                 <th>Tokens</th>
@@ -218,9 +394,9 @@
             <tbody>
               <% @purchases.each do |purchase| %>
                 <tr>
-                  <td><%= purchase.created_at.strftime('%b %d, %Y %I:%M %p') %></td>
-                  <td>$<%= number_with_precision(purchase.amount_usd, precision: 2) %></td>
-                  <td><%= number_with_delimiter(purchase.tokens_purchased) %></td>
+                  <td style="color: #E2E8F0;"><%= purchase.created_at.strftime('%b %d, %Y') %></td>
+                  <td style="color: #E2E8F0;">$<%= number_with_precision(purchase.amount_usd, precision: 2) %></td>
+                  <td style="color: #E2E8F0;"><%= number_with_delimiter(purchase.tokens_purchased) %></td>
                   <td class="text-success">
                     <% if purchase.bonus_tokens > 0 %>
                       +<%= number_with_delimiter(purchase.bonus_tokens) %>
@@ -250,5 +426,7 @@
   document.addEventListener('DOMContentLoaded', function() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   });
+  document.addEventListener('turbo:load', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
 </script>
-

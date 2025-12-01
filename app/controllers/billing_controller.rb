@@ -8,12 +8,20 @@ class BillingController < ApplicationController
   before_action :set_config
 
   def index
+    @timeframe = params[:timeframe] || "30d"
+    @timeframe_start = case @timeframe
+    when "today" then 24.hours.ago
+    when "7d" then 7.days.ago
+    when "30d" then 30.days.ago
+    else 30.days.ago
+    end
+    
     # Usage summary
     @usage_summary = @work_token_service.usage_summary(days: 30)
-    @recent_transactions = @work_token_service.recent_transactions(limit: 25)
+    @recent_transactions = @work_token_service.recent_transactions(limit: 10)
     
     # Purchase history
-    @purchases = @billing_account.work_token_purchases.completed.recent.limit(10)
+    @purchases = @billing_account.work_token_purchases.completed.recent.limit(5)
     
     # Daily usage for chart
     @daily_usage = WorkTokenUsageSummary
@@ -21,7 +29,7 @@ class BillingController < ApplicationController
       .last_30_days
       .daily_totals
     
-    # Calculate stats
+    # Calculate billing stats
     @stats = {
       balance: @billing_account.work_token_balance,
       usage_this_month: @billing_account.usage_this_month,
@@ -30,6 +38,36 @@ class BillingController < ApplicationController
       lifetime_purchased: @billing_account.lifetime_tokens_purchased,
       lifetime_used: @billing_account.lifetime_tokens_used,
       free_remaining: @billing_account.free_tokens_remaining
+    }
+    
+    # Observability stats (merged from entity/observability)
+    @ai_stats = {
+      conversations: current_user.scout_conversations.where(created_at: @timeframe_start..).count,
+      messages: current_user.scout_messages.where(created_at: @timeframe_start..).count,
+      workflows_started: current_user.task_sessions.where(created_at: @timeframe_start..).count,
+      workflows_completed: current_user.task_sessions.where(status: "completed", created_at: @timeframe_start..).count,
+      workflows_failed: current_user.task_sessions.where(status: "failed", created_at: @timeframe_start..).count,
+      estimated_tokens: current_user.scout_messages.where(created_at: @timeframe_start..).count * 500,
+      estimated_cost: (current_user.scout_messages.where(created_at: @timeframe_start..).count * 500 * 0.00002).round(2)
+    }
+
+    # Integration Usage
+    @integration_stats = {
+      active_connections: current_user.connections.where(status: "connected").count,
+      api_calls: IntegrationLog.joins(connection: :entity)
+                               .where(connections: { entity_id: current_user.entity_id })
+                               .where(created_at: @timeframe_start..).count,
+      failed_calls: IntegrationLog.joins(connection: :entity)
+                                  .where(connections: { entity_id: current_user.entity_id })
+                                  .where("response_status >= 400")
+                                  .where(created_at: @timeframe_start..).count
+    }
+
+    # Campaign Stats
+    @campaign_stats = {
+      total: current_user.campaigns.where(entity: current_user.entity, created_at: @timeframe_start..).count,
+      sent: current_user.campaigns.where(entity: current_user.entity, status: "sent", created_at: @timeframe_start..).count,
+      draft: current_user.campaigns.where(entity: current_user.entity, status: "draft", created_at: @timeframe_start..).count
     }
   end
 
