@@ -47,11 +47,11 @@ class ApplicationController < ActionController::Base
       return onboarding_path
     end
 
-    # Check if user needs to set up billing
-    # Users MUST add a credit card to get their free tokens and use the platform
-    # They won't be charged until free tokens are used up
+    # Check if user needs to set up billing (no payment method and low/no balance)
+    # With work tokens model, users get free tokens on signup so they can start immediately
+    # We only prompt for payment setup if they're running low and have no payment method
     billing_account = UserBillingAccount.find_by(user: resource)
-    if billing_account.nil? || !billing_account.has_payment_method?
+    if billing_account && billing_account.low_balance? && !billing_account.has_payment_method?
       return setup_payment_billing_path
     end
 
@@ -144,20 +144,21 @@ class ApplicationController < ActionController::Base
     return if request.path.start_with?('/stripe/')
     return if request.path.start_with?('/billing')
 
-    # Users MUST have a payment method to use the platform
-    # Free tokens are granted when they add their card
+    # With work tokens model, users can use the platform as long as they have tokens
+    # or have a payment method for auto-replenishment
     billing_account = UserBillingAccount.find_by(user: current_user)
     
-    # If no billing account or no payment method, redirect to billing setup
-    unless billing_account&.has_payment_method?
-      redirect_to setup_payment_billing_path, notice: "Add a payment method to get your free tokens and start using AMOS."
-      return
-    end
+    # If no billing account exists yet, create one (grants free tokens)
+    billing_account ||= UserBillingAccount.for_user(current_user)
     
-    # If they have a payment method but no tokens and auto-replenish is off, warn them
-    if billing_account.work_token_balance <= 0 && !billing_account.auto_replenish_enabled?
-      redirect_to purchase_billing_path, alert: "You're out of tokens. Please purchase more to continue."
-    end
+    # Allow access if:
+    # 1. User has tokens remaining, OR
+    # 2. User has a payment method (for auto-replenishment)
+    return if billing_account.work_token_balance > 0
+    return if billing_account.has_payment_method?
+
+    # No tokens and no payment method - redirect to billing setup
+    redirect_to setup_payment_billing_path, alert: "Please add a payment method to continue using AMOS."
   end
 
   def check_onboarding_status
