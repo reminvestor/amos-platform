@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_27_184622) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_28_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -835,6 +835,50 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_184622) do
     t.index ["scheduled_for"], name: "index_agent_training_jobs_on_scheduled_for"
   end
 
+  create_table "agent_work_items", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "agent_plugin_id"
+    t.bigint "scheduled_task_run_id"
+    t.bigint "agent_plugin_execution_id"
+    t.bigint "scout_conversation_id"
+    t.string "work_type", null: false
+    t.string "title", null: false
+    t.text "summary"
+    t.text "details"
+    t.string "asset_type"
+    t.bigint "asset_id"
+    t.jsonb "asset_data", default: {}
+    t.boolean "read", default: false
+    t.datetime "read_at"
+    t.boolean "starred", default: false
+    t.boolean "archived", default: false
+    t.datetime "archived_at"
+    t.string "priority", default: "normal"
+    t.boolean "requires_action", default: false
+    t.string "action_type"
+    t.datetime "action_due_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_agent_work_items_on_agent_plugin_execution_id"
+    t.index ["agent_plugin_id"], name: "index_agent_work_items_on_agent_plugin_id"
+    t.index ["archived"], name: "index_agent_work_items_on_archived"
+    t.index ["asset_type", "asset_id"], name: "index_agent_work_items_on_asset_type_and_asset_id"
+    t.index ["created_at"], name: "index_agent_work_items_on_created_at"
+    t.index ["entity_id", "user_id", "archived"], name: "index_agent_work_items_on_entity_id_and_user_id_and_archived"
+    t.index ["entity_id", "user_id", "read"], name: "index_agent_work_items_on_entity_id_and_user_id_and_read"
+    t.index ["entity_id"], name: "index_agent_work_items_on_entity_id"
+    t.index ["priority"], name: "index_agent_work_items_on_priority"
+    t.index ["read"], name: "index_agent_work_items_on_read"
+    t.index ["requires_action"], name: "index_agent_work_items_on_requires_action"
+    t.index ["scheduled_task_run_id"], name: "index_agent_work_items_on_scheduled_task_run_id"
+    t.index ["scout_conversation_id"], name: "index_agent_work_items_on_scout_conversation_id"
+    t.index ["starred"], name: "index_agent_work_items_on_starred"
+    t.index ["user_id"], name: "index_agent_work_items_on_user_id"
+    t.index ["work_type"], name: "index_agent_work_items_on_work_type"
+  end
+
   create_table "ai_usage_logs", force: :cascade do |t|
     t.bigint "entity_id", null: false
     t.bigint "user_id", null: false
@@ -1403,6 +1447,37 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_184622) do
     t.index ["follow_up_campaign_id"], name: "index_dripped_campaigns_on_follow_up_campaign_id"
     t.index ["original_campaign_id", "sequence_position"], name: "idx_dripped_campaigns_on_original_campaign_and_position", unique: true
     t.index ["original_campaign_id"], name: "index_dripped_campaigns_on_original_campaign_id"
+  end
+
+  create_table "dynamic_contents", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "scout_conversation_id"
+    t.bigint "agent_plugin_execution_id"
+    t.bigint "scheduled_task_run_id"
+    t.string "content_type", null: false
+    t.string "title", null: false
+    t.text "subtitle"
+    t.text "html_content", null: false
+    t.jsonb "data_snapshot", default: {}
+    t.jsonb "generation_context", default: {}
+    t.string "session_id"
+    t.integer "message_index"
+    t.string "category"
+    t.jsonb "tags", default: []
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_dynamic_contents_on_agent_plugin_execution_id"
+    t.index ["category"], name: "index_dynamic_contents_on_category"
+    t.index ["content_type"], name: "index_dynamic_contents_on_content_type"
+    t.index ["created_at"], name: "index_dynamic_contents_on_created_at"
+    t.index ["entity_id", "user_id"], name: "index_dynamic_contents_on_entity_id_and_user_id"
+    t.index ["entity_id"], name: "index_dynamic_contents_on_entity_id"
+    t.index ["scheduled_task_run_id"], name: "index_dynamic_contents_on_scheduled_task_run_id"
+    t.index ["scout_conversation_id"], name: "index_dynamic_contents_on_scout_conversation_id"
+    t.index ["session_id"], name: "index_dynamic_contents_on_session_id"
+    t.index ["user_id"], name: "index_dynamic_contents_on_user_id"
   end
 
   create_table "email_deliveries", force: :cascade do |t|
@@ -2360,6 +2435,118 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_184622) do
     t.index ["user_id"], name: "index_saved_searches_on_user_id"
   end
 
+  create_table "saved_visualizations", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "scout_message_id"
+    t.bigint "scout_conversation_id"
+    t.bigint "agent_work_item_id"
+    t.bigint "agent_plugin_execution_id"
+    t.string "name", null: false
+    t.text "description"
+    t.string "visualization_type", null: false
+    t.string "source_type", null: false
+    t.string "source_session_id"
+    t.integer "source_message_index"
+    t.text "html_content_cache"
+    t.jsonb "canvas_data_cache", default: {}
+    t.datetime "cache_expires_at"
+    t.text "original_prompt"
+    t.jsonb "generation_config", default: {}
+    t.boolean "auto_refresh", default: false
+    t.string "refresh_schedule"
+    t.datetime "last_refreshed_at"
+    t.datetime "next_refresh_at"
+    t.string "category"
+    t.jsonb "tags", default: []
+    t.boolean "pinned", default: false
+    t.boolean "shared", default: false
+    t.boolean "archived", default: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "dynamic_content_id"
+    t.index ["agent_plugin_execution_id"], name: "index_saved_visualizations_on_agent_plugin_execution_id"
+    t.index ["agent_work_item_id"], name: "index_saved_visualizations_on_agent_work_item_id"
+    t.index ["archived"], name: "index_saved_visualizations_on_archived"
+    t.index ["auto_refresh"], name: "index_saved_visualizations_on_auto_refresh"
+    t.index ["category"], name: "index_saved_visualizations_on_category"
+    t.index ["dynamic_content_id"], name: "index_saved_visualizations_on_dynamic_content_id"
+    t.index ["entity_id", "shared"], name: "index_saved_visualizations_on_entity_id_and_shared"
+    t.index ["entity_id", "user_id"], name: "index_saved_visualizations_on_entity_id_and_user_id"
+    t.index ["entity_id"], name: "index_saved_visualizations_on_entity_id"
+    t.index ["pinned"], name: "index_saved_visualizations_on_pinned"
+    t.index ["scout_conversation_id"], name: "index_saved_visualizations_on_scout_conversation_id"
+    t.index ["scout_message_id"], name: "index_saved_visualizations_on_scout_message_id"
+    t.index ["shared"], name: "index_saved_visualizations_on_shared"
+    t.index ["source_session_id"], name: "index_saved_visualizations_on_source_session_id"
+    t.index ["source_type"], name: "index_saved_visualizations_on_source_type"
+    t.index ["user_id"], name: "index_saved_visualizations_on_user_id"
+    t.index ["visualization_type"], name: "index_saved_visualizations_on_visualization_type"
+  end
+
+  create_table "scheduled_agent_tasks", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "agent_plugin_id"
+    t.string "name", null: false
+    t.text "description"
+    t.string "task_type", null: false
+    t.text "prompt", null: false
+    t.string "schedule_type", null: false
+    t.string "cron_expression"
+    t.time "run_at_time"
+    t.integer "run_on_day"
+    t.string "timezone", default: "UTC"
+    t.datetime "next_run_at"
+    t.datetime "last_run_at"
+    t.integer "run_count", default: 0
+    t.integer "failure_count", default: 0
+    t.integer "consecutive_failures", default: 0
+    t.jsonb "input_context", default: {}
+    t.jsonb "output_config", default: {}
+    t.jsonb "metadata", default: {}
+    t.string "status", default: "active"
+    t.boolean "enabled", default: true
+    t.integer "max_runs"
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_id"], name: "index_scheduled_agent_tasks_on_agent_plugin_id"
+    t.index ["enabled"], name: "index_scheduled_agent_tasks_on_enabled"
+    t.index ["entity_id", "next_run_at"], name: "index_scheduled_agent_tasks_on_entity_id_and_next_run_at"
+    t.index ["entity_id", "status"], name: "index_scheduled_agent_tasks_on_entity_id_and_status"
+    t.index ["entity_id"], name: "index_scheduled_agent_tasks_on_entity_id"
+    t.index ["next_run_at"], name: "index_scheduled_agent_tasks_on_next_run_at"
+    t.index ["status"], name: "index_scheduled_agent_tasks_on_status"
+    t.index ["task_type"], name: "index_scheduled_agent_tasks_on_task_type"
+    t.index ["user_id"], name: "index_scheduled_agent_tasks_on_user_id"
+  end
+
+  create_table "scheduled_task_runs", force: :cascade do |t|
+    t.bigint "scheduled_agent_task_id", null: false
+    t.bigint "agent_plugin_execution_id"
+    t.bigint "user_id", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.integer "duration_ms"
+    t.text "result_summary"
+    t.jsonb "result_data", default: {}
+    t.text "error_message"
+    t.boolean "notification_sent", default: false
+    t.datetime "notification_sent_at"
+    t.string "notification_method"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_plugin_execution_id"], name: "index_scheduled_task_runs_on_agent_plugin_execution_id"
+    t.index ["scheduled_agent_task_id", "status"], name: "idx_on_scheduled_agent_task_id_status_30c896b176"
+    t.index ["scheduled_agent_task_id"], name: "index_scheduled_task_runs_on_scheduled_agent_task_id"
+    t.index ["started_at"], name: "index_scheduled_task_runs_on_started_at"
+    t.index ["status"], name: "index_scheduled_task_runs_on_status"
+    t.index ["user_id"], name: "index_scheduled_task_runs_on_user_id"
+  end
+
   create_table "scout_conversations", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.bigint "entity_id", null: false
@@ -2881,6 +3068,47 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_184622) do
     t.index ["user_id"], name: "index_tts_usage_logs_on_user_id"
   end
 
+  create_table "user_notifications", force: :cascade do |t|
+    t.bigint "entity_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "agent_work_item_id"
+    t.bigint "scheduled_task_run_id"
+    t.string "notification_type", null: false
+    t.string "title", null: false
+    t.text "body"
+    t.string "icon"
+    t.string "channel", null: false
+    t.boolean "email_sent", default: false
+    t.datetime "email_sent_at"
+    t.boolean "push_sent", default: false
+    t.datetime "push_sent_at"
+    t.boolean "read", default: false
+    t.datetime "read_at"
+    t.boolean "dismissed", default: false
+    t.datetime "dismissed_at"
+    t.string "action_url"
+    t.string "action_type"
+    t.jsonb "action_data", default: {}
+    t.string "priority", default: "normal"
+    t.datetime "expires_at"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_work_item_id"], name: "index_user_notifications_on_agent_work_item_id"
+    t.index ["channel"], name: "index_user_notifications_on_channel"
+    t.index ["created_at"], name: "index_user_notifications_on_created_at"
+    t.index ["dismissed"], name: "index_user_notifications_on_dismissed"
+    t.index ["entity_id", "user_id", "read"], name: "index_user_notifications_on_entity_id_and_user_id_and_read"
+    t.index ["entity_id"], name: "index_user_notifications_on_entity_id"
+    t.index ["notification_type"], name: "index_user_notifications_on_notification_type"
+    t.index ["priority"], name: "index_user_notifications_on_priority"
+    t.index ["read"], name: "index_user_notifications_on_read"
+    t.index ["scheduled_task_run_id"], name: "index_user_notifications_on_scheduled_task_run_id"
+    t.index ["user_id", "dismissed"], name: "index_user_notifications_on_user_id_and_dismissed"
+    t.index ["user_id", "read"], name: "index_user_notifications_on_user_id_and_read"
+    t.index ["user_id"], name: "index_user_notifications_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -3139,6 +3367,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_184622) do
   add_foreign_key "agent_tool_executions", "entities"
   add_foreign_key "agent_tools", "agent_plugins"
   add_foreign_key "agent_training_jobs", "entities"
+  add_foreign_key "agent_work_items", "agent_plugin_executions"
+  add_foreign_key "agent_work_items", "agent_plugins"
+  add_foreign_key "agent_work_items", "entities"
+  add_foreign_key "agent_work_items", "scheduled_task_runs"
+  add_foreign_key "agent_work_items", "scout_conversations"
+  add_foreign_key "agent_work_items", "users"
   add_foreign_key "ai_usage_logs", "entities"
   add_foreign_key "ai_usage_logs", "scout_messages"
   add_foreign_key "ai_usage_logs", "users"
@@ -3203,6 +3437,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_184622) do
   add_foreign_key "document_tags", "entities"
   add_foreign_key "dripped_campaigns", "campaigns", column: "follow_up_campaign_id"
   add_foreign_key "dripped_campaigns", "campaigns", column: "original_campaign_id"
+  add_foreign_key "dynamic_contents", "agent_plugin_executions"
+  add_foreign_key "dynamic_contents", "entities"
+  add_foreign_key "dynamic_contents", "scheduled_task_runs"
+  add_foreign_key "dynamic_contents", "scout_conversations"
+  add_foreign_key "dynamic_contents", "users"
   add_foreign_key "email_deliveries", "campaigns"
   add_foreign_key "email_deliveries", "contacts"
   add_foreign_key "email_deliveries", "email_templates"
@@ -3283,6 +3522,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_184622) do
   add_foreign_key "rich_text_sections", "landing_pages"
   add_foreign_key "saved_searches", "entities"
   add_foreign_key "saved_searches", "users"
+  add_foreign_key "saved_visualizations", "agent_plugin_executions"
+  add_foreign_key "saved_visualizations", "agent_work_items"
+  add_foreign_key "saved_visualizations", "dynamic_contents"
+  add_foreign_key "saved_visualizations", "entities"
+  add_foreign_key "saved_visualizations", "scout_conversations"
+  add_foreign_key "saved_visualizations", "scout_messages"
+  add_foreign_key "saved_visualizations", "users"
+  add_foreign_key "scheduled_agent_tasks", "agent_plugins"
+  add_foreign_key "scheduled_agent_tasks", "entities"
+  add_foreign_key "scheduled_agent_tasks", "users"
+  add_foreign_key "scheduled_task_runs", "agent_plugin_executions"
+  add_foreign_key "scheduled_task_runs", "scheduled_agent_tasks"
+  add_foreign_key "scheduled_task_runs", "users"
   add_foreign_key "scout_conversations", "entities"
   add_foreign_key "scout_conversations", "users"
   add_foreign_key "scout_loadout_configurations", "entities"
@@ -3326,6 +3578,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_27_184622) do
   add_foreign_key "tool_usage_metrics", "users"
   add_foreign_key "tts_usage_logs", "entities"
   add_foreign_key "tts_usage_logs", "users"
+  add_foreign_key "user_notifications", "agent_work_items"
+  add_foreign_key "user_notifications", "entities"
+  add_foreign_key "user_notifications", "scheduled_task_runs"
+  add_foreign_key "user_notifications", "users"
   add_foreign_key "users", "entities"
   add_foreign_key "voice_sessions", "entities"
   add_foreign_key "voice_sessions", "users"

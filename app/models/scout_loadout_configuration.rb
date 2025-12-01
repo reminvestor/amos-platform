@@ -40,6 +40,11 @@ class ScoutLoadoutConfiguration < ApplicationRecord
     update_agent
     ask_agent_for_help
     web_search
+    create_scheduled_task
+    list_scheduled_tasks
+    manage_scheduled_task
+    save_visualization
+    get_work_inbox
   ].freeze
 
   # Tools that should NEVER be given to Scout (always delegate)

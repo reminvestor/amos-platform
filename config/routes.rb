@@ -58,6 +58,17 @@ Rails.application.routes.draw do
     post "request-approval", to: "approvals#request_approval"
     post :get_instructions, to: "approvals#get_instructions"
     post "get-instructions", to: "approvals#get_instructions"
+    
+    # Work Items API
+    resources :work_items, only: [] do
+      member do
+        get :content
+        post :toggle_star
+        post :archive
+        post :mark_read
+        post :mark_unread
+      end
+    end
 
     namespace :v1 do
       # Health check endpoint
@@ -241,6 +252,16 @@ Rails.application.routes.draw do
     # Entity-level Agent & Tool Management
     resources :agent_plugins
     resources :tools
+    
+    # User-facing Scheduled Tasks Management
+    resources :scheduled_tasks do
+      member do
+        post :pause
+        post :resume
+        post :run_now
+        get :runs
+      end
+    end
     
     # AI Settings (Scout configuration, Voice settings)
     namespace :ai_settings do
@@ -736,6 +757,18 @@ Rails.application.routes.draw do
       post :stop_training
       post 'rollback/:optimization_id', action: :rollback, as: :rollback
       get :service_status
+    end
+
+    # Scheduled Tasks Management
+    resources :scheduled_tasks do
+      member do
+        post :pause
+        post :resume
+        post :run_now
+      end
+      collection do
+        get :runs
+      end
     end
 
     # Agent Plugins Management

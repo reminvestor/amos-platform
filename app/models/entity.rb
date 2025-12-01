@@ -68,6 +68,11 @@ class Entity < ApplicationRecord
   has_many :agent_rewards, dependent: :destroy
   has_many :agent_training_jobs, dependent: :destroy
   has_one :agent_lightning_config, dependent: :destroy
+
+  # Agent Plugins and Scheduled Tasks
+  has_many :agent_plugins, dependent: :destroy
+  has_many :scheduled_agent_tasks, dependent: :destroy
+  has_many :agent_work_items, dependent: :destroy
   
   # Subscription status accessor
   def subscription_status
