@@ -8,14 +8,8 @@
             <i data-lucide="coins" style="width: 2rem; height: 2rem; color: white;"></i>
           </div>
         </div>
-        <h1 class="h2 text-white mb-2">Almost There!</h1>
-        <p class="text-muted lead">Add your card to unlock <strong class="text-warning"><%= number_with_delimiter(@config.free_tokens_on_signup) %> free work tokens</strong> (~$<%= (@config.free_tokens_on_signup / 100_000.0).round(2) %> value)</p>
-        
-        <%# Important notice %>
-        <div class="d-inline-flex align-items-center gap-2 px-4 py-2 rounded-pill mt-3" style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3);">
-          <i data-lucide="shield-check" class="text-success" style="width: 1.25rem; height: 1.25rem;"></i>
-          <span class="text-success fw-medium">$0 charged today — only billed when free tokens run out</span>
-        </div>
+        <h1 class="h2 text-white mb-2">Get Started with AMOS Work Tokens</h1>
+        <p class="text-muted lead">Pay only for what you use. No monthly fees, no commitments.</p>
       </div>
 
       <div class="row g-4">
@@ -126,7 +120,7 @@
             <div class="admin-card-header">
               <h5 class="mb-0 text-white">
                 <i data-lucide="gift" class="me-2 text-success"></i>
-                What You Get Today
+                What You Get
               </h5>
             </div>
             <div class="admin-card-body">
@@ -136,37 +130,28 @@
                 </div>
                 <div>
                   <div class="text-white fw-semibold"><%= number_with_delimiter(@config.free_tokens_on_signup) %> Free Tokens</div>
-                  <div class="text-muted small">Worth ~$<%= (@config.free_tokens_on_signup / 100_000.0).round(2) %> - enough for hundreds of AI conversations!</div>
+                  <div class="text-muted small">Worth ~$<%= (@config.free_tokens_on_signup / 100_000.0).round(2) %> - enough to get started!</div>
                 </div>
               </div>
 
-              <ul class="list-unstyled mb-3">
+              <ul class="list-unstyled mb-0">
                 <li class="d-flex align-items-center gap-2 mb-2">
                   <i data-lucide="check-circle" class="text-success" style="width: 1rem; height: 1rem;"></i>
-                  <span class="text-muted"><strong class="text-white">$0 charge today</strong> - only charged when free tokens run out</span>
+                  <span class="text-muted">Auto-replenish when balance is low</span>
                 </li>
                 <li class="d-flex align-items-center gap-2 mb-2">
                   <i data-lucide="check-circle" class="text-success" style="width: 1rem; height: 1rem;"></i>
-                  <span class="text-muted">Auto-replenish $<%= @config.default_auto_replenish_amount_usd %> when balance is low</span>
+                  <span class="text-muted">Set monthly spending limits</span>
                 </li>
                 <li class="d-flex align-items-center gap-2 mb-2">
                   <i data-lucide="check-circle" class="text-success" style="width: 1rem; height: 1rem;"></i>
-                  <span class="text-muted">$<%= @config.default_monthly_limit_usd %>/month spending cap (you control this)</span>
+                  <span class="text-muted">Detailed usage tracking</span>
                 </li>
                 <li class="d-flex align-items-center gap-2">
                   <i data-lucide="check-circle" class="text-success" style="width: 1rem; height: 1rem;"></i>
                   <span class="text-muted">Cancel anytime - no commitments</span>
                 </li>
               </ul>
-              
-              <div class="p-3 rounded" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2);">
-                <div class="d-flex align-items-start gap-2">
-                  <i data-lucide="info" class="text-info mt-1" style="width: 1rem; height: 1rem;"></i>
-                  <div class="small text-muted">
-                    <strong class="text-white">How billing works:</strong> When your free tokens run out, we'll automatically add $<%= @config.default_auto_replenish_amount_usd %> worth of tokens. You can change this amount or disable auto-replenishment in settings.
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -181,16 +166,14 @@
               </h5>
             </div>
             <div class="admin-card-body">
-              <%# No charge today notice %>
-              <div class="alert mb-4" style="background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3); color: #22C55E;">
-                <div class="d-flex align-items-center gap-2">
-                  <i data-lucide="badge-check" style="width: 1.25rem; height: 1.25rem;"></i>
-                  <div>
-                    <strong>$0.00 charged today</strong>
-                    <div class="small" style="color: #94A3B8;">Your card will only be charged after your <%= number_with_delimiter(@config.free_tokens_on_signup) %> free tokens are used</div>
+              <% if @billing_account.free_tokens_remaining > 0 && !@billing_account.has_payment_method? %>
+                <div class="alert alert-info mb-4" style="background: rgba(34, 211, 238, 0.1); border-color: rgba(34, 211, 238, 0.3);">
+                  <div class="d-flex align-items-center gap-2">
+                    <i data-lucide="info" style="width: 1rem; height: 1rem;"></i>
+                    <span>You have <strong><%= number_with_delimiter(@billing_account.free_tokens_remaining) %> free tokens</strong>. Add a card to enable auto-replenishment when they run out.</span>
                   </div>
                 </div>
-              </div>
+              <% end %>
 
               <form id="payment-form">
                 <div class="mb-4">
@@ -208,14 +191,14 @@
                     <label class="form-check-label text-white" for="auto_replenish">
                       Enable auto-replenishment
                     </label>
-                    <div class="text-muted small">Automatically add tokens when balance is low (after free tokens)</div>
+                    <div class="text-muted small">Automatically add tokens when balance is low</div>
                   </div>
 
                   <div id="replenish-settings">
-                    <label class="form-label text-muted small">Replenish amount (when free tokens run out)</label>
+                    <label class="form-label text-muted small">Replenish amount</label>
                     <div class="btn-group w-100" role="group">
                       <% [10, 20, 50, 100].each do |amount| %>
-                        <input type="radio" class="btn-check" name="replenish_amount" id="replenish_<%= amount %>" value="<%= amount %>" <%= amount == @config.default_auto_replenish_amount_usd ? 'checked' : '' %>>
+                        <input type="radio" class="btn-check" name="replenish_amount" id="replenish_<%= amount %>" value="<%= amount %>" <%= amount == 20 ? 'checked' : '' %>>
                         <label class="btn btn-outline-secondary" for="replenish_<%= amount %>">$<%= amount %></label>
                       <% end %>
                     </div>
@@ -228,29 +211,24 @@
                   <div class="input-group">
                     <span class="input-group-text bg-dark border-secondary text-muted">$</span>
                     <input type="number" class="form-control bg-dark text-white border-secondary" id="monthly_limit" value="<%= @config.default_monthly_limit_usd %>" min="10" max="10000">
-                    <span class="input-group-text bg-dark border-secondary text-muted">/month max</span>
+                    <span class="input-group-text bg-dark border-secondary text-muted">/month</span>
                   </div>
-                  <div class="text-muted small mt-1">We'll never charge more than this per month</div>
+                  <div class="text-muted small mt-1">We'll pause usage when you hit this limit</div>
                 </div>
 
-                <button type="submit" id="submit-button" class="btn btn-success btn-lg w-100" disabled>
+                <button type="submit" id="submit-button" class="btn btn-primary btn-lg w-100" disabled>
                   <span id="button-text">
-                    <i data-lucide="gift" style="width: 1rem; height: 1rem;" class="me-2"></i>
-                    Get My Free Tokens
+                    <i data-lucide="shield-check" style="width: 1rem; height: 1rem;" class="me-2"></i>
+                    Add Card & Get Started
                   </span>
                   <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
                 </button>
-                
-                <p class="text-center text-muted small mt-3 mb-0">
-                  <i data-lucide="lock" style="width: 12px; height: 12px;"></i>
-                  Card securely saved for future use. You can change settings anytime.
-                </p>
               </form>
 
-              <div class="mt-4 pt-3 border-top border-secondary text-center">
+              <div class="mt-4 text-center">
                 <p class="text-muted small mb-2">
-                  <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
-                  Payments processed securely by Stripe
+                  <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
+                  Secured by Stripe. We never see your card details.
                 </p>
                 <div class="d-flex justify-content-center gap-3">
                   <img src="https://cdn.brandfolder.io/KGT2DTA4/at/8vbr8k4mr5xjwk4hxq4t9vs/Visa-logo.svg" alt="Visa" style="height: 20px; opacity: 0.6;">
