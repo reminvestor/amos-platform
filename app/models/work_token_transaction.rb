@@ -59,7 +59,7 @@ class WorkTokenTransaction < ApplicationRecord
 
   def formatted_amount
     prefix = credit? ? '+' : ''
-    "#{prefix}#{token_amount.to_s(:delimited)}"
+    "#{prefix}#{ActiveSupport::NumberHelper.number_to_delimited(token_amount)}"
   end
 
   def category_icon

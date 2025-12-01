@@ -50,11 +50,11 @@
             </div>
             
             <div class="d-flex gap-2">
-              <%= link_to billing_setup_payment_path, class: "btn btn-outline-primary" do %>
+              <%= link_to setup_payment_billing_path, class: "btn btn-outline-primary" do %>
                 <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
                 Update Card
               <% end %>
-              <%= button_to billing_remove_payment_method_path, method: :delete, 
+              <%= button_to remove_payment_method_billing_path, method: :delete, 
                   class: "btn btn-outline-danger",
                   data: { turbo_confirm: "Remove your payment method? Auto-replenishment will be disabled." } do %>
                 <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
@@ -66,7 +66,7 @@
               <i data-lucide="credit-card" style="width: 48px; height: 48px; color: #64748B;" class="mb-3"></i>
               <h5 class="text-muted">No Payment Method</h5>
               <p class="text-muted mb-3">Add a card to enable auto-replenishment and purchase tokens.</p>
-              <%= link_to billing_setup_payment_path, class: "btn btn-primary" do %>
+              <%= link_to setup_payment_billing_path, class: "btn btn-primary" do %>
                 <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
                 Add Payment Method
               <% end %>
@@ -86,7 +86,7 @@
           </h5>
         </div>
         <div class="card-body">
-          <%= form_with model: @billing_account, url: billing_settings_path, method: :patch, local: true do |f| %>
+          <%= form_with model: @billing_account, url: settings_billing_path, method: :patch, local: true do |f| %>
             <div class="mb-4">
               <div class="form-check form-switch">
                 <%= f.check_box :auto_replenish_enabled, class: "form-check-input", role: "switch", 

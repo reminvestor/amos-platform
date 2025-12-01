@@ -40,7 +40,7 @@ class BillingController < ApplicationController
 
   def update_settings
     if @billing_account.update(billing_settings_params)
-      redirect_to billing_settings_path, notice: 'Billing settings updated successfully.'
+      redirect_to settings_billing_path, notice: 'Billing settings updated successfully.'
     else
       @payment_method = @billing_account.payment_method_details
       render :settings, status: :unprocessable_entity
@@ -56,21 +56,21 @@ class BillingController < ApplicationController
     amount = params[:amount].to_i
     
     if amount <= 0
-      redirect_to billing_purchase_path, alert: 'Please select a valid amount.'
+      redirect_to purchase_billing_path, alert: 'Please select a valid amount.'
       return
     end
     
     # Check monthly limit
     unless @billing_account.within_monthly_limit?
-      redirect_to billing_purchase_path, alert: "This purchase would exceed your monthly limit of $#{@billing_account.monthly_limit_usd}."
+      redirect_to purchase_billing_path, alert: "This purchase would exceed your monthly limit of $#{@billing_account.monthly_limit_usd}."
       return
     end
     
     begin
       purchase = @billing_account.purchase_tokens!(amount_usd: amount, trigger: 'manual')
-      redirect_to billing_path, notice: "Successfully purchased #{purchase.total_tokens.to_s(:delimited)} AMOS Work Tokens!"
+      redirect_to billing_path, notice: "Successfully purchased #{number_with_delimiter(purchase.total_tokens)} AMOS Work Tokens!"
     rescue UserBillingAccount::PaymentFailedError => e
-      redirect_to billing_purchase_path, alert: "Payment failed: #{e.message}"
+      redirect_to purchase_billing_path, alert: "Payment failed: #{e.message}"
     end
   end
 
@@ -96,15 +96,15 @@ class BillingController < ApplicationController
     
     begin
       @billing_account.attach_payment_method!(payment_method_id)
-      redirect_to billing_settings_path, notice: 'Payment method added successfully.'
+      redirect_to settings_billing_path, notice: 'Payment method added successfully.'
     rescue Stripe::StripeError => e
-      redirect_to billing_setup_payment_path, alert: "Failed to add payment method: #{e.message}"
+      redirect_to setup_payment_billing_path, alert: "Failed to add payment method: #{e.message}"
     end
   end
 
   def remove_payment_method
     @billing_account.remove_payment_method!
-    redirect_to billing_settings_path, notice: 'Payment method removed.'
+    redirect_to settings_billing_path, notice: 'Payment method removed.'
   end
 
   # Transaction history

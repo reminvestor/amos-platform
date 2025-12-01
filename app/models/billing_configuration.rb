@@ -1,14 +1,52 @@
 # frozen_string_literal: true
 
 # System-wide billing configuration for AMOS Work Tokens
-# Managed by admins to set uplift percentages and token rates
+# Work tokens are based on ACTUAL AWS/provider costs, then marked up by uplift_percentage
+#
+# 1 work token = $0.00001 (0.001 cents)
+# So $1 = 100,000 work tokens (before uplift)
+# With 20% uplift, users pay $1.20 for $1 of raw compute
+#
 class BillingConfiguration < ApplicationRecord
+  # Work token conversion: 1 work token = this many dollars
+  WORK_TOKEN_VALUE = 0.00001  # $0.00001 per work token = 100,000 tokens per dollar
+
+  # Model pricing per million tokens (in dollars) - Bedrock pricing
+  MODEL_PRICING = {
+    # Claude Sonnet 4.5 / 3.5
+    'claude-sonnet-4-5' => { input: 3.00, output: 15.00 },
+    'claude-4-5-sonnet' => { input: 3.00, output: 15.00 },
+    'claude-3-5-sonnet' => { input: 3.00, output: 15.00 },
+    'claude-sonnet-3.5' => { input: 3.00, output: 15.00 },
+    
+    # Claude Opus
+    'claude-3-opus' => { input: 15.00, output: 75.00 },
+    'claude-opus-4' => { input: 15.00, output: 75.00 },
+    
+    # Claude Haiku
+    'claude-3-haiku' => { input: 0.25, output: 1.25 },
+    'claude-3-5-haiku' => { input: 0.80, output: 4.00 },
+    
+    # GPT models
+    'gpt-4o' => { input: 2.50, output: 10.00 },
+    'gpt-4' => { input: 10.00, output: 30.00 },
+    'gpt-4-turbo' => { input: 10.00, output: 30.00 },
+    'gpt-3.5-turbo' => { input: 0.50, output: 1.50 },
+    
+    # Default fallback
+    'default' => { input: 3.00, output: 15.00 }
+  }.freeze
+
+  # SES pricing
+  SES_COST_PER_EMAIL = 0.0001  # $0.0001 per email ($0.10 per 1000)
+  
+  # S3 pricing (per GB per month)
+  S3_COST_PER_GB_MONTH = 0.023  # $0.023 per GB/month
+
   # Validations
   validates :name, presence: true, uniqueness: true
   validates :uplift_percentage, presence: true, 
-            numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 }
-  validates :ai_tokens_rate, :email_rate, :storage_rate_mb, :api_call_rate, :other_compute_rate,
-            numericality: { greater_than: 0 }
+            numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 200 }
   validates :free_tokens_on_signup, :default_auto_replenish_amount_usd, :default_monthly_limit_usd,
             numericality: { greater_than_or_equal_to: 0 }
 
@@ -25,100 +63,90 @@ class BillingConfiguration < ApplicationRecord
     create!(
       name: 'default',
       uplift_percentage: 20.0,
-      ai_tokens_rate: 1.0,
-      email_rate: 10.0,
-      storage_rate_mb: 1.0,
-      api_call_rate: 0.1,
-      other_compute_rate: 100.0,
-      model_multipliers: default_model_multipliers,
       purchase_tiers: default_purchase_tiers,
-      free_tokens_on_signup: 200_000,
+      free_tokens_on_signup: 200_000,  # ~$2 worth of compute
       default_auto_replenish_amount_usd: 20,
       default_monthly_limit_usd: 100,
       is_active: true
     )
   end
 
-  def self.default_model_multipliers
-    {
-      'claude-sonnet-4-5' => 1.0,
-      'claude-4-5-sonnet' => 1.0,
-      'claude-3-5-sonnet' => 1.0,
-      'claude-3-opus' => 3.0,
-      'claude-3-haiku' => 0.1,
-      'claude-3-5-haiku' => 0.15,
-      'gpt-4o' => 0.8,
-      'gpt-4' => 2.0
-    }
-  end
-
   def self.default_purchase_tiers
+    # Based on 100,000 work tokens = $1 raw cost
+    # With 20% uplift built into pricing, $20 buys ~$16.67 of raw compute = 1,666,667 tokens
+    # We round to nice numbers and add bonuses for larger purchases
     [
-      { 'amount_usd' => 20, 'tokens' => 200_000, 'bonus_tokens' => 0 },
-      { 'amount_usd' => 50, 'tokens' => 550_000, 'bonus_tokens' => 50_000 },
-      { 'amount_usd' => 100, 'tokens' => 1_200_000, 'bonus_tokens' => 200_000 },
-      { 'amount_usd' => 200, 'tokens' => 2_600_000, 'bonus_tokens' => 600_000 }
+      { 'amount_usd' => 20, 'tokens' => 2_000_000, 'bonus_tokens' => 0 },
+      { 'amount_usd' => 50, 'tokens' => 5_500_000, 'bonus_tokens' => 500_000 },
+      { 'amount_usd' => 100, 'tokens' => 12_000_000, 'bonus_tokens' => 2_000_000 },
+      { 'amount_usd' => 200, 'tokens' => 26_000_000, 'bonus_tokens' => 6_000_000 }
     ]
   end
 
-  # Calculate work tokens for AI usage
+  # Calculate work tokens for AI usage based on ACTUAL model pricing
   def calculate_ai_work_tokens(input_tokens:, output_tokens:, model:)
-    # Get model multiplier
-    multiplier = model_multiplier_for(model)
+    pricing = model_pricing_for(model)
     
-    # Output tokens cost more than input (typically 3x)
-    base_tokens = (input_tokens * ai_tokens_rate) + (output_tokens * ai_tokens_rate * 3)
+    # Calculate raw cost in dollars
+    input_cost = (input_tokens.to_f / 1_000_000) * pricing[:input]
+    output_cost = (output_tokens.to_f / 1_000_000) * pricing[:output]
+    raw_cost_usd = input_cost + output_cost
     
-    # Apply model multiplier
-    work_tokens = (base_tokens * multiplier).round
+    # Convert to work tokens (before uplift)
+    base_work_tokens = (raw_cost_usd / WORK_TOKEN_VALUE).round
     
     # Apply uplift
-    apply_uplift(work_tokens)
+    apply_uplift(base_work_tokens)
+  end
+
+  # Get the raw cost in cents for AI usage (for tracking)
+  def calculate_ai_raw_cost_cents(input_tokens:, output_tokens:, model:)
+    pricing = model_pricing_for(model)
+    input_cost = (input_tokens.to_f / 1_000_000) * pricing[:input]
+    output_cost = (output_tokens.to_f / 1_000_000) * pricing[:output]
+    ((input_cost + output_cost) * 100).round(4)  # Convert to cents
   end
 
   # Calculate work tokens for email sending
   def calculate_email_work_tokens(email_count:)
-    work_tokens = (email_count * email_rate).round
-    apply_uplift(work_tokens)
+    raw_cost_usd = email_count * SES_COST_PER_EMAIL
+    base_work_tokens = (raw_cost_usd / WORK_TOKEN_VALUE).round
+    apply_uplift(base_work_tokens)
   end
 
   # Calculate work tokens for storage
   def calculate_storage_work_tokens(megabytes:)
-    work_tokens = (megabytes * storage_rate_mb).round
-    apply_uplift(work_tokens)
+    gigabytes = megabytes / 1024.0
+    raw_cost_usd = gigabytes * S3_COST_PER_GB_MONTH
+    base_work_tokens = (raw_cost_usd / WORK_TOKEN_VALUE).round
+    apply_uplift(base_work_tokens)
   end
 
-  # Calculate work tokens for API calls
-  def calculate_api_work_tokens(call_count:)
-    work_tokens = (call_count * api_call_rate).round
-    apply_uplift(work_tokens)
+  # Calculate work tokens for other AWS compute
+  # cost_usd is the raw AWS cost in dollars
+  def calculate_other_compute_work_tokens(cost_usd:)
+    base_work_tokens = (cost_usd / WORK_TOKEN_VALUE).round
+    apply_uplift(base_work_tokens)
   end
 
-  # Calculate work tokens for other AWS compute (Lambda, Textract, Rekognition, etc.)
-  # cost_cents is the raw AWS cost in cents
-  def calculate_other_compute_work_tokens(cost_cents:)
-    # Rate is work tokens per cent of AWS cost
-    work_tokens = (cost_cents * other_compute_rate / 100.0).round
-    apply_uplift(work_tokens)
+  # Legacy method - convert cost_cents to cost_usd
+  def calculate_other_compute_work_tokens_from_cents(cost_cents:)
+    calculate_other_compute_work_tokens(cost_usd: cost_cents / 100.0)
   end
 
-  # Get model multiplier
-  def model_multiplier_for(model)
-    return 1.0 unless model.present?
+  # Get model pricing
+  def model_pricing_for(model)
+    return MODEL_PRICING['default'] unless model.present?
     
-    # Normalize model name for lookup
-    normalized = model.to_s.downcase.gsub(/[^a-z0-9-]/, '')
+    normalized = model.to_s.downcase
     
     # Try exact match first
-    return model_multipliers[model] if model_multipliers[model]
-    
-    # Try partial matches
-    model_multipliers.each do |key, value|
-      return value if normalized.include?(key.downcase) || key.downcase.include?(normalized)
+    MODEL_PRICING.each do |key, pricing|
+      return pricing if normalized.include?(key) || key.include?(normalized)
     end
     
-    # Default to 1.0
-    1.0
+    # Default fallback
+    MODEL_PRICING['default']
   end
 
   # Apply uplift percentage
@@ -135,7 +163,7 @@ class BillingConfiguration < ApplicationRecord
   # Calculate tokens for purchase amount
   def tokens_for_purchase(amount_usd)
     tier = tier_for_amount(amount_usd)
-    return { tokens: 0, bonus: 0 } unless tier
+    return { tokens: 0, bonus: 0, total: 0 } unless tier
     
     base_tokens = tier['tokens']
     bonus_tokens = tier['bonus_tokens'] || 0
@@ -144,18 +172,23 @@ class BillingConfiguration < ApplicationRecord
     if amount_usd > tier['amount_usd']
       rate = base_tokens.to_f / tier['amount_usd']
       base_tokens = (amount_usd * rate).round
-      # Bonus doesn't pro-rate
     end
     
     { tokens: base_tokens, bonus: bonus_tokens, total: base_tokens + bonus_tokens }
   end
 
-  # Convert work tokens to approximate USD value
+  # Convert work tokens to approximate USD value (what user paid)
   def tokens_to_usd(tokens)
-    # Use the base tier rate
-    base_tier = purchase_tiers.find { |t| t['amount_usd'] == 20 } || purchase_tiers.first
-    rate = base_tier['tokens'].to_f / base_tier['amount_usd']
-    (tokens / rate).round(2)
+    # Work tokens include uplift, so divide by (1 + uplift) to get raw, then convert
+    raw_tokens = tokens / (1 + uplift_percentage / 100.0)
+    raw_usd = raw_tokens * WORK_TOKEN_VALUE
+    (raw_usd * (1 + uplift_percentage / 100.0)).round(2)
+  end
+
+  # Convert work tokens to raw cost (what we pay AWS)
+  def tokens_to_raw_cost_usd(tokens)
+    raw_tokens = tokens / (1 + uplift_percentage / 100.0)
+    (raw_tokens * WORK_TOKEN_VALUE).round(4)
   end
 
   # Convert USD to work tokens
@@ -163,5 +196,20 @@ class BillingConfiguration < ApplicationRecord
     result = tokens_for_purchase(usd)
     result[:total]
   end
-end
 
+  # Helper to show cost breakdown for a model
+  def self.model_cost_info(model)
+    config = current
+    pricing = config.model_pricing_for(model)
+    
+    {
+      model: model,
+      input_per_million: "$#{pricing[:input]}",
+      output_per_million: "$#{pricing[:output]}",
+      example_1k_input_500_output: {
+        raw_cost: ((1000.0 / 1_000_000 * pricing[:input]) + (500.0 / 1_000_000 * pricing[:output])).round(6),
+        work_tokens: config.calculate_ai_work_tokens(input_tokens: 1000, output_tokens: 500, model: model)
+      }
+    }
+  end
+end

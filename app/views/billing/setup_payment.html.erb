@@ -5,7 +5,7 @@
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb mb-2">
             <li class="breadcrumb-item"><%= link_to "Billing", billing_path %></li>
-            <li class="breadcrumb-item"><%= link_to "Settings", billing_settings_path %></li>
+            <li class="breadcrumb-item"><%= link_to "Settings", settings_billing_path %></li>
             <li class="breadcrumb-item active">Add Payment Method</li>
           </ol>
         </nav>
@@ -42,7 +42,7 @@
         </div>
       </div>
 
-      <%= link_to billing_settings_path, class: "btn btn-outline-secondary mt-3" do %>
+      <%= link_to settings_billing_path, class: "btn btn-outline-secondary mt-3" do %>
         <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
         Back to Settings
       <% end %>
@@ -116,7 +116,7 @@
         document.getElementById('spinner').classList.add('d-none');
       } else {
         // Submit the payment method ID to our server
-        const response = await fetch('<%= billing_confirm_payment_method_path %>', {
+        const response = await fetch('<%= confirm_payment_method_billing_path %>', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -128,7 +128,7 @@
         });
         
         if (response.ok) {
-          window.location.href = '<%= billing_settings_path %>';
+          window.location.href = '<%= settings_billing_path %>';
         } else {
           const data = await response.json();
           cardErrors.textContent = data.error || 'Failed to save payment method';

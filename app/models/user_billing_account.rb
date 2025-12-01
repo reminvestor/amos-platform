@@ -158,8 +158,8 @@ class UserBillingAccount < ApplicationRecord
         amount: token_info[:total],
         transaction_type: 'purchase',
         category: 'token_purchase',
-        description: "Purchased #{token_info[:tokens].to_s(:delimited)} tokens" + 
-                     (token_info[:bonus] > 0 ? " (+#{token_info[:bonus].to_s(:delimited)} bonus)" : ""),
+        description: "Purchased #{ActiveSupport::NumberHelper.number_to_delimited(token_info[:tokens])} tokens" + 
+                     (token_info[:bonus] > 0 ? " (+#{ActiveSupport::NumberHelper.number_to_delimited(token_info[:bonus])} bonus)" : ""),
         stripe_payment_intent_id: purchase.stripe_payment_intent_id,
         metadata: { purchase_id: purchase.id, amount_usd: amount_usd }
       )
@@ -304,7 +304,7 @@ class UserBillingAccount < ApplicationRecord
       amount: bonus_amount,
       transaction_type: 'bonus',
       category: 'signup_bonus',
-      description: "Welcome bonus: #{bonus_amount.to_s(:delimited)} free AMOS Work Tokens!"
+      description: "Welcome bonus: #{ActiveSupport::NumberHelper.number_to_delimited(bonus_amount)} free AMOS Work Tokens!"
     )
   end
 
