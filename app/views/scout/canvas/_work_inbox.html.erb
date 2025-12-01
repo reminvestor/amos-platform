@@ -1,0 +1,386 @@
+<div class="work-inbox-canvas">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="mb-1">
+        <i data-lucide="inbox" class="me-2"></i>
+        Work Inbox
+      </h4>
+      <p class="text-muted mb-0 small">
+        <% unread_count = AgentWorkItem.unread_count_for(current_user, current_entity) %>
+        <% action_count = AgentWorkItem.action_required_count_for(current_user, current_entity) %>
+        <span class="badge bg-primary me-1"><%= unread_count %> unread</span>
+        <% if action_count > 0 %>
+          <span class="badge bg-warning text-dark"><%= action_count %> action required</span>
+        <% end %>
+      </p>
+    </div>
+    <div class="btn-group btn-group-sm" role="group">
+      <button type="button" class="btn btn-outline-light active" data-filter="unread">Unread</button>
+      <button type="button" class="btn btn-outline-light" data-filter="all">All</button>
+      <button type="button" class="btn btn-outline-light" data-filter="starred">Starred</button>
+      <button type="button" class="btn btn-outline-light" data-filter="action">Action</button>
+    </div>
+  </div>
+
+  <div id="inboxItems" class="inbox-items">
+    <% items = AgentWorkItem.inbox_for(current_user, current_entity).limit(50) %>
+    <% if items.any? %>
+      <% items.each do |item| %>
+        <div class="inbox-item <%= 'unread' unless item.read? %> <%= 'starred' if item.starred? %> <%= 'action-required' if item.requires_action? %>"
+             data-item-id="<%= item.id %>"
+             data-read="<%= item.read? %>">
+          <div class="d-flex align-items-start">
+            <div class="inbox-item-icon me-3">
+              <span class="icon-emoji"><%= item.icon %></span>
+            </div>
+            <div class="flex-grow-1">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="mb-1 inbox-item-title">
+                    <%= item.title %>
+                    <% if item.requires_action? %>
+                      <span class="badge bg-warning text-dark ms-1">Action Required</span>
+                    <% end %>
+                    <% if item.priority == 'high' || item.priority == 'urgent' %>
+                      <span class="badge bg-danger ms-1"><%= item.priority.capitalize %></span>
+                    <% end %>
+                  </h6>
+                  <p class="mb-1 text-muted small inbox-item-summary">
+                    <%= truncate(item.summary, length: 150) if item.summary %>
+                  </p>
+                  <div class="inbox-item-meta small text-muted">
+                    <span class="me-2"><%= item.agent_name %></span>
+                    <span><%= item.time_ago %></span>
+                  </div>
+                </div>
+                <div class="inbox-item-actions">
+                  <button class="btn btn-sm btn-link text-muted star-btn" data-item-id="<%= item.id %>" title="Star">
+                    <i data-lucide="<%= item.starred? ? 'star' : 'star' %>" 
+                       class="<%= 'text-warning' if item.starred? %>"
+                       style="width: 16px; height: 16px;"></i>
+                  </button>
+                  <button class="btn btn-sm btn-link text-muted archive-btn" data-item-id="<%= item.id %>" title="Archive">
+                    <i data-lucide="archive" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="empty-inbox text-center py-5">
+        <i data-lucide="check-circle" class="mb-3 text-success" style="width: 48px; height: 48px;"></i>
+        <h5>All caught up!</h5>
+        <p class="text-muted">No unread items in your inbox.</p>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .work-inbox-canvas {
+    height: 100%;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .inbox-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .inbox-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .inbox-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .inbox-item.unread {
+    background: rgba(13, 110, 253, 0.1);
+    border-left: 3px solid #0d6efd;
+  }
+
+  .inbox-item.starred {
+    background: rgba(255, 193, 7, 0.1);
+  }
+
+  .inbox-item.action-required {
+    border-left: 3px solid #ffc107;
+  }
+
+  .inbox-item-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+  }
+
+  .icon-emoji {
+    font-size: 20px;
+  }
+
+  .inbox-item-title {
+    color: #fff;
+    font-weight: 500;
+  }
+
+  .inbox-item-summary {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .inbox-item-meta {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .inbox-item-actions {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .inbox-item:hover .inbox-item-actions {
+    opacity: 1;
+  }
+
+  .empty-inbox {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .btn-group .btn.active {
+    background: rgba(255, 255, 255, 0.2);
+  }
+</style>
+
+<script>
+(function() {
+  console.log('📥 Initializing Work Inbox canvas');
+
+  // Helper function to send message to Scout
+  function sendToScout(message) {
+    console.log('📤 Sending to Scout:', message);
+    // Try global function first (most reliable)
+    if (typeof window.scoutSendMessage === 'function') {
+      window.scoutSendMessage(message);
+    } else {
+      // Fallback to custom event
+      window.dispatchEvent(new CustomEvent('scout:send-message', {
+        detail: { message: message }
+      }));
+    }
+  }
+
+  // Filter buttons - filter locally without chat
+  document.querySelectorAll('[data-filter]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      
+      const filter = this.dataset.filter;
+      console.log('📋 Filtering inbox:', filter);
+      
+      // Filter items locally
+      let visibleCount = 0;
+      document.querySelectorAll('.inbox-item').forEach(item => {
+        const isUnread = item.classList.contains('unread');
+        const isStarred = item.classList.contains('starred');
+        const isAction = item.classList.contains('action-required');
+        
+        let show = false;
+        switch(filter) {
+          case 'all':
+            show = true;
+            break;
+          case 'unread':
+            show = isUnread;
+            break;
+          case 'starred':
+            show = isStarred;
+            break;
+          case 'action':
+            show = isAction;
+            break;
+          default:
+            show = true;
+        }
+        
+        if (show) {
+          item.style.display = '';
+          visibleCount++;
+        } else {
+          item.style.display = 'none';
+        }
+      });
+      
+      console.log('📋 Visible items after filter:', visibleCount);
+      
+      // Show/hide empty state based on visible items
+      const emptyState = document.querySelector('.empty-inbox');
+      if (emptyState) {
+        emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+      }
+      
+      // Create a temporary empty message if needed and no existing empty state
+      if (visibleCount === 0 && !emptyState) {
+        const inboxItems = document.getElementById('inboxItems');
+        let tempEmpty = inboxItems.querySelector('.temp-empty-state');
+        if (!tempEmpty) {
+          tempEmpty = document.createElement('div');
+          tempEmpty.className = 'temp-empty-state text-center py-4';
+          tempEmpty.innerHTML = `
+            <i data-lucide="filter" class="mb-2" style="width: 32px; height: 32px; opacity: 0.5;"></i>
+            <p class="text-muted mb-0">No ${filter} items</p>
+          `;
+          inboxItems.appendChild(tempEmpty);
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        tempEmpty.style.display = 'block';
+      } else {
+        const tempEmpty = document.querySelector('.temp-empty-state');
+        if (tempEmpty) tempEmpty.style.display = 'none';
+      }
+    });
+  });
+
+  // Click on item to view details
+  document.querySelectorAll('.inbox-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      if (e.target.closest('.inbox-item-actions')) return;
+      
+      const itemId = this.dataset.itemId;
+      console.log('👁️ Viewing item:', itemId);
+      
+      // Mark as read visually
+      this.classList.remove('unread');
+      
+      // Load the work item in dynamic canvas
+      loadWorkItemDetail(itemId);
+    });
+  });
+  
+  // Load work item detail in dynamic canvas
+  window.loadWorkItemDetail = function(itemId) {
+    console.log('📄 Loading work item detail:', itemId);
+    
+    // Mark as read via API (fire and forget)
+    fetch(`/api/work_items/${itemId}/mark_read`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      }
+    }).catch(err => console.error('Mark read failed:', err));
+    
+    // Fetch the work item content and load in dynamic canvas
+    fetch(`/api/work_items/${itemId}/content`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+      }
+    })
+    .then(response => {
+      console.log('📄 API response status:', response.status);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('📄 API response data:', data);
+      
+      if (data.success) {
+        console.log('📄 scoutLoadCanvas available:', typeof window.scoutLoadCanvas === 'function');
+        
+        if (typeof window.scoutLoadCanvas === 'function') {
+          // Load dynamic canvas with the work item content
+          console.log('📄 Loading dynamic_canvas with html_content length:', data.html_content?.length);
+          window.scoutLoadCanvas('dynamic_canvas', {
+            title: data.title,
+            subtitle: data.subtitle,
+            html_content: data.html_content
+          }, true);
+        } else {
+          console.error('❌ scoutLoadCanvas not available');
+          // Fallback to chat message
+          sendToScout(`Show me the details for work item #${itemId}`);
+        }
+      } else {
+        console.error('❌ API returned success: false', data);
+        sendToScout(`Show me the details for work item #${itemId}`);
+      }
+    })
+    .catch(err => {
+      console.error('❌ Failed to load work item:', err);
+      sendToScout(`Show me the details for work item #${itemId}`);
+    });
+  };
+
+  // Star button
+  document.querySelectorAll('.star-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const itemId = this.dataset.itemId;
+      const icon = this.querySelector('i');
+      const isStarred = icon.classList.contains('text-warning');
+      
+      // Toggle visual state
+      icon.classList.toggle('text-warning');
+      
+      // Update via API
+      fetch(`/api/work_items/${itemId}/toggle_star`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        }
+      }).catch(err => console.error('Star toggle failed:', err));
+    });
+  });
+
+  // Archive button
+  document.querySelectorAll('.archive-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const itemId = this.dataset.itemId;
+      const item = this.closest('.inbox-item');
+      
+      // Visual feedback
+      item.style.opacity = '0.5';
+      item.style.transform = 'translateX(20px)';
+      item.style.transition = 'all 0.3s ease';
+      
+      // Archive via API
+      fetch(`/api/work_items/${itemId}/archive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        }
+      }).then(() => {
+        setTimeout(() => item.remove(), 300);
+      }).catch(err => {
+        console.error('Archive failed:', err);
+        item.style.opacity = '1';
+        item.style.transform = 'translateX(0)';
+      });
+    });
+  });
+
+  // Initialize lucide icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+})();
+</script>
+

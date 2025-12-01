@@ -1,0 +1,555 @@
+# frozen_string_literal: true
+
+class ExecuteScheduledAgentTaskJob < ApplicationJob
+  queue_as :agents
+  
+  # Retry with exponential backoff
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
+  
+  def perform(scheduled_task_id)
+    @scheduled_task = ScheduledAgentTask.find(scheduled_task_id)
+    
+    return unless @scheduled_task.can_run?
+    
+    Rails.logger.info "🕐 Executing scheduled task: #{@scheduled_task.name} (#{@scheduled_task.id})"
+    
+    # Create a run record
+    @run = @scheduled_task.scheduled_task_runs.create!(
+      user: @scheduled_task.user,
+      status: 'pending'
+    )
+    
+    begin
+      @run.start!
+      
+      # Execute based on execution mode
+      result = case @scheduled_task.execution_mode
+      when 'agent_only'
+        execute_agent_only
+      when 'tool_only'
+        execute_tool_only
+      else
+        # Default: Scout decides what to do
+        if @scheduled_task.agent_plugin.present?
+          execute_with_agent
+        else
+          execute_with_scout
+        end
+      end
+      
+      # Process the result
+      process_result(result)
+      
+    rescue => e
+      Rails.logger.error "❌ Scheduled task failed: #{e.message}"
+      Rails.logger.error e.backtrace.first(10).join("\n")
+      
+      @run.fail!(e.message)
+      
+      # Create failure notification
+      create_failure_notification(e)
+      
+      raise # Re-raise for retry logic
+    end
+  end
+  
+  private
+  
+  def execute_with_scout
+    user = @scheduled_task.user
+    entity = @scheduled_task.entity
+    session_id = "scheduled-#{@scheduled_task.id}-#{Time.current.to_i}"
+    
+    # Build context from input_context
+    context = (@scheduled_task.input_context || {}).merge(
+      'scheduled_task_id' => @scheduled_task.id,
+      'scheduled_task_name' => @scheduled_task.name,
+      'scheduled_run' => true
+    )
+    
+    # Create the Scout service
+    scout_service = ScoutGenericToolsServiceV2.new(user, entity, session_id)
+    
+    # Build the prompt with any additional context
+    prompt = build_prompt
+    
+    # Execute and collect results
+    accumulated_content = ""
+    canvas_data = nil
+    tools_used = []
+    
+    # Use the correct method name: process_message_with_tools_streaming
+    # The progress_callback captures streaming output
+    # Note: chunks can be strings (raw content) or hashes (structured data)
+    progress_callback = ->(chunk) {
+      if chunk.is_a?(Hash)
+        chunk_type = chunk[:type] || chunk['type']
+        case chunk_type
+        when "content_chunk", "chunk"
+          content = chunk[:content] || chunk['content']
+          accumulated_content += content.to_s if content
+        when "canvas_update"
+          canvas_data = chunk[:canvas_data] || chunk['canvas_data']
+        when "tool_start"
+          tool_name = chunk[:tool_name] || chunk['tool_name']
+          tools_used << tool_name if tool_name
+        end
+      elsif chunk.is_a?(String)
+        # Raw string content from streaming
+        accumulated_content += chunk
+      end
+    }
+    
+    result = scout_service.process_message_with_tools_streaming(
+      prompt,
+      progress_callback,
+      [],  # conversation_history
+      nil  # current_canvas
+    )
+    
+    # Handle result - it might have symbol or string keys
+    final_response = result[:final_response] || result['final_response'] || 
+                     result[:content] || result['content'] || 
+                     accumulated_content
+    result_canvas = canvas_data || result[:canvas_data] || result['canvas_data']
+    result_tools = (result[:tools_used] || result['tools_used'] || []) + tools_used.uniq
+    
+    {
+      content: final_response,
+      canvas_data: result_canvas,
+      tools_used: result_tools,
+      session_id: session_id
+    }
+  end
+  
+  # Execute with a specific agent ONLY - deterministic mode
+  def execute_agent_only
+    agent = @scheduled_task.required_agent || @scheduled_task.agent_plugin
+    
+    unless agent
+      if @scheduled_task.allow_fallback?
+        Rails.logger.warn "⚠️ Required agent not found, falling back to Scout"
+        return execute_with_scout
+      else
+        raise "Required agent '#{@scheduled_task.required_agent_slug}' not found and fallback disabled"
+      end
+    end
+    
+    Rails.logger.info "🤖 Executing with agent ONLY: #{agent.name} (deterministic mode)"
+    
+    user = @scheduled_task.user
+    entity = @scheduled_task.entity
+    
+    # Create an execution record
+    execution = AgentPluginExecution.create!(
+      agent_plugin: agent,
+      user: user,
+      status: 'running',
+      input_context: {
+        prompt: build_prompt,
+        scheduled_task_id: @scheduled_task.id,
+        deterministic_mode: true,
+        **(@scheduled_task.input_context.except('execution_mode', 'required_agent_slug', 'required_tools', 'allow_fallback'))
+      }
+    )
+    
+    # Link the run to the execution
+    @run.update!(agent_plugin_execution: execution)
+    
+    # Execute the agent directly
+    executor = Agents::StandardPluginExecutor.new(agent, {
+      entity: entity,
+      user: user,
+      agent_plugin: agent
+    })
+    
+    result = executor.run(build_prompt, @scheduled_task.input_context)
+    
+    # Update execution record
+    execution.mark_completed!(result)
+    
+    {
+      content: result[:content],
+      canvas_data: result[:canvas_data],
+      tools_used: result[:tools_used] || [],
+      agents_used: [agent.slug],
+      execution_id: execution.id,
+      deterministic: true,
+      execution_mode: 'agent_only'
+    }
+  end
+  
+  # Execute with specific tools ONLY - deterministic mode
+  def execute_tool_only
+    required_tools = @scheduled_task.required_tools
+    
+    if required_tools.blank?
+      if @scheduled_task.allow_fallback?
+        Rails.logger.warn "⚠️ No required tools specified, falling back to Scout"
+        return execute_with_scout
+      else
+        raise "No required tools specified and fallback disabled"
+      end
+    end
+    
+    Rails.logger.info "🔧 Executing with tools ONLY: #{required_tools.join(', ')} (deterministic mode)"
+    
+    user = @scheduled_task.user
+    entity = @scheduled_task.entity
+    session_id = "scheduled-#{@scheduled_task.id}-#{Time.current.to_i}"
+    
+    # Execute each required tool in sequence
+    tool_results = []
+    tools_executed = []
+    
+    required_tools.each do |tool_name|
+      catalog = Tools::ToolCatalog.instance
+      
+      unless catalog.tool_exists?(tool_name)
+        if @scheduled_task.allow_fallback?
+          Rails.logger.warn "⚠️ Tool '#{tool_name}' not found, skipping"
+          next
+        else
+          raise "Required tool '#{tool_name}' not found and fallback disabled"
+        end
+      end
+      
+      # Build tool arguments from the prompt/context
+      tool_args = build_tool_args(tool_name)
+      
+      begin
+        # Use the catalog's execute_tool method which handles instantiation
+        result = catalog.execute_tool(
+          tool_name,
+          tool_args,
+          user: user,
+          entity: entity,
+          context: { session_id: session_id }
+        )
+        
+        tool_results << { tool: tool_name, success: result[:success] != false, result: result }
+        tools_executed << tool_name
+      rescue => e
+        Rails.logger.error "Tool #{tool_name} failed: #{e.message}"
+        tool_results << { tool: tool_name, success: false, error: e.message }
+        
+        unless @scheduled_task.allow_fallback?
+          raise "Required tool '#{tool_name}' failed: #{e.message}"
+        end
+      end
+    end
+    
+    # Format the results
+    content = format_tool_results(tool_results)
+    
+    {
+      content: content,
+      canvas_data: nil,
+      tools_used: tools_executed,
+      tool_results: tool_results,
+      session_id: session_id,
+      deterministic: true,
+      execution_mode: 'tool_only'
+    }
+  end
+  
+  # Build arguments for a specific tool based on the task prompt/context
+  def build_tool_args(tool_name)
+    # Common patterns for tool arguments
+    case tool_name
+    when 'web_search'
+      # Extract search query from prompt
+      {
+        'query' => extract_search_query,
+        'num_results' => @scheduled_task.input_context['num_results'] || 10
+      }
+    when 'get_data'
+      {
+        'object_type' => @scheduled_task.input_context['object_type'] || 'Contact',
+        'filters' => @scheduled_task.input_context['filters'] || {},
+        'options' => @scheduled_task.input_context['options'] || {}
+      }
+    when 'execute_integration'
+      {
+        'integration' => @scheduled_task.input_context['integration'],
+        'operation' => @scheduled_task.input_context['operation'],
+        'params' => @scheduled_task.input_context['params'] || {}
+      }
+    when 'query_rag_store'
+      {
+        'query' => @scheduled_task.prompt,
+        'top_k' => @scheduled_task.input_context['top_k'] || 5
+      }
+    when 'create_dynamic_visualization'
+      {
+        'title' => @scheduled_task.name,
+        'data' => @scheduled_task.input_context['visualization_data'] || {},
+        'visualization_type' => @scheduled_task.input_context['visualization_type'] || 'report'
+      }
+    else
+      # Return any tool-specific args from input_context
+      @scheduled_task.input_context['tool_args'] || {}
+    end
+  end
+  
+  def extract_search_query
+    # Try to extract a search query from the prompt
+    prompt = @scheduled_task.prompt
+    
+    # Look for explicit query patterns
+    if prompt =~ /search for[:\s]+["']?([^"'\n]+)["']?/i
+      return $1.strip
+    end
+    
+    if prompt =~ /research[:\s]+["']?([^"'\n]+)["']?/i
+      return $1.strip
+    end
+    
+    # Fall back to using the prompt itself (first 100 chars)
+    prompt.truncate(100)
+  end
+  
+  def format_tool_results(tool_results)
+    output = "# Tool Execution Results\n\n"
+    
+    tool_results.each do |tr|
+      if tr[:success]
+        output += "## ✅ #{tr[:tool]}\n"
+        output += format_result_content(tr[:result])
+      else
+        output += "## ❌ #{tr[:tool]}\n"
+        output += "Error: #{tr[:error]}\n"
+      end
+      output += "\n---\n\n"
+    end
+    
+    output
+  end
+  
+  def format_result_content(result)
+    case result
+    when Hash
+      if result[:success] == false
+        "Error: #{result[:error] || result[:message]}\n"
+      elsif result[:results].is_a?(Array)
+        # Search results
+        result[:results].map do |r|
+          "- **#{r[:title]}**: #{r[:snippet]}\n  #{r[:url]}\n"
+        end.join("\n")
+      else
+        result.to_json
+      end
+    when Array
+      result.map { |r| "- #{r}" }.join("\n")
+    else
+      result.to_s
+    end
+  end
+  
+  def execute_with_agent
+    agent = @scheduled_task.agent_plugin
+    user = @scheduled_task.user
+    entity = @scheduled_task.entity
+    
+    # Create an execution record
+    execution = AgentPluginExecution.create!(
+      agent_plugin: agent,
+      user: user,
+      status: 'running',
+      input_context: {
+        prompt: build_prompt,
+        scheduled_task_id: @scheduled_task.id,
+        **@scheduled_task.input_context
+      }
+    )
+    
+    # Link the run to the execution
+    @run.update!(agent_plugin_execution: execution)
+    
+    # Execute the agent
+    executor = Agents::StandardPluginExecutor.new(agent, {
+      entity: entity,
+      user: user,
+      agent_plugin: agent
+    })
+    
+    result = executor.run(build_prompt, @scheduled_task.input_context)
+    
+    # Update execution record
+    execution.mark_completed!(result)
+    
+    {
+      content: result[:content],
+      canvas_data: result[:canvas_data],
+      tools_used: result[:tools_used] || [],
+      execution_id: execution.id
+    }
+  end
+  
+  def build_prompt
+    base_prompt = @scheduled_task.prompt
+    
+    # Add time context
+    time_context = <<~CONTEXT
+      Current time: #{Time.current.strftime('%A, %B %d, %Y at %I:%M %p %Z')}
+      Task type: #{@scheduled_task.task_type}
+      This is a scheduled task running automatically.
+    CONTEXT
+    
+    # Add any custom context
+    if @scheduled_task.input_context['additional_context'].present?
+      time_context += "\nAdditional context: #{@scheduled_task.input_context['additional_context']}"
+    end
+    
+    "#{time_context}\n\n#{base_prompt}"
+  end
+  
+  def process_result(result)
+    # Generate summary
+    summary = generate_summary(result[:content])
+    
+    # Complete the run
+    @run.complete!(
+      result_summary: summary,
+      result_data: {
+        content: result[:content],
+        canvas_data: result[:canvas_data],
+        tools_used: result[:tools_used],
+        session_id: result[:session_id],
+        execution_id: result[:execution_id]
+      }
+    )
+    
+    # Create work item
+    create_work_item(result, summary)
+    
+    # Handle output delivery
+    deliver_output(result, summary)
+    
+    # Save visualization if one was created
+    save_visualization_if_present(result)
+    
+    Rails.logger.info "✅ Scheduled task completed: #{@scheduled_task.name}"
+  end
+  
+  def generate_summary(content)
+    return "Task completed successfully" if content.blank?
+    
+    # Take first 200 chars as summary
+    if content.length > 200
+      content[0..197] + "..."
+    else
+      content
+    end
+  end
+  
+  def create_work_item(result, summary)
+    AgentWorkItem.create!(
+      entity: @scheduled_task.entity,
+      user: @scheduled_task.user,
+      agent_plugin: @scheduled_task.agent_plugin,
+      scheduled_task_run: @run,
+      agent_plugin_execution_id: result[:execution_id],
+      work_type: 'scheduled_task_completed',
+      title: "#{@scheduled_task.task_type_info[:icon]} #{@scheduled_task.name}",
+      summary: summary,
+      details: result[:content],
+      priority: 'normal',
+      metadata: {
+        task_type: @scheduled_task.task_type,
+        tools_used: result[:tools_used],
+        has_visualization: result[:canvas_data].present?
+      }
+    )
+  end
+  
+  def deliver_output(result, summary)
+    case @scheduled_task.output_method
+    when 'email'
+      send_email_result(result, summary)
+    when 'notification'
+      # Notification is created automatically by ScheduledTaskRun
+    when 'both'
+      send_email_result(result, summary)
+      # Notification is created automatically
+    end
+  end
+  
+  def send_email_result(result, summary)
+    return unless @scheduled_task.user&.email.present?
+    
+    Rails.logger.info "📧 Sending task completion email to #{@scheduled_task.user.email}"
+    
+    ScheduledTaskMailer.task_completed(
+      @scheduled_task,
+      @run,
+      result,
+      summary
+    ).deliver_later
+  rescue => e
+    Rails.logger.error "Failed to send task completion email: #{e.message}"
+  end
+  
+  def save_visualization_if_present(result)
+    return unless result[:canvas_data].present?
+    
+    canvas_data = result[:canvas_data]
+    return unless canvas_data['html_content'].present? || canvas_data[:html_content].present?
+    
+    SavedVisualization.create!(
+      entity: @scheduled_task.entity,
+      user: @scheduled_task.user,
+      scheduled_task_run: @run,
+      name: "#{@scheduled_task.name} - #{Time.current.strftime('%b %d, %Y')}",
+      description: "Auto-generated from scheduled task",
+      visualization_type: SavedVisualization.determine_type(canvas_data),
+      source_type: 'inline',
+      html_content_cache: canvas_data['html_content'] || canvas_data[:html_content],
+      canvas_data_cache: canvas_data,
+      cache_expires_at: 1.week.from_now,
+      original_prompt: @scheduled_task.prompt,
+      category: @scheduled_task.task_type,
+      metadata: {
+        scheduled_task_id: @scheduled_task.id,
+        run_id: @run.id,
+        auto_generated: true
+      }
+    )
+  end
+  
+  def create_failure_notification(error)
+    UserNotification.create!(
+      entity: @scheduled_task.entity,
+      user: @scheduled_task.user,
+      scheduled_task_run: @run,
+      notification_type: 'task_failed',
+      title: "❌ #{@scheduled_task.name} failed",
+      body: "Error: #{error.message}",
+      icon: '❌',
+      channel: @scheduled_task.output_method == 'email' ? 'both' : 'in_app',
+      priority: 'high',
+      action_url: "/scout?view=scheduled_tasks&task_id=#{@scheduled_task.id}",
+      action_type: 'view'
+    )
+    
+    # Send failure email if configured
+    if @scheduled_task.output_method.in?(%w[email both])
+      send_failure_email(error)
+    end
+  end
+  
+  def send_failure_email(error)
+    return unless @scheduled_task.user&.email.present?
+    
+    Rails.logger.info "📧 Sending task failure email to #{@scheduled_task.user.email}"
+    
+    ScheduledTaskMailer.task_failed(
+      @scheduled_task,
+      @run,
+      error.message
+    ).deliver_later
+  rescue => e
+    Rails.logger.error "Failed to send task failure email: #{e.message}"
+  end
+end
+
