@@ -54,6 +54,10 @@ function showBillingNotification(data) {
   const banner = document.createElement('div')
   banner.id = 'billing-notification-banner'
   banner.className = `billing-notification billing-notification-${data.level}`
+  
+  const btnClass = data.level === 'danger' ? 'btn-danger' : 'btn-warning'
+  const dismissBtn = data.dismissable ? '<button class="billing-notification-dismiss" data-dismiss="billing">×</button>' : ''
+  
   banner.innerHTML = `
     <div class="billing-notification-content">
       <div class="billing-notification-icon">
@@ -64,10 +68,10 @@ function showBillingNotification(data) {
         <p>${data.message}</p>
       </div>
       <div class="billing-notification-actions">
-        <a href="${data.action_url}" class="btn btn-${data.level === 'danger' ? 'danger' : 'warning'} btn-sm">
+        <a href="${data.action_url}" class="btn ${btnClass} btn-sm">
           ${data.action_text}
         </a>
-        ${data.dismissable ? '<button class="billing-notification-dismiss" onclick="this.closest(\\'#billing-notification-banner\\').remove()">×</button>' : ''}
+        ${dismissBtn}
       </div>
     </div>
   `
@@ -78,6 +82,12 @@ function showBillingNotification(data) {
   // Insert at top of main content area
   const mainContent = document.querySelector('.admin-content') || document.querySelector('main') || document.body
   mainContent.insertBefore(banner, mainContent.firstChild)
+
+  // Add dismiss handler
+  const dismissButton = banner.querySelector('[data-dismiss="billing"]')
+  if (dismissButton) {
+    dismissButton.addEventListener('click', () => banner.remove())
+  }
 
   // If blocking, also show a modal
   if (data.blocking) {
@@ -91,10 +101,12 @@ function showLowBalanceNotification(data) {
   if (existing) existing.remove()
 
   // Build action buttons
-  const actionButtons = data.actions.map(action => {
+  const actionButtons = (data.actions || []).map(action => {
     const btnClass = action.style === 'primary' ? 'btn-warning' : 'btn-outline-secondary'
     return `<a href="${action.url}" class="btn ${btnClass} btn-sm">${action.text}</a>`
   }).join('')
+
+  const dismissBtn = data.dismissable ? '<button class="billing-notification-dismiss" data-dismiss="low-balance">×</button>' : ''
 
   // Create notification banner
   const banner = document.createElement('div')
@@ -114,7 +126,7 @@ function showLowBalanceNotification(data) {
       </div>
       <div class="billing-notification-actions">
         ${actionButtons}
-        ${data.dismissable ? '<button class="billing-notification-dismiss" onclick="this.closest(\\'#low-balance-notification-banner\\').remove()">×</button>' : ''}
+        ${dismissBtn}
       </div>
     </div>
   `
@@ -125,6 +137,12 @@ function showLowBalanceNotification(data) {
   // Insert at top of main content area
   const mainContent = document.querySelector('.admin-content') || document.querySelector('main') || document.body
   mainContent.insertBefore(banner, mainContent.firstChild)
+
+  // Add dismiss handler
+  const dismissButton = banner.querySelector('[data-dismiss="low-balance"]')
+  if (dismissButton) {
+    dismissButton.addEventListener('click', () => banner.remove())
+  }
 }
 
 function hideBillingNotifications() {
