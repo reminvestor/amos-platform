@@ -32,6 +32,8 @@ export function subscribeToBillingNotifications(userId) {
         
         if (data.type === 'billing_reminder' || data.type === 'billing_required') {
           showBillingNotification(data)
+        } else if (data.type === 'low_balance_reminder') {
+          showLowBalanceNotification(data)
         } else if (data.type === 'billing_resolved') {
           hideBillingNotifications()
           showSuccessToast(data)
@@ -83,9 +85,54 @@ function showBillingNotification(data) {
   }
 }
 
+function showLowBalanceNotification(data) {
+  // Remove any existing low balance notification
+  const existing = document.getElementById('low-balance-notification-banner')
+  if (existing) existing.remove()
+
+  // Build action buttons
+  const actionButtons = data.actions.map(action => {
+    const btnClass = action.style === 'primary' ? 'btn-warning' : 'btn-outline-secondary'
+    return `<a href="${action.url}" class="btn ${btnClass} btn-sm">${action.text}</a>`
+  }).join('')
+
+  // Create notification banner
+  const banner = document.createElement('div')
+  banner.id = 'low-balance-notification-banner'
+  banner.className = 'billing-notification billing-notification-warning'
+  banner.innerHTML = `
+    <div class="billing-notification-content">
+      <div class="billing-notification-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 6v6l4 2"></path>
+        </svg>
+      </div>
+      <div class="billing-notification-text">
+        <strong>${data.title}</strong>
+        <p>${data.message}</p>
+      </div>
+      <div class="billing-notification-actions">
+        ${actionButtons}
+        ${data.dismissable ? '<button class="billing-notification-dismiss" onclick="this.closest(\\'#low-balance-notification-banner\\').remove()">×</button>' : ''}
+      </div>
+    </div>
+  `
+
+  // Add styles if not already present
+  addBillingNotificationStyles()
+
+  // Insert at top of main content area
+  const mainContent = document.querySelector('.admin-content') || document.querySelector('main') || document.body
+  mainContent.insertBefore(banner, mainContent.firstChild)
+}
+
 function hideBillingNotifications() {
   const banner = document.getElementById('billing-notification-banner')
   if (banner) banner.remove()
+  
+  const lowBalanceBanner = document.getElementById('low-balance-notification-banner')
+  if (lowBalanceBanner) lowBalanceBanner.remove()
   
   const modal = document.getElementById('billing-blocking-modal')
   if (modal) modal.remove()
