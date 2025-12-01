@@ -18,7 +18,7 @@
   <!-- Filters -->
   <div class="card bg-dark border-secondary mb-4">
     <div class="card-body">
-      <%= form_with url: billing_transactions_path, method: :get, local: true, class: "row g-3 align-items-end" do %>
+      <%= form_with url: transactions_billing_path, method: :get, local: true, class: "row g-3 align-items-end" do %>
         <div class="col-md-3">
           <label class="form-label text-white">Transaction Type</label>
           <%= select_tag :type, 
@@ -51,7 +51,7 @@
           <%= submit_tag "Filter", class: "btn btn-primary w-100" %>
         </div>
         <div class="col-md-2">
-          <%= link_to "Clear", billing_transactions_path, class: "btn btn-outline-secondary w-100" %>
+          <%= link_to "Clear", transactions_billing_path, class: "btn btn-outline-secondary w-100" %>
         </div>
       <% end %>
     </div>
@@ -113,7 +113,7 @@
                 <% if @transactions.first_page? %>
                   <li class="page-item disabled"><span class="page-link">Previous</span></li>
                 <% else %>
-                  <li class="page-item"><%= link_to "Previous", billing_transactions_path(page: @transactions.prev_page, type: params[:type], category: params[:category]), class: "page-link" %></li>
+                  <li class="page-item"><%= link_to "Previous", transactions_billing_path(page: @transactions.prev_page, type: params[:type], category: params[:category]), class: "page-link" %></li>
                 <% end %>
                 
                 <li class="page-item disabled">
@@ -123,7 +123,7 @@
                 <% if @transactions.last_page? %>
                   <li class="page-item disabled"><span class="page-link">Next</span></li>
                 <% else %>
-                  <li class="page-item"><%= link_to "Next", billing_transactions_path(page: @transactions.next_page, type: params[:type], category: params[:category]), class: "page-link" %></li>
+                  <li class="page-item"><%= link_to "Next", transactions_billing_path(page: @transactions.next_page, type: params[:type], category: params[:category]), class: "page-link" %></li>
                 <% end %>
               </ul>
             </nav>

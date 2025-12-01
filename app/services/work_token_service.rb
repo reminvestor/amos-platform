@@ -22,8 +22,12 @@ class WorkTokenService
     
     return { success: true, tokens_charged: 0 } if work_tokens.zero?
     
-    # Calculate raw cost for tracking
-    raw_cost_cents = calculate_raw_ai_cost(input_tokens, output_tokens, model)
+    # Calculate raw cost for tracking (uses actual model pricing)
+    raw_cost_cents = @config.calculate_ai_raw_cost_cents(
+      input_tokens: input_tokens,
+      output_tokens: output_tokens,
+      model: model
+    )
     uplifted_cost_cents = (raw_cost_cents * (1 + @config.uplift_percentage / 100.0)).round
     
     debit_tokens(
@@ -103,8 +107,10 @@ class WorkTokenService
 
   # Track other AWS compute usage (Lambda, Textract, Rekognition, Comprehend, etc.)
   # service_type examples: 'lambda', 'textract', 'rekognition', 'comprehend', 'transcribe', 'polly'
+  # cost_cents is the raw AWS cost in cents
   def track_other_compute(cost_cents:, service_type:, description: nil, source: nil, metadata: {})
-    work_tokens = @config.calculate_other_compute_work_tokens(cost_cents: cost_cents)
+    cost_usd = cost_cents / 100.0
+    work_tokens = @config.calculate_other_compute_work_tokens(cost_usd: cost_usd)
     
     return { success: true, tokens_charged: 0 } if work_tokens.zero?
     
@@ -347,31 +353,6 @@ class WorkTokenService
     }
   end
 
-  def calculate_raw_ai_cost(input_tokens, output_tokens, model)
-    # Bedrock pricing per million tokens in cents
-    pricing = case model.to_s.downcase
-    when /claude-sonnet-4-5|claude-4-5-sonnet/
-      { input: 300, output: 1500 }
-    when /claude-3-5-sonnet/
-      { input: 300, output: 1500 }
-    when /claude-3-opus/
-      { input: 1500, output: 7500 }
-    when /claude-3-haiku/
-      { input: 25, output: 125 }
-    when /claude-3-5-haiku/
-      { input: 80, output: 400 }
-    when /gpt-4o/
-      { input: 250, output: 1000 }
-    when /gpt-4/
-      { input: 1000, output: 3000 }
-    else
-      { input: 300, output: 1500 }
-    end
-    
-    input_cost = (input_tokens.to_f / 1_000_000) * pricing[:input]
-    output_cost = (output_tokens.to_f / 1_000_000) * pricing[:output]
-    
-    ((input_cost + output_cost) * 100).round # Convert to cents
-  end
+  # Raw AI cost calculation is now in BillingConfiguration.calculate_ai_raw_cost_cents
 end
 

@@ -25,7 +25,7 @@
     <div class="alert alert-warning mb-4">
       <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
       <strong>Payment method required.</strong>
-      <%= link_to "Add a payment method", billing_setup_payment_path %> to purchase tokens.
+      <%= link_to "Add a payment method", setup_payment_billing_path %> to purchase tokens.
     </div>
   <% end %>
 
@@ -60,7 +60,7 @@
               ~$<%= number_with_precision(tier['amount_usd'].to_f / (tier['tokens'] + (tier['bonus_tokens'] || 0)) * 100000, precision: 2) %> per 100k tokens
             </div>
             
-            <%= form_with url: billing_purchase_path, method: :post, local: true do |f| %>
+            <%= form_with url: purchase_billing_path, method: :post, local: true do |f| %>
               <%= hidden_field_tag :amount, tier['amount_usd'] %>
               <%= submit_tag "Buy Now", 
                   class: "btn btn-#{index == 1 ? 'primary' : 'outline-primary'} w-100",

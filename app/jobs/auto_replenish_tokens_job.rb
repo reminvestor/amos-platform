@@ -45,7 +45,7 @@ class AutoReplenishTokensJob < ApplicationJob
       user: billing_account.user,
       entity: billing_account.user.entities.first,
       title: "Work Tokens Replenished",
-      message: "Your account was automatically topped up with #{purchase.total_tokens.to_s(:delimited)} AMOS Work Tokens for $#{purchase.amount_usd}.",
+      message: "Your account was automatically topped up with #{ActiveSupport::NumberHelper.number_to_delimited(purchase.total_tokens)} AMOS Work Tokens for $#{purchase.amount_usd}.",
       notification_type: 'billing',
       channel: 'in_app',
       priority: 'low',

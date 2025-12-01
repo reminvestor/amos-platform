@@ -85,7 +85,7 @@ module Admin
         metadata: { admin_id: current_admin_user.id, reason: reason }
       )
       
-      redirect_to admin_billing_account_detail_path(@account), notice: "Credited #{amount.to_s(:delimited)} tokens to account."
+      redirect_to admin_billing_account_detail_path(@account), notice: "Credited #{number_with_delimiter(amount)} tokens to account."
     end
 
     # Admin action to suspend account

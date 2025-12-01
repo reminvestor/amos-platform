@@ -8,11 +8,11 @@
       <p class="text-muted">Track your AI usage and manage billing</p>
     </div>
     <div class="d-flex gap-2">
-      <%= link_to billing_settings_path, class: "btn btn-outline-secondary" do %>
+      <%= link_to settings_billing_path, class: "btn btn-outline-secondary" do %>
         <i data-lucide="settings" style="width: 16px; height: 16px;"></i>
         Settings
       <% end %>
-      <%= link_to billing_purchase_path, class: "btn btn-primary" do %>
+      <%= link_to purchase_billing_path, class: "btn btn-primary" do %>
         <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
         Buy Tokens
       <% end %>
@@ -46,7 +46,7 @@
               <% if @billing_account.auto_replenish_enabled? && @billing_account.has_payment_method? %>
                 will auto-replenish
               <% else %>
-                <%= link_to "add tokens", billing_purchase_path %>
+                <%= link_to "add tokens", purchase_billing_path %>
               <% end %>
             </div>
           <% end %>
@@ -111,7 +111,7 @@
             <i data-lucide="pie-chart" class="me-2 text-primary"></i>
             Usage by Category (30 days)
           </h5>
-          <%= link_to billing_usage_path, class: "btn btn-sm btn-outline-secondary" do %>
+          <%= link_to usage_billing_path, class: "btn btn-sm btn-outline-secondary" do %>
             Details
           <% end %>
         </div>
@@ -155,7 +155,7 @@
             <i data-lucide="history" class="me-2 text-primary"></i>
             Recent Activity
           </h5>
-          <%= link_to billing_transactions_path, class: "btn btn-sm btn-outline-secondary" do %>
+          <%= link_to transactions_billing_path, class: "btn btn-sm btn-outline-secondary" do %>
             View All
           <% end %>
         </div>
