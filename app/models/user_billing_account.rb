@@ -27,7 +27,9 @@ class UserBillingAccount < ApplicationRecord
   scope :low_balance, -> { where('work_token_balance < ?', 10_000) }
 
   # Callbacks
-  after_create :grant_signup_bonus
+  # Note: Free tokens are granted when ONBOARDING completes, not on account creation
+  # Flow: Sign up → Add credit card → Complete onboarding → Get 200K free tokens
+  # See OnboardingController#complete for where grant_signup_bonus! is called
 
   # Class methods
   def self.for_user(user)
@@ -35,8 +37,35 @@ class UserBillingAccount < ApplicationRecord
       config = BillingConfiguration.current
       account.auto_replenish_amount_usd = config.default_auto_replenish_amount_usd
       account.monthly_limit_usd = config.default_monthly_limit_usd
-      account.free_tokens_remaining = config.free_tokens_on_signup
+      # Don't grant free tokens yet - wait until onboarding completes
+      account.free_tokens_remaining = 0
     end
+  end
+  
+  # Grant signup bonus - called when onboarding completes
+  def grant_signup_bonus!
+    return if signup_bonus_granted?
+    
+    config = BillingConfiguration.current
+    bonus_amount = config.free_tokens_on_signup
+    return if bonus_amount.zero?
+    
+    transaction do
+      credit_tokens!(
+        amount: bonus_amount,
+        transaction_type: 'bonus',
+        category: 'signup_bonus',
+        description: "Welcome bonus: #{ActiveSupport::NumberHelper.number_to_delimited(bonus_amount)} free AMOS Work Tokens!"
+      )
+      update!(
+        free_tokens_remaining: bonus_amount,
+        signup_bonus_granted_at: Time.current
+      )
+    end
+  end
+  
+  def signup_bonus_granted?
+    signup_bonus_granted_at.present?
   end
 
   # Balance methods
@@ -293,20 +322,6 @@ class UserBillingAccount < ApplicationRecord
   end
 
   private
-
-  def grant_signup_bonus
-    config = BillingConfiguration.current
-    bonus_amount = config.free_tokens_on_signup
-    
-    return if bonus_amount.zero?
-    
-    credit_tokens!(
-      amount: bonus_amount,
-      transaction_type: 'bonus',
-      category: 'signup_bonus',
-      description: "Welcome bonus: #{ActiveSupport::NumberHelper.number_to_delimited(bonus_amount)} free AMOS Work Tokens!"
-    )
-  end
 
   def create_stripe_payment(amount_usd)
     Stripe::PaymentIntent.create(

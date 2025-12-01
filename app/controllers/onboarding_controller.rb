@@ -105,6 +105,14 @@ class OnboardingController < ApplicationController
     # Mark user as onboarded and redirect to main app
     current_user.update(onboarded: true)
 
+    # Grant signup bonus tokens now that onboarding is complete
+    # User should have already added their payment method before getting here
+    billing_account = UserBillingAccount.for_user(current_user)
+    if billing_account.has_payment_method? && !billing_account.signup_bonus_granted?
+      billing_account.grant_signup_bonus!
+      Rails.logger.info "✅ Granted #{BillingConfiguration.current.free_tokens_on_signup} signup bonus tokens to user #{current_user.id}"
+    end
+
     # Clear conversation cache
     if session[:onboarding_session_id].present?
       Rails.cache.delete("onboarding_#{session[:onboarding_session_id]}")
@@ -112,7 +120,8 @@ class OnboardingController < ApplicationController
     session.delete(:onboarding_session_id)
 
     # Redirect to Scout (main app)
-    redirect_to scout_path, notice: "Welcome to Amos! Your AI business automation assistant is ready to help you succeed."
+    token_count = ActiveSupport::NumberHelper.number_to_delimited(billing_account.work_token_balance)
+    redirect_to scout_path, notice: "Welcome to AMOS! You have #{token_count} work tokens ready to use. Let's get started!"
   end
 
   def reset
