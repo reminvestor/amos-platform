@@ -174,10 +174,7 @@
               maxlength="1000"
               aria-label="Message input for onboarding chat"></textarea>
             <button type="submit" class="send-btn" id="send-button" aria-label="Send message">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m22 2-7 20-4-9-9-4Z"/>
-                <path d="M22 2 11 13"/>
-              </svg>
+              <i data-lucide="send"></i>
             </button>
           </div>
         </form>
@@ -443,6 +440,10 @@
   to { transform: rotate(360deg); }
 }
 
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
 .chat-input-area {
   padding: 1.5rem 2rem;
   border-top: 1px solid #1E293B;
@@ -493,6 +494,15 @@
   padding: 0.75rem 1.25rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.send-btn svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  stroke: white;
 }
 
 .send-btn:hover {
@@ -784,16 +794,15 @@ function initializeOnboarding() {
 
       if (sendButton) {
         if (enabled) {
-          sendButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m22 2-7 20-4-9-9-4Z"/>
-            <path d="M22 2 11 13"/>
-          </svg>`;
+          sendButton.innerHTML = '<i data-lucide="send"></i>';
           sendButton.className = 'send-btn';
         } else {
-          sendButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;">
-            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-          </svg>`;
+          sendButton.innerHTML = '<i data-lucide="loader" class="spin-icon"></i>';
           sendButton.className = 'send-btn';
+        }
+        // Reinitialize Lucide icons for dynamically added elements
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
         }
       }
     } catch (e) {
