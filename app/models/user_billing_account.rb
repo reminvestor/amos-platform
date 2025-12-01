@@ -101,6 +101,9 @@ class UserBillingAccount < ApplicationRecord
     # Check for threshold notifications (only if no payment method)
     check_usage_threshold_notification!(balance_before) unless has_payment_method?
     
+    # Check for low balance notification (for users WITH payment method but no auto-replenish)
+    check_low_balance_notification!(balance_before) if has_payment_method? && !auto_replenish_enabled?
+    
     # Check if auto-replenishment is needed
     check_auto_replenishment! if low_balance?
     
@@ -189,6 +192,65 @@ class UserBillingAccount < ApplicationRecord
     return unless can_auto_replenish? && low_balance?
     
     AutoReplenishTokensJob.perform_later(id)
+  end
+
+  # Low balance threshold for users with payment method but no auto-replenish
+  LOW_BALANCE_NOTIFICATION_THRESHOLD = 20_000
+
+  # Check if user with payment method (but no auto-replenish) is running low
+  def check_low_balance_notification!(balance_before)
+    return unless has_payment_method?
+    return if auto_replenish_enabled? # Auto-replenish will handle it
+    
+    # Only notify once when crossing the threshold
+    crossed_threshold = balance_before > LOW_BALANCE_NOTIFICATION_THRESHOLD && 
+                        work_token_balance <= LOW_BALANCE_NOTIFICATION_THRESHOLD
+    
+    return unless crossed_threshold
+    
+    # Check if we've already sent this notification recently (within 24 hours)
+    return if last_low_balance_notified_at && last_low_balance_notified_at > 24.hours.ago
+    
+    update_column(:last_low_balance_notified_at, Time.current)
+    
+    # Broadcast the low balance notification
+    broadcast_low_balance_notification
+    
+    Rails.logger.info "💳 Low balance notification: User #{user_id} has #{work_token_balance} tokens remaining"
+  end
+
+  # Broadcast low balance notification for users with payment method
+  def broadcast_low_balance_notification
+    config = BillingConfiguration.current
+    estimated_value = config.tokens_to_usd(work_token_balance)
+    
+    message = {
+      type: 'low_balance_reminder',
+      level: 'warning',
+      title: "Running low on tokens",
+      message: "You have #{ActiveSupport::NumberHelper.number_to_delimited(work_token_balance)} tokens remaining (~$#{estimated_value}). Buy more tokens or enable auto-replenishment to avoid interruption.",
+      actions: [
+        {
+          url: '/billing/purchase',
+          text: 'Buy Tokens',
+          style: 'primary'
+        },
+        {
+          url: '/billing/settings',
+          text: 'Enable Auto-Buy',
+          style: 'outline'
+        }
+      ],
+      dismissable: true,
+      timestamp: Time.current.iso8601,
+      remaining_tokens: work_token_balance,
+      estimated_value_usd: estimated_value
+    }
+    
+    ActionCable.server.broadcast(
+      "user_notifications_#{user_id}",
+      message
+    )
   end
 
   # Check if we've crossed a usage threshold and need to notify user
