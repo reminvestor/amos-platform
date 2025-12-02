@@ -71,7 +71,7 @@ class ScheduledTaskRun < ApplicationRecord
   
   # Callbacks
   after_update :create_notification, if: :should_notify?
-  after_update :create_work_item, if: :just_completed?
+  # Note: Work item creation is handled by ExecuteScheduledAgentTaskJob to avoid duplicates
   
   # Instance methods
   def start!
@@ -153,10 +153,6 @@ class ScheduledTaskRun < ApplicationRecord
     saved_change_to_status? && status.in?(%w[completed failed]) && !notification_sent?
   end
   
-  def just_completed?
-    saved_change_to_status? && status == 'completed'
-  end
-  
   def create_notification
     return if notification_sent?
     
@@ -177,21 +173,6 @@ class ScheduledTaskRun < ApplicationRecord
       priority: status == 'failed' ? 'high' : 'normal',
       action_url: "/scout?view=scheduled_tasks&run_id=#{id}",
       action_type: 'view'
-    )
-  end
-  
-  def create_work_item
-    AgentWorkItem.create!(
-      entity: scheduled_agent_task.entity,
-      user: user,
-      agent_plugin: scheduled_agent_task.agent_plugin,
-      scheduled_task_run: self,
-      agent_plugin_execution: agent_plugin_execution,
-      work_type: 'scheduled_task_completed',
-      title: "#{scheduled_agent_task.name} completed",
-      summary: result_summary,
-      details: result_data.to_json,
-      priority: 'normal'
     )
   end
   
