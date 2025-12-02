@@ -197,9 +197,9 @@
               </td>
               <td>
                 <% if agent.is_public? %>
-                  <span class="badge bg-success" title="Published <%= time_ago_in_words(agent.published_at) if agent.published_at %> ago">Public</span>
+                  <span class="admin-badge admin-badge-success" title="Published <%= time_ago_in_words(agent.published_at) if agent.published_at %> ago">Public</span>
                 <% else %>
-                  <span class="badge bg-secondary">Private</span>
+                  <span class="admin-badge">Private</span>
                 <% end %>
               </td>
               <td>

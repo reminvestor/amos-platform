@@ -1,21 +1,21 @@
-<div style="background-color: #0A0E1A; color: #FFFFFF; min-height: 100vh; padding: 2rem;">
+<div class="integrations-manager-canvas" style="background-color: var(--scout-bg); color: var(--scout-text); min-height: 100vh; padding: 2rem;">
   <!-- Page Header -->
   <div style="margin-bottom: 2rem;">
-    <h1 style="color: #FFFFFF; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+    <h1 style="color: var(--scout-text); font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 1rem;">
       <i data-lucide="plug" style="width: 2rem; height: 2rem;"></i>
       Integration Connections
     </h1>
-    <p style="color: #94A3B8; margin-bottom: 0;">Manage your external application connections</p>
+    <p style="color: var(--scout-text-muted); margin-bottom: 0;">Manage your external application connections</p>
   </div>
 
   <!-- Search Bar -->
   <div style="margin-bottom: 2rem;">
     <div style="position: relative;">
-      <i data-lucide="search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 1.25rem; height: 1.25rem; color: #64748B;"></i>
+      <i data-lucide="search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 1.25rem; height: 1.25rem; color: var(--scout-text-muted);"></i>
       <input type="text"
              id="integrationSearch"
              placeholder="Search integrations..."
-             style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.75rem; background-color: #1A1F35; border: 1px solid #1E293B; border-radius: 0.5rem; color: #FFFFFF; font-size: 0.875rem;"
+             style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.75rem; background-color: var(--scout-tertiary); border: 1px solid var(--scout-border); border-radius: 0.5rem; color: var(--scout-text); font-size: 0.875rem;"
              oninput="filterIntegrations()">
     </div>
   </div>
@@ -25,8 +25,8 @@
     <div style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(167, 139, 250, 0.05) 100%); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
       <div style="display: flex; align-items: center; justify-content: space-between;">
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Total Integrations</p>
-          <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:integrations]&.length || 0 %></p>
+          <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Total Integrations</p>
+          <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:integrations]&.length || 0 %></p>
         </div>
         <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(124, 58, 237, 0.2); display: flex; align-items: center; justify-content: center;">
           <i data-lucide="plug" style="width: 1.25rem; height: 1.25rem; color: #A78BFA;"></i>
@@ -37,8 +37,8 @@
     <div style="background: linear-gradient(135deg, rgba(74, 222, 128, 0.2) 0%, rgba(74, 222, 128, 0.05) 100%); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
       <div style="display: flex; align-items: center; justify-content: space-between;">
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Connected</p>
-          <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:connections]&.length || 0 %></p>
+          <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Connected</p>
+          <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= canvas_data[:connections]&.length || 0 %></p>
         </div>
         <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(74, 222, 128, 0.2); display: flex; align-items: center; justify-content: center;">
           <i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem; color: #4ade80;"></i>
@@ -49,8 +49,8 @@
     <div style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(250, 204, 21, 0.05) 100%); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
       <div style="display: flex; align-items: center; justify-content: space-between;">
         <div>
-          <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 0.5rem 0;">Available</p>
-          <p style="color: #FFFFFF; font-size: 1.75rem; font-weight: 700; margin: 0;"><%= (canvas_data[:integrations]&.length || 0) - (canvas_data[:connections]&.length || 0) %></p>
+          <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 0.5rem 0;">Available</p>
+          <p style="color: var(--scout-text); font-size: 1.75rem; font-weight: 700; margin: 0;"><%= (canvas_data[:integrations]&.length || 0) - (canvas_data[:connections]&.length || 0) %></p>
         </div>
         <div style="width: 2.5rem; height: 2.5rem; border-radius: 0.5rem; background: rgba(250, 204, 21, 0.2); display: flex; align-items: center; justify-content: center;">
           <i data-lucide="star" style="width: 1.25rem; height: 1.25rem; color: #facc15;"></i>
@@ -75,7 +75,7 @@
           <button onclick="filterByCategory('<%= category %>')"
                   class="category-filter-btn"
                   data-category="<%= category %>"
-                  style="background: transparent; color: #94A3B8; border: 1px solid #1E293B; padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                  style="background: transparent; color: var(--scout-text-muted); border: 1px solid var(--scout-border); padding: 0.5rem 1rem; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
             <%= category&.humanize %> (<%= count %>)
           </button>
         <% end %>
@@ -86,10 +86,10 @@
   <!-- Active Connections -->
   <% if canvas_data[:connections].present? && canvas_data[:connections].any? %>
     <div style="margin-bottom: 2.5rem;">
-      <h3 style="color: #FFFFFF; margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Your Active Connections</h3>
+      <h3 style="color: var(--scout-text); margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Your Active Connections</h3>
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
         <% canvas_data[:connections].each do |connection| %>
-          <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; overflow: hidden;">
+          <div style="background: var(--scout-secondary); border: 1px solid var(--scout-border); border-radius: 0.75rem; padding: 1.5rem; overflow: hidden;">
             <!-- Connection Header -->
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
               <% if connection[:integration][:icon_url].present? %>
@@ -102,8 +102,8 @@
                 </div>
               <% end %>
               <div style="flex: 1;">
-                <h6 style="color: #FFFFFF; margin: 0; font-weight: 600;"><%= connection[:integration][:name] %></h6>
-                <p style="color: #94A3B8; margin: 0; font-size: 0.875rem;"><%= connection[:name] %></p>
+                <h6 style="color: var(--scout-text); margin: 0; font-weight: 600;"><%= connection[:integration][:name] %></h6>
+                <p style="color: var(--scout-text-muted); margin: 0; font-size: 0.875rem;"><%= connection[:name] %></p>
               </div>
             </div>
 
@@ -120,7 +120,7 @@
             </div>
 
             <!-- Connection Info -->
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 1rem 0;">
+            <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 1rem 0;">
               <i data-lucide="zap" style="width: 0.875rem; height: 0.875rem; display: inline; margin-right: 0.25rem;"></i>
               <%= connection[:operations_count] %> operations available
               <% if connection[:last_used] %>
@@ -159,11 +159,11 @@
 
   <!-- Available Integrations -->
   <div>
-    <h3 style="color: #FFFFFF; margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Available Integrations</h3>
+    <h3 style="color: var(--scout-text); margin-bottom: 1.5rem; font-size: 1.25rem; font-weight: 600;">Available Integrations</h3>
     <% if canvas_data[:integrations].present? && canvas_data[:integrations].any? %>
       <% canvas_data[:integrations].group_by { |i| i[:category] }.each do |category, integrations| %>
         <div style="margin-bottom: 2.5rem;">
-          <h4 style="color: #FFFFFF; margin-bottom: 1rem; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+          <h4 style="color: var(--scout-text); margin-bottom: 1rem; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
             <i data-lucide="folder" style="width: 1rem; height: 1rem; color: rgb(250, 204, 21);"></i>
             <%= category&.humanize || 'Other' %>
           </h4>
@@ -172,7 +172,7 @@
               <div data-integration-name="<%= integration[:name] %>"
                    data-integration-category="<%= category %>"
                    data-integration-description="<%= integration[:description] %>"
-                   style="background: #1A1F35; border: <%= integration[:is_connected] ? '1px solid rgb(74, 222, 128)' : '1px solid #1E293B' %>; border-radius: 0.75rem; padding: 1.5rem; height: 100%; display: flex; flex-direction: column;">
+                   style="background: var(--scout-secondary); border: <%= integration[:is_connected] ? '1px solid rgb(74, 222, 128)' : '1px solid var(--scout-border)' %>; border-radius: 0.75rem; padding: 1.5rem; height: 100%; display: flex; flex-direction: column;">
                 <!-- Integration Header -->
                 <div style="display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem;">
                   <% if integration[:icon_url].present? %>
@@ -186,27 +186,27 @@
                   <% end %>
                   <div style="flex: 1;">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
-                      <h6 style="color: #FFFFFF; margin: 0; font-weight: 600;">
+                      <h6 style="color: var(--scout-text); margin: 0; font-weight: 600;">
                         <%= integration[:name] %>
                       </h6>
                       <% if integration[:is_verified] %>
                         <i data-lucide="check-circle" style="width: 1rem; height: 1rem; color: rgb(74, 222, 128);" title="Verified"></i>
                       <% end %>
                     </div>
-                    <p style="color: #94A3B8; margin: 0.25rem 0 0 0; font-size: 0.75rem;"><%= integration[:auth_type]&.humanize %></p>
+                    <p style="color: var(--scout-text-muted); margin: 0.25rem 0 0 0; font-size: 0.75rem;"><%= integration[:auth_type]&.humanize %></p>
                   </div>
                 </div>
 
                 <!-- Description -->
                 <% if integration[:description].present? %>
-                  <p style="color: #94A3B8; font-size: 0.875rem; margin: 0 0 1rem 0;">
+                  <p style="color: var(--scout-text-muted); font-size: 0.875rem; margin: 0 0 1rem 0;">
                     <%= integration[:description] %>
                   </p>
                 <% end %>
 
                 <!-- Footer: Operations Count and Action -->
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 1rem; border-top: 1px solid #1E293B;">
-                  <span style="color: #64748B; font-size: 0.875rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--scout-border);">
+                  <span style="color: var(--scout-text-muted); font-size: 0.875rem;">
                     <i data-lucide="zap" style="width: 0.875rem; height: 0.875rem; display: inline; margin-right: 0.25rem;"></i>
                     <%= integration[:operations_count] %> operations
                   </span>
@@ -231,18 +231,18 @@
         </div>
       <% end %>
     <% else %>
-      <div style="background: rgba(34, 211, 238, 0.1); border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="background: rgba(34, 211, 238, 0.1); border: 1px solid var(--scout-border); border-radius: 0.75rem; padding: 1.5rem;">
         <div style="display: flex; align-items: center; gap: 1rem;">
           <i data-lucide="info" style="width: 1.5rem; height: 1.5rem; color: #22D3EE;"></i>
-          <p style="color: #FFFFFF; margin: 0;">No integrations available. Contact your administrator to add integrations.</p>
+          <p style="color: var(--scout-text); margin: 0;">No integrations available. Contact your administrator to add integrations.</p>
         </div>
       </div>
     <% end %>
   </div>
 
   <!-- Quick Actions -->
-  <div style="background: #1A1F35; border: 1px solid #1E293B; border-radius: 0.75rem; padding: 1.5rem; margin-top: 2.5rem;">
-    <h6 style="color: #FFFFFF; margin-bottom: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+  <div style="background: var(--scout-secondary); border: 1px solid var(--scout-border); border-radius: 0.75rem; padding: 1.5rem; margin-top: 2.5rem;">
+    <h6 style="color: var(--scout-text); margin-bottom: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
       <i data-lucide="lightning" style="width: 1rem; height: 1rem; color: rgb(250, 204, 21);"></i>
       Quick Actions
     </h6>
@@ -479,6 +479,11 @@ function filterIntegrations() {
 function filterByCategory(category) {
   currentCategory = category;
 
+  // Get CSS variable values for theme-aware styling
+  const styles = getComputedStyle(document.documentElement);
+  const textMuted = styles.getPropertyValue('--scout-text-muted').trim() || '#94A3B8';
+  const border = styles.getPropertyValue('--scout-border').trim() || '#1E293B';
+
   // Update button styles
   document.querySelectorAll('.category-filter-btn').forEach(btn => {
     if (btn.getAttribute('data-category') === category) {
@@ -487,8 +492,8 @@ function filterByCategory(category) {
       btn.style.borderColor = '#7C3AED';
     } else {
       btn.style.background = 'transparent';
-      btn.style.color = '#94A3B8';
-      btn.style.borderColor = '#1E293B';
+      btn.style.color = textMuted;
+      btn.style.borderColor = border;
     }
   });
 

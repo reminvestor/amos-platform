@@ -1,88 +1,111 @@
-<div class="admin-content">
-  <div class="admin-p-2rem">
-    <div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i data-lucide="workflow" class="text-info"></i> Workflow Metrics</h1>
-      <p class="text-muted">Monitor workflow execution and success rates</p>
-    </div>
-  </div>
-
-  <!-- Stats -->
-  <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Total Workflows</div>
-          <div class="h3 mb-0"><%= @stats[:total_workflows] %></div>
-        </div>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="workflow" class="admin-text-primary"></i>
       </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Completed</div>
-          <div class="h3 mb-0 text-success"><%= @stats[:completed] %></div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Failed</div>
-          <div class="h3 mb-0 text-danger"><%= @stats[:failed] %></div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <div class="small text-muted mb-1">Active Now</div>
-          <div class="h3 mb-0 text-primary"><%= @stats[:active] %></div>
-        </div>
+      <div class="header-text">
+        <h1>Workflow Metrics</h1>
+        <p>Monitor workflow execution and success rates</p>
       </div>
     </div>
   </div>
 
-  <!-- Recent Workflows -->
-  <div class="row">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="mb-0">Recent Workflows</h5>
+  <!-- Stats Cards -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="layers" class="admin-icon-lg admin-text-primary"></i>
         </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-sm">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% @recent_workflows.each do |workflow| %>
-                  <tr>
-                    <td><%= workflow.id %></td>
-                    <td><%= workflow.session_type || 'N/A' %></td>
-                    <td>
-                      <span class="badge bg-<%= workflow.status == 'completed' ? 'success' : workflow.status == 'failed' ? 'danger' : 'primary' %>">
-                        <%= workflow.status %>
-                      </span>
-                    </td>
-                    <td><%= time_ago_in_words(workflow.created_at) %> ago</td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
+        <div>
+          <p class="admin-stat-label">Total Workflows</p>
+          <h3 class="admin-stat-value"><%= @stats[:total_workflows] %></h3>
         </div>
       </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="check-circle" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Completed</p>
+          <h3 class="admin-stat-value admin-text-success"><%= @stats[:completed] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon danger">
+          <i data-lucide="x-circle" class="admin-icon-lg admin-text-danger"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Failed</p>
+          <h3 class="admin-stat-value admin-text-danger"><%= @stats[:failed] %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="play-circle" class="admin-icon-lg admin-text-info"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Active Now</p>
+          <h3 class="admin-stat-value admin-text-info"><%= @stats[:active] %></h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Workflows Table -->
+  <div class="admin-card">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="clock" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Recent Workflows
+    </h3>
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @recent_workflows.each do |workflow| %>
+            <tr>
+              <td class="admin-text-cyan">#<%= workflow.id %></td>
+              <td class="admin-text-primary"><%= workflow.session_type || 'N/A' %></td>
+              <td>
+                <span class="admin-badge <%= case workflow.status
+                  when 'completed' then 'admin-badge-success'
+                  when 'failed' then 'admin-badge-danger'
+                  else 'admin-badge-info'
+                  end %>">
+                  <%= workflow.status %>
+                </span>
+              </td>
+              <td class="admin-text-secondary"><%= time_ago_in_words(workflow.created_at) %> ago</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
-  </div>
-</div>
 
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

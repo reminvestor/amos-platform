@@ -1,94 +1,87 @@
-<div class="admin-content">
-  <div class="admin-p-2rem">
-    <div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i data-lucide="edit"></i> Edit Integration</h1>
-      <p class="text-muted">Update integration settings and configuration</p>
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1"><i data-lucide="edit" style="width: 24px; height: 24px;" class="me-2"></i> Edit Integration</h1>
+      <p class="text-muted mb-0">Update integration settings and configuration</p>
     </div>
   </div>
 
   <div class="row">
     <div class="col-lg-8">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <%= form_with(model: [:admin, @integration], local: true) do |f| %>
-            <% if @integration.errors.any? %>
-              <div class="alert alert-danger">
-                <h5>Errors:</h5>
-                <ul class="mb-0">
-                  <% @integration.errors.full_messages.each do |msg| %>
-                    <li><%= msg %></li>
-                  <% end %>
-                </ul>
-              </div>
-            <% end %>
-
-            <div class="mb-3">
-              <%= f.label :name, class: "form-label" %>
-              <%= f.text_field :name, class: "form-control" %>
-            </div>
-
-            <div class="mb-3">
-              <%= f.label :slug, class: "form-label" %>
-              <%= f.text_field :slug, class: "form-control" %>
-            </div>
-
-            <div class="mb-3">
-              <%= f.label :description, class: "form-label" %>
-              <%= f.text_area :description, class: "form-control", rows: 3 %>
-            </div>
-
-            <div class="mb-3">
-              <%= f.label :category, class: "form-label" %>
-              <%= f.select :category, 
-                  options_for_select(['payment', 'ecommerce', 'crm', 'communication', 'productivity', 'marketing', 'analytics', 'custom'], @integration.category),
-                  {}, class: "form-select" %>
-            </div>
-
-            <div class="mb-3">
-              <%= f.label :auth_type, "Authentication Type", class: "form-label" %>
-              <%= f.select :auth_type, 
-                  options_for_select(Integration.auth_types.keys.map { |k| [k.humanize, k] }, @integration.auth_type),
-                  {}, class: "form-select", 
-                  data: { controller: "auth-type-warning" } %>
-              <% if @integration.connections.any? %>
-                <div class="alert alert-warning mt-2 mb-0">
-                  <i data-lucide="alert-triangle" class="me-2"></i>
-                  <strong>Warning:</strong> This integration has <%= @integration.connections.count %> active connection(s). 
-                  Changing the authentication type may break existing connections. Users will need to reconnect.
-                </div>
-              <% end %>
-              <div class="form-text">
-                <strong>Auth Types:</strong><br>
-                • <strong>API Key</strong> - Simple API key authentication<br>
-                • <strong>Bearer Token</strong> - Token-based authentication<br>
-                • <strong>Basic Auth</strong> - Username/password (like Stripe)<br>
-                • <strong>OAuth2</strong> - OAuth 2.0 (requires OAuth config)<br>
-                • <strong>Custom</strong> - Special authentication methods
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <%= f.check_box :is_active, class: "form-check-input" %>
-              <%= f.label :is_active, "Active", class: "form-check-label" %>
-            </div>
-
-            <div class="mb-3">
-              <%= f.check_box :is_verified, class: "form-check-input" %>
-              <%= f.label :is_verified, "Verified", class: "form-check-label" %>
-            </div>
-
-            <div class="d-flex gap-2">
-              <%= f.submit "Save Changes", class: "btn btn-primary" %>
-              <%= link_to "Cancel", admin_integration_path(@integration), class: "btn btn-outline-secondary" %>
+      <div class="admin-card">
+        <%= form_with(model: [:admin, @integration], local: true) do |f| %>
+          <% if @integration.errors.any? %>
+            <div class="p-3 rounded mb-3" style="background: var(--status-error-bg); color: var(--status-error-text);">
+              <h5>Errors:</h5>
+              <ul class="mb-0">
+                <% @integration.errors.full_messages.each do |msg| %>
+                  <li><%= msg %></li>
+                <% end %>
+              </ul>
             </div>
           <% end %>
-        </div>
+
+          <div class="mb-3">
+            <%= f.label :name, class: "form-label" %>
+            <%= f.text_field :name, class: "form-control" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :slug, class: "form-label" %>
+            <%= f.text_field :slug, class: "form-control" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :description, class: "form-label" %>
+            <%= f.text_area :description, class: "form-control", rows: 3 %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :category, class: "form-label" %>
+            <%= f.select :category,
+                options_for_select(['payment', 'ecommerce', 'crm', 'communication', 'productivity', 'marketing', 'analytics', 'custom'], @integration.category),
+                {}, class: "form-select" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :auth_type, "Authentication Type", class: "form-label" %>
+            <%= f.select :auth_type,
+                options_for_select(Integration.auth_types.keys.map { |k| [k.humanize, k] }, @integration.auth_type),
+                {}, class: "form-select",
+                data: { controller: "auth-type-warning" } %>
+            <% if @integration.connections.any? %>
+              <div class="p-3 rounded mt-2" style="background: var(--status-warning-bg); color: var(--status-warning-text);">
+                <i data-lucide="alert-triangle" style="width: 16px; height: 16px;" class="me-2"></i>
+                <strong>Warning:</strong> This integration has <%= @integration.connections.count %> active connection(s).
+                Changing the authentication type may break existing connections. Users will need to reconnect.
+              </div>
+            <% end %>
+            <div class="form-text">
+              <strong>Auth Types:</strong><br>
+              - <strong>API Key</strong> - Simple API key authentication<br>
+              - <strong>Bearer Token</strong> - Token-based authentication<br>
+              - <strong>Basic Auth</strong> - Username/password (like Stripe)<br>
+              - <strong>OAuth2</strong> - OAuth 2.0 (requires OAuth config)<br>
+              - <strong>Custom</strong> - Special authentication methods
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.check_box :is_active, class: "form-check-input" %>
+            <%= f.label :is_active, "Active", class: "form-check-label" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.check_box :is_verified, class: "form-check-input" %>
+            <%= f.label :is_verified, "Verified", class: "form-check-label" %>
+          </div>
+
+          <div class="d-flex gap-2">
+            <%= f.submit "Save Changes", class: "admin-btn admin-btn-primary" %>
+            <%= link_to "Cancel", admin_integration_path(@integration), class: "admin-btn admin-btn-outline" %>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>
 </div>
-  </div>
-</div>
-

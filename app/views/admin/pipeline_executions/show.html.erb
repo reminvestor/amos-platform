@@ -1,220 +1,226 @@
-<div class="admin-content">
-  <div class="admin-p-xl">
-    <div class="container-fluid py-4">
+<div class="admin-p-xl">
   <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <%= link_to admin_pipeline_executions_path, class: "btn btn-outline-secondary btn-sm" do %>
-        <i data-lucide="arrow-left"></i>
-        Back to Dashboard
-      <% end %>
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="ticket" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1><%= @pipeline_execution.ticket_id %></h1>
+        <p><%= @pipeline_execution.ticket_title %></p>
+      </div>
     </div>
-    <div>
-      <% unless @pipeline_execution.terminal_state? %>
-        <%= button_to cancel_admin_pipeline_execution_path(@pipeline_execution),
-                      method: :post,
-                      class: "btn btn-danger",
-                      data: { confirm: "Cancel this pipeline?" } do %>
-          <i data-lucide="x"></i>
-          Cancel Pipeline
-        <% end %>
-      <% end %>
 
-      <% if @pipeline_execution.status_failed? || @pipeline_execution.status_rolled_back? %>
-        <%= button_to retry_admin_pipeline_execution_path(@pipeline_execution),
-                      method: :post,
-                      class: "btn btn-success",
-                      data: { confirm: "Retry this pipeline?" } do %>
-          <i data-lucide="refresh-cw"></i>
-          Retry Pipeline
+    <div class="header-actions">
+      <div class="admin-flex admin-flex-gap-sm">
+        <%= link_to admin_pipeline_executions_path, class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="arrow-left"></i>
+          <span>Back to Dashboard</span>
         <% end %>
-      <% end %>
+
+        <% unless @pipeline_execution.terminal_state? %>
+          <%= button_to cancel_admin_pipeline_execution_path(@pipeline_execution),
+                        method: :post,
+                        class: "admin-btn admin-btn-danger",
+                        data: { confirm: "Cancel this pipeline?" } do %>
+            <i data-lucide="x"></i>
+            <span>Cancel Pipeline</span>
+          <% end %>
+        <% end %>
+
+        <% if @pipeline_execution.status_failed? || @pipeline_execution.status_rolled_back? %>
+          <%= button_to retry_admin_pipeline_execution_path(@pipeline_execution),
+                        method: :post,
+                        class: "admin-btn admin-btn-success",
+                        data: { confirm: "Retry this pipeline?" } do %>
+            <i data-lucide="refresh-cw"></i>
+            <span>Retry Pipeline</span>
+          <% end %>
+        <% end %>
+      </div>
     </div>
   </div>
 
   <!-- Pipeline Overview -->
-  <div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h4 class="mb-0">
-        <i data-lucide="ticket"></i>
-        <%= @pipeline_execution.ticket_id %>
-      </h4>
+  <div class="admin-card admin-mb-xl">
+    <div class="admin-flex admin-flex-between admin-items-center admin-mb-lg">
+      <h3 class="card-title m-0">
+        <i data-lucide="info" class="admin-icon-md d-inline-block align-middle me-2"></i>
+        Pipeline Overview
+      </h3>
       <% color = AiAgents::Pipeline::StateMachine.state_color(@pipeline_execution.status) %>
       <% icon = AiAgents::Pipeline::StateMachine.state_icon(@pipeline_execution.status) %>
-      <span class="badge bg-<%= color %> fs-6">
-        <i data-lucide="<%= icon %>"></i>
+      <span class="admin-badge admin-badge-<%= color == 'primary' ? 'info' : color %>">
+        <i data-lucide="<%= icon %>" class="admin-icon-sm"></i>
         <%= @pipeline_execution.status.titleize %>
       </span>
     </div>
-    <div class="card-body">
-      <h5 class="mb-3"><%= @pipeline_execution.ticket_title %></h5>
 
-      <div class="row g-3 mb-3">
-        <div class="col-md-6">
-          <p class="text-muted mb-1"><i data-lucide="link"></i> Ticket URL</p>
-          <% if @pipeline_execution.ticket_url.present? %>
-            <%= link_to @pipeline_execution.ticket_url, @pipeline_execution.ticket_url, target: "_blank" %>
-            <i data-lucide="external-link" class="icon-xs"></i>
-          <% else %>
-            <span class="text-muted">Not available</span>
-          <% end %>
-        </div>
-
-        <div class="col-md-3">
-          <p class="text-muted mb-1"><i data-lucide="flag"></i> Priority</p>
-          <% priority_colors = { 'critical' => 'danger', 'high' => 'warning', 'medium' => 'info', 'low' => 'secondary' } %>
-          <span class="badge bg-<%= priority_colors[@pipeline_execution.priority] || 'secondary' %>">
-            <%= @pipeline_execution.priority&.titleize || 'Medium' %>
-          </span>
-        </div>
-
-        <div class="col-md-3">
-          <p class="text-muted mb-1"><i data-lucide="server"></i> System</p>
-          <%= @pipeline_execution.ticket_system&.titleize || 'N/A' %>
-        </div>
+    <div class="row g-3 admin-mb-lg">
+      <div class="col-md-6">
+        <p class="admin-text-muted admin-mb-xs"><i data-lucide="link" class="admin-icon-sm"></i> Ticket URL</p>
+        <% if @pipeline_execution.ticket_url.present? %>
+          <a href="<%= @pipeline_execution.ticket_url %>" target="_blank" class="admin-text-cyan">
+            <%= @pipeline_execution.ticket_url %>
+            <i data-lucide="external-link" class="admin-icon-xs"></i>
+          </a>
+        <% else %>
+          <span class="admin-text-muted">Not available</span>
+        <% end %>
       </div>
 
-      <% if @pipeline_execution.ticket_description.present? %>
-        <hr>
-        <p class="text-muted mb-1"><i data-lucide="file-text"></i> Description</p>
-        <div class="bg-light p-3 rounded">
-          <%= simple_format(@pipeline_execution.ticket_description) %>
-        </div>
-      <% end %>
+      <div class="col-md-3">
+        <p class="admin-text-muted admin-mb-xs"><i data-lucide="flag" class="admin-icon-sm"></i> Priority</p>
+        <% priority_badges = { 'critical' => 'admin-badge-danger', 'high' => 'admin-badge-warning', 'medium' => 'admin-badge-info', 'low' => 'admin-badge-secondary' } %>
+        <span class="admin-badge <%= priority_badges[@pipeline_execution.priority] || 'admin-badge-secondary' %>">
+          <%= @pipeline_execution.priority&.titleize || 'Medium' %>
+        </span>
+      </div>
+
+      <div class="col-md-3">
+        <p class="admin-text-muted admin-mb-xs"><i data-lucide="server" class="admin-icon-sm"></i> System</p>
+        <span class="admin-text-primary"><%= @pipeline_execution.ticket_system&.titleize || 'N/A' %></span>
+      </div>
     </div>
+
+    <% if @pipeline_execution.ticket_description.present? %>
+      <hr style="border-color: var(--border-primary);">
+      <p class="admin-text-muted admin-mb-xs"><i data-lucide="file-text" class="admin-icon-sm"></i> Description</p>
+      <div class="admin-p-md admin-rounded-md" style="background: var(--bg-tertiary);">
+        <%= simple_format(@pipeline_execution.ticket_description, class: 'admin-text-secondary admin-mb-0') %>
+      </div>
+    <% end %>
   </div>
 
   <!-- Agent Execution Timeline -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">
-        <i data-lucide="bot"></i>
-        Agent Execution Timeline
-      </h5>
-    </div>
-    <div class="card-body">
-      <% if @agent_executions.any? %>
-        <% @agent_executions.each do |agent_execution| %>
-          <div class="mb-3 p-3 border rounded">
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <h6 class="mb-1">
-                  <%= agent_execution.agent_id.titleize %>
-                  <% if agent_execution.status_completed? %>
-                    <i data-lucide="check-circle" class="text-success"></i>
-                  <% elsif agent_execution.status_failed? %>
-                    <i data-lucide="x-circle" class="text-danger"></i>
-                  <% elsif agent_execution.status_running? %>
-                    <i data-lucide="loader" class="icon-spin text-info"></i>
-                  <% else %>
-                    <i data-lucide="clock" class="text-muted"></i>
-                  <% end %>
-                </h6>
-                <p class="text-muted small mb-0">
-                  <%= agent_execution.created_at.strftime("%b %d, %I:%M:%S %p") %>
-                </p>
-              </div>
-              <div class="text-end">
-                <% if agent_execution.cost && agent_execution.cost > 0 %>
-                  <p class="mb-0"><small class="text-muted">Cost:</small> <strong>$<%= number_with_precision(agent_execution.cost, precision: 4) %></strong></p>
+  <div class="admin-card admin-mb-xl">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="bot" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Agent Execution Timeline
+    </h3>
+    <% if @agent_executions.any? %>
+      <% @agent_executions.each do |agent_execution| %>
+        <div class="admin-p-md admin-mb-md admin-rounded-md" style="border: 1px solid var(--border-primary); background: var(--bg-tertiary);">
+          <div class="admin-flex admin-flex-between admin-items-start">
+            <div>
+              <h6 class="admin-text-primary admin-mb-xs">
+                <%= agent_execution.agent_id.titleize %>
+                <% if agent_execution.status_completed? %>
+                  <i data-lucide="check-circle" class="admin-icon-sm admin-text-success"></i>
+                <% elsif agent_execution.status_failed? %>
+                  <i data-lucide="x-circle" class="admin-icon-sm admin-text-danger"></i>
+                <% elsif agent_execution.status_running? %>
+                  <i data-lucide="loader" class="admin-icon-sm admin-text-info icon-spin"></i>
+                <% else %>
+                  <i data-lucide="clock" class="admin-icon-sm admin-text-muted"></i>
                 <% end %>
-                <% if agent_execution.tokens_used && agent_execution.tokens_used > 0 %>
-                  <p class="mb-0 small text-muted"><%= number_with_delimiter(agent_execution.tokens_used) %> tokens</p>
-                <% end %>
-              </div>
+              </h6>
+              <p class="admin-text-muted admin-text-sm admin-mb-0">
+                <%= agent_execution.created_at.strftime("%b %d, %I:%M:%S %p") %>
+              </p>
             </div>
-
-            <% if agent_execution.error_message.present? %>
-              <div class="alert alert-danger alert-sm mt-2 mb-0">
-                <strong>Error:</strong> <%= agent_execution.error_message %>
-              </div>
-            <% elsif agent_execution.outputs.present? %>
-              <details class="small mt-2">
-                <summary class="text-muted admin-cursor-pointer">View outputs</summary>
-                <pre class="bg-light p-2 rounded mt-2 mb-0"><%= JSON.pretty_generate(agent_execution.outputs) %></pre>
-              </details>
-            <% end %>
+            <div class="admin-text-right">
+              <% if agent_execution.cost && agent_execution.cost > 0 %>
+                <p class="admin-mb-0"><small class="admin-text-muted">Cost:</small> <strong class="admin-text-success">$<%= number_with_precision(agent_execution.cost, precision: 4) %></strong></p>
+              <% end %>
+              <% if agent_execution.tokens_used && agent_execution.tokens_used > 0 %>
+                <p class="admin-mb-0 admin-text-sm admin-text-muted"><%= number_with_delimiter(agent_execution.tokens_used) %> tokens</p>
+              <% end %>
+            </div>
           </div>
-        <% end %>
-      <% else %>
-        <p class="text-muted text-center mb-0">
-          <i data-lucide="hourglass"></i>
-          No agents have executed yet
-        </p>
+
+          <% if agent_execution.error_message.present? %>
+            <div class="admin-p-md admin-mt-md admin-rounded-md" style="background: var(--status-danger-bg); border: 1px solid var(--status-danger-text);">
+              <strong class="admin-text-danger">Error:</strong>
+              <span class="admin-text-primary"><%= agent_execution.error_message %></span>
+            </div>
+          <% elsif agent_execution.outputs.present? %>
+            <details class="admin-text-sm admin-mt-md">
+              <summary class="admin-text-muted admin-cursor-pointer">View outputs</summary>
+              <pre class="admin-p-md admin-rounded-md admin-mt-sm admin-mb-0" style="background: var(--bg-secondary); overflow: auto;"><code class="admin-text-cyan"><%= JSON.pretty_generate(agent_execution.outputs) %></code></pre>
+            </details>
+          <% end %>
+        </div>
       <% end %>
-    </div>
+    <% else %>
+      <div class="admin-text-center admin-text-muted admin-p-xl">
+        <i data-lucide="hourglass" class="admin-icon-lg admin-mb-md"></i>
+        <p class="admin-mb-0">No agents have executed yet</p>
+      </div>
+    <% end %>
   </div>
 
   <div class="row">
     <!-- Artifacts -->
-    <div class="col-lg-6 mb-4">
-      <div class="card h-100">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i data-lucide="file-code"></i>
-            Artifacts (<%= @artifacts.count %>)
-          </h5>
-        </div>
-        <div class="card-body">
-          <% if @artifacts.any? %>
-            <% @artifacts.each do |artifact| %>
-              <div class="mb-3 p-2 border rounded">
-                <i data-lucide="file-text" class="text-primary"></i>
-                <strong><%= artifact.file_name %></strong>
-                <br>
-                <small class="text-muted">
-                  <%= artifact.artifact_type.titleize %> &bull;
-                  <%= artifact.created_at.strftime("%b %d, %I:%M %p") %>
-                </small>
-                <% if artifact.content.present? && artifact.content.length < 100_000 %>
-                  <details class="mt-2">
-                    <summary class="text-primary cursor-pointer">View content</summary>
-                    <pre class="bg-light p-2 rounded small mt-2"><%= artifact.content %></pre>
-                  </details>
-                <% end %>
+    <div class="col-lg-6 admin-mb-lg">
+      <div class="admin-card h-100">
+        <h3 class="card-title m-0 admin-mb-lg">
+          <i data-lucide="file-code" class="admin-icon-md d-inline-block align-middle me-2"></i>
+          Artifacts (<%= @artifacts.count %>)
+        </h3>
+        <% if @artifacts.any? %>
+          <% @artifacts.each do |artifact| %>
+            <div class="admin-p-md admin-mb-md admin-rounded-md" style="border: 1px solid var(--border-primary);">
+              <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-xs">
+                <i data-lucide="file-text" class="admin-icon-sm admin-text-info"></i>
+                <strong class="admin-text-primary"><%= artifact.file_name %></strong>
               </div>
-            <% end %>
-          <% else %>
-            <p class="text-muted text-center mb-0">
-              <i data-lucide="inbox"></i>
-              No artifacts generated yet
-            </p>
+              <small class="admin-text-muted">
+                <%= artifact.artifact_type.titleize %> &bull;
+                <%= artifact.created_at.strftime("%b %d, %I:%M %p") %>
+              </small>
+              <% if artifact.content.present? && artifact.content.length < 100_000 %>
+                <details class="admin-mt-sm">
+                  <summary class="admin-text-cyan admin-cursor-pointer">View content</summary>
+                  <pre class="admin-p-md admin-rounded-md admin-text-sm admin-mt-sm" style="background: var(--bg-tertiary); overflow: auto;"><code class="admin-text-secondary"><%= artifact.content %></code></pre>
+                </details>
+              <% end %>
+            </div>
           <% end %>
-        </div>
+        <% else %>
+          <div class="admin-text-center admin-text-muted admin-p-xl">
+            <i data-lucide="inbox" class="admin-icon-lg admin-mb-md"></i>
+            <p class="admin-mb-0">No artifacts generated yet</p>
+          </div>
+        <% end %>
       </div>
     </div>
 
     <!-- Events Audit Trail -->
-    <div class="col-lg-6 mb-4">
-      <div class="card h-100">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i data-lucide="list"></i>
-            Events (<%= @events.count %>)
-          </h5>
-        </div>
-        <div class="card-body admin-scrollable-md">
+    <div class="col-lg-6 admin-mb-lg">
+      <div class="admin-card h-100">
+        <h3 class="card-title m-0 admin-mb-lg">
+          <i data-lucide="list" class="admin-icon-md d-inline-block align-middle me-2"></i>
+          Events (<%= @events.count %>)
+        </h3>
+        <div style="max-height: 400px; overflow-y: auto;">
           <% if @events.any? %>
             <% @events.each do |event| %>
-              <div class="mb-2 p-2 border-bottom">
-                <code class="small"><%= event.event_type %></code>
+              <div class="admin-p-sm admin-mb-sm" style="border-bottom: 1px solid var(--border-primary);">
+                <code class="admin-text-cyan admin-text-sm"><%= event.event_type %></code>
                 <br>
-                <small class="text-muted">
+                <small class="admin-text-muted">
                   Source: <%= event.source %> &bull;
                   <%= event.created_at.strftime("%I:%M:%S %p") %>
                 </small>
               </div>
             <% end %>
           <% else %>
-            <p class="text-muted text-center mb-0">
-              <i data-lucide="inbox"></i>
-              No events recorded yet
-            </p>
+            <div class="admin-text-center admin-text-muted admin-p-xl">
+              <i data-lucide="inbox" class="admin-icon-lg admin-mb-md"></i>
+              <p class="admin-mb-0">No events recorded yet</p>
+            </div>
           <% end %>
         </div>
       </div>
     </div>
   </div>
 </div>
-  </div>
-</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

@@ -11,83 +11,85 @@
     </div>
   </div>
 
-  <div class="card bg-dark border-secondary">
-    <div class="card-body p-0">
-      <% if @optimizations.any? %>
-        <div class="table-responsive">
-          <table class="table table-dark table-hover mb-0">
-            <thead>
+  <div class="admin-card">
+    <% if @optimizations.any? %>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Optimization ID</th>
+              <th>Entity</th>
+              <th>Improvement</th>
+              <th>Status</th>
+              <th>Prompts Updated</th>
+              <th>Templates Modified</th>
+              <th>Applied At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @optimizations.each do |opt| %>
               <tr>
-                <th>Optimization ID</th>
-                <th>Entity</th>
-                <th>Improvement</th>
-                <th>Status</th>
-                <th>Prompts Updated</th>
-                <th>Templates Modified</th>
-                <th>Applied At</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @optimizations.each do |opt| %>
-                <tr>
-                  <td><code><%= opt.optimization_id[0..11] %></code></td>
-                  <td><%= opt.entity&.name || 'N/A' %></td>
-                  <td>
-                    <span class="<%= improvement_color_class(opt.improvement_percentage) %>">
-                      <%= opt.improvement_percentage > 0 ? '+' : '' %><%= opt.improvement_percentage %>%
-                    </span>
-                    <br>
-                    <small class="text-muted"><%= opt.improvement_description %></small>
-                  </td>
-                  <td>
-                    <span class="badge <%= optimization_status_badge_class(opt.status) %>">
-                      <%= opt.status %>
-                    </span>
-                  </td>
-                  <td><%= opt.prompts_optimized %></td>
-                  <td><%= opt.templates_updated %></td>
-                  <td class="text-muted">
-                    <%= opt.applied_at ? opt.applied_at.strftime('%b %d, %Y %H:%M') : '-' %>
-                  </td>
-                  <td>
-                    <div class="btn-group btn-group-sm">
-                      <% if opt.can_rollback? %>
-                        <%= button_to rollback_admin_agent_lightning_path(opt.id), 
-                            method: :post, 
-                            class: "btn btn-outline-warning",
-                            title: "Rollback to previous prompts",
-                            data: { confirm: "Are you sure you want to rollback this optimization? This will restore the previous prompts." } do %>
-                          <i data-lucide="rotate-ccw" class="icon-sm"></i>
-                        <% end %>
+                <td><code><%= opt.optimization_id[0..11] %></code></td>
+                <td><%= opt.entity&.name || 'N/A' %></td>
+                <td>
+                  <% if opt.improvement_percentage > 0 %>
+                    <span style="color: var(--status-success-text);">+<%= opt.improvement_percentage %>%</span>
+                  <% elsif opt.improvement_percentage < 0 %>
+                    <span style="color: var(--status-error-text);"><%= opt.improvement_percentage %>%</span>
+                  <% else %>
+                    <span class="text-muted">0%</span>
+                  <% end %>
+                  <br>
+                  <small class="text-muted"><%= opt.improvement_description %></small>
+                </td>
+                <td>
+                  <span class="admin-badge <%= optimization_status_badge_class(opt.status).gsub('bg-', 'admin-badge-') %>">
+                    <%= opt.status %>
+                  </span>
+                </td>
+                <td><%= opt.prompts_optimized %></td>
+                <td><%= opt.templates_updated %></td>
+                <td class="text-muted">
+                  <%= opt.applied_at ? opt.applied_at.strftime('%b %d, %Y %H:%M') : '-' %>
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <% if opt.can_rollback? %>
+                      <%= button_to rollback_admin_agent_lightning_path(opt.id),
+                          method: :post,
+                          class: "admin-btn admin-btn-sm admin-btn-warning-outline",
+                          title: "Rollback to previous prompts",
+                          data: { confirm: "Are you sure you want to rollback this optimization? This will restore the previous prompts." } do %>
+                        <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
                       <% end %>
-                      <button type="button" class="btn btn-outline-secondary" 
-                              data-bs-toggle="modal" 
-                              data-bs-target="#detailsModal<%= opt.id %>"
-                              title="View details">
-                        <i data-lucide="eye" class="icon-sm"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
+                    <% end %>
+                    <button type="button" class="admin-btn admin-btn-sm admin-btn-outline"
+                            data-bs-toggle="modal"
+                            data-bs-target="#detailsModal<%= opt.id %>"
+                            title="View details">
+                      <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
 
-        <% if @optimizations.respond_to?(:total_pages) && @optimizations.total_pages > 1 %>
-          <div class="card-footer bg-dark border-secondary">
-            <%= paginate @optimizations, theme: 'bootstrap-5' %>
-          </div>
-        <% end %>
-      <% else %>
-        <div class="text-center py-5 text-muted">
-          <i data-lucide="trending-up" class="icon-xl mb-3"></i>
-          <h5>No Optimizations Yet</h5>
-          <p class="mb-0">Optimizations will appear here after training jobs complete.</p>
+      <% if @optimizations.respond_to?(:total_pages) && @optimizations.total_pages > 1 %>
+        <div class="card-footer" style="background: var(--bg-tertiary); border-top: 1px solid var(--border-primary);">
+          <%= paginate @optimizations, theme: 'bootstrap-5' %>
         </div>
       <% end %>
-    </div>
+    <% else %>
+      <div class="text-center py-5 text-muted">
+        <i data-lucide="trending-up" style="width: 48px; height: 48px;"></i>
+        <h5 class="mt-3">No Optimizations Yet</h5>
+        <p class="mb-0">Optimizations will appear here after training jobs complete.</p>
+      </div>
+    <% end %>
   </div>
 </div>
 
@@ -95,10 +97,10 @@
 <% @optimizations.each do |opt| %>
   <div class="modal fade" id="detailsModal<%= opt.id %>" tabindex="-1">
     <div class="modal-dialog modal-lg">
-      <div class="modal-content bg-dark">
-        <div class="modal-header border-secondary">
+      <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border-primary);">
+        <div class="modal-header" style="border-bottom: 1px solid var(--border-primary);">
           <h5 class="modal-title">Optimization Details</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="row g-3">
@@ -108,12 +110,18 @@
             </div>
             <div class="col-md-6">
               <label class="text-muted small">Status</label>
-              <p><span class="badge <%= optimization_status_badge_class(opt.status) %>"><%= opt.status %></span></p>
+              <p><span class="admin-badge <%= optimization_status_badge_class(opt.status).gsub('bg-', 'admin-badge-') %>"><%= opt.status %></span></p>
             </div>
             <div class="col-md-6">
               <label class="text-muted small">Improvement</label>
-              <p class="<%= improvement_color_class(opt.improvement_percentage) %>">
-                <%= opt.improvement_percentage > 0 ? '+' : '' %><%= opt.improvement_percentage %>%
+              <p>
+                <% if opt.improvement_percentage > 0 %>
+                  <span style="color: var(--status-success-text);">+<%= opt.improvement_percentage %>%</span>
+                <% elsif opt.improvement_percentage < 0 %>
+                  <span style="color: var(--status-error-text);"><%= opt.improvement_percentage %>%</span>
+                <% else %>
+                  <span class="text-muted">0%</span>
+                <% end %>
               </p>
             </div>
             <div class="col-md-6">
@@ -127,7 +135,7 @@
               <label class="text-muted small">Context Types Optimized</label>
               <div class="d-flex flex-wrap gap-1 mt-1">
                 <% opt.context_types_optimized.each do |ctx| %>
-                  <span class="badge bg-secondary"><%= ctx %></span>
+                  <span class="admin-badge"><%= ctx %></span>
                 <% end %>
               </div>
             </div>
@@ -136,25 +144,25 @@
           <% if opt.before_prompts.present? %>
             <div class="mt-3">
               <label class="text-muted small">Before Prompts (Snapshot)</label>
-              <pre class="bg-secondary bg-opacity-25 p-2 rounded small admin-scroll-200"><%= JSON.pretty_generate(opt.before_prompts).truncate(2000) %></pre>
+              <pre class="p-2 rounded small admin-scroll-200" style="background: var(--bg-tertiary);"><%= JSON.pretty_generate(opt.before_prompts).truncate(2000) %></pre>
             </div>
           <% end %>
 
           <% if opt.after_prompts.present? %>
             <div class="mt-3">
               <label class="text-muted small">After Prompts (Current)</label>
-              <pre class="bg-secondary bg-opacity-25 p-2 rounded small admin-scroll-200"><%= JSON.pretty_generate(opt.after_prompts).truncate(2000) %></pre>
+              <pre class="p-2 rounded small admin-scroll-200" style="background: var(--bg-tertiary);"><%= JSON.pretty_generate(opt.after_prompts).truncate(2000) %></pre>
             </div>
           <% end %>
         </div>
-        <div class="modal-footer border-secondary">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <div class="modal-footer" style="border-top: 1px solid var(--border-primary);">
+          <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Close</button>
           <% if opt.can_rollback? %>
-            <%= button_to rollback_admin_agent_lightning_path(opt.id), 
-                method: :post, 
-                class: "btn btn-warning",
+            <%= button_to rollback_admin_agent_lightning_path(opt.id),
+                method: :post,
+                class: "admin-btn admin-btn-warning",
                 data: { confirm: "Rollback this optimization?" } do %>
-              <i data-lucide="rotate-ccw" class="icon-sm me-1"></i>
+              <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;" class="me-1"></i>
               Rollback
             <% end %>
           <% end %>
@@ -169,4 +177,3 @@
     lucide.createIcons();
   });
 </script>
-

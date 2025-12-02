@@ -457,6 +457,10 @@
         <i data-lucide="mic" style="color: #A78BFA;"></i>
         <span class="nav-text">Voice Settings</span>
       </div>
+      <div class="nav-item" data-theme-toggle title="Toggle light/dark mode">
+        <i data-lucide="moon" data-theme-icon></i>
+        <span class="nav-text">Theme</span>
+      </div>
       <div class="nav-item" data-action="click->scout#logout">
         <i data-lucide="log-out"></i>
         <span class="nav-text">Logout</span>
@@ -583,7 +587,7 @@
                   <!-- Model Selection -->
                   <div class="mb-3">
                     <label class="admin-label text-xs uppercase text-muted mb-2 d-block" style="font-size: 0.75rem; letter-spacing: 0.05em;">Model</label>
-                    <select id="visible-model-select" class="form-select bg-dark text-white border-secondary">
+                    <select id="visible-model-select" class="form-select model-select-dropdown">
                       <!-- Populated by JS -->
                     </select>
                   </div>
@@ -1493,6 +1497,50 @@ document.addEventListener('turbo:load', function() {
     }
   }
   initializeLucideIcons();
+
+  // Initialize theme toggle
+  function initializeThemeToggle() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') ||
+                         localStorage.getItem('amos_theme_preference') ||
+                         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+    // Apply theme if not already set
+    if (!document.documentElement.getAttribute('data-theme')) {
+      document.documentElement.setAttribute('data-theme', currentTheme);
+    }
+
+    // Update theme toggle icon
+    const themeIcon = document.querySelector('[data-theme-icon]');
+    if (themeIcon) {
+      themeIcon.setAttribute('data-lucide', currentTheme === 'dark' ? 'sun' : 'moon');
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }
+
+    // Add click handler for theme toggle
+    const themeToggle = document.querySelector('[data-theme-toggle]');
+    if (themeToggle && !themeToggle.hasAttribute('data-theme-initialized')) {
+      themeToggle.setAttribute('data-theme-initialized', 'true');
+      themeToggle.addEventListener('click', function() {
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        const newTheme = current === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('amos_theme_preference', newTheme);
+
+        // Update icon
+        const icon = document.querySelector('[data-theme-icon]');
+        if (icon) {
+          icon.setAttribute('data-lucide', newTheme === 'dark' ? 'sun' : 'moon');
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+          }
+        }
+        console.log('🎨 Theme toggled to:', newTheme);
+      });
+    }
+  }
+  setTimeout(initializeThemeToggle, 100);
   
   // Handle task results streaming from parallel processing
   window.streamTaskResult = function(data) {

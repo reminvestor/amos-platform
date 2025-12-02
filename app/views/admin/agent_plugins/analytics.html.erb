@@ -5,7 +5,7 @@
       <%= link_to admin_agent_plugins_path, class: "admin-btn admin-btn-sm admin-btn-outline admin-mr-md" do %>
         <%= admin_icon('arrow-left', size: :sm) %>
       <% end %>
-      <div class="header-icon">
+      <div class="header-icon admin-icon-gradient-purple">
         <%= admin_icon('bar-chart-3', size: :lg) %>
       </div>
       <div class="header-text">
@@ -15,7 +15,7 @@
     </div>
 
     <div class="header-actions">
-      <div class="d-flex flex-wrap admin-flex-gap-sm">
+      <div class="admin-flex admin-flex-wrap admin-flex-gap-sm">
         <%= link_to analytics_admin_agent_plugins_path(days: 7), class: "admin-btn admin-btn-sm #{params[:days] == '7' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
           <span>7 Days</span>
         <% end %>
@@ -30,7 +30,7 @@
   </div>
 
   <!-- Summary Stats -->
-  <div class="admin-stats-grid">
+  <div class="admin-stats-grid admin-mb-xl">
     <%= render 'admin/shared/stat_card',
       icon: 'activity',
       value: @execution_stats.sum { |s| s[:total] },
@@ -106,29 +106,28 @@
             <% @execution_stats.each do |stat| %>
               <tr>
                 <td>
-                  <div class="d-flex align-items-center gap-2">
-                    <%= admin_icon('bot', size: :sm, class: 'text-primary') %>
-                    <strong><%= stat[:agent_name] || 'Unknown' %></strong>
+                  <div class="admin-flex admin-items-center admin-flex-gap-sm">
+                    <%= admin_icon('bot', size: :sm, class: 'admin-text-info') %>
+                    <strong class="admin-text-primary"><%= stat[:agent_name] || 'Unknown' %></strong>
                   </div>
                 </td>
                 <td>
-                  <span class="badge bg-info"><%= number_with_delimiter(stat[:total]) %></span>
+                  <span class="admin-badge admin-badge-info"><%= number_with_delimiter(stat[:total]) %></span>
                 </td>
                 <td>
                   <div class="admin-flex admin-items-center admin-flex-gap-sm">
-                    <div class="progress admin-flex-1 admin-progress-mini">
-                      <div class="progress-bar <%= stat[:success_rate] >= 80 ? 'bg-success' : stat[:success_rate] >= 50 ? 'bg-warning' : 'bg-danger' %>"
-                           role="progressbar"
+                    <div class="admin-progress admin-flex-1 admin-progress-mini">
+                      <div class="admin-progress-bar <%= stat[:success_rate] >= 80 ? 'admin-progress-success' : stat[:success_rate] >= 50 ? 'admin-progress-warning' : 'admin-progress-danger' %>"
                            style="width: <%= stat[:success_rate] %>%"></div>
                     </div>
-                    <small><%= stat[:success_rate] %>%</small>
+                    <small class="admin-text-secondary"><%= stat[:success_rate] %>%</small>
                   </div>
                 </td>
                 <td>
-                  <span class="text-muted"><%= number_with_delimiter(stat[:avg_duration]) %>ms</span>
+                  <span class="admin-text-muted"><%= number_with_delimiter(stat[:avg_duration]) %>ms</span>
                 </td>
                 <td>
-                  <span class="text-muted"><%= number_with_delimiter(stat[:total_tokens]) %></span>
+                  <span class="admin-text-muted"><%= number_with_delimiter(stat[:total_tokens]) %></span>
                 </td>
               </tr>
             <% end %>
@@ -141,7 +140,7 @@
           <%= admin_icon('inbox', size: :xl) %>
         </div>
         <p>No execution data available for the selected time period</p>
-        <p class="small">Agent executions will appear here once agents start running.</p>
+        <p class="admin-text-sm">Agent executions will appear here once agents start running.</p>
       </div>
     <% end %>
   </div>
@@ -149,6 +148,8 @@
 
 <script>
   document.addEventListener('turbo:load', () => {
-    lucide.createIcons();
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
   });
 </script>

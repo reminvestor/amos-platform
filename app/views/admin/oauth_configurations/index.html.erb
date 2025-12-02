@@ -1,51 +1,74 @@
 <% content_for :title, "OAuth Configurations" %>
 
-<div class="admin-content">
-  <div class="admin-p-2rem">
-    <div class="container-fluid py-4">
-  <div class="row mb-4">
-    <div class="col">
-      <h1><i data-lucide="key" class="me-2"></i>OAuth Configurations</h1>
-      <p class="text-muted">Manage OAuth app credentials for integrations</p>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="key" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>OAuth Configurations</h1>
+        <p>Manage OAuth app credentials for integrations</p>
+      </div>
     </div>
-    <div class="col-auto">
-      <%= link_to "New OAuth Configuration", new_admin_oauth_configuration_path, class: "btn btn-primary" %>
+
+    <div class="header-actions">
+      <%= link_to new_admin_oauth_configuration_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus"></i>
+        <span>New OAuth Configuration</span>
+      <% end %>
     </div>
   </div>
 
   <!-- Stats Cards -->
-  <div class="row mb-4">
-    <div class="col-md-4">
-      <div class="card">
-        <div class="card-body">
-          <h6 class="text-muted">Total Configurations</h6>
-          <h3><%= @stats[:total] %></h3>
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="key" class="admin-icon-lg admin-text-primary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Total Configurations</p>
+          <h3 class="admin-stat-value"><%= @stats[:total] %></h3>
         </div>
       </div>
     </div>
-    <div class="col-md-4">
-      <div class="card">
-        <div class="card-body">
-          <h6 class="text-muted">Active</h6>
-          <h3 class="text-success"><%= @stats[:active] %></h3>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="check-circle" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Active</p>
+          <h3 class="admin-stat-value"><%= @stats[:active] %></h3>
         </div>
       </div>
     </div>
-    <div class="col-md-4">
-      <div class="card">
-        <div class="card-body">
-          <h6 class="text-muted">Integrations Configured</h6>
-          <h3><%= @stats[:integrations_configured] %></h3>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="plug" class="admin-icon-lg admin-text-info"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Integrations Configured</p>
+          <h3 class="admin-stat-value"><%= @stats[:integrations_configured] %></h3>
         </div>
       </div>
     </div>
   </div>
 
   <!-- OAuth Configurations Table -->
-  <div class="card">
-    <div class="card-body">
-      <table class="table">
-          <thead>
+  <div class="admin-card">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="list" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      OAuth Configurations
+    </h3>
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
           <tr>
             <th>ID</th>
             <th>Integration</th>
@@ -59,36 +82,55 @@
         <tbody>
           <% @oauth_configurations.each do |config| %>
             <tr>
-              <td>#<%= config.id %></td>
+              <td class="admin-text-cyan">#<%= config.id %></td>
               <td>
-                <i data-lucide="plug" class="me-1"></i>
-                <%= config.integration.name %>
+                <div class="admin-flex admin-items-center admin-flex-gap-sm">
+                  <i data-lucide="plug" class="admin-icon-sm admin-text-info"></i>
+                  <span class="admin-text-primary"><%= config.integration.name %></span>
+                </div>
               </td>
-              <td><code><%= config.client_id[0..15] %>...</code></td>
-              <td><small><%= config.redirect_uri %></small></td>
+              <td><code class="admin-text-cyan"><%= config.client_id[0..15] %>...</code></td>
+              <td><small class="admin-text-secondary"><%= config.redirect_uri %></small></td>
               <td>
-                <span class="badge <%= config.active? ? 'bg-success' : 'bg-secondary' %>">
+                <span class="admin-badge <%= config.active? ? 'admin-badge-success' : 'admin-badge-secondary' %>">
                   <%= config.status.humanize %>
                 </span>
               </td>
-              <td><%= config.created_at.strftime("%Y-%m-%d") %></td>
+              <td class="admin-text-secondary"><%= config.created_at.strftime("%Y-%m-%d") %></td>
               <td>
-                <%= link_to "View", admin_oauth_configuration_path(config), class: "btn btn-sm btn-outline-primary" %>
-                <%= link_to "Edit", edit_admin_integration_oauth_configuration_path(config.integration, config), class: "btn btn-sm btn-outline-secondary" %>
-                <%= link_to "Delete", admin_integration_oauth_configuration_path(config.integration, config), 
-                    method: :delete, 
-                    data: { confirm: "Are you sure?" }, 
-                    class: "btn btn-sm btn-outline-danger" %>
+                <div class="admin-flex admin-flex-gap-xs">
+                  <%= link_to admin_oauth_configuration_path(config), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                    <i data-lucide="eye" class="admin-icon-sm"></i>
+                  <% end %>
+                  <%= link_to edit_admin_integration_oauth_configuration_path(config.integration, config), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                    <i data-lucide="edit" class="admin-icon-sm"></i>
+                  <% end %>
+                  <%= link_to admin_integration_oauth_configuration_path(config.integration, config),
+                      method: :delete,
+                      data: { confirm: "Are you sure?" },
+                      class: "admin-btn admin-btn-sm admin-btn-danger-outline" do %>
+                    <i data-lucide="trash" class="admin-icon-sm"></i>
+                  <% end %>
+                </div>
               </td>
             </tr>
           <% end %>
         </tbody>
       </table>
-      
-      <%= paginate @oauth_configurations if @oauth_configurations.respond_to?(:total_pages) %>
     </div>
-  </div>
-</div>
+
+    <% if @oauth_configurations.respond_to?(:total_pages) %>
+      <div class="admin-pagination">
+        <%= paginate @oauth_configurations %>
+      </div>
+    <% end %>
   </div>
 </div>
 
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>
