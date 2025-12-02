@@ -497,12 +497,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 48px;
+  min-height: 42px;
 }
 
-.send-btn svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  stroke: white;
+.send-btn svg,
+.send-btn .lucide {
+  width: 20px !important;
+  height: 20px !important;
+  stroke: white !important;
+  display: block;
 }
 
 .send-btn:hover {
