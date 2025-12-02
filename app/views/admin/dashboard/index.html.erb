@@ -1,161 +1,164 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <%# Page Header %>
-    <div class="admin-page-header">
-      <div class="header-left">
-        <div class="header-icon">
-          <i data-lucide="layout-dashboard"></i>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="layout-dashboard" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Admin Dashboard</h1>
+        <p>Monitor platform activity and system health</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="users" class="admin-icon-lg admin-text-primary"></i>
         </div>
-        <div class="header-text">
-          <h1>Admin Dashboard</h1>
-          <p>Monitor platform activity and system health</p>
+        <div>
+          <p class="admin-stat-label">Total Users</p>
+          <h3 class="admin-stat-value"><%= @stats[:total_users] %></h3>
+          <small class="admin-text-muted admin-text-xs">Active accounts</small>
         </div>
       </div>
     </div>
 
-    <%# Stats Cards %>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-      <%# Total Users %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%); display: flex; align-items: center; justify-content: center;">
-            <i data-lucide="users" class="icon-xl text-white"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Total Users</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:total_users] %></h3>
-            <small style="color: #64748B; font-size: 0.75rem;">Active accounts</small>
-          </div>
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="plug" class="admin-icon-lg admin-text-info"></i>
         </div>
-      </div>
-
-      <%# Integrations %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 211, 238, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 211, 238, 0.2);">
-            <i data-lucide="plug" class="icon-xl text-info"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Integrations</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:total_integrations] %></h3>
-            <small style="color: #64748B; font-size: 0.75rem;">Available integrations</small>
-          </div>
-        </div>
-      </div>
-
-      <%# Active Connections %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(34, 197, 94, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(34, 197, 94, 0.2);">
-            <i data-lucide="link" class="icon-xl text-success"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">Active Connections</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= @stats[:active_connections] %></h3>
-            <small style="<%= @stats[:failed_connections] > 0 ? 'color: rgb(248, 113, 113);' : 'color: #64748B;' %> font-size: 0.75rem;">
-              <% if @stats[:failed_connections] > 0 %>
-                <%= @stats[:failed_connections] %> failing
-              <% else %>
-                All healthy
-              <% end %>
-            </small>
-          </div>
-        </div>
-      </div>
-
-      <%# API Calls Today %>
-      <div class="admin-card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.75rem; background: rgba(251, 191, 36, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(251, 191, 36, 0.2);">
-            <i data-lucide="activity" style="width: 1.5rem; height: 1.5rem; color: rgb(252, 211, 77);"></i>
-          </div>
-          <div>
-            <p style="color: #94A3B8; font-size: 0.875rem; margin: 0;">API Calls Today</p>
-            <h3 style="color: white; font-size: 1.875rem; font-weight: 600; margin: 0;"><%= number_with_delimiter(@stats[:api_calls_today]) %></h3>
-            <small style="color: #64748B; font-size: 0.75rem;">External API calls</small>
-          </div>
+        <div>
+          <p class="admin-stat-label">Integrations</p>
+          <h3 class="admin-stat-value"><%= @stats[:total_integrations] %></h3>
+          <small class="admin-text-muted admin-text-xs">Available integrations</small>
         </div>
       </div>
     </div>
 
-    <%# Two Column Layout %>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-      <%# Integration Health %>
-      <div class="admin-card">
-        <h3 class="card-title">Integration Health</h3>
-        <% if @failing_connections.any? %>
-          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-            <% @failing_connections.each do |connection| %>
-              <div style="padding: 0.75rem; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                  <h6 style="color: white; margin: 0 0 0.25rem 0; font-weight: 600;"><%= connection.name %></h6>
-                  <small style="color: #94A3B8; font-size: 0.875rem;">
-                    <%= connection.integration.name %> - <%= connection.entity.name %>
-                  </small>
-                </div>
-                <span class="admin-badge admin-badge-offline">FAILING</span>
-              </div>
-            <% end %>
-          </div>
-        <% else %>
-          <div class="admin-empty-state" style="padding: 2rem;">
-            <div class="empty-icon" style="width: 3rem; height: 3rem; margin: 0 auto 1rem;">
-              <i data-lucide="check-circle"></i>
-            </div>
-            <p class="empty-title" style="margin-bottom: 0;">All connections are healthy</p>
-          </div>
-        <% end %>
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="link" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Active Connections</p>
+          <h3 class="admin-stat-value"><%= @stats[:active_connections] %></h3>
+          <small class="admin-text-xs <%= @stats[:failed_connections] > 0 ? 'admin-text-error' : 'admin-text-muted' %>">
+            <%= @stats[:failed_connections] > 0 ? "#{@stats[:failed_connections]} failing" : 'All healthy' %>
+          </small>
+        </div>
       </div>
+    </div>
 
-      <%# Recent Activity %>
-      <div class="admin-card">
-        <h3 class="card-title">Recent Activity</h3>
-        <% if @recent_admin_activity.any? %>
-          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-            <% @recent_admin_activity.each do |activity| %>
-              <div style="padding: 0.75rem; background: #0F172A; border: 1px solid #1E293B; border-radius: 0.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items-start; margin-bottom: 0.25rem;">
-                  <h6 style="color: white; margin: 0; font-weight: 600;"><%= activity.action.humanize %></h6>
-                  <small style="color: #94A3B8; font-size: 0.875rem;"><%= time_ago_in_words(activity.created_at) %> ago</small>
-                </div>
-                <small style="color: #94A3B8; font-size: 0.875rem;">
-                  by <%= activity.admin_user.full_name %>
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="activity" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">API Calls Today</p>
+          <h3 class="admin-stat-value"><%= number_with_delimiter(@stats[:api_calls_today]) %></h3>
+          <small class="admin-text-muted admin-text-xs">External API calls</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two Column Layout -->
+  <div class="admin-content-grid admin-mb-xl">
+    <!-- Integration Health -->
+    <div class="admin-card">
+      <h3 class="card-title">
+        <i data-lucide="heart-pulse" class="admin-icon-md admin-inline-block admin-mr-sm"></i>
+        Integration Health
+      </h3>
+      <% if @failing_connections.any? %>
+        <div class="admin-flex-col admin-flex-gap-0\.75">
+          <% @failing_connections.each do |connection| %>
+            <div class="admin-bg-darker admin-border admin-rounded-md admin-p-md admin-flex-between">
+              <div>
+                <h6 class="admin-text-primary admin-m-0 admin-mb-xs admin-font-semibold"><%= connection.name %></h6>
+                <small class="admin-text-secondary admin-text-sm">
+                  <%= connection.integration.name %> - <%= connection.entity.name %>
                 </small>
               </div>
-            <% end %>
-          </div>
-        <% else %>
-          <div class="admin-empty-state" style="padding: 2rem;">
-            <div class="empty-icon" style="width: 3rem; height: 3rem; margin: 0 auto 1rem;">
-              <i data-lucide="clock"></i>
+              <span class="admin-badge admin-badge-offline">FAILING</span>
             </div>
-            <p class="empty-title" style="margin-bottom: 0;">No recent activity</p>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="admin-empty-state admin-p-xl">
+          <div class="empty-icon admin-mb-md">
+            <i data-lucide="check-circle" class="admin-icon-xl admin-text-success"></i>
           </div>
-        <% end %>
-      </div>
+          <p class="admin-m-0 admin-text-secondary">All connections are healthy</p>
+        </div>
+      <% end %>
     </div>
 
-    <%# Quick Actions %>
+    <!-- Recent Activity -->
     <div class="admin-card">
-      <h3 class="card-title">Quick Actions</h3>
-      <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-        <%= link_to admin_integrations_path, class: 'admin-btn admin-btn-outline' do %>
-          <i data-lucide="plug"></i>
-          <span>Manage Integrations</span>
-        <% end %>
-        <%= link_to admin_connections_path, class: 'admin-btn admin-btn-outline' do %>
-          <i data-lucide="link"></i>
-          <span>View Connections</span>
-        <% end %>
-        <%= link_to admin_users_path, class: 'admin-btn admin-btn-outline' do %>
-          <i data-lucide="users"></i>
-          <span>Manage Users</span>
-        <% end %>
-        <%= link_to admin_observability_ai_usage_path, class: 'admin-btn admin-btn-outline' do %>
-          <i data-lucide="bar-chart-3"></i>
-          <span>AI Usage Stats</span>
-        <% end %>
-      </div>
+      <h3 class="card-title">
+        <i data-lucide="history" class="admin-icon-md admin-inline-block admin-mr-sm"></i>
+        Recent Activity
+      </h3>
+      <% if @recent_admin_activity.any? %>
+        <div class="admin-flex-col admin-flex-gap-0\.75">
+          <% @recent_admin_activity.each do |activity| %>
+            <div class="admin-bg-darker admin-border admin-rounded-md admin-p-md">
+              <div class="admin-flex-between admin-mb-xs">
+                <h6 class="admin-text-primary admin-m-0 admin-font-semibold"><%= activity.action.humanize %></h6>
+                <small class="admin-text-muted admin-text-xs"><%= time_ago_in_words(activity.created_at) %> ago</small>
+              </div>
+              <small class="admin-text-secondary admin-text-sm">
+                by <%= activity.admin_user.full_name %>
+              </small>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="admin-empty-state admin-p-xl">
+          <div class="empty-icon admin-mb-md">
+            <i data-lucide="clock" class="admin-icon-xl admin-text-muted"></i>
+          </div>
+          <p class="admin-m-0 admin-text-secondary">No recent activity</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="admin-card">
+    <h3 class="card-title">
+      <i data-lucide="zap" class="admin-icon-md admin-inline-block admin-mr-sm"></i>
+      Quick Actions
+    </h3>
+    <div class="admin-flex admin-flex-wrap admin-flex-gap-0\.75">
+      <%= link_to dashboard_admin_agent_collaboration_index_path, class: 'admin-btn admin-btn-outline' do %>
+        <i data-lucide="network"></i>
+        <span>Agent Collaboration</span>
+      <% end %>
+      <%= link_to admin_integrations_path, class: 'admin-btn admin-btn-outline' do %>
+        <i data-lucide="plug"></i>
+        <span>Manage Integrations</span>
+      <% end %>
+      <%= link_to admin_connections_path, class: 'admin-btn admin-btn-outline' do %>
+        <i data-lucide="link"></i>
+        <span>View Connections</span>
+      <% end %>
+      <%= link_to admin_users_path, class: 'admin-btn admin-btn-outline' do %>
+        <i data-lucide="users"></i>
+        <span>Manage Users</span>
+      <% end %>
+      <%= link_to admin_observability_ai_usage_path, class: 'admin-btn admin-btn-outline' do %>
+        <i data-lucide="bar-chart-3"></i>
+        <span>AI Usage Stats</span>
+      <% end %>
     </div>
   </div>
 </div>

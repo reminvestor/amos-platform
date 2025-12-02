@@ -1,0 +1,253 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="layers" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Parallel Task Monitor</h1>
+        <p>Real-time monitoring of concurrent task execution</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="admin-flex admin-flex-gap-sm">
+        <%= link_to admin_parallel_tasks_path(time_range: '1h', filter: @filter), class: "admin-btn admin-btn-sm #{@time_range == '1h' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>1 Hour</span>
+        <% end %>
+        <%= link_to admin_parallel_tasks_path(time_range: '24h', filter: @filter), class: "admin-btn admin-btn-sm #{@time_range == '24h' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>24 Hours</span>
+        <% end %>
+        <%= link_to admin_parallel_tasks_path(time_range: '7d', filter: @filter), class: "admin-btn admin-btn-sm #{@time_range == '7d' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>7 Days</span>
+        <% end %>
+        <%= link_to admin_parallel_tasks_path(time_range: 'all', filter: @filter), class: "admin-btn admin-btn-sm #{@time_range == 'all' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>All Time</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="activity" class="admin-icon-lg admin-text-primary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Total Tasks</p>
+          <h3 class="admin-stat-value"><%= number_with_delimiter(@stats[:total]) %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="loader" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Active</p>
+          <h3 class="admin-stat-value"><%= number_with_delimiter(@stats[:active]) %></h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon success">
+          <i data-lucide="check-circle" class="admin-icon-lg admin-text-success"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Success Rate</p>
+          <h3 class="admin-stat-value"><%= @stats[:success_rate] %>%</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="clock" class="admin-icon-lg admin-text-info"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Avg Duration</p>
+          <h3 class="admin-stat-value"><%= @stats[:avg_duration] %>s</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tasks Table -->
+  <div class="admin-card">
+    <div class="admin-flex-between admin-mb-lg">
+      <h3 class="card-title admin-m-0">
+        <i data-lucide="list" class="admin-icon-md admin-inline-block admin-mr-sm"></i>
+        Task Execution Queue
+      </h3>
+
+      <div class="admin-tabs">
+        <%= link_to "All", admin_parallel_tasks_path(time_range: @time_range),
+                    class: "admin-tab #{@filter == 'all' || @filter.nil? ? 'admin-tab-active' : ''}" %>
+        <%= link_to "Active", admin_parallel_tasks_path(time_range: @time_range, filter: 'active'),
+                    class: "admin-tab #{@filter == 'active' ? 'admin-tab-active' : ''}" %>
+        <%= link_to "Completed", admin_parallel_tasks_path(time_range: @time_range, filter: 'completed'),
+                    class: "admin-tab #{@filter == 'completed' ? 'admin-tab-active' : ''}" %>
+        <%= link_to "Failed", admin_parallel_tasks_path(time_range: @time_range, filter: 'failed'),
+                    class: "admin-tab #{@filter == 'failed' ? 'admin-tab-active' : ''}" %>
+        <%= link_to "Voice", admin_parallel_tasks_path(time_range: @time_range, filter: 'voice'),
+                    class: "admin-tab #{@filter == 'voice' ? 'admin-tab-active' : ''}" %>
+      </div>
+    </div>
+
+    <% if @tasks.any? %>
+      <div class="admin-table-container">
+        <table class="admin-table">
+        <%= admin_table_caption("Parallel task execution queue showing task status, progress, and actions") %>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Type</th>
+            <th>User</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Progress</th>
+            <th>Dependencies</th>
+            <th>Duration</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @tasks.each do |task| %>
+            <tr>
+              <td>
+                <code class="admin-text-info"><%= link_to "##{task.id}", admin_parallel_task_path(task), class: "admin-text-info" %></code>
+              </td>
+              <td>
+                <% type_badge = case task.task_type
+                     when 'voice_immediate' then 'admin-badge-offline'
+                     when 'voice_followup' then 'admin-badge-warning'
+                     when 'analysis' then 'admin-badge-cyan'
+                     else 'admin-badge-default'
+                   end %>
+                <span class="admin-badge <%= type_badge %>">
+                  <%= task.task_type&.humanize || 'Unknown' %>
+                </span>
+              </td>
+              <td class="admin-text-secondary"><%= task.user.email %></td>
+              <td class="admin-text-primary admin-text-truncate admin-max-w-200">
+                <%= task.metadata['description'] || '-' %>
+              </td>
+              <td>
+                <%= admin_status_badge(task.status) %>
+              </td>
+              <td>
+                <div class="admin-flex admin-items-center admin-flex-gap-sm">
+                  <div class="admin-progress-mini admin-rounded-sm admin-progress-bg">
+                    <div class="admin-rounded-sm admin-h-full admin-progress-bar-blue" style="width: <%= task.progress || 0 %>%;"></div>
+                  </div>
+                  <span class="admin-text-xs admin-text-secondary"><%= task.progress || 0 %>%</span>
+                </div>
+              </td>
+              <td>
+                <% if task.depends_on_tasks.any? %>
+                  <span class="admin-badge admin-badge-primary admin-text-xs">
+                    <%= task.depends_on_tasks.count %> deps
+                  </span>
+                <% else %>
+                  <span class="admin-text-muted">None</span>
+                <% end %>
+              </td>
+              <td class="admin-text-secondary">
+                <% if task.started_at && task.status == 'completed' %>
+                  <%= format_duration(task.updated_at - task.started_at) %>
+                <% elsif task.started_at %>
+                  <%= format_duration(Time.current - task.started_at) %>
+                <% else %>
+                  -
+                <% end %>
+              </td>
+              <td class="admin-text-secondary admin-nowrap"><%= task.created_at.strftime('%m/%d %H:%M') %></td>
+              <td>
+                <div class="admin-flex admin-flex-gap-sm">
+                  <%= link_to admin_parallel_task_path(task),
+                      class: "admin-btn admin-btn-sm admin-btn-outline",
+                      'aria-label': "View task #{task.id} details" do %>
+                    <i data-lucide="eye" class="admin-icon-sm"></i>
+                  <% end %>
+
+                  <% if task.status == 'active' %>
+                    <%= button_to cancel_admin_parallel_task_path(task),
+                        method: :post,
+                        class: "admin-btn admin-btn-sm admin-btn-warning-outline",
+                        'aria-label': "Cancel task #{task.id}",
+                        data: { confirm: "Cancel this task?" } do %>
+                      <i data-lucide="x-circle" class="admin-icon-sm"></i>
+                    <% end %>
+                  <% elsif task.status.in?(['failed', 'cancelled']) %>
+                    <%= button_to retry_admin_parallel_task_path(task),
+                        method: :post,
+                        class: "admin-btn admin-btn-sm admin-btn-outline",
+                        'aria-label': "Retry task #{task.id}" do %>
+                      <i data-lucide="refresh-cw" class="admin-icon-sm"></i>
+                    <% end %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if @tasks.count >= 100 %>
+      <p class="admin-text-center admin-mt-lg admin-mb-0 admin-text-muted admin-text-sm">
+        Showing first 100 tasks. Use filters to narrow results.
+      </p>
+    <% end %>
+  <% else %>
+    <div class="admin-empty-state admin-p-xl admin-text-center">
+      <div class="empty-icon admin-mb-md admin-text-muted">
+        <i data-lucide="inbox" class="admin-icon-xl"></i>
+      </div>
+      <h3 class="admin-text-primary">No tasks found</h3>
+      <p class="admin-text-secondary">No parallel tasks match the selected filters</p>
+    </div>
+  <% end %>
+  </div>
+
+  <!-- Pagination -->
+  <% if @tasks.any? && @tasks.total_pages > 1 %>
+    <div class="admin-pagination">
+      <%= paginate @tasks %>
+    </div>
+  <% end %>
+</div>
+
+<!-- Initialize Lucide Icons and Auto-refresh -->
+<script>
+  function initializeParallelTasksPage() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+
+  // Run on both DOMContentLoaded and turbo:load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeParallelTasksPage);
+  } else {
+    initializeParallelTasksPage();
+  }
+
+  document.addEventListener('turbo:load', initializeParallelTasksPage);
+
+  // Auto-refresh for active tasks
+  <% if @stats[:active] > 0 %>
+  setTimeout(() => {
+    window.location.reload();
+  }, 10000); // Refresh every 10 seconds when there are active tasks
+  <% end %>
+</script>

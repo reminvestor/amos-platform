@@ -1,0 +1,300 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <nav aria-label="breadcrumb" class="mb-2">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item"><%= link_to "Scheduled Tasks", scheduled_tasks_path %></li>
+          <li class="breadcrumb-item active"><%= @scheduled_task.name %></li>
+        </ol>
+      </nav>
+      <h1 class="h3 mb-0 text-white">
+        <span class="fs-3 me-2"><%= @scheduled_task.task_type_info[:icon] %></span>
+        <%= @scheduled_task.name %>
+        <% if @scheduled_task.deterministic? %>
+          <span class="badge bg-info ms-2" title="Deterministic mode - predictable execution">
+            <%= @scheduled_task.execution_mode == 'agent_only' ? '🤖 Agent Only' : '🔧 Tool Only' %>
+          </span>
+        <% end %>
+      </h1>
+      <p class="text-muted"><%= @scheduled_task.description || @scheduled_task.task_type_info[:description] %></p>
+    </div>
+    <div class="d-flex gap-2">
+      <% if @scheduled_task.status == 'active' %>
+        <%= button_to pause_scheduled_task_path(@scheduled_task), method: :post, class: "btn btn-warning" do %>
+          <i data-lucide="pause"></i>
+          Pause
+        <% end %>
+      <% elsif @scheduled_task.status == 'paused' %>
+        <%= button_to resume_scheduled_task_path(@scheduled_task), method: :post, class: "btn btn-success" do %>
+          <i data-lucide="play"></i>
+          Resume
+        <% end %>
+      <% end %>
+      <%= button_to run_now_scheduled_task_path(@scheduled_task), method: :post, class: "btn btn-primary" do %>
+        <i data-lucide="zap"></i>
+        Run Now
+      <% end %>
+      <%= link_to edit_scheduled_task_path(@scheduled_task), class: "btn btn-outline-secondary" do %>
+        <i data-lucide="edit"></i>
+        Edit
+      <% end %>
+    </div>
+  </div>
+
+  <div>
+    <div class="row g-4">
+      <!-- Left Column: Task Details -->
+      <div class="col-lg-4">
+        <!-- Status Card -->
+        <div class="admin-card mb-4">
+          <div class="admin-card-header">
+            <h5 class="mb-0">
+              <i data-lucide="activity" class="me-2" style="color: #A78BFA;"></i>
+              Status
+            </h5>
+          </div>
+          <div class="admin-card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <span class="text-muted">Status</span>
+              <% case @scheduled_task.status %>
+              <% when 'active' %>
+                <span class="badge bg-success fs-6">Active</span>
+              <% when 'paused' %>
+                <span class="badge bg-warning text-dark fs-6">Paused</span>
+              <% when 'completed' %>
+                <span class="badge bg-info fs-6">Completed</span>
+              <% when 'failed' %>
+                <span class="badge bg-danger fs-6">Failed</span>
+              <% else %>
+                <span class="badge bg-secondary fs-6"><%= @scheduled_task.status.titleize %></span>
+              <% end %>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <span class="text-muted">Total Runs</span>
+              <span class="badge bg-primary"><%= @scheduled_task.run_count %></span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <span class="text-muted">Failed Runs</span>
+              <span class="badge <%= @scheduled_task.failure_count > 0 ? 'bg-danger' : 'bg-secondary' %>"><%= @scheduled_task.failure_count %></span>
+            </div>
+            <% if @scheduled_task.consecutive_failures > 0 %>
+              <div class="alert alert-warning py-2">
+                <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
+                <%= @scheduled_task.consecutive_failures %> consecutive failures
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Schedule Card -->
+        <div class="admin-card mb-4">
+          <div class="admin-card-header">
+            <h5 class="mb-0">
+              <i data-lucide="calendar" class="me-2" style="color: #A78BFA;"></i>
+              Schedule
+            </h5>
+          </div>
+          <div class="admin-card-body">
+            <div class="mb-3">
+              <div class="text-muted small">Schedule Type</div>
+              <div class="fw-medium"><%= @scheduled_task.schedule_type.titleize %></div>
+            </div>
+            <% if @scheduled_task.run_at_time %>
+              <div class="mb-3">
+                <div class="text-muted small">Run Time</div>
+                <div class="fw-medium"><%= @scheduled_task.run_at_time.strftime('%I:%M %p') %></div>
+              </div>
+            <% end %>
+            <% if @scheduled_task.run_on_day %>
+              <div class="mb-3">
+                <div class="text-muted small">Run On</div>
+                <div class="fw-medium">
+                  <% if @scheduled_task.schedule_type == 'weekly' %>
+                    <%= Date::DAYNAMES[@scheduled_task.run_on_day] %>
+                  <% else %>
+                    Day <%= @scheduled_task.run_on_day %>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+            <div class="mb-3">
+              <div class="text-muted small">Timezone</div>
+              <div class="fw-medium"><%= @scheduled_task.timezone %></div>
+            </div>
+            <hr>
+            <div class="mb-3">
+              <div class="text-muted small">Next Run</div>
+              <div class="fw-medium">
+                <% if @scheduled_task.next_run_at %>
+                  <%= @scheduled_task.next_run_at.in_time_zone(@scheduled_task.timezone).strftime('%b %d, %Y at %I:%M %p %Z') %>
+                  <div class="small text-muted">(<%= time_ago_in_words(@scheduled_task.next_run_at) %> from now)</div>
+                <% else %>
+                  <span class="text-muted">Not scheduled</span>
+                <% end %>
+              </div>
+            </div>
+            <div class="mb-0">
+              <div class="text-muted small">Last Run</div>
+              <div class="fw-medium">
+                <% if @scheduled_task.last_run_at %>
+                  <%= @scheduled_task.last_run_at.in_time_zone(@scheduled_task.timezone).strftime('%b %d, %Y at %I:%M %p %Z') %>
+                  <div class="small text-muted">(<%= time_ago_in_words(@scheduled_task.last_run_at) %> ago)</div>
+                <% else %>
+                  <span class="text-muted">Never run</span>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Execution Mode Card -->
+        <% if @scheduled_task.deterministic? %>
+          <div class="admin-card mb-4">
+            <div class="admin-card-header">
+              <h5 class="mb-0">
+                <i data-lucide="lock" class="me-2" style="color: #06B6D4;"></i>
+                Deterministic Mode
+              </h5>
+            </div>
+            <div class="admin-card-body">
+              <div class="mb-3">
+                <div class="text-muted small">Execution Mode</div>
+                <div class="fw-medium">
+                  <% if @scheduled_task.execution_mode == 'agent_only' %>
+                    🤖 Agent Only
+                  <% else %>
+                    🔧 Tool Only
+                  <% end %>
+                </div>
+              </div>
+              <% if @scheduled_task.required_agent_slug.present? %>
+                <div class="mb-3">
+                  <div class="text-muted small">Required Agent</div>
+                  <div class="fw-medium"><%= @scheduled_task.required_agent_slug %></div>
+                </div>
+              <% end %>
+              <% if @scheduled_task.required_tools.any? %>
+                <div class="mb-3">
+                  <div class="text-muted small">Required Tools</div>
+                  <div>
+                    <% @scheduled_task.required_tools.each do |tool| %>
+                      <span class="badge bg-secondary me-1"><%= tool %></span>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+              <div class="mb-0">
+                <div class="text-muted small">Fallback Enabled</div>
+                <div class="fw-medium">
+                  <%= @scheduled_task.allow_fallback? ? '✅ Yes' : '❌ No' %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Right Column: Prompt & Runs -->
+      <div class="col-lg-8">
+        <!-- Prompt Card -->
+        <div class="admin-card mb-4">
+          <div class="admin-card-header">
+            <h5 class="mb-0">
+              <i data-lucide="message-square" class="me-2" style="color: #A78BFA;"></i>
+              Task Prompt
+            </h5>
+          </div>
+          <div class="admin-card-body">
+            <pre class="bg-dark p-3 rounded text-light mb-0" style="white-space: pre-wrap;"><%= @scheduled_task.prompt %></pre>
+          </div>
+        </div>
+
+        <!-- Recent Runs -->
+        <div class="admin-card">
+          <div class="admin-card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+              <i data-lucide="history" class="me-2" style="color: #A78BFA;"></i>
+              Recent Runs
+            </h5>
+            <%= link_to runs_scheduled_task_path(@scheduled_task), class: "btn btn-sm btn-outline-secondary" do %>
+              View All
+            <% end %>
+          </div>
+          <div class="admin-card-body p-0">
+            <% if @runs.any? %>
+              <div class="table-responsive">
+                <table class="admin-table mb-0">
+                  <thead>
+                    <tr>
+                      <th>Started</th>
+                      <th>Duration</th>
+                      <th>Status</th>
+                      <th>Summary</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @runs.each do |run| %>
+                      <tr>
+                        <td>
+                          <% if run.started_at %>
+                            <%= run.started_at.strftime('%b %d, %I:%M %p') %>
+                          <% else %>
+                            <span class="text-muted">—</span>
+                          <% end %>
+                        </td>
+                        <td>
+                          <% if run.started_at && run.completed_at %>
+                            <%= distance_of_time_in_words(run.started_at, run.completed_at) %>
+                          <% elsif run.status == 'running' %>
+                            <span class="text-info">Running...</span>
+                          <% else %>
+                            <span class="text-muted">—</span>
+                          <% end %>
+                        </td>
+                        <td>
+                          <% case run.status %>
+                          <% when 'completed' %>
+                            <span class="badge bg-success">Completed</span>
+                          <% when 'failed' %>
+                            <span class="badge bg-danger">Failed</span>
+                          <% when 'running' %>
+                            <span class="badge bg-primary">Running</span>
+                          <% when 'pending' %>
+                            <span class="badge bg-secondary">Pending</span>
+                          <% else %>
+                            <span class="badge bg-secondary"><%= run.status.titleize %></span>
+                          <% end %>
+                        </td>
+                        <td>
+                          <% if run.result_summary.present? %>
+                            <%= truncate(run.result_summary, length: 100) %>
+                          <% elsif run.status == 'failed' && run.result_data['error'].present? %>
+                            <span class="text-danger"><%= truncate(run.result_data['error'], length: 100) %></span>
+                          <% else %>
+                            <span class="text-muted">—</span>
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            <% else %>
+              <div class="text-center py-4">
+                <i data-lucide="clock" style="width: 32px; height: 32px; color: #64748B;" class="mb-2"></i>
+                <p class="text-muted mb-0">No runs yet</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+</script>
+

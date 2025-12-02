@@ -29,7 +29,7 @@ class CampaignService
     Rails.logger.info("Campaign #{@campaign.id}: Need to create #{missing_contact_ids.count} new deliveries")
     
     if missing_contact_ids.any?
-      # For very large campaigns, create deliveries in background to avoid timeouts
+      
       if missing_contact_ids.count > 50_000
         Rails.logger.info("Campaign #{@campaign.id}: Large campaign detected (#{missing_contact_ids.count} contacts), creating deliveries in background")
         # Create a job to handle the bulk insert
@@ -224,32 +224,26 @@ class CampaignService
     Rails.logger.info("Processing email delivery #{delivery.id} for contact #{delivery.contact.email}")
 
     # Send the email using the mailer
-    CampaignMailer.campaign_email(delivery).deliver_now
+    mail_message = CampaignMailer.campaign_email(delivery).deliver_now
 
-    # Mark as sent
-    delivery.mark_as_sent
+    # Try to get the message ID from the response
+    # AWS SDK Rails adapter should put the message ID in the message object after delivery
+    ses_message_id = mail_message.message_id
 
-    Rails.logger.info("Successfully sent email delivery #{delivery.id}")
+    # Mark as sent and save SES message ID
+    delivery.update(
+      status: "sent", 
+      sent_at: Time.current,
+      ses_message_id: ses_message_id
+    )
+
+    Rails.logger.info("Successfully sent email delivery #{delivery.id} (SES ID: #{ses_message_id})")
   end
 
   def cancel_scheduled_jobs
     # Look for campaign jobs in SolidQueue
-    begin
-      # Find jobs by campaign ID in the serialized parameters
-      campaign_jobs = SolidQueue::Job.where("serialized_params LIKE ?", "%#{@campaign.id}%")
-
-      # Find scheduled executions for these jobs
-      scheduled_executions = SolidQueue::ScheduledExecution.where(job_id: campaign_jobs.select(:id))
-
-      if scheduled_executions.any?
-        count = scheduled_executions.count
-        scheduled_executions.destroy_all
-        Rails.logger.info("Cancelled #{count} scheduled jobs for campaign #{@campaign.id}")
-      else
-        Rails.logger.info("No scheduled jobs found for campaign #{@campaign.id}")
-      end
-    rescue => e
-      Rails.logger.error("Error cancelling jobs for campaign #{@campaign.id}: #{e.message}")
-    end
+    # Implementation depends on queue adapter (SolidQueue in this case)
+    # This is tricky because finding scheduled jobs by args is not straightforward
+    # in all queue backends. For now, we rely on status check in perform.
   end
 end

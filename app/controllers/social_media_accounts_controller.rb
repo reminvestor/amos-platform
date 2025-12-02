@@ -1,5 +1,6 @@
 class SocialMediaAccountsController < ApplicationController
   before_action :authenticate_user!
+  layout 'customer_admin'
   before_action :set_account, only: [ :disconnect ]
 
   # GET /social_media_accounts

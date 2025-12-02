@@ -31,14 +31,19 @@ Rails.application.configure do
   end
 
   # Change to :null_store to avoid any caching.
-  config.cache_store = :memory_store
+  # Use Redis for development to share cache between processes (web and worker)
+  config.cache_store = :redis_cache_store, { 
+    url: ENV["REDIS_URL"] || "redis://localhost:6379/0",
+    namespace: "amos_dev_cache"
+  }
 
-  # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = :local
+  # Store uploaded files - use Amazon S3 if AWS credentials are available, otherwise local
+  config.active_storage.service = ENV['AWS_ACCESS_KEY_ID'].present? ? :amazon : :local
 
   # Set Active Storage URL host in development
   config.active_storage.service_urls_expire_in = 1.hour
-  Rails.application.routes.default_url_options[:host] = "app.app.localhost:5001"
+  Rails.application.routes.default_url_options[:host] = "localhost"
+  Rails.application.routes.default_url_options[:port] = 3000
 
   # Don't care if the mailer can't send.
   config.action_mailer.raise_delivery_errors = true
@@ -49,17 +54,15 @@ Rails.application.configure do
   # Devise mailer configuration
   config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
 
-  # Letter Opener - Preview emails in browser instead of sending them
-  # Access sent emails at http://localhost:3000/letter_opener
-  config.action_mailer.delivery_method = :letter_opener
-  config.action_mailer.perform_deliveries = true
-
-  # Mailgun configuration (for production use)
-  # config.action_mailer.delivery_method = :mailgun
-  # config.action_mailer.mailgun_settings = {
-  #   api_key: ENV["MAILGUN_API_KEY"],
-  #   domain: ENV["MAILGUN_DOMAIN"]
-  # }
+  # Use SES in development if explicitly requested via USE_SES_IN_DEV=true
+  if ENV["USE_SES_IN_DEV"] == "true"
+    config.action_mailer.delivery_method = :aws_sdk
+    config.action_mailer.perform_deliveries = true
+  else
+    # Otherwise default to Letter Opener for local development
+    config.action_mailer.delivery_method = :letter_opener
+    config.action_mailer.perform_deliveries = true
+  end
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
@@ -68,10 +71,12 @@ Rails.application.configure do
   config.active_record.migration_error = :page_load
 
   # Highlight code that triggered database queries in logs.
-  config.active_record.verbose_query_logs = true
+  # Disabled for cleaner console output in development
+  config.active_record.verbose_query_logs = false
 
   # Append comments with runtime information tags to SQL queries in logs.
-  config.active_record.query_log_tags_enabled = true
+  # Disabled for cleaner console output in development
+  config.active_record.query_log_tags_enabled = false
 
   # Highlight code that enqueued background job in logs.
   config.active_job.verbose_enqueue_logs = true
@@ -89,7 +94,8 @@ Rails.application.configure do
   config.action_view.annotate_rendered_view_with_filenames = true
 
   # Uncomment if you wish to allow Action Cable access from any origin.
-  # config.action_cable.disable_request_forgery_protection = true
+  config.action_cable.disable_request_forgery_protection = true
+  config.action_cable.allowed_request_origins = [/http:\/\/*/, /https:\/\/*/, /file:\/\/*/, /ws:\/\/*/, /wss:\/\/*/, nil]
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
@@ -122,6 +128,13 @@ Rails.application.configure do
   config.hosts << ".nuvola.default.localhost"
   config.hosts << "default.localhost"
   config.hosts << ".default.localhost"
+  
+  # Docker hosts
+  config.hosts << "host.docker.internal"
+  config.hosts << /.*\.docker\.internal/
+
+  # Allow Docker container-to-container communication
+  config.hosts << "web"
 
   # Disable CSRF protection in development to match production behavior
   # This prevents CSRF token authenticity errors with complex subdomain setups

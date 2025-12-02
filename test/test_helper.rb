@@ -4,6 +4,15 @@ require "rails/test_help"
 require "mocha/minitest"
 require "minitest/mock"
 
+# Configure Capybara for CI environments
+Capybara.configure do |config|
+  # Increase timeouts for slower CI environments
+  config.default_max_wait_time = 10
+
+  # Use puma server for system tests
+  config.server = :puma, { Silent: true }
+end
+
 module ActiveSupport
   class TestCase
     # Run tests in parallel with specified workers

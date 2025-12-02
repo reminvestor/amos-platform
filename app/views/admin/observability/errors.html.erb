@@ -1,97 +1,137 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid">
-  <div class="d-flex align-items-center mb-3">
-    <h1 class="h3 mb-0">Observability • Errors</h1>
-  </div>
-
-  <div class="row g-3 mb-4">
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <div class="text-muted small">Total Errors (last <%= (@time_range / 1.day).to_i %> days)</div>
-          <div class="fs-3 fw-semibold"><%= @total_errors || 0 %></div>
-        </div>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon admin-stat-icon error">
+        <i data-lucide="alert-circle"></i>
+      </div>
+      <div class="header-text">
+        <h1>Error Monitoring</h1>
+        <p>Real-time error tracking and diagnostics (last <%= (@time_range / 1.day).to_i %> days)</p>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <div class="text-muted small">Error Rate %</div>
-          <div class="fs-3 fw-semibold"><%= @error_rate || 0 %>%</div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span>Errors by Type</span>
-    </div>
-    <div class="card-body">
-      <% if @errors_by_type.present? %>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle">
-            <thead>
-              <tr>
-                <th>Type</th>
-                <th class="text-end">Count</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @errors_by_type.each do |type, count| %>
-                <tr>
-                  <td><%= type %></td>
-                  <td class="text-end"><%= count %></td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% else %>
-        <div class="text-muted">No error data available for the selected range.</div>
+    <div class="header-actions">
+      <%= link_to admin_observability_workflows_path, class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back to Workflows</span>
       <% end %>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span>Recent Errors</span>
-    </div>
-    <div class="card-body">
-      <% if @recent_errors.respond_to?(:any?) ? @recent_errors.any? : @recent_errors.to_a.any? %>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle">
-            <thead>
+  <!-- Summary Cards -->
+  <div class="admin-stats-grid">
+    <%= render 'admin/shared/stat_card', icon: 'x-circle', label: 'Total Errors', value: number_with_delimiter(@total_errors || 0), style: 'error', aria_label: 'Total errors count' %>
+    <%= render 'admin/shared/stat_card', icon: 'percent', label: 'Error Rate', value: "#{@error_rate || 0}%", style: 'warning', aria_label: 'Error rate percentage' %>
+  </div>
+
+  <!-- Errors by Type -->
+  <div class="admin-card admin-mb-xl">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="list" class="admin-icon-md d-inline-block align-middle me-2" aria-hidden="true"></i>
+      Errors by Type
+    </h3>
+
+    <% if @errors_by_type.present? %>
+      <div class="admin-overflow-auto">
+        <table class="admin-table">
+          <%= admin_table_caption("Errors grouped by type with counts") %>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th class="admin-text-right">Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @errors_by_type.each do |type, count| %>
               <tr>
-                <th>When</th>
-                <th>Entity</th>
-                <th>User</th>
-                <th>Type</th>
-                <th>Message</th>
+                <td class="text-white">
+                  <span class="admin-badge admin-badge-offline"><%= type %></span>
+                </td>
+                <td class="admin-text-right admin-text-error fw-semibold"><%= number_with_delimiter(count) %></td>
               </tr>
-            </thead>
-            <tbody>
-              <% @recent_errors.each do |e| %>
-                <% metadata = (e.respond_to?(:metadata) ? e.metadata : {}) || {} %>
-                <tr>
-                  <td class="text-nowrap"><%= e.respond_to?(:created_at) ? e.created_at&.strftime('%Y-%m-%d %H:%M') : '-' %></td>
-                  <td><%= e.respond_to?(:entity) ? e.entity&.name : '-' %></td>
-                  <td><%= e.respond_to?(:user) ? e.user&.email : '-' %></td>
-                  <td><%= metadata["error_type"] || metadata["type"] || "Unknown" %></td>
-                  <td class="text-truncate" style="max-width: 420px"><%= metadata["message"] || metadata["error"] || "" %></td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="check-circle"></i>
         </div>
-      <% else %>
-        <div class="text-muted">No recent errors.</div>
+        <h3>No errors found</h3>
+        <p>No errors recorded in the selected time range</p>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Recent Errors -->
+  <div class="admin-card">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="history" class="admin-icon-md d-inline-block align-middle me-2" aria-hidden="true"></i>
+      Recent Errors
+    </h3>
+
+    <% if @recent_errors.respond_to?(:any?) ? @recent_errors.any? : @recent_errors.to_a.any? %>
+      <div class="admin-overflow-auto">
+        <table class="admin-table">
+          <%= admin_table_caption("Recent errors with timestamps, entities, users, types, and messages") %>
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Entity</th>
+              <th>User</th>
+              <th>Type</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_errors.each do |e| %>
+              <% metadata = (e.respond_to?(:metadata) ? e.metadata : {}) || {} %>
+              <tr>
+                <td class="admin-text-secondary admin-nowrap"><%= e.respond_to?(:created_at) ? e.created_at&.strftime('%Y-%m-%d %H:%M') : '-' %></td>
+                <td class="text-white"><%= e.respond_to?(:entity) ? e.entity&.name : '-' %></td>
+                <td class="admin-text-secondary"><%= e.respond_to?(:user) ? e.user&.email : '-' %></td>
+                <td>
+                  <span class="admin-badge admin-badge-offline"><%= metadata["error_type"] || metadata["type"] || "Unknown" %></span>
+                </td>
+                <td class="admin-text-error admin-text-truncate admin-table-cell-error-msg">
+                  <%= metadata["message"] || metadata["error"] || "" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if @recent_errors.count >= 50 %>
+        <p class="admin-text-muted admin-text-center admin-mt-lg mb-0 admin-text-sm">
+          Showing first 50 errors. Use filters to narrow results.
+        </p>
       <% end %>
-    </div>
-  </div>
-</div>
+    <% else %>
+      <div class="admin-empty-state">
+        <div class="empty-icon">
+          <i data-lucide="check-circle"></i>
+        </div>
+        <h3>No recent errors</h3>
+        <p>System is running smoothly with no errors</p>
+      </div>
+    <% end %>
   </div>
 </div>
 
+<!-- Initialize Lucide Icons -->
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
 
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

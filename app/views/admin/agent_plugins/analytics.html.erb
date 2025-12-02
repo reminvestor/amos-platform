@@ -1,0 +1,155 @@
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header">
+    <div class="header-left">
+      <%= link_to admin_agent_plugins_path, class: "admin-btn admin-btn-sm admin-btn-outline admin-mr-md" do %>
+        <%= admin_icon('arrow-left', size: :sm) %>
+      <% end %>
+      <div class="header-icon admin-icon-gradient-purple">
+        <%= admin_icon('bar-chart-3', size: :lg) %>
+      </div>
+      <div class="header-text">
+        <h1>Agent Analytics</h1>
+        <p>Performance metrics and execution statistics</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="admin-flex admin-flex-wrap admin-flex-gap-sm">
+        <%= link_to analytics_admin_agent_plugins_path(days: 7), class: "admin-btn admin-btn-sm #{params[:days] == '7' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>7 Days</span>
+        <% end %>
+        <%= link_to analytics_admin_agent_plugins_path(days: 30), class: "admin-btn admin-btn-sm #{params[:days].nil? || params[:days] == '30' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>30 Days</span>
+        <% end %>
+        <%= link_to analytics_admin_agent_plugins_path(days: 90), class: "admin-btn admin-btn-sm #{params[:days] == '90' ? 'admin-btn-primary' : 'admin-btn-outline'}" do %>
+          <span>90 Days</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <%= render 'admin/shared/stat_card',
+      icon: 'activity',
+      value: @execution_stats.sum { |s| s[:total] },
+      label: 'Total Executions',
+      style: 'purple-gradient' %>
+
+    <%= render 'admin/shared/stat_card',
+      icon: 'check-circle',
+      value: "#{(@execution_stats.sum { |s| s[:total] > 0 ? s[:success_rate] * s[:total] : 0 } / [@execution_stats.sum { |s| s[:total] }, 1].max).round(1)}%",
+      label: 'Avg Success Rate',
+      style: 'success' %>
+
+    <%= render 'admin/shared/stat_card',
+      icon: 'clock',
+      value: "#{(@execution_stats.sum { |s| s[:avg_duration] } / [@execution_stats.size, 1].max).round(0)}ms",
+      label: 'Avg Duration',
+      style: 'info' %>
+
+    <%= render 'admin/shared/stat_card',
+      icon: 'zap',
+      value: number_with_delimiter(@execution_stats.sum { |s| s[:total_tokens] }),
+      label: 'Total Tokens',
+      style: 'warning' %>
+  </div>
+
+  <!-- Execution Timeline -->
+  <% if @execution_timeline.present? %>
+    <div class="admin-card admin-mb-xl">
+      <div class="admin-card-header">
+        <h3 class="admin-card-title">
+          <%= admin_icon('trending-up', size: :sm) %>
+          Execution Timeline
+        </h3>
+      </div>
+      <div class="admin-card-body">
+        <div class="admin-flex admin-items-end admin-flex-gap-sm admin-h-200">
+          <% max_count = @execution_timeline.values.max || 1 %>
+          <% @execution_timeline.sort.each do |date, count| %>
+            <div class="admin-flex-1 admin-flex admin-flex-col admin-items-center">
+              <div class="admin-w-full admin-rounded-sm admin-chart-bar-purple" style="height: <%= (count.to_f / max_count * 160).round %>px; min-height: 4px;" title="<%= date %>: <%= count %> executions"></div>
+              <small class="admin-text-secondary admin-text-xs admin-mt-sm admin-chart-label-vertical">
+                <%= Date.parse(date.to_s).strftime('%m/%d') %>
+              </small>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Agent Performance Table -->
+  <div class="admin-card">
+    <div class="admin-card-header">
+      <h3 class="admin-card-title">
+        <%= admin_icon('bot', size: :sm) %>
+        Agent Performance
+      </h3>
+    </div>
+
+    <% if @execution_stats.any? %>
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Executions</th>
+              <th>Success Rate</th>
+              <th>Avg Duration</th>
+              <th>Total Tokens</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @execution_stats.each do |stat| %>
+              <tr>
+                <td>
+                  <div class="admin-flex admin-items-center admin-flex-gap-sm">
+                    <%= admin_icon('bot', size: :sm, class: 'admin-text-info') %>
+                    <strong class="admin-text-primary"><%= stat[:agent_name] || 'Unknown' %></strong>
+                  </div>
+                </td>
+                <td>
+                  <span class="admin-badge admin-badge-info"><%= number_with_delimiter(stat[:total]) %></span>
+                </td>
+                <td>
+                  <div class="admin-flex admin-items-center admin-flex-gap-sm">
+                    <div class="admin-progress admin-flex-1 admin-progress-mini">
+                      <div class="admin-progress-bar <%= stat[:success_rate] >= 80 ? 'admin-progress-success' : stat[:success_rate] >= 50 ? 'admin-progress-warning' : 'admin-progress-danger' %>"
+                           style="width: <%= stat[:success_rate] %>%"></div>
+                    </div>
+                    <small class="admin-text-secondary"><%= stat[:success_rate] %>%</small>
+                  </div>
+                </td>
+                <td>
+                  <span class="admin-text-muted"><%= number_with_delimiter(stat[:avg_duration]) %>ms</span>
+                </td>
+                <td>
+                  <span class="admin-text-muted"><%= number_with_delimiter(stat[:total_tokens]) %></span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="admin-card-body admin-text-center admin-text-muted admin-p-xl">
+        <div class="admin-mx-auto admin-mb-md admin-icon-xl">
+          <%= admin_icon('inbox', size: :xl) %>
+        </div>
+        <p>No execution data available for the selected time period</p>
+        <p class="admin-text-sm">Agent executions will appear here once agents start running.</p>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

@@ -1,30 +1,37 @@
-<div class="canvas-container bg-dark text-white p-4" style="overflow-x: hidden; word-wrap: break-word;">
-  <div class="canvas-header mb-4">
-    <div class="d-flex justify-content-between align-items-start flex-wrap">
-      <div class="flex-grow-1 me-3">
-        <h3 class="text-white mb-1"><i data-lucide="settings" aria-hidden="true"></i> <%= canvas_data[:integration_name] %> Operations</h3>
-        <p class="text-light mb-0">Connection: <%= canvas_data[:connection_name] %></p>
-      </div>
-      <button class="btn btn-outline-secondary flex-shrink-0" onclick="goBackToIntegrations()" aria-label="Back to integrations">
-        <i data-lucide="arrow-left" aria-hidden="true"></i> Back to Integrations
-      </button>
+<div class="canvas-container" style="min-height: 100vh; padding: 2rem; overflow-x: hidden; word-wrap: break-word;">
+  <!-- Page Header -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div style="flex: 1;">
+      <h1 class="canvas-page-title" style="font-size: 1.75rem; display: flex; align-items: center; gap: 0.75rem;">
+        <i data-lucide="settings" style="width: 1.75rem; height: 1.75rem;"></i>
+        <%= canvas_data[:integration_name] %> Operations
+      </h1>
+      <p class="canvas-page-subtitle" style="margin: 0;">Connection: <%= canvas_data[:connection_name] %></p>
     </div>
+    <button onclick="goBackToIntegrations()"
+            aria-label="Back to integrations"
+            class="canvas-btn secondary">
+      <i data-lucide="arrow-left" class="canvas-icon-sm"></i>
+      Back to Integrations
+    </button>
   </div>
 
   <!-- Authentication Section -->
-  <div class="mb-4">
-    <div class="card bg-secondary">
-      <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center flex-wrap">
-          <h6 class="text-white mb-0 me-2">
-            <i data-lucide="key" aria-hidden="true"></i> Authentication Settings
-          </h6>
-          <button class="btn btn-sm btn-outline-light flex-shrink-0" onclick="toggleAuthSection()" aria-label="Update credentials">
-            <i data-lucide="pencil" aria-hidden="true"></i> Update Credentials
-          </button>
-        </div>
+  <div style="margin-bottom: 2rem;">
+    <div class="canvas-card" style="overflow: hidden;">
+      <div style="background: var(--bg-secondary); border-bottom: 1px solid var(--border-primary); padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <h5 style="color: var(--text-primary); margin: 0; font-weight: 600; display: flex; align-items: center; gap: 0.75rem;">
+          <i data-lucide="key" class="canvas-icon-md canvas-icon-purple"></i>
+          Authentication Settings
+        </h5>
+        <button onclick="toggleAuthSection()"
+                aria-label="Update credentials"
+                class="canvas-btn secondary">
+          <i data-lucide="pencil" class="canvas-icon-sm"></i>
+          Update Credentials
+        </button>
       </div>
-      <div class="card-body" id="authSection" style="display: none;">
+      <div id="authSection" style="display: none; padding: 1.5rem;">
         <div id="authForm">
           <!-- Auth form will be loaded here -->
         </div>
@@ -32,31 +39,54 @@
     </div>
   </div>
 
+  <!-- Operations List -->
   <% if canvas_data[:operations].blank? %>
-    <div class="alert alert-info">No operations available for this integration.</div>
+    <div class="canvas-info-box" style="border: 1px solid var(--border-primary); border-radius: 0.75rem; padding: 1.5rem;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <i data-lucide="info" class="canvas-icon-md canvas-icon-cyan"></i>
+        <p style="color: var(--text-primary); margin: 0;">No operations available for this integration.</p>
+      </div>
+    </div>
   <% else %>
-    <div class="list-group" style="max-width: 100%; overflow: hidden;">
-      <% canvas_data[:operations].each do |op| %>
-        <div class="list-group-item bg-secondary text-white mb-2" style="overflow: hidden;">
-          <div class="d-flex justify-content-between align-items-start flex-wrap">
-            <div class="flex-grow-1 me-2">
-              <div class="mb-1">
-                <span class="badge bg-info me-2"><%= op[:http_method] %></span>
-                <strong><%= op[:name] %></strong>
+    <div>
+      <h3 class="canvas-section-title" style="margin-bottom: 1.5rem; font-size: 1.25rem;">Available Operations</h3>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <% canvas_data[:operations].each do |op| %>
+          <div class="canvas-card" style="padding: 1.5rem; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+              <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
+                  <span class="canvas-badge" style="background: linear-gradient(135deg, var(--accent-purple-start) 0%, var(--accent-purple-end) 100%); color: white; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600;">
+                    <%= op[:http_method] %>
+                  </span>
+                  <h5 style="color: var(--text-primary); margin: 0; font-weight: 600;">
+                    <%= op[:name] %>
+                  </h5>
+                </div>
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 0.375rem; padding: 0.75rem; overflow-x: auto;">
+                  <code class="canvas-html-textarea" style="font-size: 0.75rem; white-space: pre-wrap; word-break: break-all;">
+                    <%= op[:path_template] %>
+                  </code>
+                </div>
               </div>
-              <div class="small text-muted">
-                <code class="text-break"><%= op[:path_template] %></code>
-              </div>
+              <button onclick="toggleOperationExample(<%= op[:id] %>)"
+                      class="canvas-btn secondary"
+                      style="flex-shrink: 0; white-space: nowrap;">
+                <i data-lucide="code" class="canvas-icon-sm"></i>
+                Example
+              </button>
             </div>
-            <button class="btn btn-sm btn-outline-light flex-shrink-0" onclick="showOperationExample(<%= op[:id] %>)">
-              Example
-            </button>
+
+            <!-- Operation Example (initially hidden) -->
+            <% if op[:example].present? %>
+              <div id="example-<%= op[:id] %>" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-primary);">
+                <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0 0 0.75rem 0;">Example payload:</p>
+                <pre class="canvas-html-textarea" style="padding: 1rem; font-size: 0.75rem; overflow-x: auto; white-space: pre-wrap; word-break: break-all; margin: 0;"><%= JSON.pretty_generate(op[:example]) %></pre>
+              </div>
+            <% end %>
           </div>
-          <% if op[:example].present? %>
-            <pre class="mt-2 small bg-dark text-white p-2 rounded" style="overflow-x: auto; white-space: pre-wrap; word-break: break-all; max-width: 100%;"><%= JSON.pretty_generate(op[:example]) %></pre>
-          <% end %>
-        </div>
-      <% end %>
+        <% end %>
+      </div>
     </div>
   <% end %>
 </div>
@@ -70,7 +100,7 @@ function goBackToIntegrations() {
 function toggleAuthSection() {
   const authSection = document.getElementById('authSection');
   const authForm = document.getElementById('authForm');
-  
+
   if (authSection.style.display === 'none') {
     // Load the auth form
     loadAuthForm();
@@ -80,94 +110,121 @@ function toggleAuthSection() {
   }
 }
 
+function toggleOperationExample(id) {
+  const exampleDiv = document.getElementById('example-' + id);
+  if (exampleDiv) {
+    if (exampleDiv.style.display === 'none') {
+      exampleDiv.style.display = 'block';
+    } else {
+      exampleDiv.style.display = 'none';
+    }
+  }
+}
+
 function loadAuthForm() {
   const connectionData = <%= raw canvas_data.to_json %>;
   const authForm = document.getElementById('authForm');
-  
+
   console.log('Full connectionData:', connectionData);
-  
+
   // Build auth form based on integration type
   let formHtml = `
     <form id="updateCredentialsForm" onsubmit="updateCredentials(event)">
-      <div class="mb-3">
-        <label for="connection_name" class="form-label text-white">Connection Name</label>
-        <input type="text" class="form-control" id="connection_name" name="connection_name" 
-               value="${connectionData.connection_name}" required>
+      <div style="margin-bottom: 1.5rem;">
+        <label for="connection_name" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">Connection Name</label>
+        <input type="text" id="connection_name" name="connection_name"
+               value="${connectionData.connection_name}" required
+               class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
       </div>
   `;
-  
+
   // Add auth fields based on integration auth type
   const integration = connectionData.integration || {};
   const authConfig = integration.auth_config || {};
-  
+
   console.log('Integration data:', integration);
   console.log('Auth config:', authConfig);
   console.log('Auth type:', integration.auth_type);
-  
+
   switch(integration.auth_type) {
     case 'api_key':
       formHtml += `
-        <div class="mb-3">
-          <label for="api_key" class="form-label text-white">API Key</label>
-          <input type="password" class="form-control" id="api_key" name="api_key" 
-                 placeholder="Enter your ${integration.name} API key" required>
+        <div style="margin-bottom: 1.5rem;">
+          <label for="api_key" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">API Key</label>
+          <input type="password" id="api_key" name="api_key"
+                 placeholder="Enter your ${integration.name} API key" required
+                 class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
         </div>
       `;
       break;
-      
+
     case 'bearer_token':
       formHtml += `
-        <div class="mb-3">
-          <label for="bearer_token" class="form-label text-white">Bearer Token</label>
-          <input type="password" class="form-control" id="bearer_token" name="bearer_token" 
-                 placeholder="Enter your ${integration.name} bearer token" required>
+        <div style="margin-bottom: 1.5rem;">
+          <label for="bearer_token" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">Bearer Token</label>
+          <input type="password" id="bearer_token" name="bearer_token"
+                 placeholder="Enter your ${integration.name} bearer token" required
+                 class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
         </div>
       `;
       break;
-      
+
     case 'basic_auth':
       const usernameLabel = authConfig.username_label || 'Username';
       const usernamePlaceholder = authConfig.username_placeholder || '';
       const usernameHelpText = authConfig.username_help_text || '';
       const passwordRequired = authConfig.password_required !== false;
-      
+
       formHtml += `
-        <div class="mb-3">
-          <label for="username" class="form-label text-white">${usernameLabel}</label>
-          <input type="${usernameLabel.toLowerCase().includes('key') ? 'password' : 'text'}" 
-                 class="form-control" id="username" name="username" 
-                 placeholder="${usernamePlaceholder}" required>
-          ${usernameHelpText ? `<div class="form-text text-muted">${usernameHelpText}</div>` : ''}
+        <div style="margin-bottom: 1.5rem;">
+          <label for="username" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">${usernameLabel}</label>
+          <input type="${usernameLabel.toLowerCase().includes('key') ? 'password' : 'text'}"
+                 id="username" name="username"
+                 placeholder="${usernamePlaceholder}" required
+                 class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
+          ${usernameHelpText ? `<p style="color: var(--text-muted); font-size: 0.875rem; margin: 0.25rem 0 0 0;">${usernameHelpText}</p>` : ''}
         </div>
       `;
-      
+
       if (passwordRequired) {
         formHtml += `
-          <div class="mb-3">
-            <label for="password" class="form-label text-white">Password</label>
-            <input type="password" class="form-control" id="password" name="password" required>
+          <div style="margin-bottom: 1.5rem;">
+            <label for="password" style="color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 0.5rem;">Password</label>
+            <input type="password" id="password" name="password" required
+                   class="canvas-input" style="width: 100%; padding: 0.75rem; font-size: 0.875rem;">
           </div>
         `;
       } else {
         formHtml += `<input type="hidden" id="password" name="password" value="">`;
       }
       break;
-      
+
     default:
       formHtml += `
-        <div class="alert alert-warning">
-          <i data-lucide="alert-triangle" aria-hidden="true"></i>
-          Unsupported auth type: ${integration.auth_type || 'unknown'}. Please contact support.
+        <div style="background: var(--status-warning-bg); border: 1px solid var(--status-warning-border); border-radius: 0.375rem; padding: 1.5rem; margin-bottom: 1.5rem;">
+          <div style="display: flex; align-items: flex-start; gap: 1rem;">
+            <i data-lucide="alert-triangle" class="canvas-icon-md canvas-icon-warning" style="flex-shrink: 0;"></i>
+            <div>
+              <p style="color: var(--text-primary); margin: 0; font-weight: 600;">Unsupported auth type</p>
+              <p style="color: var(--text-muted); margin: 0.25rem 0 0 0; font-size: 0.875rem;">${integration.auth_type || 'unknown'}. Please contact support.</p>
+            </div>
+          </div>
         </div>
       `;
       break;
   }
-  
+
   formHtml += `
-      <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-        <button type="button" class="btn btn-secondary me-md-2" onclick="toggleAuthSection()">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="updateCredsBtn" aria-label="Update credentials">
-          <i data-lucide="save" aria-hidden="true"></i> Update Credentials
+      <div style="display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap;">
+        <button type="button" onclick="toggleAuthSection()"
+                class="canvas-btn secondary" style="flex: 1; min-width: 150px;">
+          Cancel
+        </button>
+        <button type="submit" id="updateCredsBtn"
+                aria-label="Update credentials"
+                class="canvas-btn primary" style="flex: 1; min-width: 150px;">
+          <i data-lucide="save" class="canvas-icon-sm"></i>
+          Update Credentials
         </button>
       </div>
     </form>
@@ -183,29 +240,29 @@ function loadAuthForm() {
 
 function updateCredentials(event) {
   event.preventDefault();
-  
+
   const form = event.target;
   const formData = new FormData(form);
   const updateBtn = document.getElementById('updateCredsBtn');
   const originalText = updateBtn.innerHTML;
-  
+
   // Show loading state
   updateBtn.disabled = true;
-  updateBtn.innerHTML = '<i data-lucide="loader-circle" class="icon-spin" aria-hidden="true"></i> Updating...';
+  updateBtn.innerHTML = '<i data-lucide="loader-circle" style="width: 1rem; height: 1rem;"></i> Updating...';
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
-  
+
   const connectionData = <%= raw canvas_data.to_json %>;
-  
+
   // Convert FormData to JSON object
   const jsonData = {};
   for (let [key, value] of formData.entries()) {
     jsonData[key] = value;
   }
-  
+
   console.log('Submitting credentials:', jsonData);
-  
+
   // Submit credentials update
   fetch(`/connections/${connectionData.connection_id}/credentials`, {
     method: 'PATCH',
@@ -235,18 +292,28 @@ function updateCredentials(event) {
   });
 }
 
-function showOperationExample(id) {
-  // no-op for now; examples are inline when available
-}
-
 function showNotification(type, message) {
   // Create a simple notification
   const notification = document.createElement('div');
-  notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
-  notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    min-width: 300px;
+    background: ${type === 'success' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)'};
+    border: 1px solid ${type === 'success' ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'};
+    border-radius: 0.375rem;
+    color: ${type === 'success' ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'};
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  `;
+
   notification.innerHTML = `
-    <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" aria-hidden="true"></i>
-    ${message}
+    <i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" style="width: 1rem; height: 1rem;"></i>
+    <span>${message}</span>
   `;
 
   document.body.appendChild(notification);
@@ -255,7 +322,7 @@ function showNotification(type, message) {
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
-  
+
   // Remove after 5 seconds
   setTimeout(() => {
     if (notification.parentNode) {
@@ -263,6 +330,17 @@ function showNotification(type, message) {
     }
   }, 5000);
 }
+
+// Lucide icon initialization
+document.addEventListener('turbo:load', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
 </script>
-
-

@@ -24,8 +24,25 @@ class IntegrationOperation < ApplicationRecord
   scope :writes, -> { where(http_method: %w[POST PUT PATCH DELETE]) }
   scope :confirmable, -> { where(requires_confirmation: true) }
 
+  # Vector search configuration
+  has_neighbors :embedding
+
+  # Update embedding when relevant fields change
+  after_save :update_embedding, if: -> { saved_change_to_name? || saved_change_to_description? || saved_change_to_path_template? }
+
   # Default values
   after_initialize :set_defaults, if: :new_record?
+
+  # Class methods for vector search
+  def self.search_by_similarity(query, limit: 5)
+    query_embedding = AiAgents::VectorStore.instance.generate_embedding(query)
+    return none if query_embedding.nil?
+
+    enabled.nearest_neighbors(:embedding, query_embedding, distance: "cosine").first(limit)
+  rescue => e
+    Rails.logger.error "Operation vector search failed: #{e.message}"
+    enabled.limit(limit)
+  end
 
   def deprecated?
     deprecated_at.present? && deprecated_at <= Time.current
@@ -151,5 +168,22 @@ class IntegrationOperation < ApplicationRecord
   def format_validation_error(error)
     path = error["data_pointer"] || error["schema_pointer"]
     "#{path}: #{error['error']}"
+  end
+
+  def update_embedding
+    embedding_text = <<~TEXT
+      Operation: #{name}
+      Integration: #{integration&.name}
+      Method: #{http_method}
+      Path: #{path_template}
+      Description: #{description}
+    TEXT
+
+    vector = AiAgents::VectorStore.instance.generate_embedding(embedding_text)
+    return unless vector
+
+    update_column(:embedding, vector)
+  rescue => e
+    Rails.logger.error "Failed to update embedding for operation #{id}: #{e.message}"
   end
 end

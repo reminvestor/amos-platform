@@ -1,0 +1,298 @@
+<%# app/views/admin/entity_costs/index.html.erb %>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="trending-up" class="admin-text-primary"></i>
+      </div>
+      <div class="header-text">
+        <h1>Entity Cost Tracking</h1>
+        <p>Monitor and analyze costs across all entities</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="admin-flex admin-flex-gap-sm">
+        <%= link_to bulk_analysis_admin_entity_costs_path, class: "admin-btn admin-btn-outline" do %>
+          <i data-lucide="bar-chart-3"></i>
+          <span>Bulk Analysis</span>
+        <% end %>
+
+        <%= link_to export_admin_entity_costs_path(format: :csv, start_date: @start_date, end_date: @end_date),
+                    class: "admin-btn admin-btn-success" do %>
+          <i data-lucide="download"></i>
+          <span>Export All</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Date Range Filter -->
+  <div class="admin-card admin-mb-xl">
+    <%= form_with url: admin_entity_costs_path, method: :get, local: true, class: "admin-filter-grid" do |f| %>
+      <div>
+        <label class="form-label admin-text-sm">Start Date</label>
+        <%= date_field_tag :start_date, @start_date, class: "admin-input admin-w-full" %>
+      </div>
+      <div>
+        <label class="form-label admin-text-sm">End Date</label>
+        <%= date_field_tag :end_date, @end_date, class: "admin-input admin-w-full" %>
+      </div>
+      <div class="admin-flex admin-items-end admin-flex-gap-sm">
+        <%= submit_tag "Filter", class: "admin-btn admin-btn-primary" %>
+        <%= link_to "Reset", admin_entity_costs_path, class: "admin-btn admin-btn-outline" %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="admin-stats-grid admin-mb-xl">
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon purple-gradient">
+          <i data-lucide="dollar-sign" class="admin-icon-lg admin-text-primary"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Total Costs</p>
+          <h3 class="admin-stat-value">$<%= number_with_precision(@total_costs, precision: 2) %></h3>
+          <small class="admin-text-muted admin-text-xs">
+            <%= @start_date.strftime("%b %d") %> - <%= @end_date.strftime("%b %d, %Y") %>
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon info">
+          <i data-lucide="building" class="admin-icon-lg admin-text-info"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Active Entities</p>
+          <h3 class="admin-stat-value"><%= @entities.count %></h3>
+          <small class="admin-text-muted admin-text-xs">With usage in period</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon warning">
+          <i data-lucide="calculator" class="admin-icon-lg admin-text-warning"></i>
+        </div>
+        <div>
+          <p class="admin-stat-label">Avg Cost/Entity</p>
+          <h3 class="admin-stat-value">
+            $<%= number_with_precision(@entities.any? ? @total_costs / @entities.count : 0, precision: 2) %>
+          </h3>
+          <small class="admin-text-muted admin-text-xs">Per entity average</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <div class="admin-flex admin-items-center admin-flex-gap-md">
+        <div class="admin-stat-icon <%= @cost_trends[:trend] == 'increasing' ? 'error' : @cost_trends[:trend] == 'decreasing' ? 'success' : 'info' %>">
+          <% if @cost_trends[:trend] == 'increasing' %>
+            <i data-lucide="trending-up" class="admin-icon-lg admin-text-error"></i>
+          <% elsif @cost_trends[:trend] == 'decreasing' %>
+            <i data-lucide="trending-down" class="admin-icon-lg admin-text-success"></i>
+          <% else %>
+            <i data-lucide="minus" class="admin-icon-lg admin-text-info"></i>
+          <% end %>
+        </div>
+        <div>
+          <p class="admin-stat-label">Cost Trend</p>
+          <h3 class="admin-stat-value"><%= @cost_trends[:trend].capitalize %></h3>
+          <small class="admin-text-muted admin-text-xs">30-day trend</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cost by Category Chart -->
+  <div class="admin-card admin-mb-xl" data-turbo-cache="false">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="pie-chart" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Cost Distribution by Service Category
+    </h3>
+    <div class="admin-chart-container">
+      <canvas id="costByCategoryChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Top Spenders Table -->
+  <div class="admin-card">
+    <h3 class="card-title m-0 admin-mb-lg">
+      <i data-lucide="users" class="admin-icon-md d-inline-block align-middle me-2"></i>
+      Top Cost Entities
+    </h3>
+    <div class="admin-table-container">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Entity</th>
+            <th>Billing Tier</th>
+            <th>Total Cost</th>
+            <th>AI Chat</th>
+            <th>Email</th>
+            <th>Storage</th>
+            <th>Other</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @top_spenders.each_with_index do |entity_data, index| %>
+            <% entity = Entity.find(entity_data[:id]) %>
+            <% summary = entity.entity_cost_summaries.where(summary_date: @start_date..@end_date) %>
+            <tr>
+              <td>
+                <span class="admin-badge <%= index < 3 ? 'admin-badge-danger' : 'admin-badge-secondary' %>">
+                  #<%= index + 1 %>
+                </span>
+              </td>
+              <td>
+                <strong class="admin-text-primary"><%= entity_data[:name] %></strong>
+                <br>
+                <small class="admin-text-muted">ID: <%= entity_data[:id] %></small>
+              </td>
+              <td>
+                <span class="admin-badge <%= entity.billing_tier == 'premium' ? 'admin-badge-info' :
+                                              entity.billing_tier == 'standard' ? 'admin-badge-secondary' :
+                                              'admin-badge-default' %>">
+                  <%= entity.billing_tier %>
+                </span>
+              </td>
+              <td class="admin-text-right">
+                <strong>$<%= number_with_precision(entity_data[:total_cost], precision: 2) %></strong>
+                <% if entity.cost_thresholds['total'].present? %>
+                  <br>
+                  <div class="progress mt-1 admin-progress-5" style="background: var(--bg-tertiary);">
+                    <div class="progress-bar admin-rounded-sm"
+                         style="width: <%= [(entity_data[:total_cost] / entity.cost_thresholds['total'] * 100), 100].min %>%; background: var(<%= entity_data[:total_cost] > entity.cost_thresholds['total'] ? '--status-error-text' : '--status-success-text' %>);">
+                    </div>
+                  </div>
+                <% end %>
+              </td>
+              <td class="admin-text-right admin-text-secondary">
+                $<%= number_with_precision(summary.sum(:ai_chat_cost), precision: 2) %>
+              </td>
+              <td class="admin-text-right admin-text-secondary">
+                $<%= number_with_precision(summary.sum(:email_cost), precision: 2) %>
+              </td>
+              <td class="admin-text-right admin-text-secondary">
+                $<%= number_with_precision(summary.sum(:storage_cost), precision: 2) %>
+              </td>
+              <td class="admin-text-right admin-text-secondary">
+                $<%= number_with_precision(
+                  summary.sum(:compute_cost) +
+                  summary.sum(:bandwidth_cost) +
+                  summary.sum(:integration_cost) +
+                  summary.sum(:other_costs),
+                  precision: 2) %>
+              </td>
+              <td>
+                <div class="admin-flex admin-flex-gap-xs">
+                  <%= link_to admin_entity_cost_path(entity),
+                              class: "admin-btn admin-btn-sm admin-btn-outline",
+                              title: "View Details" do %>
+                    <i data-lucide="bar-chart" class="admin-icon-sm"></i>
+                  <% end %>
+                  <%= link_to export_admin_entity_cost_path(entity, format: :csv, start_date: @start_date, end_date: @end_date),
+                              class: "admin-btn admin-btn-sm admin-btn-success-outline",
+                              title: "Export CSV" do %>
+                    <i data-lucide="download" class="admin-icon-sm"></i>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <% if @entities.respond_to?(:total_pages) %>
+      <div class="admin-pagination">
+        <%= paginate @entities %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Consolidated Chart.js -->
+<%= render 'admin/chart_js' %>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Get theme-aware colors
+  const styles = getComputedStyle(document.documentElement);
+  const textColor = styles.getPropertyValue('--text-secondary').trim() || '#94A3B8';
+  const gridColor = styles.getPropertyValue('--border-primary').trim() || '#1E293B';
+
+  // Cost by Category Chart
+  const ctx = document.getElementById('costByCategoryChart').getContext('2d');
+
+  const categories = ['AI Chat', 'Email', 'Storage', 'Compute', 'Bandwidth', 'Integrations', 'Other'];
+  const data = [
+    <%= @cost_by_category.sum { |_, costs| costs[:ai_chat_cost] || 0 } %>,
+    <%= @cost_by_category.sum { |_, costs| costs[:email_cost] || 0 } %>,
+    <%= @cost_by_category.sum { |_, costs| costs[:storage_cost] || 0 } %>,
+    <%= @cost_by_category.sum { |_, costs| costs[:compute_cost] || 0 } %>,
+    <%= @cost_by_category.sum { |_, costs| costs[:bandwidth_cost] || 0 } %>,
+    <%= @cost_by_category.sum { |_, costs| costs[:integration_cost] || 0 } %>,
+    <%= @cost_by_category.sum { |_, costs| costs[:other_costs] || 0 } %>
+  ];
+
+  // Theme-aware chart colors
+  const chartColors = [
+    styles.getPropertyValue('--accent-purple-start').trim() || '#7C3AED',
+    styles.getPropertyValue('--accent-purple-end').trim() || '#A78BFA',
+    styles.getPropertyValue('--status-info-text').trim() || '#38BDF8',
+    styles.getPropertyValue('--status-warning-text').trim() || '#FCD34D',
+    styles.getPropertyValue('--status-error-text').trim() || '#F87171',
+    styles.getPropertyValue('--status-success-text').trim() || '#4ADE80',
+    textColor
+  ];
+
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: categories,
+      datasets: [{
+        data: data,
+        backgroundColor: chartColors,
+        borderColor: styles.getPropertyValue('--bg-card').trim() || '#1E293B',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { color: textColor }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = '$' + context.parsed.toFixed(2);
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percent = ((context.parsed / total) * 100).toFixed(1);
+              return label + ': ' + value + ' (' + percent + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Initialize icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+</script>

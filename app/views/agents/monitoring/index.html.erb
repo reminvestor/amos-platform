@@ -423,3 +423,6 @@ function updatePerformanceChart(agentData) {
 
 
 
+
+<!-- Lazy-load Chart.js for monitoring charts -->
+<%= javascript_include_tag "chart_loader", type: "module", defer: true %>

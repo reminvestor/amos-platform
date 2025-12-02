@@ -94,6 +94,22 @@ class VoiceSession < ApplicationRecord
     save!
   end
 
+  def log_error(error_type:, error_message:, provider:, timestamp: Time.current)
+    self.metadata ||= {}
+    self.metadata["errors"] ||= []
+    self.metadata["errors"] << {
+      type: error_type,
+      message: error_message,
+      provider: provider,
+      timestamp: timestamp.iso8601
+    }
+    save!
+  end
+
+  def errors_logged
+    metadata&.dig("errors") || []
+  end
+
   private
 
   def generate_session_id

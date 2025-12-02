@@ -74,14 +74,20 @@ class AiUsageLog < ApplicationRecord
   end
   
   def calculate_cost_for_model
-    # Pricing per million tokens in cents
+    # Pricing per million tokens in cents (Bedrock pricing)
     pricing = case model
+    when /claude-sonnet-4-5|claude-4-5-sonnet/i
+      { input: 300, output: 1500 } # $3/M input, $15/M output
     when /claude-3-5-sonnet|claude-sonnet-3.5/i
       { input: 300, output: 1500 } # $3/M input, $15/M output
     when /claude-3-opus/i
       { input: 1500, output: 7500 } # $15/M input, $75/M output
     when /claude-3-haiku/i
       { input: 25, output: 125 } # $0.25/M input, $1.25/M output
+    when /claude-3-5-haiku/i
+      { input: 80, output: 400 } # $0.80/M input, $4/M output
+    when /gpt-4o/i
+      { input: 250, output: 1000 } # $2.50/M input, $10/M output
     when /gpt-4/i
       { input: 1000, output: 3000 } # ~$10/M input, $30/M output
     else
@@ -94,4 +100,7 @@ class AiUsageLog < ApplicationRecord
     (input_cost + output_cost).round(4)
   end
 end
+
+
+
 

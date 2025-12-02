@@ -426,16 +426,83 @@ module Tools
     end
 
     def generate_metric_widget(widget)
+      # Convert Font Awesome icons to Lucide equivalents
+      icon_html = if widget['icon']
+        icon_class = widget['icon'].to_s
+        # Map common Font Awesome icons to Lucide
+        lucide_icon = map_to_lucide_icon(icon_class)
+        "<i data-lucide=\"#{lucide_icon}\" style=\"width: 1.25rem; height: 1.25rem;\"></i>"
+      else
+        ''
+      end
+
       <<~HTML
         <div class="dashboard-widget">
           <div class="widget-header">
             <div class="widget-title">#{widget['title'] || widget[:title]}</div>
-            #{widget['icon'] ? "<i class='#{widget['icon']}'></i>" : ''}
+            #{icon_html}
           </div>
           <div class="widget-value">#{format_metric_value(widget['value'] || widget[:value])}</div>
           #{widget['subtitle'] ? "<p class='text-muted'>#{widget['subtitle']}</p>" : ''}
         </div>
       HTML
+    end
+
+    def map_to_lucide_icon(icon_class)
+      # Map Font Awesome and other icon formats to Lucide icons
+      icon_map = {
+        # Font Awesome mappings
+        'fa fa-chart' => 'bar-chart-2',
+        'fa-chart' => 'bar-chart-2',
+        'fa fa-user' => 'user',
+        'fa-user' => 'user',
+        'fa fa-users' => 'users',
+        'fa-users' => 'users',
+        'fa fa-dollar' => 'dollar-sign',
+        'fa-dollar' => 'dollar-sign',
+        'fa fa-eye' => 'eye',
+        'fa-eye' => 'eye',
+        'fa fa-star' => 'star',
+        'fa-star' => 'star',
+        'fa fa-heart' => 'heart',
+        'fa-heart' => 'heart',
+        'fa fa-check' => 'check',
+        'fa-check' => 'check',
+        'fa fa-times' => 'x',
+        'fa-times' => 'x',
+        'fa fa-bell' => 'bell',
+        'fa-bell' => 'bell',
+        'fa fa-envelope' => 'mail',
+        'fa-envelope' => 'mail',
+        'fa fa-phone' => 'phone',
+        'fa-phone' => 'phone',
+        'fa fa-calendar' => 'calendar',
+        'fa-calendar' => 'calendar',
+        'fa fa-clock' => 'clock',
+        'fa-clock' => 'clock',
+        'fa fa-cog' => 'settings',
+        'fa-cog' => 'settings',
+        'fa fa-home' => 'home',
+        'fa-home' => 'home',
+        'fa fa-folder' => 'folder',
+        'fa-folder' => 'folder',
+        'fa fa-file' => 'file',
+        'fa-file' => 'file',
+        'fa fa-trash' => 'trash-2',
+        'fa-trash' => 'trash-2'
+      }
+
+      # Try exact match first
+      icon_class_str = icon_class.to_s.downcase.strip
+      return icon_map[icon_class_str] if icon_map[icon_class_str]
+
+      # Try partial matches
+      icon_map.each do |fa_pattern, lucide_icon|
+        return lucide_icon if icon_class_str.include?(fa_pattern.downcase)
+      end
+
+      # Default fallback
+      'settings'
     end
 
     def generate_report_sections(sections)

@@ -1,0 +1,226 @@
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">
+        <i data-lucide="clock" style="width: 24px; height: 24px;" class="me-2"></i>
+        Scheduled Tasks
+      </h1>
+      <p class="text-muted mb-0">Manage recurring agent tasks and automations</p>
+    </div>
+    <div class="d-flex gap-2">
+      <%= link_to runs_admin_scheduled_tasks_path, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="list" style="width: 16px; height: 16px;" class="me-1"></i> Run History
+      <% end %>
+      <%= link_to new_admin_scheduled_task_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="plus" style="width: 16px; height: 16px;" class="me-1"></i> New Task
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-2">
+      <div class="admin-card text-center" style="border-left: 3px solid var(--accent-purple-start);">
+        <h3 class="mb-0"><%= @stats[:total] %></h3>
+        <small class="text-muted">Total Tasks</small>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="admin-card text-center" style="border-left: 3px solid var(--status-success-text);">
+        <h3 class="mb-0" style="color: var(--status-success-text);"><%= @stats[:active] %></h3>
+        <small class="text-muted">Active</small>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="admin-card text-center" style="border-left: 3px solid var(--status-warning-text);">
+        <h3 class="mb-0" style="color: var(--status-warning-text);"><%= @stats[:paused] %></h3>
+        <small class="text-muted">Paused</small>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="admin-card text-center" style="border-left: 3px solid var(--status-info-text);">
+        <h3 class="mb-0" style="color: var(--status-info-text);"><%= @stats[:due_now] %></h3>
+        <small class="text-muted">Due Now</small>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="admin-card text-center">
+        <h3 class="mb-0"><%= @stats[:runs_today] %></h3>
+        <small class="text-muted">Runs Today</small>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="admin-card text-center">
+        <h3 class="mb-0"><%= @stats[:success_rate] %>%</h3>
+        <small class="text-muted">Success Rate</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="admin-card mb-4">
+    <%= form_tag admin_scheduled_tasks_path, method: :get, class: "row g-3" do %>
+      <div class="col-md-3">
+        <%= select_tag :status,
+          options_for_select([
+            ['All Statuses', ''],
+            ['Active', 'active'],
+            ['Paused', 'paused'],
+            ['Completed', 'completed'],
+            ['Failed', 'failed'],
+            ['Archived', 'archived']
+          ], params[:status]),
+          class: "form-select" %>
+      </div>
+      <div class="col-md-3">
+        <%= select_tag :task_type,
+          options_for_select([
+            ['All Types', ''],
+            ['Email Summary', 'email_summary'],
+            ['Report Generation', 'report_generation'],
+            ['Data Sync', 'data_sync'],
+            ['Email Management', 'email_management'],
+            ['Research Update', 'research_update'],
+            ['Custom', 'custom']
+          ], params[:task_type]),
+          class: "form-select" %>
+      </div>
+      <div class="col-md-2">
+        <%= submit_tag "Filter", class: "admin-btn admin-btn-primary" %>
+        <%= link_to "Clear", admin_scheduled_tasks_path, class: "admin-btn admin-btn-outline" %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Tasks Table -->
+  <div class="admin-card">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Type</th>
+            <th>Schedule</th>
+            <th>Next Run</th>
+            <th>Last Run</th>
+            <th>Runs</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @scheduled_tasks.each do |task| %>
+            <tr>
+              <td>
+                <div class="d-flex align-items-center">
+                  <span class="me-2"><%= task.task_type_info[:icon] %></span>
+                  <div>
+                    <%= link_to task.name, admin_scheduled_task_path(task), class: "text-decoration-none fw-medium" %>
+                    <div class="small text-muted">
+                      <%= task.entity.name %> &middot; <%= task.user.email %>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="admin-badge"><%= task.task_type.humanize %></span>
+              </td>
+              <td>
+                <% case task.schedule_type %>
+                <% when 'once' %>
+                  <span class="text-muted">One-time</span>
+                <% when 'daily' %>
+                  Daily at <%= task.run_at_time&.strftime('%I:%M %p') %>
+                <% when 'weekly' %>
+                  Weekly on <%= Date::DAYNAMES[task.run_on_day || 0] %>
+                <% when 'monthly' %>
+                  Monthly on day <%= task.run_on_day %>
+                <% when 'cron' %>
+                  <code class="small"><%= task.cron_expression %></code>
+                <% end %>
+              </td>
+              <td>
+                <% if task.next_run_at %>
+                  <% if task.next_run_at <= Time.current %>
+                    <span class="admin-badge admin-badge-warning">Due now</span>
+                  <% else %>
+                    <%= task.next_run_at.strftime('%b %d, %I:%M %p') %>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted">—</span>
+                <% end %>
+              </td>
+              <td>
+                <% if task.last_run_at %>
+                  <%= time_ago_in_words(task.last_run_at) %> ago
+                <% else %>
+                  <span class="text-muted">Never</span>
+                <% end %>
+              </td>
+              <td>
+                <span class="admin-badge">
+                  <%= task.run_count %>
+                  <% if task.failure_count > 0 %>
+                    <span style="color: var(--status-error-text);">(<%= task.failure_count %> failed)</span>
+                  <% end %>
+                </span>
+              </td>
+              <td>
+                <% case task.status %>
+                <% when 'active' %>
+                  <span class="admin-badge admin-badge-success">Active</span>
+                <% when 'paused' %>
+                  <span class="admin-badge admin-badge-warning">Paused</span>
+                <% when 'completed' %>
+                  <span class="admin-badge admin-badge-info">Completed</span>
+                <% when 'failed' %>
+                  <span class="admin-badge admin-badge-danger">Failed</span>
+                <% when 'archived' %>
+                  <span class="admin-badge">Archived</span>
+                <% end %>
+                <% unless task.enabled? %>
+                  <span class="admin-badge">Disabled</span>
+                <% end %>
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <%= link_to admin_scheduled_task_path(task), class: "admin-btn admin-btn-sm admin-btn-outline" do %>
+                    <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                  <% end %>
+                  <% if task.status == 'active' %>
+                    <%= button_to pause_admin_scheduled_task_path(task), method: :post, class: "admin-btn admin-btn-sm admin-btn-warning-outline", title: "Pause" do %>
+                      <i data-lucide="pause" style="width: 14px; height: 14px;"></i>
+                    <% end %>
+                  <% elsif task.status == 'paused' %>
+                    <%= button_to resume_admin_scheduled_task_path(task), method: :post, class: "admin-btn admin-btn-sm admin-btn-success-outline", title: "Resume" do %>
+                      <i data-lucide="play" style="width: 14px; height: 14px;"></i>
+                    <% end %>
+                  <% end %>
+                  <% if task.can_run? %>
+                    <%= button_to run_now_admin_scheduled_task_path(task), method: :post, class: "admin-btn admin-btn-sm admin-btn-info-outline", title: "Run Now" do %>
+                      <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+                    <% end %>
+                  <% end %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+          <% if @scheduled_tasks.empty? %>
+            <tr>
+              <td colspan="8" class="text-center py-5 text-muted">
+                <i data-lucide="calendar-off" class="mb-2" style="width: 48px; height: 48px;"></i>
+                <p class="mb-0">No scheduled tasks found</p>
+                <%= link_to "Create your first task", new_admin_scheduled_task_path, class: "admin-btn admin-btn-primary mt-2" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <% if @scheduled_tasks.respond_to?(:total_pages) && @scheduled_tasks.total_pages > 1 %>
+      <div class="card-footer" style="background: var(--bg-tertiary); border-top: 1px solid var(--border-primary);">
+        <%= paginate @scheduled_tasks %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,4 +1,36 @@
 module ApplicationHelper
+  # Helper methods for parallel task monitoring
+  def task_type_color(task_type)
+    case task_type.to_s
+    when 'voice_immediate'
+      'danger'
+    when 'voice_followup'
+      'warning'
+    when 'analysis'
+      'primary'
+    when 'background'
+      'secondary'
+    else
+      'info'
+    end
+  end
+  
+  def format_duration(seconds)
+    return '-' if seconds.nil? || seconds < 0
+    
+    if seconds < 60
+      "#{seconds.round(1)}s"
+    elsif seconds < 3600
+      minutes = (seconds / 60).floor
+      secs = (seconds % 60).round
+      "#{minutes}m #{secs}s"
+    else
+      hours = (seconds / 3600).floor
+      minutes = ((seconds % 3600) / 60).floor
+      "#{hours}h #{minutes}m"
+    end
+  end
+  
   # Return Bootstrap color class for campaign status
   def campaign_status_color(status)
     case status

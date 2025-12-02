@@ -8,20 +8,57 @@ class Api::TtsController < ApplicationController
     
     # Get user's voice preferences
     prefs = current_user.tts_preferences || {}
-    voice_id = params[:voice_id] || prefs['voice_id'] || 'Matthew'
-    engine = prefs['engine'] || 'neural'
+    
+    # Default to Eleven Labs 'George' if not set
+    provider = params[:provider] || prefs['provider']
+    
+    # If provider is not explicitly set, try to infer from voice_id
+    if provider.blank?
+      requested_voice_id = params[:voice_id] || prefs['voice_id']
+      
+      # Check if it's a known Polly voice
+      is_polly_voice = PollyTtsService::VOICES.key?(requested_voice_id) || 
+                       ['Matthew', 'Joanna', 'Ivy', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Justin', 'Kevin', 'Ruth', 'Stephen', 'Olivia'].include?(requested_voice_id)
+      
+      provider = is_polly_voice ? 'polly' : 'eleven_labs'
+    else
+      # EVEN IF provider is set (e.g. to 'eleven_labs' by default), check for mismatch
+      # This handles legacy clients/settings where provider=eleven_labs but voice_id=Joanna
+      requested_voice_id = params[:voice_id] || prefs['voice_id']
+      is_polly_voice = PollyTtsService::VOICES.key?(requested_voice_id) || 
+                       ['Matthew', 'Joanna', 'Ivy', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Justin', 'Kevin', 'Ruth', 'Stephen', 'Olivia'].include?(requested_voice_id)
+      
+      if is_polly_voice && provider == 'eleven_labs'
+        Rails.logger.info "⚠️ Provider mismatch detected: #{provider} requested but voice is #{requested_voice_id} (Polly). Forcing Polly."
+        provider = 'polly'
+      end
+    end
+    
+    if provider == 'eleven_labs'
+      voice_id = params[:voice_id] || prefs['eleven_labs_voice_id'] || 'George'
+      # No engine param for Eleven Labs in this context, but we pass it if present
+      engine = nil 
+    else
+      # Fallback to Polly
+      voice_id = params[:voice_id] || prefs['voice_id'] || 'Matthew'
+      engine = prefs['engine'] || 'neural'
+    end
     
     # Validate input
     if text.blank?
       return render json: { error: 'Text is required' }, status: :bad_request
     end
     
-    if text.length > 3000
-      return render json: { error: 'Text too long (max 3000 characters)' }, status: :bad_request
+    if text.length > 5000
+      return render json: { error: 'Text too long (max 5000 characters)' }, status: :bad_request
     end
     
     # Initialize TTS service with user preferences
-    tts_service = PollyTtsService.new(voice_id: voice_id, engine: engine)
+    tts_service = if provider == 'eleven_labs'
+                    ElevenLabsTtsService.new(voice_id: voice_id)
+                  else
+                    PollyTtsService.new(voice_id: voice_id, engine: engine)
+                  end
     
     # Synthesize with streaming
     result = tts_service.synthesize_stream(text, include_speech_marks: params[:speech_marks] != 'false')
@@ -57,10 +94,17 @@ class Api::TtsController < ApplicationController
   # Get available voices for user's language
   def voices
     language_code = params[:language] || 'en-US'
+    provider = params[:provider] || 'eleven_labs' # Default to Eleven Labs
     
-    voices = Rails.cache.fetch("polly_voices_#{language_code}", expires_in: 1.day) do
-      PollyTtsService.available_voices(language_code: language_code)
-    end
+    voices = if provider == 'eleven_labs'
+               Rails.cache.fetch("eleven_labs_voices", expires_in: 1.day) do
+                 ElevenLabsTtsService.available_voices
+               end
+             else
+               Rails.cache.fetch("polly_voices_#{language_code}", expires_in: 1.day) do
+                 PollyTtsService.available_voices(language_code: language_code)
+               end
+             end
     
     render json: { voices: voices }
   end
@@ -100,7 +144,17 @@ class Api::TtsController < ApplicationController
     if params.has_key?(:enabled)
       preferences['enabled'] = [true, 'true', 1, '1'].include?(params[:enabled])
     end
-    preferences['voice_id'] = params[:voice_id] if params[:voice_id].present?
+    
+    preferences['provider'] = params[:provider] if params[:provider].present?
+    
+    # Handle provider-specific voice IDs
+    if preferences['provider'] == 'eleven_labs'
+      val = params[:eleven_labs_voice_id].presence || params[:voice_id]
+      preferences['eleven_labs_voice_id'] = val if val.present?
+    else
+      preferences['voice_id'] = params[:voice_id] if params[:voice_id].present?
+    end
+    
     preferences['engine'] = params[:engine] if params[:engine].present?
     preferences['speed'] = params[:speed].to_f if params[:speed].present?
     preferences['volume'] = params[:volume].to_f if params[:volume].present?

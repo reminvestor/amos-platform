@@ -111,3 +111,6 @@ echo "It should be ready in 2-3 minutes."
 echo ""
 echo "Note: The dev environment is now using the production database name."
 echo "This is fine since Rails doesn't care about the database name."
+
+
+

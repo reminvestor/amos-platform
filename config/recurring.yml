@@ -23,6 +23,79 @@ production:
     class: Rag::ArchiveOldDocumentsJob
     queue: maintenance
     schedule: at 3am every sunday
+  
+  # Clean up temporary uploads every hour
+  cleanup_temporary_uploads:
+    class: CleanupTemporaryUploadsJob
+    queue: maintenance
+    schedule: every hour
+
+  # ========================================
+  # Agent Collaboration System Jobs
+  # ========================================
+  
+  # Hourly energy regeneration for all agents
+  agent_energy_regeneration:
+    class: EnergyRegenerationJob
+    queue: agents
+    schedule: every hour
+  
+  # Weekly capability recalibration - update specialization detection
+  agent_capability_recalibration:
+    class: AgentCapabilityRecalibrationJob
+    queue: agents
+    schedule: at 4am every monday
+  
+  # Daily decision boundary updates - learn from recent outcomes
+  agent_decision_boundary_update:
+    class: AgentDecisionBoundaryUpdateJob
+    queue: agents
+    schedule: at 5am every day
+
+  # ========================================
+  # Benchmark Tracking Jobs
+  # ========================================
+  
+  # Weekly benchmark run - track performance over time
+  scheduled_benchmark:
+    class: ScheduledBenchmarkJob
+    queue: agents
+    schedule: at 6am every monday
+  
+  # Daily quick benchmark (smaller sample)
+  daily_benchmark:
+    class: ScheduledBenchmarkJob
+    queue: agents
+    schedule: at 6am every day
+    args:
+      - null
+      - sample_size: 1
+
+  # ========================================
+  # Agent Lightning Jobs
+  # ========================================
+  
+  # Hourly auto-rollback check - monitors optimization performance
+  agent_lightning_auto_rollback:
+    class: AgentLightningAutoRollbackJob
+    queue: agent_lightning
+    schedule: every hour
+
+  # ========================================
+  # Scheduled Agent Tasks
+  # ========================================
+  
+  # Check for due scheduled tasks every minute
+  scheduled_task_dispatcher:
+    class: ScheduledTaskDispatcherJob
+    queue: default
+    schedule: every minute
+  
+  # Refresh auto-refresh visualizations
+  visualization_refresh:
+    class: RefreshVisualizationsJob
+    queue: maintenance
+    schedule: every 15 minutes
 
 # Development environment - run less frequently to avoid noise
 development:
@@ -37,6 +110,24 @@ development:
     class: Rag::HealthCheckJob
     queue: maintenance
     schedule: every hour
+  
+  # Clean up temporary uploads every hour
+  cleanup_temporary_uploads:
+    class: CleanupTemporaryUploadsJob
+    queue: maintenance
+    schedule: every hour
+
+  # Agent energy regeneration - every 2 hours in dev
+  agent_energy_regeneration:
+    class: EnergyRegenerationJob
+    queue: agents
+    schedule: every 2 hours
+
+  # Check for due scheduled tasks every 5 minutes in dev
+  scheduled_task_dispatcher:
+    class: ScheduledTaskDispatcherJob
+    queue: default
+    schedule: every 5 minutes
 
 # Test environment - disable recurring jobs
 test:

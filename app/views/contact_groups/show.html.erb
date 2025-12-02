@@ -30,7 +30,7 @@
           <h1 class="h3 mb-0"><%= @contact_group.name %></h1>
           <% if @contact_group.entity_id.present? %>
             <span class="badge bg-info text-white">
-              <i class="fas fa-building me-1"></i><%= Entity.find_by(id: @contact_group.entity_id)&.name || "Entity ID: #{@contact_group.entity_id}" %>
+              <i data-lucide="building" class="me-1"></i><%= Entity.find_by(id: @contact_group.entity_id)&.name || "Entity ID: #{@contact_group.entity_id}" %>
             </span>
           <% else %>
             <span class="badge bg-secondary">Global Group</span>
@@ -38,10 +38,10 @@
         </div>
         <div class="btn-group">
           <%= link_to edit_contact_group_path(@contact_group), class: 'btn btn-outline-primary' do %>
-            <i class="fas fa-edit me-1"></i> Edit Group
+            <i data-lucide="edit" class="me-1"></i> Edit Group
           <% end %>
           <%= link_to contact_groups_path, class: 'btn btn-outline-secondary' do %>
-            <i class="fas fa-arrow-left me-1"></i> Back
+            <i data-lucide="arrow-left" class="me-1"></i> Back
           <% end %>
         </div>
       </div>
@@ -77,13 +77,13 @@
                 <h5 class="card-title">Quick Actions</h5>
                 <div class="d-grid gap-2 d-md-flex justify-content-md-start">
                   <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                    <i class="fas fa-upload me-1"></i> Upload CSV
+                    <i data-lucide="upload" me-1"></i> Upload CSV
                   </button>
                   <%= link_to new_contact_path(contact_group_id: @contact_group.id), class: 'btn btn-sm btn-outline-success' do %>
-                    <i class="fas fa-user-plus me-1"></i> Add Contact
+                    <i data-lucide="user-plus" me-1"></i> Add Contact
                   <% end %>
                   <%= link_to '#', class: 'btn btn-sm btn-outline-info' do %>
-                    <i class="fas fa-file-export me-1"></i> Export
+                    <i data-lucide="file-down" class="me-1"></i> Export
                   <% end %>
                 </div>
               </div>
@@ -103,7 +103,7 @@
           </div>
           <div class="modal-body">
             <div class="alert alert-info">
-              <h6><i class="fas fa-info-circle me-1"></i> CSV Format</h6>
+              <h6><i data-lucide="info" class="me-1"></i> CSV Format</h6>
               <p class="mb-2">Your CSV file should include these columns:</p>
               <ul class="mb-2">
                 <li><strong>name</strong> - Contact's full name</li>
@@ -113,7 +113,7 @@
               </ul>
               <div class="d-grid">
                 <a href="#" class="btn btn-sm btn-outline-info" id="downloadTemplateBtn">
-                  <i class="fas fa-download me-1"></i> Download Template
+                  <i data-lucide="download" class="me-1"></i> Download Template
                 </a>
               </div>
             </div>
@@ -146,7 +146,7 @@
         <div class="d-flex gap-2 flex-wrap">
           <div class="dropdown d-none d-md-block">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="fas fa-filter me-1"></i> Filter
+              <i data-lucide="filter" class="me-1"></i> Filter
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filterDropdown">
               <li><a class="dropdown-item filter-status" href="#" data-status="all">All Statuses</a></li>
@@ -158,17 +158,17 @@
           </div>
           <div class="dropdown d-none d-md-block">
             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="fas fa-download me-1"></i> Export
+              <i data-lucide="download" class="me-1"></i> Export
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
-              <li><a class="dropdown-item" href="#" onclick="window.print(); return false;"><i class="fas fa-print me-2"></i>Print View</a></li>
-              <li><a class="dropdown-item" href="<%= contact_group_path(@contact_group, format: :csv) %>"><i class="fas fa-file-csv me-2"></i>Export to CSV</a></li>
+              <li><a class="dropdown-item" href="#" onclick="window.print(); return false;"><i data-lucide="printer" class="me-2"></i>Print View</a></li>
+              <li><a class="dropdown-item" href="<%= contact_group_path(@contact_group, format: :csv) %>"><i data-lucide="file-spreadsheet" class="me-2"></i>Export to CSV</a></li>
             </ul>
           </div>
           <div class="input-group" style="max-width: 300px;">
             <input type="text" id="contactSearch" class="form-control form-control-sm" placeholder="Search contacts...">
             <button class="btn btn-sm btn-outline-secondary" type="button">
-              <i class="fas fa-search"></i>
+              <i data-lucide="search"></i>
             </button>
           </div>
         </div>
@@ -229,13 +229,13 @@
                     <td data-label="Actions" class="text-end">
                       <div class="btn-group btn-group-sm">
                         <%= link_to contact_path(contact), class: 'btn btn-outline-primary' do %>
-                          <i class="fas fa-eye"></i>
+                          <i data-lucide="eye"></i>
                         <% end %>
                         <%= link_to edit_contact_path(contact), class: 'btn btn-outline-secondary' do %>
-                          <i class="fas fa-edit"></i>
+                          <i data-lucide="edit"></i>
                         <% end %>
                         <%= button_to contact_path(contact), method: :delete, class: 'btn btn-outline-danger', form: { class: 'd-inline', data: { turbo_confirm: "Are you sure you want to delete this contact?" } } do %>
-                          <i class="fas fa-trash"></i>
+                          <i data-lucide="trash"></i>
                         <% end %>
                       </div>
                     </td>
@@ -256,16 +256,16 @@
         <% else %>
           <div class="text-center p-5">
             <div class="mb-3">
-              <i class="fas fa-users-slash fa-4x text-muted"></i>
+              <i data-lucide="users" class="icon-4x text-muted"></i>
             </div>
             <h3>No Contacts</h3>
             <p class="text-muted mb-4">This group doesn't have any contacts yet.</p>
             <div class="d-flex justify-content-center gap-2">
               <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                <i class="fas fa-upload me-1"></i> Upload CSV
+                <i data-lucide="upload" me-1"></i> Upload CSV
               </button>
               <%= link_to new_contact_path(contact_group_id: @contact_group.id), class: 'btn btn-outline-primary' do %>
-                <i class="fas fa-user-plus me-1"></i> Add Contact
+                <i data-lucide="user-plus" me-1"></i> Add Contact
               <% end %>
             </div>
           </div>
@@ -418,7 +418,7 @@
         
         // Update filter button text
         document.getElementById('filterDropdown').innerHTML = 
-          `<i class="fas fa-filter me-1"></i> ${status === 'all' ? 'Filter' : this.textContent}`;
+          `<i data-lucide="filter" class="me-1"></i> ${status === 'all' ? 'Filter' : this.textContent}`;
           
         updateEmptyStateVisibility();
       });

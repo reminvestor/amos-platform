@@ -1,0 +1,949 @@
+<div class="container-fluid py-4">
+  <%# Notifications %>
+  <div id="document-notifications"></div>
+  
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="file-text"></i>
+      </div>
+      <div class="header-text">
+        <h1>Document Library</h1>
+        <p>Manage your knowledge base and documents</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="admin-btn admin-btn-outline" data-bs-toggle="modal" data-bs-target="#quickUploadModal">
+        <i data-lucide="zap"></i>
+        <span>Quick Upload</span>
+      </button>
+      <%= link_to new_document_path, class: "admin-btn admin-btn-primary" do %>
+        <i data-lucide="upload"></i>
+        <span>Upload Document</span>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <%# Left Sidebar: Subjects & Filters %>
+    <div class="col-lg-3">
+      <%# Subject Navigator %>
+      <div class="admin-card mb-3">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Collections</h5>
+          <button class="admin-btn admin-btn-sm admin-btn-ghost" data-bs-toggle="modal" data-bs-target="#createSubjectModal" title="Create collection">
+            <i data-lucide="plus"></i>
+          </button>
+        </div>
+        <div class="admin-card-body p-0">
+          <div class="subject-tree">
+            <%= link_to documents_path, class: "subject-item #{'active' unless params[:subject_id]}" do %>
+              <i data-lucide="folder"></i>
+              <span>All Documents</span>
+              <span class="badge"><%= @total_documents %></span>
+            <% end %>
+            
+            <% @root_subjects.each do |subject| %>
+              <%= render 'subject_tree_item', subject: subject, current_subject_id: params[:subject_id]&.to_i %>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <%# Smart Filters %>
+      <div class="admin-card">
+        <div class="admin-card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Filters</h5>
+          <%= link_to "Clear", documents_path, class: "admin-btn admin-btn-sm admin-btn-ghost" if params.except(:controller, :action).keys.any? %>
+        </div>
+        <div class="admin-card-body">
+          <%= form_with url: documents_path, method: :get, local: true do |f| %>
+            <%# Keep existing params %>
+            <% params.except(:controller, :action, :page).each do |key, value| %>
+              <%= hidden_field_tag key, value unless key.in?(['date_range', 'content_type', 'tags']) %>
+            <% end %>
+            
+            <%# Document Type Filter %>
+            <div class="filter-section mb-3">
+              <label class="admin-label">Document Type</label>
+              <div class="filter-options">
+                <% [['PDF', 'pdf'], ['Word', 'word'], ['Excel', 'excel'], ['Text', 'text'], ['Image', 'image']].each do |label, value| %>
+                  <label class="admin-checkbox">
+                    <%= check_box_tag 'content_type[]', value, params[:content_type]&.include?(value) %>
+                    <span><%= label %></span>
+                  </label>
+                <% end %>
+              </div>
+            </div>
+            
+            <%# Date Range Filter %>
+            <div class="filter-section mb-3">
+              <label class="admin-label">Date Range</label>
+              <%= select_tag :date_range, 
+                  options_for_select([
+                    ['All Time', 'all_time'],
+                    ['Today', 'today'],
+                    ['Last 7 Days', 'last_7_days'],
+                    ['Last 30 Days', 'last_30_days'],
+                    ['Last 3 Months', 'last_3_months'],
+                    ['This Year', 'this_year']
+                  ], params[:date_range]),
+                  prompt: 'Select range...',
+                  class: 'admin-select',
+                  onchange: 'this.form.submit()' %>
+            </div>
+
+            <%# Tags Filter %>
+            <% if @tags.any? %>
+              <div class="filter-section mb-3">
+                <label class="admin-label">Tags</label>
+                <div class="tag-cloud">
+                  <% @tags.first(15).each do |tag| %>
+                    <% tag_active = params[:tags]&.split(',')&.include?(tag.name) %>
+                    <%= link_to documents_path(params.except(:page).permit!.merge(
+                          tags: tag_active ? 
+                            params[:tags].split(',').reject { |t| t == tag.name }.join(',') : 
+                            [params[:tags], tag.name].compact.join(',')
+                        )), 
+                        class: "filter-tag #{'active' if tag_active}" do %>
+                      <%= tag.name %>
+                      <span class="count"><%= tag.usage_count %></span>
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# Main Content: Document Grid/List %>
+    <div class="col-lg-9">
+      <%# Search Bar %>
+      <div class="document-search-bar mb-4">
+        <%= form_with url: documents_path, method: :get, local: true, class: "search-form", id: "document-search-form" do |f| %>
+          <%# Preserve other parameters %>
+          <% params.except(:controller, :action, :q).each do |key, value| %>
+            <%= hidden_field_tag key, value if value.present? %>
+          <% end %>
+          
+          <div class="search-input-group">
+            <i data-lucide="search"></i>
+            <%= text_field_tag :q, params[:q], 
+                class: "admin-input", 
+                placeholder: "Search documents by name, content, or ask a question...",
+                autocomplete: "off" %>
+            <div class="search-info">
+              <span class="text-muted small">Powered by AI</span>
+            </div>
+            <%= submit_tag "Search", class: "d-none" %>
+          </div>
+        <% end %>
+      </div>
+
+      <%# View Toggle & Sort %>
+      <div class="document-controls mb-3">
+        <div class="view-toggle">
+          <%= link_to documents_path(params.except(:page).permit!.merge(view: 'grid')), 
+              class: "admin-btn admin-btn-sm #{'active' if @view_mode == 'grid'}" do %>
+            <i data-lucide="grid"></i>
+          <% end %>
+          <%= link_to documents_path(params.except(:page).permit!.merge(view: 'list')), 
+              class: "admin-btn admin-btn-sm #{'active' if @view_mode == 'list'}" do %>
+            <i data-lucide="list"></i>
+          <% end %>
+        </div>
+        
+        <div class="sort-dropdown">
+          <%= form_with url: documents_path, method: :get, local: true do |f| %>
+            <% params.except(:controller, :action, :sort, :page).each do |key, value| %>
+              <%= hidden_field_tag key, value %>
+            <% end %>
+            <%= select_tag :sort,
+                options_for_select([
+                  ['Recently Added', 'recent'],
+                  ['Name (A-Z)', 'name'],
+                  ['Most Viewed', 'views'],
+                  ['Oldest First', 'date_asc']
+                ], params[:sort]),
+                class: "admin-select admin-select-sm",
+                onchange: "this.form.submit()" %>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Search Type Indicator %>
+      <% if params[:q].present? && @search_type == 'semantic' %>
+        <div class="alert alert-info mb-3 d-flex align-items-center">
+          <i data-lucide="sparkles" class="me-2"></i>
+          <span>Showing AI-enhanced search results for "<%= params[:q] %>"</span>
+        </div>
+      <% elsif params[:q].present? %>
+        <div class="alert alert-secondary mb-3 d-flex align-items-center">
+          <i data-lucide="search" class="me-2"></i>
+          <span>Showing keyword search results for "<%= params[:q] %>"</span>
+        </div>
+      <% end %>
+      
+      <% if @documents.any? %>
+        <%# Document Grid View %>
+        <% if @view_mode == 'grid' %>
+          <div class="document-grid" id="documents-grid-container">
+            <% @documents.each do |document| %>
+              <%= render 'document_grid_card', document: document %>
+            <% end %>
+          </div>
+        <% else %>
+          <%# Document List View %>
+          <div class="admin-card">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Document Name</th>
+                  <th>Status</th>
+                  <th>Collection</th>
+                  <th>Tags</th>
+                  <th>Size</th>
+                  <th>Uploaded</th>
+                  <th style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="documents-list">
+                <% @documents.each do |document| %>
+                  <%= render 'document_row', document: document %>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% end %>
+        
+        <%# Pagination %>
+        <div class="mt-4">
+          <%= paginate @documents %>
+        </div>
+      <% else %>
+        <%# Empty State %>
+        <div class="admin-card">
+          <div class="admin-empty-state">
+            <div class="empty-icon">
+              <i data-lucide="file-plus"></i>
+            </div>
+            <h3>No Documents Found</h3>
+            <% if params[:q].present? || params.except(:controller, :action).keys.any? %>
+              <p>No documents match your search criteria. Try adjusting your filters or search terms.</p>
+              <%= link_to "Clear Filters", documents_path, class: "admin-btn admin-btn-primary mt-3" %>
+            <% else %>
+              <p>Upload documents to build your knowledge base. Your AI assistant will be able to reference these documents when answering questions.</p>
+              <%= link_to new_document_path, class: "admin-btn admin-btn-primary mt-3" do %>
+                <i data-lucide="upload"></i>
+                <span>Upload First Document</span>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<%# Quick Upload Modal %>
+<div class="modal fade" id="quickUploadModal" tabindex="-1" aria-labelledby="quickUploadModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content admin-card">
+      <div class="modal-header admin-card-header">
+        <h5 class="modal-title" id="quickUploadModalLabel">Quick Upload</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <%= render 'documents/quick_upload_form' %>
+    </div>
+  </div>
+</div>
+
+<%# Create Subject Modal %>
+<div class="modal fade" id="createSubjectModal" tabindex="-1" aria-labelledby="createSubjectModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content admin-card">
+      <div class="modal-header admin-card-header">
+        <h5 class="modal-title" id="createSubjectModalLabel">Create Collection</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <%= form_with model: DocumentSubject.new, url: document_subjects_path, local: true do |f| %>
+        <div class="modal-body">
+          <%= f.hidden_field :entity_id, value: current_entity.id %>
+          
+          <div class="admin-form-group">
+            <%= f.label :name, class: "admin-label" %>
+            <%= f.text_field :name, class: "admin-input", required: true, placeholder: "e.g., Legal Cases, Marketing Materials" %>
+          </div>
+          
+          <div class="admin-form-group">
+            <%= f.label :description, class: "admin-label" %>
+            <%= f.text_area :description, class: "admin-input", rows: 3, placeholder: "Optional description..." %>
+          </div>
+          
+          <div class="admin-form-group">
+            <%= f.label :parent_id, "Parent Collection", class: "admin-label" %>
+            <%= f.select :parent_id, 
+                options_for_select([["None (Top Level)", ""]] + 
+                  @subjects.map { |s| [s.full_path, s.id] }
+                ),
+                {},
+                class: "admin-select" %>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="admin-form-group">
+                <%= f.label :icon, class: "admin-label" %>
+                <%= f.select :icon,
+                    options_for_select([
+                      ['Folder', 'folder'],
+                      ['Briefcase', 'briefcase'],
+                      ['Archive', 'archive'],
+                      ['Database', 'database'],
+                      ['Book', 'book'],
+                      ['File Stack', 'files']
+                    ]),
+                    {},
+                    class: "admin-select" %>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="admin-form-group">
+                <%= f.label :color, class: "admin-label" %>
+                <%= f.color_field :color, class: "admin-input", value: "#6366F1" %>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer admin-card-footer">
+          <button type="button" class="admin-btn admin-btn-outline" data-bs-dismiss="modal">Cancel</button>
+          <%= f.submit "Create Collection", class: "admin-btn admin-btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+
+<%# Custom Styles %>
+<style>
+  /* Document Grid */
+  .document-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .document-card {
+    background: #1A1F35;
+    border: 1px solid #1E293B;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+
+  .document-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border-color: #A78BFA;
+  }
+
+  .document-preview {
+    height: 140px;
+    background: #0F172A;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .preview-icon {
+    width: 3rem;
+    height: 3rem;
+    color: #64748B;
+  }
+
+  .document-badges {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .document-info {
+    padding: 1rem;
+  }
+
+  .document-info h6 {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .document-summary {
+    font-size: 0.875rem;
+    color: #94A3B8;
+    margin-bottom: 0.75rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .document-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: #64748B;
+    margin-bottom: 0.75rem;
+  }
+
+  .document-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .document-meta i {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .document-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  /* Subject Tree */
+  .subject-tree {
+    padding: 0.5rem 0;
+  }
+
+  .subject-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    color: #94A3B8;
+  }
+
+  .subject-item:hover {
+    background: rgba(167, 139, 250, 0.1);
+    color: white;
+    text-decoration: none;
+  }
+
+  .subject-item.active {
+    background: rgba(167, 139, 250, 0.2);
+    color: #A78BFA;
+  }
+
+  .subject-item .badge {
+    margin-left: auto;
+    background: #2D3548;
+    color: #94A3B8;
+    font-size: 0.7rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+  }
+
+  .subject-item.ms-3 {
+    margin-left: 1.5rem !important;
+  }
+
+  /* Search Bar */
+  .document-search-bar {
+    background: #1A1F35;
+    border: 1px solid #1E293B;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .search-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+  }
+
+  .search-input-group i {
+    position: absolute;
+    left: 1rem;
+    color: #64748B;
+    pointer-events: none;
+  }
+
+  .search-input-group input {
+    padding-left: 2.5rem;
+    flex: 1;
+  }
+
+  .search-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .admin-switch {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
+
+  .admin-switch input[type="checkbox"] {
+    width: 2rem;
+    height: 1rem;
+    background: #2D3548;
+    border: 1px solid #1E293B;
+    border-radius: 9999px;
+    position: relative;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .admin-switch input[type="checkbox"]:checked {
+    background: #A78BFA;
+  }
+
+  .admin-switch input[type="checkbox"]::after {
+    content: '';
+    position: absolute;
+    width: 0.75rem;
+    height: 0.75rem;
+    background: white;
+    border-radius: 50%;
+    top: 50%;
+    left: 0.125rem;
+    transform: translateY(-50%);
+    transition: all 0.2s ease;
+  }
+
+  .admin-switch input[type="checkbox"]:checked::after {
+    left: calc(100% - 0.875rem);
+  }
+
+  /* Document Controls */
+  .document-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .view-toggle {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  /* Filter Styles */
+  .filter-section {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #1E293B;
+  }
+
+  .filter-section:last-child {
+    border-bottom: none;
+  }
+
+  .filter-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .admin-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: #94A3B8;
+    font-size: 0.875rem;
+  }
+
+  .admin-checkbox:hover {
+    color: white;
+  }
+
+  .admin-checkbox input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    background: #2D3548;
+    border: 1px solid #1E293B;
+    border-radius: 0.25rem;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .admin-checkbox input[type="checkbox"]:checked {
+    background: #A78BFA;
+    border-color: #A78BFA;
+  }
+
+  .admin-checkbox input[type="checkbox"]:checked::after {
+    content: '✓';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.75rem;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Tag Cloud */
+  .tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: #2D3548;
+    border: 1px solid #1E293B;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    color: #94A3B8;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .filter-tag:hover {
+    background: rgba(167, 139, 250, 0.1);
+    border-color: #A78BFA;
+    color: #A78BFA;
+    text-decoration: none;
+  }
+
+  .filter-tag.active {
+    background: rgba(167, 139, 250, 0.2);
+    border-color: #A78BFA;
+    color: #A78BFA;
+  }
+
+  .filter-tag .count {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0 0.25rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+  }
+
+  /* Badge Styles */
+  .badge {
+    font-size: 0.7rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-weight: 500;
+  }
+
+  /* Dropdown menu dark theme */
+  .dropdown-menu {
+    background: #1A1F35;
+    border: 1px solid #1E293B;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  .dropdown-item {
+    color: #94A3B8;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+  }
+
+  .dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+  }
+
+  .dropdown-item i {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .dropdown-divider {
+    border-color: #1E293B;
+  }
+
+  /* Processing indicator */
+  .processing-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 0.5rem;
+  }
+
+  .processing-indicator .spinner-border {
+    color: #A78BFA;
+  }
+
+  .processing-text {
+    font-size: 0.875rem;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .badge-warning {
+    background: rgba(251, 191, 36, 0.2);
+    color: #FCD34D;
+    border: 1px solid rgba(251, 191, 36, 0.4);
+  }
+
+  .badge-danger {
+    background: rgba(239, 68, 68, 0.2);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+  }
+
+  .badge-secondary {
+    background: rgba(148, 163, 184, 0.2);
+    color: #94A3B8;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+  }
+
+  /* Pagination */
+  .pagination {
+    justify-content: center;
+  }
+
+  .page-link {
+    background: #1A1F35;
+    border: 1px solid #1E293B;
+    color: #94A3B8;
+  }
+
+  .page-link:hover {
+    background: rgba(167, 139, 250, 0.1);
+    border-color: #A78BFA;
+    color: #A78BFA;
+  }
+
+  .page-item.active .page-link {
+    background: #A78BFA;
+    border-color: #A78BFA;
+    color: white;
+  }
+</style>
+
+<script>
+document.addEventListener('turbo:load', () => {
+  // Initialize Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+
+  // Initialize tooltips
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+  const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+  });
+
+  // Auto-refresh if there are processing documents
+  const processingDocs = document.querySelectorAll('.processing-indicator');
+  if (processingDocs.length > 0) {
+    setTimeout(() => {
+      // Only refresh if we're still on the same page
+      if (window.location.pathname === '/documents' && !document.hidden) {
+        window.location.reload();
+      }
+    }, 5000); // Refresh every 5 seconds
+  }
+
+  // Enhanced search functionality
+  const searchForm = document.querySelector('.search-form');
+  const searchInput = document.querySelector('input[name="q"]');
+  const documentsContainer = document.querySelector('.document-grid') || document.querySelector('.document-list');
+  
+  if (searchForm && searchInput) {
+    let searchTimeout;
+    
+    // Debounced search function
+    const performSearch = async () => {
+      const query = searchInput.value.trim();
+      
+      // Build search URL with current filters
+      const params = new URLSearchParams(window.location.search);
+      params.set('q', query);
+      
+      try {
+        // Show loading state
+        if (documentsContainer) {
+          documentsContainer.style.opacity = '0.5';
+          documentsContainer.style.pointerEvents = 'none';
+        }
+        
+        // Make AJAX request
+        const response = await fetch(`/documents/search?${params.toString()}`, {
+          headers: {
+            'Accept': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+          }
+        });
+        
+        if (!response.ok) throw new Error('Search failed');
+        
+        const data = await response.json();
+        
+        // Update the documents list
+        updateDocumentsList(data);
+        
+        // Update URL without page reload
+        window.history.pushState({}, '', `/documents?${params.toString()}`);
+        
+      } catch (error) {
+        console.error('Search error:', error);
+        // Fallback to form submission
+        searchForm.submit();
+      } finally {
+        // Reset loading state
+        if (documentsContainer) {
+          documentsContainer.style.opacity = '1';
+          documentsContainer.style.pointerEvents = 'auto';
+        }
+      }
+    };
+    
+    // Search input handler with debouncing
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(performSearch, 300);
+    });
+    
+    // Override form submission
+    searchForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      clearTimeout(searchTimeout);
+      performSearch();
+    });
+  }
+});
+
+// Function to update documents list from search results
+function updateDocumentsList(data) {
+  const documentsContainer = document.querySelector('.document-grid') || document.querySelector('.document-list');
+  const totalCount = document.querySelector('.admin-card-header small');
+  
+  if (!documentsContainer) return;
+  
+  // Update total count
+  if (totalCount && data.total_count !== undefined) {
+    totalCount.textContent = `${data.total_count} documents`;
+  }
+  
+  // Clear existing documents
+  documentsContainer.innerHTML = '';
+  
+  if (data.documents && data.documents.length > 0) {
+    // Add search type indicator
+    if (data.search_type === 'semantic') {
+      const aiIndicator = document.createElement('div');
+      aiIndicator.className = 'alert alert-info mb-3';
+      aiIndicator.innerHTML = '<i data-lucide="sparkles"></i> Showing AI-powered semantic search results';
+      documentsContainer.parentNode.insertBefore(aiIndicator, documentsContainer);
+    }
+    
+    // Render documents
+    data.documents.forEach(doc => {
+      const docElement = createDocumentCard(doc);
+      documentsContainer.appendChild(docElement);
+    });
+    
+    // Re-initialize icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  } else {
+    // Show empty state
+    documentsContainer.innerHTML = `
+      <div class="admin-empty-state col-12">
+        <div class="empty-icon">
+          <i data-lucide="search"></i>
+        </div>
+        <h3>No Documents Found</h3>
+        <p>No documents match your search criteria. Try adjusting your search terms.</p>
+        <button onclick="document.querySelector('input[name=q]').value=''; document.querySelector('.search-form').submit();" 
+                class="admin-btn admin-btn-primary mt-3">
+          Clear Search
+        </button>
+      </div>
+    `;
+    
+    // Re-initialize icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+}
+
+// Function to create document card element
+function createDocumentCard(doc) {
+  const card = document.createElement('div');
+  card.className = 'document-card';
+  
+  const statusClass = doc.processing_status === 'completed' ? 'badge-online' : 
+                     doc.processing_status === 'processing' ? 'badge-warning' : 'badge-danger';
+  
+  const statusText = doc.processing_status === 'completed' ? 'Ready' : 
+                    doc.processing_status === 'processing' ? 'Processing' : 'Failed';
+  
+  card.innerHTML = `
+    <a href="/documents/${doc.id}" class="document-card-link">
+      <div class="document-icon">
+        <i data-lucide="${doc.icon || 'file-text'}"></i>
+      </div>
+      <div class="document-info">
+        <h6 class="document-title">${doc.title || doc.original_filename}</h6>
+        <div class="document-meta">
+          <span title="Collection">${doc.collection_name || 'Document Library'}</span>
+          <span class="mx-1">•</span>
+          <span>${doc.created_at_formatted || new Date(doc.created_at).toLocaleDateString()}</span>
+        </div>
+        ${doc.summary ? `<div class="document-summary">${doc.summary}</div>` : ''}
+        <div class="document-stats">
+          ${doc.chunks_count ? `<span><i data-lucide="layers"></i> ${doc.chunks_count} sections</span>` : ''}
+          ${doc.view_count ? `<span><i data-lucide="eye"></i> ${doc.view_count}</span>` : ''}
+          <span class="ms-auto">
+            <span class="badge ${statusClass}">${statusText}</span>
+          </span>
+        </div>
+      </div>
+    </a>
+    ${doc.processing_status === 'failed' && doc.can_retry ? `
+      <div class="document-actions">
+        <form action="/documents/${doc.id}/retry_processing" method="post" class="d-inline">
+          <input type="hidden" name="_method" value="post">
+          <input type="hidden" name="authenticity_token" value="${document.querySelector('meta[name="csrf-token"]').content}">
+          <button type="submit" class="btn btn-sm btn-link text-warning" title="Retry processing">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+        </form>
+      </div>
+    ` : ''}
+  `;
+  
+  return card;
+}
+</script>

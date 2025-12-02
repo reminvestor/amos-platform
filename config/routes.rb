@@ -26,8 +26,19 @@ Rails.application.routes.draw do
       resources :sessions, only: [:create, :show], controller: "voice_sessions", param: :id do
         member do
           get :deepgram_key
+          get :eleven_labs_credentials
           patch :end
+          post :log_error
         end
+      end
+
+      # Voice Health Monitoring
+      namespace :health do
+        get :status           # Overall health status
+        get :providers        # Provider-specific status
+        get :metrics          # Usage and performance metrics
+        get :optimization     # Optimization recommendations
+        post :prewarm         # Manually trigger pre-warming
       end
     end
     
@@ -40,10 +51,37 @@ Rails.application.routes.draw do
       patch :preferences, action: :update_preferences
       get :test
     end
+
+    # MCP Approval Client API (for development/testing)
+    # Support both underscore and hyphen versions for compatibility
+    post :request_approval, to: "approvals#request_approval"
+    post "request-approval", to: "approvals#request_approval"
+    post :get_instructions, to: "approvals#get_instructions"
+    post "get-instructions", to: "approvals#get_instructions"
     
+    # Work Items API
+    resources :work_items, only: [] do
+      member do
+        get :content
+        post :toggle_star
+        post :archive
+        post :mark_read
+        post :mark_unread
+      end
+    end
+
     namespace :v1 do
       # Health check endpoint
       get "health", to: "health#index"
+      
+      # Agent Auth / Heartbeat endpoints
+      resources :agent_auth, only: [] do
+        member do
+          post :heartbeat
+          get :current_task
+        end
+      end
+
       resources :contacts, only: [ :create ]
       resources :jobs, only: [ :show ]
       post "crawler_contacts", to: "crawler_contacts#create"
@@ -63,24 +101,34 @@ Rails.application.routes.draw do
       end
       # Alternative route for submissions by landing page slug
       post "landing_pages/:landing_page_slug/submit", to: "landing_page_submissions#create"
+
+      # Benchmark API
+      resources :benchmarks, only: [:index, :show] do
+        collection do
+          get :report
+          get :trends
+          get :comparison
+          post :run
+        end
+      end
     end
   end
-  
+
+  # Devise routes for authentication - accessible from all subdomains (including none)
+  devise_for :users, controllers: {
+    registrations: "users/registrations",
+    sessions: "users/sessions",
+    passwords: "users/passwords"
+  }
+
   # Routes with constraints on subdomain - application routes for 'app' or 'dev' subdomain
-  constraints(lambda { |req| 
+  constraints(lambda { |req|
     SubdomainConfig.app_subdomains.include?(req.subdomain)
   }) do
     # Solid Queue Interface
     authenticate :user, lambda { |u| u.admin? } do
       mount SolidQueueInterface::Engine => "/solid_queue"
     end
-
-    # Devise routes for authentication
-    devise_for :users, controllers: {
-      registrations: "users/registrations",
-      sessions: "users/sessions",
-      passwords: "users/passwords"
-    }
 
     # User management
     resources :users, only: [ :show, :edit, :update ]
@@ -98,6 +146,16 @@ Rails.application.routes.draw do
           post :add_missing_email_deliveries
           post :fix_campaign_entity_ids
           post :reprocess_drip_campaigns
+        end
+      end
+
+      # Entity cost tracking
+      resources :entity_costs, only: [ :index, :show ] do
+        member do
+          get :export
+        end
+        collection do
+          get :bulk_analysis
         end
       end
     end
@@ -125,6 +183,41 @@ Rails.application.routes.draw do
         post :generate
       end
     end
+    
+    # Document store for RAG
+    resources :documents do
+      member do
+        get :download
+        post :add_tags
+        post :assign_subjects
+        post :retry_processing
+      end
+      collection do
+        get :search
+      end
+    end
+  
+    # Document organization
+    resources :document_subjects do
+      member do
+        post :move
+      end
+    end
+    
+    resources :document_tags do
+      member do
+        post :merge
+      end
+      collection do
+        get :suggest
+      end
+    end
+    
+    resources :saved_searches do
+      member do
+        post :run
+      end
+    end
     resources :email_templates do
       member do
         post :test_email
@@ -140,10 +233,52 @@ Rails.application.routes.draw do
         post :stop
         post :reactivate
         post :force_resume
-        post :sync_mailgun
+
         get :analyze
         post :setup_drip
         post :trigger_drip
+      end
+    end
+
+    resources :email_sequences do
+      resources :sequence_steps
+      member do
+        post :activate
+        post :pause
+        post :enroll_group
+      end
+    end
+
+    # Entity-level Agent & Tool Management
+    resources :agent_plugins
+    resources :tools
+    
+    # User-facing Scheduled Tasks Management
+    resources :scheduled_tasks do
+      member do
+        post :pause
+        post :resume
+        post :run_now
+        get :runs
+      end
+    end
+    
+    # AI Settings (Scout configuration, Voice settings)
+    namespace :ai_settings do
+      resource :scout, only: [:show, :update], controller: 'scout'
+      resource :voice, only: [:show, :update], controller: 'voice'
+    end
+
+    # Energy Dashboard (Agent Collaboration System)
+    namespace :dashboard do
+      resources :energy, only: [:index, :show] do
+        collection do
+          post :regenerate
+          post :distribute_pool
+        end
+        member do
+          post :enroll_in_school
+        end
       end
     end
 
@@ -247,6 +382,9 @@ Rails.application.routes.draw do
         delete "disconnect/:id", to: "social_media_accounts#disconnect", as: :disconnect
       end
     end
+    
+    # Alias for integrations (points to social_media_accounts controller)
+    get "integrations", to: "social_media_accounts#index", as: :customer_integrations
 
     # Crawler Jobs Management
     resources :crawler_jobs, only: [ :index, :new, :create, :show ] do
@@ -347,6 +485,7 @@ Rails.application.routes.draw do
   post "scout/chat_interactive", to: "scout#chat_interactive"
   post "scout/continue_workflow", to: "scout#continue_workflow"
   post "scout/approve_workflow", to: "scout#approve_workflow"
+  post "scout/task_statuses", to: "scout#task_statuses"
   post "scout/upload_files", to: "scout#upload_files"
   get "scout/history", to: "scout#history" # paginated history
   delete "scout/conversation", to: "scout#clear_conversation"
@@ -358,6 +497,10 @@ Rails.application.routes.draw do
   # Scout Intelligent Canvas routes
   post "scout/load_canvas", to: "scout#load_canvas"
   get "scout/available_canvases", to: "scout#available_canvases"
+  post "scout/cancel_job", to: "scout#cancel_job"
+
+  # Document indexing status API
+  get "scout/document-status/:asset_id", to: "scout#document_indexing_status"
 
   # Analytics routes
   get "analytics", to: "analytics#index"
@@ -413,6 +556,9 @@ Rails.application.routes.draw do
     post 'portal', to: 'stripe_checkout#create_portal_session', as: :portal
   end
 
+  # SES Webhooks
+  post "/webhooks/ses", to: "ses_webhooks#create"
+
   # Admin routes
   namespace :admin do
     get "login", to: "sessions#new", as: :new_session
@@ -425,6 +571,7 @@ Rails.application.routes.draw do
 
     # Observability
     get "/observability/ai_usage", to: "observability#ai_usage", as: :observability_ai_usage
+    get "/observability/ai_usage/entity/:entity_id", to: "observability#ai_usage_by_entity", as: :observability_ai_usage_entity
     get "/observability/workflows", to: "observability#workflows", as: :observability_workflows
     get "/observability/performance", to: "observability#performance", as: :observability_performance
     get "/observability/errors", to: "observability#errors", as: :observability_errors
@@ -499,6 +646,16 @@ Rails.application.routes.draw do
       end
     end
 
+    # Bedrock Knowledge Base management
+    resources :bedrock_kb, only: [:index, :show] do
+      member do
+        post :create_kb
+        post :enable
+        post :disable
+        post :sync
+      end
+    end
+
     # AI Pipeline management
     resources :pipeline_connections do
       member do
@@ -521,6 +678,15 @@ Rails.application.routes.draw do
       member do
         post :make_admin
         post :revoke_admin
+        post :reset_password
+      end
+    end
+    
+    # Parallel task monitoring
+    resources :parallel_tasks, only: [:index, :show] do
+      member do
+        post :cancel
+        post :retry
       end
     end
 
@@ -546,11 +712,103 @@ Rails.application.routes.draw do
       get "errors", to: "metrics#errors"
       get "performance", to: "metrics#performance"
     end
+
+    # Benchmark System
+    resources :benchmarks, only: [:index, :show, :create] do
+      collection do
+        get :trends
+        post :cleanup
+        get 'status/:run_id', action: :status, as: :status
+      end
+      member do
+        get :compare
+      end
+    end
+
+    # Agent Collaboration System Dashboard (macro-level training)
+    resources :agent_collaboration, only: [] do
+      collection do
+        get :dashboard, as: :dashboard
+        get :agents, as: :agents
+        get :school, as: :school
+        get :collaborations, as: :collaborations
+        get :ab_tests, as: :ab_tests
+        get :transactions, as: :transactions
+        post :regenerate_all, as: :regenerate_all
+        post :distribute_pools, as: :distribute_pools
+        post :recalibrate_capabilities, as: :recalibrate_capabilities
+        post :update_boundaries, as: :update_boundaries
+      end
+      member do
+        get :agent_detail, as: :agent_detail
+        post :enroll_agent, as: :enroll_agent
+        post :cancel_test, as: :cancel_test
+      end
+    end
+
+    # Agent Lightning - Micro-level RL-based agent optimization
+    resource :agent_lightning, only: [], controller: 'agent_lightning' do
+      get '/', action: :dashboard, as: ''
+      get :training_jobs
+      get :optimizations
+      get :traces
+      get 'agent/:agent_id', action: :agent_detail, as: :agent_detail
+      post :start_training
+      post :stop_training
+      post 'rollback/:optimization_id', action: :rollback, as: :rollback
+      get :service_status
+    end
+
+    # Scheduled Tasks Management
+    resources :scheduled_tasks do
+      member do
+        post :pause
+        post :resume
+        post :run_now
+      end
+      collection do
+        get :runs
+      end
+    end
+
+    # Agent Plugins Management
+    resources :agent_plugins do
+      member do
+        post :activate
+        post :deactivate
+        post :publish
+        post :unpublish
+        get :test
+        post :run_test
+        post :clone
+      end
+      collection do
+        get :analytics
+        post :purge_executions
+      end
+    end
+
+    # Tools Management
+    resources :tools do
+      member do
+        post :publish
+        post :unpublish
+        post :clone
+      end
+    end
   end
 
   # Common routes (regardless of subdomain)
+  # Amos Integration - needs to be accessible from any subdomain for agent callbacks
+  post "amos/callback/:session_id", to: "amos#callback", as: :amos_callback
+  
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   get "up" => "rails/health#show", as: :rails_health_check
+
+  # Mount LetterOpenerWeb in development
+  if Rails.env.development?
+    mount LetterOpenerWeb::Engine, at: "/letter_opener"
+  end
 
   # Default root path for tests and unauthenticated users (only applies when no other root is defined)
   # root to: redirect("/chat")

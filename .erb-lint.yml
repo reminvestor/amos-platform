@@ -1,0 +1,43 @@
+---
+EnableDefaultLinters: true
+linters:
+  # Enforce closing tags
+  ClosingErbTagIndent:
+    enabled: true
+
+  # Ensure proper ERB tag spacing
+  ErbSafety:
+    enabled: true
+
+  # No JavaScript in ERB files
+  NoJavascriptTagHelper:
+    enabled: false  # Disabled since we use Turbo/Stimulus
+
+  # Partial paths
+  PartialInstanceVariable:
+    enabled: true
+
+  # Self-closing tags
+  SelfClosingTag:
+    enabled: true
+    enforce_style: always
+
+  # Trailing whitespace
+  TrailingWhitespace:
+    enabled: true
+
+  # Hard tabs
+  HardCodedString:
+    enabled: false  # Too restrictive for admin UI
+
+  # Deprecated HTML
+  DeprecatedClasses:
+    enabled: false
+    addendum:
+      - 'Use Tailwind CSS classes instead'
+
+  # Custom rule: Prefer admin_icon helper over raw Lucide
+  RequireInputAutocomplete:
+    enabled: false  # Not applicable for admin forms
+
+glob: "**/*.html.erb"

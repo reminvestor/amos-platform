@@ -1,115 +1,137 @@
-<div class="admin-content">
-  <div style="padding: 2rem;">
-    <div class="container-fluid py-3">
-  <div class="row mb-3">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h4 mb-0">
-          <i class="bi bi-mic me-2"></i>
-          Voice Assistant Settings
-        </h1>
-        <%= button_to "Reset to Defaults", reset_defaults_admin_voice_settings_path, method: :post, class: "btn btn-sm btn-warning", data: { confirm: "Are you sure? This will reset all settings to default values." } %>
+<div class="admin-p-xl">
+  <!-- Page Header -->
+  <div class="admin-page-header admin-mb-xl">
+    <div class="header-left">
+      <div class="header-icon admin-icon-gradient-purple">
+        <i data-lucide="mic" class="admin-text-primary"></i>
       </div>
-      <p class="text-muted mb-0" style="font-size: 0.9rem;">Configure speech-to-text and text-to-speech parameters</p>
+      <div class="header-text">
+        <h1>Voice Assistant Settings</h1>
+        <p>Configure speech-to-text and text-to-speech parameters</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= button_to "Reset to Defaults", reset_defaults_admin_voice_settings_path, method: :post, class: "admin-btn admin-btn-warning", data: { confirm: "Are you sure? This will reset all settings to default values." } %>
     </div>
   </div>
 
   <%= form_with url: update_all_admin_voice_settings_path, method: :patch, local: true do |f| %>
 
     <!-- Deepgram Settings -->
-    <div class="card mb-3">
-      <div class="card-header bg-primary text-white p-2">
-        <h5 class="mb-0" style="font-size: 0.95rem;"><i class="bi bi-cpu me-2"></i>Deepgram Transcription Settings</h5>
+    <div class="admin-card admin-mb-xl">
+      <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--accent-purple-start); padding-bottom: 0.75rem;">
+        <i data-lucide="cpu" class="admin-icon-md" style="color: var(--accent-purple-start);"></i>
+        <h3 class="card-title m-0">Deepgram Transcription Settings</h3>
       </div>
-      <div class="card-body p-3">
-        <div class="row g-3">
-          <% @deepgram_settings.each do |setting| %>
-            <div class="col-sm-6 col-md-4 col-lg-3">
-              <label class="form-label mb-1" style="font-size: 0.85rem;">
-                <strong><%= setting.key.sub('deepgram.', '').titleize %></strong>
-                <% if setting.description.present? %>
-                  <br><small class="text-muted" style="font-size: 0.75rem;"><%= setting.description %></small>
-                <% end %>
-              </label>
-
-              <% if setting.setting_type == 'boolean' %>
-                <div class="form-check form-switch">
-                  <%= check_box_tag "settings[#{setting.id}]", "true", VoiceAssistantSetting.cast_value(setting.value, setting.setting_type), class: "form-check-input" %>
-                  <%= hidden_field_tag "settings[#{setting.id}]", "false", id: nil %>
-                </div>
-              <% elsif setting.setting_type == 'integer' %>
-                <%= number_field_tag "settings[#{setting.id}]", setting.value, class: "form-control form-control-sm", step: 1 %>
-              <% elsif setting.setting_type == 'float' %>
-                <%= number_field_tag "settings[#{setting.id}]", setting.value, class: "form-control form-control-sm", step: 0.01 %>
-              <% else %>
-                <%= text_field_tag "settings[#{setting.id}]", setting.value, class: "form-control form-control-sm" %>
+      <div class="row g-3">
+        <% @deepgram_settings.each do |setting| %>
+          <div class="col-sm-6 col-md-4 col-lg-3">
+            <label class="form-label admin-mb-xs admin-text-sm">
+              <strong class="admin-text-primary"><%= setting.key.sub('deepgram.', '').titleize %></strong>
+              <% if setting.description.present? %>
+                <br><small class="admin-text-muted admin-text-xs"><%= setting.description %></small>
               <% end %>
-            </div>
-          <% end %>
-        </div>
+            </label>
+
+            <% if setting.setting_type == 'boolean' %>
+              <div class="form-check form-switch">
+                <%= check_box_tag "settings[#{setting.id}]", "true", VoiceAssistantSetting.cast_value(setting.value, setting.setting_type), class: "form-check-input" %>
+                <%= hidden_field_tag "settings[#{setting.id}]", "false", id: nil %>
+              </div>
+            <% elsif setting.setting_type == 'integer' %>
+              <%= number_field_tag "settings[#{setting.id}]", setting.value, class: "admin-input admin-input-sm", step: 1 %>
+            <% elsif setting.setting_type == 'float' %>
+              <%= number_field_tag "settings[#{setting.id}]", setting.value, class: "admin-input admin-input-sm", step: 0.01 %>
+            <% else %>
+              <%= text_field_tag "settings[#{setting.id}]", setting.value, class: "admin-input admin-input-sm" %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Eleven Labs Settings -->
+    <div class="admin-card admin-mb-xl">
+      <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--status-info-text); padding-bottom: 0.75rem;">
+        <i data-lucide="mic-2" class="admin-icon-md" style="color: var(--status-info-text);"></i>
+        <h3 class="card-title m-0">Eleven Labs Text-to-Speech Settings</h3>
+      </div>
+      <div class="row g-3">
+        <% @eleven_labs_settings.each do |setting| %>
+          <div class="col-sm-6 col-md-4 col-lg-3">
+            <label class="form-label admin-mb-xs admin-text-sm">
+              <strong class="admin-text-primary"><%= setting.key.sub('eleven_labs.', '').titleize %></strong>
+              <% if setting.description.present? %>
+                <br><small class="admin-text-muted admin-text-xs"><%= setting.description %></small>
+              <% end %>
+            </label>
+
+            <% if setting.setting_type == 'boolean' %>
+              <div class="form-check form-switch">
+                <%= check_box_tag "settings[#{setting.id}]", "true", VoiceAssistantSetting.cast_value(setting.value, setting.setting_type), class: "form-check-input" %>
+                <%= hidden_field_tag "settings[#{setting.id}]", "false", id: nil %>
+              </div>
+            <% else %>
+              <%= text_field_tag "settings[#{setting.id}]", setting.value, class: "admin-input admin-input-sm" %>
+            <% end %>
+          </div>
+        <% end %>
       </div>
     </div>
 
     <!-- Polly Settings -->
-    <div class="card mb-3">
-      <div class="card-header bg-success text-white p-2">
-        <h5 class="mb-0" style="font-size: 0.95rem;"><i class="bi bi-volume-up me-2"></i>AWS Polly Text-to-Speech Settings</h5>
+    <div class="admin-card admin-mb-xl">
+      <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--status-success-text); padding-bottom: 0.75rem;">
+        <i data-lucide="volume-2" class="admin-icon-md" style="color: var(--status-success-text);"></i>
+        <h3 class="card-title m-0">AWS Polly Text-to-Speech Settings</h3>
       </div>
-      <div class="card-body p-3">
-        <div class="row g-3">
-          <% @polly_settings.each do |setting| %>
-            <div class="col-sm-6 col-md-4 col-lg-3">
-              <label class="form-label mb-1" style="font-size: 0.85rem;">
-                <strong><%= setting.key.sub('polly.', '').titleize %></strong>
-                <% if setting.description.present? %>
-                  <br><small class="text-muted" style="font-size: 0.75rem;"><%= setting.description %></small>
-                <% end %>
-              </label>
-              <%= text_field_tag "settings[#{setting.id}]", setting.value, class: "form-control form-control-sm" %>
-            </div>
-          <% end %>
-        </div>
+      <div class="row g-3">
+        <% @polly_settings.each do |setting| %>
+          <div class="col-sm-6 col-md-4 col-lg-3">
+            <label class="form-label admin-mb-xs admin-text-sm">
+              <strong class="admin-text-primary"><%= setting.key.sub('polly.', '').titleize %></strong>
+              <% if setting.description.present? %>
+                <br><small class="admin-text-muted admin-text-xs"><%= setting.description %></small>
+              <% end %>
+            </label>
+            <%= text_field_tag "settings[#{setting.id}]", setting.value, class: "admin-input admin-input-sm" %>
+          </div>
+        <% end %>
       </div>
     </div>
 
     <!-- Audio Processing Settings -->
-    <div class="card mb-3">
-      <div class="card-header bg-info text-white p-2">
-        <h5 class="mb-0" style="font-size: 0.95rem;"><i class="bi bi-sliders me-2"></i>Audio Processing Settings</h5>
+    <div class="admin-card admin-mb-xl">
+      <div class="admin-flex admin-items-center admin-flex-gap-sm admin-mb-lg" style="border-bottom: 2px solid var(--status-info-text); padding-bottom: 0.75rem;">
+        <i data-lucide="sliders" class="admin-icon-md" style="color: var(--status-info-text);"></i>
+        <h3 class="card-title m-0">Audio Processing Settings</h3>
       </div>
-      <div class="card-body p-3">
-        <div class="row g-3">
-          <% @audio_settings.each do |setting| %>
-            <div class="col-sm-6 col-md-4 col-lg-3">
-              <label class="form-label mb-1" style="font-size: 0.85rem;">
-                <strong><%= setting.key.sub('audio.', '').titleize %></strong>
-                <% if setting.description.present? %>
-                  <br><small class="text-muted" style="font-size: 0.75rem;"><%= setting.description %></small>
-                <% end %>
-              </label>
-              <%= number_field_tag "settings[#{setting.id}]", setting.value, class: "form-control form-control-sm", step: 1 %>
-            </div>
-          <% end %>
-        </div>
+      <div class="row g-3">
+        <% @audio_settings.each do |setting| %>
+          <div class="col-sm-6 col-md-4 col-lg-3">
+            <label class="form-label admin-mb-xs admin-text-sm">
+              <strong class="admin-text-primary"><%= setting.key.sub('audio.', '').titleize %></strong>
+              <% if setting.description.present? %>
+                <br><small class="admin-text-muted admin-text-xs"><%= setting.description %></small>
+              <% end %>
+            </label>
+            <%= number_field_tag "settings[#{setting.id}]", setting.value, class: "admin-input admin-input-sm", step: 1 %>
+          </div>
+        <% end %>
       </div>
     </div>
 
-    <div class="text-end">
-      <%= f.submit "Save All Settings", class: "btn btn-primary" %>
+    <div class="admin-text-right">
+      <%= f.submit "Save All Settings", class: "admin-btn admin-btn-primary admin-btn-lg" %>
     </div>
   <% end %>
-
 </div>
 
-<style>
-  .card {
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-
-  .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  }
-</style>
-  </div>
-</div>
+<script>
+  document.addEventListener('turbo:load', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

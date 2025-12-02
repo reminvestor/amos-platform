@@ -1,0 +1,797 @@
+<div class="scheduled-tasks-canvas" id="tasks-and-schedules-canvas" data-conversation-id="<%= raw (canvas_data&.dig('session_id') || @session_id) %>" data-canvas-loaded="<%= Time.now.to_i %>" data-canvas-type="scheduled_tasks">
+  <!-- Tab Navigation -->
+  <% 
+    active_scheduled_count = ScheduledAgentTask.where(entity: current_entity, user: current_user).active.count rescue 0
+    paused_count = ScheduledAgentTask.where(entity: current_entity, user: current_user).paused.count rescue 0
+    all_scheduled_count = active_scheduled_count + paused_count
+  %>
+  <ul class="nav nav-tabs mb-4" id="tasksTab" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active-tasks" type="button" role="tab">
+        <i data-lucide="zap" style="width: 16px; height: 16px;" class="me-1"></i>
+        Running
+        <span class="badge bg-primary ms-1" id="active-count-badge">0</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="scheduled-tab" data-bs-toggle="tab" data-bs-target="#scheduled-tasks" type="button" role="tab">
+        <i data-lucide="calendar-clock" style="width: 16px; height: 16px;" class="me-1"></i>
+        Scheduled
+        <span class="badge bg-success ms-1"><%= active_scheduled_count %></span>
+      </button>
+    </li>
+    <% if paused_count > 0 %>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="paused-tab" data-bs-toggle="tab" data-bs-target="#paused-tasks" type="button" role="tab">
+        <i data-lucide="pause-circle" style="width: 16px; height: 16px;" class="me-1"></i>
+        Paused
+        <span class="badge bg-warning text-dark ms-1"><%= paused_count %></span>
+      </button>
+    </li>
+    <% end %>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#task-history" type="button" role="tab">
+        <i data-lucide="history" style="width: 16px; height: 16px;" class="me-1"></i>
+        History
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content" id="tasksTabContent">
+    <!-- Active Tasks Tab (Real-time running tasks) -->
+    <div class="tab-pane fade show active" id="active-tasks" role="tabpanel">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <p class="text-muted mb-0 small">Tasks currently running in the background</p>
+        <div class="d-flex gap-2">
+          <button onclick="refreshActiveTasks()" title="Refresh" class="btn btn-outline-secondary btn-sm">
+            <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+          </button>
+          <button onclick="purgeOldTasks()" title="Clear completed" class="btn btn-outline-secondary btn-sm">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div id="parallel-tasks-list" class="tasks-list">
+        <!-- Active tasks will be dynamically added here -->
+        <div class="empty-state text-center py-4" id="active-empty-state">
+          <i data-lucide="inbox" class="mb-3" style="width: 40px; height: 40px; color: rgba(255,255,255,0.4);"></i>
+          <p class="text-muted mb-1">No active tasks</p>
+          <small class="text-secondary">Tasks will appear here when agents start working</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scheduled Tasks Tab -->
+    <div class="tab-pane fade" id="scheduled-tasks" role="tabpanel">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <p class="text-muted mb-0 small">Automated tasks that run on a schedule</p>
+        <button class="btn btn-primary btn-sm" onclick="createNewTask()">
+          <i data-lucide="plus" style="width: 14px; height: 14px;"></i> New Task
+        </button>
+      </div>
+
+      <% tasks = ScheduledAgentTask.where(entity: current_entity, user: current_user).active.order(next_run_at: :asc).limit(20) rescue [] %>
+      
+      <% if tasks.any? %>
+        <div class="tasks-list">
+          <% tasks.each do |task| %>
+            <div class="task-card scheduled" data-task-id="<%= task.id %>">
+              <div class="d-flex align-items-start">
+                <div class="task-icon me-3">
+                  <span class="icon-emoji"><%= task.task_type_info[:icon] rescue '📋' %></span>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="mb-1 task-name"><%= task.name %></h6>
+                      <p class="mb-1 text-muted small task-schedule">
+                        <% case task.schedule_type %>
+                        <% when 'daily' %>
+                          <i data-lucide="repeat" style="width: 12px; height: 12px;"></i>
+                          Daily at <%= task.run_at_time&.strftime('%I:%M %p') %>
+                        <% when 'weekly' %>
+                          <i data-lucide="repeat" style="width: 12px; height: 12px;"></i>
+                          <%= Date::DAYNAMES[task.run_on_day || 0] %>s at <%= task.run_at_time&.strftime('%I:%M %p') %>
+                        <% when 'monthly' %>
+                          <i data-lucide="repeat" style="width: 12px; height: 12px;"></i>
+                          Monthly on the <%= task.run_on_day&.ordinalize %>
+                        <% else %>
+                          One-time
+                        <% end %>
+                        <% if task.timezone.present? && task.timezone != 'UTC' %>
+                          (<%= task.timezone %>)
+                        <% end %>
+                      </p>
+                      <div class="task-meta small">
+                        <% if task.next_run_at %>
+                          <span class="me-3 text-info">
+                            <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                            Next: <%= task.next_run_at.in_time_zone(task.timezone || 'UTC').strftime('%b %d, %I:%M %p %Z') %>
+                          </span>
+                        <% end %>
+                        <span class="text-muted">
+                          <i data-lucide="activity" style="width: 12px; height: 12px;"></i>
+                          <%= task.run_count %> runs
+                          <% if task.failure_count > 0 %>
+                            <span class="text-danger">(<%= task.failure_count %> failed)</span>
+                          <% end %>
+                        </span>
+                      </div>
+                    </div>
+                    <div class="task-status">
+                      <% case task.status %>
+                      <% when 'active' %>
+                        <span class="badge bg-success">Active</span>
+                      <% when 'paused' %>
+                        <span class="badge bg-warning text-dark">Paused</span>
+                      <% end %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="task-actions mt-2 pt-2 border-top border-secondary">
+                <button class="btn btn-sm btn-outline-primary run-now-btn" data-task-id="<%= task.id %>">
+                  <i data-lucide="zap" style="width: 14px; height: 14px;"></i> Run Now
+                </button>
+                <% if task.status == 'active' %>
+                  <button class="btn btn-sm btn-outline-warning pause-btn" data-task-id="<%= task.id %>">
+                    <i data-lucide="pause" style="width: 14px; height: 14px;"></i> Pause
+                  </button>
+                <% else %>
+                  <button class="btn btn-sm btn-outline-success resume-btn" data-task-id="<%= task.id %>">
+                    <i data-lucide="play" style="width: 14px; height: 14px;"></i> Resume
+                  </button>
+                <% end %>
+                <button class="btn btn-sm btn-outline-secondary edit-btn" data-task-id="<%= task.id %>" data-task-name="<%= task.name %>">
+                  <i data-lucide="edit" style="width: 14px; height: 14px;"></i> Edit
+                </button>
+                <button class="btn btn-sm btn-outline-danger delete-btn" data-task-id="<%= task.id %>" data-task-name="<%= task.name %>">
+                  <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+      <% else %>
+        <div class="empty-state text-center py-5">
+          <i data-lucide="calendar-plus" class="mb-3" style="width: 48px; height: 48px; color: rgba(255,255,255,0.5);"></i>
+          <h5>No Scheduled Tasks</h5>
+          <p class="text-muted mb-3">
+            Create automated tasks to run on a schedule.
+          </p>
+          <button class="btn btn-primary" onclick="createNewTask()">
+            <i data-lucide="plus" style="width: 16px; height: 16px;"></i> Create Your First Task
+          </button>
+          <p class="text-muted mt-3 small">
+            Or try saying: "Create a daily email summary at 8am"
+          </p>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Paused Tasks Tab -->
+    <div class="tab-pane fade" id="paused-tasks" role="tabpanel">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <p class="text-muted mb-0 small">Tasks that are paused or stopped due to failures</p>
+      </div>
+
+      <% paused_tasks = ScheduledAgentTask.where(entity: current_entity, user: current_user).paused.order(updated_at: :desc).limit(20) rescue [] %>
+      
+      <% if paused_tasks.any? %>
+        <div class="tasks-list">
+          <% paused_tasks.each do |task| %>
+            <div class="task-card paused-task" data-task-id="<%= task.id %>">
+              <div class="d-flex align-items-start">
+                <div class="task-icon me-3">
+                  <span class="icon-emoji"><%= task.task_type_info[:icon] rescue '📋' %></span>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="mb-1 task-name"><%= task.name %></h6>
+                      <p class="mb-1 text-muted small task-schedule">
+                        <% case task.schedule_type %>
+                        <% when 'daily' %>
+                          <i data-lucide="repeat" style="width: 12px; height: 12px;"></i>
+                          Daily at <%= task.run_at_time&.strftime('%I:%M %p') %>
+                        <% when 'weekly' %>
+                          <i data-lucide="repeat" style="width: 12px; height: 12px;"></i>
+                          <%= Date::DAYNAMES[task.run_on_day || 0] %>s at <%= task.run_at_time&.strftime('%I:%M %p') %>
+                        <% when 'monthly' %>
+                          <i data-lucide="repeat" style="width: 12px; height: 12px;"></i>
+                          Monthly on the <%= task.run_on_day&.ordinalize %>
+                        <% else %>
+                          One-time
+                        <% end %>
+                      </p>
+                      <div class="task-meta small">
+                        <% if task.consecutive_failures > 0 %>
+                          <span class="text-warning me-3">
+                            <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
+                            <%= task.consecutive_failures %> consecutive failures
+                          </span>
+                        <% end %>
+                        <span class="text-muted">
+                          <i data-lucide="activity" style="width: 12px; height: 12px;"></i>
+                          <%= task.run_count %> runs total
+                          <% if task.failure_count > 0 %>
+                            (<%= task.failure_count %> failed)
+                          <% end %>
+                        </span>
+                      </div>
+                    </div>
+                    <span class="badge bg-warning text-dark">Paused</span>
+                  </div>
+                </div>
+              </div>
+              <div class="task-actions mt-2 pt-2 border-top border-secondary">
+                <button class="btn btn-sm btn-success resume-btn" data-task-id="<%= task.id %>">
+                  <i data-lucide="play" style="width: 14px; height: 14px;"></i> Resume
+                </button>
+                <button class="btn btn-sm btn-outline-primary run-now-btn" data-task-id="<%= task.id %>">
+                  <i data-lucide="zap" style="width: 14px; height: 14px;"></i> Run Now
+                </button>
+                <button class="btn btn-sm btn-outline-secondary edit-btn" data-task-id="<%= task.id %>" data-task-name="<%= task.name %>">
+                  <i data-lucide="edit" style="width: 14px; height: 14px;"></i> Edit
+                </button>
+                <button class="btn btn-sm btn-outline-danger delete-btn" data-task-id="<%= task.id %>" data-task-name="<%= task.name %>">
+                  <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-state text-center py-5">
+          <i data-lucide="check-circle" class="mb-3" style="width: 48px; height: 48px; color: rgba(16, 185, 129, 0.5);"></i>
+          <h5>No Paused Tasks</h5>
+          <p class="text-muted">
+            All your scheduled tasks are running normally.
+          </p>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Task History Tab -->
+    <div class="tab-pane fade" id="task-history" role="tabpanel">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <p class="text-muted mb-0 small">Recent task executions and results</p>
+      </div>
+
+      <% recent_runs = ScheduledTaskRun.joins(:scheduled_agent_task)
+          .where(scheduled_agent_tasks: { entity_id: current_entity&.id, user_id: current_user&.id })
+          .order(created_at: :desc).limit(20) rescue [] %>
+      
+      <% if recent_runs.any? %>
+        <div class="tasks-list">
+          <% recent_runs.each do |run| %>
+            <div class="task-card history" data-run-id="<%= run.id %>">
+              <div class="d-flex align-items-start">
+                <div class="task-icon me-3">
+                  <% case run.status %>
+                  <% when 'completed' %>
+                    <i data-lucide="check-circle" style="width: 24px; height: 24px; color: #10B981;"></i>
+                  <% when 'failed' %>
+                    <i data-lucide="x-circle" style="width: 24px; height: 24px; color: #EF4444;"></i>
+                  <% when 'running' %>
+                    <i data-lucide="loader" style="width: 24px; height: 24px; color: #3B82F6;" class="spin"></i>
+                  <% else %>
+                    <i data-lucide="clock" style="width: 24px; height: 24px; color: #F59E0B;"></i>
+                  <% end %>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <h6 class="mb-1 task-name"><%= run.scheduled_agent_task&.name || 'Unknown Task' %></h6>
+                      <p class="mb-1 text-muted small">
+                        <% if run.result_summary.present? %>
+                          <%= run.result_summary.truncate(100) %>
+                        <% else %>
+                          No summary available
+                        <% end %>
+                      </p>
+                      <div class="task-meta small text-muted">
+                        <span>
+                          <i data-lucide="calendar" style="width: 12px; height: 12px;"></i>
+                          <%= run.created_at.strftime('%b %d, %I:%M %p') %>
+                        </span>
+                        <% if run.completed_at && run.started_at %>
+                          <span class="ms-2">
+                            <i data-lucide="timer" style="width: 12px; height: 12px;"></i>
+                            Duration: <%= ((run.completed_at - run.started_at) / 1.second).round %>s
+                          </span>
+                        <% end %>
+                      </div>
+                    </div>
+                    <span class="badge <%= run.status == 'completed' ? 'bg-success' : run.status == 'failed' ? 'bg-danger' : 'bg-secondary' %>">
+                      <%= run.status.titleize %>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="empty-state text-center py-5">
+          <i data-lucide="history" class="mb-3" style="width: 48px; height: 48px; color: rgba(255,255,255,0.5);"></i>
+          <h5>No Task History</h5>
+          <p class="text-muted">
+            Task execution history will appear here once your scheduled tasks run.
+          </p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+  .scheduled-tasks-canvas {
+    height: 100%;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .nav-tabs {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .nav-tabs .nav-link {
+    color: rgba(255, 255, 255, 0.7);
+    border: none;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s;
+  }
+
+  .nav-tabs .nav-link:hover {
+    color: #fff;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .nav-tabs .nav-link.active {
+    color: #fff;
+    background: transparent;
+    border-bottom: 2px solid #3B82F6;
+  }
+
+  .tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .task-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s ease;
+  }
+
+  .task-card:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .task-card.paused {
+    opacity: 0.7;
+    padding: 12px 16px;
+  }
+
+  .task-card.paused-task {
+    border-left: 3px solid #F59E0B;
+    background: rgba(245, 158, 11, 0.05);
+  }
+
+  .task-card.paused-task:hover {
+    background: rgba(245, 158, 11, 0.1);
+  }
+
+  .task-card.running {
+    border-left: 3px solid #3B82F6;
+  }
+
+  .task-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+  }
+
+  .icon-emoji {
+    font-size: 20px;
+  }
+
+  .task-name {
+    color: #fff;
+    font-weight: 500;
+  }
+
+  .task-schedule {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .task-meta {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .task-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .empty-state {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  /* Active task specific styles */
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-running { background-color: #3B82F6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); animation: pulse 2s infinite; }
+  .dot-completed { background-color: #10B981; }
+  .dot-failed { background-color: #EF4444; }
+  .dot-queued { background-color: #F59E0B; }
+  .dot-waiting { background-color: #8B5CF6; animation: pulse 1s infinite; }
+
+  @keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 4px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background-color: #3B82F6;
+    transition: width 0.3s ease;
+  }
+</style>
+
+<script>
+(function() {
+  console.log('📅 Initializing Tasks & Schedules canvas');
+
+  // Track active tasks count
+  let activeTasksCount = 0;
+
+  function updateActiveCount() {
+    const activeTasks = document.querySelectorAll('#parallel-tasks-list .task-card');
+    const countBadge = document.getElementById('active-count-badge');
+    const emptyState = document.getElementById('active-empty-state');
+    
+    activeTasksCount = activeTasks.length;
+    if (countBadge) countBadge.textContent = activeTasksCount;
+    
+    if (emptyState) {
+      emptyState.style.display = activeTasksCount > 0 ? 'none' : 'block';
+    }
+  }
+
+  function formatAgentType(type) {
+    if (!type) return 'System';
+    return type.replace(/_agent$/, '').split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+
+  function calculateDuration(startTime) {
+    if (!startTime) return '--';
+    const start = new Date(startTime);
+    const now = new Date();
+    const diff = Math.floor((now - start) / 1000);
+    if (diff < 60) return `${diff}s`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ${diff % 60}s`;
+    return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
+  }
+
+  // Add or update active task
+  window.addOrUpdateTask = function(taskData, isInitialLoad = false) {
+    console.log('🔧 addOrUpdateTask:', taskData);
+    const container = document.getElementById('parallel-tasks-list');
+    if (!container) return;
+    
+    const emptyState = document.getElementById('active-empty-state');
+    if (emptyState) emptyState.style.display = 'none';
+    
+    const taskId = String(taskData.task_id || taskData.id);
+    let taskElement = container.querySelector(`[data-task-id="${taskId}"]`);
+    const isNew = !taskElement;
+    
+    const status = (taskData.status || 'queued').toLowerCase();
+    const agentType = formatAgentType(taskData.task_type || taskData.agent_type || taskData.type);
+    const description = taskData.message || taskData.description || taskData.task || 'Processing...';
+    const progress = taskData.progress || 0;
+    const startTime = taskData.started_at || (taskElement ? taskElement.dataset.startedAt : new Date().toISOString());
+    const error = taskData.error || (status === 'failed' ? (taskData.message || 'Unknown error') : null);
+    
+    const statusLabel = {
+      queued: 'Queued', pending: 'Pending', running: 'Running', processing: 'Processing',
+      completed: 'Completed', failed: 'Failed', waiting_for_input: 'Waiting Input',
+      canceling: 'Canceling', canceled: 'Canceled'
+    }[status] || status;
+
+    const styleSuffix = {
+      queued: 'queued', pending: 'queued', running: 'running', processing: 'running',
+      completed: 'completed', failed: 'failed', waiting_for_input: 'waiting',
+      canceling: 'canceled', canceled: 'canceled'
+    }[status] || 'queued';
+
+    const htmlContent = `
+      <div class="d-flex align-items-start">
+        <div class="task-icon me-3">
+          <div class="status-dot dot-${styleSuffix}"></div>
+        </div>
+        <div class="flex-grow-1">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="mb-1 task-name d-flex align-items-center gap-2">
+                #${taskId.substring(0, 8)}
+                <span class="badge bg-secondary" style="font-size: 0.7rem;">${agentType}</span>
+              </h6>
+              <p class="mb-1 text-muted small">${description}</p>
+              ${error ? `<p class="mb-0 text-danger small"><i data-lucide="alert-triangle" style="width:12px;"></i> ${error}</p>` : ''}
+              <div class="task-meta small mt-1">
+                <span class="duration-timer" data-start-time="${startTime}">
+                  <i data-lucide="timer" style="width: 12px; height: 12px;"></i>
+                  ${calculateDuration(startTime)}
+                </span>
+              </div>
+            </div>
+            <span class="badge ${styleSuffix === 'completed' ? 'bg-success' : styleSuffix === 'failed' ? 'bg-danger' : styleSuffix === 'running' ? 'bg-primary' : 'bg-secondary'}">
+              ${statusLabel}
+            </span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: ${progress}%"></div>
+          </div>
+        </div>
+      </div>
+      ${['running', 'processing', 'waiting_for_input', 'queued'].includes(status) ? `
+        <div class="task-actions mt-2 pt-2 border-top border-secondary">
+          <button class="btn btn-sm btn-outline-danger" onclick="cancelTask('${taskId}')">
+            <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i> Cancel
+          </button>
+        </div>
+      ` : ''}
+    `;
+    
+    if (isNew) {
+      taskElement = document.createElement('div');
+      taskElement.className = 'task-card running';
+      taskElement.setAttribute('data-task-id', taskId);
+      taskElement.setAttribute('data-status', status);
+      taskElement.dataset.startedAt = startTime;
+      
+      if (isInitialLoad) {
+        container.appendChild(taskElement);
+      } else {
+        container.insertBefore(taskElement, container.firstChild);
+      }
+    } else {
+      taskElement.setAttribute('data-status', status);
+      taskElement.className = `task-card ${['running', 'processing'].includes(status) ? 'running' : ''}`;
+    }
+    
+    taskElement.innerHTML = htmlContent;
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    updateActiveCount();
+  };
+
+  // Handle canvas updates from SSE
+  window.handleCanvasUpdate = function(data) {
+    const taskId = data.task_id || data.job_id || data.id;
+    if (!taskId) return;
+
+    let updateData = {
+      task_id: taskId,
+      status: data.status,
+      message: data.message || data.status_message,
+      progress: data.progress
+    };
+
+    switch(data.type) {
+      case 'task_progress': break;
+      case 'task_completed':
+        updateData.status = 'completed';
+        updateData.progress = 100;
+        break;
+      case 'task_failed':
+        updateData.status = 'failed';
+        updateData.error = data.error;
+        break;
+      case 'user_input_required':
+        updateData.status = 'waiting_for_input';
+        updateData.message = data.question || "Waiting for user input...";
+        break;
+    }
+    addOrUpdateTask(updateData);
+  };
+
+  // Duration timer
+  setInterval(() => {
+    document.querySelectorAll('.duration-timer').forEach(el => {
+      const startTime = el.dataset.startTime;
+      const taskItem = el.closest('.task-card');
+      const status = taskItem?.getAttribute('data-status');
+      if (['running', 'processing', 'waiting_for_input', 'queued'].includes(status)) {
+        const icon = el.querySelector('i');
+        el.innerHTML = `<i data-lucide="timer" style="width: 12px; height: 12px;"></i> ${calculateDuration(startTime)}`;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+    });
+  }, 1000);
+
+  // Helper function to send message to Scout
+  function sendToScout(message) {
+    console.log('📤 Sending to Scout:', message);
+    // Try global function first (most reliable)
+    if (typeof window.scoutSendMessage === 'function') {
+      window.scoutSendMessage(message);
+    } else {
+      // Fallback to custom event
+      window.dispatchEvent(new CustomEvent('scout:send-message', {
+        detail: { message: message }
+      }));
+    }
+  }
+
+  // Scheduled task buttons
+  document.querySelectorAll('.run-now-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const taskId = this.dataset.taskId;
+      sendToScout(`Run scheduled task #${taskId} now`);
+    });
+  });
+
+  document.querySelectorAll('.pause-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const taskId = this.dataset.taskId;
+      sendToScout(`Pause scheduled task #${taskId}`);
+    });
+  });
+
+  document.querySelectorAll('.resume-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const taskId = this.dataset.taskId;
+      sendToScout(`Resume scheduled task #${taskId}`);
+    });
+  });
+
+  document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const taskId = this.dataset.taskId;
+      const taskName = this.dataset.taskName;
+      console.log('📝 Opening editor for task:', taskId, taskName);
+      // Load the editor canvas directly
+      loadTaskEditorCanvas(taskId);
+    });
+  });
+
+  document.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const taskName = this.dataset.taskName;
+      const taskId = this.dataset.taskId;
+      if (confirm(`Are you sure you want to delete "${taskName}"?`)) {
+        sendToScout(`Delete scheduled task #${taskId}`);
+      }
+    });
+  });
+
+  // Global functions
+  window.createNewTask = function() {
+    // Load the editor canvas for a new task
+    loadTaskEditorCanvas(null);
+  };
+  
+  // Load task editor canvas
+  window.loadTaskEditorCanvas = function(taskId) {
+    console.log('📝 Loading task editor canvas, taskId:', taskId);
+    
+    // Use the global scoutLoadCanvas function (exposed by scout_controller.js)
+    if (typeof window.scoutLoadCanvas === 'function') {
+      window.scoutLoadCanvas('scheduled_task_editor', { task_id: taskId }, true);
+      return;
+    }
+    
+    // Fallback: Make AJAX request to load the canvas
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    fetch('/scout/load_canvas', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({
+        canvas_name: 'scheduled_task_editor',
+        canvas_data: { task_id: taskId }
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.canvas_content) {
+        // Find the canvas container and update it
+        const canvasContainer = document.querySelector('.canvas-content') || 
+                               document.querySelector('[data-scout-target="canvasContent"]') ||
+                               document.getElementById('canvas-content');
+        if (canvasContainer) {
+          canvasContainer.innerHTML = data.canvas_content;
+          // Reinitialize lucide icons
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+      }
+    })
+    .catch(err => {
+      console.error('Failed to load task editor canvas:', err);
+      // Fallback to chat message
+      sendToScout(taskId ? `Edit scheduled task #${taskId}` : 'I want to create a new scheduled task');
+    });
+  };
+
+  window.refreshActiveTasks = function() {
+    console.log('🔄 Refreshing active tasks...');
+    // This will be handled by the SSE connection
+  };
+
+  window.cancelTask = function(taskId) {
+    if (confirm('Are you sure you want to cancel this task?')) {
+      const cleanId = String(taskId).replace('amos-', '').replace('plugin-', '');
+      fetch('/scout/cancel_job', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
+        },
+        body: JSON.stringify({ job_id: cleanId })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if(data.success) {
+          addOrUpdateTask({ task_id: taskId, status: 'canceled', message: 'Task canceled by user' });
+        }
+      });
+    }
+  };
+
+  window.purgeOldTasks = function() {
+    if (confirm('Clear completed and failed tasks?')) {
+      const container = document.getElementById('parallel-tasks-list');
+      container.querySelectorAll('.task-card[data-status="completed"], .task-card[data-status="failed"], .task-card[data-status="canceled"]').forEach(el => el.remove());
+      updateActiveCount();
+    }
+  };
+
+  // Initialize
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  updateActiveCount();
+})();
+</script>

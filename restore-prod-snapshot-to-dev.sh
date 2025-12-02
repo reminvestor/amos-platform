@@ -118,3 +118,6 @@ echo "  - Database name: agent_marketing_dev"
 echo ""
 echo "The dev ECS service is restarting to use the new database."
 echo "It should be ready in 2-3 minutes."
+
+
+

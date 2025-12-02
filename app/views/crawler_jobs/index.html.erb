@@ -3,7 +3,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
       <h1 class="card-title h5 mb-0">Web Crawlers</h1>
       <%= link_to new_crawler_job_path, class: "btn btn-primary btn-sm" do %>
-        <i class="fas fa-plus-circle me-1"></i> Create New Crawler
+        <i data-lucide="plus-circle" class="me-1"></i> Create New Crawler
       <% end %>
     </div>
     <div class="card-body">
@@ -49,11 +49,11 @@
                   <td>
                     <div class="btn-group btn-group-sm">
                       <%= link_to crawler_job_path(job), class: "btn btn-outline-primary", title: "Continue conversation" do %>
-                        <i class="fas fa-comments"></i>
+                        <i data-lucide="message-circle"></i>
                       <% end %>
                       <% if job.status == 'ready' %>
                         <%= button_to execute_crawler_job_path(job), method: :post, class: "btn btn-outline-success", title: "Run crawler", form: { class: "d-inline" } do %>
-                          <i class="fas fa-play"></i>
+                          <i data-lucide="play"></i>
                         <% end %>
                       <% end %>
                     </div>
@@ -66,12 +66,12 @@
       <% else %>
         <div class="text-center py-5">
           <div class="mb-3">
-            <i class="fas fa-spider fa-4x text-muted"></i>
+            <i data-lucide="bug" class="icon-4x text-muted"></i>
           </div>
           <h3 class="h5 mb-3">No crawlers yet</h3>
           <p class="text-muted mb-4">Create your first web crawler to start collecting contact information automatically.</p>
           <%= link_to new_crawler_job_path, class: "btn btn-primary" do %>
-            <i class="fas fa-plus-circle me-1"></i> Create Your First Crawler
+            <i data-lucide="plus-circle" class="me-1"></i> Create Your First Crawler
           <% end %>
         </div>
       <% end %>
@@ -86,21 +86,21 @@
       <div class="row">
         <div class="col-md-4 text-center mb-3">
           <div class="mb-2">
-            <i class="fas fa-comments fa-3x text-primary"></i>
+            <i data-lucide="message-circle" class="icon-3x text-primary"></i>
           </div>
           <h5>1. Chat with AI</h5>
           <p class="small">Describe what contacts you need and from which websites in a natural conversation.</p>
         </div>
         <div class="col-md-4 text-center mb-3">
           <div class="mb-2">
-            <i class="fas fa-code fa-3x text-success"></i>
+            <i data-lucide="code" class="icon-3x text-success"></i>
           </div>
           <h5>2. Generate & Test</h5>
           <p class="small">The AI creates a custom crawler and automatically tests it to ensure it works.</p>
         </div>
         <div class="col-md-4 text-center mb-3">
           <div class="mb-2">
-            <i class="fas fa-database fa-3x text-info"></i>
+            <i data-lucide="database" class="icon-3x text-info"></i>
           </div>
           <h5>3. Collect Contacts</h5>
           <p class="small">Run your crawler to collect contact information directly into your database.</p>

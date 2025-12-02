@@ -29,49 +29,40 @@ start-feature
 add tool
 ```
 
-Claude Code will recognize these and execute the corresponding skill/command/agent.
+Claude Code will recognize these and execute the corresponding skill or command.
 
 ---
 
 ## 📚 Documentation Files
 
-### [Agents Guide](./agents.md)
-Learn about specialized AI assistants that handle complex multi-step workflows.
-
-**Available Agents**:
-- `tool-builder` - Creates new Scout AI tools
-- `integration-connector` - Connects external APIs
-- `workflow-architect` - Designs V2 workflow templates
-- `bedrock-integration-specialist` - AWS Bedrock expert
-- `rails-system-test-specialist` - E2E testing guide
-- `ui-healer` - Fixes UI/UX issues
-
-**When to use**: Complex tasks needing domain expertise and guidance.
-
----
-
-### [Commands Guide](./commands.md)
-Quick shortcuts for common tasks.
+### [Commands Guide](../commands/README.md)
+Quick shortcuts for common development tasks.
 
 **Available Commands**:
-- `add-tool` - Create new tool
-- `add-integration` - Connect external API
-- `add-workflow` - Create workflow template
-- `build-feature` - Full feature implementation
-- `test-feature` - Comprehensive testing
+- `/add-tool` - Create new Scout AI tool
+- `/add-workflow` - Create V2 workflow template
+- `/add-integration` - Connect external API
+- `/build-feature` - Full feature implementation workflow
+- `/test-feature` - Comprehensive testing
+- `/quick-commit` - Fast commit workflow
+- `/new-dev-setup` - Developer onboarding
 
-**When to use**: Simple shortcuts and triggers.
+**When to use**: Common development tasks and workflows.
 
 ---
 
-### [Skills Guide](./skills.md)
-Parameterized workflows with MCP integration.
+### [Skills Directory](../skills/)
+Reusable, parameterized workflows for development operations.
 
-**Available Skills**:
-- `docker-dev` - Docker Compose management
-- `start-feature` - Azure DevOps backlog workflow
+**Key Skills**:
+- `starting-features` - Create features, tools, workflows, integrations
+- `testing-tools-manually` - Test Scout AI tools interactively
+- `testing-workflows-manually` - Test V2 workflows end-to-end
+- `running-tests` - Run automated test suite
+- `managing-docker-development` - Docker Compose operations
+- `finishing-feature-work` - Pre-commit quality checks
 
-**When to use**: Workflows needing parameters or MCP tools.
+**When to use**: Direct workflow execution with parameters.
 
 ---
 
@@ -111,113 +102,86 @@ start-feature
 
 **In Claude Code chat**:
 ```
-add tool
+/add-tool Create a tool to export analytics
 ```
 
-This triggers the Tool Builder agent to guide you.
+This uses the `starting-features` skill to guide you through tool creation.
 
-### Using an Agent
+### Using a Skill Directly
 
-Agents activate automatically when Claude Code detects your task matches their expertise.
-
-**Or explicitly**:
+**In Claude Code**:
 ```
-I need help from the workflow-architect agent
+Use starting-features skill
 ```
+
+Or with the Task tool for specific operations.
 
 ---
 
 ## 📖 What Each Feature Type Does
 
-### Agents = Domain Experts
-
-**Think of agents as specialized consultants:**
-- Deep knowledge of specific domains
-- Guide you through complex workflows
-- Make recommendations based on AMOS patterns
-- Handle multi-step processes
-
-**Example**:
-```
-You: "I need to create a tool for sending emails"
-
-→ Tool Builder Agent activates
-→ Asks about parameters
-→ Generates tool class
-→ Creates tests
-→ Ensures proper patterns
-```
-
----
-
 ### Commands = Quick Shortcuts
 
-**Think of commands as aliases or shortcuts:**
-- Fast triggers for common tasks
-- No parameters needed
-- Can activate agents or skills
-- Multiple aliases
+**Think of commands as convenient shortcuts:**
+- Fast triggers for common workflows
+- Use skills behind the scenes
+- Simplify complex operations
+- Remember common patterns
 
 **Example**:
 ```
-You: "add integration"
+You: "/add-tool Create a tool for sending emails"
 
-→ Command triggers Integration Connector agent
-→ Agent guides you through setup
+→ Command uses starting-features skill
+→ Guides you through implementation
+→ Generates tool class
+→ Creates tests
+→ Ensures proper AMOS patterns
 ```
 
 ---
 
-### Skills = Parameterized Workflows
+### Skills = Reusable Workflows
 
-**Think of skills as reusable scripts:**
-- Accept parameters
-- Call MCP tools (Azure DevOps, GitHub, etc.)
-- Execute bash commands
-- Multi-step automation
+**Think of skills as reusable, parameterized workflows:**
+- Accept parameters for customization
+- Execute multi-step processes
+- Follow AMOS patterns and conventions
+- Can be composed together
 
 **Example**:
 ```
-You: "docker-dev db db_action=migrate"
+You: "Use testing-tools-manually with tool_name=send_email_tool"
 
 → Skill executes:
-  1. Checks Docker services
-  2. Runs migration in container
-  3. Shows results
+  1. Loads tool from catalog
+  2. Shows tool definition
+  3. Prompts for test parameters
+  4. Executes tool with context
+  5. Shows results
 ```
 
 ---
 
 ## 🎯 When to Use What
 
-### Use an Agent when you need:
-- ✅ Guidance through complex process
-- ✅ Domain-specific expertise
-- ✅ Recommendations based on best practices
-- ✅ Multi-turn conversation
-- ✅ Help making decisions
-
-**Example**: "How do I integrate with Stripe?" → Integration Connector Agent
-
----
-
 ### Use a Command when you need:
-- ✅ Quick shortcut
-- ✅ Simple trigger
-- ✅ No parameters
-- ✅ Common task
+- ✅ Quick shortcut for common tasks
+- ✅ Simple, memorable trigger
+- ✅ Guided workflow
+- ✅ Standard AMOS patterns
 
-**Example**: "add tool" → Triggers Tool Builder Agent
+**Example**: `/add-integration Shopify` → Sets up Shopify integration
 
 ---
 
-### Use a Skill when you need:
-- ✅ Parameterized workflow
-- ✅ Call MCP tools
-- ✅ Automated multi-step process
-- ✅ Reusable operation
+### Use a Skill Directly when you need:
+- ✅ More control over parameters
+- ✅ Compose multiple skills
+- ✅ Custom workflow variations
+- ✅ Testing and validation
 
-**Example**: "start-feature work_item_id=1234" → Creates branch from Azure DevOps
+**Example**: `Use testing-tools-manually with tool_name=your_tool` → Test specific tool
 
 ---
 
@@ -254,18 +218,13 @@ docker-dev test
 
 ```
 # In Claude Code:
-add tool
+/add-tool Create a tool to send SMS via Twilio
 
-# Agent asks questions:
-Agent: "What should the tool do?"
-You: "Send SMS messages via Twilio"
-
-Agent: "What parameters does it need?"
-You: "phone_number, message"
-
-# Agent generates:
-# - app/services/tools/send_sms_tool.rb
-# - test/services/tools/send_sms_tool_test.rb
+# Uses starting-features skill to:
+# - Guide you through tool design
+# - Generate: app/services/tools/send_sms_tool.rb
+# - Create: test/services/tools/send_sms_tool_test.rb
+# - Verify tool catalog registration
 ```
 
 ---
@@ -274,20 +233,13 @@ You: "phone_number, message"
 
 ```
 # In Claude Code:
-add integration
+/add-integration Twilio
 
-Agent: "Which service?"
-You: "Twilio"
-
-Agent: "API documentation URL?"
-You: "https://www.twilio.com/docs/..."
-
-# Agent creates:
-# - Integration model definition
-# - Connection authentication
-# - API operations
-# - Client service
-# - Tools for Scout
+# Uses starting-features skill to:
+# - Create Integration record
+# - Set up Connection authentication
+# - Define API operations
+# - Build integration tools
 ```
 
 ---
@@ -315,28 +267,25 @@ docker-dev rebuild
 
 ```
 .claude/
-├── agents/           # Specialized AI assistants
-│   ├── tool-builder.md
-│   ├── integration-connector.md
-│   ├── workflow-architect.md
-│   └── ...
-│
-├── commands/         # Quick shortcuts
+├── commands/         # Quick command shortcuts
+│   ├── README.md
 │   ├── add-tool.md
+│   ├── add-workflow.md
 │   ├── add-integration.md
 │   ├── build-feature.md
+│   ├── test-feature.md
 │   └── ...
 │
-├── skills/          # Parameterized workflows
-│   ├── docker-dev.yaml
-│   └── start-feature.yaml
+├── skills/          # Reusable workflows
+│   ├── starting-features/
+│   ├── testing-tools-manually/
+│   ├── testing-workflows-manually/
+│   ├── running-tests/
+│   ├── managing-docker-development/
+│   └── ...
 │
-└── docs/            # This documentation
-    ├── README.md (you are here)
-    ├── agents.md
-    ├── commands.md
-    ├── skills.md
-    └── skills-guide.md
+└── docs/            # Documentation
+    └── README.md (you are here)
 ```
 
 ---
@@ -368,20 +317,19 @@ Edit `.claude/.mcp.json`:
 
 ## 📚 Further Reading
 
-- **[agents.md](./agents.md)** - Detailed agent documentation
-- **[commands.md](./commands.md)** - Complete command reference
-- **[skills.md](./skills.md)** - Skill creation and usage
-- **[skills-guide.md](./skills-guide.md)** - docker-dev and start-feature examples
+- **[Commands README](../commands/README.md)** - Complete command reference
+- **[Skills Directory](../skills/)** - All available skills
+- **[CLAUDE.md](../../CLAUDE.md)** - Project architecture and patterns
 
 ---
 
 ## 🆘 Getting Help
 
 **In Claude Code, just ask**:
-- "How do I use docker-dev?"
-- "Show me start-feature examples"
-- "What agents are available?"
-- "Help me create a new tool"
+- "How do I create a new tool?"
+- "Help me test my workflow"
+- "What skills are available?"
+- "Show me available commands"
 
 Claude Code will guide you!
 
@@ -390,19 +338,19 @@ Claude Code will guide you!
 ## 🎓 Learning Path
 
 **Beginner**:
-1. Start with **commands** - simple shortcuts
-2. Try **docker-dev** skill for daily Docker tasks
-3. Use **start-feature** for backlog items
+1. Start with **commands** - `/add-tool`, `/test-feature`, etc.
+2. Try **managing-docker-development** skill for Docker tasks
+3. Use **starting-features** for feature development
 
 **Intermediate**:
-4. Work with **agents** for feature development
-5. Create your own **commands**
-6. Customize **skills** with parameters
+4. Use skills directly with parameters
+5. Chain multiple skills together
+6. Create your own custom commands
 
 **Advanced**:
-7. Create custom **agents** for team workflows
-8. Build complex **skills** with MCP integration
-9. Integrate new MCP servers
+7. Build custom skills for team workflows
+8. Extend existing skills with new capabilities
+9. Integrate new tools and patterns
 
 ---
 
@@ -419,10 +367,10 @@ docker-dev logs service=web # View logs
 
 **Feature Development**:
 ```
-start-feature              # Interactive backlog selection
-add tool                   # Create new tool
-add integration           # Connect external API
-build-feature             # Full feature workflow
+/add-tool [description]         # Create new tool
+/add-workflow [description]     # Create workflow template
+/add-integration [service]      # Connect external API
+/build-feature [description]    # Full feature workflow
 ```
 
 **Testing**:

@@ -1,0 +1,317 @@
+<% content_for :title, "#{@agent.name} - Energy Details" %>
+
+<div class="admin-page">
+  <div class="admin-header">
+    <div class="header-content">
+      <%= link_to agents_admin_agent_collaboration_index_path, class: 'text-decoration-none text-muted' do %>
+        <i data-lucide="arrow-left"></i> Back to Agents
+      <% end %>
+      <h1 class="mt-2">
+        <i data-lucide="bot" class="me-2"></i> <%= @agent.name %>
+      </h1>
+      <p class="text-muted">
+        <%= @agent.role.titleize %> •
+        <%= @agent.entity&.name || 'System' %> •
+        <% badge_class = case @agent.status
+           when 'active' then 'badge-success'
+           when 'in_school' then 'badge-warning'
+           when 'probation' then 'badge-danger'
+           else 'badge-secondary'
+           end %>
+        <span class="admin-badge <%= badge_class %>"><%= @agent.status.titleize %></span>
+      </p>
+    </div>
+    <div class="header-actions">
+      <% unless @agent.in_school? %>
+        <%= link_to enroll_agent_admin_agent_collaboration_path(@agent), method: :post, class: "admin-btn admin-btn-warning", data: { confirm: 'Send to school?' } do %>
+          <i data-lucide="graduation-cap"></i> Send to School
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column -->
+    <div class="col-lg-8">
+      <!-- Energy State -->
+      <div class="admin-card mb-4">
+        <div class="card-header">
+          <h3><i data-lucide="zap"></i> Energy State</h3>
+        </div>
+        <div class="card-body">
+          <% if @energy_state %>
+            <div class="row g-4">
+              <div class="col-md-6">
+                <h6 class="text-muted mb-2">Current Energy</h6>
+                <div class="d-flex align-items-center gap-3">
+                  <div class="display-4 <%= @energy_state.current_energy < 20 ? 'text-danger' : @energy_state.current_energy < 50 ? 'text-warning' : 'text-success' %>">
+                    <%= @energy_state.current_energy.round(1) %>
+                  </div>
+                  <div class="text-muted">/ <%= @energy_state.max_energy.round(0) %></div>
+                </div>
+                <div class="progress mt-2 admin-progress-10">
+                  <% energy_pct = [(@energy_state.current_energy / @energy_state.max_energy * 100), 0].max %>
+                  <% bar_class = energy_pct > 50 ? 'bg-success' : energy_pct > 20 ? 'bg-warning' : 'bg-danger' %>
+                  <div class="progress-bar <%= bar_class %>" style="width: <%= energy_pct %>%"></div>
+                </div>
+                <% if @energy_state.in_debt? %>
+                  <div class="alert alert-danger mt-2 mb-0 py-2">
+                    <i data-lucide="alert-triangle" class="admin-icon-16"></i>
+                    In debt since <%= @energy_state.debt_started_at&.strftime('%b %d, %H:%M') %>
+                  </div>
+                <% end %>
+              </div>
+              <div class="col-md-6">
+                <div class="row g-3">
+                  <div class="col-6">
+                    <div class="border rounded p-3 text-center">
+                      <div class="h4 mb-0 text-success"><%= @energy_state.total_earned.round(1) %></div>
+                      <small class="text-muted">Total Earned</small>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="border rounded p-3 text-center">
+                      <div class="h4 mb-0 text-danger"><%= @energy_state.total_spent.round(1) %></div>
+                      <small class="text-muted">Total Spent</small>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="border rounded p-3 text-center">
+                      <div class="h4 mb-0"><%= @energy_state.elo_rating.round(0) %></div>
+                      <small class="text-muted">Elo Rating</small>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div class="border rounded p-3 text-center">
+                      <div class="h4 mb-0"><%= @energy_state.regeneration_rate %>/hr</div>
+                      <small class="text-muted">Regen Rate</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr>
+
+            <div class="row g-4 text-center">
+              <div class="col-md-3">
+                <div class="h3 text-success"><%= @energy_state.tasks_completed %></div>
+                <div class="text-muted">Completed</div>
+              </div>
+              <div class="col-md-3">
+                <div class="h3 text-danger"><%= @energy_state.tasks_failed %></div>
+                <div class="text-muted">Failed</div>
+              </div>
+              <div class="col-md-3">
+                <div class="h3"><%= (@energy_state.success_rate * 100).round(1) %>%</div>
+                <div class="text-muted">Success Rate</div>
+              </div>
+              <div class="col-md-3">
+                <div class="h3"><%= (@energy_state.avg_quality * 100).round(0) %>%</div>
+                <div class="text-muted">Avg Quality</div>
+              </div>
+            </div>
+          <% else %>
+            <div class="text-center text-muted py-4">No energy state</div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Capability Beliefs -->
+      <div class="admin-card mb-4">
+        <div class="card-header">
+          <h3><i data-lucide="target"></i> Capability Beliefs</h3>
+        </div>
+        <div class="card-body p-0">
+          <% if @capability_beliefs.any? %>
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Task Type</th>
+                  <th>Attempts</th>
+                  <th>Success Rate</th>
+                  <th>Avg Quality</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @capability_beliefs.each do |belief| %>
+                  <tr>
+                    <td><%= belief.task_type.titleize %></td>
+                    <td><%= belief.attempts %></td>
+                    <td><%= (belief.success_rate * 100).round(1) %>%</td>
+                    <td>
+                      <div class="progress admin-progress-20 admin-progress-w-100">
+                        <div class="progress-bar" style="width: <%= belief.avg_quality * 100 %>%">
+                          <%= (belief.avg_quality * 100).round(0) %>%
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <% if belief.is_specialty %>
+                        <span class="admin-badge badge-success">⭐ Specialty</span>
+                      <% elsif belief.is_weakness %>
+                        <span class="admin-badge badge-danger">⚠️ Weakness</span>
+                      <% else %>
+                        <span class="admin-badge badge-secondary">Normal</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% else %>
+            <div class="text-center text-muted py-4">No capability beliefs</div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Transactions -->
+      <div class="admin-card">
+        <div class="card-header">
+          <h3><i data-lucide="receipt"></i> Recent Transactions</h3>
+        </div>
+        <div class="card-body p-0">
+          <div class="admin-table-responsive admin-scroll-400">
+            <table class="admin-table">
+              <thead class="sticky-top">
+                <tr>
+                  <th>Time</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Balance</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @transactions.each do |tx| %>
+                  <tr>
+                    <td><small><%= tx.created_at.strftime('%b %d, %H:%M') %></small></td>
+                    <td>
+                      <% badge_class = case tx.transaction_type
+                         when 'earned', 'task_completion', 'helped_agent' then 'badge-success'
+                         when 'spent' then 'badge-info'
+                         when 'penalty', 'task_failure' then 'badge-danger'
+                         else 'badge-secondary'
+                         end %>
+                      <span class="admin-badge <%= badge_class %>"><%= tx.transaction_type %></span>
+                    </td>
+                    <td class="<%= tx.amount > 0 ? 'text-success' : 'text-danger' %>">
+                      <%= tx.amount > 0 ? '+' : '' %><%= tx.amount.round(2) %>
+                    </td>
+                    <td><%= tx.balance_after.round(1) %></td>
+                    <td><small><%= tx.reason %></small></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-lg-4">
+      <!-- Decision Boundary -->
+      <div class="admin-card mb-4">
+        <div class="card-header">
+          <h3><i data-lucide="brain"></i> Decision Boundary</h3>
+        </div>
+        <div class="card-body">
+          <% if @decision_boundary %>
+            <div class="mb-3">
+              <label class="text-muted">Current Threshold</label>
+              <div class="h3"><%= @decision_boundary.current_threshold.round(1) %>%</div>
+              <small class="text-muted">Confidence below this = ask for help</small>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="border rounded p-2 text-center">
+                  <div class="h5 mb-0"><%= (@decision_boundary.ask_tendency * 100).round(0) %>%</div>
+                  <small class="text-muted">Ask Tendency</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="border rounded p-2 text-center">
+                  <div class="h5 mb-0"><%= (@decision_boundary.solo_tendency * 100).round(0) %>%</div>
+                  <small class="text-muted">Solo Tendency</small>
+                </div>
+              </div>
+            </div>
+            <div class="mt-3">
+              <div class="d-flex justify-content-between">
+                <span>Decision Accuracy</span>
+                <span><%= (@decision_boundary.accuracy * 100).round(1) %>%</span>
+              </div>
+              <div class="progress mt-1 admin-progress-8">
+                <div class="progress-bar" style="width: <%= @decision_boundary.accuracy * 100 %>%"></div>
+              </div>
+            </div>
+          <% else %>
+            <div class="text-muted text-center py-3">No decision boundary</div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Relationships -->
+      <div class="admin-card mb-4">
+        <div class="card-header">
+          <h3><i data-lucide="users"></i> Relationships</h3>
+        </div>
+        <div class="card-body p-0">
+          <% if @relationships.any? %>
+            <div class="list-group list-group-flush admin-scroll-300">
+              <% @relationships.first(10).each do |rel| %>
+                <% other = rel.requester_id == @agent.id ? rel.helper : rel.requester %>
+                <% direction = rel.requester_id == @agent.id ? 'Helps me' : 'I help' %>
+                <div class="list-group-item d-flex justify-content-between">
+                  <div>
+                    <strong><%= other.name %></strong>
+                    <br><small class="text-muted"><%= direction %></small>
+                  </div>
+                  <div class="text-end">
+                    <div class="h6 mb-0"><%= (rel.compatibility_score * 100).round(0) %>%</div>
+                    <small class="text-muted">compatibility</small>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center text-muted py-3">No relationships</div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- School History -->
+      <div class="admin-card">
+        <div class="card-header">
+          <h3><i data-lucide="graduation-cap"></i> School History</h3>
+        </div>
+        <div class="card-body p-0">
+          <% if @school_history.any? %>
+            <div class="list-group list-group-flush">
+              <% @school_history.each do |enrollment| %>
+                <div class="list-group-item d-flex justify-content-between">
+                  <div>
+                    <strong>Attempt #<%= enrollment.attempt_number %></strong>
+                    <br><small class="text-muted"><%= enrollment.enrollment_reason %></small>
+                  </div>
+                  <% badge_class = case enrollment.outcome
+                     when 'success' then 'badge-success'
+                     when 'failure' then 'badge-danger'
+                     when 'irreplaceable_failure' then 'badge-warning'
+                     else 'badge-info'
+                     end %>
+                  <span class="admin-badge <%= badge_class %>"><%= enrollment.status %></span>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <div class="text-center text-muted py-3">Never in school</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

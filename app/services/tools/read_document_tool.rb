@@ -21,7 +21,12 @@ module Tools
             },
             asset_id: {
               type: 'integer',
-              description: 'ImageAsset ID of the uploaded file'
+              description: 'ImageAsset or RagDocument ID of the uploaded file'
+            },
+            asset_type: {
+              type: 'string',
+              description: 'Type of asset: "document" for RagDocument (PDFs, docs), "image" for ImageAsset (images). Required to look in the correct table.',
+              enum: ['document', 'image']
             },
             max_length: {
               type: 'integer',
@@ -38,6 +43,7 @@ module Tools
       
       file_url = get_arg(args, :file_url)
       asset_id = get_arg(args, :asset_id)
+      asset_type = get_arg(args, :asset_type) # 'document' or 'image'
       max_length = get_arg(args, :max_length, 50000)
       
       # Need either file_url or asset_id
@@ -49,8 +55,54 @@ module Tools
       begin
         # Find the file
         if asset_id
-          asset = ImageAsset.find_by(id: asset_id, entity: @entity)
-          return error_response("File not found or access denied") unless asset
+          Rails.logger.info "🔍 ReadDocumentTool: Looking for asset_id: #{asset_id}, asset_type: #{asset_type}"
+          
+          asset = nil
+          
+          # Use asset_type to look in the correct table first
+          if asset_type == 'document'
+            # Look for RagDocument first (PDFs, docs, etc.)
+            Rails.logger.info "🔍 Looking for RagDocument first (asset_type: document)..."
+            rag_document = RagDocument.joins(:rag_store).find_by(
+              id: asset_id, 
+              rag_stores: { entity_id: @entity.id }
+            )
+            
+            if rag_document && rag_document.file.attached?
+              asset = rag_document
+              Rails.logger.info "✅ Found as RagDocument: #{rag_document.id}"
+            else
+              # Fallback to ImageAsset if not found as RagDocument
+              Rails.logger.info "🔍 Not found as RagDocument, trying ImageAsset..."
+              asset = ImageAsset.find_by(id: asset_id, entity: @entity)
+              Rails.logger.info "✅ Found as ImageAsset: #{asset.id}" if asset
+            end
+          else
+            # Look for ImageAsset first (images, or when asset_type not specified)
+            Rails.logger.info "🔍 Looking for ImageAsset first..."
+            asset = ImageAsset.find_by(id: asset_id, entity: @entity)
+            
+            if asset
+              Rails.logger.info "✅ Found as ImageAsset: #{asset.id}"
+            else
+              # Fallback to RagDocument if not found as ImageAsset
+              Rails.logger.info "🔍 Not found as ImageAsset, trying RagDocument..."
+              rag_document = RagDocument.joins(:rag_store).find_by(
+                id: asset_id, 
+                rag_stores: { entity_id: @entity.id }
+              )
+              
+              if rag_document && rag_document.file.attached?
+                asset = rag_document
+                Rails.logger.info "✅ Found as RagDocument: #{rag_document.id}"
+              end
+            end
+          end
+          
+          unless asset
+            Rails.logger.error "❌ Asset not found as ImageAsset or RagDocument"
+            return error_response("File not found or access denied")
+          end
           
           # Download the file to a temporary location for processing
           # This ensures compatibility with tools like ImageMagick
@@ -110,12 +162,19 @@ module Tools
           text_content = text_content[0...max_length] + "\n\n[Content truncated - full document has #{text_content.length} characters]"
         end
 
+        # Trigger RAG indexing for this document if not already indexed (only for ImageAssets)
+        # RagDocuments are already in the RAG system
+        if asset_id && asset.is_a?(ImageAsset)
+          enqueue_rag_indexing(asset, filename)
+        end
+
         # Suggest loading document viewer canvas
         @context[:canvas_suggestion] = 'document_viewer'
         @context[:canvas_data] = {
           filename: filename,
           content_type: content_type,
           asset_id: asset_id,  # Canvas can build URL from this
+          asset_type: asset_type || (asset.is_a?(RagDocument) ? 'document' : 'image'),  # Pass asset_type so canvas knows which table to query
           size: asset&.file&.blob&.byte_size,
           extracted_text_preview: text_content.first(500)
         }
@@ -127,6 +186,7 @@ module Tools
           content_type: content_type,
           character_count: text_content.length,
           truncated: text_content.length >= max_length,
+          source: 'uploaded',  # Document from uploaded files
           message: "Successfully extracted #{text_content.length} characters from #{filename}"
         )
         
@@ -321,6 +381,58 @@ module Tools
       Rails.logger.error "PDF conversion error: #{e.message}"
       Rails.logger.error "Please install required tools with: brew install imagemagick ghostscript"
       raise "PDF to image conversion failed: #{e.message}. Please ensure ImageMagick and Ghostscript are installed."
+    end
+
+    def enqueue_rag_indexing(asset, filename)
+      # Check if this asset has already been indexed
+      existing_rag_docs = RagDocument.joins(:rag_store)
+        .where(rag_stores: { entity_id: @entity.id })
+        .where("rag_documents.original_filename = ?", filename)
+        .count
+
+      if existing_rag_docs > 0
+        Rails.logger.info "📚 Document #{filename} already indexed in RAG, skipping"
+        return
+      end
+
+      # Create a persistent temp file from ActiveStorage
+      ext = File.extname(filename)
+      persistent_temp = Tempfile.new(['rag_document', ext])
+      persistent_temp.binmode
+
+      # Copy file from ActiveStorage to temp location
+      asset.file.blob.open do |blob_file|
+        persistent_temp.write(blob_file.read)
+      end
+
+      persistent_temp.rewind
+      persistent_temp_path = persistent_temp.path
+      persistent_temp.close  # Close but keep the file (don't unlink)
+
+      # Create a RagStore for this document if not exists
+      rag_store = @entity.rag_stores.find_or_create_by(
+        name: "Chat Documents",
+        app_name: "scout",
+        store_type: "general"
+      ) do |store|
+        store.status = 'active'
+      end
+
+      Rails.logger.info "📤 Enqueuing RAG indexing for #{filename}"
+
+      # Enqueue the document pipeline job to process the file
+      Rag::DocumentPipelineJob.perform_later(
+        rag_store.id,
+        persistent_temp_path,
+        {
+          source: "upload",
+          asset_id: asset.id,
+          content_type: asset.file.content_type
+        }
+      )
+    rescue => e
+      Rails.logger.warn "⚠️ Failed to enqueue RAG indexing: #{e.message}"
+      # Don't raise - this shouldn't block document reading
     end
   end
 end

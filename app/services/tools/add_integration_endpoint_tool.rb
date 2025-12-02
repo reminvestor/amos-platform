@@ -68,6 +68,10 @@ module Tools
         end
 
         # Create IntegrationOperation record (secure DB-only approach!)
+        # Schema: operation_id, name, description, http_method, path_template,
+        # request_schema, response_schema, pagination_strategy, is_idempotent,
+        # requires_confirmation, max_limit, documentation, examples, version,
+        # deprecated_at, is_enabled
         operation = integration.integration_operations.create!(
           operation_id: endpoint_name.underscore,
           name: endpoint_name.titleize,
@@ -78,12 +82,7 @@ module Tools
           response_schema: response_format || {},
           is_idempotent: http_method.upcase == "GET",
           requires_confirmation: [ "DELETE", "POST", "PUT", "PATCH" ].include?(http_method.upcase),
-          is_enabled: true,
-          metadata: {
-            generated_by: "ai_integration_builder",
-            created_at: Time.current,
-            parameters: parameters
-          }
+          is_enabled: true
         )
 
         result = {

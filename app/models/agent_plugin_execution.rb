@@ -1,0 +1,162 @@
+# == Schema Information
+#
+# Table name: agent_plugin_executions
+#
+#  id                    :bigint           not null, primary key
+#  agent_plugin_id       :bigint           not null
+#  workflow_execution_id :bigint
+#  user_id               :bigint           not null
+#  status                :string           default("running"), not null
+#  input_context         :jsonb            default({})
+#  output_result         :jsonb            default({})
+#  duration_ms           :integer
+#  tokens_used           :integer          default(0)
+#  model_id              :string
+#  model_input_tokens    :integer          default(0)
+#  model_output_tokens   :integer          default(0)
+#  started_at            :datetime
+#  completed_at          :datetime
+#  created_at            :datetime         not null
+#  updated_at            :datetime         not null
+#
+class AgentPluginExecution < ApplicationRecord
+  # Associations
+  belongs_to :agent_plugin
+  belongs_to :workflow_execution, optional: true
+  belongs_to :user
+
+  has_many :agent_input_requests, dependent: :destroy
+
+  # Validations
+  validates :status, presence: true, inclusion: { in: %w[running completed failed waiting_for_input cancelled] }
+
+  # Scopes
+  scope :running, -> { where(status: 'running') }
+  scope :completed, -> { where(status: 'completed') }
+  scope :failed, -> { where(status: 'failed') }
+  scope :cancelled, -> { where(status: 'cancelled') }
+  scope :waiting_for_input, -> { where(status: 'waiting_for_input') }
+  scope :recent, -> { order(created_at: :desc) }
+  scope :for_agent, ->(agent_plugin) { where(agent_plugin: agent_plugin) }
+  scope :for_user, ->(user) { where(user: user) }
+  scope :since, ->(time) { where('created_at >= ?', time) }
+
+  # Callbacks
+  before_create :set_started_at
+
+  # Instance methods
+  def mark_completed!(output = {})
+    # Set completed_at first so we can calculate duration
+    self.completed_at = Time.current
+
+    update!(
+      status: 'completed',
+      output_result: output,
+      completed_at: completed_at,
+      duration_ms: calculate_duration
+    )
+  end
+
+  def mark_failed!(error_message = nil)
+    output = output_result.deep_dup || {}
+    output['error'] = error_message if error_message.present?
+
+    # Set completed_at first so we can calculate duration
+    self.completed_at = Time.current
+
+    update!(
+      status: 'failed',
+      output_result: output,
+      completed_at: completed_at,
+      duration_ms: calculate_duration
+    )
+  end
+
+  def add_tokens(count)
+    increment!(:tokens_used, count)
+  end
+
+  def track_model_usage(model_id, input_tokens, output_tokens)
+    update_columns(
+      model_id: model_id,
+      model_input_tokens: input_tokens,
+      model_output_tokens: output_tokens
+    )
+  end
+
+  def execution_time
+    return nil unless started_at && completed_at
+    (completed_at - started_at).to_f
+  end
+
+  def success?
+    status == 'completed'
+  end
+
+  def error_message
+    output_result.dig('error')
+  end
+
+  def model_display_name
+    return nil unless model_id.present?
+
+    # Extract short model name from full ARN
+    # e.g., "us.anthropic.claude-sonnet-4-5-v2:0" -> "sonnet-4-5"
+    model_id.split('.').last.gsub('anthropic.claude-', '').gsub('-v2:', '').gsub(':0', '')
+  end
+
+  def calculate_cost
+    return 0 unless model_id.present? && model_input_tokens.to_i > 0
+
+    # Model pricing (per 1M tokens)
+    pricing = case model_id
+    when /sonnet-4-5/
+      { input: 3.00, output: 15.00 }
+    when /sonnet-3-5/
+      { input: 3.00, output: 15.00 }
+    when /haiku-3-5/
+      { input: 0.80, output: 4.00 }
+    when /opus-3/
+      { input: 15.00, output: 75.00 }
+    else
+      { input: 3.00, output: 15.00 } # Default to Sonnet pricing
+    end
+
+    input_cost = (model_input_tokens / 1_000_000.0) * pricing[:input]
+    output_cost = (model_output_tokens / 1_000_000.0) * pricing[:output]
+
+    input_cost + output_cost
+  end
+
+  # Class methods
+  def self.average_duration
+    completed.average(:duration_ms)&.to_i || 0
+  end
+
+  def self.success_rate
+    total = count
+    return 0 if total.zero?
+
+    successful = completed.count
+    ((successful.to_f / total) * 100).round(2)
+  end
+
+  def self.total_tokens_used
+    sum(:tokens_used)
+  end
+
+  def result_data
+    output_result
+  end
+  
+  private
+
+  def set_started_at
+    self.started_at ||= Time.current
+  end
+
+  def calculate_duration
+    return nil unless started_at && completed_at
+    ((completed_at - started_at) * 1000).to_i  # Convert to milliseconds
+  end
+end

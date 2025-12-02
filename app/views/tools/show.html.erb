@@ -1,0 +1,40 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <%= link_to tools_path, class: "text-muted" do %>
+          <i data-lucide="arrow-left" class="icon-sm"></i>
+        <% end %>
+        <h1 class="h3 mb-0 text-white"><%= @tool.name %></h1>
+        <span class="badge bg-info"><%= @tool.execution_type %></span>
+      </div>
+      <p class="text-muted mb-0"><%= @tool.description %></p>
+    </div>
+    <%= link_to edit_tool_path(@tool), class: "btn btn-outline-secondary" do %>
+      <i data-lucide="edit-2"></i> Edit Tool
+    <% end %>
+  </div>
+
+  <div class="card bg-dark border-secondary mb-4">
+    <div class="card-header border-secondary">
+      <h5 class="mb-0 text-white">Implementation</h5>
+    </div>
+    <div class="card-body">
+      <% if @tool.execution_type == 'ruby_code' %>
+        <pre class="bg-black p-3 rounded text-light mb-0" style="white-space: pre-wrap; font-size: 0.85rem;"><code class="language-ruby"><%= @tool.code %></code></pre>
+      <% else %>
+        <pre class="bg-black p-3 rounded text-light mb-0" style="white-space: pre-wrap; font-size: 0.85rem;"><code class="language-json"><%= JSON.pretty_generate(@tool.api_config) rescue '{}' %></code></pre>
+      <% end %>
+    </div>
+  </div>
+  
+  <div class="card bg-dark border-secondary mb-4">
+    <div class="card-header border-secondary">
+      <h5 class="mb-0 text-white">Parameters</h5>
+    </div>
+    <div class="card-body">
+      <pre class="bg-black p-3 rounded text-light mb-0" style="white-space: pre-wrap; font-size: 0.85rem;"><code class="language-json"><%= JSON.pretty_generate(@tool.parameters) rescue '{}' %></code></pre>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,53 @@
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header border-secondary">
+          <h5 class="mb-0 text-white">Edit Sequence Step</h5>
+        </div>
+        <div class="card-body">
+          <%= form_with model: [@sequence, @step], local: true do |f| %>
+            <% if @step.errors.any? %>
+              <div class="alert alert-danger">
+                <h6><%= pluralize(@step.errors.count, "error") %> prohibited this step from being saved:</h6>
+                <ul>
+                  <% @step.errors.full_messages.each do |message| %>
+                    <li><%= message %></li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <%= f.label :step_number, class: "form-label text-white" %>
+                <%= f.number_field :step_number, class: "form-control bg-dark text-white border-secondary" %>
+              </div>
+              <div class="col-md-6">
+                <%= f.label :delay_hours, "Wait Time (Hours)", class: "form-label text-white" %>
+                <%= f.number_field :delay_hours, class: "form-control bg-dark text-white border-secondary" %>
+                <div class="form-text text-muted">Time to wait after previous step (or enrollment).</div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :email_template_id, "Email Template", class: "form-label text-white" %>
+              <%= f.collection_select :email_template_id, @email_templates, :id, :name, { prompt: "Select a template" }, { class: "form-select bg-dark text-white border-secondary" } %>
+            </div>
+
+            <div class="mb-3">
+              <%= f.label :subject, "Subject Override (Optional)", class: "form-label text-white" %>
+              <%= f.text_field :subject, class: "form-control bg-dark text-white border-secondary", placeholder: "Overrides template subject" %>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <%= link_to "Cancel", email_sequence_path(@sequence), class: "btn btn-outline-secondary" %>
+              <%= f.submit "Update Step", class: "btn btn-primary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

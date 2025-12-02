@@ -6,7 +6,7 @@ class PlannerAgentService
     @entity = entity
     @session_id = session_id
     @progress_callback = progress_callback
-    @ai_service = BedrockService.new
+    @ai_service = BedrockService.new(user: user, entity: entity)
     @tool_catalog = Tools::ToolCatalog.instance
   end
 

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}  Running Linters & Auto-Formatters${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+# Parse arguments
+AUTO_CORRECT=false
+CHECK_ONLY=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -a|--auto-correct)
+      AUTO_CORRECT=true
+      shift
+      ;;
+    -c|--check-only)
+      CHECK_ONLY=true
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+# RuboCop for Ruby files
+echo -e "${YELLOW}1/2 Running RuboCop...${NC}"
+if [ "$AUTO_CORRECT" = true ]; then
+  bundle exec rubocop -A
+elif [ "$CHECK_ONLY" = true ]; then
+  bundle exec rubocop
+else
+  bundle exec rubocop -a
+fi
+
+if [ $? -eq 0 ]; then
+  echo -e "${GREEN}✓ RuboCop passed${NC}"
+else
+  echo -e "${RED}✗ RuboCop found issues${NC}"
+  exit 1
+fi
+
+echo ""
+
+# ERB Lint for templates
+echo -e "${YELLOW}2/2 Running ERB Lint...${NC}"
+if [ "$AUTO_CORRECT" = true ] || [ "$CHECK_ONLY" = false ]; then
+  bundle exec erblint --autocorrect --lint-all
+elif [ "$CHECK_ONLY" = true ]; then
+  bundle exec erblint --lint-all
+fi
+
+if [ $? -eq 0 ]; then
+  echo -e "${GREEN}✓ ERB Lint passed${NC}"
+else
+  echo -e "${RED}✗ ERB Lint found issues${NC}"
+  exit 1
+fi
+
+echo ""
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}  ✓ All linters passed!${NC}"
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

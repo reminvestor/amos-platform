@@ -7,7 +7,7 @@
         <i data-lucide="box" class="text-primary"></i>
         <span class="brand-text">Amos</span>
       </div>
-      <p class="brand-tagline">Your AI Marketing Agent</p>
+      <p class="brand-tagline">Your AI Business Automation Platform</p>
     </div>
 
     <div class="auth-features">
@@ -93,25 +93,38 @@
 
         <div class="form-group">
           <%= f.label :password, "Password", class: "form-label" %>
-          <% if @minimum_password_length %>
-            <span class="form-optional">(<%= @minimum_password_length %> characters minimum)</span>
-          <% end %>
-          <%= f.password_field :password, 
-              autocomplete: "new-password", 
+          <span class="form-optional">(10 characters minimum)</span>
+          <%= f.password_field :password,
+              autocomplete: "new-password",
               class: "form-control",
-              placeholder: "Create a secure password" %>
+              id: "user_password",
+              minlength: "10",
+              placeholder: "Create a secure password (min 10 chars)" %>
         </div>
 
         <div class="form-group">
-          <%= f.label :password_confirmation, "Confirm Password", class: "form-label" %>
-          <%= f.password_field :password_confirmation, 
-              autocomplete: "new-password", 
-              class: "form-control",
-              placeholder: "Confirm your password" %>
+          <div class="password-confirm-group">
+            <%= f.label :password_confirmation, "Confirm Password", class: "form-label" %>
+            <span class="password-match-indicator" id="passwordMatchIndicator">
+              <i data-lucide="check-circle" class="match-icon"></i>
+              <span class="match-text">Passwords match</span>
+            </span>
+          </div>
+          <div class="password-field-wrapper">
+            <%= f.password_field :password_confirmation,
+                autocomplete: "new-password",
+                class: "form-control",
+                id: "user_password_confirmation",
+                placeholder: "Confirm your password" %>
+            <span class="field-checkmark" id="fieldCheckmark">
+              <i data-lucide="check" class="checkmark-icon"></i>
+            </span>
+          </div>
+          <small class="form-text password-match-message" id="passwordMatchMessage" style="display: none;"></small>
         </div>
 
         <div class="form-group">
-          <%= f.submit "Create Account & Meet AMOS", class: "btn btn-primary btn-lg w-100" %>
+          <%= f.submit "Create Account & Meet AMOS", class: "btn btn-primary btn-lg w-100", id: "signup-submit-btn" %>
         </div>
       <% end %>
 
@@ -284,6 +297,58 @@
   outline: none;
 }
 
+/* Password field validation states */
+#user_password.password-invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.15);
+}
+
+#user_password.password-valid {
+  border-color: #10b981;
+  box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.15);
+}
+
+#user_password_confirmation.password-invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.15);
+}
+
+#user_password_confirmation.password-valid {
+  border-color: #10b981;
+  box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.15), 0 0 8px rgba(16, 185, 129, 0.3);
+  animation: successGlow 0.6s ease-out;
+  padding-right: 2.75rem;
+}
+
+/* Checkmark icon on the password field */
+.field-checkmark {
+  position: absolute;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #10b981;
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.field-checkmark.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.field-checkmark .checkmark-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3));
+}
+
 .form-control::placeholder {
   color: var(--scout-text-muted, #9ca3af);
 }
@@ -300,6 +365,108 @@
   font-size: 0.875rem;
   font-weight: 400;
   margin-left: 0.25rem;
+}
+
+.password-confirm-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.password-field-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-match-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  opacity: 0;
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.password-match-indicator.match {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  opacity: 1;
+}
+
+.password-match-indicator.no-match {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  opacity: 1;
+}
+
+.password-match-indicator .match-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.password-match-message {
+  font-size: 0.85rem !important;
+  margin-top: 0.25rem;
+  transition: all 0.3s ease;
+}
+
+.password-match-message.error {
+  color: #ef4444;
+}
+
+.password-match-message.success {
+  color: #10b981;
+  font-weight: 600;
+  font-size: 0.95rem !important;
+  animation: successPulse 0.6s ease-out;
+}
+
+@keyframes successPulse {
+  0% {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pulse animation for success indicator */
+.password-match-indicator.match {
+  animation: indicatorPulse 0.6s ease-out;
+}
+
+@keyframes indicatorPulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes successGlow {
+  0% {
+    box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.15), 0 0 0 rgba(16, 185, 129, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.15), 0 0 8px rgba(16, 185, 129, 0.3);
+  }
 }
 
 .form-check-input {
@@ -430,8 +597,119 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Lucide icons
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
+  }
+
+  // Password matching checker
+  const passwordInput = document.getElementById('user_password');
+  const passwordConfirmInput = document.getElementById('user_password_confirmation');
+  const passwordMatchIndicator = document.getElementById('passwordMatchIndicator');
+  const passwordMatchMessage = document.getElementById('passwordMatchMessage');
+  const submitButton = document.getElementById('signup-submit-btn');
+  const fieldCheckmark = document.getElementById('fieldCheckmark');
+
+  function checkPasswordMatch() {
+    const password = passwordInput.value;
+    const passwordConfirm = passwordConfirmInput.value;
+    const MIN_PASSWORD_LENGTH = 10;
+
+    // Check password length validity
+    const passwordLongEnough = password.length >= MIN_PASSWORD_LENGTH;
+    const passwordsMatch = password === passwordConfirm;
+
+    // Update password field styling (always show, even on first char)
+    if (password.length > 0) {
+      if (passwordLongEnough) {
+        passwordInput.classList.remove('password-invalid');
+        passwordInput.classList.add('password-valid');
+      } else {
+        passwordInput.classList.remove('password-valid');
+        passwordInput.classList.add('password-invalid');
+      }
+    } else {
+      passwordInput.classList.remove('password-invalid', 'password-valid');
+    }
+
+    // Only show full feedback if user has typed in confirmation field
+    if (passwordConfirm.length === 0) {
+      passwordConfirmInput.classList.remove('password-invalid', 'password-valid');
+      passwordMatchIndicator.classList.remove('match', 'no-match');
+      passwordMatchMessage.style.display = 'none';
+      fieldCheckmark.classList.remove('show');
+      submitButton.disabled = false;
+      return;
+    }
+
+    const passwordsValid = password.length > 0 && passwordConfirm.length > 0;
+
+    // Update confirmation field styling
+    if (!passwordLongEnough || !passwordsMatch) {
+      passwordConfirmInput.classList.remove('password-valid');
+      passwordConfirmInput.classList.add('password-invalid');
+    } else {
+      passwordConfirmInput.classList.remove('password-invalid');
+      passwordConfirmInput.classList.add('password-valid');
+    }
+
+    if (passwordsValid) {
+      if (!passwordLongEnough) {
+        // Password too short
+        passwordMatchIndicator.classList.remove('match');
+        passwordMatchIndicator.classList.add('no-match');
+        passwordMatchMessage.textContent = `✗ Password must be at least ${MIN_PASSWORD_LENGTH} characters`;
+        passwordMatchMessage.classList.remove('success');
+        passwordMatchMessage.classList.add('error');
+        passwordMatchMessage.style.display = 'block';
+        fieldCheckmark.classList.remove('show');
+        submitButton.disabled = true;
+      } else if (passwordsMatch) {
+        // Passwords match and length is valid
+        passwordMatchIndicator.classList.remove('no-match');
+        passwordMatchIndicator.classList.add('match');
+        passwordMatchMessage.style.display = 'none';
+        fieldCheckmark.classList.add('show');
+        submitButton.disabled = false;
+      } else {
+        // Passwords don't match
+        passwordMatchIndicator.classList.remove('match');
+        passwordMatchIndicator.classList.add('no-match');
+        passwordMatchMessage.textContent = '✗ Passwords do not match';
+        passwordMatchMessage.classList.remove('success');
+        passwordMatchMessage.classList.add('error');
+        passwordMatchMessage.style.display = 'block';
+        fieldCheckmark.classList.remove('show');
+        submitButton.disabled = true;
+      }
+    }
+  }
+
+  // Add event listeners for real-time checking
+  if (passwordInput && passwordConfirmInput) {
+    passwordInput.addEventListener('input', checkPasswordMatch);
+    passwordConfirmInput.addEventListener('input', checkPasswordMatch);
+  }
+
+  // Reinitialize Lucide icons when password match indicator or checkmark changes
+  const observer = new MutationObserver(function() {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+
+  if (passwordMatchIndicator) {
+    observer.observe(passwordMatchIndicator, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+  }
+
+  if (fieldCheckmark) {
+    observer.observe(fieldCheckmark, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
   }
 });
 </script>

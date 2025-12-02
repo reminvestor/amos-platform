@@ -34,7 +34,6 @@ gem "sidekiq", "~> 7.2"
 gem "dotenv-rails", "~> 3.0"
 
 # Mailgun for email delivery
-gem "mailgun-ruby", "~> 1.2"
 
 # AI Integration
 gem "ruby-openai", "~> 6.3"
@@ -68,17 +67,26 @@ gem "thruster", require: false
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 1.2"
 
+# Counter caching for document counts
+gem "counter_culture", "~> 3.5"
+
 # Vector database support for RAG
 gem "neighbor", "~> 0.5"
 
 # AWS SDK for Bedrock integration
 gem "aws-sdk-bedrockruntime", "~> 1.0"
+gem "aws-sdk-bedrockagent", "~> 1.0"
+gem "aws-sdk-bedrockagentruntime", "~> 1.0"
 gem "aws-sdk-s3", "~> 1.0"
 gem "aws-sdk-polly", "~> 1.0"
+gem "aws-sdk-textract", "~> 1.0"
+gem "aws-sdk-comprehend", "~> 1.0"
+gem "aws-sdk-opensearchservice", "~> 1.0"
+gem "aws-sdk-rails", "~> 3.10"
+gem "aws-sdk-sesv2"
 
 # Vector storage and RAG
 gem "pinecone", "~> 1.2"
-gem "neighbor", "~> 0.5" # pgvector integration for Rails
 
 # HTTP client for API calls (Serper, etc)
 gem "httparty", "~> 0.22.0"
@@ -123,6 +131,11 @@ gem "anthropic", "~> 0.1.0"  # Add Anthropic gem for Claude
 # Rate limiting and API protection
 gem "rack-attack", "~> 6.7"
 
+# Agent Lightning integration for RL-based optimization
+#gem "agentlightning", "~> 0.1.0"  # Agent Lightning framework for RL training
+gem "opentelemetry-api", "~> 1.3"  # Distributed tracing support
+gem "opentelemetry-instrumentation-base", "~> 0.22"  # Base instrumentation framework
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
@@ -132,6 +145,9 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+
+  # ERB template linting
+  gem "erb_lint", require: false
 end
 
 group :development do

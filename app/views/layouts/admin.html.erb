@@ -6,15 +6,25 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
+    <!-- Apply theme immediately to prevent flash -->
+    <script>
+      (function() {
+        var theme = localStorage.getItem('amos_theme_preference');
+        if (!theme) {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-    <link rel="stylesheet" href="/assets/admin_dark.css" data-turbo-track="reload">
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
   </head>
 
-  <body class="admin-dark">
+  <body class="admin-layout">
     <% if @current_admin %>
       <%# Left Sidebar Navigation %>
       <aside class="admin-sidebar" id="adminSidebar">
@@ -61,9 +71,61 @@
             <span>AI Pipeline</span>
           <% end %>
 
-          <%= link_to admin_observability_ai_usage_path, class: "nav-item #{'active' if request.path.start_with?('/admin/observability')}" do %>
-            <i data-lucide="bar-chart-3"></i>
-            <span>Observability</span>
+          <%= link_to admin_parallel_tasks_path, class: "nav-item #{'active' if controller_name == 'parallel_tasks'}" do %>
+            <i data-lucide="layers"></i>
+            <span>Parallel Tasks</span>
+          <% end %>
+
+          <div class="nav-group #{'active' if request.path.start_with?('/admin/observability')}">
+            <div class="nav-item nav-group-header" style="cursor: pointer;">
+              <i data-lucide="bar-chart-3"></i>
+              <span>Observability</span>
+              <i data-lucide="chevron-down" class="chevron-icon"></i>
+            </div>
+            <div class="nav-submenu">
+              <%= link_to admin_observability_ai_usage_path, class: "nav-subitem #{'active' if current_page?(admin_observability_ai_usage_path)}" do %>
+                <span>AI Usage</span>
+              <% end %>
+              <%= link_to admin_observability_workflows_path, class: "nav-subitem #{'active' if current_page?(admin_observability_workflows_path)}" do %>
+                <span>Workflows</span>
+              <% end %>
+              <%= link_to admin_observability_performance_path, class: "nav-subitem #{'active' if current_page?(admin_observability_performance_path)}" do %>
+                <span>Performance</span>
+              <% end %>
+              <%= link_to admin_observability_errors_path, class: "nav-subitem #{'active' if current_page?(admin_observability_errors_path)}" do %>
+                <span>Errors</span>
+              <% end %>
+            </div>
+          </div>
+
+          <%= link_to dashboard_admin_agent_collaboration_index_path, class: "nav-item #{'active' if request.path.start_with?('/admin/agent_collaboration')}" do %>
+            <i data-lucide="users"></i>
+            <span>Agent Collaboration</span>
+          <% end %>
+
+          <%= link_to admin_agent_lightning_path, class: "nav-item #{'active' if controller_name == 'agent_lightning'}" do %>
+            <i data-lucide="zap"></i>
+            <span>Agent Lightning</span>
+          <% end %>
+
+          <%= link_to admin_benchmarks_path, class: "nav-item #{'active' if controller_name == 'benchmarks'}" do %>
+            <i data-lucide="gauge"></i>
+            <span>Benchmarks</span>
+          <% end %>
+
+          <%= link_to admin_scheduled_tasks_path, class: "nav-item #{'active' if controller_name == 'scheduled_tasks'}" do %>
+            <i data-lucide="clock"></i>
+            <span>Scheduled Tasks</span>
+          <% end %>
+
+          <%= link_to admin_agent_plugins_path, class: "nav-item #{'active' if controller_name == 'agent_plugins'}" do %>
+            <i data-lucide="bot"></i>
+            <span>Agent Plugins</span>
+          <% end %>
+
+          <%= link_to admin_tools_path, class: "nav-item #{'active' if controller_name == 'tools'}" do %>
+            <i data-lucide="wrench"></i>
+            <span>Tools</span>
           <% end %>
         </nav>
 
@@ -86,8 +148,34 @@
         </div>
       </aside>
 
+      <%# Flash Messages / Toast Notifications %>
+      <% if notice.present? %>
+        <div class="admin-toast-container" data-auto-dismiss="true">
+          <div class="admin-alert admin-alert-success" style="margin-bottom: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);">
+            <div class="alert-content">
+              <i data-lucide="check-circle"></i>
+              <span><%= notice %></span>
+            </div>
+            <button class="alert-close" data-dismiss-alert>×</button>
+          </div>
+        </div>
+      <% end %>
+      <% if alert.present? %>
+        <div class="admin-toast-container" data-auto-dismiss="true">
+          <div class="admin-alert admin-alert-error" style="margin-bottom: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);">
+            <div class="alert-content">
+              <i data-lucide="alert-circle"></i>
+              <span><%= alert %></span>
+            </div>
+            <button class="alert-close" data-dismiss-alert>×</button>
+          </div>
+        </div>
+      <% end %>
+
       <%# Main Content Area %>
-      <%= yield %>
+      <div class="admin-content">
+        <%= yield %>
+      </div>
 
     <% else %>
       <!-- Login page content -->
@@ -99,12 +187,44 @@
       document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
         initSidebarToggle();
+        initNavGroups();
+        initToastNotifications();
+        initThemeToggle();
       });
 
       document.addEventListener('turbo:load', () => {
         lucide.createIcons();
         initSidebarToggle();
+        initNavGroups();
+        initToastNotifications();
+        initThemeToggle();
       });
+
+      function initToastNotifications() {
+        // Auto-dismiss toasts after 5 seconds
+        const toastContainers = document.querySelectorAll('.admin-toast-container[data-auto-dismiss="true"]');
+        toastContainers.forEach(container => {
+          setTimeout(() => {
+            container.style.animation = 'slideOutRight 0.3s ease-in forwards';
+            setTimeout(() => {
+              container.remove();
+            }, 300);
+          }, 5000);
+        });
+
+        // Manual dismiss buttons
+        document.querySelectorAll('[data-dismiss-alert]').forEach(button => {
+          button.addEventListener('click', (e) => {
+            const container = e.target.closest('.admin-toast-container');
+            if (container) {
+              container.style.animation = 'slideOutRight 0.3s ease-in forwards';
+              setTimeout(() => {
+                container.remove();
+              }, 300);
+            }
+          });
+        });
+      }
 
       function initSidebarToggle() {
         const sidebar = document.getElementById('adminSidebar');
@@ -126,6 +246,96 @@
           // Re-initialize icons after DOM changes
           setTimeout(() => lucide.createIcons(), 100);
         });
+      }
+
+      function initNavGroups() {
+        // Handle nav group dropdowns
+        document.querySelectorAll('.nav-group-header').forEach(header => {
+          // Remove any existing listeners by cloning
+          const newHeader = header.cloneNode(true);
+          header.parentNode.replaceChild(newHeader, header);
+
+          newHeader.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const navGroup = newHeader.parentElement;
+            const groupName = newHeader.querySelector('span')?.textContent?.trim() || 'unknown';
+
+            navGroup.classList.toggle('expanded');
+
+            // Save expanded state to localStorage
+            const isExpanded = navGroup.classList.contains('expanded');
+            localStorage.setItem(`navGroup_${groupName}_expanded`, isExpanded);
+
+            console.log('Nav group toggled:', groupName, isExpanded);
+
+            // Re-initialize icons after DOM changes
+            setTimeout(() => {
+              if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+              }
+            }, 100);
+          });
+        });
+
+        // Restore expanded state from localStorage or auto-expand active groups
+        document.querySelectorAll('.nav-group').forEach(group => {
+          const header = group.querySelector('.nav-group-header');
+          const groupName = header?.querySelector('span')?.textContent?.trim() || 'unknown';
+          const savedState = localStorage.getItem(`navGroup_${groupName}_expanded`);
+
+          // If we have a saved state, use it; otherwise expand if active
+          if (savedState !== null) {
+            if (savedState === 'true') {
+              group.classList.add('expanded');
+            }
+          } else if (group.classList.contains('active')) {
+            group.classList.add('expanded');
+            localStorage.setItem(`navGroup_${groupName}_expanded`, 'true');
+          }
+        });
+      }
+
+      function initThemeToggle() {
+        const currentTheme = document.documentElement.getAttribute('data-theme') ||
+                           localStorage.getItem('amos_theme_preference') ||
+                           (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+        // Apply theme if not already set
+        if (!document.documentElement.getAttribute('data-theme')) {
+          document.documentElement.setAttribute('data-theme', currentTheme);
+        }
+
+        // Update theme toggle icon
+        const themeIcon = document.querySelector('[data-theme-icon]');
+        if (themeIcon) {
+          themeIcon.setAttribute('data-lucide', currentTheme === 'dark' ? 'sun' : 'moon');
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+          }
+        }
+
+        // Add click handler for theme toggle
+        const themeToggle = document.querySelector('[data-theme-toggle]');
+        if (themeToggle && !themeToggle.hasAttribute('data-theme-initialized')) {
+          themeToggle.setAttribute('data-theme-initialized', 'true');
+          themeToggle.addEventListener('click', function() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            const newTheme = current === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('amos_theme_preference', newTheme);
+
+            // Update icon
+            const icon = document.querySelector('[data-theme-icon]');
+            if (icon) {
+              icon.setAttribute('data-lucide', newTheme === 'dark' ? 'sun' : 'moon');
+              if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+              }
+            }
+          });
+        }
       }
     </script>
   </body>

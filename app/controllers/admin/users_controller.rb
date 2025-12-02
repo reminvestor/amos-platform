@@ -1,6 +1,6 @@
 class Admin::UsersController < Admin::BaseController
-  before_action :set_user, only: [ :show, :edit, :update, :destroy, :make_admin ]
-  before_action -> { authorize_admin!(:editor) }, only: [ :edit, :update, :destroy, :make_admin ]
+  before_action :set_user, only: [ :show, :edit, :update, :destroy, :make_admin, :reset_password ]
+  before_action -> { authorize_admin!(:editor) }, only: [ :edit, :update, :destroy, :make_admin, :reset_password ]
 
   def index
     @users = User.includes(:entity).order(created_at: :desc).page(params[:page])
@@ -40,6 +40,22 @@ class Admin::UsersController < Admin::BaseController
     end
   end
 
+  def reset_password
+    # Generate a new temporary password
+    temp_password = SecureRandom.alphanumeric(12)
+    
+    if @user.update(password: temp_password, password_confirmation: temp_password)
+      # Send password reset email
+      UserMailer.admin_password_reset(@user, temp_password).deliver_later
+      
+      redirect_to admin_user_path(@user), 
+        notice: "Password reset successfully. Temporary password: #{temp_password}. An email has been sent to the user."
+    else
+      redirect_to admin_user_path(@user), 
+        alert: "Failed to reset password: #{@user.errors.full_messages.join(', ')}"
+    end
+  end
+
   private
 
   def set_user
@@ -48,6 +64,6 @@ class Admin::UsersController < Admin::BaseController
 
   def user_params
     # Only allow role changes from the dedicated make_admin action, not from general updates
-    params.require(:user).permit(:email, :first_name, :last_name, :onboarded)
+    params.require(:user).permit(:email, :first_name, :last_name, :onboarded, :agents_limit, :tools_limit, :integrations_limit)
   end
 end

@@ -54,21 +54,62 @@ demo_users.each do |user_data|
   end
 end
 
+# Seed AdminUser records for back-office access
+puts "\n🔐 Setting up admin users for back-office access..."
+
+admin_users = [
+  {
+    email: 'admin@demo.com',
+    first_name: 'Admin',
+    last_name: 'User',
+    role: :super_admin
+  }
+]
+
+admin_users.each do |admin_data|
+  admin = AdminUser.find_or_initialize_by(email: admin_data[:email])
+  admin.assign_attributes(
+    first_name: admin_data[:first_name],
+    last_name: admin_data[:last_name],
+    password: 'password123',
+    password_confirmation: 'password123',
+    role: admin_data[:role]
+  )
+
+  if admin.new_record?
+    admin.save!
+    puts "✅ Created AdminUser: #{admin_data[:email]} (#{admin_data[:role]})"
+  else
+    admin.save!
+    puts "✅ Updated AdminUser: #{admin_data[:email]} (#{admin_data[:role]})"
+  end
+end
+
 puts "
 📝 Demo Login Credentials:
 
+   🎯 MAIN APPLICATION (app.localhost:3000):
+
    🔑 Admin User:
       Email: admin@demo.com
-      Role: Full access
+      Password: password123
+      Role: Full access to all features
 
    📊 Marketer User:
       Email: marketer@demo.com
+      Password: password123
       Role: Marketing features
 
    👁️  Viewer User:
       Email: viewer@demo.com
+      Password: password123
       Role: Read-only access
 
-   URL: http://localhost:3000
-   Password: (See README for demo credentials)
+   ⚙️ BACK-OFFICE ADMIN (localhost:3000/admin):
+
+   🔐 Back-Office Access:
+      Email: admin@demo.com
+      Password: password123
+      Role: super_admin
+      Purpose: Platform administration and maintenance
 "

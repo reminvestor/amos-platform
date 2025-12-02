@@ -1,6 +1,4 @@
-class Entity::UsersController < ApplicationController
-  before_action :authenticate_user!
-  before_action :require_entity_admin
+class Entity::UsersController < Entity::BaseController
   before_action :set_user, only: [ :show, :edit, :update, :destroy, :change_role ]
 
   def index
@@ -64,9 +62,4 @@ class Entity::UsersController < ApplicationController
     params.require(:user).permit(*permitted_params)
   end
 
-  def require_entity_admin
-    unless current_user.entity_admin?
-      redirect_to root_path, alert: "You must be an entity admin to access user management."
-    end
-  end
 end

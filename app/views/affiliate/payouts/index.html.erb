@@ -5,7 +5,7 @@
   <div class="row mb-4">
     <div class="col-12">
       <h1 class="display-5 mb-2">
-        <i class="bi bi-wallet2 text-primary"></i>
+        <i data-lucide="wallet" class="text-primary"></i>
         Payout History
       </h1>
       <p class="text-muted">Track your commission payments and payout history</p>
@@ -24,7 +24,7 @@
               <small class="text-muted">All-time earnings paid</small>
             </div>
             <div class="bg-success bg-opacity-10 p-3 rounded">
-              <i class="bi bi-cash-stack text-success fs-3"></i>
+              <i data-lucide="banknote" class="text-success icon-3x"></i>
             </div>
           </div>
         </div>
@@ -41,7 +41,7 @@
               <small class="text-muted">Processing & pending</small>
             </div>
             <div class="bg-warning bg-opacity-10 p-3 rounded">
-              <i class="bi bi-hourglass-split text-warning fs-3"></i>
+              <i data-lucide="hourglass" class="text-warning icon-3x"></i>
             </div>
           </div>
         </div>
@@ -55,7 +55,7 @@
       <div class="alert alert-info">
         <div class="row align-items-center">
           <div class="col-md-8">
-            <i class="bi bi-info-circle-fill me-2"></i>
+            <i data-lucide="info" class="me-2"></i>
             <strong>Payout Schedule:</strong> Payments are processed monthly when your balance reaches $50.
             <br>
             <small class="text-muted">
@@ -64,7 +64,7 @@
           </div>
           <div class="col-md-4 text-md-end mt-2 mt-md-0">
             <%= link_to affiliate_dashboard_path, class: "btn btn-sm btn-outline-primary" do %>
-              <i class="bi bi-speedometer2 me-1"></i>View Dashboard
+              <i data-lucide="gauge" class="me-1"></i>View Dashboard
             <% end %>
           </div>
         </div>
@@ -94,16 +94,16 @@
 
         <div class="col-md-4">
           <button type="submit" class="btn btn-primary">
-            <i class="bi bi-funnel-fill me-2"></i>Apply Filter
+            <i data-lucide="filter" class="me-2"></i>Apply Filter
           </button>
           <%= link_to affiliate_payouts_path, class: "btn btn-outline-secondary" do %>
-            <i class="bi bi-x-circle me-2"></i>Clear
+            <i data-lucide="x-circle" class="me-2"></i>Clear
           <% end %>
         </div>
 
         <div class="col-md-4 text-end">
           <button type="button" class="btn btn-outline-success" disabled>
-            <i class="bi bi-file-earmark-spreadsheet me-2"></i>Export CSV
+            <i data-lucide="file-spreadsheet" class="me-2"></i>Export CSV
           </button>
         </div>
       <% end %>
@@ -114,7 +114,7 @@
   <div class="card border-0 shadow-sm">
     <div class="card-header bg-white">
       <h5 class="mb-0">
-        <i class="bi bi-table me-2"></i>
+        <i data-lucide="table" class="me-2"></i>
         Payout Transactions
       </h5>
     </div>
@@ -148,11 +148,11 @@
                   <td>
                     <% case payout.payment_method %>
                     <% when 'paypal' %>
-                      <i class="bi bi-paypal text-primary me-1"></i>PayPal
+                      <i data-lucide="credit-card" class="text-primary me-1"></i>PayPal
                     <% when 'stripe' %>
-                      <i class="bi bi-credit-card text-info me-1"></i>Stripe
+                      <i data-lucide="credit-card" class="text-info me-1"></i>Stripe
                     <% when 'manual' %>
-                      <i class="bi bi-hand-thumbs-up text-secondary me-1"></i>Manual
+                      <i data-lucide="thumbs-up" class="text-secondary me-1"></i>Manual
                     <% else %>
                       <%= payout.payment_method&.titleize || 'N/A' %>
                     <% end %>
@@ -161,19 +161,19 @@
                     <% case payout.status %>
                     <% when 'completed' %>
                       <span class="badge bg-success">
-                        <i class="bi bi-check-circle-fill me-1"></i>Completed
+                        <i data-lucide="check-circle" class="me-1"></i>Completed
                       </span>
                     <% when 'processing' %>
                       <span class="badge bg-info">
-                        <i class="bi bi-clock-fill me-1"></i>Processing
+                        <i data-lucide="clock" class="me-1"></i>Processing
                       </span>
                     <% when 'pending' %>
                       <span class="badge bg-warning text-dark">
-                        <i class="bi bi-hourglass-split me-1"></i>Pending
+                        <i data-lucide="hourglass" class="me-1"></i>Pending
                       </span>
                     <% when 'failed' %>
                       <span class="badge bg-danger">
-                        <i class="bi bi-x-circle-fill me-1"></i>Failed
+                        <i data-lucide="x-circle" class="me-1"></i>Failed
                       </span>
                     <% else %>
                       <span class="badge bg-secondary">
@@ -191,7 +191,7 @@
                   <td>
                     <% if payout.commission_ids.present? %>
                       <small class="text-muted">
-                        <i class="bi bi-list-ul me-1"></i>
+                        <i data-lucide="list" class="me-1"></i>
                         <%= payout.commission_ids.size %> commission<%= 's' if payout.commission_ids.size != 1 %>
                       </small>
                     <% else %>
@@ -218,7 +218,7 @@
         <% end %>
       <% else %>
         <div class="text-center py-5">
-          <i class="bi bi-inbox display-1 text-muted"></i>
+          <i data-lucide="inbox" class="icon-display-1 text-muted"></i>
           <h4 class="mt-3 text-muted">No Payouts Yet</h4>
           <p class="text-muted">
             <% if params[:status].present? %>
@@ -229,7 +229,7 @@
             <% end %>
           </p>
           <%= link_to affiliate_dashboard_path, class: "btn btn-primary" do %>
-            <i class="bi bi-speedometer2 me-2"></i>Go to Dashboard
+            <i data-lucide="gauge" class="me-2"></i>Go to Dashboard
           <% end %>
         </div>
       <% end %>
@@ -242,7 +242,7 @@
       <div class="card border-0 bg-light">
         <div class="card-body">
           <h6 class="mb-3">
-            <i class="bi bi-question-circle-fill me-2"></i>
+            <i data-lucide="help-circle" class="me-2"></i>
             Payout FAQs
           </h6>
           <div class="row">

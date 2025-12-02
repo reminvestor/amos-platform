@@ -14,7 +14,8 @@ export default class extends Controller {
     "templateContent", 
     "templateList", 
     "loadingOverlay",
-    "resizeHandle"
+    "resizeHandle",
+    "voiceMode"
   ]
 
   connect() {
@@ -36,6 +37,12 @@ export default class extends Controller {
     this.ttsBufferTimeout = null
     this.ttsMinBufferTime = 500 // Wait 500ms of silence before speaking
     this.ttsLastChunkTime = 0
+    
+    // Initialize tool thinking UI
+    this.toolThinkingElement = null
+    this.toolThinkingSteps = []
+    this.isShowingToolThinking = false
+    this.toolThinkingTimeout = null
     
     // Make controller globally accessible
     window.scoutController = this
@@ -163,15 +170,23 @@ export default class extends Controller {
   }
 
   // Add message to chat
-  addMessage(content, role) {
+  addMessage(content, role, options = {}) {
     // Don't create empty messages unless it's for loading
     if (!content && role !== "ai") {
       console.log("Skipping empty message for role:", role)
-      return
+      return null
+    }
+    
+    // Ensure chat messages target exists
+    if (!this.chatMessagesTarget) {
+      console.error("❌ Chat messages target not available in addMessage")
+      return null
     }
 
     const messageDiv = document.createElement("div")
     messageDiv.className = `message ${role}-message`
+    const messageId = `msg-${Date.now()}`
+    messageDiv.id = messageId
 
     // Use Lucide icons for avatars
     const avatarIcon = role === "ai" ? "bot" : "user"
@@ -180,8 +195,8 @@ export default class extends Controller {
     // Parse markdown for AI messages using markdown-it
     let formattedContent = role === "ai" ? this.md.render(content || '') : this.escapeHtml(content)
 
-    // Add loading indicator for empty AI messages
-    if (role === "ai" && !content) {
+    // Add loading indicator for empty AI messages (unless it's for streaming)
+    if (role === "ai" && !content && !options.streaming) {
       formattedContent = '<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>'
     }
 
@@ -198,6 +213,13 @@ export default class extends Controller {
 
     this.chatMessagesTarget.appendChild(messageDiv)
 
+    // Also add to voice mode chat if it exists
+    const voiceModeChat = document.getElementById('voice-mode-chat-messages')
+    if (voiceModeChat) {
+      const clonedMessage = messageDiv.cloneNode(true)
+      voiceModeChat.appendChild(clonedMessage)
+    }
+
     // Initialize Lucide icons for the new message
     if (typeof lucide !== 'undefined') {
       lucide.createIcons()
@@ -211,6 +233,9 @@ export default class extends Controller {
       }
     }
     this.scrollChatToBottom()
+    
+    // Return the created message div
+    return messageDiv
   }
   
   // Set up ActionCable subscription for job notifications
@@ -396,6 +421,9 @@ export default class extends Controller {
         console.log("📎 No files to upload")
       }
       
+      // Get selected model if available
+      const selectedModel = window.getSelectedModel ? window.getSelectedModel() : null;
+
       // Use streaming endpoint for better timeout handling
       const response = await fetch("/scout/chat_stream", {
         method: "POST",
@@ -403,10 +431,11 @@ export default class extends Controller {
           "Content-Type": "application/json",
           "X-CSRF-Token": this.getCSRFToken()
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: message,
           current_canvas: this.currentCanvas,
-          file_urls: fileUrls
+          file_urls: fileUrls,
+          model: selectedModel
         })
       })
 
@@ -456,12 +485,195 @@ export default class extends Controller {
                   console.log("🔄 Progress:", data.message)
                   this.showStreamingProgress(data.message)
                   
-                  // Initialize streaming when we see the streaming message
-                  if (data.message === '💬 streaming') {
-                    console.log('📝 Streaming started - initializing message')
+                  // Check if this is actual content from Amos (not just status updates)
+                  const isStatusMessage = data.message && (
+                    data.message.startsWith('💬') || 
+                    data.message.startsWith('📋') ||
+                    data.message.startsWith('✅') ||
+                    data.message.startsWith('❌') ||
+                    data.message.startsWith('🔍') ||
+                    data.message === 'streaming'
+                  )
+                  
+                  if (!isStatusMessage && data.message && data.message.trim()) {
+                    // This is actual content from Amos - stream it
+                    console.log('📝 Amos content received via update:', data.message)
+                    
+                    // Initialize streaming if not already started
+                    if (this.currentStreamingContent === undefined || this.currentStreamingContent === null) {
+                      // Initialize with the current chunk instead of empty string
+                      this.currentStreamingContent = data.message
+                      
+                      // Clean up ALL loading dots everywhere first
+                      const allLoadingDots = document.querySelectorAll('.loading-dots')
+                      allLoadingDots.forEach(dots => {
+                        console.log('🧹 Removing loading dots during streaming init')
+                        try {
+                          // Get parent element before removing
+                          const parent = dots.parentElement
+                          dots.remove()
+                          // Force parent to reflow if it exists
+                          if (parent && parent.style) {
+                            parent.style.display = 'none'
+                            parent.offsetHeight // Force reflow
+                            parent.style.display = ''
+                          }
+                        } catch (e) {
+                          console.warn('⚠️ Error removing loading dots:', e)
+                          // Try simple removal as fallback
+                          try { dots.remove() } catch (e2) {}
+                        }
+                      })
+                      
+                      // Find the last AI message or create a new one
+                      if (!this.chatMessagesTarget) {
+                        console.error('❌ Chat messages target not found!')
+                        return
+                      }
+                      
+                      const messages = this.chatMessagesTarget.querySelectorAll('.message')
+                      const lastMessage = messages[messages.length - 1]
+                      
+                      // Check if we need to create a new message
+                      let needNewMessage = true
+                      let targetBubble = null
+                      
+                      if (lastMessage && lastMessage.classList.contains('ai-message')) {
+                        const bubble = lastMessage.querySelector('.message-bubble')
+                        if (bubble && !bubble.textContent.trim()) {
+                          // Empty AI message exists - use it
+                          needNewMessage = false
+                          targetBubble = bubble
+                          console.log('🔄 Reusing existing empty AI message')
+                        }
+                      }
+                      
+                      if (needNewMessage) {
+                        console.log('📝 Creating new message for streaming')
+                        const messageDiv = this.addMessage('', 'ai', { streaming: true })
+                        console.log('📝 New message div:', messageDiv)
+                        if (messageDiv) {
+                          const bubble = messageDiv.querySelector('.message-bubble')
+                          console.log('📝 Found bubble in new message:', !!bubble)
+                          if (bubble) {
+                            this.streamingMessageElement = bubble
+                            targetBubble = bubble
+                            console.log('✅ Set streamingMessageElement to new bubble')
+                          }
+                        }
+                      } else {
+                        // Use existing empty message
+                        this.streamingMessageElement = targetBubble
+                        console.log('✅ Set streamingMessageElement to existing bubble')
+                        // Remove loading dots from existing message
+                        if (targetBubble) {
+                          const existingDots = targetBubble.querySelector('.loading-dots')
+                          if (existingDots) {
+                            console.log('🧹 Removing loading dots from existing message bubble')
+                            existingDots.remove()
+                          }
+                        }
+                      }
+                      
+                      // Store reference locally to prevent loss during async operations
+                      const streamingElement = this.streamingMessageElement
+                      
+                      // Now render the first chunk (already included in currentStreamingContent)
+                      if (streamingElement) {
+                        console.log('✅ Rendering first chunk to streaming element:', this.currentStreamingContent)
+                        // Remove any remaining loading dots in the bubble
+                        const bubbleDots = streamingElement.querySelector('.loading-dots')
+                        if (bubbleDots) {
+                          console.log('🧹 Removing loading dots from streaming bubble')
+                          bubbleDots.remove()
+                        }
+                        
+                        // Log element state before update
+                        console.log('🔍 Streaming element before update:', {
+                          element: streamingElement,
+                          currentContent: streamingElement.innerHTML,
+                          hasLoadingDots: !!streamingElement.querySelector('.loading-dots')
+                        })
+                        
+                        // Force immediate DOM update
+                        // Use setTimeout(0) to ensure DOM has updated after loading dots removal
+                        setTimeout(() => {
+                          if (streamingElement) {
+                            const content = this.currentStreamingContent
+                            
+                            // Clear and set content to force repaint
+                            streamingElement.style.display = 'none'
+                            streamingElement.offsetHeight // Force reflow
+                            streamingElement.innerHTML = this.md.render(content)
+                            streamingElement.style.display = 'block'
+                            
+                            console.log('✅ Initial streaming render complete:', content)
+                            console.log('🔍 Element after update:', streamingElement.innerHTML)
+                            this.scrollChatToBottom()
+                          }
+                        }, 0)
+                        
+                        // Handle TTS for voice mode
+                        this.handleStreamingTTS(data.message)
+                      } else {
+                        console.error('❌ No streaming element found! Cannot display streaming content.')
+                      }
+                    } else {
+                      // Update streaming content - append, don't replace!
+                      this.currentStreamingContent += data.message
+                      
+                      console.log('📊 Streaming state check:', {
+                        hasStreamingElement: !!this.streamingMessageElement,
+                        currentContentLength: this.currentStreamingContent.length,
+                        newChunk: data.message
+                      })
+                      
+                      if (this.streamingMessageElement) {
+                        console.log('📝 Updating streaming content, total length:', this.currentStreamingContent.length)
+                        // Force DOM update with more aggressive approach
+                        const element = this.streamingMessageElement
+                        const content = this.currentStreamingContent
+                        
+                        // Clear and set content to force repaint
+                        element.style.display = 'none'
+                        element.offsetHeight // Force reflow
+                        element.innerHTML = this.md.render(content)
+                        element.style.display = 'block'
+                        
+                        console.log('📝 DOM update forced, content length:', content.length)
+                        this.scrollChatToBottom()
+                      } else {
+                        console.error('❌ Lost streaming element during update!')
+                        console.error('❌ Current state:', {
+                          streamingElement: this.streamingMessageElement,
+                          currentContent: this.currentStreamingContent,
+                          initialized: this.currentStreamingContent !== undefined
+                        })
+                      }
+                      
+                      // Handle TTS for voice mode
+                      this.handleStreamingTTS(data.message)
+                      
+                      // Also check if this might be an agent question being streamed
+                      if (data.metadata && (data.metadata.from_agent || data.metadata.awaiting_response)) {
+                        console.log("🎤 Possible agent content in streaming, metadata:", data.metadata)
+                        
+                        // If we detect a question mark in streamed content from an agent
+                        if (this.currentStreamingContent && this.currentStreamingContent.includes('?')) {
+                          console.log("🔍 Question detected in streaming content from agent")
+                          // Mark for enhanced TTS handling
+                          this.streamingIsAgentQuestion = true
+                        }
+                      }
+                    }
+                  } else if (data.message === '💬 streaming') {
+                    console.log('📝 Streaming started signal')
                     
                     // Only initialize if we haven't already started streaming
                     if (this.currentStreamingContent === undefined || this.currentStreamingContent === null) {
+                      // Initialize empty for the streaming signal (no content yet)
+                      this.currentStreamingContent = ''
+                      
                       // Find the last AI message or create a new one
                       const messages = this.chatMessagesTarget.querySelectorAll('.message')
                       const lastMessage = messages[messages.length - 1]
@@ -469,30 +681,41 @@ export default class extends Controller {
                       // Only create new message if last one isn't already an empty AI message
                       if (!lastMessage || !lastMessage.classList.contains('ai-message') || 
                           lastMessage.querySelector('.message-bubble')?.textContent.trim()) {
-                        this.addMessage('', 'ai')
-                        // Small delay to ensure DOM is ready
-                        setTimeout(() => {
-                          console.log("🔍 Checking for message-bubble after creation")
-                          const newMessages = this.chatMessagesTarget.querySelectorAll('.message')
-                          const newLastMessage = newMessages[newMessages.length - 1]
-                          const bubble = newLastMessage?.querySelector('.message-bubble')
-                          console.log("🔍 Found bubble:", !!bubble)
-                          if (bubble) {
-                            this.streamingMessageElement = bubble
-                          }
-                        }, 10)
+                        const newMessage = this.addMessage('', 'ai')
+                        const bubble = newMessage?.querySelector('.message-bubble')
+                        if (bubble) {
+                          this.streamingMessageElement = bubble
+                          console.log("🔍 Created new message for streaming")
+                        }
+                      } else {
+                        // Use existing empty AI message
+                        const bubble = lastMessage.querySelector('.message-bubble')
+                        if (bubble) {
+                          this.streamingMessageElement = bubble
+                          console.log("🔍 Using existing message for streaming")
+                        }
                       }
-                      this.currentStreamingContent = ''
                     } else {
-                      console.log("📝 Already streaming, not resetting content")
+                      console.log("📝 Already streaming, not resetting")
                     }
                   }
                 } else if (data.type === 'add_tool_message' || data.type === 'tool_detected') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('🔧 Tool detected:', data.tool_name || data.name)
+                  
+                  // Show in tool thinking UI if not already streaming
+                  if (this.currentStreamingContent === undefined) {
+                    const toolName = data.tool_name || data.name
+                    this.addToolThinkingStep(`Using ${toolName}...`)
+                  }
                 } else if (data.type === 'tool_start') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('🔧 Tool started:', data.name)
+                  
+                  // Show in tool thinking UI if not already streaming
+                  if (this.currentStreamingContent === undefined) {
+                    this.addToolThinkingStep(`Running ${data.name}...`)
+                  }
                 } else if (data.type === 'tool_result' || data.type === 'tool_end') {
                   // Tool messages are now saved server-side and will appear via intermediate_message
                   console.log('✅ Tool completed:', data.name || data.tool_name)
@@ -519,6 +742,13 @@ export default class extends Controller {
                       this.streamingMessageElement = null
                     }
                     this.addMessage(data.content, 'ai')
+                  }
+                } else if (data.type === 'enable_chat') {
+                  // Re-enable chat immediately after parallel processing starts
+                  console.log('💬 Enabling chat for continued conversation')
+                  this.enableChatInput()
+                  if (data.message) {
+                    console.log('📢 Chat enabled message:', data.message)
                   }
                 } else if (data.type === 'load_canvas') {
                   // Streamed instruction to load a canvas immediately
@@ -565,6 +795,7 @@ export default class extends Controller {
                   // Initialize streaming if not already started
                   if (this.currentStreamingContent === undefined) {
                     console.log('📝 First content chunk received - initializing streaming')
+                    this.currentStreamingContent = ''
                     
                     // Find the last AI message or create a new one
                     const messages = this.chatMessagesTarget.querySelectorAll('.message')
@@ -573,18 +804,18 @@ export default class extends Controller {
                     // Only create new message if last one isn't already an empty AI message
                     if (!lastMessage || !lastMessage.classList.contains('ai-message') || 
                         lastMessage.querySelector('.message-bubble')?.textContent.trim()) {
-                      this.addMessage('', 'ai')
-                      // Small delay to ensure DOM is ready
-                      setTimeout(() => {
-                        const newMessages = this.chatMessagesTarget.querySelectorAll('.message')
-                        const newLastMessage = newMessages[newMessages.length - 1]
-                        const bubble = newLastMessage?.querySelector('.message-bubble')
-                        if (bubble) {
-                          this.streamingMessageElement = bubble
-                        }
-                      }, 10)
+                      const newMessage = this.addMessage('', 'ai')
+                      const bubble = newMessage?.querySelector('.message-bubble')
+                      if (bubble) {
+                        this.streamingMessageElement = bubble
+                      }
+                    } else {
+                      // Use existing empty AI message
+                      const bubble = lastMessage.querySelector('.message-bubble')
+                      if (bubble) {
+                        this.streamingMessageElement = bubble
+                      }
                     }
-                    this.currentStreamingContent = ''
                   }
                   
                   // Handle content chunks for streaming
@@ -628,11 +859,30 @@ export default class extends Controller {
                         }
                         targetBubble.innerHTML = this.md.render(this.currentStreamingContent)
                         this.streamingMessageElement = targetBubble
+                        
+                        // Also update voice mode chat if it exists
+                        const messageContainer = targetBubble.closest('.message')
+                        if (messageContainer && messageContainer.id) {
+                          const voiceModeMessage = document.querySelector(`#voice-mode-chat-messages #${messageContainer.id}`)
+                          if (voiceModeMessage) {
+                            const voiceModeBubble = voiceModeMessage.querySelector('.message-bubble')
+                            if (voiceModeBubble) {
+                              voiceModeBubble.innerHTML = this.md.render(this.currentStreamingContent)
+                            }
+                          }
+                        }
                       } else {
                         // Remove empty message bubble if no content
                         const messageContainer = targetBubble.closest('.message')
                         if (messageContainer && !targetBubble.textContent.trim()) {
                           messageContainer.remove()
+                          // Also remove from voice mode chat
+                          if (messageContainer.id) {
+                            const voiceModeMessage = document.querySelector(`#voice-mode-chat-messages #${messageContainer.id}`)
+                            if (voiceModeMessage) {
+                              voiceModeMessage.remove()
+                            }
+                          }
                         }
                       }
                     } else {
@@ -642,9 +892,14 @@ export default class extends Controller {
                   }
                 } else if (data.type === 'response') {
                   // Final response received - hide streaming window and show message
+                  console.log("🎯 RESPONSE TYPE DETECTED!")
+                  console.log("🔍 Raw data object:", data)
                   finalResponseData = data.data
                   console.log("✅ Final response received, message length:", finalResponseData?.message?.length || 0)
-                  
+                  console.log("📚 Sources in response:", finalResponseData?.sources)
+                  console.log("📦 Full finalResponseData keys:", Object.keys(finalResponseData || {}))
+                  console.log("📋 Full finalResponseData object:", finalResponseData)
+
                   // Hide streaming window first
                   this.hideStreamingWindow()
                 }
@@ -704,25 +959,38 @@ export default class extends Controller {
         // Clear streaming content for next message
         this.currentStreamingContent = undefined
         this.streamingMessageElement = null
+
+        // Render source attribution badges if sources are available
+        console.log("🔍 Checking for sources in finalResponseData...")
+        console.log("📊 finalResponseData:", finalResponseData)
+        if (finalResponseData && finalResponseData.sources && finalResponseData.sources.length > 0) {
+          console.log("✅ Found sources! Rendering badges:", finalResponseData.sources)
+          this.renderSourceBadges(finalResponseData.sources)
+        } else {
+          console.log("⚠️ No sources found. finalResponseData.sources:", finalResponseData?.sources)
+        }
+
+        // Check if Scout suggested a canvas to load (handle both 'canvas' and 'canvas_type' keys)
+        const suggestedCanvas = finalResponseData.canvas || finalResponseData.canvas_type
+        const canvasData = finalResponseData.canvas_data || {}
         
-        // Check if Scout suggested a canvas to load
-        if (finalResponseData.canvas_type && finalResponseData.canvas_type !== 'conversation') {
-          console.log(`🎨 Scout suggested canvas: ${finalResponseData.canvas_type}`)
-          if (finalResponseData.canvas_data) {
-            console.log("📊 Canvas data:", finalResponseData.canvas_data)
+        if (suggestedCanvas && suggestedCanvas !== 'conversation') {
+          console.log(`🎨 Scout suggested canvas: ${suggestedCanvas}`)
+          if (canvasData) {
+            console.log("📊 Canvas data:", canvasData)
           }
           
           // Check if we're already on this exact canvas
           const isAlreadyOnCanvas = this.currentCanvas && 
-                                   this.currentCanvas.type === finalResponseData.canvas_type &&
-                                   JSON.stringify(this.currentCanvas.data || {}) === JSON.stringify(finalResponseData.canvas_data || {})
+                                   this.currentCanvas.type === suggestedCanvas &&
+                                   JSON.stringify(this.currentCanvas.data || {}) === JSON.stringify(canvasData || {})
           
           if (isAlreadyOnCanvas) {
             console.log("✅ Already on the requested canvas, no need to reload")
           } else {
             console.log("🎯 Loading different canvas...")
             setTimeout(() => {
-              this.loadScoutCanvas(finalResponseData.canvas_type, finalResponseData.canvas_data || {})
+              this.loadScoutCanvas(suggestedCanvas, canvasData)
             }, 1000)
           }
         } else {
@@ -749,11 +1017,43 @@ export default class extends Controller {
         
         // Re-enable input after successful response
         this.enableChatInput()
+      } else if (this.currentStreamingContent) {
+        // Amos response - content was streamed
+        console.log("✅ Amos response streamed successfully")
+        
+        // Apply final markdown formatting if needed
+        const messages = this.chatMessagesTarget.querySelectorAll('.message')
+        const lastMessage = messages[messages.length - 1]
+        if (lastMessage && lastMessage.classList.contains('ai-message')) {
+          const messageBubble = lastMessage.querySelector('.message-bubble')
+          if (messageBubble && this.currentStreamingContent) {
+            messageBubble.innerHTML = this.md.render(this.currentStreamingContent)
+            console.log("✅ Applied final markdown formatting to Amos response")
+            
+            // Finalize any remaining TTS content
+            this.finalizeStreamingTTS()
+          }
+        }
+        
+        // Clear streaming content for next message
+        this.currentStreamingContent = undefined
+        this.streamingMessageElement = null
+        
+        // Re-enable input after successful response
+        this.enableChatInput()
+        this.hideStreamingWindow()
       } else {
+        // Clean up any orphaned loading dots
+        const allLoadingDots = this.chatMessagesTarget.querySelectorAll('.loading-dots')
+        allLoadingDots.forEach(dots => {
+          console.log("🧹 Removing orphaned loading dots")
+          dots.remove()
+        })
         // Hide streaming window even if no final response
         this.hideStreamingWindow()
-        console.log("❌ No message in response data")
-        this.addMessage("Sorry, I couldn't process that request. Please try again.", "ai")
+        console.log("📝 No immediate message (agent may be handling the request)")
+        // Re-enable input
+        this.enableChatInput()
       }
     
     } catch (error) {
@@ -771,13 +1071,95 @@ export default class extends Controller {
     // Re-enable via DOM elements
     const messageInput = document.getElementById('message-input')
     const sendButton = document.getElementById('send-button')
-    
+
     if (messageInput) {
       messageInput.disabled = false
       messageInput.focus()
     }
     if (sendButton) {
       sendButton.disabled = false
+    }
+  }
+
+  // Render source attribution badges below the AI message
+  renderSourceBadges(sources) {
+    try {
+      console.log("🎭 RENDERSOURCEBADGES CALLED!")
+      console.log("📊 Rendering source badges:", sources)
+      console.log("📊 Sources array length:", sources?.length || 0)
+
+      // Find the last AI message
+      const messages = this.chatMessagesTarget.querySelectorAll('.message')
+      let lastAiMessage = null
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].classList.contains('ai-message')) {
+          lastAiMessage = messages[i]
+          break
+        }
+      }
+
+      if (!lastAiMessage) {
+        console.warn("⚠️ No AI message found to attach source badges")
+        return
+      }
+
+      // Create source badges container
+      const sourcesContainer = document.createElement('div')
+      sourcesContainer.className = 'message-sources'
+
+      // Add label with icon
+      const labelContainer = document.createElement('span')
+      labelContainer.className = 'source-label'
+      labelContainer.innerHTML = '<i data-lucide="book-open" class="source-label-icon" aria-hidden="true"></i> Data sources:'
+      sourcesContainer.appendChild(labelContainer)
+
+      // Create badges list
+      const badgesList = document.createElement('div')
+      badgesList.className = 'sources-list'
+
+      // Icon map for different source types
+      const iconMap = {
+        documents: 'file-text',
+        rag: 'book',
+        session: 'message-square',
+        uploaded: 'upload',
+        generated: 'sparkles'
+      }
+
+      // Add a badge for each source
+      sources.forEach(source => {
+        const badge = document.createElement('span')
+        badge.className = `source-badge ${source.type}`
+
+        // Get appropriate icon for source type
+        const iconName = iconMap[source.type] || 'file'
+
+        // Format the badge text with source name and count
+        const sourceLabel = source.type.charAt(0).toUpperCase() + source.type.slice(1)
+        const countText = source.count > 1 ? ` (${source.count})` : ''
+
+        // Create badge content with icon and text
+        badge.innerHTML = `<i data-lucide="${iconName}" class="source-badge-icon" aria-hidden="true"></i> ${sourceLabel}${countText}`
+
+        badgesList.appendChild(badge)
+      })
+
+      sourcesContainer.appendChild(badgesList)
+
+      // Add to the message
+      lastAiMessage.appendChild(sourcesContainer)
+
+      // Render lucide icons - need to target the specific container
+      if (typeof lucide !== 'undefined') {
+        // Use requestAnimationFrame to ensure DOM is updated before creating icons
+        requestAnimationFrame(() => {
+          lucide.createIcons({ target: sourcesContainer })
+        })
+      }
+
+      console.log("✅ Source badges rendered successfully with icons")
+    } catch (error) {
+      console.error("❌ Error rendering source badges:", error)
     }
   }
 
@@ -948,55 +1330,129 @@ export default class extends Controller {
   }
 
   // Go to conversation mode
-  goToConversation() {
+  goToConversation(event) {
+    this.setActiveNavItem(event)
     console.log("🏠 Going to conversation mode")
     this.switchToMode("conversation")
     this.clearCanvasState()
     this.addMessage("Scout here! What would you like to work on?", "ai")
   }
 
+  // Helper to update active nav item
+  setActiveNavItem(event) {
+    // Remove active class from all nav items
+    const allNavItems = document.querySelectorAll('.nav-item')
+    allNavItems.forEach(item => item.classList.remove('active'))
+
+    // Add active class to clicked item (find the nav-item if event target is a child)
+    if (event?.currentTarget) {
+      const navItem = event.currentTarget.closest('.nav-item') || event.currentTarget
+      navItem.classList.add('active')
+    }
+  }
+
   // Nav handler methods
-  loadLandingPagesCanvas() {
+  loadLandingPagesCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("🌐 Loading landing pages canvas")
     this.loadScoutCanvas("landing_page_viewer", {})
   }
 
-  loadCampaignsCanvas() {
-    console.log("📧 Loading campaigns canvas")  
+  loadCampaignsCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📧 Loading campaigns canvas")
     this.loadScoutCanvas("campaign_viewer", {})
   }
 
-  loadEmailTemplatesCanvas() {
+  loadEmailTemplatesCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("📄 Loading email templates canvas")
     this.loadScoutCanvas("email_template_viewer", {})
   }
 
-  loadAnalyticsCanvas() {
+  loadAnalyticsCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("📊 Loading analytics canvas")
     this.loadScoutCanvas("analytics_dashboard", {})
   }
 
-  loadIntegrationsCanvas() {
+  loadIntegrationsCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("🔌 Loading integrations canvas")
     this.loadScoutCanvas("integrations_manager", {})
   }
 
-  loadContactsCanvas() {
+  loadContactsCanvas(event) {
+    this.setActiveNavItem(event)
     console.log("👥 Loading contacts canvas")
     this.loadScoutCanvas("contact_viewer", {})
   }
+  
+  loadParallelTasksCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("🔄 Loading parallel tasks canvas")
+    const sessionId = document.querySelector('[data-scout-session-id]')?.dataset.scoutSessionId ||
+                      this.chatMessagesTarget?.dataset.sessionId ||
+                      'current_session'
+    this.loadScoutCanvas("parallel_tasks", { session_id: sessionId })
+  }
+
+  loadScheduledTasksCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📅 Loading scheduled tasks canvas")
+    const sessionId = document.querySelector('[data-scout-session-id]')?.dataset.scoutSessionId ||
+                      this.chatMessagesTarget?.dataset.sessionId ||
+                      'current_session'
+    this.loadScoutCanvas("scheduled_tasks", { session_id: sessionId })
+  }
+
+  loadWorkInboxCanvas(event) {
+    this.setActiveNavItem(event)
+    console.log("📥 Loading work inbox canvas")
+    this.loadScoutCanvas("work_inbox", {})
+  }
+
+  loadScheduledTaskEditorCanvas(taskId = null) {
+    console.log("📝 Loading scheduled task editor canvas, taskId:", taskId)
+    this.loadScoutCanvas("scheduled_task_editor", { task_id: taskId })
+  }
+
+  loadSavedVisualizationsCanvas() {
+    console.log("📊 Loading saved visualizations canvas")
+    this.loadScoutCanvas("saved_visualizations", {})
+  }
 
   // Profile and settings methods
-  openSettings() {
+  openSettings(event) {
+    this.setActiveNavItem(event)
     console.log("⚙️ Opening business settings")
     // Load business profile canvas instead of redirecting
     this.loadScoutCanvas("business_profile", {})
   }
 
-  openProfile() {
+  openProfile(event) {
+    this.setActiveNavItem(event)
     console.log("👤 Opening user profile")
     // Load user profile canvas instead of redirecting
     this.loadScoutCanvas("user_profile", {})
+  }
+
+  openVoiceSettings(event) {
+    this.setActiveNavItem(event)
+    try {
+      console.log("🎤 Opening voice settings")
+
+      // Load user profile canvas and scroll to voice settings
+      this.loadScoutCanvas("user_profile", {})
+
+      // Mark that we should scroll to voice settings after load
+      this.scrollToVoiceSettingsOnLoad = true
+
+      console.log("✅ Voice settings load initiated successfully")
+    } catch (error) {
+      console.error("❌ Error opening voice settings:", error)
+      alert("Error opening voice settings: " + error.message)
+    }
   }
 
   logout() {
@@ -1045,6 +1501,12 @@ export default class extends Controller {
       console.log(`📦 Canvas data:`, canvasData)
       console.log(`🔄 Force refresh:`, forceRefresh)
       
+      // If canvasType is null, undefined, or empty, don't change the canvas
+      if (!canvasType || canvasType === null || canvasType === '') {
+        console.log("⚠️ Canvas type is empty/null, keeping current canvas")
+        return
+      }
+      
       // Check if we're already on this exact canvas (skip check if forceRefresh is true)
       if (!forceRefresh && this.currentCanvas && 
           this.currentCanvas.type === canvasType && 
@@ -1068,7 +1530,7 @@ export default class extends Controller {
         }, 1500); // Give canvas time to load content
       }
       
-      this.showCanvasLoading()
+      this.showCanvasLoading(canvasType)
 
       console.log("📡 Making request to /scout/load_canvas")
       const response = await fetch("/scout/load_canvas", {
@@ -1107,6 +1569,23 @@ export default class extends Controller {
         // Re-initialize Lucide icons for dynamically loaded canvas content
         if (typeof lucide !== 'undefined') {
           lucide.createIcons()
+        }
+        
+        // Check if we need to scroll to voice settings
+        if (this.scrollToVoiceSettingsOnLoad && canvasType === 'user_profile') {
+          this.scrollToVoiceSettingsOnLoad = false
+          setTimeout(() => {
+            const voiceSettingsCard = document.querySelector('[data-controller="voice-settings"]')?.closest('.card')
+            if (voiceSettingsCard) {
+              voiceSettingsCard.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              // Add a highlight effect
+              voiceSettingsCard.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.5)'
+              setTimeout(() => {
+                voiceSettingsCard.style.transition = 'box-shadow 0.5s ease'
+                voiceSettingsCard.style.boxShadow = ''
+              }, 2000)
+            }
+          }, 500)
         }
 
         // Store current canvas info
@@ -1149,8 +1628,8 @@ export default class extends Controller {
       this.sendScoutMessage(message)
     }
 
-    window.scoutLoadCanvas = (canvasType, canvasData = {}) => {
-      this.loadScoutCanvas(canvasType, canvasData)
+    window.scoutLoadCanvas = (canvasType, canvasData = {}, forceRefresh = false) => {
+      this.loadScoutCanvas(canvasType, canvasData, forceRefresh)
     }
 
     window.scoutRefreshCanvas = () => {
@@ -1219,6 +1698,14 @@ export default class extends Controller {
     window.scoutSendMessage = (message) => {
       this.sendScoutMessage(message)
     }
+    
+    // Listen for custom scout:send-message events from canvases
+    window.addEventListener('scout:send-message', (event) => {
+      console.log('📨 Received scout:send-message event:', event.detail)
+      if (event.detail && event.detail.message) {
+        this.sendScoutMessage(event.detail.message)
+      }
+    })
 
     // Navigation functions
     window.scoutBackToLandingPages = () => this.loadScoutCanvas('landing_page_viewer', {})
@@ -1459,6 +1946,178 @@ export default class extends Controller {
 
     // Load more functions
     window.scoutLoadMoreContacts = () => this.sendScoutMessage("Please load more contacts")
+
+    // ===== AMOS INTEGRATION FUNCTIONS =====
+    // Handle Amos responses from ActionCable
+    window.streamAmosResponse = (data) => {
+      console.log("📨 Streaming Amos response:", data.content, "metadata:", data.metadata)
+      
+      // Check if this is a streaming message
+      if (data.metadata && data.metadata.streaming) {
+        // This is handled by SSE already, just log it
+        console.log("⏩ Streaming chunk received via ActionCable (SSE handles display)")
+      } else if (data.metadata && data.metadata.complete && !data.metadata.from_agent && !data.metadata.awaiting_response) {
+        // This is the complete message after streaming - already displayed via SSE
+        // BUT: Agent messages should still be displayed even if marked complete
+        console.log("✅ Complete message marker received - content already streamed")
+        // Clear streaming state if still active
+        this.currentStreamingContent = undefined
+        this.streamingMessageElement = null
+      } else if (data.content && data.content.trim() && !data.metadata?.already_saved) {
+        // This is a standalone agent message, not part of streaming
+        // Remove any loading dots first
+        const loadingElements = this.chatMessagesTarget.querySelectorAll('.loading-dots')
+        loadingElements.forEach(el => el.remove())
+        
+        console.log("🤖 Displaying agent message:", data.content)
+        this.addMessage(data.content, 'ai')
+        
+        // Handle TTS for voice mode
+        const voiceModeToggle = document.getElementById('voice-toggle-checkbox')
+        if (voiceModeToggle?.checked) {
+          console.log("🎤 Voice mode is enabled, speaking agent message")
+          this.speakText(data.content)
+        }
+        
+        // Check if this message is awaiting user response
+        if (data.metadata && data.metadata.awaiting_response) {
+          console.log("🔓 Agent is awaiting response - unlocking chat input")
+          
+          // For voice mode, ensure we speak the question
+          const shouldSpeakQuestion = voiceModeToggle?.checked && (
+            data.metadata.voice_priority || 
+            data.metadata.from_agent ||
+            data.content.includes('?')  // Fallback: questions often contain ?
+          )
+          
+          if (shouldSpeakQuestion) {
+            console.log("🎤 Agent question detected, ensuring TTS playback")
+            // Small delay to ensure previous TTS is complete
+            setTimeout(() => {
+              if (window.ttsManager && window.ttsManager.isEnabled) {
+                if (!window.ttsManager.isPlaying) {
+                  console.log("🔊 Speaking agent question to user")
+                  this.speakText(data.content)
+                } else {
+                  console.log("⏸️ TTS is playing, queuing agent question")
+                  // TTS manager should queue it automatically
+                  this.speakText(data.content)
+                }
+              } else if (voiceModeToggle?.checked) {
+                // Fallback if TTS manager isn't ready
+                console.log("🔊 TTS manager not ready, using direct speak")
+                this.speakText(data.content)
+              }
+            }, 200)
+          }
+          
+          // Re-enable chat input since agent is waiting for user response
+          const messageInput = this.messageInputTarget || document.getElementById('message-input')
+          const sendButton = this.sendButtonTarget || document.getElementById('send-button')
+          
+          if (messageInput) {
+            messageInput.disabled = false
+            messageInput.focus()
+          }
+          if (sendButton) {
+            sendButton.disabled = false
+          }
+        }
+      }
+    }
+
+    // Stream task content (used by both legacy and Amos)
+    window.streamTaskContent = (data) => {
+      console.log("📝 Streaming task content:", data.content)
+      if (data.content && data.type === 'assistant') {
+        // If we have the controller instance, add the message
+        if (window.scoutController) {
+          // We assume ActionCable messages are for async events (like agent questions) 
+          // that aren't covered by the main SSE stream
+          window.scoutController.addMessage(data.content, "ai")
+          console.log("✅ Displayed task content in Scout chat")
+        } else {
+          console.warn("⚠️ scoutController not available to display task content")
+        }
+      }
+    }
+
+    // Handle job status updates from Amos
+    window.handleJobStatus = (data) => {
+      console.log("📊 Job status update:", data)
+      // Could update a job status panel here if needed
+    }
+
+    // Handle input requests from Amos agents
+    window.handleAmosInputRequest = (data) => {
+      console.log("❓ Amos agent requesting input:", data)
+
+      // Display the question in Scout's chat as an AI message
+      if (data.prompt && window.scoutController) {
+        // Strip out agent communication tags if present (format: [AGENT: name][JOB_ID: id][STATUS: status][REQUEST_TYPE: type] content)
+        const cleanPrompt = data.prompt.replace(/\[AGENT:.*?\]\[JOB_ID:.*?\]\[STATUS:.*?\]\[REQUEST_TYPE:.*?\]\s*/, '')
+
+        window.scoutController.addMessage(cleanPrompt, "ai")
+        console.log("✅ Displayed agent question in Scout chat")
+      } else {
+        console.warn("⚠️ No prompt or scoutController available for input request")
+      }
+    }
+    
+    // Handle parallel task updates
+    window.handleParallelTaskUpdate = (data) => {
+      console.log("📈 Task update:", data)
+      
+      // Check if the parallel tasks canvas has the new handleCanvasUpdate function
+      if (window.handleCanvasUpdate && typeof window.handleCanvasUpdate === 'function') {
+        console.log("✅ Delegating to new canvas update handler")
+        window.handleCanvasUpdate(data)
+        return
+      }
+      
+      // Fallback: Find any task monitor canvas
+      const taskMonitor = document.querySelector('[data-canvas-type="parallel_tasks"]')
+      if (!taskMonitor) {
+        console.log("No task monitor canvas found")
+        return
+      }
+      
+      // If we have the new addOrUpdateTask function, use it
+      if (window.addOrUpdateTask && typeof window.addOrUpdateTask === 'function') {
+        console.log("✅ Using new addOrUpdateTask function")
+        
+        // Map the data to the format expected by addOrUpdateTask
+        const taskData = {
+          task_id: data.task_id,
+          task_type: data.task_type,
+          agent_type: data.agent_type,
+          description: data.description,
+          status: data.status || (data.type === 'task_completed' ? 'completed' : data.type === 'task_failed' ? 'failed' : 'running'),
+          progress: data.progress,
+          message: data.message || data.error,
+          error: data.error,
+          started_at: data.started_at
+        }
+        
+        // Handle specific task types
+        if (data.type === 'task_completed') {
+          taskData.status = 'completed'
+          taskData.progress = 100
+          taskData.message = taskData.message || 'Task completed successfully'
+        } else if (data.type === 'task_failed') {
+          taskData.status = 'failed'
+          taskData.error = data.error
+        }
+        
+        window.addOrUpdateTask(taskData)
+      }
+    }
+    
+    // Utility to get CSRF token
+    window.getCSRFToken = () => {
+      return document.querySelector('meta[name="csrf-token"]')?.content || 
+             document.querySelector('[name="authenticity_token"]')?.value || ""
+    }
     window.scoutLoadMoreCampaigns = () => this.sendScoutMessage("Please load more campaigns")
 
     // Group management
@@ -1898,13 +2557,48 @@ export default class extends Controller {
   }
 
   // Separate loading overlay methods for canvas operations
-  showCanvasLoading() {
+  showCanvasLoading(canvasType = 'canvas') {
+    // Don't show blocking overlay for parallel tasks canvas
+    if (canvasType === 'parallel_tasks') {
+      console.log("⚡ Non-blocking load for parallel tasks canvas")
+      return
+    }
+    
     if (this.hasLoadingOverlayTarget) {
       this.loadingOverlayTarget.classList.add("active")
-      // Set canvas loading message
-      let messageElement = this.loadingOverlayTarget.querySelector('.loading-spinner p')
+
+      // Set context-specific loading messages
+      const messages = {
+        landing_page_viewer: 'Preparing your landing pages...',
+        landing_page_generator: 'Setting up the builder...',
+        campaign_viewer: 'Loading campaigns...',
+        contact_viewer: 'Fetching contacts...',
+        integrations_manager: 'Loading integrations...',
+        integration_connect: 'Connecting service...',
+        analytics_dashboard: 'Building dashboard...',
+        campaign_editor: 'Opening editor...',
+        email_template_editor: 'Opening template editor...',
+        email_template_viewer: 'Loading templates...',
+        parallel_tasks: 'Loading task monitor...'
+      }
+
+      const message = messages[canvasType] || 'Preparing canvas...'
+
+      // Update title
+      let titleElement = this.loadingOverlayTarget.querySelector('.loading-title')
+      if (titleElement) {
+        titleElement.textContent = "Scout is working..."
+      }
+
+      // Update message
+      let messageElement = this.loadingOverlayTarget.querySelector('.loading-message')
       if (messageElement) {
-        messageElement.textContent = "🎨 Loading canvas..."
+        messageElement.textContent = message
+      }
+
+      // Reinitialize Lucide icons in the overlay
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons()
       }
     }
   }
@@ -1913,6 +2607,197 @@ export default class extends Controller {
     if (this.hasLoadingOverlayTarget) {
       this.loadingOverlayTarget.classList.remove("active")
     }
+  }
+
+  // Tool Thinking UI Methods
+  showToolThinking(initialStep = null) {
+    if (this.isShowingToolThinking) return
+    
+    this.isShowingToolThinking = true
+    this.toolThinkingSteps = []
+    
+    // Create the tool thinking UI element
+    const thinkingUI = document.createElement('div')
+    thinkingUI.className = 'tool-thinking-window'
+    thinkingUI.innerHTML = `
+      <div class="tool-thinking-header">
+        <i data-lucide="cpu" style="width: 16px; height: 16px;"></i>
+        <span>Working on your request...</span>
+      </div>
+      <div class="tool-thinking-steps" id="tool-thinking-steps">
+        ${initialStep ? `<div class="thinking-step">${initialStep}</div>` : ''}
+      </div>
+      <div class="tool-thinking-progress">
+        <div class="thinking-progress-bar"></div>
+      </div>
+    `
+    
+    // Add styles if not already present
+    if (!document.querySelector('#tool-thinking-styles')) {
+      const styles = document.createElement('style')
+      styles.id = 'tool-thinking-styles'
+      styles.textContent = `
+        .tool-thinking-window {
+          background: var(--scout-bg-secondary, #1a1d2e);
+          border: 1px solid var(--scout-border, #2a2d3e);
+          border-radius: 8px;
+          margin: 1rem 1rem 0.5rem 1rem;
+          padding: 0;
+          max-height: 120px;
+          overflow: hidden;
+          animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .tool-thinking-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          background: var(--scout-bg-tertiary, #141722);
+          border-bottom: 1px solid var(--scout-border, #2a2d3e);
+          font-size: 0.875rem;
+          color: var(--scout-text-secondary, #a0a6bb);
+        }
+        
+        .tool-thinking-steps {
+          padding: 8px 12px;
+          max-height: 60px;
+          overflow-y: auto;
+        }
+        
+        .thinking-step {
+          font-size: 0.813rem;
+          color: var(--scout-text-primary, #e2e8f0);
+          padding: 2px 0;
+          opacity: 0;
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+          to {
+            opacity: 1;
+          }
+        }
+        
+        .tool-thinking-progress {
+          height: 2px;
+          background: var(--scout-bg-tertiary, #141722);
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .thinking-progress-bar {
+          height: 100%;
+          background: var(--scout-primary, #7c3aed);
+          width: 0%;
+          animation: progress 2s ease-in-out infinite;
+        }
+        
+        @keyframes progress {
+          0% { width: 0%; }
+          50% { width: 70%; }
+          100% { width: 100%; }
+        }
+        
+        /* Hide scrollbar but keep functionality */
+        .tool-thinking-steps::-webkit-scrollbar {
+          width: 0px;
+        }
+      `
+      document.head.appendChild(styles)
+    }
+    
+    // Insert before the last message or at the end
+    const messages = this.chatMessagesTarget.querySelectorAll('.message')
+    const lastMessage = messages[messages.length - 1]
+    
+    if (lastMessage && lastMessage.classList.contains('ai-message')) {
+      lastMessage.parentNode.insertBefore(thinkingUI, lastMessage)
+    } else {
+      this.chatMessagesTarget.appendChild(thinkingUI)
+    }
+    
+    this.toolThinkingElement = thinkingUI
+    
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons()
+    }
+    
+    // For voice mode, announce once
+    const voiceModeToggle = document.getElementById('voice-toggle-checkbox')
+    if (voiceModeToggle?.checked) {
+      this.speakText("One moment, let me work on that for you.")
+    }
+    
+    if (initialStep) {
+      this.toolThinkingSteps.push(initialStep)
+    }
+    
+    this.scrollChatToBottom()
+  }
+  
+  addToolThinkingStep(step) {
+    if (!this.isShowingToolThinking || !this.toolThinkingElement) {
+      this.showToolThinking(step)
+      return
+    }
+    
+    this.toolThinkingSteps.push(step)
+    
+    // Keep only the last 3 steps
+    if (this.toolThinkingSteps.length > 3) {
+      this.toolThinkingSteps.shift()
+    }
+    
+    const stepsContainer = this.toolThinkingElement.querySelector('#tool-thinking-steps')
+    if (stepsContainer) {
+      stepsContainer.innerHTML = this.toolThinkingSteps
+        .map(s => `<div class="thinking-step">${s}</div>`)
+        .join('')
+      
+      // Scroll to show latest step
+      stepsContainer.scrollTop = stepsContainer.scrollHeight
+    }
+  }
+  
+  hideToolThinking(delay = 300) {
+    if (!this.isShowingToolThinking || !this.toolThinkingElement) return
+    
+    // Clear any pending timeout
+    if (this.toolThinkingTimeout) {
+      clearTimeout(this.toolThinkingTimeout)
+    }
+    
+    // Fade out and remove after delay
+    this.toolThinkingTimeout = setTimeout(() => {
+      if (this.toolThinkingElement) {
+        this.toolThinkingElement.style.opacity = '0'
+        this.toolThinkingElement.style.transform = 'translateY(-10px)'
+        this.toolThinkingElement.style.transition = 'all 0.3s ease-out'
+        
+        setTimeout(() => {
+          if (this.toolThinkingElement) {
+            this.toolThinkingElement.remove()
+            this.toolThinkingElement = null
+          }
+        }, 300)
+      }
+      
+      this.isShowingToolThinking = false
+      this.toolThinkingSteps = []
+    }, delay)
   }
 
   showStreamingProgress(message) {
@@ -1942,21 +2827,48 @@ export default class extends Controller {
 
   getCSRFToken() {
     // Check for CSRF token in multiple possible locations
-    const csrfToken = document.querySelector('meta[name="csrf-token"]') || 
-                     document.querySelector('meta[name="authenticity_token"]')
     
-    if (csrfToken) {
-      return csrfToken.getAttribute('content')
-    } else {
-      // Try to get from Rails UJS if available
-      const railsToken = document.querySelector('input[name="authenticity_token"]')
-      if (railsToken) {
-        return railsToken.value
+    // Method 1: Meta tag (most common)
+    const metaToken = document.querySelector('meta[name="csrf-token"]')
+    if (metaToken) {
+      const content = metaToken.getAttribute('content') || metaToken.content
+      if (content) {
+        console.log('✅ CSRF token found in meta tag')
+        return content
       }
-      
-      console.warn("⚠️ CSRF token not found! Request may fail.")
-      return ""
     }
+    
+    // Method 2: Alternative meta tag name
+    const altMetaToken = document.querySelector('meta[name="authenticity_token"]')
+    if (altMetaToken) {
+      const content = altMetaToken.getAttribute('content') || altMetaToken.content
+      if (content) {
+        console.log('✅ CSRF token found in alt meta tag')
+        return content
+      }
+    }
+    
+    // Method 3: From Rails form input
+    const formToken = document.querySelector('input[name="authenticity_token"]')
+    if (formToken && formToken.value) {
+      console.log('✅ CSRF token found in form input')
+      return formToken.value
+    }
+    
+    // Method 4: From the Scout form specifically
+    const scoutForm = document.querySelector('#message-form input[name="authenticity_token"]')
+    if (scoutForm && scoutForm.value) {
+      console.log('✅ CSRF token found in Scout form')
+      return scoutForm.value
+    }
+    
+    // Debug output
+    console.error("❌ CSRF token not found! Upload will fail.")
+    console.log("Debug - All meta tags:", Array.from(document.querySelectorAll('meta')).map(m => m.getAttribute('name')))
+    console.log("Debug - CSRF meta element:", document.querySelector('meta[name="csrf-token"]'))
+    console.log("Debug - Form inputs:", Array.from(document.querySelectorAll('input[name="authenticity_token"]')).length)
+    
+    return ""
   }
   
   // Upload files to the server
@@ -1987,7 +2899,19 @@ export default class extends Controller {
       console.log('📎 Upload response status:', response.status)
 
       if (!response.ok) {
-        throw new Error('File upload failed')
+        // Try to get error details from response
+        let errorDetails = 'File upload failed'
+        try {
+          const errorData = await response.json()
+          console.error('📎 Upload error response:', errorData)
+          errorDetails = errorData.error || errorDetails
+          if (errorData.details) {
+            console.error('📎 Error details:', errorData.details)
+          }
+        } catch (e) {
+          console.error('📎 Could not parse error response')
+        }
+        throw new Error(errorDetails)
       }
 
       const result = await response.json()
@@ -1996,6 +2920,28 @@ export default class extends Controller {
       if (result.rag_stores_created && result.rag_stores_created.length > 0) {
         console.log('✅ RAG stores created:', result.rag_stores_created)
         console.log('✅ Message:', result.message)
+      }
+      
+      // Check for duplicate uploads
+      const duplicateUploads = result.urls ? result.urls.filter(u => u.duplicate) : []
+      if (duplicateUploads.length > 0) {
+        console.log('ℹ️ Duplicate documents found:', duplicateUploads.map(u => u.filename))
+      }
+
+      // If a document was uploaded successfully, try to open it in the viewer
+      if (result.urls && result.urls.length > 0) {
+        const documentUploads = result.urls.filter(u => u.asset_type === 'document' && u.asset_id)
+        if (documentUploads.length > 0) {
+          console.log('📄 Opening document viewer for uploaded document:', documentUploads[0])
+          // Add a message to let the user know what's happening
+          this.addMessage('I\'ll open the document viewer for you...', 'ai')
+          // Small delay to ensure the document is ready
+          setTimeout(() => {
+            this.loadScoutCanvas('document_viewer', { 
+              asset_id: documentUploads[0].asset_id 
+            })
+          }, 1000)
+        }
       }
 
       return result.urls || []
@@ -2443,6 +3389,26 @@ export default class extends Controller {
   
   // Clean up any remaining TTS buffer when streaming completes
   finalizeStreamingTTS() {
+    // Check if this was an agent question that needs special handling
+    if (this.streamingIsAgentQuestion) {
+      console.log("🎤 Finalizing agent question TTS")
+      const voiceModeToggle = document.getElementById('voice-toggle-checkbox')
+      
+      // If we have content that looks like a question and voice mode is on
+      if (voiceModeToggle?.checked && this.currentStreamingContent && this.currentStreamingContent.includes('?')) {
+        console.log("🔊 Ensuring agent question is spoken:", this.currentStreamingContent.substring(0, 100))
+        // Give a small delay to ensure streaming is done
+        setTimeout(() => {
+          if (!window.ttsManager?.isPlaying) {
+            this.speakText(this.currentStreamingContent)
+          }
+        }, 100)
+      }
+      
+      // Reset the flag
+      this.streamingIsAgentQuestion = false
+    }
+    
     if (!window.ttsManager || !window.ttsManager.isEnabled) {
       return
     }

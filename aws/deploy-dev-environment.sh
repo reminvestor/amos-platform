@@ -43,3 +43,6 @@ echo "   - View logs: aws logs tail /ecs/agent-marketing-dev --follow"
 echo "   - Check service: aws ecs describe-services --cluster agent-marketing-dev-cluster --services agent-marketing-dev"
 echo "   - Run migrations: aws ecs execute-command --cluster agent-marketing-dev-cluster --task TASK_ID --container agent-marketing-dev --interactive --command '/bin/bash'"
 
+
+
+

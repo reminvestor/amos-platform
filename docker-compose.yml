@@ -1,5 +1,7 @@
 # Docker Compose configuration for AMOS development
 
+name: amos
+
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -29,11 +31,30 @@ services:
       timeout: 5s
       retries: 5
 
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker/localstack/init.d:/docker-entrypoint-initaws.d
+    healthcheck:
+      test: ["CMD", "bash", "-c", "awslocal s3 ls &>/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
   web:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    command: bash -c "rm -f tmp/pids/server.pid && bundle install && yarn install && yarn build && yarn build:css && rails db:prepare && rails db:seed && bin/rails server -b 0.0.0.0"
+    command: bash -c "rm -f tmp/pids/server.pid && bundle install && yarn install && yarn build && yarn build:css && rails db:prepare && rails db:seed && rails embeddings:update_all && bin/rails server -b 0.0.0.0"
     env_file:
       - .env
     volumes:
@@ -79,7 +100,20 @@ services:
       # Stripe
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      # Deepgram (Voice Assistant)
+      # Voice Assistant (Eleven Labs + Deepgram)
+      - ELEVEN_LABS_API_KEY=${ELEVEN_LABS_API_KEY}
+      - ELEVEN_LABS_MODEL=${ELEVEN_LABS_MODEL:-scribe-v3-realtime}
+      - ELEVEN_LABS_LANGUAGE=${ELEVEN_LABS_LANGUAGE:-en}
+      - ELEVEN_LABS_ENCODING=${ELEVEN_LABS_ENCODING:-pcm_16000}
+      - ELEVEN_LABS_SAMPLE_RATE=${ELEVEN_LABS_SAMPLE_RATE:-16000}
+      - ELEVEN_LABS_CHANNELS=${ELEVEN_LABS_CHANNELS:-1}
+      - ELEVEN_LABS_PUNCTUATE=${ELEVEN_LABS_PUNCTUATE:-true}
+      - ELEVEN_LABS_PARTIAL_RESULTS=${ELEVEN_LABS_PARTIAL_RESULTS:-true}
+      - ELEVEN_LABS_SPEAKER_DIARIZATION=${ELEVEN_LABS_SPEAKER_DIARIZATION:-false}
+      - ELEVEN_LABS_SENTIMENT_ANALYSIS=${ELEVEN_LABS_SENTIMENT_ANALYSIS:-false}
+      - ELEVEN_LABS_LATENCY_OPTIMIZED=${ELEVEN_LABS_LATENCY_OPTIMIZED:-true}
+      - ELEVEN_LABS_MAX_DURATION=${ELEVEN_LABS_MAX_DURATION:-300}
+      - ELEVEN_LABS_SILENCE_TIMEOUT=${ELEVEN_LABS_SILENCE_TIMEOUT:-20}
       - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
       - DEEPGRAM_WEBHOOK_SECRET=${DEEPGRAM_WEBHOOK_SECRET}
       - VOICE_ASSISTANT_ENABLED=${VOICE_ASSISTANT_ENABLED:-true}
@@ -90,10 +124,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      localstack:
+        condition: service_healthy
     stdin_open: true
     tty: true
 
-  worker:
+  solidqueue-worker:
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -127,16 +163,64 @@ services:
       # Optional services
       - MAILGUN_API_KEY=${MAILGUN_API_KEY}
       - MAILGUN_DOMAIN=${MAILGUN_DOMAIN}
+      # Voice Assistant
+      - ELEVEN_LABS_API_KEY=${ELEVEN_LABS_API_KEY}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+      # S3 (for RAG document storage)
+      - RAG_BUCKET=${RAG_BUCKET}
+      - AWS_S3_ENDPOINT=${AWS_S3_ENDPOINT}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      localstack:
+        condition: service_healthy
     stdin_open: true
     tty: true
+
+  # Agent Lightning Service - Micro-level RL-based agent optimization
+  # Complements the macro-level Agent School system
+  agent_lightning:
+    build:
+      context: ./python_services/agent_lightning
+      dockerfile: Dockerfile
+    ports:
+      - "4747:4747"
+      - "4748:4748"
+    environment:
+      # Database connection (same as Rails)
+      - DATABASE_URL=postgresql://postgres:123password@db:5432/agent_marketing_development
+      # Rails API connection
+      - RAILS_API_URL=http://web:3000
+      - RAILS_API_KEY=${RAILS_API_KEY:-development_key}
+      # Agent Lightning configuration
+      - AGENT_LIGHTNING_RUNNERS=4
+      - AGENT_LIGHTNING_STRATEGY=cs
+      - LOG_LEVEL=INFO
+      - DEBUG=false
+      # Training configuration
+      - TRAINING_BATCH_SIZE=50
+      - AUTO_ROLLBACK_THRESHOLD=0.10
+      - MAX_PROMPT_VERSIONS=3
+    depends_on:
+      db:
+        condition: service_healthy
+      web:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4747/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    volumes:
+      - agent_lightning_checkpoints:/app/checkpoints
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   redis_data:
   bundle_cache:
   node_modules:
+  agent_lightning_checkpoints:

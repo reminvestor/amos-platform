@@ -1,0 +1,24 @@
+<div class="admin-p-xl">
+  <div class="admin-page-header">
+    <div class="header-left">
+      <%= link_to admin_agent_plugins_path, class: "admin-btn admin-btn-sm admin-btn-outline", style: "margin-right: 1rem;" do %>
+        <i data-lucide="arrow-left"></i>
+      <% end %>
+      <div class="header-icon">
+        <i data-lucide="plus"></i>
+      </div>
+      <div class="header-text">
+        <h1>Create Agent Plugin</h1>
+        <p>Define a new AI agent</p>
+      </div>
+    </div>
+  </div>
+
+  <%= render 'form', agent_plugin: @agent_plugin %>
+</div>
+
+<script>
+  document.addEventListener('turbo:load', () => {
+    lucide.createIcons();
+  });
+</script>

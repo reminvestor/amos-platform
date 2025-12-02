@@ -4,6 +4,7 @@ class SequenceStep < ApplicationRecord
 
   # JSONB metadata handling - Rails 8.0 compatible
   attribute :metadata, :json
+  attribute :delay_hours, :integer, default: 0
 
   # Validations
   validates :step_number, presence: true, numericality: { greater_than_or_equal_to: 1 }

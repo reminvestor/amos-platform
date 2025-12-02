@@ -3,16 +3,16 @@
     <div class="col-md-12">
       <div class="card shadow">
         <div class="card-header bg-primary text-white">
-          <h3><i class="fas fa-chart-line me-2"></i> AI Campaign Analysis</h3>
+          <h3><i data-lucide="trending-up" class="me-2"></i> AI Campaign Analysis</h3>
         </div>
         <div class="card-body">
           <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i> Campaign "<strong><%= @campaign.name %></strong>" has been analyzed by AI
+            <i data-lucide="info" class="me-2"></i> Campaign "<strong><%= @campaign.name %></strong>" has been analyzed by AI
             <% if @campaign.last_analyzed_at.present? %>
               <div class="mt-2 small">
                 <strong>Last analyzed:</strong> <%= @campaign.last_analyzed_at.strftime("%b %d, %Y at %I:%M %p") %>
                 <%= button_to reanalyze_campaign_path(@campaign), method: :post, class: "btn btn-sm btn-outline-primary mt-1" do %>
-                  <i class="fas fa-sync-alt me-1"></i> Generate Fresh Analysis
+                  <i data-lucide="refresh-cw" class="me-1"></i> Generate Fresh Analysis
                 <% end %>
               </div>
             <% end %>
@@ -142,21 +142,21 @@
                         <a href="<%= new_ai_content_path %>" class="list-group-item list-group-item-action">
                           <div class="d-flex w-100 justify-content-between">
                             <h6 class="mb-1">Create new AI-generated content</h6>
-                            <small><i class="fas fa-arrow-right"></i></small>
+                            <small><i data-lucide="arrow-right"></i></small>
                           </div>
                           <p class="mb-1">Generate fresh email content based on your requirements</p>
                         </a>
                         <a href="<%= email_template_path(@campaign.email_template_id) %>" class="list-group-item list-group-item-action">
                           <div class="d-flex w-100 justify-content-between">
                             <h6 class="mb-1">View the template used</h6>
-                            <small><i class="fas fa-arrow-right"></i></small>
+                            <small><i data-lucide="arrow-right"></i></small>
                           </div>
                           <p class="mb-1">Check the email template that was used for this campaign</p>
                         </a>
                         <a href="<%= improve_ai_content_path(@campaign.email_template_id) %>" class="list-group-item list-group-item-action">
                           <div class="d-flex w-100 justify-content-between">
                             <h6 class="mb-1">Improve this email template</h6>
-                            <small><i class="fas fa-arrow-right"></i></small>
+                            <small><i data-lucide="arrow-right"></i></small>
                           </div>
                           <p class="mb-1">Use AI to improve the content based on this campaign's performance</p>
                         </a>
@@ -179,14 +179,14 @@
                             recommendations.each do |recommendation|
                         %>
                           <div class="alert alert-success">
-                            <i class="fas fa-lightbulb me-2"></i> <%= recommendation.strip %>
+                            <i data-lucide="lightbulb" class="me-2"></i> <%= recommendation.strip %>
                           </div>
                         <% 
                             end
                           else 
                         %>
                           <div class="alert alert-warning">
-                            <i class="fas fa-info-circle me-2"></i> No specific recommendations extracted. Please review the full analysis above.
+                            <i data-lucide="info" class="me-2"></i> No specific recommendations extracted. Please review the full analysis above.
                           </div>
                         <% end %>
                       </div>

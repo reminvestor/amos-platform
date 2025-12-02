@@ -1,216 +1,321 @@
 # AMOS - Automated Management Operating System
 
 > **AI-Powered Business Automation Platform**  
-> Natural language workflows, intelligent automation, seamless integrations
+> Natural language workflows, intelligent agents, universal integrations, and voice interaction
 
 ---
 
 ## 🚀 What is AMOS?
 
-**AMOS** is an AI-first business automation platform where you accomplish complex tasks through natural conversation. No forms to fill out. No complicated workflows to configure. Just tell AMOS what you need, and it intelligently orchestrates the work.
+**AMOS** is an AI-first business automation platform where you accomplish complex tasks through natural conversation. No forms to fill out. No complicated workflows to configure. Just tell AMOS what you need, and it intelligently orchestrates the work through a sophisticated multi-agent system.
 
 ### The Vision
 
 AMOS transforms business automation from:
 - ❌ **Manual form-filling** → ✅ **Natural conversation**
 - ❌ **Rigid workflows** → ✅ **Intelligent adaptation**
-- ❌ **Repetitive data entry** → ✅ **Context-aware automation**
-- ❌ **Technical complexity** → ✅ **Simple requests**
+- ❌ **Static integrations** → ✅ **AI-created connectors**
+- ❌ **Single-purpose tools** → ✅ **Self-evolving agent ecosystem**
 
 ---
 
 ## ✨ Core Capabilities
 
-### 🤖 Conversational AI Interface
+### 🤖 Scout - Conversational AI Interface
+Scout is the primary AI assistant that handles all user interactions:
 - **Natural Language Processing**: Understand complex requests in plain English
-- **Context-Aware**: Remembers previous conversations, uploaded files, and business profile
-- **Intelligent Workflows**: Automatically selects and executes multi-step processes
-- **Real-Time Streaming**: See progress as AMOS works
-- **Voice Ready**: Upcoming support for hands-free voice commands
+- **Context-Aware**: Remembers conversations, uploaded files, and business profile
+- **Tool Orchestration**: Accesses 60+ tools for data, integrations, and workflows
+- **Real-Time Streaming**: See progress as Scout works via Server-Sent Events
+- **Smart Delegation**: Knows when to hand off to specialized agents
 
-### 🌐 Universal Integration Platform
-- **Connect Anything**: Stripe, HubSpot, Mailgun, and any REST API
-- **Cross-Platform Workflows**: Orchestrate tasks across multiple services automatically
-- **Intelligent Data Sync**: Move customer data, sync contacts, update records
-- **No-Code Integration Builder**: Users add custom APIs through UI
-- **Secure & Compliant**: Encrypted credentials, OAuth 2.0, audit logging
+### 🧠 Multi-Agent System
+AMOS features a sophisticated agent architecture with 11 specialized agents:
 
-**Power Example:** Say *"Email my Stripe customers who upgraded this week"* and AMOS:
-1. Fetches customers from Stripe API
-2. Filters by upgrade event
-3. Generates personalized emails
-4. Sends via Mailgun
-5. Updates HubSpot contact records
-All in one conversation! 🚀
+| Agent | Role | Purpose |
+|-------|------|---------|
+| **Scout** | main_chat | Primary user interface, tool orchestration |
+| **Agent Architect** | architect | Creates and modifies AI agents |
+| **Tool Builder** | engineer | Builds custom tools (HTTP APIs & Ruby code) |
+| **Integration Architect** | architect | Creates API integrations via research-test-build workflow |
+| **AI Landing Page Creator** | executor | Generates conversion-optimized landing pages |
+| **Email Sequence Architect** | executor | Designs multi-email drip campaigns |
+| **Campaign Optimizer** | analyst | Analyzes and improves campaign performance |
+| **Sales Email Generator** | executor | Creates personalized sales emails |
+| **Content Quality Analyzer** | verifier | Evaluates content quality and SEO |
+| **Customer Journey Mapper** | analyst | Maps customer touchpoints and friction |
+| **Web Research Agent** | researcher | Performs web searches via Serper API |
 
-### 📋 Workflow Template System (V2)
-AMOS uses **intelligent, phase-based workflows** that:
-- **Gather Context Intelligently**: Checks conversation history, uploaded files, and business profile before asking questions
-- **Execute Goals Adaptively**: AI plans the best approach using available tools
-- **Validate Results**: Ensures quality and completeness automatically
-- **Self-Heal**: Attempts to fix issues when they occur
+### 🏭 Factory System (Agent, Tool & Integration Creation)
+AMOS can create its own capabilities through three factory services:
 
-**Available Templates:**
-- 📄 **Landing Page Creation** - Create professional, conversion-optimized landing pages
-- 📧 **Email Campaigns** - Build and manage email campaigns with templates
-- 🎯 **Add Groups to Campaigns** - Associate contact groups with campaigns
-- 🔄 **[Extensible]** - Add custom templates as YAML files
+#### Agent Factory (`Factories::AgentFactory`)
+- **Schema Validation**: Ensures agents have proper structure
+- **Prompt Validation**: Checks system prompts for required sections (role, objective, constraints)
+- **Capability Validation**: Verifies input/output contracts
+- **Tool Validation**: Confirms assigned tools exist
+- **Test Execution**: Runs a test prompt before deployment
+- **Ownership Tracking**: Associates agents with their creator (`user_id`)
 
-### 🛠️ Powerful Tool Ecosystem
+#### Tool Factory (`Factories::ToolFactory`)
+- **Two Execution Types**: `ruby_code` or `http_request`
+- **Security Scanning**: Blocks dangerous patterns (eval, system, file writes)
+- **Parameter Schema Validation**: Ensures proper JSON Schema format
+- **API Config Validation**: For HTTP tools, validates URLs, methods, headers
+- **Automatic Catalog Refresh**: New tools immediately available
 
-**20+ AI-Accessible Tools:**
-- **Data Management**: Create, read, update campaigns, contacts, landing pages, templates
-- **Content Generation**: AI-powered landing pages, email content
-- **Analytics**: Campaign performance, customer insights, usage tracking
-- **Integrations**: Connect Stripe, HubSpot, Mailgun, and any REST API
-- **Workflow**: Context management, template discovery, task planning
+#### Integration Factory (`Factories::IntegrationFactory`)
+- **Staged Creation Pipeline**:
+  1. **Foundation**: Create basic integration (name, base URL, description)
+  2. **Configure Auth**: Set authentication type and parameters
+  3. **Test Auth**: Verify credentials work with the API
+  4. **Add Operations**: Define API endpoints
+- **Flexible Auth Support**: API Key, Bearer Token, Basic Auth, OAuth2, Custom
+- **Auth Placement**: Header, Query Parameter, or URL Path
+- **Connection Management**: Entity-scoped connections with credentials
 
-### 🔌 Cross-Platform Integration (Key Differentiator!)
+### 🔌 Universal Integration Platform
+Connect to any REST API without code changes:
 
-**AMOS doesn't just manage your marketing - it connects your entire business:**
+**Pre-Built Integrations:**
+- 💳 **Stripe** - Payments, subscriptions, customers
+- 🎯 **HubSpot** - CRM, contacts, deals
+- ✉️ **AWS SES** - Transactional email with tracking
+- 📋 **Trello** - Boards, lists, cards
+- 🔧 **Any REST API** - User-configurable
 
-- **Pull data from anywhere**: Stripe customers, HubSpot deals, Google Analytics
-- **Push data everywhere**: Create HubSpot contacts from Stripe, sync email engagement
-- **Orchestrate workflows**: Multi-step automation across multiple platforms
-- **No coding required**: Connect, configure, and let AMOS handle the rest
+**Integration Features:**
+- **Dynamic Operation Discovery**: Agents find and use API endpoints
+- **Secure Credential Storage**: Encrypted with rotation support
+- **Policy Engine**: Role-based operation permissions
+- **Audit Logging**: Every API call tracked
+- **Rate Limiting**: Automatic throttling and retry
 
-**Example:** *"Email my Stripe customers who haven't opened my last campaign"*
-- Fetches Stripe customer list
-- Cross-references with campaign data
-- Generates personalized emails
-- Sends via Mailgun
-- Updates engagement in HubSpot
+### 🛠️ Tool Ecosystem (60+ Tools)
 
-### 📊 Smart Context Management
-- **WorkflowContext**: Persistent data across workflow phases
-- **File Uploads**: Analyze PDFs, images, brand guidelines
-- **Conversation Memory**: Reference previous discussions
-- **Entity Profiles**: Business information readily available
+**Data Management:**
+- `create_object`, `get_data`, `update_object` - CRUD operations
+- `get_schema` - Discover available data types
+- `query_metric`, `list_metrics` - Analytics queries
 
----
+**Agent & Automation:**
+- `delegate_to_agent` - Hand off to specialized agents
+- `invoke_agent_plugin` - Execute agent plugins
+- `list_available_agents` - Discover agents by capability
+- `create_agent`, `update_agent` - Agent management
+- `create_tool`, `update_tool` - Tool management
 
-## 🎯 What Can You Do With AMOS?
+**Integration Tools:**
+- `list_connections`, `list_operations` - Discover integrations
+- `invoke_operation`, `execute_integration` - Call APIs
+- `create_integration_foundation` - Start new integration
+- `configure_integration_auth` - Set up authentication
+- `test_integration_auth` - Verify credentials
+- `add_integration_operations` - Define endpoints
+- `research_api` - Structured API research
 
-### Cross-Platform Automation (🔥 Most Powerful)
+**Content & Documents:**
+- `generate_ai_landing_page` - Create landing pages
+- `update_landing_page` - Modify existing pages
+- `read_document`, `query_document_content` - Document analysis
+- `query_rag_store` - Semantic search over documents
+- `create_rag_store` - Create knowledge bases
 
-```
-You: "Email my new Stripe customers from this week"
-AMOS: 🔧 Fetching Stripe customers from the last 7 days...
-      📊 Found 12 new customers
-      🔧 Creating personalized welcome emails...
-      ✅ 12 emails sent via Mailgun!
-      
-      Emails include their subscription details and next steps.
-```
+**Communication:**
+- `ask_user` - Request user input mid-workflow
+- `web_search` - Search the internet via Serper API
+- `search_history`, `retrieve_history` - Conversation memory
 
-```
-You: "Sync my campaign email clicks to HubSpot"
-AMOS: 🔧 Analyzing campaign engagement...
-      📊 342 contacts clicked links
-      🔧 Updating HubSpot contact records...
-      ✅ Synced engagement data!
-      
-      HubSpot now shows email engagement for all contacts.
-      Ready for your sales team to follow up! 🎯
-```
+**Visualization:**
+- `create_dynamic_visualization` - Generate charts and dashboards
+- `load_canvas` - Display rich UI components
 
-### Marketing & Campaigns
-```
-You: "Create an email campaign for our spring sale"
-AMOS: [Gathers details conversationally]
-      [Creates email template]
-      [Sets up campaign]
-      ✅ "Campaign created! Ready to send to 1,234 contacts."
-```
+### 📊 Canvas System (25 UI Components)
+Dynamic UI components that Scout can load:
 
-### Landing Pages
-```
-You: "Build a landing page for our new product"
-AMOS: [Asks about value proposition, target audience, CTA]
-      [Generates professional Bootstrap HTML]
-      ✅ "Landing page live! Preview: [link]"
-```
+| Canvas | Purpose |
+|--------|---------|
+| `dynamic_canvas` | Flexible markdown/HTML display |
+| `analytics_dashboard` | Metrics and charts |
+| `landing_page_editor` | Visual page builder |
+| `integrations_manager` | Connection management |
+| `campaign_viewer` | Email campaign details |
+| `contact_viewer` | Contact profiles |
+| `document_viewer` | Document display |
+| `task_progress` | Workflow status |
+| `parallel_tasks` | Multi-task monitoring |
 
-### Contact Management
-```
-You: "Add my VIP customers to the holiday campaign"
-AMOS: [Finds contact group and campaign]
-      [Associates them]
-      ✅ "Done! 45 VIP customers added to holiday campaign."
-```
+### 🎙️ Voice Interface
+Full voice interaction support:
+- **Voice Input**: Web Speech API, WebSocket streaming
+- **Voice Output**: AWS Polly, ElevenLabs TTS
+- **Real-Time Processing**: Sub-second response times
+- **Session Management**: Persistent voice sessions
+- **Connection Optimization**: Automatic retry and health monitoring
 
-### Analytics & Insights
-```
-You: "How's my Q4 campaign performing?"
-AMOS: [Analyzes campaign data]
-      [Generates visualization]
-      ✅ "28% open rate, 12% click rate. Top performing with millennials."
-```
+### 📚 RAG (Retrieval-Augmented Generation)
+Semantic search across all knowledge:
+- **Document Chunking**: Intelligent text segmentation
+- **Vector Embeddings**: pgvector-powered similarity search
+- **Multi-Source Search**: Documents, conversations, integrations
+- **Hybrid Queries**: Combine semantic and keyword search
+- **Knowledge Stores**: Entity-scoped document collections
 
 ---
 
 ## 🏗️ Architecture
 
-### V2 Workflow System
+### System Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    User Request (Chat)                       │
+│                    User Request (Chat/Voice)                 │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                   PlannerAgentService                        │
-│  • Analyzes request intent                                   │
-│  • Finds matching workflow template                          │
-│  • Creates execution plan                                    │
+│                  ScoutGenericToolsServiceV2                  │
+│  • Builds context-aware system prompt                        │
+│  • Filters tools by agent loadout                            │
+│  • Streams responses via ActionCable                         │
+│  • Executes tool calls and continuations                     │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                    WorkflowEngine (V2)                       │
-│  Executes 3-Phase Workflow:                                  │
-│                                                              │
-│  Phase 1: GatherContextExecutor                              │
-│    ├─ Check conversation history                             │
-│    ├─ Check uploaded files                                   │
-│    ├─ Check business profile                                 │
-│    └─ Ask conversationally for missing data                  │
-│                                                              │
-│  Phase 2: GoalExecutor                                       │
-│    ├─ Structured: Use data mapping (reliable)                │
-│    ├─ Adaptive: AI plans tool sequence (flexible)            │
-│    └─ Execute tools with gathered context                    │
-│                                                              │
-│  Phase 3: ValidationExecutor                                 │
-│    ├─ Validate outputs                                       │
-│    ├─ Run quality checks                                     │
-│    └─ Attempt auto-fixes if needed                           │
+│                      BedrockService                          │
+│  • Claude Sonnet 4.5 via AWS Bedrock                         │
+│  • Streaming with tool use                                   │
+│  • Prompt caching for efficiency                             │
+│  • Rate limiting and fallback                                │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                      Success Message                         │
-│  "✅ Task complete! Here's what I created..."                │
+│                     Tool Execution                           │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────┐               │
+│  │ Data     │  │ Agent    │  │ Integration  │               │
+│  │ Tools    │  │ Plugins  │  │ Operations   │               │
+│  └──────────┘  └──────────┘  └──────────────┘               │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Canvas/Response                           │
+│  • Dynamic UI components                                     │
+│  • Streamed text responses                                   │
+│  • Structured data displays                                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Key Components
+### Agent Plugin Execution
 
-**Services:**
-- `ScoutController` - Main chat interface and streaming
-- `PlannerAgentService` - Intelligent workflow planning
-- `WorkflowEngine` - Orchestrates phase execution
-- `BedrockService` - AWS Bedrock Claude integration
-- `Tools::ToolCatalog` - 20+ AI-accessible tools
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Agent Plugin Invocation                    │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                 StandardPluginExecutor                       │
+│  • Loads agent configuration                                 │
+│  • Builds role-specific system prompt                        │
+│  • Performs runtime tool discovery (RAG)                     │
+│  • Executes tool loop (max 15 turns)                         │
+│  • Broadcasts progress via ActionCable                       │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│              AgentPluginExecutionJob (Background)            │
+│  • Async execution via SolidQueue                            │
+│  • Status tracking (pending → running → completed)           │
+│  • Canvas output on completion                               │
+│  • Error handling and retry                                  │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Phase Executors:**
-- `GatherContextExecutor` - Intelligent data collection
-- `GoalExecutor` - Adaptive or structured goal execution  
-- `ValidationExecutor` - Quality assurance and auto-fixing
+### Integration Execution
 
-**Models:**
-- `WorkflowExecution` - Tracks workflow runs
-- `WorkflowContext` - Persistent phase data
-- `TaskSession` - User task state management
-- `Campaign`, `Contact`, `LandingPage`, etc. - Business entities
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  invoke_operation Tool                       │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│              UniversalIntegrationExecutor                    │
+│  • Resolves connection and credentials                       │
+│  • Checks policy permissions                                 │
+│  • Builds authenticated request                              │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                 IntegrationApiService                        │
+│  • Constructs URL from path template                         │
+│  • Applies auth headers/params from AuthConfig               │
+│  • Handles pagination strategies                             │
+│  • Logs request/response                                     │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    External API                              │
+│  Stripe, HubSpot, Trello, Custom APIs...                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📁 Project Structure
+
+```
+app/
+├── channels/
+│   ├── scout_channel.rb          # Real-time chat streaming
+│   ├── voice_channel.rb          # Voice session WebSocket
+│   └── amos_channel.rb           # Legacy chat channel
+├── controllers/
+│   ├── scout_controller.rb       # Main chat API
+│   ├── integrations_controller.rb # Integration management
+│   ├── agent_plugins_controller.rb
+│   └── admin/                    # Admin panel
+├── jobs/
+│   ├── agent_plugin_execution_job.rb  # Async agent execution
+│   ├── voice_agent_job.rb        # Voice processing
+│   └── rag/                      # Document processing pipeline
+├── models/
+│   ├── agent_plugin.rb           # AI agent definitions
+│   ├── tool_definition.rb        # Custom tool definitions
+│   ├── integration.rb            # API integration blueprints
+│   ├── connection.rb             # Entity-integration links
+│   ├── integration_credential.rb # Encrypted API credentials
+│   ├── integration_operation.rb  # API endpoint definitions
+│   ├── oauth_configuration.rb    # OAuth settings
+│   ├── auth_config.rb            # Flexible auth parameters
+│   └── agent_loadout.rb          # Role-based tool permissions
+├── services/
+│   ├── scout_generic_tools_service_v2.rb  # Main Scout service
+│   ├── bedrock_service.rb        # AWS Bedrock Claude API
+│   ├── factories/
+│   │   ├── agent_factory.rb      # Agent creation/validation
+│   │   ├── tool_factory.rb       # Tool creation/validation
+│   │   └── integration_factory.rb # Integration creation
+│   ├── agents/
+│   │   ├── standard_plugin_executor.rb  # Agent execution engine
+│   │   ├── gather_context_executor.rb
+│   │   ├── goal_executor.rb
+│   │   └── validation_executor.rb
+│   ├── tools/                    # 60+ tool implementations
+│   │   ├── base_tool.rb
+│   │   ├── tool_catalog.rb       # Tool registry
+│   │   ├── create_agent_tool.rb
+│   │   ├── create_tool_tool.rb
+│   │   ├── create_integration_foundation_tool.rb
+│   │   └── ... (60+ tools)
+│   ├── integration_api_service.rb  # API execution
+│   ├── universal_integration_executor.rb
+│   ├── policy_engine.rb          # Permission enforcement
+│   ├── security_check_service.rb # Tool security scanning
+│   ├── rag_service.rb            # Semantic search
+│   ├── embedding_service.rb      # Vector embeddings
+│   └── voice_agent_service.rb    # Voice processing
+├── views/
+│   └── scout/canvas/             # 25 canvas partials
+└── workflow_templates/           # YAML workflow definitions
+```
 
 ---
 
@@ -219,9 +324,10 @@ AMOS: [Analyzes campaign data]
 ### Prerequisites
 - Ruby 3.4+
 - Rails 8.0+
-- PostgreSQL 14+
-- AWS Account (for Bedrock Claude)
+- PostgreSQL 14+ with pgvector extension
+- AWS Account (for Bedrock Claude, SES, S3)
 - Node.js & Yarn
+- Redis (for ActionCable)
 
 ### Installation
 
@@ -247,43 +353,13 @@ bin/dev
 
 ### Demo Login Credentials
 
-After running `db:seed`, you can log in with these demo accounts:
+After running `db:seed`:
 
 | Email | Password | Role |
 |-------|----------|------|
 | admin@demo.com | password123 | Admin (full access) |
-| marketer@demo.com | password123 | Marketer (marketing features) |
+| marketer@demo.com | password123 | Marketer |
 | viewer@demo.com | password123 | Viewer (read-only) |
-
-**Troubleshooting Login Issues:**
-
-If you can't log in, passwords may have been reset. Run:
-
-```bash
-# Show current login credentials
-rails dev:show_logins
-
-# Reset all demo user passwords to 'password123'
-rails dev:reset_passwords
-
-# Or do a full database reset
-rails dev:full_reset
-```
-
-**Docker Users:** Logins are automatically created on container startup.
-
-**IMPORTANT:** `docker compose restart` does NOT re-run seeds. To ensure seeds run:
-
-```bash
-# Full container recreation (runs db:seed)
-docker compose down && docker compose up -d
-
-# Quick password reset (if containers already running)
-docker compose exec web rails dev:reset_passwords
-
-# Or manually run seeds
-docker compose exec web rails db:seed
-```
 
 ### Environment Variables
 
@@ -292,869 +368,236 @@ docker compose exec web rails db:seed
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
+BEDROCK_DEFAULT_MODEL=claude-sonnet-4-5
+
+# AWS SES (Email)
+SES_REGION=us-east-1
+MAILER_SENDER=noreply@yourdomain.com
 
 # Database
 DATABASE_URL=postgresql://localhost/amos_development
 
-# Optional
-MAILGUN_API_KEY=your_key
+# Redis (ActionCable)
 REDIS_URL=redis://localhost:6379
+
+# Serper API (Web Search)
+SERPER_API_KEY=your_key
+
+# Voice (Optional)
+ELEVENLABS_API_KEY=your_key
+DEEPGRAM_API_KEY=your_key
+```
+
+### Docker
+
+```bash
+# Start all services
+docker compose up -d
+
+# View logs
+docker compose logs -f web
+
+# Reset passwords
+docker compose exec web rails dev:reset_passwords
+
+# Run seeds
+docker compose exec web rails db:seed
 ```
 
 ---
 
-## 📖 Usage Guide
+## 📖 Usage Examples
 
-### Basic Interaction
+### Creating an Agent
 
-1. **Open AMOS** - Navigate to the workspace
-2. **Start Chatting** - Type what you want to do
-3. **AMOS Responds** - Asks clarifying questions if needed
-4. **Workflow Executes** - See real-time progress
-5. **Results Delivered** - Get links, previews, and data
-
-### Example Conversations
-
-**Create a Landing Page:**
 ```
-You: Create a landing page for my coaching program
+You: Create an agent that summarizes PDF documents
 
-AMOS: Great! Let's create that landing page. I need a few details:
-      • What's your program name?
-      • What's your main value proposition?
-      • Who's your target audience?
-      • What action should visitors take?
+AMOS: I'll delegate this to the Agent Architect...
 
-You: It's called "Executive Leadership Accelerator"
-     We help C-suite executives become better leaders
-     Target audience is Fortune 500 executives
-     They should schedule a free consultation
-
-AMOS: 🔧 Starting generate_ai_landing_page...
-      ✅ Completed generate_ai_landing_page
-      ✅ Landing page created!
+Agent Architect: I'll create a Document Summarizer agent for you.
       
-      Your professional landing page is ready. It features:
-      • Compelling hero section with your value proposition
-      • Executive-focused design
-      • Clear "Schedule Consultation" CTA
+      📋 Agent Blueprint:
+      • Name: Document Summarizer
+      • Role: executor
+      • Tools: read_document, query_rag_store
       
-      [Preview] [Edit]
+      🧪 Running test...
+      ✅ Agent created successfully!
+      
+      You can now ask: "Summarize the Q4 report"
 ```
 
-**Build an Email Campaign:**
+### Creating a Custom Tool
+
 ```
-You: Send a campaign to my top customers about the holiday sale
+You: Create a tool that fetches weather data from OpenWeatherMap
 
-AMOS: 🤔 Analyzing your request...
-      🎯 Found perfect template: email_campaign_v2
-      
-      I can help with that! A few questions:
-      • What's the subject line?
-      • When should it send?
-      • Any special discount or offer to highlight?
+AMOS: I'll have the Tool Builder create that...
 
-You: Subject: "Exclusive Holiday Sale - 30% Off for VIPs"
-     Send it tomorrow at 10am
-     Highlight 30% off everything
+Tool Builder: Creating weather_lookup tool:
+      
+      📦 Tool Configuration:
+      • Type: http_request
+      • Endpoint: api.openweathermap.org/data/2.5/weather
+      • Auth: Query parameter (appid)
+      
+      🔒 Security scan: PASS
+      ✅ Tool created and available!
+```
 
-AMOS: 🔧 Creating email template...
-      🔧 Setting up campaign...
-      ✅ Campaign created and scheduled!
+### Creating an Integration
+
+```
+You: Connect to the Notion API
+
+AMOS: I'll have the Integration Architect set this up...
+
+Integration Architect: Let me research the Notion API...
       
-      Campaign: "Holiday Sale 2024"
-      • Recipients: 156 top customers
-      • Scheduled: Tomorrow at 10:00 AM
-      • Template: VIP Holiday Sale
+      📚 Research Complete:
+      • Base URL: https://api.notion.com/v1
+      • Auth: Bearer token in header
+      • Version header required
       
-      Ready to send! 🎉
+      🔧 Creating integration foundation...
+      🔐 Configuring authentication...
+      
+      Please provide your Notion API key:
+
+You: [provides key]
+
+Integration Architect: 
+      ✅ Connection tested successfully!
+      
+      📋 Adding operations:
+      • list_databases
+      • query_database
+      • create_page
+      
+      Integration ready! You can now ask:
+      "List my Notion databases"
+```
+
+### Cross-Platform Automation
+
+```
+You: Email my Stripe customers who upgraded this week
+
+AMOS: 🔧 Connecting to Stripe...
+      📊 Found 12 customers who upgraded
+      
+      🔧 Creating personalized emails...
+      ✅ 12 emails sent via AWS SES!
+      
+      Open rates will be tracked automatically.
 ```
 
 ---
 
-## 🔧 Creating Custom Workflows
+## 🔐 Security
 
-### Workflow Template Structure (V2)
+### AI Safety
+- **Agent Loadouts**: Role-based tool allowlists
+- **Security Scanning**: Tools checked for dangerous patterns
+- **Input Validation**: All tool parameters validated
+- **HTML Sanitization**: AI-generated content sanitized
 
-```yaml
-template_version: 2
-name: "Your Workflow Name"
-slug: "your_workflow_slug_v2"
-description: "What this workflow does"
-category: "campaign_management"
+### Data Privacy
+- **Entity Scoping**: Data isolated per organization
+- **Encrypted Credentials**: Integration secrets encrypted at rest
+- **Audit Logging**: All operations logged
+- **GDPR Compliance**: Contact management features
 
-keywords:
-  - "trigger phrase 1"
-  - "trigger phrase 2"
+### API Security
+- **Policy Engine**: Operation-level permissions
+- **Rate Limiting**: Per-connection throttling
+- **Credential Rotation**: Automatic token refresh
+- **SSRF Prevention**: Internal URL blocking
 
-phases:
-  # Phase 1: Gather information
-  - id: "gather_context"
-    type: "gather_context"
-    name: "Collect Requirements"
-    goal: "Gather all needed information"
-    
-    required_fields:
-      - key: "field_name"
-        prompt: "What's the question?"
-        required: true
-        validation: "text|email|url|number"
-    
-    context_sources:
-      - "direct_conversation"
-      - "conversation_history"
-      - "entity_profile"
-    
-    ai_instructions: |
-      Ask conversationally for the information.
-      Be friendly and explain why you need each piece.
+---
 
-  # Phase 2: Execute the task
-  - id: "execute_goal"
-    type: "execute_goal"
-    name: "Do The Work"
-    goal: "Accomplish the main objective"
-    
-    # Option A: Structured (reliable, explicit)
-    data_mapping:
-      tool: "tool_name"
-      args:
-        field1: "{{gathered_field}}"
-        field2: "{{another_field}}"
-    
-    execution_strategy:
-      approach: "structured"  # or "adaptive"
-      allowed_tools:
-        - tool_name
-    
-    # Option B: Adaptive (flexible, AI-planned)
-    # execution_strategy:
-    #   approach: "adaptive"
-    #   allowed_tools:
-    #     - tool1
-    #     - tool2
-    
-    ai_instructions: |
-      Use the tools to accomplish the goal.
+## 📈 Roadmap
 
-  # Phase 3: Validate
-  - id: "validation"
-    type: "validate_result"
-    name: "Quality Check"
-    goal: "Ensure success"
-    
-    validation_rules:
-      - rule: "ai_check"
-        check: "The output meets requirements"
-    
-    success_message: |
-      ✅ Task complete! Here's what was done...
-```
+### Current (V2.5) ✅
+- ✅ Multi-agent system with 11 specialized agents
+- ✅ Factory system (Agent, Tool, Integration)
+- ✅ 60+ AI-accessible tools
+- ✅ Universal integration platform
+- ✅ Staged integration creation workflow
+- ✅ Voice input/output
+- ✅ RAG with vector search
+- ✅ 25 canvas components
+- ✅ Real-time streaming
 
-### Adding a New Template
+### Coming Soon (V3.0) 🚀
+- 🔄 Visual workflow builder
+- 🔄 Integration marketplace
+- 🔄 Webhook automation triggers
+- 🔄 Multi-agent collaboration
+- 🔄 Proactive recommendations
 
-1. Create file: `app/workflow_templates/your_template_v2.yml`
-2. Follow the structure above
-3. Test: AMOS will auto-discover it
-4. Use: Trigger with keywords or description match
+### Future (V4.0) 🎯
+- 🎯 100+ pre-built integrations
+- 🎯 Team collaboration features
+- 🎯 White-label options
+- 🎯 Mobile apps
 
 ---
 
 ## 🛠️ Development
 
-### Project Structure
-
-```
-app/
-├── controllers/
-│   └── scout_controller.rb          # Main chat interface
-├── services/
-│   ├── planner_agent_service.rb     # Workflow planning
-│   ├── workflow_engine.rb           # Workflow orchestration
-│   ├── bedrock_service.rb           # AWS Claude integration
-│   ├── agents/
-│   │   ├── gather_context_executor.rb
-│   │   ├── goal_executor.rb
-│   │   └── validation_executor.rb
-│   └── tools/
-│       ├── generate_landing_page_tool.rb
-│       ├── create_object_tool.rb
-│       ├── update_object_tool.rb
-│       └── [18 more tools...]
-├── models/
-│   ├── campaign.rb
-│   ├── contact.rb
-│   ├── landing_page.rb
-│   ├── workflow_execution.rb
-│   └── workflow_context.rb
-├── workflow_templates/
-│   ├── landing_page_creation_v2.yml
-│   ├── email_campaign_v2.yml
-│   └── add_group_to_campaign_v2.yml
-└── views/
-    └── layouts/
-        └── application.html.erb     # Main workspace UI
-
-config/
-└── routes.rb                        # API and chat endpoints
-
-db/
-├── schema.rb                        # Database structure
-└── migrate/                         # Migrations
-```
-
 ### Key Technologies
 
 **Backend:**
 - Ruby on Rails 8.0
-- PostgreSQL (primary database)
+- PostgreSQL with pgvector
 - AWS Bedrock (Claude Sonnet 4.5)
-- ActionCable (real-time streaming)
-- SolidQueue (background jobs)
+- AWS SES (Email)
+- SolidQueue (Background jobs)
+- ActionCable (WebSocket)
 
 **Frontend:**
-- Bootstrap 5 (responsive UI)
-- Stimulus.js (JavaScript framework)
-- Turbo (SPA-like experience)
-- Server-Sent Events (SSE streaming)
+- Bootstrap 5
+- Stimulus.js
+- Turbo
+- Server-Sent Events
 
 ### Running Tests
 
 ```bash
-# Run full test suite
 rails test
-
-# Run specific test
-rails test test/models/campaign_test.rb
-
-# Test AI agent system
-rails test:agents
+rails test test/services/factories/agent_factory_test.rb
 ```
 
-### Development Workflow
+### Adding a New Tool
 
-```bash
-# Start development server with hot reload
-bin/dev
-
-# Run migrations
-rails db:migrate
-
-# Create a new tool
-rails generate service tools/your_tool_tool
-
-# Load Rails console for debugging
-rails console
-
-# View logs
-tail -f log/development.log
-```
-
----
-
-## 📚 Workflow Template Guide
-
-### Template Categories
-
-**Content Generation:**
-- `landing_page_creation_v2` - Create professional landing pages
-- Future: Blog posts, social media content, ads
-
-**Campaign Management:**
-- `email_campaign_v2` - Create and manage email campaigns
-- `add_group_to_campaign_v2` - Associate contact groups
-
-**Analytics:**
-- Future: Performance dashboards, insights generation
-
-**Data Management:**
-- Future: Contact import, data cleanup, bulk operations
-
-### Execution Strategies
-
-**Structured (Recommended):**
-```yaml
-execution_strategy:
-  approach: "structured"
-  
-data_mapping:
-  tool: "create_object"
-  args:
-    object_type: "campaigns"
-    data:
-      name: "{{campaign_name}}"
-      status: "draft"
-```
-- **Pros**: Reliable, explicit, predictable
-- **Cons**: Less flexible
-- **Use When**: Clear data mapping possible
-
-**Adaptive (Flexible):**
-```yaml
-execution_strategy:
-  approach: "adaptive"
-  allowed_tools:
-    - create_object
-    - update_object
-    - get_data
-```
-- **Pros**: Flexible, handles edge cases
-- **Cons**: AI-dependent, may vary
-- **Use When**: Complex logic or conditional steps
-
-### Context Sources
-
-Templates can gather data from:
-
-1. **`direct_conversation`** - Ask the user directly
-2. **`conversation_history`** - Extract from chat history
-3. **`entity_profile`** - Use business/user info
-4. **`workflow_context`** - Data from previous phases
-5. **`uploaded_files`** - Analyze PDFs, images, docs
-
----
-
-## 🔌 Integration System - Connect Everything
-
-### The Power of Unified Data Access
-
-AMOS's **integration system** is a game-changer. Connect external services and let AMOS orchestrate workflows **across multiple platforms** seamlessly.
-
-### How It Works
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  "Thank my last Stripe customer who signed up yesterday"    │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-        ┌─────────────────────────────────────┐
-        │   AMOS Intelligently Orchestrates    │
-        └─────────────────────────────────────┘
-                   ↓                    ↓
-        ┌──────────────────┐  ┌──────────────────┐
-        │  Stripe API      │  │  Mailgun API     │
-        │  Get Customers   │  │  Send Email      │
-        └──────────────────┘  └──────────────────┘
-                   ↓                    ↓
-        ┌────────────────────────────────────────┐
-        │  ✅ Email sent to Sarah J. via Mailgun │
-        │     Subject: "Welcome to [Business]!"  │
-        │     Used Stripe data for personalization│
-        └────────────────────────────────────────┘
-```
-
-### Supported Integrations
-
-**Payment Processors:**
-- 💳 **Stripe** - Accept payments, manage subscriptions, customer data
-- 💰 **PayPal** (Coming soon)
-
-**CRM & Sales:**
-- 🎯 **HubSpot** - Contacts, deals, pipeline management
-- 📊 **Salesforce** (Coming soon)
-- 🔧 **Custom CRMs** - Add any REST API
-
-**Email & Communication:**
-- ✉️ **Mailgun** - Transactional emails, bulk sending, tracking
-- 📧 **SendGrid** (Coming soon)
-- 💬 **Slack** (Coming soon)
-
-**Productivity:**
-- 📁 **Google Drive** - File management, document sharing
-- 📅 **Google Calendar** (Coming soon)
-- 📝 **Notion** (Coming soon)
-
-**Analytics:**
-- 📊 **Google Analytics** - Traffic, conversions, behavior
-- 📈 **Custom Analytics APIs** - Add your own
-
-**Custom Integrations:**
-- 🛠️ **Any REST API** - User-configurable, no coding required!
-
-### Real-World Use Cases
-
-#### 1️⃣ **Cross-Platform Customer Engagement**
-
-```
-You: "Send a thank you email to customers who bought something today"
-
-AMOS: 🤔 Analyzing request...
-      🔧 Connecting to Stripe...
-      📊 Found 3 new customers today
-      
-      Customers who purchased:
-      • Sarah Johnson - $149.00 - Premium Plan
-      • Mike Chen - $49.00 - Starter Plan  
-      • Lisa Rodriguez - $299.00 - Enterprise Plan
-      
-      🔧 Creating personalized emails...
-      ✅ 3 thank you emails queued via Mailgun
-      
-      Each email includes:
-      • Personal greeting
-      • Order details
-      • Next steps for their plan
-      • Support contact info
-      
-      Emails will send in the next 5 minutes! 📧
-```
-
-#### 2️⃣ **Data Sync Across Platforms**
-
-```
-You: "Add all my Stripe customers to HubSpot"
-
-AMOS: 🔧 Fetching Stripe customers...
-      📊 Found 1,247 customers
-      
-      🔧 Checking HubSpot for existing contacts...
-      📊 834 already exist, 413 new
-      
-      🔧 Creating 413 new contacts in HubSpot...
-      ✅ Done! HubSpot now has all 1,247 customers
-      
-      Summary:
-      • 413 new contacts created
-      • 834 existing contacts verified
-      • All with complete payment history
-      • Synced subscription status
-      
-      Set up auto-sync? I can keep them in sync daily! 🔄
-```
-
-#### 3️⃣ **Intelligent Follow-ups**
-
-```
-You: "Send a reminder to HubSpot leads who haven't responded in 7 days"
-
-AMOS: 🔧 Analyzing HubSpot deals...
-      📊 Found 23 leads with no activity in 7+ days
-      
-      Leads to follow up:
-      • Enterprise prospects: 8
-      • Mid-market: 12
-      • Small business: 3
-      
-      🔧 Generating personalized reminders...
-      ✅ Created 23 custom emails based on:
-         • Their original inquiry
-         • Industry
-         • Deal size
-         • Last interaction
-      
-      Review first email? Or send all? 📨
-```
-
-#### 4️⃣ **Automated Reporting**
-
-```
-You: "Create a weekly sales report and email it to my team"
-
-AMOS: 🔧 Pulling data from Stripe, HubSpot, and our campaigns...
-      📊 Generating comprehensive report...
-      
-      ✅ Weekly Sales Report Created!
-      
-      📈 This Week's Highlights:
-      • Revenue: $12,450 (+18% vs last week)
-      • New Customers: 15
-      • Email Campaign Performance: 32% open rate
-      • HubSpot Deals Closed: 4 ($8,200 value)
-      
-      📧 Report emailed to:
-      • team@business.com
-      • manager@business.com
-      
-      Should I schedule this to run every Monday at 9 AM? 🔄
-```
-
-#### 5️⃣ **Smart Data Import**
-
-```
-You: "Import my Stripe customers as contacts and create segments"
-
-AMOS: 🔧 Connecting to Stripe...
-      📊 Analyzing 1,247 customers...
-      
-      🔧 Creating contact segments based on:
-      • Subscription tier (Free, Pro, Enterprise)
-      • Lifetime value
-      • Account age
-      • Payment history
-      
-      ✅ Import Complete!
-      
-      Created 5 smart segments:
-      • VIP Customers (>$1000 LTV): 87 contacts
-      • Recent Upgrades (last 30 days): 34 contacts
-      • At Risk (payment failed): 12 contacts
-      • Trial Users: 156 contacts
-      • Inactive (>90 days): 45 contacts
-      
-      Ready to create targeted campaigns! 🎯
-```
-
-### How Integration Works
-
-#### Step 1: Connect an Integration
-
-```
-You: "Connect my Stripe account"
-
-AMOS: I'll help you connect Stripe! 
-      
-      To get started:
-      1. Go to Stripe Dashboard > Developers > API Keys
-      2. Copy your Secret Key (starts with sk_live_ or sk_test_)
-      3. Paste it here
-      
-      [Secure input field appears]
-
-You: [Pastes API key]
-
-AMOS: 🔧 Testing connection...
-      ✅ Connected successfully!
-      
-      Your Stripe account is now connected.
-      I can now:
-      • View customer data
-      • Check subscription status
-      • Process payments
-      • Generate revenue reports
-      
-      What would you like to do first? 🚀
-```
-
-#### Step 2: Use Across Workflows
-
-Once connected, integrations are **automatically available** in all workflows:
-
-```ruby
-# AMOS can now chain operations across platforms
-1. Get Stripe customers → Filter by criteria
-2. Check HubSpot for deal status → Update in CRM
-3. Send personalized email → Via Mailgun
-4. Create Google Doc report → Share with team
-```
-
-### Integration Features
-
-**🔐 Secure:**
-- Encrypted credential storage
-- OAuth 2.0 support
-- API key management
-- Scope-based permissions
-
-**📊 Smart:**
-- Automatic pagination handling
-- Rate limit management
-- Request validation
-- Response transformation
-
-**🔄 Reliable:**
-- Automatic retries
-- Error handling
-- Transaction logging
-- Audit trail
-
-**🎯 Flexible:**
-- Data-driven (no code changes)
-- User-configurable
-- Custom API support
-- Exportable/shareable
-
-### Integration Architecture
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                   AMOS AI Engine                          │
-│  (Plans workflows, selects operations, chains actions)    │
-└──────────────────────────────────────────────────────────┘
-                           ↓
-┌──────────────────────────────────────────────────────────┐
-│              Integration Tool Layer                       │
-│  • list_connections - Discover connected services         │
-│  • list_operations - See available API calls              │
-│  • invoke_operation - Execute API operations              │
-└──────────────────────────────────────────────────────────┘
-                           ↓
-┌──────────────────────────────────────────────────────────┐
-│           IntegrationApiService                           │
-│  • Handles authentication (API key, OAuth, Basic)         │
-│  • Manages rate limits & quotas                           │
-│  • Validates requests/responses                           │
-│  • Logs all operations                                    │
-└──────────────────────────────────────────────────────────┘
-                           ↓
-┌───────────┬─────────────┬──────────────┬────────────────┐
-│  Stripe   │  HubSpot    │   Mailgun    │  Custom APIs   │
-│  API      │  API        │   API        │  (User-added)  │
-└───────────┴─────────────┴──────────────┴────────────────┘
-```
-
-### Available Integration Tools
-
-**For Users:**
-- `list_connections` - See your connected services
-- `list_operations` - View available API operations  
-- `invoke_operation` - Execute API calls through AMOS
-
-**For AMOS (AI):**
-- Discovers available integrations automatically
-- Plans multi-step workflows across platforms
-- Handles authentication and API details
-- Transforms data between systems
-- Chains operations intelligently (Stripe → HubSpot → Mailgun)
-
-### Integration Data Models
-
-**Integration** - The service definition (Stripe, HubSpot, etc.)
-```ruby
-- name, slug, category
-- auth_type, api_base_url
-- operations (what it can do)
-```
-
-**Connection** - User's specific account
-```ruby
-- belongs_to :integration
-- belongs_to :entity
-- credentials (encrypted)
-- status, rate_limits
-```
-
-**IntegrationOperation** - Specific API endpoint
-```ruby
-- operation_id (e.g., "stripe.list_customers.v1")
-- http_method, path_template
-- request_schema, response_schema
-- pagination_strategy
-```
-
-**IntegrationLog** - Audit trail
-```ruby
-- Every API call logged
-- Request/response captured
-- Performance metrics
-- Error tracking
-```
-
-### Adding Custom Integrations
-
-Users can add **any REST API** without code:
-
-1. **Go to Settings > Integrations > Add Custom**
-2. **Fill in details:**
-   - API Base URL
-   - Authentication type
-   - Headers/credentials
-3. **Define operations:**
-   - Endpoint paths
-   - HTTP methods
-   - Request/response schemas
-4. **Test & Activate**
-
-**Example: Internal Tool Integration**
-```
-Name: Company Inventory System
-Base URL: https://inventory.mycompany.com/api
-Auth: API Key
-Operations:
-  - Get Stock Levels
-  - Create Purchase Order
-  - Update Quantities
-```
-
-Now AMOS can say:
-> "Your top SKU is low on stock. Should I create a purchase order?"
-
-### Cross-Platform Automation Examples
-
-**Sales Pipeline:**
-```
-Stripe payment received 
-  → Update HubSpot deal status
-  → Send welcome email (Mailgun)
-  → Create Google Drive folder for client
-  → Notify team in Slack
-```
-
-**Marketing Automation:**
-```
-Campaign sent (Mailgun)
-  → Track opens/clicks
-  → Update contact segments
-  → Sync engagement to HubSpot
-  → Trigger follow-up workflows
-```
-
-**Customer Success:**
-```
-Stripe subscription canceled
-  → Flag in HubSpot
-  → Send save offer email
-  → Create support ticket
-  → Notify retention team
-```
-
----
-
-## 🎙️ Voice Interface (Coming V2.1)
-
-AMOS will support **voice commands** for hands-free, natural interaction:
-
-### Voice Capabilities
-
-**Input Methods:**
-- 🎤 **Web Voice Input** - Click to talk in browser
-- 📱 **Mobile Voice** - Native speech recognition
-- 📞 **Phone Integration** - Call AMOS directly
-- 🎧 **Always-On Mode** - Wake word activation
-
-**Output Methods:**
-- 🔊 **Natural Speech** - AI-generated voice responses
-- 📻 **Streaming Audio** - Real-time audio feedback
-- 🔔 **Audio Notifications** - Important updates via sound
-
-### Voice Use Cases
-
-**Hands-Free Business Management:**
-```
-🎤 "Hey AMOS, how many customers signed up today?"
-🔊 "You have 7 new customers today. 4 from Stripe, 3 from your landing page.
-     Total revenue: $423. Would you like me to send them welcome emails?"
-
-🎤 "Yes, send welcome emails"
-🔊 "Creating personalized emails now... Done! 7 emails sent via Mailgun.
-     I've also updated their records in HubSpot."
-```
-
-**On-the-Go Operations:**
-```
-🎤 "AMOS, how's my spring campaign performing?"
-🔊 "Your spring campaign has a 34% open rate and 12% click rate.
-     That's 8% above your average! 127 people clicked through.
-     Should I send a follow-up to the unopened contacts?"
-
-🎤 "Not yet, check again tomorrow"
-🔊 "Got it. I'll remind you tomorrow at 9 AM to review the campaign."
-```
-
-**Quick Status Checks:**
-```
-🎤 "Any new leads in HubSpot?"
-🔊 "Yes, 3 new leads since this morning. Two enterprise prospects 
-     and one mid-market. Want me to create follow-up tasks?"
-```
-
-**Driving-Safe Workflows:**
-```
-🎤 "Schedule a campaign for next Monday"  
-🔊 "I'll help you create that. Which contact group should receive it?"
-
-🎤 "My VIP customers"
-🔊 "Perfect. What's the subject line?"
-
-🎤 "Holiday Special - 30% Off"
-🔊 "Great! Campaign scheduled for Monday at 10 AM to 87 VIP customers.
-     I'll send you a preview link via email for final approval."
-```
-
-### Technical Approach
-
-**Voice Input:**
-- Web Speech API for browser
-- Native speech recognition on mobile
-- Twilio integration for phone calls
-- WebRTC for real-time audio
-
-**Voice Output:**
-- AI-generated natural speech (ElevenLabs or AWS Polly)
-- Conversational tone matching
-- Multi-language support
-- Adjustable speed/voice
-
-**Smart Features:**
-- Context-aware (knows what you're working on)
-- Ambient noise filtering
-- Multi-turn conversations
-- Voice authentication (optional)
-
-Imagine managing your entire business **while driving, cooking, or in a meeting**! 🚗🎧
-
----
-
-## 🔌 API & Integrations (Developer Guide)
-
-### Chat API
-
-**Endpoint:** `POST /scout/chat_stream`
-
-```javascript
-// JavaScript example
-const eventSource = new EventSource('/scout/chat_stream');
-
-eventSource.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  
-  switch(data.type) {
-    case 'content':
-      // Append message content
-      appendMessage(data.content);
-      break;
-    case 'transient':
-      // Show progress indicator
-      showProgress(data.message);
-      break;
-    case 'load_canvas':
-      // Load UI component
-      loadCanvas(data.canvas, data.data);
-      break;
-  }
-};
-
-// Send message
-fetch('/scout/chat_stream', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ message: 'Create a landing page' })
-});
-```
-
-### Tool Development
-
-Create new tools by extending `BaseTool`:
+1. Create `app/services/tools/your_tool_tool.rb`:
 
 ```ruby
 module Tools
-  class YourCustomTool < BaseTool
-    def self.definition
+  class YourToolTool < BaseTool
+    def name
+      'your_tool'
+    end
+
+    def description
+      'What this tool does'
+    end
+
+    def parameters
       {
-        name: 'your_custom_tool',
-        description: 'What this tool does',
-        category: 'data',
-        parameters: {
-          type: 'object',
-          properties: {
-            param1: {
-              type: 'string',
-              description: 'Parameter description'
-            }
-          },
-          required: ['param1']
-        }
+        type: 'object',
+        properties: {
+          param1: { type: 'string', description: 'Parameter description' }
+        },
+        required: ['param1']
       }
     end
-    
+
     def execute(args)
-      # Your tool logic here
-      param1 = get_arg(args, :param1)
-      
-      # Return success or error
-      success_response(
-        message: "Tool executed successfully!",
-        data: { result: 'value' }
-      )
+      # Your logic here
+      success_response(message: "Done!", data: { result: 'value' })
     rescue => e
       error_response("Error: #{e.message}")
     end
@@ -1162,182 +605,32 @@ module Tools
 end
 ```
 
-Tools are **auto-discovered** and immediately available to AMOS.
+2. Tools are auto-discovered by `ToolCatalog`
 
----
+### Adding a New Agent
 
-## 🎨 UI Components
+Use the Agent Architect or seed directly:
 
-### Chat Interface Features
-
-- **Streaming Responses**: Real-time message display
-- **Transient Messages**: Temporary progress indicators (fade after completion)
-- **Tool Indicators**: Show which tools are running
-- **Canvas Loading**: Dynamic UI components (landing page editor, campaign dashboard)
-- **Markdown Support**: Rich formatting in responses
-- **Code Blocks**: Syntax-highlighted examples
-
-### Canvas System
-
-AMOS can load specialized UI components:
-
-- `landing_page_viewer` - Preview landing pages
-- `landing_page_editor` - Edit landing page HTML/settings
-- `campaign_dashboard` - Campaign performance metrics
-- `task_progress` - Workflow approval and progress
-- `contact_manager` - Contact list management
-
----
-
-## 📊 Data Models
-
-### Core Entities
-
-**Campaign**
 ```ruby
-# A marketing campaign
-belongs_to :email_template
-has_many :campaign_groups
-has_many :contact_groups, through: :campaign_groups
-has_many :email_deliveries
-
-# Key fields: name, description, status, scheduled_at
+# db/seeds/agent_plugins.rb
+seed_agent(
+  "your_agent_slug",
+  {
+    name: "Your Agent Name",
+    role: "executor",  # executor, planner, analyst, verifier, architect, engineer
+    description: "What this agent does",
+    system_prompt: { prompt: "Your system prompt..." },
+    configuration: { custom_settings: true }
+  },
+  [
+    { capability_name: "your_capability", contract_schema: { inputs: [], outputs: [] } }
+  ],
+  [
+    { tool_name: "tool1", required: true },
+    { tool_name: "tool2", required: false }
+  ]
+)
 ```
-
-**Contact & ContactGroup**
-```ruby
-# One-to-many relationship via join table
-ContactGroup
-  has_and_belongs_to_many :contacts
-
-Campaign
-  has_many :contact_groups, through: :campaign_groups
-```
-
-**LandingPage**
-```ruby
-# AI-generated landing pages
-belongs_to :entity
-belongs_to :user
-
-# Key fields: title, slug, html_content, status, metadata
-```
-
-**WorkflowExecution & WorkflowContext**
-```ruby
-# Tracks workflow runs and persistent data
-WorkflowExecution
-  has_many :workflow_contexts
-  has_many :workflow_step_executions
-
-WorkflowContext
-  # key, value, data_type, metadata
-  # Stores data between workflow phases
-```
-
----
-
-## 🔐 Security & Best Practices
-
-### AI Safety
-- Tool allowlists per agent role
-- Input validation on all tools
-- Sanitization of AI-generated HTML
-- Rate limiting on AI API calls
-
-### Data Privacy
-- Entity-scoped data access
-- User authentication (Devise)
-- GDPR-compliant contact management
-- Encrypted credentials (Rails credentials)
-
-### Performance
-- Background job processing (SolidQueue)
-- Database indexing on common queries
-- Caching for frequently accessed data
-- Streaming responses for better UX
-
----
-
-## 📈 Roadmap
-
-### Current (V2.0) ✅
-**Core Platform:**
-- ✅ Phase-based workflow system
-- ✅ Intelligent context gathering
-- ✅ Structured & adaptive execution
-- ✅ 3 production templates
-- ✅ 20+ AI tools
-- ✅ Real-time progress streaming
-
-**Integrations:**
-- ✅ Stripe integration (payments, customers, subscriptions)
-- ✅ HubSpot integration (CRM, contacts, deals)
-- ✅ Custom API integration framework
-- ✅ Cross-platform workflow orchestration
-- ✅ Secure credential management
-- ✅ Operation discovery & execution
-
-### Coming Soon (V2.1) 🚀
-**Integration Expansion:**
-- 🔄 Enhanced integration builder UI
-- 🔄 Integration marketplace (share/discover)
-- 🔄 More pre-built integrations (Mailgun, SendGrid, Slack)
-- 🔄 Webhook automation (trigger workflows from external events)
-- 🔄 Scheduled sync workflows
-
-**Voice Interface (HIGH PRIORITY):**
-- 🎙️ Voice command input
-- 🔊 Natural language audio responses
-- 📞 Phone number integration
-- 🎧 Hands-free operation mode
-
-**Platform Enhancements:**
-- 🔄 Multi-entity collaboration
-- 🔄 Advanced analytics dashboards
-- 🔄 Template marketplace
-- 🔄 Mobile-optimized UI
-
-### Future (V3.0) 🎯
-**Advanced AI:**
-- 🎯 Multi-agent collaboration (parallel task execution)
-- 🎯 Proactive recommendations ("Your campaign performance is down, should I...")
-- 🎯 Predictive workflows (anticipate needs)
-- 🎯 Learning from patterns (improve over time)
-
-**Enterprise Features:**
-- 🎯 Team collaboration features
-- 🎯 Role-based access control
-- 🎯 Advanced audit logging
-- 🎯 White-label options
-
-**Integration Ecosystem:**
-- 🎯 100+ pre-built integrations
-- 🎯 Visual workflow builder
-- 🎯 Integration analytics
-- 🎯 Bidirectional sync automation
-
----
-
-## 🤝 Contributing
-
-AMOS is designed to be extensible. Contribute by:
-
-1. **Creating Templates** - Add YAML files to `app/workflow_templates/`
-2. **Building Tools** - Extend functionality in `app/services/tools/`
-3. **Enhancing UI** - Improve chat interface and canvas components
-4. **Documentation** - Help others understand the system
-
----
-
-## 📝 Documentation
-
-**Key Documentation Files:**
-- `WORKFLOW_V2_EXECUTIVE_SUMMARY.md` - V2 workflow architecture overview
-- `V2_PURE_IMPLEMENTATION.md` - Implementation details
-- `WORKFLOW_V2_IMPLEMENTATION_COMPLETE.md` - Migration guide
-- `docs/AGENT_TESTING_GUIDE.md` - Testing agent systems
-- `docs/INTEGRATION_EXAMPLE.md` - Integration patterns
 
 ---
 
@@ -1346,31 +639,34 @@ AMOS is designed to be extensible. Contribute by:
 ### Common Issues
 
 **AMOS not responding:**
-- Check AWS Bedrock credentials
-- Verify ActionCable connection
-- Check logs: `tail -f log/development.log`
+```bash
+# Check AWS Bedrock credentials
+aws bedrock list-foundation-models --region us-east-1
 
-**Workflow fails:**
-- Check workflow execution logs in database
-- Review `WorkflowExecution` and `WorkflowContext` tables
-- Enable debug logging for phase executors
+# Check ActionCable connection
+tail -f log/development.log | grep ActionCable
+```
 
-**Tool errors:**
-- Verify tool is registered in `ToolCatalog`
-- Check tool parameter format
-- Review tool execution logs
-
-### Debug Mode
-
+**Agent execution fails:**
 ```ruby
-# Enable detailed logging
-Rails.logger.level = :debug
+# Check execution status
+AgentPluginExecution.last.status
+AgentPluginExecution.last.result
 
-# Check workflow context
-WorkflowContext.where(workflow_execution_id: 123)
+# Check agent tools
+AgentPlugin.find_by(slug: 'agent_slug').agent_tools.pluck(:tool_name)
+```
 
-# Review tool catalog
-Tools::ToolCatalog.instance.all_tools.keys
+**Integration not working:**
+```ruby
+# Check connection status
+Connection.last.status
+
+# Check credentials
+Connection.last.active_credential.present?
+
+# Test manually
+IntegrationApiService.new(integration, credential).test_connection
 ```
 
 ---
@@ -1378,7 +674,6 @@ Tools::ToolCatalog.instance.all_tools.keys
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](repository-issues-url)
-- **Discussions**: [GitHub Discussions](repository-discussions-url)
 - **Email**: support@amoslabs.ai
 - **Documentation**: [Full Docs](docs-url)
 
@@ -1394,12 +689,13 @@ Tools::ToolCatalog.instance.all_tools.keys
 
 Built with:
 - **AWS Bedrock** - Claude AI foundation
-- **Ruby on Rails** - Robust web framework
-- **Bootstrap** - Beautiful responsive UI
-- **The Open Source Community** - Countless amazing libraries
+- **Ruby on Rails** - Web framework
+- **Bootstrap** - UI framework
+- **pgvector** - Vector similarity search
+- **The Open Source Community**
 
 ---
 
 **AMOS** - Making business automation as simple as having a conversation. 🚀
 
-*Version 2.0 - October 2025*
+*Version 2.5 - November 2025*

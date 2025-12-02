@@ -1,0 +1,131 @@
+<!-- Document Search Results Canvas -->
+<div class="document-search-results-container canvas-container" style="min-height: 100vh; padding: 2rem;">
+  <div class="search-results-panel canvas-card" style="padding: 2rem; min-height: calc(100vh - 4rem);">
+    
+    <!-- Header with Search Query -->
+    <div class="results-header mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h4 class="mb-0 d-flex align-items-center canvas-page-title">
+            <i data-lucide="search" class="me-2 canvas-icon-md canvas-icon-info" style="width: 1.5rem; height: 1.5rem;" aria-hidden="true"></i>
+            Document Search Results
+          </h4>
+          <% if canvas_data[:query].present? %>
+            <p class="mb-0 mt-2 canvas-page-subtitle">
+              Searching for: <strong style="color: var(--text-primary);">"<%= canvas_data[:query] %>"</strong>
+            </p>
+          <% end %>
+          <small class="text-muted d-block mt-1" style="color: var(--text-muted);">
+            Found <%= pluralize(canvas_data[:total_results] || 0, 'document') %>
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search Results List -->
+    <% if canvas_data[:documents]&.any? %>
+      <div class="search-results-list">
+        <% canvas_data[:documents].each_with_index do |doc, index| %>
+          <div class="search-result-item mb-3 p-3 canvas-card" 
+               style="cursor: pointer; transition: all 0.2s;"
+               onmouseover="this.style.backgroundColor='var(--bg-hover)'"
+               onmouseout="this.style.backgroundColor='var(--bg-card)'"
+               onclick="window.scoutLoadCanvas('document_viewer', {asset_id: <%= doc[:id] %>, from_search: true, search_query: '<%= j(canvas_data[:query] || "") %>'})">
+            
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="flex-grow-1">
+                <!-- Document Title and Relevance Score -->
+                <div class="d-flex align-items-center mb-2">
+                  <i data-lucide="<%= doc[:content_type]&.include?('pdf') ? 'file-text' : 'file' %>" 
+                     class="me-2 canvas-icon-sm canvas-icon-info" style="width: 1.25rem; height: 1.25rem;" aria-hidden="true"></i>
+                  <h6 class="mb-0 me-3" style="color: var(--text-primary); text-decoration: none;">
+                    <span style="cursor: pointer; transition: color 0.2s; color: var(--text-primary);" 
+                          onmouseover="this.style.color='var(--accent-cyan)'" 
+                          onmouseout="this.style.color='var(--text-primary)'">
+                      <%= doc[:title] || doc[:filename] || "Document #{index + 1}" %>
+                    </span>
+                  </h6>
+                  <% if doc[:relevance_score] && doc[:relevance_score] > 0 %>
+                    <span class="canvas-badge" style="background-color: var(--status-info-bg); color: var(--status-info-text); font-size: 0.75rem;">
+                      <%= (doc[:relevance_score] * 100).round %>% match
+                    </span>
+                  <% end %>
+                </div>
+
+                <!-- Snippet -->
+                <% if doc[:snippet].present? %>
+                  <p class="mb-2" style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.5;">
+                    <%= doc[:snippet].truncate(200) %>
+                  </p>
+                <% end %>
+
+                <!-- Document Metadata -->
+                <div class="d-flex align-items-center gap-3" style="font-size: 0.75rem; color: var(--text-muted);">
+                  <% if doc[:filename] && doc[:filename] != doc[:title] %>
+                    <span>
+                      <i data-lucide="file" style="width: 0.75rem; height: 0.75rem;" aria-hidden="true"></i>
+                      <%= doc[:filename] %>
+                    </span>
+                  <% end %>
+                  <% if doc[:size] %>
+                    <span>
+                      <i data-lucide="hard-drive" style="width: 0.75rem; height: 0.75rem;" aria-hidden="true"></i>
+                      <%= number_to_human_size(doc[:size]) %>
+                    </span>
+                  <% end %>
+                  <span>
+                    <i data-lucide="calendar" style="width: 0.75rem; height: 0.75rem;" aria-hidden="true"></i>
+                    <%= doc[:created_at].strftime("%b %d, %Y") %>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="d-flex gap-2 ms-3">
+                <% if doc[:url] %>
+                  <a href="<%= doc[:url] %>"
+                     target="_blank"
+                     class="btn btn-sm canvas-btn secondary"
+                     onclick="event.stopPropagation();"
+                     title="View document in new window">
+                    <i data-lucide="eye" class="canvas-icon-sm" style="width: 1rem; height: 1rem;" aria-hidden="true"></i>
+                    <span class="d-none d-sm-inline ms-1">View</span>
+                  </a>
+                <% end %>
+                <% if doc[:download_url] %>
+                  <a href="<%= doc[:download_url] %>"
+                     class="btn btn-sm canvas-btn secondary"
+                     download
+                     onclick="event.stopPropagation();"
+                     title="Download document">
+                    <i data-lucide="download" class="canvas-icon-sm" style="width: 1rem; height: 1rem;" aria-hidden="true"></i>
+                    <span class="d-none d-sm-inline ms-1">Download</span>
+                  </a>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <!-- No Results -->
+      <div class="text-center py-5 canvas-empty-state">
+        <i data-lucide="file-search" class="canvas-empty-state-icon-lg canvas-icon-muted" style="width: 3rem; height: 3rem;" aria-hidden="true"></i>
+        <p class="mt-3 mb-0 canvas-empty-state-text-muted">
+          <% if canvas_data[:query].present? %>
+            No documents found matching your search.
+          <% else %>
+            No documents to display.
+          <% end %>
+        </p>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Initialize Lucide icons -->
+<script>
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+</script>

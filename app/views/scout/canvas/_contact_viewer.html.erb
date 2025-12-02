@@ -1,143 +1,131 @@
-<div class="scout-canvas contact-viewer">
-  <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h4 class="mb-1">
-        <i data-lucide="users" class="text-primary me-2" aria-hidden="true"></i>
-        Contacts
-      </h4>
-      <p class="text-muted mb-0">Manage your customer database</p>
-    </div>
-    <div class="d-flex gap-2">
-      <button class="btn btn-outline-secondary" onclick="scoutImportContacts()" aria-label="Import contacts">
-        <i data-lucide="upload" class="me-1" aria-hidden="true"></i>
+<div class="scout-canvas canvas-container contact-viewer">
+  <!-- Page Header -->
+  <div class="canvas-page-header">
+    <h1 class="canvas-page-title">
+      <i data-lucide="users"></i>
+      Contacts
+    </h1>
+    <p class="canvas-page-subtitle">Manage your customer database</p>
+  </div>
+
+  <div class="canvas-actions-bar">
+    <div></div>
+    <div class="canvas-actions">
+      <button onclick="scoutImportContacts()" 
+              aria-label="Import contacts"
+              class="canvas-btn secondary">
+        <i data-lucide="upload"></i>
         Import
       </button>
-      <button class="btn btn-primary" onclick="scoutCreateContact()" aria-label="Add new contact">
-        <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
+      <button onclick="scoutCreateContact()" 
+              aria-label="Add new contact"
+              class="canvas-btn primary">
+        <i data-lucide="plus"></i>
         Add Contact
       </button>
     </div>
   </div>
   
   <!-- Quick Stats -->
-  <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="stat-card bg-light border-0 h-100">
-        <div class="stat-card-body p-3">
-          <div class="d-flex align-items-center">
-            <div class="stat-icon bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-              <i data-lucide="users" class="text-primary" aria-hidden="true"></i>
-            </div>
-            <div>
-              <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:total_contacts]) %></div>
-              <div class="stat-label text-muted small">Total Contacts</div>
-            </div>
-          </div>
-        </div>
+  <div class="canvas-stats-grid">
+    <div class="canvas-stat-card purple">
+      <div>
+        <p class="canvas-stat-label">Total Contacts</p>
+        <p class="canvas-stat-value"><%= number_with_delimiter(stats[:total_contacts]) %></p>
+      </div>
+      <div class="canvas-stat-icon purple">
+        <i data-lucide="users"></i>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="stat-card bg-light border-0 h-100">
-        <div class="stat-card-body p-3">
-          <div class="d-flex align-items-center">
-            <div class="stat-icon bg-success bg-opacity-10 rounded-circle p-2 me-3">
-              <i data-lucide="user-plus" class="text-success" aria-hidden="true"></i>
-            </div>
-            <div>
-              <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:recent_contacts]) %></div>
-              <div class="stat-label text-muted small">This Week</div>
-            </div>
-          </div>
-        </div>
+
+    <div class="canvas-stat-card green">
+      <div>
+        <p class="canvas-stat-label">This Week</p>
+        <p class="canvas-stat-value"><%= number_with_delimiter(stats[:recent_contacts]) %></p>
+      </div>
+      <div class="canvas-stat-icon green">
+        <i data-lucide="user-plus"></i>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="stat-card bg-light border-0 h-100">
-        <div class="stat-card-body p-3">
-          <div class="d-flex align-items-center">
-            <div class="stat-icon bg-info bg-opacity-10 rounded-circle p-2 me-3">
-              <i data-lucide="layers" class="text-info" aria-hidden="true"></i>
-            </div>
-            <div>
-              <div class="stat-number h5 mb-0"><%= number_with_delimiter(stats[:contact_groups]) %></div>
-              <div class="stat-label text-muted small">Contact Groups</div>
-            </div>
-          </div>
-        </div>
+
+    <div class="canvas-stat-card cyan">
+      <div>
+        <p class="canvas-stat-label">Contact Groups</p>
+        <p class="canvas-stat-value"><%= number_with_delimiter(stats[:contact_groups]) %></p>
+      </div>
+      <div class="canvas-stat-icon cyan">
+        <i data-lucide="layers"></i>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="stat-card bg-light border-0 h-100">
-        <div class="stat-card-body p-3">
-          <div class="d-flex align-items-center">
-            <div class="stat-icon bg-warning bg-opacity-10 rounded-circle p-2 me-3">
-              <i data-lucide="star" class="text-warning" aria-hidden="true"></i>
-            </div>
-            <div>
-              <div class="stat-number h5 mb-0"><%= contacts.where.not(tags: [nil, '']).count %></div>
-              <div class="stat-label text-muted small">Tagged</div>
-            </div>
-          </div>
-        </div>
+
+    <div class="canvas-stat-card yellow">
+      <div>
+        <p class="canvas-stat-label">Tagged</p>
+        <p class="canvas-stat-value"><%= contacts.where.not(tags: [nil, '']).count %></p>
+      </div>
+      <div class="canvas-stat-icon yellow">
+        <i data-lucide="star"></i>
       </div>
     </div>
   </div>
   
   <!-- Search and Filters -->
-  <div class="row mb-4">
-    <div class="col-md-6">
-      <div class="input-group">
-        <span class="input-group-text"><i data-lucide="search" aria-hidden="true"></i></span>
-        <input type="text" class="form-control" id="contactSearch"
-               placeholder="Search contacts by name, email, or company"
-               aria-label="Search contacts by name, email, or company">
-      </div>
+  <div class="canvas-filters-grid">
+    <div class="canvas-search-wrapper">
+      <i data-lucide="search"></i>
+      <input type="text" 
+             id="contactSearch"
+             placeholder="Search contacts..."
+             class="canvas-search-input"
+             aria-label="Search contacts by name, email, or company">
     </div>
-    <div class="col-md-3">
-      <select class="form-select" id="contactGroupFilter">
-        <option value="">All Groups</option>
-        <% entity.contact_groups.each do |group| %>
-          <option value="<%= group.id %>"><%= group.name %></option>
-        <% end %>
-      </select>
-    </div>
-    <div class="col-md-3">
-      <select class="form-select" id="contactSourceFilter">
-        <option value="">All Sources</option>
-        <option value="website">Website</option>
-        <option value="manual">Manual Entry</option>
-        <option value="import">Import</option>
-        <option value="landing_page">Landing Page</option>
-      </select>
-    </div>
+    <select id="contactGroupFilter" class="canvas-select">
+      <option value="">All Groups</option>
+      <% entity.contact_groups.each do |group| %>
+        <option value="<%= group.id %>"><%= group.name %></option>
+      <% end %>
+    </select>
+    <select id="contactSourceFilter" class="canvas-select">
+      <option value="">All Sources</option>
+      <option value="website">Website</option>
+      <option value="manual">Manual Entry</option>
+      <option value="import">Import</option>
+      <option value="landing_page">Landing Page</option>
+    </select>
   </div>
   
   <% if contacts.any? %>
     <!-- Contacts Table -->
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">
-          <i data-lucide="list" class="me-2" aria-hidden="true"></i>
+    <div class="canvas-card">
+      <div class="canvas-card-header">
+        <h6>
+          <i data-lucide="list"></i>
           Recent Contacts
         </h6>
-        <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-outline-secondary" onclick="scoutSelectAllContacts()" aria-label="Select all contacts">
-            <i data-lucide="check-square" class="me-1" aria-hidden="true"></i>
+        <div class="canvas-actions">
+          <button onclick="scoutSelectAllContacts()" 
+                  aria-label="Select all contacts"
+                  class="canvas-btn secondary sm">
+            <i data-lucide="check-square"></i>
             Select All
           </button>
-          <button class="btn btn-sm btn-outline-primary" onclick="scoutExportContacts()" aria-label="Export contacts">
-            <i data-lucide="download" class="me-1" aria-hidden="true"></i>
+          <button onclick="scoutExportContacts()" 
+                  aria-label="Export contacts"
+                  class="canvas-btn outline-cyan sm">
+            <i data-lucide="download"></i>
             Export
           </button>
         </div>
       </div>
-      <div class="table-responsive">
-        <table class="table table-hover mb-0" id="contactsTable">
-          <thead class="table-light">
+      <div class="canvas-table-wrapper">
+        <table class="canvas-table">
+          <thead>
             <tr>
-              <th width="40">
-                <input type="checkbox" class="form-check-input" id="selectAllCheckbox" 
-                       onchange="scoutToggleAllContacts(this)">
+              <th style="width: 40px;">
+                <input type="checkbox" 
+                       id="selectAllCheckbox" 
+                       onchange="scoutToggleAllContacts(this)"
+                       class="canvas-checkbox">
               </th>
               <th>Name</th>
               <th>Email</th>
@@ -145,25 +133,25 @@
               <th>Source</th>
               <th>Groups</th>
               <th>Added</th>
-              <th width="120">Actions</th>
+              <th style="width: 120px;">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="contactsTable">
             <% contacts.each do |contact| %>
               <tr data-contact-id="<%= contact.id %>">
-                <td class="ps-2">
+                <td>
                   <input 
                     type="checkbox" 
-                    class="form-check-input contact-checkbox" 
+                    class="contact-checkbox canvas-checkbox" 
                     value="<%= contact.id %>">
                 </td>
                 <td>
-                  <div class="d-flex align-items-center">
-                    <div class="contact-avatar me-3">
+                  <div class="d-flex align-items-center gap-3">
+                    <div class="canvas-avatar">
                       <%= contact.first_name&.first&.upcase || contact.email&.first&.upcase || 'C' %>
                     </div>
                     <div>
-                      <div class="fw-medium mb-1">
+                      <div class="fw-semibold">
                         <%= "#{contact.first_name} #{contact.last_name}".strip.presence || 'No Name' %>
                       </div>
                       <small class="text-muted">Contact</small>
@@ -171,7 +159,7 @@
                   </div>
                 </td>
                 <td>
-                  <a href="mailto:<%= contact.email %>" class="text-decoration-none">
+                  <a href="mailto:<%= contact.email %>" class="canvas-link">
                     <%= contact.email %>
                   </a>
                 </td>
@@ -183,12 +171,14 @@
                 </td>
                 <td>
                   <% if contact.contact_groups.any? %>
-                    <% contact.contact_groups.limit(2).each do |group| %>
-                      <span class="badge bg-primary me-1"><%= group.name %></span>
-                    <% end %>
-                    <% if contact.contact_groups.count > 2 %>
-                      <span class="badge bg-light text-dark">+<%= contact.contact_groups.count - 2 %></span>
-                    <% end %>
+                    <div class="d-flex flex-wrap gap-1">
+                      <% contact.contact_groups.limit(2).each do |group| %>
+                        <span class="canvas-badge purple"><%= group.name %></span>
+                      <% end %>
+                      <% if contact.contact_groups.count > 2 %>
+                        <span class="canvas-badge gray">+<%= contact.contact_groups.count - 2 %></span>
+                      <% end %>
+                    </div>
                   <% else %>
                     <span class="text-muted">No groups</span>
                   <% end %>
@@ -199,35 +189,36 @@
                   </small>
                 </td>
                 <td>
-                  <div class="dropdown">
-                    <button
-                      class="btn btn-sm btn-outline-secondary"
-                      onclick="scoutViewContact(<%= contact.id %>)"
-                      aria-label="View contact <%= "#{contact.first_name} #{contact.last_name}".strip.presence || contact.email %>">
-                      <i data-lucide="eye" aria-hidden="true"></i>
+                  <div class="d-flex gap-1">
+                    <button onclick="scoutViewContact(<%= contact.id %>)"
+                            aria-label="View contact <%= "#{contact.first_name} #{contact.last_name}".strip.presence || contact.email %>"
+                            class="canvas-btn outline-cyan sm">
+                      <i data-lucide="eye"></i>
                     </button>
-                    <button
-                      class="btn btn-sm btn-outline-primary ms-1"
-                      onclick="scoutEditContact(<%= contact.id %>)"
-                      aria-label="Edit contact <%= "#{contact.first_name} #{contact.last_name}".strip.presence || contact.email %>">
-                      <i data-lucide="pencil" aria-hidden="true"></i>
+                    <button onclick="scoutEditContact(<%= contact.id %>)"
+                            aria-label="Edit contact <%= "#{contact.first_name} #{contact.last_name}".strip.presence || contact.email %>"
+                            class="canvas-btn outline-purple sm">
+                      <i data-lucide="pencil"></i>
                     </button>
-
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle ms-1" type="button" data-bs-toggle="dropdown" aria-label="More actions for <%= "#{contact.first_name} #{contact.last_name}".strip.presence || contact.email %>">
-                      <i data-lucide="more-horizontal" aria-hidden="true"></i>
-                    </button>
-                    <ul class="dropdown-menu">
-                      <li><a class="dropdown-item" href="#" onclick="scoutAddToGroup(<%= contact.id %>)">
-                        <i data-lucide="users" class="me-2" aria-hidden="true"></i>Add to Group
-                      </a></li>
-                      <li><a class="dropdown-item" href="#" onclick="scoutSendEmail(<%= contact.id %>)">
-                        <i data-lucide="mail" class="me-2" aria-hidden="true"></i>Send Email
-                      </a></li>
-                      <li><hr class="dropdown-divider"></li>
-                      <li><a class="dropdown-item text-danger" href="#" onclick="scoutDeleteContact(<%= contact.id %>)">
-                        <i data-lucide="trash-2" class="me-2" aria-hidden="true"></i>Delete
-                      </a></li>
-                    </ul>
+                    <div class="dropdown">
+                      <button class="canvas-btn secondary sm"
+                              data-bs-toggle="dropdown"
+                              aria-label="More actions for <%= "#{contact.first_name} #{contact.last_name}".strip.presence || contact.email %>">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <ul class="dropdown-menu canvas-dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="scoutAddToGroup(<%= contact.id %>)">
+                          <i data-lucide="users" class="me-2"></i>Add to Group
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="scoutSendEmail(<%= contact.id %>)">
+                          <i data-lucide="mail" class="me-2"></i>Send Email
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item danger" href="#" onclick="scoutDeleteContact(<%= contact.id %>)">
+                          <i data-lucide="trash-2" class="me-2"></i>Delete
+                        </a></li>
+                      </ul>
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -235,41 +226,45 @@
           </tbody>
         </table>
       </div>
-      <div class="card-footer bg-light">
-        <div class="d-flex justify-content-between align-items-center">
-          <small class="text-muted">
-            Showing <%= contacts.count %> of <%= stats[:total_contacts] %> contacts
-          </small>
-          <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-secondary" onclick="scoutLoadMoreContacts()" aria-label="Load more contacts">
-              Load More
-            </button>
-            <button class="btn btn-sm btn-primary" onclick="scoutCreateContact()" aria-label="Add new contact">
-              <i data-lucide="plus" class="me-1" aria-hidden="true"></i>
-              Add Contact
-            </button>
-          </div>
+      <div class="canvas-card-footer">
+        <small>
+          Showing <%= contacts.count %> of <%= stats[:total_contacts] %> contacts
+        </small>
+        <div class="canvas-actions">
+          <button onclick="scoutLoadMoreContacts()" 
+                  aria-label="Load more contacts"
+                  class="canvas-btn secondary sm">
+            Load More
+          </button>
+          <button onclick="scoutCreateContact()" 
+                  aria-label="Add new contact"
+                  class="canvas-btn primary sm">
+            <i data-lucide="plus"></i>
+            Add Contact
+          </button>
         </div>
       </div>
     </div>
   <% else %>
     <!-- Empty State -->
-    <div class="empty-state text-center py-5">
-      <div class="empty-icon mb-3">
-        <i data-lucide="users" class="text-muted icon-4x" aria-hidden="true"></i>
-      </div>
-      <h5 class="text-muted">No contacts yet</h5>
-      <p class="text-muted mb-4">
+    <div class="canvas-empty-state">
+      <i data-lucide="users"></i>
+      <h5>No contacts yet</h5>
+      <p>
         Start building your customer database by adding your first contact.<br>
         You can add contacts manually, import from a file, or capture them through landing pages.
       </p>
-      <div class="d-flex gap-2 justify-content-center">
-        <button class="btn btn-primary" onclick="scoutCreateContact()" aria-label="Add your first contact">
-          <i data-lucide="plus" class="me-2" aria-hidden="true"></i>
+      <div class="canvas-empty-actions">
+        <button onclick="scoutCreateContact()" 
+                aria-label="Add your first contact"
+                class="canvas-btn primary">
+          <i data-lucide="plus"></i>
           Add Your First Contact
         </button>
-        <button class="btn btn-outline-secondary" onclick="scoutImportContacts()" aria-label="Import contacts">
-          <i data-lucide="upload" class="me-2" aria-hidden="true"></i>
+        <button onclick="scoutImportContacts()" 
+                aria-label="Import contacts"
+                class="canvas-btn secondary">
+          <i data-lucide="upload"></i>
           Import Contacts
         </button>
       </div>
@@ -360,13 +355,17 @@ document.addEventListener('DOMContentLoaded', function() {
   if (sourceFilter) {
     sourceFilter.addEventListener('change', filterContacts);
   }
+  
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 });
 
 function filterContacts() {
   const searchTerm = document.getElementById('contactSearch')?.value.toLowerCase() || '';
   const groupFilter = document.getElementById('contactGroupFilter')?.value || '';
   const sourceFilter = document.getElementById('contactSourceFilter')?.value || '';
-  const rows = document.querySelectorAll('#contactsTable tbody tr');
+  const rows = document.querySelectorAll('#contactsTable tr');
   
   rows.forEach(row => {
     const name = row.querySelector('td:nth-child(2)')?.textContent.toLowerCase() || '';
@@ -403,37 +402,10 @@ function debounce(func, wait) {
     timeout = setTimeout(later, wait);
   };
 }
+
+document.addEventListener('turbo:load', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
 </script>
-
-<style>
-.contact-avatar {
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.contact-checkbox:checked + td {
-  background-color: rgba(13, 110, 253, 0.1);
-}
-
-.stat-card {
-  transition: transform 0.2s ease;
-  cursor: pointer;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-}
-
-.table tbody tr {
-  transition: background-color 0.2s ease;
-}
-
-.table tbody tr:hover {
-  background-color: rgba(0, 0, 0, 0.02);
-}
-
-.empty-state {
-  max-width: 600px;
-  margin: 0 auto;
-}
-</style> 

@@ -1,0 +1,1384 @@
+// Admin Utility Classes
+@use 'variables' as *;
+
+// Layout
+.admin-p-xl { padding: $admin-spacing-xl; }
+.admin-p-lg { padding: $admin-spacing-lg; }
+.admin-p-md { padding: $admin-spacing-md; }
+.admin-p-sm { padding: $admin-spacing-sm; }
+
+.admin-mb-xl { margin-bottom: $admin-spacing-xl; }
+.admin-mb-lg { margin-bottom: $admin-spacing-lg; }
+.admin-mb-md { margin-bottom: $admin-spacing-md; }
+.admin-mb-sm { margin-bottom: $admin-spacing-sm; }
+
+.admin-mt-xl { margin-top: $admin-spacing-xl; }
+.admin-mt-lg { margin-top: $admin-spacing-lg; }
+
+// Flexbox
+.admin-flex-gap-xs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.admin-flex-gap-sm {
+  display: flex;
+  gap: $admin-spacing-sm;
+}
+
+.admin-flex-gap-md {
+  display: flex;
+  gap: $admin-spacing-md;
+}
+
+.admin-flex-gap-0\.75 {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.admin-flex-gap-lg {
+  display: flex;
+  gap: $admin-spacing-lg;
+}
+
+.admin-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+// Grid Layouts
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $admin-spacing-lg;
+  margin-bottom: $admin-spacing-xl;
+}
+
+.admin-content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: $admin-spacing-lg;
+  margin-bottom: $admin-spacing-xl;
+}
+
+// Text Colors
+.admin-text-primary { color: $admin-text-primary; }
+.admin-text-secondary { color: $admin-text-secondary; }
+.admin-text-muted { color: $admin-text-muted; }
+.admin-text-success { color: $admin-green-success; }
+.admin-text-error { color: $admin-red-error; }
+.admin-text-warning { color: $admin-yellow-warning; }
+.admin-text-info { color: $admin-cyan-info; }
+.admin-text-purple { color: #A855F7; }
+
+// Font Sizes
+.admin-text-xs { font-size: $admin-text-xs; }
+.admin-text-sm { font-size: $admin-text-sm; }
+.admin-text-lg { font-size: $admin-text-lg; }
+.admin-text-xl { font-size: $admin-text-xl; }
+.admin-text-2xl { font-size: $admin-text-2xl; }
+.admin-text-3xl { font-size: $admin-text-3xl; }
+
+// Icon Sizes
+.admin-icon-xxs {
+  width: 12px;
+  height: 12px;
+}
+
+.admin-icon-xs {
+  width: 14px;
+  height: 14px;
+}
+
+.admin-icon-sm {
+  width: $admin-icon-sm;
+  height: $admin-icon-sm;
+}
+
+.admin-icon-md {
+  width: $admin-icon-md;
+  height: $admin-icon-md;
+}
+
+.admin-icon-lg {
+  width: $admin-icon-lg;
+  height: $admin-icon-lg;
+}
+
+.admin-icon-xl {
+  width: $admin-icon-xl;
+  height: $admin-icon-xl;
+}
+
+// Stat Card Icon Backgrounds
+.admin-stat-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: $admin-radius-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.purple-gradient {
+    background: $admin-purple-gradient;
+  }
+
+  &.success {
+    background: $admin-green-bg;
+    border: 1px solid $admin-green-border;
+  }
+
+  &.error {
+    background: $admin-red-bg;
+    border: 1px solid $admin-red-border;
+  }
+
+  &.warning {
+    background: $admin-yellow-bg;
+    border: 1px solid $admin-yellow-border;
+  }
+
+  &.info {
+    background: $admin-cyan-bg;
+    border: 1px solid $admin-cyan-border;
+  }
+}
+
+// Icon Gradient Variants (for header icons)
+.admin-icon-gradient-cyan {
+  background: linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%);
+}
+
+.admin-icon-gradient-purple {
+  background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
+}
+
+.admin-icon-gradient-warning {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+}
+
+.admin-icon-gradient-success {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+.admin-icon-gradient-info {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+}
+
+.admin-icon-gradient-error {
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+}
+
+// Stat Card Text
+.admin-stat-label {
+  color: $admin-text-secondary;
+  font-size: $admin-text-sm;
+  margin: 0;
+}
+
+.admin-stat-value {
+  color: $admin-text-primary;
+  font-size: $admin-text-3xl;
+  font-weight: 600;
+  margin: 0;
+}
+
+// Overflow
+.admin-overflow-auto {
+  overflow-x: auto;
+}
+
+// Text Truncation
+.admin-text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Center Text
+.admin-text-center {
+  text-align: center;
+}
+
+.admin-text-right {
+  text-align: right;
+}
+
+// No Wrap
+.admin-nowrap {
+  white-space: nowrap;
+}
+
+// Additional Margin Utilities
+.admin-mr-sm { margin-right: $admin-spacing-sm; }
+.admin-mr-md { margin-right: $admin-spacing-md; }
+.admin-mr-lg { margin-right: $admin-spacing-lg; }
+
+.admin-ml-sm { margin-left: $admin-spacing-sm; }
+.admin-ml-md { margin-left: $admin-spacing-md; }
+.admin-ml-lg { margin-left: $admin-spacing-lg; }
+.admin-ml-xl { margin-left: 1.5rem; }
+
+.admin-mx-auto { margin-left: auto; margin-right: auto; }
+.admin-my-auto { margin-top: auto; margin-bottom: auto; }
+
+// Flexbox Display
+.admin-flex { display: flex; }
+.admin-inline-flex { display: inline-flex; }
+.admin-flex-col { display: flex; flex-direction: column; }
+.admin-flex-row { display: flex; flex-direction: row; }
+
+.admin-flex-wrap { flex-wrap: wrap; }
+.admin-flex-nowrap { flex-wrap: nowrap; }
+
+.admin-flex-1 { flex: 1; }
+.admin-flex-auto { flex: 1 1 auto; }
+.admin-flex-none { flex: none; }
+
+// Alignment
+.admin-items-center { align-items: center; }
+.admin-items-start { align-items: flex-start; }
+.admin-items-end { align-items: flex-end; }
+
+.admin-justify-center { justify-content: center; }
+.admin-justify-between { justify-content: space-between; }
+.admin-justify-end { justify-content: flex-end; }
+
+// Grid Variants
+.admin-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $admin-spacing-lg;
+}
+
+.admin-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $admin-spacing-lg;
+}
+
+.admin-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $admin-spacing-lg;
+}
+
+// Form Grids
+.form-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $admin-spacing-lg;
+}
+
+.form-grid-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $admin-spacing-lg;
+}
+
+// Typography
+.admin-font-mono {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', 'Source Code Pro', monospace;
+}
+
+.admin-font-medium { font-weight: 500; }
+.admin-font-semibold { font-weight: 600; }
+.admin-font-bold { font-weight: 700; }
+
+// Code Blocks
+.admin-code-block {
+  background-color: $admin-bg-primary;
+  border: 1px solid $admin-border;
+  border-radius: $admin-radius-md;
+  padding: $admin-spacing-md;
+  overflow-x: auto;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: $admin-text-sm;
+  color: $admin-text-secondary;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.admin-pre {
+  margin: 0;
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+// Dividers
+.admin-divider-h {
+  height: 1px;
+  background-color: $admin-border;
+  border: none;
+  margin: $admin-spacing-lg 0;
+}
+
+.admin-divider-v {
+  width: 1px;
+  background-color: $admin-border;
+  border: none;
+  height: 100%;
+}
+
+// Loading Spinner
+.admin-loading-spinner {
+  border: 2px solid rgba($admin-accent-end, 0.2);
+  border-top-color: $admin-accent-end;
+  border-radius: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  animation: admin-spin 0.6s linear infinite;
+
+  &.admin-spinner-sm {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &.admin-spinner-lg {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+@keyframes admin-spin {
+  to { transform: rotate(360deg); }
+}
+
+// Canvas Containers
+.canvas-container {
+  background-color: $admin-bg-secondary;
+  border-radius: $admin-radius-lg;
+  overflow: hidden;
+}
+
+.canvas-header {
+  padding: $admin-spacing-lg;
+  border-bottom: 1px solid $admin-border;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.canvas-body {
+  padding: $admin-spacing-lg;
+}
+
+// Display Utilities
+.admin-hidden { display: none; }
+.admin-block { display: block; }
+.admin-inline-block { display: inline-block; }
+.admin-inline { display: inline; }
+
+// Border Radius
+.admin-rounded-none { border-radius: 0; }
+.admin-rounded-sm { border-radius: $admin-radius-sm; }
+.admin-rounded-md { border-radius: $admin-radius-md; }
+.admin-rounded-lg { border-radius: $admin-radius-lg; }
+.admin-rounded-full { border-radius: 9999px; }
+
+// Width/Height
+.admin-w-full { width: 100%; }
+.admin-h-full { height: 100%; }
+.admin-w-auto { width: auto; }
+.admin-h-auto { height: auto; }
+
+// Status Boxes (for indicators, health status, etc.)
+.admin-status-box {
+  padding: $admin-spacing-md;
+  border-radius: $admin-radius-md;
+}
+
+.admin-status-label {
+  color: $admin-text-muted;
+  font-size: $admin-text-xs;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: $admin-spacing-sm;
+}
+
+.admin-status-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: $admin-text-primary;
+}
+
+.admin-status-subtitle {
+  color: $admin-text-muted;
+  font-size: $admin-text-xs;
+  margin-top: 0.25rem;
+}
+
+// Status Box Grid
+.admin-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $admin-spacing-md;
+}
+
+// Simple Stat Item (label + value without icon)
+.admin-stat-item-label {
+  color: $admin-text-secondary;
+  font-size: $admin-text-sm;
+  margin: 0 0 0.25rem 0;
+}
+
+.admin-stat-item-value {
+  color: $admin-text-primary;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+// Progress Bar
+.admin-progress-bar {
+  width: 100%;
+  height: 2rem;
+  background: $admin-bg-primary;
+  border-radius: $admin-radius-md;
+  overflow: hidden;
+  display: flex;
+}
+
+.admin-progress-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: $admin-text-sm;
+  font-weight: 600;
+}
+
+.admin-progress-success {
+  background: linear-gradient(90deg, rgb(74, 222, 128), rgb(34, 197, 94));
+}
+
+.admin-progress-error {
+  background: linear-gradient(90deg, rgb(248, 113, 113), rgb(239, 68, 68));
+}
+
+// Performance Progress Variants
+.admin-progress-fast {
+  background: rgb(74, 222, 128);
+}
+
+.admin-progress-medium {
+  background: #22D3EE;
+}
+
+.admin-progress-slow {
+  background: rgb(250, 204, 21);
+  color: var(--text-primary);
+}
+
+.admin-progress-very-slow {
+  background: rgb(248, 113, 113);
+}
+
+// Legend Squares
+.admin-legend-square {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 0.125rem;
+}
+
+.admin-legend-fast {
+  background: rgb(74, 222, 128);
+}
+
+.admin-legend-medium {
+  background: #22D3EE;
+}
+
+.admin-legend-slow {
+  background: rgb(250, 204, 21);
+}
+
+.admin-legend-very-slow {
+  background: rgb(248, 113, 113);
+}
+
+// Empty State
+.admin-empty-state {
+  text-align: center;
+  padding: $admin-spacing-xl;
+  color: $admin-text-muted;
+}
+
+// Additional Text Sizes
+.admin-text-xl {
+  font-size: 1.25rem;
+}
+
+.admin-text-2xl {
+  font-size: 2rem;
+}
+
+// Font Weight
+.admin-font-normal {
+  font-weight: normal;
+}
+
+.admin-font-semibold {
+  font-weight: 600;
+}
+
+// Inline Code
+.admin-code-inline {
+  color: $admin-accent-end;
+  background: rgba($admin-accent-end, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: $admin-radius-sm;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: $admin-text-sm;
+}
+
+.admin-code-muted {
+  color: $admin-text-secondary;
+  background: rgba($admin-text-secondary, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: $admin-radius-sm;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: $admin-text-sm;
+}
+
+// Divider
+.admin-divider {
+  border: none;
+  border-top: 1px solid $admin-border;
+  margin: $admin-spacing-lg 0;
+}
+
+// Section Divider (for form sections with top border and padding)
+.admin-section-divider {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-primary);
+}
+
+// List Utilities
+.admin-list-none {
+  list-style: none;
+}
+
+// Background Colors
+.admin-bg-darker {
+  background-color: $admin-bg-primary;
+}
+
+// Text Transform
+.admin-uppercase {
+  text-transform: uppercase;
+}
+
+.admin-lowercase {
+  text-transform: lowercase;
+}
+
+.admin-capitalize {
+  text-transform: capitalize;
+}
+
+// Letter Spacing
+.admin-tracking-wide {
+  letter-spacing: 0.05em;
+}
+
+.admin-tracking-wider {
+  letter-spacing: 0.1em;
+}
+
+// Overflow
+.admin-overflow-hidden {
+  overflow: hidden;
+}
+
+.admin-overflow-x-auto {
+  overflow-x: auto;
+}
+
+.admin-overflow-y-auto {
+  overflow-y: auto;
+}
+
+// Font Size (additional)
+.admin-text-base {
+  font-size: 1rem;
+}
+
+// Chart Container
+.admin-chart-container {
+  position: relative;
+  height: 300px;
+}
+
+// Chart Bar Styles
+.admin-chart-bar-purple {
+  background: linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%);
+  border-radius: 0.25rem 0.25rem 0 0;
+}
+
+// Chart Label Vertical
+.admin-chart-label-vertical {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+// Mini Progress Bar
+.admin-progress-mini {
+  height: 8px;
+  min-width: 80px;
+}
+
+// Text Alignment
+.admin-text-left {
+  text-align: left;
+}
+
+.admin-text-center {
+  text-align: center;
+}
+
+.admin-text-right {
+  text-align: right;
+}
+
+// Definition Lists
+.admin-dl {
+  margin-bottom: 0;
+
+  dt {
+    color: $admin-text-secondary;
+    font-weight: 600;
+  }
+
+  dd {
+    color: $admin-text-primary;
+    margin-bottom: $admin-spacing-md;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+// Section Heading (for card sections)
+.admin-section-heading {
+  color: $admin-text-primary;
+  font-weight: 600;
+  margin-bottom: $admin-spacing-lg;
+  padding-bottom: $admin-spacing-md;
+  border-bottom: 1px solid $admin-border;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+// Warning Alert Box
+.admin-alert-warning {
+  margin-bottom: $admin-spacing-lg;
+  padding: $admin-spacing-md;
+  background-color: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  border-radius: $admin-radius-md;
+  display: flex;
+  align-items: start;
+  gap: 0.5rem;
+}
+
+// Info Box (cyan-themed informational boxes)
+.admin-info-box {
+  padding: $admin-spacing-md;
+  background-color: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: $admin-radius-md;
+}
+
+// Links
+.admin-link {
+  color: $admin-accent-end;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// Stat Box (simple)
+.admin-stat-box {
+  padding: $admin-spacing-lg;
+  border-radius: $admin-radius-md;
+  border: 1px solid;
+
+  &.admin-stat-box-purple {
+    background: rgba(124, 58, 237, 0.05);
+    border-color: rgba(124, 58, 237, 0.1);
+  }
+
+  &.admin-stat-box-cyan {
+    background: rgba(34, 211, 238, 0.05);
+    border-color: rgba(34, 211, 238, 0.1);
+  }
+
+  &.admin-stat-box-green {
+    background: rgba(34, 197, 94, 0.05);
+    border-color: rgba(34, 197, 94, 0.1);
+  }
+
+  &.admin-stat-box-yellow {
+    background: rgba(234, 179, 8, 0.05);
+    border-color: rgba(234, 179, 8, 0.1);
+  }
+
+  &.admin-stat-box-red {
+    background: rgba(239, 68, 68, 0.05);
+    border-color: rgba(239, 68, 68, 0.1);
+  }
+}
+
+.admin-stat-box-value {
+  font-size: 2rem;
+  font-weight: 600;
+  color: $admin-text-primary;
+  margin-bottom: 0.5rem;
+}
+
+.admin-stat-box-label {
+  color: $admin-text-muted;
+  font-size: $admin-text-sm;
+}
+
+// Button Flex Container
+.admin-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: $admin-spacing-md;
+}
+
+// Additional Utilities
+.admin-mt-xs {
+  margin-top: 0.125rem;
+}
+
+.admin-mb-xs {
+  margin-bottom: 0.125rem;
+}
+
+.admin-mb-0 {
+  margin-bottom: 0;
+}
+
+.admin-m-0 {
+  margin: 0;
+}
+
+.admin-leading-relaxed {
+  line-height: 1.5;
+}
+
+// Border
+.admin-border {
+  border: 1px solid $admin-border;
+}
+
+// Form Utilities
+.form-group {
+  margin-bottom: $admin-spacing-lg;
+}
+
+.form-label {
+  display: block;
+  color: $admin-text-primary;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.form-helper-text {
+  color: $admin-text-muted;
+  font-size: $admin-text-sm;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.form-helper-warning {
+  color: $admin-yellow-warning;
+  font-size: $admin-text-sm;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+// Password Toggle Group
+.admin-password-toggle-group {
+  display: flex;
+  gap: 0;
+}
+
+.admin-password-input-left {
+  border-radius: 0.5rem 0 0 0.5rem;
+  border-right: none;
+}
+
+.admin-toggle-btn-right {
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+// Alert Boxes
+.admin-alert {
+  padding: $admin-spacing-md;
+  border-radius: $admin-radius-md;
+  margin-bottom: $admin-spacing-lg;
+
+  &.admin-alert-error {
+    background-color: $admin-red-bg;
+    border: 1px solid $admin-red-border;
+    color: $admin-red-error;
+  }
+
+  &.admin-alert-warning {
+    background-color: $admin-yellow-bg;
+    border: 1px solid $admin-yellow-border;
+  }
+
+  ul {
+    margin-bottom: 0;
+  }
+
+  h5 {
+    margin-bottom: 0.5rem;
+  }
+}
+
+// Filter Grid
+.admin-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $admin-spacing-md;
+  align-items: end;
+}
+
+// Text Ellipsis
+.admin-text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Badge Variants
+.admin-badge-xs {
+  font-size: 0.75rem;
+}
+
+.admin-badge-md {
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.admin-badge-lg {
+  padding: 0.625rem 1.25rem;
+}
+
+// Service Grid
+.admin-service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: $admin-spacing-lg;
+}
+
+// Service Icon Box
+.admin-service-icon-box {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: $admin-radius-md;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Error Box
+.admin-error-box {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: $admin-radius-md;
+  padding: $admin-spacing-md;
+}
+
+// Position
+.admin-relative { position: relative; }
+
+// Border
+.admin-border-t { border-top: 1px solid $admin-border; }
+
+// Grid Variants
+.admin-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $admin-spacing-lg;
+}
+
+// Text Size Variants
+.admin-text-xs {
+  font-size: 0.75rem;
+}
+
+.admin-text-lg {
+  font-size: 1.125rem;
+}
+
+// Font Weight
+.admin-font-medium { font-weight: 500; }
+
+// Integration Icon
+.admin-integration-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: $admin-radius-sm;
+}
+
+.admin-integration-icon-placeholder {
+  background: linear-gradient(135deg, $admin-accent-start 0%, $admin-accent-end 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Connection Icon (smaller variant)
+.admin-connection-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: $admin-radius-sm;
+}
+
+// Priority Bar
+.admin-priority-bar {
+  height: 8px;
+  width: 60px;
+}
+
+.admin-priority-bar-tall {
+  height: 10px;
+}
+
+// Button Outline Variants
+.admin-btn-warning-outline {
+  border-color: rgb(234, 179, 8);
+  color: rgb(250, 204, 21);
+}
+
+.admin-btn-info-outline {
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+.admin-btn-danger-outline {
+  border-color: #ef4444;
+  color: #f87171;
+}
+
+// Code Output Containers
+.admin-code-output {
+  min-height: 400px;
+  max-height: 600px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-primary);
+}
+
+.admin-code-output-error {
+  min-height: 400px;
+  max-height: 600px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background-color: var(--bg-card);
+  color: var(--status-error-text);
+  border: 1px solid var(--status-error-border);
+}
+
+// Scrollable Containers
+.admin-scrollable-md {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+// Cursor Utilities
+.admin-cursor-pointer {
+  cursor: pointer;
+}
+
+// Icon 3x/4x sizes
+.admin-icon-3x {
+  width: 48px;
+  height: 48px;
+}
+
+.admin-icon-4x {
+  width: 64px;
+  height: 64px;
+}
+
+// Badge Text Size
+.admin-badge-xl {
+  font-size: 1.5rem;
+}
+
+// Status Pills (for header status indicators)
+.admin-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.admin-status-pill-success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: rgb(74, 222, 128);
+}
+
+.admin-status-pill-warning {
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  color: rgb(250, 204, 21);
+}
+
+.admin-status-pill-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: rgb(248, 113, 113);
+}
+
+// Service Status Icons
+.admin-service-status-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-service-icon-healthy {
+  background: rgba(34, 211, 238, 0.1);
+}
+
+.admin-service-icon-warning {
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.admin-service-icon-error {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+// Form Input Utilities
+.admin-form-input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent-purple-end);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+
+  &:disabled,
+  &.admin-form-disabled {
+    background-color: var(--bg-secondary);
+    color: var(--text-muted);
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.admin-form-select {
+  @extend .admin-form-input;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394A3B8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem;
+}
+
+// Flex column utility
+.admin-flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+// Flex gap extra small
+.admin-flex-gap-xs {
+  gap: 0.25rem;
+}
+
+// Code block styling
+.admin-code-block {
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+// Card with gradient background
+.admin-card-gradient-purple {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
+}
+
+// Sticky card (for form actions)
+.admin-sticky-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+// Summary/details styling
+.admin-summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+// Field background subtle
+.admin-field-bg {
+  background: rgba(0, 0, 0, 0.02);
+
+  [data-theme="dark"] & {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}
+
+// Margin left utility
+.admin-ml-lg {
+  margin-left: 1.5rem;
+}
+
+// Additional icon sizes for specific needs
+.admin-icon-14 {
+  width: 14px;
+  height: 14px;
+}
+
+.admin-icon-18 {
+  width: 18px;
+  height: 18px;
+}
+
+.admin-icon-24 {
+  width: 24px;
+  height: 24px;
+}
+
+.admin-icon-28 {
+  width: 28px;
+  height: 28px;
+}
+
+.admin-icon-32 {
+  width: 32px;
+  height: 32px;
+}
+
+// Danger Zone Card
+.admin-danger-zone-card {
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.02);
+}
+
+// Danger Zone Icon Box
+.admin-danger-zone-icon-box {
+  width: 48px;
+  height: 48px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Action Boxes for danger zone sections
+.admin-action-box-success {
+  padding: 0.75rem;
+  border-radius: $admin-radius-md;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.admin-action-box-danger {
+  padding: 0.75rem;
+  border-radius: $admin-radius-md;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+// Status Management Card (non-active agents)
+.admin-status-mgmt-card {
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.02);
+}
+
+// Progress bar height variants
+.admin-progress-thin {
+  height: 8px;
+}
+
+// Padding utility
+.admin-p-2rem {
+  padding: 2rem;
+}
+
+// Max-width utilities
+.admin-max-w-200 { max-width: 200px; }
+.admin-max-w-300 { max-width: 300px; }
+.admin-max-w-400 { max-width: 400px; }
+
+// Max-height scrollable containers
+.admin-scroll-300 {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.admin-scroll-400 {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.admin-scroll-500 {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+// Progress bar height variants
+.admin-progress-5 { height: 5px; }
+.admin-progress-6 { height: 6px; }
+.admin-progress-8 { height: 8px; }
+.admin-progress-10 { height: 10px; }
+.admin-progress-20 { height: 20px; }
+
+// Chart container utilities
+.admin-chart-250 {
+  position: relative;
+  height: 250px;
+  width: 100%;
+}
+
+.admin-chart-300 {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+// Icon colors
+.admin-icon-blue { color: #3B82F6; }
+.admin-icon-green { color: #22C55E; }
+
+// Icon sizing for specific icons
+.admin-icon-16 {
+  width: 16px;
+  height: 16px;
+}
+
+// Integration/connection icon
+.admin-icon-40 {
+  width: 40px;
+  height: 40px;
+}
+
+.admin-icon-48 {
+  width: 48px;
+  height: 48px;
+}
+
+// Progress bar background
+.admin-progress-bg {
+  background: var(--bg-tertiary);
+}
+
+.admin-progress-bar-blue {
+  background: #3B82F6;
+}
+
+// Pre/code scrollable
+.admin-pre-scroll-200 {
+  max-height: 200px;
+  overflow: auto;
+}
+
+.admin-pre-scroll-300 {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+// Font size utility
+.admin-text-1-1em {
+  font-size: 1.1em;
+}
+
+// Card header colors
+.admin-card-header-blue {
+  background-color: #3B82F6;
+  color: white;
+}
+
+// Padding left utilities
+.admin-pl-lg {
+  padding-left: 1.25rem;
+}
+
+.admin-ml-1-5rem {
+  margin-left: 1.5rem;
+}
+
+// Progress bar width utilities (for fixed widths)
+.admin-progress-w-80 { width: 80px; }
+.admin-progress-w-100 { width: 100px; }
+
+// Padding top utilities
+.admin-pt-lg {
+  padding-top: 1rem;
+}
+
+// Font size utility for alerts
+.admin-text-0-85em {
+  font-size: 0.85em;
+}
+
+// Height 100%
+.admin-h-full {
+  height: 100%;
+}
+
+// Chart/canvas height utilities
+.admin-h-200 { height: 200px; }
+.admin-h-250 { height: 250px; }
+.admin-h-300 { height: 300px; }
+
+// Pre scroll utilities
+.admin-scroll-200 {
+  max-height: 200px;
+  overflow: auto;
+}

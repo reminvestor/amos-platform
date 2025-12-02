@@ -5,6 +5,7 @@ module Admin
     def index
       @deepgram_settings = VoiceAssistantSetting.where("key LIKE ?", "deepgram.%").order(:key)
       @polly_settings = VoiceAssistantSetting.where("key LIKE ?", "polly.%").order(:key)
+      @eleven_labs_settings = VoiceAssistantSetting.where("key LIKE ?", "eleven_labs.%").order(:key)
       @audio_settings = VoiceAssistantSetting.where("key LIKE ?", "audio.%").order(:key)
     end
 

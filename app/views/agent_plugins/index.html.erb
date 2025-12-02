@@ -1,0 +1,37 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-0 text-white">Agents</h1>
+      <p class="text-muted">Manage your AI agents.</p>
+    </div>
+    <%= link_to new_agent_plugin_path, class: "btn btn-primary" do %>
+      <i data-lucide="plus"></i> Create Agent
+    <% end %>
+  </div>
+
+  <div class="row">
+    <% @my_agents.each do |agent| %>
+      <div class="col-md-4 mb-4">
+        <div class="card bg-dark border-secondary h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h5 class="card-title text-white"><%= agent.name %></h5>
+              <span class="badge bg-secondary"><%= agent.status %></span>
+            </div>
+            <p class="card-text text-muted small"><%= agent.description %></p>
+            <div class="mt-3">
+              <%= link_to "View", agent_plugin_path(agent), class: "btn btn-sm btn-outline-secondary" %>
+              <%= link_to "Edit", edit_agent_plugin_path(agent), class: "btn btn-sm btn-outline-secondary" %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    <% if @my_agents.empty? %>
+      <div class="col-12 text-center py-5">
+        <p class="text-muted">No custom agents found.</p>
+      </div>
+    <% end %>
+  </div>
+</div>
+

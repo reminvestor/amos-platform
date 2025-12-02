@@ -1,321 +1,270 @@
-<div class="scout-canvas analytics-dashboard">
-  <div class="canvas-header d-flex justify-content-between align-items-center mb-4">
+<div class="scout-canvas canvas-container analytics-dashboard">
+  <!-- Page Header -->
+  <div class="analytics-header">
     <div>
-      <h4 class="mb-1">
-        <i data-lucide="bar-chart" class="text-primary me-2"></i>
+      <h1 class="analytics-title">
+        <i data-lucide="bar-chart-3"></i>
         Analytics Dashboard
-      </h4>
-      <p class="text-muted mb-0">Marketing performance insights and metrics</p>
+      </h1>
+      <p class="analytics-subtitle">Marketing performance insights and metrics</p>
     </div>
-    <div class="d-flex gap-2">
-      <select class="form-select" id="dateRangeFilter" style="width: auto;">
+    <div class="analytics-actions">
+      <select class="form-select analytics-select" id="dateRangeFilter">
         <option value="7">Last 7 days</option>
         <option value="30" selected>Last 30 days</option>
         <option value="90">Last 90 days</option>
         <option value="365">Last year</option>
       </select>
-      <button class="btn btn-outline-secondary" onclick="scoutExportReport()">
-        <i data-lucide="download" class="me-1"></i>
+      <button onclick="scoutExportReport()" class="analytics-btn">
+        <i data-lucide="download"></i>
         Export
       </button>
-      <button class="btn btn-primary" onclick="scoutCustomReport()">
-        <i data-lucide="trending-up" class="me-1"></i>
+      <button onclick="scoutCustomReport()" class="analytics-btn primary">
+        <i data-lucide="trending-up"></i>
         Custom Report
       </button>
     </div>
   </div>
-  
+
   <!-- Key Metrics Overview -->
-  <div class="row mb-4">
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="metric-card">
-        <div class="metric-icon bg-primary bg-opacity-10">
-          <i data-lucide="mail" class="text-primary"></i>
+  <div class="analytics-metrics-grid">
+    <!-- Total Emails Sent -->
+    <div class="analytics-metric-card">
+      <div class="analytics-metric-content">
+        <div class="analytics-metric-icon purple">
+          <i data-lucide="mail"></i>
         </div>
-        <div class="metric-content">
-          <h3 class="metric-number">
-            <%= number_with_delimiter(analytics_data[:total_emails_sent]) %>
-          </h3>
-          <p class="metric-label">Total Emails Sent</p>
-          <span class="metric-change positive">
+        <div>
+          <p class="analytics-metric-label">Total Emails Sent</p>
+          <h3 class="analytics-metric-value"><%= number_with_delimiter(analytics_data[:total_emails_sent]) %></h3>
+          <span class="analytics-metric-change positive">
             <i data-lucide="arrow-up"></i> +12.5%
           </span>
         </div>
       </div>
     </div>
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="metric-card">
-        <div class="metric-icon bg-success bg-opacity-10">
-          <i data-lucide="eye" class="text-success"></i>
+
+    <!-- Average Open Rate -->
+    <div class="analytics-metric-card">
+      <div class="analytics-metric-content">
+        <div class="analytics-metric-icon green">
+          <i data-lucide="eye"></i>
         </div>
-        <div class="metric-content">
-          <h3 class="metric-number">
-            <%= analytics_data[:avg_open_rate] %>%
-          </h3>
-          <p class="metric-label">Average Open Rate</p>
-          <span class="metric-change <%= analytics_data[:avg_open_rate] > 20 ? 'positive' : 'negative' %>">
-            <i data-lucide="arrow-<%= analytics_data[:avg_open_rate] > 20 ? 'up' : 'down' %>"></i>
+        <div>
+          <p class="analytics-metric-label">Average Open Rate</p>
+          <h3 class="analytics-metric-value"><%= analytics_data[:avg_open_rate] %>%</h3>
+          <span class="analytics-metric-change <%= analytics_data[:avg_open_rate] > 20 ? 'positive' : 'negative' %>">
+            <i data-lucide="<%= analytics_data[:avg_open_rate] > 20 ? 'arrow-up' : 'arrow-down' %>"></i>
             <%= analytics_data[:avg_open_rate] > 20 ? '+' : '-' %>2.1%
           </span>
         </div>
       </div>
     </div>
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="metric-card">
-        <div class="metric-icon bg-info bg-opacity-10">
-          <i data-lucide="users" class="text-info"></i>
+
+    <!-- New Contacts -->
+    <div class="analytics-metric-card">
+      <div class="analytics-metric-content">
+        <div class="analytics-metric-icon cyan">
+          <i data-lucide="users"></i>
         </div>
-        <div class="metric-content">
-          <h3 class="metric-number">
-            <%= number_with_delimiter(analytics_data[:recent_contacts]) %>
-          </h3>
-          <p class="metric-label">New Contacts (30d)</p>
-          <span class="metric-change positive">
+        <div>
+          <p class="analytics-metric-label">New Contacts (30d)</p>
+          <h3 class="analytics-metric-value"><%= number_with_delimiter(analytics_data[:recent_contacts]) %></h3>
+          <span class="analytics-metric-change positive">
             <i data-lucide="arrow-up"></i> +8.3%
           </span>
         </div>
       </div>
     </div>
-    <div class="col-lg-3 col-md-6 mb-3">
-      <div class="metric-card">
-        <div class="metric-icon bg-warning bg-opacity-10">
-          <i data-lucide="globe" class="text-warning"></i>
+
+    <!-- Active Landing Pages -->
+    <div class="analytics-metric-card">
+      <div class="analytics-metric-content">
+        <div class="analytics-metric-icon yellow">
+          <i data-lucide="globe"></i>
         </div>
-        <div class="metric-content">
-          <h3 class="metric-number">
-            <%= analytics_data[:landing_pages] %>
-          </h3>
-          <p class="metric-label">Active Landing Pages</p>
-          <span class="metric-change neutral">
+        <div>
+          <p class="analytics-metric-label">Active Landing Pages</p>
+          <h3 class="analytics-metric-value"><%= analytics_data[:landing_pages] %></h3>
+          <span class="analytics-metric-change neutral">
             <i data-lucide="minus"></i> 0%
           </span>
         </div>
       </div>
     </div>
   </div>
-  
-  <!-- Charts Row -->
-  <div class="row mb-4">
-    <!-- Campaign Performance Chart -->
-    <div class="col-lg-8 mb-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-          <h6 class="mb-0">
-            <i data-lucide="trending-up" class="me-2"></i>
-            Campaign Performance Over Time
-          </h6>
-          <div class="btn-group btn-group-sm" role="group">
-            <button type="button" class="btn btn-outline-secondary active" onclick="scoutChangeChart('emails')">
-              Emails
-            </button>
-            <button type="button" class="btn btn-outline-secondary" onclick="scoutChangeChart('opens')">
-              Opens
-            </button>
-            <button type="button" class="btn btn-outline-secondary" onclick="scoutChangeChart('clicks')">
-              Clicks
-            </button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="chart-container" style="height: 300px;">
-            <canvas id="performanceChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Top Campaigns -->
-    <div class="col-lg-4 mb-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light">
-          <h6 class="mb-0">
-            <i data-lucide="trophy" class="me-2"></i>
-            Top Performing Campaigns
-          </h6>
-        </div>
-        <div class="card-body">
-          <% analytics_data[:campaigns].limit(5).each_with_index do |campaign, index| %>
-            <% 
-              sent = campaign.mailgun_stats&.dig('sent') || 0
-              opened = campaign.mailgun_stats&.dig('opened') || 0
-              open_rate = sent > 0 ? (opened.to_f / sent * 100) : 0
-            %>
-            <div class="campaign-item <%= 'mb-3' unless index == 4 %>">
-              <div class="d-flex justify-content-between align-items-start">
-                <div class="campaign-info flex-grow-1">
-                  <h6 class="mb-1">
-                    <%= campaign.name.present? ? truncate(campaign.name, length: 25) : "Campaign #{campaign.id}" %>
-                  </h6>
-                  <small class="text-muted">
-                    <%= number_with_delimiter(sent) %> sent
-                  </small>
-                </div>
-                <div class="campaign-metric text-end">
-                  <div class="metric-badge <%= open_rate > 25 ? 'bg-success' : open_rate > 15 ? 'bg-warning' : 'bg-danger' %>">
-                    <%= number_with_precision(open_rate, precision: 1) %>%
-                  </div>
-                </div>
-              </div>
-              <div class="progress mt-2" style="height: 4px;">
-                <div class="progress-bar <%= open_rate > 25 ? 'bg-success' : open_rate > 15 ? 'bg-warning' : 'bg-danger' %>" 
-                     style="width: <%= [open_rate, 100].min %>%"></div>
-              </div>
-            </div>
-          <% end %>
-          <button class="btn btn-sm btn-outline-primary w-100 mt-2" onclick="scoutViewAllCampaigns()">
-            View All Campaigns
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Additional Analytics -->
-  <div class="row">
-    <!-- Contact Growth -->
-    <div class="col-lg-6 mb-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light">
-          <h6 class="mb-0">
-            <i data-lucide="user-plus" class="me-2"></i>
-            Contact Growth
-          </h6>
-        </div>
-        <div class="card-body">
-          <div class="chart-container" style="height: 200px;">
-            <canvas id="contactGrowthChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Email Performance Breakdown -->
-    <div class="col-lg-6 mb-4">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light">
-          <h6 class="mb-0">
-            <i data-lucide="pie-chart" class="me-2"></i>
-            Email Performance Breakdown
-          </h6>
-        </div>
-        <div class="card-body">
-          <div class="row text-center">
-            <div class="col-4">
-              <div class="metric-circle delivered">
-                <div class="metric-circle-value">85%</div>
-                <div class="metric-circle-label">Delivered</div>
-              </div>
-            </div>
-            <div class="col-4">
-              <div class="metric-circle opened">
-                <div class="metric-circle-value"><%= analytics_data[:avg_open_rate] %>%</div>
-                <div class="metric-circle-label">Opened</div>
-              </div>
-            </div>
-            <div class="col-4">
-              <div class="metric-circle clicked">
-                <div class="metric-circle-value">4.2%</div>
-                <div class="metric-circle-label">Clicked</div>
-              </div>
-            </div>
-          </div>
-          <div class="mt-3">
-            <small class="text-muted">
-              <i data-lucide="info" class="me-1"></i>
-              Based on last 30 days of campaign data
-            </small>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- AI-Powered Analytics Query Section -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div class="card-body text-white">
-          <h6 class="mb-3">
-            <i data-lucide="wand-2" class="me-2"></i>
-            AI-Powered Analytics
-          </h6>
-          <p class="mb-3 opacity-75 small">Ask Amos to analyze your marketing data, integration metrics, or create custom reports</p>
 
-          <!-- Quick Analysis Buttons -->
-          <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-light btn-sm" onclick="quickAnalyticsQuery('campaign_performance')">
-              <i data-lucide="mail" class="me-1"></i>
-              Campaign Performance
-            </button>
-            <button class="btn btn-light btn-sm" onclick="quickAnalyticsQuery('email_engagement')">
-              <i data-lucide="trending-up" class="me-1"></i>
-              Email Engagement
-            </button>
-            <button class="btn btn-light btn-sm" onclick="quickAnalyticsQuery('contact_growth')">
-              <i data-lucide="user-plus" class="me-1"></i>
-              Contact Growth
-            </button>
-            <% if current_entity.connections.joins(:integration).where(integrations: { slug: 'stripe' }).where(status: :connected).exists? %>
-            <button class="btn btn-success btn-sm" onclick="quickAnalyticsQuery('stripe_revenue')">
-              <i data-lucide="dollar-sign" class="me-1"></i>
-              Stripe Revenue
-            </button>
-            <% end %>
-            <button class="btn btn-outline-light btn-sm" onclick="customAnalyticsQuery()">
-              <i data-lucide="help-circle" class="me-1"></i>
-              Custom Analysis
-            </button>
+  <!-- Charts Row -->
+  <div class="analytics-charts-row">
+    <!-- Campaign Performance Chart -->
+    <div class="analytics-chart-card">
+      <div class="analytics-chart-header">
+        <h3>
+          <i data-lucide="trending-up"></i>
+          Campaign Performance Over Time
+        </h3>
+        <div class="analytics-chart-tabs">
+          <button type="button" onclick="scoutChangeChart('emails')" class="analytics-chart-tab active">
+            Emails
+          </button>
+          <button type="button" onclick="scoutChangeChart('opens')" class="analytics-chart-tab">
+            Opens
+          </button>
+          <button type="button" onclick="scoutChangeChart('clicks')" class="analytics-chart-tab">
+            Clicks
+          </button>
+        </div>
+      </div>
+      <div class="analytics-chart-body">
+        <canvas id="performanceChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Top Campaigns -->
+    <div class="analytics-chart-card">
+      <div class="analytics-chart-header">
+        <h3>
+          <i data-lucide="trophy"></i>
+          Top Performing Campaigns
+        </h3>
+      </div>
+      <div class="analytics-campaign-list">
+        <% analytics_data[:campaigns].limit(5).each_with_index do |campaign, index| %>
+          <%
+            sent = campaign.mailgun_stats&.dig('sent') || 0
+            opened = campaign.mailgun_stats&.dig('opened') || 0
+            open_rate = sent > 0 ? (opened.to_f / sent * 100) : 0
+            rate_class = open_rate > 25 ? 'high' : (open_rate > 15 ? 'medium' : 'low')
+          %>
+          <div class="analytics-campaign-item">
+            <div class="analytics-campaign-header">
+              <div>
+                <h6 class="analytics-campaign-name"><%= campaign.name.present? ? truncate(campaign.name, length: 25) : "Campaign #{campaign.id}" %></h6>
+                <small class="analytics-campaign-sent"><%= number_with_delimiter(sent) %> sent</small>
+              </div>
+              <div class="analytics-campaign-rate <%= rate_class %>">
+                <%= number_with_precision(open_rate, precision: 1) %>%
+              </div>
+            </div>
+            <div class="analytics-progress-bar">
+              <div class="analytics-progress-fill <%= rate_class %>" style="width: <%= [open_rate, 100].min %>%;"></div>
+            </div>
           </div>
+        <% end %>
+        <button onclick="scoutViewAllCampaigns()" class="analytics-btn primary analytics-btn-full">
+          View All Campaigns
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Additional Analytics -->
+  <div class="analytics-grid-half">
+    <!-- Contact Growth -->
+    <div class="analytics-chart-card">
+      <div class="analytics-chart-header">
+        <h3>
+          <i data-lucide="user-plus"></i>
+          Contact Growth
+        </h3>
+      </div>
+      <div class="analytics-chart-body analytics-chart-body-small">
+        <canvas id="contactGrowthChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Email Performance Breakdown -->
+    <div class="analytics-chart-card">
+      <div class="analytics-chart-header">
+        <h3>
+          <i data-lucide="pie-chart"></i>
+          Email Performance Breakdown
+        </h3>
+      </div>
+      <div class="analytics-breakdown">
+        <div class="analytics-breakdown-grid">
+          <div>
+            <div class="analytics-breakdown-value green">85%</div>
+            <div class="analytics-breakdown-label">Delivered</div>
+          </div>
+          <div>
+            <div class="analytics-breakdown-value cyan"><%= analytics_data[:avg_open_rate] %>%</div>
+            <div class="analytics-breakdown-label">Opened</div>
+          </div>
+          <div>
+            <div class="analytics-breakdown-value red">4.2%</div>
+            <div class="analytics-breakdown-label">Clicked</div>
+          </div>
+        </div>
+        <div class="analytics-breakdown-footer">
+          <small><i data-lucide="info"></i> Based on last 30 days of campaign data</small>
         </div>
       </div>
     </div>
   </div>
-  
+
+  <!-- AI-Powered Analytics Query Section -->
+  <div class="analytics-ai-section">
+    <h3>
+      <i data-lucide="wand-2"></i>
+      AI-Powered Analytics
+    </h3>
+    <p>Ask Amos to analyze your marketing data, integration metrics, or create custom reports</p>
+
+    <!-- Quick Analysis Buttons -->
+    <div class="analytics-ai-buttons">
+      <button onclick="quickAnalyticsQuery('campaign_performance')" class="analytics-ai-btn">
+        <i data-lucide="mail"></i>
+        Campaign Performance
+      </button>
+      <button onclick="quickAnalyticsQuery('email_engagement')" class="analytics-ai-btn">
+        <i data-lucide="trending-up"></i>
+        Email Engagement
+      </button>
+      <button onclick="quickAnalyticsQuery('contact_growth')" class="analytics-ai-btn">
+        <i data-lucide="user-plus"></i>
+        Contact Growth
+      </button>
+      <% if current_entity.connections.joins(:integration).where(integrations: { slug: 'stripe' }).where(status: :connected).exists? %>
+      <button onclick="quickAnalyticsQuery('stripe_revenue')" class="analytics-ai-btn success">
+        <i data-lucide="dollar-sign"></i>
+        Stripe Revenue
+      </button>
+      <% end %>
+      <button onclick="customAnalyticsQuery()" class="analytics-ai-btn outline">
+        <i data-lucide="help-circle"></i>
+        Custom Analysis
+      </button>
+    </div>
+  </div>
+
   <!-- Recent Activity -->
-  <div class="row">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-          <h6 class="mb-0">
-            <i data-lucide="clock" class="me-2"></i>
-            Recent Activity
-          </h6>
-          <button class="btn btn-sm btn-outline-primary" onclick="scoutViewFullActivity()">
-            View All Activity
-          </button>
-        </div>
-        <div class="card-body">
-          <div class="activity-timeline">
-            <div class="activity-item">
-              <div class="activity-icon bg-success">
-                <i data-lucide="send" class="text-white"></i>
-              </div>
-              <div class="activity-content">
-                <div class="activity-title">Campaign "Newsletter #47" sent</div>
-                <div class="activity-meta">2 hours ago • 1,234 recipients</div>
-              </div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-icon bg-info">
-                <i data-lucide="user-plus" class="text-white"></i>
-              </div>
-              <div class="activity-content">
-                <div class="activity-title">15 new contacts added</div>
-                <div class="activity-meta">4 hours ago • From landing page form</div>
-              </div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-icon bg-warning">
-                <i data-lucide="globe" class="text-white"></i>
-              </div>
-              <div class="activity-content">
-                <div class="activity-title">Landing page "Product Demo" published</div>
-                <div class="activity-meta">1 day ago • Now live at /landing/product-demo</div>
-              </div>
-            </div>
+  <div class="analytics-activity-card">
+    <div class="analytics-activity-header">
+      <h3>
+        <i data-lucide="clock"></i>
+        Recent Activity
+      </h3>
+      <button onclick="scoutViewFullActivity()" class="analytics-btn">
+        View All Activity
+      </button>
+    </div>
+    <div class="analytics-activity-list">
+      <% [
+        { type: 'success', icon: 'send', title: 'Campaign "Newsletter #47" sent', meta: '2 hours ago • 1,234 recipients' },
+        { type: 'info', icon: 'user-plus', title: '15 new contacts added', meta: '4 hours ago • From landing page form' },
+        { type: 'warning', icon: 'globe', title: 'Landing page "Product Demo" published', meta: '1 day ago • Now live at /landing/product-demo' }
+      ].each do |activity| %>
+        <div class="analytics-activity-item">
+          <div class="analytics-activity-icon <%= activity[:type] %>">
+            <i data-lucide="<%= activity[:icon] %>"></i>
+          </div>
+          <div>
+            <div class="analytics-activity-title"><%= activity[:title] %></div>
+            <div class="analytics-activity-meta"><%= activity[:meta] %></div>
           </div>
         </div>
-      </div>
+      <% end %>
     </div>
   </div>
 </div>
@@ -324,9 +273,11 @@
 // Analytics dashboard functionality
 function scoutChangeChart(chartType) {
   // Update active button
-  document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.analytics-chart-tab').forEach(btn => {
+    btn.classList.remove('active');
+  });
   event.target.classList.add('active');
-  
+
   window.scoutSendMessage?.(`Show ${chartType} performance chart`);
 }
 
@@ -347,7 +298,7 @@ function quickAnalyticsQuery(type) {
     'contact_growth': "Show me contact growth trends for the last 6 months",
     'stripe_revenue': "Show me Stripe revenue breakdown by month for this year"
   };
-  
+
   const query = queries[type];
   if (query && window.scoutSendMessage) {
     window.scoutSendMessage(query);
@@ -357,7 +308,7 @@ function quickAnalyticsQuery(type) {
 // Custom analytics query
 function customAnalyticsQuery() {
   const question = prompt("What would you like to analyze?\n\nExamples:\n- Revenue trends by channel\n- Campaign performance comparison\n- Customer lifetime value\n- Email vs Stripe correlation");
-  
+
   if (question && window.scoutSendMessage) {
     window.scoutSendMessage(question);
   }
@@ -379,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function() {
       window.scoutSendMessage?.(`Update analytics for last ${this.value} days`);
     });
   }
-  
+
   // Initialize charts
   initializeCharts();
 });
@@ -388,18 +339,13 @@ function initializeCharts() {
   // Performance Chart (placeholder)
   const performanceCtx = document.getElementById('performanceChart');
   if (performanceCtx) {
-    // This would integrate with Chart.js or similar library
-    performanceCtx.style.background = 'linear-gradient(45deg, #f8f9fa, #e9ecef)';
-    performanceCtx.style.borderRadius = '8px';
-    
-    // Add placeholder text
     const placeholder = document.createElement('div');
     placeholder.className = 'chart-placeholder';
     placeholder.innerHTML = `
-      <div class="text-center py-5">
-        <i data-lucide="trending-up" class="text-muted mb-3" class="icon-3x"></i>
-        <p class="text-muted">Performance chart will display here</p>
-        <button class="btn btn-sm btn-primary" onclick="scoutLoadChart('performance')">
+      <div class="chart-placeholder-content">
+        <i data-lucide="trending-up"></i>
+        <p>Performance chart will display here</p>
+        <button onclick="scoutLoadChart('performance')" class="analytics-btn primary">
           Load Chart Data
         </button>
       </div>
@@ -407,20 +353,17 @@ function initializeCharts() {
     performanceCtx.parentNode.appendChild(placeholder);
     performanceCtx.style.display = 'none';
   }
-  
+
   // Contact Growth Chart (placeholder)
   const contactCtx = document.getElementById('contactGrowthChart');
   if (contactCtx) {
-    contactCtx.style.background = 'linear-gradient(45deg, #f8f9fa, #e9ecef)';
-    contactCtx.style.borderRadius = '8px';
-    
     const placeholder = document.createElement('div');
     placeholder.className = 'chart-placeholder';
     placeholder.innerHTML = `
-      <div class="text-center py-4">
-        <i data-lucide="users" class="text-muted mb-2" style="width: 2rem; height: 2rem;"></i>
-        <p class="text-muted small">Contact growth chart</p>
-        <button class="btn btn-sm btn-outline-primary" onclick="scoutLoadChart('contacts')">
+      <div class="chart-placeholder-content">
+        <i data-lucide="users"></i>
+        <p>Contact growth chart</p>
+        <button onclick="scoutLoadChart('contacts')" class="analytics-btn primary">
           Load Data
         </button>
       </div>
@@ -428,215 +371,26 @@ function initializeCharts() {
     contactCtx.parentNode.appendChild(placeholder);
     contactCtx.style.display = 'none';
   }
+
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
 }
 
 function scoutLoadChart(chartType) {
   window.scoutSendMessage?.(`Load ${chartType} chart data`);
 }
+
+// Initialize on load
+document.addEventListener('turbo:load', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+});
 </script>
-
-<style>
-.analytics-dashboard {
-  height: 100%;
-  overflow-y: auto;
-}
-
-.metric-card {
-  background: white;
-  border: 1px solid #dee2e6;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.metric-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 1rem;
-  font-size: 1.5rem;
-}
-
-.metric-content .metric-number {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
-  line-height: 1;
-}
-
-.metric-content .metric-label {
-  font-size: 0.875rem;
-  color: #6c757d;
-  margin-bottom: 0.5rem;
-}
-
-.metric-change {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-}
-
-.metric-change.positive {
-  color: #198754;
-  background-color: rgba(25, 135, 84, 0.1);
-}
-
-.metric-change.negative {
-  color: #dc3545;
-  background-color: rgba(220, 53, 69, 0.1);
-}
-
-.metric-change.neutral {
-  color: #6c757d;
-  background-color: rgba(108, 117, 125, 0.1);
-}
-
-.campaign-item {
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #f8f9fa;
-}
-
-.campaign-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.metric-badge {
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.metric-circle {
-  text-align: center;
-}
-
-.metric-circle-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #495057;
-}
-
-.metric-circle-label {
-  font-size: 0.75rem;
-  color: #6c757d;
-  margin-top: 0.25rem;
-}
-
-.activity-timeline .activity-item {
-  display: flex;
-  align-items: center;
-  padding: 1rem 0;
-  border-bottom: 1px solid #f8f9fa;
-}
-
-.activity-timeline .activity-item:last-child {
-  border-bottom: none;
-}
-
-.activity-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 1rem;
-  flex-shrink: 0;
-}
-
-.activity-content .activity-title {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.activity-content .activity-meta {
-  font-size: 0.875rem;
-  color: #6c757d;
-}
-
-.chart-placeholder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: white;
-  border-radius: 8px;
-}
-
-.chart-container {
-  position: relative;
-}
-
-@media (max-width: 768px) {
-  .metric-card {
-    margin-bottom: 1rem;
-  }
-  
-  .metric-icon {
-    width: 50px;
-    height: 50px;
-    font-size: 1.25rem;
-  }
-  
-  .metric-content .metric-number {
-    font-size: 1.5rem;
-  }
-}
-
-/* Targeted fixes for white text on white background issues */
-.analytics-dashboard .activity-title {
-  color: #1f2937 !important;
-  font-weight: 600;
-}
-
-.analytics-dashboard .activity-meta {
-  color: #6b7280 !important;
-}
-
-.analytics-dashboard .btn-outline-secondary {
-  color: #374151 !important;
-  border-color: #d1d5db !important;
-  background-color: #ffffff !important;
-}
-
-.analytics-dashboard .btn-outline-secondary:hover {
-  color: #ffffff !important;
-  background-color: #374151 !important;
-  border-color: #374151 !important;
-}
-
-.analytics-dashboard .btn-outline-secondary.active {
-  color: #ffffff !important;
-  background-color: #6366f1 !important;
-  border-color: #6366f1 !important;
-}
-
-.analytics-dashboard .form-select {
-  color: #1f2937 !important;
-  background-color: #ffffff !important;
-  border-color: #d1d5db !important;
-}
-
-.analytics-dashboard .card-header h6 {
-  color: #1f2937 !important;
-}
-</style> 

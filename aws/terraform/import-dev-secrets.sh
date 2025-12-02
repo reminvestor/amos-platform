@@ -15,3 +15,6 @@ terraform import aws_secretsmanager_secret.database_url "agent-marketing-dev-dat
 terraform import aws_secretsmanager_secret.redis_url "agent-marketing-dev-redis-url" || echo "Redis URL already imported"
 
 echo "Import complete!"
+
+
+

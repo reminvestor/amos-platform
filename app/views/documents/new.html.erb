@@ -1,0 +1,343 @@
+<div class="container-fluid py-4">
+  <%# Page Header %>
+  <div class="admin-page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <i data-lucide="upload"></i>
+      </div>
+      <div class="header-text">
+        <h1>Upload New Document</h1>
+        <p>Add a document to your knowledge base for AI reference</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <%= link_to documents_path, class: "admin-btn admin-btn-outline" do %>
+        <i data-lucide="arrow-left"></i>
+        <span>Back to Document Store</span>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8 col-xl-6">
+      <div class="admin-card">
+        <%= form_with scope: :document, url: documents_path, local: true, html: { multipart: true } do |form| %>
+          <%# File Upload %>
+          <div class="admin-form-group">
+            <%= form.label :file, "Document File", class: "admin-label" %>
+            <span class="text-danger">*</span>
+            <%= form.file_field :file, class: "admin-file-input", required: true, accept: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.html,.json,.csv" %>
+            <p class="form-text text-muted">
+              Supported formats: PDF, Word (.docx, .doc), Excel (.xls, .xlsx), PowerPoint, Text (.txt), Markdown (.md), HTML, JSON, CSV
+              <br>Maximum file size: 50MB
+            </p>
+          </div>
+
+          <%# Document Metadata %>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="admin-form-group">
+                <%= form.label :title, class: "admin-label" %>
+                <%= form.text_field :title, class: "admin-input", placeholder: "e.g., Q4 Sales Report 2024" %>
+                <p class="form-text text-muted">Leave blank to use filename</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="admin-form-group">
+                <%= form.label :author, class: "admin-label" %>
+                <%= form.text_field :author, class: "admin-input", placeholder: "e.g., John Smith" %>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-form-group">
+            <%= form.label :summary, class: "admin-label" %>
+            <%= form.text_area :summary, class: "admin-input", rows: 3, placeholder: "Brief description of the document content..." %>
+          </div>
+
+          <div class="admin-form-group">
+            <%= form.label :document_date, "Document Date", class: "admin-label" %>
+            <%= form.date_field :document_date, class: "admin-input" %>
+            <p class="form-text text-muted">The date the document was created or is relevant to</p>
+          </div>
+
+          <hr class="my-4">
+
+          <%# Organization %>
+          <h5 class="mb-3">Organization</h5>
+
+          <%# Collection Selection %>
+          <div class="admin-form-group">
+            <%= form.label :collection_name, "Collection", class: "admin-label" %>
+            <div class="row">
+              <div class="col-md-6">
+                <% collections = current_entity.rag_stores
+                                        .where(app_name: 'documents', store_type: 'entity')
+                                        .where.not("name LIKE '%.pdf' OR name LIKE '%.doc%' OR name LIKE '%.xls%' OR name LIKE '%.txt'")
+                                        .distinct.pluck(:name) %>
+                <%= form.select :collection_name, 
+                    options_for_select([["Select or create new collection", ""]] + collections.map { |c| [c, c] }, selected: "Document Library"),
+                    { }, 
+                    class: "admin-select", 
+                    placeholder: "Select a collection" %>
+                <p class="form-text text-muted">Select an existing collection or it will create a new one</p>
+              </div>
+            </div>
+          </div>
+
+          <%# Subject Assignment %>
+          <% if @subjects.any? %>
+            <div class="admin-form-group">
+              <%= form.label :subject_ids, "Assign to Folders", class: "admin-label" %>
+              <div class="subject-selection">
+                <% @subjects.each do |subject| %>
+                  <label class="subject-checkbox">
+                    <%= check_box_tag "document[subject_ids][]", subject.id, false, id: "subject_#{subject.id}" %>
+                    <span class="subject-label" style="padding-left: <%= subject.ancestors.count * 1.5 %>rem;">
+                      <i data-lucide="<%= subject.display_icon %>"></i>
+                      <%= subject.name %>
+                    </span>
+                  </label>
+                <% end %>
+              </div>
+              <p class="form-text text-muted">Select folders to organize this document</p>
+            </div>
+          <% end %>
+
+          <%# Tags %>
+          <div class="admin-form-group">
+            <%= form.label :tags, class: "admin-label" %>
+            <%= form.text_field :tags, class: "admin-input", placeholder: "contract, 2024, draft" %>
+            <p class="form-text text-muted">Separate tags with commas</p>
+            
+            <% if @popular_tags.any? %>
+              <div class="popular-tags mt-2">
+                <span class="text-muted small">Popular tags:</span>
+                <% @popular_tags.each do |tag| %>
+                  <button type="button" class="tag-suggestion" onclick="addTag('<%= tag.name %>')">
+                    <%= tag.name %>
+                  </button>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+
+          <hr class="my-4">
+
+          <%# AI Processing Options %>
+          <h5 class="mb-3">Processing Options</h5>
+
+          <div class="form-check mb-3">
+            <%= check_box_tag :auto_categorize, "1", true, class: "form-check-input" %>
+            <%= label_tag :auto_categorize, "Auto-categorize with AI", class: "form-check-label" %>
+            <p class="form-text text-muted">Let AI suggest appropriate folders and tags based on document content</p>
+          </div>
+
+          <div class="form-check mb-4">
+            <%= check_box_tag :extract_entities, "1", false, class: "form-check-input" %>
+            <%= label_tag :extract_entities, "Extract named entities", class: "form-check-label" %>
+            <p class="form-text text-muted">Extract people, organizations, and locations mentioned in the document</p>
+          </div>
+
+          <div class="d-flex justify-content-between">
+            <%= link_to "Cancel", documents_path, class: "admin-btn admin-btn-outline" %>
+            <%= form.submit "Upload Document", class: "admin-btn admin-btn-primary", data: { disable_with: "Uploading..." } %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Tips Sidebar %>
+    <div class="col-lg-4 col-xl-3">
+      <div class="admin-card">
+        <h5 class="mb-3"><i data-lucide="lightbulb" class="me-2"></i>Upload Tips</h5>
+        
+        <div class="tip-item mb-3">
+          <h6>File Naming</h6>
+          <p class="text-muted small mb-0">Use descriptive filenames that include dates or version numbers for easier searching.</p>
+        </div>
+        
+        <div class="tip-item mb-3">
+          <h6>Document Quality</h6>
+          <p class="text-muted small mb-0">For best results, upload high-quality PDFs with selectable text rather than scanned images.</p>
+        </div>
+        
+        <div class="tip-item mb-3">
+          <h6>Organization</h6>
+          <p class="text-muted small mb-0">Group related documents in the same collection to improve AI context understanding.</p>
+        </div>
+        
+        <div class="tip-item">
+          <h6>Processing Time</h6>
+          <p class="text-muted small mb-0">Large documents may take a few minutes to process. You'll see them in the library immediately.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Subject Selection */
+  .subject-selection {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #1E293B;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    background: #0F172A;
+  }
+
+  .subject-checkbox {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .subject-checkbox:hover {
+    background: rgba(167, 139, 250, 0.05);
+  }
+
+  .subject-checkbox input[type="checkbox"] {
+    margin-right: 0.5rem;
+  }
+
+  .subject-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #94A3B8;
+  }
+
+  .subject-checkbox input[type="checkbox"]:checked + .subject-label {
+    color: #A78BFA;
+    font-weight: 500;
+  }
+
+  .subject-label i {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* Tag Suggestions */
+  .popular-tags {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .tag-suggestion {
+    padding: 0.25rem 0.5rem;
+    background: #2D3548;
+    border: 1px solid #1E293B;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    color: #94A3B8;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .tag-suggestion:hover {
+    background: rgba(167, 139, 250, 0.1);
+    border-color: #A78BFA;
+    color: #A78BFA;
+  }
+
+  /* Tips */
+  .tip-item {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #1E293B;
+  }
+
+  .tip-item:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .tip-item h6 {
+    color: #A78BFA;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* File Input Styling */
+  .admin-file-input {
+    display: block;
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    color: #94A3B8;
+    background-color: #0A0E1A;
+    border: 1px solid #1E293B;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .admin-file-input:hover {
+    border-color: #A78BFA;
+  }
+
+  .admin-file-input:focus {
+    outline: none;
+    border-color: #A78BFA;
+    box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
+  }
+
+  .admin-file-input::file-selector-button {
+    padding: 0.375rem 0.75rem;
+    margin-right: 0.75rem;
+    background: #2D3548;
+    border: none;
+    border-radius: 0.375rem;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .admin-file-input::file-selector-button:hover {
+    background: #A78BFA;
+  }
+</style>
+
+<script>
+function addTag(tagName) {
+  const tagsInput = document.getElementById('document_tags');
+  const currentTags = tagsInput.value.split(',').map(t => t.trim()).filter(t => t);
+  
+  if (!currentTags.includes(tagName)) {
+    currentTags.push(tagName);
+    tagsInput.value = currentTags.join(', ');
+  }
+}
+
+document.addEventListener('turbo:load', () => {
+  // Initialize Lucide icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+
+  // Auto-suggest title from filename
+  const fileInput = document.getElementById('document_file');
+  const titleInput = document.getElementById('document_title');
+  
+  if (fileInput && titleInput) {
+    fileInput.addEventListener('change', (e) => {
+      if (!titleInput.value && e.target.files.length > 0) {
+        const filename = e.target.files[0].name;
+        const titleSuggestion = filename
+          .replace(/\.[^/.]+$/, '') // Remove extension
+          .replace(/[-_]/g, ' ') // Replace dashes and underscores with spaces
+          .replace(/\b\w/g, l => l.toUpperCase()); // Title case
+        
+        titleInput.value = titleSuggestion;
+      }
+    });
+  }
+});
+</script>

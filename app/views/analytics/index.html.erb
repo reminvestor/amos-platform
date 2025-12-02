@@ -208,3 +208,6 @@
     50% { opacity: 0.5; }
   }
 </style>
+
+<!-- Lazy-load Chart.js for analytics charts -->
+<%= javascript_include_tag "chart_loader", type: "module", defer: true %>

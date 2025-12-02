@@ -12,8 +12,8 @@ module Api
     # - PATCH /api/voice/sessions/:id/end - End session
     class VoiceSessionsController < ApplicationController
       before_action :authenticate_user!
-      before_action :set_voice_session, only: [ :show, :deepgram_key, :polly_credentials, :pause, :resume, :end ]
-      before_action :authorize_session_access, only: [ :show, :deepgram_key, :polly_credentials, :pause, :resume, :end ]
+      before_action :set_voice_session, only: [ :show, :deepgram_key, :eleven_labs_credentials, :polly_credentials, :pause, :resume, :end, :log_error ]
+      before_action :authorize_session_access, only: [ :show, :deepgram_key, :eleven_labs_credentials, :polly_credentials, :pause, :resume, :end, :log_error ]
 
       # POST /api/voice/sessions
       def create
@@ -64,6 +64,17 @@ module Api
         render json: { error: "Failed to get Deepgram credentials: #{e.message}" }, status: :internal_server_error
       end
 
+      # GET /api/voice/sessions/:id/eleven_labs_credentials
+      def eleven_labs_credentials
+        service = ElevenLabsTranscriptionService.new(@voice_session)
+
+        render json: service.connection_params
+      rescue => e
+        Rails.logger.error "Failed to get Eleven Labs credentials: #{e.message}"
+        Rails.logger.error e.backtrace.join("\n")
+        render json: { error: "Failed to get Eleven Labs credentials: #{e.message}" }, status: :internal_server_error
+      end
+
       # GET /api/voice/sessions/:id/polly_credentials
       def polly_credentials
         service = PollyCredentialsService.new(@voice_session)
@@ -97,6 +108,58 @@ module Api
         }
       end
 
+      # POST /api/voice/sessions/:id/log_error
+      # Log voice assistant errors for monitoring without exposing details to user
+      def log_error
+        error_type = params[:error_type]
+        error_message = params[:error_message]
+        provider = params[:provider] || "unknown"
+
+        # Log to VoiceSession metadata
+        @voice_session.log_error(
+          error_type: error_type,
+          error_message: error_message,
+          provider: provider
+        )
+
+        # Log to Rails logger for monitoring
+        Rails.logger.error("[Voice Error] Session: #{@voice_session.session_id}, Provider: #{provider}, Type: #{error_type}, Message: #{error_message}")
+
+        # Log to ObservabilityEvent for admin dashboard visibility
+        ObservabilityEvent.create!(
+          event_type: "voice_error",
+          entity: @voice_session.entity,
+          user: @voice_session.user,
+          metadata: {
+            session_id: @voice_session.session_id,
+            error_type: error_type,
+            error_message: error_message,
+            provider: provider,
+            status: "error"
+          }
+        )
+
+        # Log to VoiceMetricsService for analytics
+        metrics_service = VoiceMetricsService.new
+        metrics_service.record_session_metric(
+          @voice_session,
+          provider,
+          success: false,
+          error: "#{error_type}: #{error_message}",
+          timestamp: Time.current
+        )
+
+        # Send Slack alert (async, non-blocking)
+        send_slack_alert_async(error_type, error_message, provider)
+
+        # Return generic success - no error details exposed
+        render json: { status: "logged" }, status: :ok
+      rescue => e
+        Rails.logger.error "Failed to log voice error: #{e.message}"
+        # Fail silently - don't disrupt user experience
+        render json: { status: "ok" }, status: :ok
+      end
+
       private
 
       def set_voice_session
@@ -116,6 +179,22 @@ module Api
           ip_address: request.remote_ip,
           created_from: "web"
         }
+      end
+
+      def send_slack_alert_async(error_type, error_message, provider)
+        # Send Slack notification asynchronously via background job
+        # This won't block the response to the user
+        VoiceErrorSlackNotificationJob.perform_later(
+          session_id: @voice_session.session_id,
+          entity_name: @voice_session.entity.name,
+          user_email: @voice_session.user.email,
+          error_type: error_type,
+          error_message: error_message,
+          provider: provider
+        )
+      rescue => e
+        # Log but don't fail if Slack notification fails
+        Rails.logger.warn("Failed to queue Slack notification: #{e.message}")
       end
     end
   end
