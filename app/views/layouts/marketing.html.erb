@@ -3,13 +3,13 @@
   <head>
     <title><%= content_for(:title) || "AMOS Labs - AI Business Automation Platform" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="description" content="<%= content_for(:description) || "Amos, your AI business automation assistant, streamlines operations and automates workflows. Comprehensive business management in one intelligent platform." %>">
+    <meta name="description" content="<%= content_for(:description) || "AMOS, your AI business automation platform with Scout, your intelligent assistant. Streamlines operations and automates workflows. Comprehensive business management in one platform." %>">
     
     <!-- Open Graph / Social Media Tags -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://amoslabs.com">
     <meta property="og:title" content="<%= content_for(:title) || "AMOS Labs - AI Business Automation Platform" %>">
-    <meta property="og:description" content="<%= content_for(:description) || "Amos is your AI business assistant—like Jarvis for your company. Automate workflows, analyze data, and scale operations through simple conversation." %>">
+    <meta property="og:description" content="<%= content_for(:description) || "AMOS is your AI business automation platform with Scout as your intelligent assistant. Automate workflows, analyze data, and scale operations through simple conversation." %>">
     <meta property="og:image" content="https://amoslabs.com/og-image.svg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -19,7 +19,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://amoslabs.com">
     <meta name="twitter:title" content="<%= content_for(:title) || "AMOS Labs - AI Business Automation Platform" %>">
-    <meta name="twitter:description" content="<%= content_for(:description) || "Amos is your AI business assistant—like Jarvis for your company. Automate workflows, analyze data, and scale operations through simple conversation." %>">
+    <meta name="twitter:description" content="<%= content_for(:description) || "AMOS is your AI business automation platform with Scout as your intelligent assistant. Automate workflows, analyze data, and scale operations through simple conversation." %>">
     <meta name="twitter:image" content="https://amoslabs.com/og-image.svg">
     <meta name="twitter:creator" content="@amoslabs">
     <meta name="twitter:site" content="@amoslabs">
@@ -302,7 +302,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
       <div class="container">
         <a class="navbar-brand d-flex align-items-center" href="<%= marketing_root_path %>">
-          <span class="text-white fw-bold fs-4">AMOS Labs</span>
+          <%= image_tag "Primary_logo.png", style: "height: 2.5rem; width: auto;", alt: "AMOS Labs" %>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
@@ -338,7 +338,7 @@
         <div class="row">
           <div class="col-md-4 mb-4">
             <h5 class="text-white d-flex align-items-center">
-              <span class="text-white fw-bold fs-5">AMOS Labs</span>
+              <%= image_tag "Primary_logo.png", style: "height: 2rem; width: auto;", alt: "AMOS Labs" %>
             </h5>
             <p class="mb-3">AI-powered business automation that streamlines your operations. AMOS learns, adapts, and delivers results while you focus on what matters.</p>
             <div class="d-flex gap-3">
