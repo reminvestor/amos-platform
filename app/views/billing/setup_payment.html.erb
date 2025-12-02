@@ -179,7 +179,7 @@
               <form id="payment-form">
                 <div class="mb-4">
                   <label class="form-label text-white">Card Number</label>
-                  <div id="card-number-element" class="form-control bg-dark border-secondary" style="padding: 12px; min-height: 44px;">
+                  <div id="card-number-element" class="form-control border-secondary" style="padding: 12px; min-height: 44px; background-color: #1e293b !important;">
                     <!-- Stripe Card Number will be inserted here -->
                   </div>
                 </div>
@@ -187,13 +187,13 @@
                 <div class="row mb-4">
                   <div class="col-6">
                     <label class="form-label text-white">Expiration Date</label>
-                    <div id="card-expiry-element" class="form-control bg-dark border-secondary" style="padding: 12px; min-height: 44px;">
+                    <div id="card-expiry-element" class="form-control border-secondary" style="padding: 12px; min-height: 44px; background-color: #1e293b !important;">
                       <!-- Stripe Expiry will be inserted here -->
                     </div>
                   </div>
                   <div class="col-6">
                     <label class="form-label text-white">CVC</label>
-                    <div id="card-cvc-element" class="form-control bg-dark border-secondary" style="padding: 12px; min-height: 44px;">
+                    <div id="card-cvc-element" class="form-control border-secondary" style="padding: 12px; min-height: 44px; background-color: #1e293b !important;">
                       <!-- Stripe CVC will be inserted here -->
                     </div>
                   </div>
@@ -289,20 +289,26 @@
     const stripe = Stripe('<%= @publishable_key %>');
     const elements = stripe.elements();
     
-    // Custom styling for Stripe Elements
+    // Custom styling for Stripe Elements - ensure white text on dark background
     const style = {
       base: {
-        color: '#fff',
+        color: '#ffffff',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         fontSmoothing: 'antialiased',
         fontSize: '16px',
+        fontWeight: '400',
         '::placeholder': {
-          color: '#6c757d'
-        }
+          color: '#94a3b8'
+        },
+        iconColor: '#94a3b8'
       },
       invalid: {
-        color: '#dc3545',
-        iconColor: '#dc3545'
+        color: '#ef4444',
+        iconColor: '#ef4444'
+      },
+      complete: {
+        color: '#22c55e',
+        iconColor: '#22c55e'
       }
     };
     

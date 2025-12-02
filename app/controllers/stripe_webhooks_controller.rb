@@ -38,6 +38,13 @@ class StripeWebhooksController < ApplicationController
       handle_invoice_payment_failed(event.data.object)
     when 'customer.subscription.trial_will_end'
       handle_trial_will_end(event.data.object)
+    when 'setup_intent.succeeded'
+      handle_setup_intent_succeeded(event.data.object)
+    when 'payment_method.attached'
+      handle_payment_method_attached(event.data.object)
+    when 'charge.succeeded', 'payment_intent.succeeded', 'payment_intent.created'
+      # These are informational - the actual handling is done in handle_invoice_payment_succeeded
+      Rails.logger.info "Stripe event #{event.type} received for customer"
     else
       Rails.logger.info "Unhandled Stripe event type: #{event.type}"
     end
@@ -237,6 +244,63 @@ class StripeWebhooksController < ApplicationController
     Rails.logger.info "Trial ending soon for entity #{entity.id}"
 
     # TODO: Send reminder email to user about trial ending
+  end
+
+  def handle_setup_intent_succeeded(setup_intent)
+    # Extract metadata to find the billing account
+    billing_account_id = setup_intent.metadata&.[]('billing_account_id')
+    user_id = setup_intent.metadata&.[]('user_id')
+    
+    billing_account = if billing_account_id.present?
+      UserBillingAccount.find_by(id: billing_account_id)
+    elsif user_id.present?
+      UserBillingAccount.find_by(user_id: user_id)
+    elsif setup_intent.customer.present?
+      UserBillingAccount.find_by(stripe_customer_id: setup_intent.customer)
+    end
+    
+    return unless billing_account
+    
+    # Update the payment method if provided
+    if setup_intent.payment_method.present?
+      billing_account.update!(
+        stripe_payment_method_id: setup_intent.payment_method,
+        payment_method_last4: fetch_payment_method_last4(setup_intent.payment_method),
+        payment_method_brand: fetch_payment_method_brand(setup_intent.payment_method)
+      )
+      Rails.logger.info "✅ Setup intent succeeded - payment method saved for billing account #{billing_account.id}"
+    end
+  end
+
+  def handle_payment_method_attached(payment_method)
+    # Find billing account by customer ID
+    billing_account = UserBillingAccount.find_by(stripe_customer_id: payment_method.customer)
+    return unless billing_account
+    
+    # Update with the new payment method details
+    billing_account.update!(
+      stripe_payment_method_id: payment_method.id,
+      payment_method_last4: payment_method.card&.last4,
+      payment_method_brand: payment_method.card&.brand&.capitalize
+    )
+    
+    Rails.logger.info "✅ Payment method attached for billing account #{billing_account.id}: #{payment_method.card&.brand} ending in #{payment_method.card&.last4}"
+  end
+
+  def fetch_payment_method_last4(payment_method_id)
+    pm = Stripe::PaymentMethod.retrieve(payment_method_id)
+    pm.card&.last4
+  rescue Stripe::StripeError => e
+    Rails.logger.error "Failed to fetch payment method details: #{e.message}"
+    nil
+  end
+
+  def fetch_payment_method_brand(payment_method_id)
+    pm = Stripe::PaymentMethod.retrieve(payment_method_id)
+    pm.card&.brand&.capitalize
+  rescue Stripe::StripeError => e
+    Rails.logger.error "Failed to fetch payment method details: #{e.message}"
+    nil
   end
 
   def determine_token_limit(price_lookup_key)
