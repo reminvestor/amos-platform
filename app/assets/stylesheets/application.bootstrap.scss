@@ -495,16 +495,7 @@
     height: 1rem;
   }
 
-  &-primary {
-    background-color: var(--accent-cyan);
-    color: #000000;
-    border: none;
-
-    &:hover {
-      // Darker cyan (approximately -10% lightness from #22D3EE)
-      background-color: #1ab3c9;
-    }
-  }
+  // Note: admin-btn-primary is defined in themes.scss (purple gradient)
 
   &-outline {
     background-color: transparent;
