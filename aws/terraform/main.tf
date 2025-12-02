@@ -535,6 +535,18 @@ resource "aws_ecs_task_definition" "app" {
         {
           name      = "SERPER_API_KEY"
           valueFrom = data.aws_secretsmanager_secret.serper_api_key.arn
+        },
+        {
+          name      = "STRIPE_SECRET_KEY"
+          valueFrom = data.aws_secretsmanager_secret.stripe_secret_key.arn
+        },
+        {
+          name      = "STRIPE_PUBLISHABLE_KEY"
+          valueFrom = data.aws_secretsmanager_secret.stripe_publishable_key.arn
+        },
+        {
+          name      = "STRIPE_WEBHOOK_SECRET"
+          valueFrom = data.aws_secretsmanager_secret.stripe_webhook_secret.arn
         }
       ]
       
@@ -636,6 +648,18 @@ resource "aws_ecs_task_definition" "app" {
         {
           name      = "SERPER_API_KEY"
           valueFrom = data.aws_secretsmanager_secret.serper_api_key.arn
+        },
+        {
+          name      = "STRIPE_SECRET_KEY"
+          valueFrom = data.aws_secretsmanager_secret.stripe_secret_key.arn
+        },
+        {
+          name      = "STRIPE_PUBLISHABLE_KEY"
+          valueFrom = data.aws_secretsmanager_secret.stripe_publishable_key.arn
+        },
+        {
+          name      = "STRIPE_WEBHOOK_SECRET"
+          valueFrom = data.aws_secretsmanager_secret.stripe_webhook_secret.arn
         }
       ]
       
@@ -747,7 +771,10 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
           data.aws_secretsmanager_secret.openai_api_key.arn,
           data.aws_secretsmanager_secret.anthropic_api_key.arn,
           data.aws_secretsmanager_secret.eleven_labs_api_key.arn,
-          data.aws_secretsmanager_secret.serper_api_key.arn
+          data.aws_secretsmanager_secret.serper_api_key.arn,
+          data.aws_secretsmanager_secret.stripe_secret_key.arn,
+          data.aws_secretsmanager_secret.stripe_publishable_key.arn,
+          data.aws_secretsmanager_secret.stripe_webhook_secret.arn
         ]
       }
     ]
@@ -972,6 +999,18 @@ data "aws_secretsmanager_secret" "eleven_labs_api_key" {
 
 data "aws_secretsmanager_secret" "serper_api_key" {
   name = "${var.app_name}-serper-api-key"
+}
+
+data "aws_secretsmanager_secret" "stripe_secret_key" {
+  name = "${var.app_name}-stripe-secret-key"
+}
+
+data "aws_secretsmanager_secret" "stripe_publishable_key" {
+  name = "${var.app_name}-stripe-publishable-key"
+}
+
+data "aws_secretsmanager_secret" "stripe_webhook_secret" {
+  name = "${var.app_name}-stripe-webhook-secret"
 }
 
 # VPC Endpoints for private subnet access to AWS services
