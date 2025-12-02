@@ -131,7 +131,7 @@
                 </div>
                 <div>
                   <div class="text-white fw-semibold"><%= number_with_delimiter(@config.free_tokens_on_signup) %> Free Tokens</div>
-                  <div class="text-muted small">Worth ~$<%= (@config.free_tokens_on_signup / 100_000.0).round(2) %> - enough to get started!</div>
+                  <div class="text-muted small">Worth ~$<%= number_with_precision(@config.free_tokens_on_signup / 100_000.0, precision: 0) %> in compute - enough to get started!</div>
                 </div>
               </div>
 
