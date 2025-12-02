@@ -68,7 +68,7 @@ class OnboardingDataExtractionService
     current_profile = get_current_profile_summary
 
     <<~PROMPT
-      You are a data extraction specialist. Analyze the user's message and extract any business information that can be stored in a structured format.
+      You are a data extraction specialist. Analyze the user's message and extract ALL business information that can be stored in a structured format. Be thorough - extract as much relevant information as possible.
 
       CURRENT BUSINESS PROFILE:
       #{current_profile.map { |k, v| "#{k}: #{v || 'Not provided'}" }.join("\n")}
@@ -77,35 +77,50 @@ class OnboardingDataExtractionService
       #{conversation_context.last(3).map { |msg| "#{msg[:role]}: #{msg[:content]}" }.join("\n")}
 
       EXTRACTION RULES:
-      1. Only extract information explicitly mentioned by the user
-      2. Don't make assumptions or infer information not directly stated
-      3. Be conservative - if unsure, don't extract
+      1. Extract ALL information explicitly mentioned by the user
+      2. Be thorough - if the user mentions competitors, products, services, challenges, goals, etc., extract them
+      3. Don't make up information, but DO extract everything that IS mentioned
       4. Return valid JSON only, no additional text
-      5. Use null for fields that aren't mentioned
+      5. Use null for fields that aren't mentioned at all
 
-      FIELDS TO EXTRACT (REQUIRED FIELDS MARKED):
-      - industry: Business industry/sector [REQUIRED] (e.g., "technology", "healthcare", "education")
-      - description: What the business does, their mission, value proposition [REQUIRED]
-      - target_audience: Who their customers are [REQUIRED] (e.g., "police officers", "small businesses")
-      - values: Company values, principles, or mission [REQUIRED] (e.g., "quality education", "customer success")
+      CORE FIELDS TO EXTRACT (REQUIRED FIELDS MARKED):
+      - industry: Business industry/sector [REQUIRED] (e.g., "technology", "healthcare", "education", "fitness")
+      - description: What the business does, their mission, value proposition [REQUIRED] - be detailed!
+      - target_audience: Who their customers are [REQUIRED] (e.g., "police officers", "small businesses", "fitness enthusiasts")
+      - values: Company values, principles, or mission [REQUIRED]
       - tone_of_voice: Preferred communication style [REQUIRED] (e.g., "professional", "casual and friendly", "authoritative")
       - founded_year: Year business was founded (number only)
       - website: Website URL (validate format)
-      - business_model: How they make money (e.g., "subscription", "one-time purchase", "marketplace")
+
+      ADDITIONAL BUSINESS CONTEXT (extract if mentioned):
+      - business_model: How they make money (e.g., "subscription", "one-time purchase", "marketplace", "SaaS")
       - unique_selling_proposition: What makes them different from competitors
-      - company_size: Number of employees or size indicator
-      - geographic_focus: Where they operate (e.g., "United States", "Global")
+      - company_size: Number of employees or size indicator (e.g., "startup", "10-50 employees", "enterprise")
+      - geographic_focus: Where they operate (e.g., "United States", "Global", "Europe")
+      - competitors: List of competitors mentioned
+      - products_services: Specific products or services offered
+      - key_challenges: Business challenges or pain points mentioned
+      - goals: Business goals or objectives mentioned
+      - technology_stack: Any technologies, platforms, or tools mentioned
+      - customer_pain_points: Problems their customers face that they solve
+      - pricing_model: Any pricing information mentioned
+      - growth_stage: Stage of business (startup, growth, mature, etc.)
+      - partnerships: Any partnerships or integrations mentioned
+      - certifications: Any certifications, awards, or credentials mentioned
 
       USER MESSAGE TO ANALYZE:
       "#{user_message}"
 
-      Return ONLY a JSON object with extracted information. Example:
+      Return ONLY a JSON object with ALL extracted information. Be comprehensive! Example:
       {
-        "industry": "education",
-        "description": "E-learning platform for police officer training",
-        "target_audience": "police officers",
+        "industry": "fitness technology",
+        "description": "AI-powered fitness platform providing personalized training, recovery, and nutrition guidance through wearables and mobile apps",
+        "target_audience": "fitness enthusiasts, athletes, health-conscious individuals",
         "business_model": "subscription",
-        "unique_selling_proposition": "Netflix-style all-you-can-eat training model with AI-powered courses"
+        "competitors": ["Whoop", "Peloton", "Freeletics", "Fitbod"],
+        "technology_stack": ["AI", "machine learning", "computer vision", "wearables"],
+        "unique_selling_proposition": "Hyper-individualized training plans that adapt daily based on biometric data",
+        "products_services": ["personalized training plans", "recovery tracking", "nutrition guidance", "form feedback"]
       }
     PROMPT
   end
@@ -115,7 +130,16 @@ class OnboardingDataExtractionService
 
     # Validate and clean each field
     data.each do |key, value|
-      next if value.nil? || value.to_s.strip.empty?
+      next if value.nil?
+      
+      # Handle arrays (like competitors, products_services)
+      if value.is_a?(Array)
+        cleaned_array = value.map { |v| v.to_s.strip }.reject(&:blank?)
+        cleaned_data[key.to_s] = cleaned_array if cleaned_array.any?
+        next
+      end
+      
+      next if value.to_s.strip.empty?
 
       case key.to_s
       when "industry"
@@ -132,10 +156,13 @@ class OnboardingDataExtractionService
         if url.match?(/\A#{URI.regexp([ 'http', 'https' ])}\z/) || url.match?(/\A[\w\-\.]+\.[a-z]{2,}\z/i)
           cleaned_data["website"] = url.start_with?("http") ? url : "https://#{url}"
         end
-      when "values", "tone_of_voice", "business_model", "unique_selling_proposition", "geographic_focus"
-        cleaned_data[key] = value.to_s.strip if value.to_s.length > 3
-      when "company_size"
-        cleaned_data["company_size"] = value.to_s.strip if value.to_s.length > 1
+      when "values", "tone_of_voice"
+        cleaned_data[key.to_s] = value.to_s.strip if value.to_s.length > 3
+      when "business_model", "unique_selling_proposition", "geographic_focus", "company_size", 
+           "competitors", "products_services", "key_challenges", "goals", "technology_stack",
+           "customer_pain_points", "pricing_model", "growth_stage", "partnerships", "certifications"
+        # Store these additional fields - they'll go into knowledge_base
+        cleaned_data[key.to_s] = value.to_s.strip if value.to_s.length > 2
       end
     end
 
@@ -156,17 +183,25 @@ class OnboardingDataExtractionService
     profile.description ||= "Business details to be updated during onboarding"
     profile.industry ||= "Industry to be specified during onboarding"
 
+    # Initialize knowledge_base if nil
+    profile.knowledge_base ||= {}
+    
+    # Track additional business context in knowledge_base
+    additional_context = {}
+
     # Update profile with extracted data
     extracted_data.each do |key, value|
-      case key
+      next unless value.present?
+      
+      case key.to_s
       when "industry"
         # Replace default industry with actual user-provided industry
-        if value.present? && value != "Industry to be specified during onboarding"
+        if value != "Industry to be specified during onboarding"
           profile.industry = value
         end
       when "description"
         # Replace default description with actual user-provided description
-        if value.present? && value != "Business details to be updated during onboarding"
+        if value != "Business details to be updated during onboarding"
           profile.description = value
         end
       when "target_audience"
@@ -179,18 +214,61 @@ class OnboardingDataExtractionService
         profile.values = value
       when "tone_of_voice"
         profile.tone_of_voice = value
-      when "business_model", "unique_selling_proposition", "company_size", "geographic_focus"
-        # These could be stored in a JSON field or separate model
-        # For now, we can append to description or values
-        if key == "business_model" && value.present?
-          profile.description = "#{profile.description}\n\nBusiness Model: #{value}".strip
-        end
+      when "business_model", "unique_selling_proposition", "company_size", "geographic_focus",
+           "competitors", "products_services", "key_challenges", "goals", "technology_stack",
+           "customer_pain_points", "pricing_model", "growth_stage", "partnerships", "certifications"
+        # Store these in knowledge_base for rich context
+        additional_context[key.to_s] = value
       end
     end
 
+    # Merge additional context into knowledge_base
+    if additional_context.any?
+      existing_business_context = profile.knowledge_base["business_context"] || {}
+      profile.knowledge_base = profile.knowledge_base.merge({
+        "business_context" => existing_business_context.merge(additional_context),
+        "last_updated" => Time.current.iso8601
+      })
+    end
+
     profile.save!
+    
+    # Also update entity settings with key business info if available
+    update_entity_settings(extracted_data)
+    
     Rails.logger.info "Updated business profile with: #{extracted_data.keys.join(', ')}"
+    Rails.logger.info "Knowledge base now contains: #{profile.knowledge_base.keys.join(', ')}"
     profile
+  end
+  
+  def update_entity_settings(extracted_data)
+    entity = @user.entity
+    return unless entity
+    
+    # Store key business context in entity settings for quick access
+    entity_updates = {}
+    
+    if extracted_data["industry"].present?
+      entity_updates["industry"] = extracted_data["industry"]
+    end
+    
+    if extracted_data["business_model"].present?
+      entity_updates["business_model"] = extracted_data["business_model"]
+    end
+    
+    if extracted_data["company_size"].present?
+      entity_updates["company_size"] = extracted_data["company_size"]
+    end
+    
+    if extracted_data["geographic_focus"].present?
+      entity_updates["geographic_focus"] = extracted_data["geographic_focus"]
+    end
+    
+    if entity_updates.any?
+      entity.settings = (entity.settings || {}).merge(entity_updates)
+      entity.save!
+      Rails.logger.info "Updated entity settings with: #{entity_updates.keys.join(', ')}"
+    end
   end
 
   def get_current_profile_summary

@@ -766,7 +766,12 @@ function initializeOnboarding() {
         </div>
       `;
 
-      chatMessages.appendChild(messageElement);
+      // Insert before the typing indicator so new messages appear above it
+      if (typingIndicator && typingIndicator.parentNode === chatMessages) {
+        chatMessages.insertBefore(messageElement, typingIndicator);
+      } else {
+        chatMessages.appendChild(messageElement);
+      }
       // Reinitialize Lucide icons for newly added elements
       if (typeof lucide !== 'undefined') {
         lucide.createIcons();
