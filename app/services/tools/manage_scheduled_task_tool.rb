@@ -5,7 +5,7 @@ module Tools
     def self.metadata
       {
         name: "manage_scheduled_task",
-        description: "Manage an existing scheduled task - pause, resume, run now, update, or delete it.",
+        description: "Manage an existing scheduled task - pause, resume, run now, update, delete, or reset failures.",
         category: "scheduling",
         input_schema: {
           type: "object",
@@ -20,19 +20,27 @@ module Tools
             },
             action: {
               type: "string",
-              enum: %w[pause resume run_now delete update],
-              description: "The action to perform: pause, resume, run_now (execute immediately), delete, or update"
+              enum: %w[pause resume run_now delete update reset_failures],
+              description: "The action to perform: pause, resume, run_now (execute immediately), delete, update, or reset_failures (clear failure counter)"
             },
             updates: {
               type: "object",
-              description: "For 'update' action: fields to update (name, prompt, schedule_type, run_at_time, run_on_day, enabled)",
+              description: "For 'update' action: fields to update",
               properties: {
-                name: { type: "string" },
-                prompt: { type: "string" },
-                schedule_type: { type: "string", enum: %w[once daily weekly monthly] },
-                run_at_time: { type: "string" },
-                run_on_day: { type: "integer" },
-                enabled: { type: "boolean" }
+                name: { type: "string", description: "Task name" },
+                description: { type: "string", description: "Task description" },
+                task_type: { type: "string", enum: %w[email_summary report_generation data_sync custom email_management research_update], description: "Type of task" },
+                prompt: { type: "string", description: "Task instructions/prompt" },
+                schedule_type: { type: "string", enum: %w[once daily weekly monthly], description: "Schedule frequency" },
+                run_at_time: { type: "string", description: "Time to run (HH:MM format)" },
+                run_on_day: { type: "integer", description: "Day to run (0-6 for weekly, 1-31 for monthly)" },
+                timezone: { type: "string", description: "Timezone for schedule" },
+                enabled: { type: "boolean", description: "Whether task is enabled" },
+                execution_mode: { type: "string", enum: %w[scout agent_only tool_only], description: "Execution mode: scout (AI decides), agent_only, or tool_only" },
+                required_tools: { type: "array", items: { type: "string" }, description: "For tool_only mode: list of tools to use" },
+                required_agent_slug: { type: "string", description: "For agent_only mode: agent slug to use" },
+                allow_fallback: { type: "boolean", description: "Allow fallback to Scout if agent/tool fails" },
+                output_method: { type: "string", enum: %w[notification email both], description: "How to deliver results" }
               }
             }
           },
@@ -88,6 +96,8 @@ module Tools
           perform_delete(task)
         when 'update'
           perform_update(task, updates)
+        when 'reset_failures'
+          perform_reset_failures(task)
         else
           error_response("Unknown action: #{action}")
         end
@@ -170,34 +180,91 @@ module Tools
         return error_response("No updates provided. Specify fields to update in the 'updates' parameter.")
       end
 
-      # Convert string keys to symbols and filter allowed updates
-      allowed_keys = %i[name prompt schedule_type run_at_time run_on_day enabled]
+      # Direct model fields
+      direct_fields = %i[name description task_type prompt schedule_type run_on_day timezone enabled]
+      # Fields that go into input_context
+      context_fields = %i[execution_mode required_tools required_agent_slug allow_fallback]
+      # Fields that go into output_config
+      output_fields = %i[output_method]
+      
       filtered_updates = {}
+      context_updates = {}
+      output_updates = {}
+      updated_field_names = []
 
       updates.each do |key, value|
         key_sym = key.to_sym
-        if allowed_keys.include?(key_sym)
-          # Handle special cases
-          if key_sym == :run_at_time && value.is_a?(String)
-            filtered_updates[key_sym] = Time.parse(value)
-          else
-            filtered_updates[key_sym] = value
-          end
+        
+        if direct_fields.include?(key_sym)
+          filtered_updates[key_sym] = value
+          updated_field_names << key_sym
+        elsif key_sym == :run_at_time && value.present?
+          filtered_updates[key_sym] = Time.parse(value) rescue value
+          updated_field_names << key_sym
+        elsif context_fields.include?(key_sym)
+          context_updates[key_sym.to_s] = value
+          updated_field_names << key_sym
+        elsif output_fields.include?(key_sym)
+          output_updates['method'] = value if key_sym == :output_method
+          updated_field_names << key_sym
         end
       end
 
-      if filtered_updates.empty?
-        return error_response("No valid updates provided. Allowed fields: #{allowed_keys.join(', ')}")
+      if updated_field_names.empty?
+        return error_response("No valid updates provided.")
       end
 
-      task.update!(filtered_updates)
+      # Apply direct updates
+      task.assign_attributes(filtered_updates) if filtered_updates.any?
+      
+      # Merge input_context updates
+      if context_updates.any?
+        current_context = task.input_context || {}
+        
+        # Handle required_tools - ensure it's an array
+        if context_updates['required_tools'].is_a?(String)
+          context_updates['required_tools'] = context_updates['required_tools'].split(',').map(&:strip).reject(&:blank?)
+        end
+        
+        task.input_context = current_context.merge(context_updates)
+      end
+      
+      # Merge output_config updates
+      if output_updates.any?
+        current_output = task.output_config || {}
+        task.output_config = current_output.merge(output_updates)
+      end
+      
+      task.save!
 
       success_response(
         task_id: task.id,
         name: task.name,
-        updated_fields: filtered_updates.keys,
+        updated_fields: updated_field_names,
+        execution_mode: task.execution_mode,
         next_run: task.next_run_at&.strftime('%b %d at %I:%M %p'),
-        message: "✏️ Updated scheduled task '#{task.name}'. Fields changed: #{filtered_updates.keys.join(', ')}"
+        message: "✏️ Updated scheduled task '#{task.name}'. Fields changed: #{updated_field_names.join(', ')}"
+      )
+    end
+    
+    def perform_reset_failures(task)
+      if task.consecutive_failures == 0
+        return success_response(
+          task_id: task.id,
+          name: task.name,
+          message: "Task '#{task.name}' has no failures to reset."
+        )
+      end
+      
+      old_count = task.consecutive_failures
+      task.update!(consecutive_failures: 0)
+      
+      success_response(
+        task_id: task.id,
+        name: task.name,
+        previous_failures: old_count,
+        can_run: task.can_run?,
+        message: "🔄 Reset failure counter for '#{task.name}' (was #{old_count}). Task can now run again."
       )
     end
   end
